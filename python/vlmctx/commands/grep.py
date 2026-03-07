@@ -8,7 +8,6 @@ from typing import Annotated, Optional
 
 import typer
 
-from vlmctx.context import Context
 from vlmctx.pipe import is_piped_output, read_paths_from_stdin
 
 
@@ -16,13 +15,17 @@ def grep_cmd(
     pattern: Annotated[str, typer.Argument(help="Search pattern (regex)")],
     directory: Annotated[Path, typer.Argument(help="Directory to search")] = Path("."),
     kind: Annotated[Optional[str], typer.Option("--kind", "-k", help="Filter by file kind")] = None,
-    ext: Annotated[Optional[str], typer.Option("--ext", "-e", help="Filter by extension(s)")] = None,
+    ext: Annotated[
+        Optional[str], typer.Option("--ext", "-e", help="Filter by extension(s)")
+    ] = None,
     context_lines: Annotated[int, typer.Option("-C", help="Context lines around match")] = 0,
     count: Annotated[bool, typer.Option("--count", help="Show only match counts per file")] = False,
     level: Annotated[int, typer.Option("--level", "-l", help="Processing level")] = 1,
     json_output: Annotated[bool, typer.Option("--json", help="Force JSON output")] = False,
 ) -> None:
     """Search file contents -- text and semantic (like rg/grep)."""
+    from vlmctx.context import Context
+
     ctx = Context(directory)
     if kind:
         ctx = ctx.filter(kind=kind)

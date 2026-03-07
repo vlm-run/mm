@@ -59,13 +59,15 @@ def tail_cmd(
             subtitle.append(f"lines {start_line}-{len(all_lines)}", style="dim")
             subtitle.append(f" of {len(all_lines)}", style="dim")
 
-            output_console.print(Panel(
-                output,
-                title=f"[bold]{p}[/bold]",
-                subtitle=subtitle,
-                expand=False,
-                border_style="blue",
-            ))
+            output_console.print(
+                Panel(
+                    output,
+                    title=f"[bold]{p}[/bold]",
+                    subtitle=subtitle,
+                    expand=False,
+                    border_style="blue",
+                )
+            )
         else:
             if len(paths) > 1:
                 print(f"==> {p} <==")

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import typer
 
-from vlmctx.commands import cat, describe, find, grep, head, info, ls, sql, tail
+from vlmctx.commands import audio, cat, describe, find, grep, head, info, keyframes, ls, sql, tail
 
 app = typer.Typer(
     name="vlmctx",
@@ -22,6 +22,8 @@ app.command(name="grep")(grep.grep_cmd)
 app.command(name="sql")(sql.sql_cmd)
 app.command(name="describe")(describe.describe_cmd)
 app.command(name="info")(info.info_cmd)
+app.command(name="keyframes")(keyframes.keyframes_cmd)
+app.command(name="audio")(audio.audio_cmd)
 
 
 if __name__ == "__main__":

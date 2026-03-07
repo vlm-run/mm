@@ -120,11 +120,11 @@ pub fn enrich_image_dimensions(entries: &mut [FileEntry], root: &Path) {
         .filter(|e| e.kind == FileKind::Image)
         .for_each(|entry| {
             let full_path = root.join(entry.path.as_str());
-            if let Ok(reader) = image::ImageReader::open(&full_path) {
-                if let Ok((w, h)) = reader.into_dimensions() {
-                    entry.width = Some(w);
-                    entry.height = Some(h);
-                }
+            if let Ok(reader) = image::ImageReader::open(&full_path)
+                && let Ok((w, h)) = reader.into_dimensions()
+            {
+                entry.width = Some(w);
+                entry.height = Some(h);
             }
         });
 }
@@ -182,7 +182,10 @@ mod tests {
         let mut entries = scan_directory(dir.path(), None);
         enrich_image_dimensions(&mut entries, dir.path());
 
-        let bad = entries.iter().find(|e| e.name.as_str() == "bad.png").unwrap();
+        let bad = entries
+            .iter()
+            .find(|e| e.name.as_str() == "bad.png")
+            .unwrap();
         assert!(bad.width.is_none());
         assert!(bad.height.is_none());
     }
@@ -195,7 +198,10 @@ mod tests {
         let mut entries = scan_directory(dir.path(), None);
         enrich_image_dimensions(&mut entries, dir.path());
 
-        let video = entries.iter().find(|e| e.name.as_str() == "clip.mp4").unwrap();
+        let video = entries
+            .iter()
+            .find(|e| e.name.as_str() == "clip.mp4")
+            .unwrap();
         assert_eq!(video.kind, FileKind::Video);
         assert!(video.width.is_none());
     }
@@ -210,7 +216,10 @@ mod tests {
         let mut entries = scan_directory(dir.path(), None);
         enrich_image_dimensions(&mut entries, dir.path());
 
-        let deep = entries.iter().find(|e| e.name.as_str() == "deep.png").unwrap();
+        let deep = entries
+            .iter()
+            .find(|e| e.name.as_str() == "deep.png")
+            .unwrap();
         assert_eq!(deep.width, Some(64));
         assert_eq!(deep.height, Some(32));
     }

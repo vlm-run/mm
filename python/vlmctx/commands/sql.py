@@ -7,9 +7,6 @@ from typing import Annotated
 
 import typer
 
-from vlmctx.context import Context
-from vlmctx.display import arrow_table_to_rich, output_console
-from vlmctx.duck import query_arrow_table
 from vlmctx.pipe import is_piped_output
 
 
@@ -19,6 +16,9 @@ def sql_cmd(
     json_output: Annotated[bool, typer.Option("--json", help="Force JSON output")] = False,
 ) -> None:
     """Query the file index with SQL via DuckDB."""
+    from vlmctx.context import Context
+    from vlmctx.duck import query_arrow_table
+
     ctx = Context(directory)
     result = query_arrow_table(ctx.to_arrow(), query)
 
@@ -40,5 +40,7 @@ def sql_cmd(
             rows.append({c: result.column(c)[i].as_py() for c in result.column_names})
         print(json.dumps(rows, indent=2, default=str))
     else:
+        from vlmctx.display import arrow_table_to_rich, output_console
+
         rich_table = arrow_table_to_rich(result, title="[dim]sql[/dim]")
         output_console.print(rich_table)

@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import pyarrow as pa
 
-
 class Scanner:
     """High-performance file scanner powered by Rust."""
 
@@ -20,7 +19,6 @@ class Scanner:
     def to_lines(self) -> str: ...
     def extract_l1(self, path: str) -> L1Result: ...
 
-
 class L1Result:
     """Result of L1 content extraction."""
 
@@ -33,3 +31,11 @@ class L1Result:
     pages: int | None
     duration_s: float | None
     magic_mime: str | None
+    exif_camera: str | None
+    exif_date: str | None
+    exif_gps: str | None
+    exif_orientation: str | None
+    video_codec: str | None
+    audio_codec: str | None
+    fps: float | None
+    has_audio: bool | None

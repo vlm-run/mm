@@ -1,4 +1,4 @@
-use std::io::BufReader;
+use std::io::{BufReader, Cursor};
 use std::path::Path;
 
 use crate::extract::{ContentExtractor, ExtractError, L1Record};
@@ -11,12 +11,14 @@ impl ContentExtractor for ImageExtractor {
     }
 
     fn extract(&self, path: &Path) -> Result<L1Record, ExtractError> {
-        let data = std::fs::read(path)?;
+        let file = std::fs::File::open(path)?;
+        let mmap = unsafe { memmap2::Mmap::map(&file) }.map_err(std::io::Error::other)?;
 
-        let content_hash = format!("{:016x}", xxhash_rust::xxh3::xxh3_64(&data));
-        let magic_mime = infer::get(&data).map(|t| t.mime_type().to_string());
+        let content_hash = format!("{:016x}", xxhash_rust::xxh3::xxh3_64(&mmap));
+        let magic_mime = infer::get(&mmap).map(|t| t.mime_type().to_string());
 
-        let dimensions = image::ImageReader::open(path)
+        let dimensions = image::ImageReader::new(Cursor::new(&mmap[..]))
+            .with_guessed_format()
             .ok()
             .and_then(|r| r.into_dimensions().ok())
             .map(|(w, h)| format!("{}x{}", w, h));
@@ -46,24 +48,44 @@ struct ExifData {
 fn extract_exif(path: &Path) -> ExifData {
     let file = match std::fs::File::open(path) {
         Ok(f) => f,
-        Err(_) => return ExifData { camera: None, date: None, gps: None, orientation: None },
+        Err(_) => {
+            return ExifData {
+                camera: None,
+                date: None,
+                gps: None,
+                orientation: None,
+            };
+        }
     };
     let mut reader = BufReader::new(file);
     let exif = match exif::Reader::new().read_from_container(&mut reader) {
         Ok(e) => e,
-        Err(_) => return ExifData { camera: None, date: None, gps: None, orientation: None },
+        Err(_) => {
+            return ExifData {
+                camera: None,
+                date: None,
+                gps: None,
+                orientation: None,
+            };
+        }
     };
 
     let camera = {
-        let make = exif.get_field(exif::Tag::Make, exif::In::PRIMARY)
+        let make = exif
+            .get_field(exif::Tag::Make, exif::In::PRIMARY)
             .map(|f| f.display_value().to_string().trim().to_string());
-        let model = exif.get_field(exif::Tag::Model, exif::In::PRIMARY)
+        let model = exif
+            .get_field(exif::Tag::Model, exif::In::PRIMARY)
             .map(|f| f.display_value().to_string().trim().to_string());
         match (make, model) {
             (Some(m), Some(md)) => {
                 let m = m.trim_matches('"').to_string();
                 let md = md.trim_matches('"').to_string();
-                if md.starts_with(&m) { Some(md) } else { Some(format!("{} {}", m, md)) }
+                if md.starts_with(&m) {
+                    Some(md)
+                } else {
+                    Some(format!("{} {}", m, md))
+                }
             }
             (Some(m), None) => Some(m.trim_matches('"').to_string()),
             (None, Some(md)) => Some(md.trim_matches('"').to_string()),
@@ -71,16 +93,23 @@ fn extract_exif(path: &Path) -> ExifData {
         }
     };
 
-    let date = exif.get_field(exif::Tag::DateTimeOriginal, exif::In::PRIMARY)
+    let date = exif
+        .get_field(exif::Tag::DateTimeOriginal, exif::In::PRIMARY)
         .or_else(|| exif.get_field(exif::Tag::DateTime, exif::In::PRIMARY))
         .map(|f| f.display_value().to_string().trim_matches('"').to_string());
 
     let gps = extract_gps(&exif);
 
-    let orientation = exif.get_field(exif::Tag::Orientation, exif::In::PRIMARY)
+    let orientation = exif
+        .get_field(exif::Tag::Orientation, exif::In::PRIMARY)
         .map(|f| f.display_value().to_string().trim_matches('"').to_string());
 
-    ExifData { camera, date, gps, orientation }
+    ExifData {
+        camera,
+        date,
+        gps,
+        orientation,
+    }
 }
 
 fn extract_gps(exif: &exif::Exif) -> Option<String> {
@@ -92,20 +121,32 @@ fn extract_gps(exif: &exif::Exif) -> Option<String> {
     let lat_val = parse_gps_coord(&lat.value)?;
     let lon_val = parse_gps_coord(&lon.value)?;
 
-    let lat_sign = if lat_ref.display_value().to_string().contains('S') { -1.0 } else { 1.0 };
-    let lon_sign = if lon_ref.display_value().to_string().contains('W') { -1.0 } else { 1.0 };
+    let lat_sign = if lat_ref.display_value().to_string().contains('S') {
+        -1.0
+    } else {
+        1.0
+    };
+    let lon_sign = if lon_ref.display_value().to_string().contains('W') {
+        -1.0
+    } else {
+        1.0
+    };
 
-    Some(format!("{:.6},{:.6}", lat_val * lat_sign, lon_val * lon_sign))
+    Some(format!(
+        "{:.6},{:.6}",
+        lat_val * lat_sign,
+        lon_val * lon_sign
+    ))
 }
 
 fn parse_gps_coord(value: &exif::Value) -> Option<f64> {
-    if let exif::Value::Rational(rationals) = value {
-        if rationals.len() >= 3 {
-            let deg = rationals[0].to_f64();
-            let min = rationals[1].to_f64();
-            let sec = rationals[2].to_f64();
-            return Some(deg + min / 60.0 + sec / 3600.0);
-        }
+    if let exif::Value::Rational(rationals) = value
+        && rationals.len() >= 3
+    {
+        let deg = rationals[0].to_f64();
+        let min = rationals[1].to_f64();
+        let sec = rationals[2].to_f64();
+        return Some(deg + min / 60.0 + sec / 3600.0);
     }
     None
 }

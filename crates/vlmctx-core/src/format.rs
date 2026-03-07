@@ -18,7 +18,11 @@ pub fn record_batch_to_markdown(batch: &RecordBatch) -> String {
     lines.push(format!("| {} |", headers.join(" | ")));
     lines.push(format!(
         "| {} |",
-        headers.iter().map(|_| "---").collect::<Vec<_>>().join(" | ")
+        headers
+            .iter()
+            .map(|_| "---")
+            .collect::<Vec<_>>()
+            .join(" | ")
     ));
 
     for row in 0..batch.num_rows() {

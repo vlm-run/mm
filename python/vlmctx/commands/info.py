@@ -7,12 +7,12 @@ from typing import Annotated
 
 import typer
 
-from vlmctx.context import Context
-
 
 def info_cmd(
     directory: Annotated[Path, typer.Argument(help="Directory to inspect")] = Path("."),
 ) -> None:
     """Display summary statistics for a directory."""
+    from vlmctx.context import Context
+
     ctx = Context(directory)
     ctx.info()

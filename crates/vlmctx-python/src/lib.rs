@@ -5,9 +5,9 @@ use arrow::ipc::writer::StreamWriter;
 use pyo3::prelude::*;
 use pyo3::types::PyBytes;
 
-use vlmctx_core::extract::L1Record;
-use vlmctx_core::extractors::{CodeExtractor, ImageExtractor};
 use vlmctx_core::extract::ContentExtractor;
+use vlmctx_core::extract::L1Record;
+use vlmctx_core::extractors::{CodeExtractor, ImageExtractor, VideoExtractor};
 use vlmctx_core::meta::FileKind;
 
 #[pyclass]
@@ -116,6 +116,7 @@ impl Scanner {
                 CodeExtractor.extract(&self.root.join(&p))
             }
             FileKind::Image => ImageExtractor.extract(&self.root.join(&p)),
+            FileKind::Video | FileKind::Audio => VideoExtractor.extract(&self.root.join(&p)),
             _ => Ok(L1Record::default()),
         }
         .map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(e.to_string()))?;
@@ -134,6 +135,10 @@ impl Scanner {
             exif_date: record.exif_date,
             exif_gps: record.exif_gps,
             exif_orientation: record.exif_orientation,
+            video_codec: record.video_codec,
+            audio_codec: record.audio_codec,
+            fps: record.fps,
+            has_audio: record.has_audio,
         })
     }
 
@@ -175,14 +180,22 @@ struct L1Result {
     exif_gps: Option<String>,
     #[pyo3(get)]
     exif_orientation: Option<String>,
+    #[pyo3(get)]
+    video_codec: Option<String>,
+    #[pyo3(get)]
+    audio_codec: Option<String>,
+    #[pyo3(get)]
+    fps: Option<f64>,
+    #[pyo3(get)]
+    has_audio: Option<bool>,
 }
 
 #[pymethods]
 impl L1Result {
     fn __repr__(&self) -> String {
         format!(
-            "L1Result(hash={:?}, lines={:?}, lang={:?})",
-            self.content_hash, self.line_count, self.language
+            "L1Result(hash={:?}, lines={:?}, lang={:?}, dims={:?})",
+            self.content_hash, self.line_count, self.language, self.dimensions
         )
     }
 }
@@ -192,9 +205,11 @@ fn export_batch_to_pyarrow(py: Python<'_>, batch: &RecordBatch) -> PyResult<PyOb
     {
         let mut writer = StreamWriter::try_new(&mut buf, &batch.schema())
             .map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(e.to_string()))?;
-        writer.write(batch)
+        writer
+            .write(batch)
             .map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(e.to_string()))?;
-        writer.finish()
+        writer
+            .finish()
             .map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(e.to_string()))?;
     }
 

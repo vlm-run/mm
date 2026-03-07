@@ -7,8 +7,6 @@ from typing import Annotated, Optional
 
 import typer
 
-from vlmctx.context import Context
-from vlmctx.display import arrow_table_to_rich, output_console
 from vlmctx.pipe import is_piped_output, read_paths_from_stdin
 
 
@@ -16,12 +14,18 @@ def ls_cmd(
     directory: Annotated[Path, typer.Argument(help="Directory to list")] = Path("."),
     sort: Annotated[Optional[str], typer.Option("--sort", "-s", help="Sort by column")] = None,
     desc: Annotated[bool, typer.Option("--desc", help="Sort descending")] = False,
-    columns: Annotated[Optional[str], typer.Option("--columns", "-c", help="Columns to show, comma-separated")] = None,
-    limit: Annotated[Optional[int], typer.Option("--limit", "-n", help="Max rows to display")] = None,
+    columns: Annotated[
+        Optional[str], typer.Option("--columns", "-c", help="Columns to show, comma-separated")
+    ] = None,
+    limit: Annotated[
+        Optional[int], typer.Option("--limit", "-n", help="Max rows to display")
+    ] = None,
     kind: Annotated[Optional[str], typer.Option("--kind", "-k", help="Filter by kind")] = None,
     json_output: Annotated[bool, typer.Option("--json", help="Force JSON output")] = False,
 ) -> None:
     """Tabular file listing with metadata (like eza/ls -l)."""
+    from vlmctx.context import Context
+
     stdin_paths = read_paths_from_stdin()
 
     ctx = Context(directory)
@@ -66,6 +70,8 @@ def ls_cmd(
             rows.append({c: table.column(c)[i].as_py() for c in display_cols})
         print(json.dumps(rows, indent=2, default=str))
     else:
+        from vlmctx.display import arrow_table_to_rich, output_console
+
         default_cols = ["name", "kind", "size", "ext"]
         display_cols = cols or default_cols
 

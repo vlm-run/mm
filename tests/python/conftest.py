@@ -46,3 +46,67 @@ def large_tree(tmp_path: Path) -> Path:
         ext = extensions[i % len(extensions)]
         (dir_path / f"file_{i}{ext}").write_text(f"content {i}\n")
     return tmp_path
+
+
+@pytest.fixture
+def mixed_1k_tree(tmp_path: Path) -> Path:
+    """Create a 1000-file mixed directory with code, images, config, and text."""
+    import struct
+
+    extensions = [".py", ".rs", ".js", ".ts", ".md", ".toml", ".json", ".yaml", ".txt", ".csv"]
+    img_extensions = [".png", ".jpg"]
+
+    (tmp_path / "src").mkdir()
+    (tmp_path / "docs").mkdir()
+    (tmp_path / "config").mkdir()
+    (tmp_path / "images").mkdir()
+    (tmp_path / "data").mkdir()
+
+    for i in range(800):
+        depth = i % 3
+        if depth == 0:
+            dirs = ["src", "docs", "config", "data"]
+        elif depth == 1:
+            dirs = ["src", "docs"]
+        else:
+            dirs = ["config"]
+        d = dirs[i % len(dirs)]
+        ext = extensions[i % len(extensions)]
+        if ext == ".json":
+            content = f'{{"id": {i}}}'
+        else:
+            content = f"# File {i}\n" + "".join(f"content line {k}\n" for k in range(5 + i % 20))
+        (tmp_path / d / f"file_{i}{ext}").write_text(content)
+
+    # Small valid PNGs for the image portion
+    for i in range(200):
+        w, h = 100 + (i % 200), 80 + (i % 150)
+        # Minimal valid PNG: 8-byte sig + IHDR + IEND
+        png_sig = b"\x89PNG\r\n\x1a\n"
+        ihdr_data = struct.pack(">IIBBBBB", w, h, 8, 2, 0, 0, 0)
+        import zlib
+        ihdr_crc = zlib.crc32(b"IHDR" + ihdr_data) & 0xFFFFFFFF
+        ihdr = struct.pack(">I", 13) + b"IHDR" + ihdr_data + struct.pack(">I", ihdr_crc)
+        iend_crc = zlib.crc32(b"IEND") & 0xFFFFFFFF
+        iend = struct.pack(">I", 0) + b"IEND" + struct.pack(">I", iend_crc)
+        (tmp_path / "images" / f"img_{i}.png").write_bytes(png_sig + ihdr + iend)
+
+    return tmp_path
+
+
+@pytest.fixture
+def youtube_dir() -> Path | None:
+    """Return the youtube data directory if it exists."""
+    p = Path.home() / "data" / "youtube"
+    if p.exists() and any(p.glob("*.mp4")):
+        return p
+    return None
+
+
+@pytest.fixture
+def demo_dir() -> Path | None:
+    """Return the 1-demo data directory if it exists."""
+    p = Path.home() / "data" / "1-demo"
+    if p.exists():
+        return p
+    return None

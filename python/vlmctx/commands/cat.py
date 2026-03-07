@@ -12,7 +12,9 @@ from vlmctx.pipe import is_piped_output, read_paths_from_stdin
 
 def cat_cmd(
     files: Annotated[Optional[list[Path]], typer.Argument(help="Files to display")] = None,
-    level: Annotated[int, typer.Option("--level", "-l", help="Processing level (0=raw, 1=extracted, 2=semantic)")] = 1,
+    level: Annotated[
+        int, typer.Option("--level", "-l", help="Processing level (0=raw, 1=extracted, 2=semantic)")
+    ] = 1,
     json_output: Annotated[bool, typer.Option("--json", help="Force JSON output")] = False,
 ) -> None:
     """Display file content semantically (like bat/cat).
@@ -115,32 +117,58 @@ def _extract_l1_content(path: Path) -> str:
         except Exception as e:
             return f"[Image extraction failed: {e}]"
 
-    if ext in (".mp4", ".mkv", ".avi", ".mov", ".wmv", ".flv", ".webm", ".m4v", ".mpg", ".mpeg", ".3gp", ".ogv"):
+    if ext in (
+        ".mp4",
+        ".mkv",
+        ".avi",
+        ".mov",
+        ".wmv",
+        ".flv",
+        ".webm",
+        ".m4v",
+        ".mpg",
+        ".mpeg",
+        ".3gp",
+        ".ogv",
+    ):
         try:
-            from vlmctx.video import extract_video_metadata
+            from vlmctx._vlmctx import Scanner
 
-            meta = extract_video_metadata(path)
+            parent = str(path.parent)
+            scanner = Scanner(parent)
+            scanner.scan()
+            result = scanner.extract_l1(path.name)
+
             parts: list[str] = []
-            if meta.width and meta.height:
-                parts.append(f"Resolution: {meta.width}x{meta.height}")
-            if meta.duration_s is not None:
-                mins, secs = divmod(meta.duration_s, 60)
-                parts.append(f"Duration:   {int(mins)}m {secs:.1f}s ({meta.duration_s:.2f}s)")
-            if meta.fps:
-                parts.append(f"FPS:        {meta.fps}")
-            if meta.video_codec:
-                parts.append(f"Video:      {meta.video_codec}")
-            if meta.audio_codec:
-                parts.append(f"Audio:      {meta.audio_codec}")
-            elif not meta.has_audio:
+            if result.dimensions:
+                parts.append(f"Resolution: {result.dimensions}")
+            if result.duration_s is not None:
+                mins, secs = divmod(result.duration_s, 60)
+                parts.append(f"Duration:   {int(mins)}m {secs:.1f}s ({result.duration_s:.2f}s)")
+            if result.fps:
+                parts.append(f"FPS:        {result.fps}")
+            if result.video_codec:
+                parts.append(f"Video:      {result.video_codec}")
+            if result.audio_codec:
+                parts.append(f"Audio:      {result.audio_codec}")
+            elif result.has_audio is False:
                 parts.append("Audio:      none")
-            if meta.bitrate:
-                from vlmctx.display import format_size
-                parts.append(f"Bitrate:    {format_size(meta.bitrate)}/s")
-            if meta.pixel_format:
-                parts.append(f"Pixel fmt:  {meta.pixel_format}")
-            if meta.rotation:
-                parts.append(f"Rotation:   {meta.rotation}°")
+            if result.content_hash:
+                parts.append(f"Hash:       {result.content_hash}")
+
+            try:
+                from vlmctx.ffmpeg import extract_uniform_mosaics, ffmpeg_available
+
+                if ffmpeg_available():
+                    mosaic = extract_uniform_mosaics(path, num_mosaics=1)
+                    if mosaic.mosaic_paths:
+                        parts.append(f"Frames:     {mosaic.frame_count} ({mosaic.strategy})")
+                        parts.append(f"Sampled:    {mosaic.elapsed_ms:.0f}ms")
+                        for mp in mosaic.mosaic_paths:
+                            parts.append(f"Mosaic:     {mp}")
+            except Exception:
+                pass
+
             return "\n".join(parts) if parts else f"[Video: {path.name}]"
         except Exception as e:
             return f"[Video extraction failed: {e}]"
@@ -154,10 +182,7 @@ def _extract_l2_content(path: Path) -> str:
 
     llm = LlmBackend()
     if not llm.is_configured:
-        return (
-            "[L2 requires LLM — set VLMCTX_LLM_BASE_URL]\n\n"
-            + _extract_l1_content(path)
-        )
+        return "[L2 requires LLM — set VLMCTX_LLM_BASE_URL]\n\n" + _extract_l1_content(path)
 
     ext = path.suffix.lower()
     if ext in (".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp", ".svg"):
@@ -184,12 +209,31 @@ def _display_rich(path: Path, content: str, level: int) -> None:
     subtitle.append(f"  L{level} {level_label}", style="dim")
 
     lang_map = {
-        "py": "python", "rs": "rust", "js": "javascript", "ts": "typescript",
-        "tsx": "typescript", "jsx": "javascript", "go": "go", "java": "java",
-        "c": "c", "cpp": "cpp", "h": "c", "hpp": "cpp", "rb": "ruby",
-        "sh": "bash", "bash": "bash", "zsh": "bash", "yaml": "yaml",
-        "yml": "yaml", "toml": "toml", "json": "json", "md": "markdown",
-        "html": "html", "css": "css", "sql": "sql", "xml": "xml",
+        "py": "python",
+        "rs": "rust",
+        "js": "javascript",
+        "ts": "typescript",
+        "tsx": "typescript",
+        "jsx": "javascript",
+        "go": "go",
+        "java": "java",
+        "c": "c",
+        "cpp": "cpp",
+        "h": "c",
+        "hpp": "cpp",
+        "rb": "ruby",
+        "sh": "bash",
+        "bash": "bash",
+        "zsh": "bash",
+        "yaml": "yaml",
+        "yml": "yaml",
+        "toml": "toml",
+        "json": "json",
+        "md": "markdown",
+        "html": "html",
+        "css": "css",
+        "sql": "sql",
+        "xml": "xml",
     }
 
     title = f"[bold]{path}[/bold]"
@@ -198,14 +242,22 @@ def _display_rich(path: Path, content: str, level: int) -> None:
 
     if ext in lang_map and level == 0:
         syntax = Syntax(content, lang_map[ext], theme="monokai", line_numbers=True)
-        output_console.print(Panel(syntax, title=title, subtitle=subtitle, expand=False, border_style="green"))
+        output_console.print(
+            Panel(syntax, title=title, subtitle=subtitle, expand=False, border_style="green")
+        )
     elif path.suffix.lower() in (".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp", ".svg"):
-        output_console.print(Panel(safe_content, title=title, subtitle=subtitle, expand=False, border_style="green"))
+        output_console.print(
+            Panel(safe_content, title=title, subtitle=subtitle, expand=False, border_style="green")
+        )
     elif path.suffix.lower() == ".pdf":
         lines = content.splitlines()
         line_count = len(lines)
         page_info = f"  {line_count} lines" if line_count > 0 else ""
         subtitle.append(page_info, style="dim")
-        output_console.print(Panel(safe_content, title=title, subtitle=subtitle, expand=False, border_style="cyan"))
+        output_console.print(
+            Panel(safe_content, title=title, subtitle=subtitle, expand=False, border_style="cyan")
+        )
     else:
-        output_console.print(Panel(safe_content, title=title, subtitle=subtitle, expand=False, border_style="blue"))
+        output_console.print(
+            Panel(safe_content, title=title, subtitle=subtitle, expand=False, border_style="blue")
+        )

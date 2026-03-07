@@ -2,18 +2,40 @@
 
 from __future__ import annotations
 
+import functools
 from typing import TYPE_CHECKING, Any
-
-from rich.console import Console
-from rich.panel import Panel
-from rich.table import Table
-from rich.text import Text
 
 if TYPE_CHECKING:
     import pyarrow as pa
+    from rich.console import Console
 
-console = Console(stderr=True)
-output_console = Console()
+
+@functools.cache
+def _get_console() -> Console:
+    from rich.console import Console
+
+    return Console(stderr=True)
+
+
+@functools.cache
+def _get_output_console() -> Console:
+    from rich.console import Console
+
+    return Console()
+
+
+class _LazyConsole:
+    """Descriptor that defers Console creation until first access."""
+
+    def __init__(self, factory):
+        self._factory = factory
+
+    def __getattr__(self, name):
+        return getattr(self._factory(), name)
+
+
+console = _LazyConsole(_get_console)
+output_console = _LazyConsole(_get_output_console)
 
 KIND_STYLES: dict[str, str] = {
     "image": "green",
@@ -43,8 +65,10 @@ def format_size(size_bytes: int | float) -> str:
     return f"{size_bytes:.1f} PB"
 
 
-def _style_cell(col: str, val: Any) -> Text:
+def _style_cell(col: str, val: Any):
     """Apply per-column styling to a cell value."""
+    from rich.text import Text
+
     if val is None:
         return Text("", style="dim")
 
@@ -82,8 +106,10 @@ def arrow_table_to_rich(
     columns: list[str] | None = None,
     limit: int | None = None,
     title: str | None = None,
-) -> Table:
+):
     """Convert a PyArrow table to a Rich table for terminal display."""
+    from rich.table import Table
+
     total = table.num_rows
     num_rows = total if limit is None else min(limit, total)
 
@@ -107,7 +133,23 @@ def arrow_table_to_rich(
     nowrap_cols = {"ext", "mime", "kind", "size", "depth", "parent", "is_binary"}
     min_widths = {"size": 8, "kind": 8, "ext": 5}
     for col in cols:
-        justify = "right" if col in ("size", "line_count", "word_count", "depth", "pages", "n", "mb", "avg_kb", "total_mb", "count") else "left"
+        justify = (
+            "right"
+            if col
+            in (
+                "size",
+                "line_count",
+                "word_count",
+                "depth",
+                "pages",
+                "n",
+                "mb",
+                "avg_kb",
+                "total_mb",
+                "count",
+            )
+            else "left"
+        )
         style = "dim" if col in ("modified", "created") else None
         rich_table.add_column(
             col,
@@ -118,7 +160,7 @@ def arrow_table_to_rich(
         )
 
     for i in range(num_rows):
-        row_vals: list[Text | str] = []
+        row_vals = []
         for col in cols:
             val = table.column(col)[i].as_py()
             row_vals.append(_style_cell(col, val))
@@ -127,10 +169,11 @@ def arrow_table_to_rich(
     return rich_table
 
 
-def info_panel(stats: dict[str, Any], title: str = "vlmctx") -> Panel:
+def info_panel(stats: dict[str, Any], title: str = "vlmctx"):
     """Build a Rich panel with summary statistics."""
-    from rich.columns import Columns
+    from rich.panel import Panel
     from rich.rule import Rule
+    from rich.text import Text
 
     parts: list[Any] = []
 
@@ -162,5 +205,6 @@ def info_panel(stats: dict[str, Any], title: str = "vlmctx") -> Panel:
     parts.append(ext_text)
 
     from rich.console import Group
+
     content = Group(*parts)
     return Panel(content, title=f"[bold]{title}[/bold]", expand=False, padding=(1, 2))

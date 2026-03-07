@@ -11,6 +11,7 @@ from pathlib import Path
 @dataclass
 class VideoMeta:
     """Metadata extracted from a video file via ffprobe."""
+
     width: int | None = None
     height: int | None = None
     duration_s: float | None = None
@@ -51,8 +52,10 @@ def extract_video_metadata(path: str | Path) -> VideoMeta:
         result = subprocess.run(
             [
                 "ffprobe",
-                "-v", "quiet",
-                "-print_format", "json",
+                "-v",
+                "quiet",
+                "-print_format",
+                "json",
                 "-show_format",
                 "-show_streams",
                 str(path),

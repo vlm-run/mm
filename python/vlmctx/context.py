@@ -4,14 +4,10 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
-from typing import Any
+from typing import Any, TYPE_CHECKING
 
-import pyarrow as pa
-
-from vlmctx._vlmctx import Scanner, L1Result
-from vlmctx.df import arrow_to_pandas, arrow_to_polars
-from vlmctx.duck import query_arrow_table
-from vlmctx.display import arrow_table_to_rich, info_panel, format_size, output_console
+if TYPE_CHECKING:
+    pass
 
 
 class FileEntry:
@@ -29,7 +25,9 @@ class FileEntry:
             raise AttributeError(f"FileEntry has no attribute '{name}'") from None
 
     def __repr__(self) -> str:
-        return f"FileEntry(path='{self._data.get('path', '')}', kind='{self._data.get('kind', '')}')"
+        return (
+            f"FileEntry(path='{self._data.get('path', '')}', kind='{self._data.get('kind', '')}')"
+        )
 
 
 class Context:
@@ -50,10 +48,12 @@ class Context:
         self._llm_base_url = llm_base_url or os.environ.get("VLMCTX_LLM_BASE_URL")
         self._llm_api_key = llm_api_key or os.environ.get("VLMCTX_LLM_API_KEY")
 
+        from vlmctx._vlmctx import Scanner
+
         self._scanner = Scanner(str(self.root), n_threads)
         self._scanner.scan()
 
-        self._table: pa.Table = self._scanner.to_arrow()
+        self._table = self._scanner.to_arrow()  # pa.Table
         self._vlmctx_dir = self.root / ".vlmctx"
 
     @property
@@ -74,23 +74,29 @@ class Context:
 
     def to_polars(self):
         """Convert to Polars DataFrame (zero-copy via Arrow)."""
+        from vlmctx.df import arrow_to_polars
+
         return arrow_to_polars(self._table)
 
     def to_pandas(self):
         """Convert to Pandas DataFrame (zero-copy for numeric columns)."""
+        from vlmctx.df import arrow_to_pandas
+
         return arrow_to_pandas(self._table)
 
-    def to_arrow(self) -> pa.Table:
+    def to_arrow(self):
         """Return the underlying PyArrow Table."""
         return self._table
 
     # --- SQL ---
 
-    def sql(self, query: str) -> pa.Table:
+    def sql(self, query: str):
         """Run a SQL query against the file index via DuckDB.
 
         The table is available as 'files' in the query.
         """
+        from vlmctx.duck import query_arrow_table
+
         return query_arrow_table(self._table, query)
 
     # --- Filtering ---
@@ -124,6 +130,8 @@ class Context:
         if not conditions:
             return self
 
+        from vlmctx.duck import query_arrow_table
+
         where_clause = " AND ".join(conditions)
         filtered = query_arrow_table(self._table, f"SELECT * FROM files WHERE {where_clause}")
 
@@ -151,7 +159,7 @@ class Context:
             return full_path.read_text(errors="replace")
 
         if level >= 1:
-            result: L1Result = self._scanner.extract_l1(path)
+            result = self._scanner.extract_l1(path)
             parts: list[str] = []
             if result.text_preview:
                 parts.append(result.text_preview)
@@ -189,11 +197,13 @@ class Context:
                 content = self.cat(f.path, level=1)
                 for i, line in enumerate(content.splitlines(), 1):
                     if re.search(pattern, line):
-                        matches.append({
-                            "path": f.path,
-                            "line_number": i,
-                            "line": line,
-                        })
+                        matches.append(
+                            {
+                                "path": f.path,
+                                "line_number": i,
+                                "line": line,
+                            }
+                        )
             except Exception:
                 continue
 
@@ -203,12 +213,16 @@ class Context:
 
     def show(self, *, limit: int | None = 50, columns: list[str] | None = None) -> None:
         """Display the index as a Rich table."""
+        from vlmctx.display import arrow_table_to_rich, output_console
+
         rich_table = arrow_table_to_rich(self._table, columns=columns, limit=limit)
         output_console.print(rich_table)
 
     def info(self) -> None:
         """Display summary statistics as a Rich panel."""
         import collections
+
+        from vlmctx.display import format_size, info_panel, output_console
 
         total_size = sum(r.as_py() for r in self._table.column("size"))
         kinds = collections.Counter(r.as_py() for r in self._table.column("kind"))

@@ -18,15 +18,11 @@ def is_piped_input() -> bool:
 
 
 def is_piped_output() -> bool:
-    """Check if stdout should receive plain (machine-readable) output.
+    """Check if stdout is piped (not a terminal).
 
-    Uses Rich Console's terminal detection which inspects TERM, COLORTERM,
-    and other env vars — more reliable than bare sys.stdout.isatty() in
-    pseudo-terminal environments (e.g. IDE shells, tmux).
+    Uses sys.stdout.isatty() for zero-import-overhead detection.
     """
-    from vlmctx.display import output_console
-
-    return not output_console.is_terminal
+    return not sys.stdout.isatty()
 
 
 def read_paths_from_stdin() -> list[str]:

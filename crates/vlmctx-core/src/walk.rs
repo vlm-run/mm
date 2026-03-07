@@ -1,13 +1,35 @@
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 
 use ignore::WalkBuilder;
 
 use crate::meta::FileEntry;
 
+struct ThreadBatch {
+    local: Vec<FileEntry>,
+    root: PathBuf,
+    sink: *const Mutex<Vec<Vec<FileEntry>>>,
+}
+
+// SAFETY: ThreadBatch is only accessed from the thread that created it.
+// The *const pointer to the Mutex is valid for the duration of scan_directory.
+unsafe impl Send for ThreadBatch {}
+
+impl Drop for ThreadBatch {
+    fn drop(&mut self) {
+        if !self.local.is_empty() {
+            let batch = std::mem::take(&mut self.local);
+            // SAFETY: the Mutex outlives all ThreadBatch instances because
+            // build_parallel().run() joins all threads before returning.
+            unsafe { &*self.sink }.lock().unwrap().push(batch);
+        }
+    }
+}
+
+/// Parallel directory scan with per-thread collection (no lock contention on hot path).
 pub fn scan_directory(root: &Path, n_threads: Option<usize>) -> Vec<FileEntry> {
     let root = root.canonicalize().unwrap_or_else(|_| root.to_path_buf());
-    let entries: Mutex<Vec<FileEntry>> = Mutex::new(Vec::with_capacity(4096));
+    let completed: Mutex<Vec<Vec<FileEntry>>> = Mutex::new(Vec::new());
 
     let mut builder = WalkBuilder::new(&root);
     builder
@@ -22,26 +44,34 @@ pub fn scan_directory(root: &Path, n_threads: Option<usize>) -> Vec<FileEntry> {
         builder.threads(threads);
     }
 
+    let sink_ptr: *const Mutex<Vec<Vec<FileEntry>>> = &completed;
+
     builder.build_parallel().run(|| {
-        let entries = &entries;
-        let root = &root;
+        let mut tb = ThreadBatch {
+            local: Vec::with_capacity(512),
+            root: root.clone(),
+            sink: sink_ptr,
+        };
         Box::new(move |result| {
-            if let Ok(entry) = result {
-                if let Some(ft) = entry.file_type() {
-                    if ft.is_file() {
-                        if let Ok(metadata) = entry.metadata() {
-                            let file_entry =
-                                FileEntry::from_path(entry.path(), root, &metadata);
-                            entries.lock().unwrap().push(file_entry);
-                        }
-                    }
-                }
+            if let Ok(entry) = result
+                && let Some(ft) = entry.file_type()
+                && ft.is_file()
+                && let Ok(metadata) = entry.metadata()
+            {
+                let file_entry = FileEntry::from_path(entry.path(), &tb.root, &metadata);
+                tb.local.push(file_entry);
             }
             ignore::WalkState::Continue
         })
     });
 
-    entries.into_inner().unwrap()
+    let mut batches = completed.into_inner().unwrap();
+    let total: usize = batches.iter().map(|b| b.len()).sum();
+    let mut result = Vec::with_capacity(total);
+    for batch in &mut batches {
+        result.append(batch);
+    }
+    result
 }
 
 #[cfg(test)]

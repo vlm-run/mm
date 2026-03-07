@@ -7,8 +7,6 @@ from typing import Annotated
 
 import typer
 
-from vlmctx.context import Context
-from vlmctx.display import format_size, output_console
 from vlmctx.pipe import is_piped_output
 
 COLUMN_DOCS: dict[str, str] = {
@@ -34,11 +32,15 @@ def describe_cmd(
     json_output: Annotated[bool, typer.Option("--json", help="Force JSON output")] = False,
 ) -> None:
     """Describe the file index table -- columns, types, and what they contain."""
+    from vlmctx.context import Context
+
     ctx = Context(directory)
     table = ctx.to_arrow()
 
     if json_output:
         import json
+
+        from vlmctx.display import format_size
 
         info = []
         for field in table.schema:
@@ -46,12 +48,14 @@ def describe_cmd(
             sample = col[0].as_py() if table.num_rows > 0 else None
             if field.name == "size" and isinstance(sample, (int, float)):
                 sample = f"{sample} ({format_size(int(sample))})"
-            info.append({
-                "column": field.name,
-                "type": str(field.type),
-                "description": COLUMN_DOCS.get(field.name, ""),
-                "sample": sample,
-            })
+            info.append(
+                {
+                    "column": field.name,
+                    "type": str(field.type),
+                    "description": COLUMN_DOCS.get(field.name, ""),
+                    "sample": sample,
+                }
+            )
         print(json.dumps(info, indent=2, default=str))
         return
 
@@ -65,6 +69,8 @@ def describe_cmd(
         return
 
     from rich.table import Table as RichTable
+
+    from vlmctx.display import format_size, output_console
 
     rich_table = RichTable(
         title=f"files  [dim]({table.num_rows} rows)[/dim]",
@@ -93,5 +99,5 @@ def describe_cmd(
 
     output_console.print(rich_table)
     output_console.print(
-        f"\n[dim]Query with:[/dim] [bold]vlmctx sql[/bold] [dim]\"SELECT ... FROM files\" --dir {directory}[/dim]"
+        f'\n[dim]Query with:[/dim] [bold]vlmctx sql[/bold] [dim]"SELECT ... FROM files" --dir {directory}[/dim]'
     )

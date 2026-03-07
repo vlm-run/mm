@@ -7,24 +7,30 @@ from typing import Annotated, Optional
 
 import typer
 
-from vlmctx.context import Context
-from vlmctx.display import arrow_table_to_rich, output_console
 from vlmctx.pipe import is_piped_output
 
 
 def find_cmd(
     directory: Annotated[Path, typer.Argument(help="Directory to search")] = Path("."),
     kind: Annotated[Optional[str], typer.Option("--kind", "-k", help="Filter by kind")] = None,
-    ext: Annotated[Optional[str], typer.Option("--ext", "-e", help="Filter by extension(s), comma-separated")] = None,
-    min_size: Annotated[Optional[str], typer.Option("--min-size", help="Minimum file size (e.g., 1kb, 1mb)")] = None,
+    ext: Annotated[
+        Optional[str], typer.Option("--ext", "-e", help="Filter by extension(s), comma-separated")
+    ] = None,
+    min_size: Annotated[
+        Optional[str], typer.Option("--min-size", help="Minimum file size (e.g., 1kb, 1mb)")
+    ] = None,
     max_size: Annotated[Optional[str], typer.Option("--max-size", help="Maximum file size")] = None,
-    depth: Annotated[Optional[int], typer.Option("--depth", "-d", help="Maximum directory depth")] = None,
+    depth: Annotated[
+        Optional[int], typer.Option("--depth", "-d", help="Maximum directory depth")
+    ] = None,
     sort: Annotated[Optional[str], typer.Option("--sort", "-s", help="Sort by column")] = None,
     desc: Annotated[bool, typer.Option("--desc", help="Sort descending")] = False,
     json_output: Annotated[bool, typer.Option("--json", help="Force JSON output")] = False,
     limit: Annotated[Optional[int], typer.Option("--limit", "-n", help="Max results")] = None,
 ) -> None:
     """Find files matching criteria (like fd/find)."""
+    from vlmctx.context import Context
+
     ctx = Context(directory)
 
     if kind or ext or min_size or max_size:
@@ -43,7 +49,6 @@ def find_cmd(
         order = "DESC" if desc else "ASC"
         table = query_arrow_table(table, f"SELECT * FROM files ORDER BY {sort} {order}")
 
-    total_before_limit = table.num_rows
     if limit:
         table = table.slice(0, limit)
 
@@ -59,6 +64,8 @@ def find_cmd(
             rows.append(row)
         print(json.dumps(rows, indent=2, default=str))
     else:
+        from vlmctx.display import arrow_table_to_rich, output_console
+
         filters: list[str] = []
         if kind:
             filters.append(f"kind={kind}")

@@ -165,17 +165,26 @@ mod tests {
 
     #[test]
     fn test_language_detection_js() {
-        assert_eq!(detect_language(Path::new("app.js")), Some("javascript".into()));
+        assert_eq!(
+            detect_language(Path::new("app.js")),
+            Some("javascript".into())
+        );
     }
 
     #[test]
     fn test_language_detection_ts() {
-        assert_eq!(detect_language(Path::new("app.ts")), Some("typescript".into()));
+        assert_eq!(
+            detect_language(Path::new("app.ts")),
+            Some("typescript".into())
+        );
     }
 
     #[test]
     fn test_language_detection_tsx() {
-        assert_eq!(detect_language(Path::new("App.tsx")), Some("typescript".into()));
+        assert_eq!(
+            detect_language(Path::new("App.tsx")),
+            Some("typescript".into())
+        );
     }
 
     #[test]
@@ -185,13 +194,22 @@ mod tests {
 
     #[test]
     fn test_language_detection_yaml() {
-        assert_eq!(detect_language(Path::new("config.yaml")), Some("yaml".into()));
-        assert_eq!(detect_language(Path::new("config.yml")), Some("yaml".into()));
+        assert_eq!(
+            detect_language(Path::new("config.yaml")),
+            Some("yaml".into())
+        );
+        assert_eq!(
+            detect_language(Path::new("config.yml")),
+            Some("yaml".into())
+        );
     }
 
     #[test]
     fn test_language_detection_markdown() {
-        assert_eq!(detect_language(Path::new("README.md")), Some("markdown".into()));
+        assert_eq!(
+            detect_language(Path::new("README.md")),
+            Some("markdown".into())
+        );
     }
 
     #[test]

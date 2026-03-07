@@ -8,7 +8,9 @@ use arrow::array::{
 use crate::meta::FileEntry;
 use crate::schema::l0_schema;
 
-pub fn build_l0_record_batch(entries: &[FileEntry]) -> Result<RecordBatch, arrow::error::ArrowError> {
+pub fn build_l0_record_batch(
+    entries: &[FileEntry],
+) -> Result<RecordBatch, arrow::error::ArrowError> {
     let cap = entries.len();
 
     let mut path_builder = StringBuilder::with_capacity(cap, cap * 64);
@@ -79,19 +81,16 @@ pub fn write_parquet(
             parquet::basic::ZstdLevel::try_new(3)?,
         ))
         .build();
-    let mut writer =
-        parquet::arrow::ArrowWriter::try_new(file, batch.schema(), Some(props))?;
+    let mut writer = parquet::arrow::ArrowWriter::try_new(file, batch.schema(), Some(props))?;
     writer.write(batch)?;
     writer.close()?;
     Ok(())
 }
 
-pub fn read_parquet(
-    path: &std::path::Path,
-) -> Result<RecordBatch, Box<dyn std::error::Error>> {
+pub fn read_parquet(path: &std::path::Path) -> Result<RecordBatch, Box<dyn std::error::Error>> {
     let file = std::fs::File::open(path)?;
-    let reader = parquet::arrow::arrow_reader::ParquetRecordBatchReaderBuilder::try_new(file)?
-        .build()?;
+    let reader =
+        parquet::arrow::arrow_reader::ParquetRecordBatchReaderBuilder::try_new(file)?.build()?;
     let batches: Vec<RecordBatch> = reader.collect::<Result<Vec<_>, _>>()?;
     if batches.is_empty() {
         return Err("Empty parquet file".into());
@@ -131,8 +130,16 @@ mod tests {
 
         let width_col = batch.column_by_name("width").unwrap();
         let height_col = batch.column_by_name("height").unwrap();
-        assert!(width_col.as_primitive::<arrow::datatypes::UInt32Type>().is_null(0));
-        assert!(height_col.as_primitive::<arrow::datatypes::UInt32Type>().is_null(0));
+        assert!(
+            width_col
+                .as_primitive::<arrow::datatypes::UInt32Type>()
+                .is_null(0)
+        );
+        assert!(
+            height_col
+                .as_primitive::<arrow::datatypes::UInt32Type>()
+                .is_null(0)
+        );
     }
 
     #[test]
@@ -195,7 +202,9 @@ mod tests {
         let img_idx = {
             let names = read_back.column_by_name("name").unwrap();
             let names = names.as_string::<i32>();
-            (0..read_back.num_rows()).find(|&i| names.value(i).ends_with(".png")).unwrap()
+            (0..read_back.num_rows())
+                .find(|&i| names.value(i).ends_with(".png"))
+                .unwrap()
         };
 
         assert!(!wa.is_null(img_idx));

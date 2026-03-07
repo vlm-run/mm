@@ -6,10 +6,10 @@ pub fn kind_from_extension(ext: &str) -> FileKind {
         "rs" | "py" | "js" | "ts" | "tsx" | "jsx" | "c" | "cpp" | "cc" | "h" | "hpp" | "go"
         | "java" | "kt" | "kts" | "swift" | "rb" | "php" | "cs" | "scala" | "clj" | "ex"
         | "exs" | "erl" | "hs" | "ml" | "mli" | "lua" | "r" | "jl" | "sh" | "bash" | "zsh"
-        | "fish" | "ps1" | "bat" | "cmd" | "pl" | "pm" | "v" | "sv" | "vhd" | "vhdl"
-        | "zig" | "nim" | "d" | "dart" | "elm" | "vue" | "svelte" | "astro" | "sql"
-        | "graphql" | "gql" | "proto" | "thrift" | "asm" | "s" | "m" | "mm" | "f90"
-        | "f95" | "f03" | "cob" | "cbl" | "ada" | "adb" | "ads" => FileKind::Code,
+        | "fish" | "ps1" | "bat" | "cmd" | "pl" | "pm" | "v" | "sv" | "vhd" | "vhdl" | "zig"
+        | "nim" | "d" | "dart" | "elm" | "vue" | "svelte" | "astro" | "sql" | "graphql" | "gql"
+        | "proto" | "thrift" | "asm" | "s" | "m" | "mm" | "f90" | "f95" | "f03" | "cob" | "cbl"
+        | "ada" | "adb" | "ads" => FileKind::Code,
 
         "png" | "jpg" | "jpeg" | "gif" | "bmp" | "tiff" | "tif" | "webp" | "svg" | "ico"
         | "heic" | "heif" | "avif" | "raw" | "cr2" | "nef" | "arw" | "dng" | "psd" | "ai"
@@ -18,8 +18,8 @@ pub fn kind_from_extension(ext: &str) -> FileKind {
         "pdf" | "doc" | "docx" | "xls" | "xlsx" | "ppt" | "pptx" | "odt" | "ods" | "odp"
         | "rtf" | "tex" | "latex" | "epub" => FileKind::Document,
 
-        "mp4" | "mkv" | "avi" | "mov" | "wmv" | "flv" | "webm" | "m4v" | "mpg" | "mpeg"
-        | "3gp" | "ogv" => FileKind::Video,
+        "mp4" | "mkv" | "avi" | "mov" | "wmv" | "flv" | "webm" | "m4v" | "mpg" | "mpeg" | "3gp"
+        | "ogv" => FileKind::Video,
 
         "mp3" | "wav" | "flac" | "aac" | "ogg" | "wma" | "m4a" | "opus" | "aiff" | "ape"
         | "alac" => FileKind::Audio,
@@ -31,9 +31,9 @@ pub fn kind_from_extension(ext: &str) -> FileKind {
         "toml" | "yaml" | "yml" | "ini" | "cfg" | "conf" | "config" | "env" | "properties"
         | "plist" | "editorconfig" | "prettierrc" | "eslintrc" | "babelrc" => FileKind::Config,
 
-        "md" | "markdown" | "rst" | "txt" | "text" | "log" | "readme" | "changelog"
-        | "license" | "licence" | "authors" | "contributors" | "todo" | "notes"
-        | "org" | "adoc" | "asciidoc" | "wiki" => FileKind::Text,
+        "md" | "markdown" | "rst" | "txt" | "text" | "log" | "readme" | "changelog" | "license"
+        | "licence" | "authors" | "contributors" | "todo" | "notes" | "org" | "adoc"
+        | "asciidoc" | "wiki" => FileKind::Text,
 
         _ => FileKind::Other,
     }
@@ -53,13 +53,39 @@ pub fn is_binary_extension(ext: &str) -> bool {
         FileKind::Image | FileKind::Video | FileKind::Audio
     ) || matches!(
         ext.as_str(),
-        "exe" | "dll" | "so" | "dylib" | "bin" | "o" | "a"
-            | "class" | "pyc" | "pyo" | "wasm"
-            | "zip" | "gz" | "bz2" | "xz" | "zst" | "tar"
-            | "rar" | "7z" | "jar" | "war"
-            | "parquet" | "arrow" | "ipc" | "avro"
-            | "sqlite" | "db" | "pickle" | "pkl"
-            | "npy" | "npz" | "hdf5" | "h5"
+        "exe"
+            | "dll"
+            | "so"
+            | "dylib"
+            | "bin"
+            | "o"
+            | "a"
+            | "class"
+            | "pyc"
+            | "pyo"
+            | "wasm"
+            | "zip"
+            | "gz"
+            | "bz2"
+            | "xz"
+            | "zst"
+            | "tar"
+            | "rar"
+            | "7z"
+            | "jar"
+            | "war"
+            | "parquet"
+            | "arrow"
+            | "ipc"
+            | "avro"
+            | "sqlite"
+            | "db"
+            | "pickle"
+            | "pkl"
+            | "npy"
+            | "npz"
+            | "hdf5"
+            | "h5"
     )
 }
 
