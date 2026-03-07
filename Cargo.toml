@@ -1,0 +1,27 @@
+[workspace]
+resolver = "2"
+members = ["crates/*"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+authors = ["Sudeep"]
+
+[workspace.dependencies]
+pyo3 = { version = "0.23", features = ["extension-module"] }
+arrow = { version = "54", features = ["ffi"] }
+parquet = { version = "54", features = ["arrow"] }
+rayon = "1.10"
+ignore = "0.4"
+mime_guess = "2.0"
+infer = "0.16"
+xxhash-rust = { version = "0.8", features = ["xxh3"] }
+image = { version = "0.25", default-features = false, features = ["png", "jpeg", "gif", "webp"] }
+kamadak-exif = "0.5"
+compact_str = { version = "0.8", features = ["serde"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tracing = "0.1"
+chrono = { version = "0.4", features = ["serde"] }
+thiserror = "2"

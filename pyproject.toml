@@ -1,0 +1,49 @@
+[build-system]
+requires = ["maturin>=1.7,<2.0"]
+build-backend = "maturin"
+
+[project]
+name = "vlmctx"
+version = "0.1.0"
+description = "High-performance multi-modal context management library"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+dependencies = [
+    "typer>=0.12",
+    "rich>=13.0",
+    "polars>=1.0",
+    "pandas>=2.0",
+    "duckdb>=1.0",
+    "pyarrow>=15.0",
+    "pypdfium2>=4.0",
+]
+
+[project.scripts]
+vlmctx = "vlmctx.cli:app"
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-benchmark>=4.0",
+    "mypy>=1.10",
+    "ruff>=0.4",
+    "maturin>=1.7",
+]
+
+[tool.maturin]
+python-source = "python"
+module-name = "vlmctx._vlmctx"
+manifest-path = "crates/vlmctx-python/Cargo.toml"
+features = ["pyo3/extension-module"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests/python"]
+
+[tool.ruff]
+target-version = "py310"
+line-length = 100
+
+[tool.mypy]
+python_version = "3.10"
+warn_return_any = true
+warn_unused_configs = true
