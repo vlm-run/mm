@@ -17,113 +17,128 @@ uv run maturin develop --release
 ## CLI
 
 vlmctx commands mirror familiar Unix tools but operate on multi-modal semantics.
-Indexing is implicit -- every command auto-builds a metadata index on first use.
+Indexing is implicit — every command auto-builds a metadata index on first use.
+
+L0 commands (`find`, `ls`, `wc`, `tree` with `--json`) run in **~60ms** on 700 files via the Rust fast path.
+
+### Quick start
+
+```bash
+vlmctx tree ~/data --depth 1            # directory overview with sizes
+vlmctx wc ~/data --by-kind              # file/byte/token counts by kind
+vlmctx find ~/data --kind image --json  # find all images (60ms)
+vlmctx cat paper.pdf --level 1          # extract text from PDF
+vlmctx pages ~/data --max-pages 8       # PDF page mosaics for VLM
+vlmctx keyframes video.mp4              # video keyframe mosaic grids
+```
+
+### Command reference
+
+| Command | Purpose | Latency | Key flags |
+|---------|---------|---------|-----------|
+| `find` | Locate files by kind/ext/size | ~60ms | `--kind`, `--ext`, `--min-size`, `--max-size`, `--sort`, `--limit`, `--json` |
+| `ls` | Tabular file listing | ~60ms | `--sort`, `--desc`, `--columns`, `--kind`, `--limit`, `--json` |
+| `tree` | Hierarchical directory view | ~70ms | `--depth`, `--kind`, `--size`, `--json` |
+| `wc` | Count files, bytes, lines, tokens | ~65ms | `--kind`, `--by-kind`, `--json` |
+| `cat` | Semantic content display | 50-220ms | `--level 0/1/2`, `--json` |
+| `head` | First N lines/pages | 50-220ms | `-n` |
+| `tail` | Last N lines/pages | 50-220ms | `-n` |
+| `grep` | Content search across files | varies | `--kind`, `--ext`, `-C`, `--count`, `--json` |
+| `sql` | DuckDB SQL on file index | ~300ms | `--dir`, `--json` |
+| `describe` | Column schema introspection | ~110ms | `--json` |
+| `info` | Directory summary panel | ~700ms | (directory argument) |
+| `keyframes` | Video keyframe mosaic grids | ~1s | `--strategy`, `--cols`, `--rows`, `--num-mosaics`, `--json` |
+| `pages` | PDF page mosaic grids | ~10ms/page | `--cols`, `--rows`, `--width`, `--max-pages`, `--json` |
+| `audio` | Audio extraction for transcription | ~200ms | `--speed`, `--format`, `--sample-rate`, `--json` |
 
 ### info — directory overview
 
 ```bash
-$ vlmctx info ~/data/1-demo
-╭──────────────────────── 1-demo ────────────────────────╮
-│   Files            249                                  │
-│   Total Size       636.9 MB                             │
-│   Image            218                                  │
-│   Video            17                                   │
-│   Document         8                                    │
-│   Top Extensions   .png (155), .jpg (55), .mp4 (17)     │
-╰────────────────────────────────────────────────────────╯
+$ vlmctx info ~/data/domains
+╭──────────────────────── domains ─────────────────────────╮
+│  702 files  7.2 GB                                        │
+│  Document 545  Image 134  Video 7  Code 4  Audio 2       │
+│  .pdf (454), .PDF (91), .jpg (84), .png (32), .jpeg (8)  │
+╰──────────────────────────────────────────────────────────╯
 ```
 
 ### find — locate files
 
 ```bash
 vlmctx find ~/data --kind image                    # all images
-vlmctx find ~/data --kind video                    # all videos
-vlmctx find ~/data --kind document                 # all PDFs/docs
-vlmctx find ~/data --ext .png,.webp                # by extension
-vlmctx find ~/data --min-size 10mb                 # by size
-vlmctx find ~/data --min-size 1mb --max-size 5mb --kind image
-vlmctx find ~/data --kind image --limit 5 --json   # JSON output
+vlmctx find ~/data --kind video --sort size --desc  # videos by size
+vlmctx find ~/data --ext .pdf --min-size 10mb       # large PDFs
+vlmctx find ~/data --kind image --limit 5 --json    # JSON output
 ```
 
 ### ls — tabular listing
 
 ```bash
-vlmctx ls ~/data                                    # all rows
-vlmctx ls ~/data --limit 10                         # first 10 rows
 vlmctx ls ~/data --sort size --desc --limit 20
 vlmctx ls ~/data --kind document --columns name,size,ext
-vlmctx ls ~/data --sort size --desc --limit 10 --columns name,kind,size --json
+vlmctx ls ~/data --json                             # full metadata JSON
 ```
 
-### describe — inspect the file index table
-
-Like `DESCRIBE` in SQL — shows every column, its type, what it contains, and a sample value:
+### tree — hierarchical view
 
 ```bash
-vlmctx describe ~/data            # Rich table with column docs
-vlmctx describe ~/data --json     # machine-readable
+vlmctx tree ~/data --depth 1                        # one level deep
+vlmctx tree ~/data --kind video                     # video files only
+vlmctx tree ~/data --json                           # JSON tree
+```
+
+### wc — count files, bytes, tokens
+
+```bash
+vlmctx wc ~/data --by-kind --json
+# {"files": 702, "bytes": 7775220367, "estimated_tokens": 1503804306,
+#  "by_kind": {"document": {"files": 545, "tokens": 792881131}, ...}}
+```
+
+### describe and SQL
+
+```bash
+vlmctx describe ~/data                              # show table columns
+vlmctx sql "SELECT kind, COUNT(*) as n, ROUND(SUM(size)/1e6,1) as mb \
+  FROM files GROUP BY kind ORDER BY mb DESC" --dir ~/data
 ```
 
 ### cat — semantic content display
 
 ```bash
 vlmctx cat paper.pdf --level 1     # extract text from PDF via pypdfium2
-vlmctx cat photo.png --level 1     # image dimensions, MIME, content hash
-vlmctx cat photo.png --level 2     # LLM-generated caption (requires LLM config)
+vlmctx cat photo.png --level 1     # image dimensions, MIME, hash, EXIF
+vlmctx cat video.mp4 --level 1     # resolution, duration, codecs + keyframe mosaic
 vlmctx cat code.rs --level 0       # raw file content
-```
-
-### head / tail — first/last N lines
-
-```bash
-vlmctx head paper.pdf -n 15        # first 15 lines of extracted PDF text
-vlmctx tail paper.pdf -n 10        # last 10 lines
 ```
 
 ### grep — content search
 
 ```bash
 vlmctx grep "attention" ~/data --kind document
-vlmctx grep "invoice" ~/data --kind document --json
 vlmctx grep "TODO" ~/data --kind code
+vlmctx grep "invoice" ~/data --count               # match counts per file
 ```
 
-### sql — DuckDB queries on the file index
-
-The table name is always `files`. Columns: `path`, `name`, `stem`, `ext`, `size`, `modified`, `created`, `mime`, `kind`, `is_binary`, `depth`, `parent`.
+### keyframes — video mosaic grids
 
 ```bash
-# File kind breakdown
-vlmctx sql "SELECT kind, COUNT(*) as n, ROUND(SUM(size)/1024.0/1024.0, 1) as mb \
-  FROM files GROUP BY kind ORDER BY mb DESC" --dir ~/data
+vlmctx keyframes video.mp4                          # 6x8 grid, 48 frames
+vlmctx keyframes video.mp4 --strategy scene         # scene-change detection
+vlmctx keyframes video.mp4 --num-mosaics 4 --json   # 4 grids (192 frames)
+```
 
-# Extension analytics
-vlmctx sql "SELECT ext, COUNT(*) as n, ROUND(AVG(size)/1024.0, 1) as avg_kb \
-  FROM files GROUP BY ext ORDER BY n DESC" --dir ~/data
+### pages — PDF page mosaics
 
-# Size distribution
-vlmctx sql "SELECT
-  CASE WHEN size < 100*1024 THEN '<100KB'
-       WHEN size < 1024*1024 THEN '100KB-1MB'
-       WHEN size < 10*1024*1024 THEN '1MB-10MB'
-       ELSE '>10MB' END as bucket,
-  COUNT(*) as n
-  FROM files WHERE kind != 'other'
-  GROUP BY bucket ORDER BY n DESC" --dir ~/data
-
-# Cross-tab by directory and kind
-vlmctx sql "SELECT parent, kind, COUNT(*) as n \
-  FROM files GROUP BY parent, kind ORDER BY parent, n DESC" --dir ~/data
-
-# LIKE search
-vlmctx sql "SELECT name, ROUND(size/1024.0, 1) as kb \
-  FROM files WHERE name LIKE '%dashboard%'" --dir ~/data
+```bash
+vlmctx pages document.pdf                           # 4x4 page grid
+vlmctx pages ~/data/pdfs --max-pages 16 --json      # all PDFs, limit pages
 ```
 
 ### Output modes
 
-- **TTY**: Rich formatted tables and panels
-- **Piped**: plain TSV/text (machine-readable)
+- **TTY**: Rich formatted tables/panels
+- **Piped**: plain TSV/text (machine-readable, no ANSI)
 - **`--json`**: JSON output on any command that supports it
 
 ## Python API
@@ -131,27 +146,26 @@ vlmctx sql "SELECT name, ROUND(size/1024.0, 1) as kb \
 ```python
 from vlmctx import Context
 
-ctx = Context("~/data/1-demo")
-print(ctx)  # Context(root='/Users/sudeep/data/1-demo', files=249)
+ctx = Context("~/data/domains")
+print(ctx)  # Context(root='/Users/.../domains', files=702)
 
 # DataFrame export
-df = ctx.to_polars()         # polars.DataFrame (249, 12)
-df = ctx.to_pandas()         # pandas.DataFrame (249, 12)
+df = ctx.to_polars()         # polars.DataFrame (zero-copy)
+df = ctx.to_pandas()         # pandas.DataFrame
 
 # SQL via DuckDB
 result = ctx.sql("SELECT kind, COUNT(*) as n FROM files GROUP BY kind ORDER BY n DESC")
 
 # Chainable filtering
-big_images = ctx.filter(kind="image", min_size="1MB")  # 102 files
+big_images = ctx.filter(kind="image", min_size="1MB")
 
-# Content access (relative paths from root)
-text  = ctx.cat("paper.pdf", level=1)       # extracted text
-first = ctx.head("paper.pdf", n=15)         # first 15 lines
-last  = ctx.tail("paper.pdf", n=10)         # last 10 lines
-hits  = ctx.grep("attention", kind="document")
+# Content access
+text  = ctx.cat("paper.pdf", level=1)
+first = ctx.head("paper.pdf", n=15)
+hits  = ctx.grep("revenue", kind="document")
 
 # Display
-ctx.show()    # Rich table in terminal
+ctx.show()    # Rich table
 ctx.info()    # Rich summary panel
 ```
 
@@ -159,34 +173,45 @@ ctx.info()    # Rich summary panel
 
 | Level | What | Speed | How |
 |-------|------|-------|-----|
-| L0 | File metadata (path, size, kind, ext, timestamps) | ~0.02ms/file | Rust `stat()` + extension classification |
-| L1 | Content extraction (text from PDF, image dimensions/hash) | <1s/file | pypdfium2 (PDF), image crate (images), Rust extractors |
+| L0 | File metadata (path, size, kind, ext, timestamps, dimensions) | ~60ms / 700 files | Rust `stat()` + extension classification + image headers |
+| L1 | Content extraction (text from PDF, image hash/EXIF, video metadata) | 50ms-1.5s/file | pypdfium2 (PDF), Rust mmap (images), mp4parse/matroska (video) |
 | L2 | Semantic understanding (captions, descriptions) | Varies | LLM API via `VLMCTX_LLM_BASE_URL` |
 
 ## Performance
 
-Benchmarked on Apple Silicon (M-series):
+Benchmarked on Apple Silicon (M-series), 702 files (7.2GB):
 
-| Dataset | Files | L0 Scan Time | Per File |
-|---------|-------|-------------|----------|
-| Synthetic 1K | 1,000 | 5.7ms | 5.7us |
-| Synthetic 10K | 10,000 | 16.6ms | 1.7us |
-| Real multi-modal (~/data/1-demo) | 249 | 5ms | 0.02ms |
+| Operation | Latency |
+|-----------|---------|
+| L0 scan (702 files) | 8ms |
+| CLI cold start (`find --json`) | 60ms |
+| CLI cold start (`describe --json`) | 109ms |
+| CLI cold start (`sql`) | 300ms |
+| L1 code extraction | ~52ms |
+| L1 image extraction | ~61ms |
+| L1 PDF text extraction | ~220ms |
+| L1 video metadata + mosaic | ~1.5s |
+| PDF page mosaic (per page) | ~10ms |
+| Video keyframe mosaic (48 frames) | ~1s |
 
 ## Architecture
 
 ```
 Rust (vlmctx-core)                   Python (vlmctx)
 ┌─────────────────────┐             ┌─────────────────────┐
-│ ignore (parallel     │  Arrow IPC  │ Context class       │
-│   dir walk + stat)  │────────────>│ .to_polars()        │
-│ Arrow RecordBatch   │             │ .to_pandas()        │
-│ Parquet I/O         │  PyO3       │ .sql() via DuckDB   │
-│ L1 extractors       │<───────────>│ Typer CLI           │
-│   code, image       │             │ Rich display        │
-└─────────────────────┘             │ pypdfium2 (PDF)     │
-                                    │ LlmBackend (L2)     │
-                                    └─────────────────────┘
+│ ignore (parallel     │  serde_json │ Typer CLI           │
+│   dir walk + stat)  │────────────>│   find/ls/wc/tree   │
+│ rayon parallelism   │  (fast path)│   (60ms, no pyarrow)│
+│ Arrow RecordBatch   │             │                     │
+│ Parquet I/O         │  Arrow IPC  │ Context class       │
+│ serde_json (direct) │────────────>│ .to_polars/pandas() │
+│ L1 extractors       │  PyO3       │ .sql() via DuckDB   │
+│   code, image,      │<───────────>│ Rich display        │
+│   video (mp4parse,  │             │ pypdfium2 (PDF)     │
+│    matroska)        │             │ Pillow (mosaics)    │
+│ xxh3 hashing (mmap) │             │ ffmpeg (video/audio)│
+│ EXIF extraction     │             │ LlmBackend (L2)     │
+└─────────────────────┘             └─────────────────────┘
 ```
 
 ## L2 LLM Configuration

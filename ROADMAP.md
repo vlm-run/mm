@@ -21,12 +21,12 @@ vlmctx roadmap
 │   │   ├── Target: <2ms for 1K files when nothing changed (vs 5ms full scan)
 │   │   └── Invalidation: hash .gitignore mtime into manifest
 │   │
-│   ├── JSON output in Rust (bypass pyarrow entirely)
-│   │   ├── Scanner.to_json_bytes() — generate JSON directly in Rust
-│   │   ├── Eliminates 35ms pyarrow import for --json paths
-│   │   ├── CLI commands with --json: print(scanner.to_json_bytes())
-│   │   ├── Target: cold start <30ms for `vlmctx ls --json`
-│   │   └── Keep Arrow path for DataFrame/SQL use cases
+│   ├── [DONE] JSON output in Rust (bypass pyarrow entirely)
+│   │   ├── Scanner.to_json_fast() — serde_json with filtering/sorting in Rust
+│   │   ├── Scanner.to_lines_fast() — newline-delimited paths, filtered in Rust
+│   │   ├── Eliminated 35ms pyarrow import for --json and piped paths
+│   │   ├── CLI find/ls with --json: ~60ms cold start (was 330ms, 5.5x speedup)
+│   │   └── Arrow path preserved for DataFrame/SQL/Rich display use cases
 │   │
 │   ├── Parallel L1 batch extraction
 │   │   ├── extract_l1_batch(paths) — rayon parallel across files
@@ -34,23 +34,35 @@ vlmctx roadmap
 │   │   ├── 218 images: already fast, but batch hashing benefits from IO overlap
 │   │   └── Return Vec<L1Record> as Arrow RecordBatch (L1 schema)
 │   │
-│   ├── vlmctx wc — token counting for LLM budgeting
-│   │   ├── Fast byte-level token estimator (~4 chars/token for English)
-│   │   ├── Optional tiktoken/cl100k for exact counts (lazy import)
-│   │   ├── Per-file, per-kind, total token counts
-│   │   ├── --budget 128K flag: show what fits in a context window
-│   │   └── Pipe-composable: vlmctx find --kind code | vlmctx wc --tokens
+│   ├── [DONE] vlmctx wc — token counting for LLM budgeting
+│   │   ├── Fast byte-level token estimator (~4 chars/token for text)
+│   │   ├── Image token estimation via OpenAI-style tile counting
+│   │   ├── Per-file, per-kind, total token counts (--by-kind)
+│   │   ├── [ ] --budget 128K flag: show what fits in a context window
+│   │   └── [ ] Optional tiktoken/cl100k for exact counts
 │   │
-│   ├── vlmctx tree — hierarchical directory view
-│   │   ├── Size-annotated tree (like dust/dua but multi-modal aware)
-│   │   ├── Kind-colored branches (images green, video magenta, etc.)
-│   │   ├── Collapse directories with --depth, --kind filters
+│   ├── [DONE] vlmctx tree — hierarchical directory view
+│   │   ├── Size-annotated tree (file counts + sizes per directory)
+│   │   ├── Kind-colored branches (ANSI: image yellow, video magenta, etc.)
+│   │   ├── --depth, --kind filters, --size toggle
 │   │   └── --json for programmatic consumption
 │   │
-│   └── Faster pipe composability
-│       ├── Plain-text path output as default for piped find (no Rich detection)
-│       ├── Streaming output for large result sets (don't buffer all rows)
-│       └── --format tsv|csv|jsonl for one-row-at-a-time output
+│   ├── [DONE] Faster pipe composability
+│   │   ├── Plain-text path output for piped find (via to_lines_fast)
+│   │   ├── [ ] Streaming output for large result sets (don't buffer all rows)
+│   │   └── [ ] --format tsv|csv|jsonl for one-row-at-a-time output
+│   │
+│   ├── Faster grep on document directories
+│   │   ├── Current: L1 extraction on every file → 81s for 545 PDFs
+│   │   ├── Pre-index text content in .vlmctx/text_cache/ (one-time cost)
+│   │   ├── Subsequent greps search the text cache (< 1s for 500 files)
+│   │   ├── Rust-native regex search over cached text (bypass Python)
+│   │   └── --no-cache flag for fresh extraction
+│   │
+│   └── info command fast path
+│       ├── Current: 700ms (Arrow + pyarrow + Rich)
+│       ├── Compute kind/ext/size stats in Rust from Vec<FileEntry>
+│       └── Target: ~70ms (only import Rich for display)
 │
 ├── P1 — Smart Extraction (80% Semantics, No VLM)
 │   │
@@ -58,13 +70,13 @@ vlmctx roadmap
 │   │   local, deterministic, sub-second operations. No network calls,
 │   │   no GPU, no model weights. This is the "L1.5" layer.
 │   │
-│   ├── PDF → visual snapshots
-│   │   ├── Render each page to 150-DPI thumbnail via pypdfium2 (already a dep)
-│   │   ├── Mosaic all pages into grid images (same infra as video keyframes)
-│   │   ├── Captures tables, charts, diagrams, layouts that text extraction misses
-│   │   ├── Page-level text + thumbnail pairs for downstream VLM
-│   │   ├── Target: 50-page PDF → 2 mosaic JPEGs + full text in <1s
-│   │   └── vlmctx cat paper.pdf --level 1 shows text + mosaic paths
+│   ├── [DONE] PDF → visual snapshots (vlmctx pages)
+│   │   ├── Render pages to thumbnails via pypdfium2 + Pillow
+│   │   ├── Tile into mosaic grids (4x4 default, configurable)
+│   │   ├── Captures tables, charts, diagrams that text extraction misses
+│   │   ├── 68-page PDF → 5 mosaics in 1.1s (~10ms/page)
+│   │   ├── Single-page invoice → 5ms
+│   │   └── vlmctx pages <file/dir> --max-pages N --json
 │   │
 │   ├── Image perceptual fingerprint
 │   │   ├── pHash (perceptual hash) — 64-bit, invariant to resize/compression
