@@ -10,6 +10,16 @@ import typer
 from vlmctx.pipe import is_piped_output
 
 
+def _parse_size(size_str: str) -> int:
+    size_str = size_str.strip().upper()
+    multipliers = {"B": 1, "KB": 1024, "MB": 1024**2, "GB": 1024**3, "TB": 1024**4}
+    for suffix, mult in sorted(multipliers.items(), key=lambda x: -len(x[0])):
+        if size_str.endswith(suffix):
+            num = size_str[: -len(suffix)].strip()
+            return int(float(num) * mult)
+    return int(size_str)
+
+
 def find_cmd(
     directory: Annotated[Path, typer.Argument(help="Directory to search")] = Path("."),
     kind: Annotated[Optional[str], typer.Option("--kind", "-k", help="Filter by kind")] = None,
@@ -29,6 +39,35 @@ def find_cmd(
     limit: Annotated[Optional[int], typer.Option("--limit", "-n", help="Max results")] = None,
 ) -> None:
     """Find files matching criteria (like fd/find)."""
+
+    # Fast path: --json or piped output bypass pyarrow entirely
+    if (json_output or is_piped_output()) and depth is None:
+        from vlmctx._vlmctx import Scanner
+
+        scanner = Scanner(str(Path(directory).resolve()))
+        scanner.scan()
+
+        min_bytes = _parse_size(min_size) if min_size else None
+        max_bytes = _parse_size(max_size) if max_size else None
+
+        filter_args = dict(
+            kind=kind,
+            ext=ext,
+            min_size=min_bytes,
+            max_size=max_bytes,
+            limit=limit,
+            sort_by=sort,
+            descending=desc,
+        )
+
+        if json_output:
+            print(scanner.to_json_fast(**filter_args))
+        else:
+            result = scanner.to_lines_fast(**filter_args)
+            if result:
+                print(result)
+        return
+
     from vlmctx.context import Context
 
     ctx = Context(directory)

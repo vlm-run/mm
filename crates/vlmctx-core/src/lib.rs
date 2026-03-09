@@ -9,6 +9,7 @@ pub mod schema;
 pub mod table;
 pub mod walk;
 
+pub use format::{entries_to_json, entries_to_json_filtered};
 pub use hash::{fast_fingerprint, full_hash_mmap};
 pub use meta::{FileEntry, FileKind, enrich_image_dimensions};
 pub use schema::{l0_schema, l1_schema};

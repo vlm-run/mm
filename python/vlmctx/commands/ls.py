@@ -24,9 +24,25 @@ def ls_cmd(
     json_output: Annotated[bool, typer.Option("--json", help="Force JSON output")] = False,
 ) -> None:
     """Tabular file listing with metadata (like eza/ls -l)."""
-    from vlmctx.context import Context
-
     stdin_paths = read_paths_from_stdin()
+
+    # Fast path: --json without stdin filtering or column selection → Rust-native JSON
+    if json_output and not stdin_paths and not columns:
+        from vlmctx._vlmctx import Scanner
+
+        scanner = Scanner(str(Path(directory).resolve()))
+        scanner.scan()
+        print(
+            scanner.to_json_fast(
+                kind=kind,
+                sort_by=sort,
+                descending=desc,
+                limit=limit,
+            )
+        )
+        return
+
+    from vlmctx.context import Context
 
     ctx = Context(directory)
     if kind:

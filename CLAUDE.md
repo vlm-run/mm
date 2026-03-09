@@ -106,6 +106,11 @@ uv run vlmctx <command> [args]
 | `sql`   | DuckDB SQL on the file index | `--dir`, `--json` |
 | `describe` | Describe file index columns, types, and contents | `--json` |
 | `info`  | Summary panel | (directory argument) |
+| `keyframes` | Video keyframe mosaic extraction | `--strategy`, `--cols`, `--rows`, `--width`, `--num-mosaics` |
+| `audio` | Audio extraction at Nx speed for transcription | `--speed`, `--format`, `--sample-rate` |
+| `wc`    | Count files, bytes, lines, estimated tokens | `--kind`, `--by-kind`, `--json` |
+| `tree`  | Hierarchical directory view with sizes | `--depth`, `--kind`, `--size`, `--json` |
+| `pages` | PDF page mosaic extraction | `--cols`, `--rows`, `--width`, `--max-pages`, `--json` |
 
 ### describe and SQL table
 

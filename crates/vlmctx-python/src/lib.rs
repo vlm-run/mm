@@ -73,6 +73,34 @@ impl Scanner {
             .map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(e.to_string()))
     }
 
+    /// Fast JSON: serialize entries directly, bypassing Arrow entirely.
+    #[pyo3(signature = (kind=None, ext=None, min_size=None, max_size=None, limit=None, sort_by=None, descending=false))]
+    #[allow(clippy::too_many_arguments)]
+    fn to_json_fast(
+        &self,
+        kind: Option<&str>,
+        ext: Option<&str>,
+        min_size: Option<u64>,
+        max_size: Option<u64>,
+        limit: Option<usize>,
+        sort_by: Option<&str>,
+        descending: bool,
+    ) -> PyResult<String> {
+        if self.entries.is_empty() {
+            return Err(pyo3::exceptions::PyRuntimeError::new_err("Call scan() first"));
+        }
+        Ok(vlmctx_core::entries_to_json_filtered(
+            &self.entries,
+            kind,
+            ext,
+            min_size,
+            max_size,
+            limit,
+            sort_by,
+            descending,
+        ))
+    }
+
     fn to_markdown(&self) -> PyResult<String> {
         let batch = self
             .batch
@@ -103,6 +131,34 @@ impl Scanner {
             .as_ref()
             .ok_or_else(|| pyo3::exceptions::PyRuntimeError::new_err("Call scan() first"))?;
         Ok(vlmctx_core::format::record_batch_to_lines(batch))
+    }
+
+    /// Newline-delimited paths, bypassing Arrow.
+    #[pyo3(signature = (kind=None, ext=None, min_size=None, max_size=None, limit=None, sort_by=None, descending=false))]
+    #[allow(clippy::too_many_arguments)]
+    fn to_lines_fast(
+        &self,
+        kind: Option<&str>,
+        ext: Option<&str>,
+        min_size: Option<u64>,
+        max_size: Option<u64>,
+        limit: Option<usize>,
+        sort_by: Option<&str>,
+        descending: bool,
+    ) -> PyResult<String> {
+        if self.entries.is_empty() {
+            return Err(pyo3::exceptions::PyRuntimeError::new_err("Call scan() first"));
+        }
+        Ok(vlmctx_core::format::entries_to_lines_filtered(
+            &self.entries,
+            kind,
+            ext,
+            min_size,
+            max_size,
+            limit,
+            sort_by,
+            descending,
+        ))
     }
 
     fn extract_l1(&self, path: String) -> PyResult<L1Result> {

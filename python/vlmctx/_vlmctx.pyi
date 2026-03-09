@@ -17,6 +17,26 @@ class Scanner:
     def to_csv(self) -> str: ...
     def to_tsv(self) -> str: ...
     def to_lines(self) -> str: ...
+    def to_json_fast(
+        self,
+        kind: str | None = None,
+        ext: str | None = None,
+        min_size: int | None = None,
+        max_size: int | None = None,
+        limit: int | None = None,
+        sort_by: str | None = None,
+        descending: bool = False,
+    ) -> str: ...
+    def to_lines_fast(
+        self,
+        kind: str | None = None,
+        ext: str | None = None,
+        min_size: int | None = None,
+        max_size: int | None = None,
+        limit: int | None = None,
+        sort_by: str | None = None,
+        descending: bool = False,
+    ) -> str: ...
     def extract_l1(self, path: str) -> L1Result: ...
 
 class L1Result:

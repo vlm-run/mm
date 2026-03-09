@@ -1,6 +1,8 @@
 use arrow::array::{AsArray, RecordBatch};
 use arrow::datatypes::DataType;
 
+use crate::meta::FileEntry;
+
 pub enum OutputFormat {
     Markdown,
     Json,
@@ -83,6 +85,130 @@ pub fn record_batch_to_lines(batch: &RecordBatch) -> String {
         lines.push(format_cell(batch, row, path_col));
     }
     lines.join("\n")
+}
+
+/// Serialize entries directly to JSON, bypassing Arrow entirely.
+/// ~100x faster than Arrow → pyarrow → Python dict → json.dumps.
+pub fn entries_to_json(entries: &[FileEntry]) -> String {
+    let rows: Vec<serde_json::Value> = entries.iter().map(entry_to_json_value).collect();
+    serde_json::to_string_pretty(&rows).unwrap_or_else(|_| "[]".to_string())
+}
+
+/// Serialize entries to JSON with filtering/sorting applied in Rust.
+#[allow(clippy::too_many_arguments)]
+pub fn entries_to_json_filtered(
+    entries: &[FileEntry],
+    kind: Option<&str>,
+    ext: Option<&str>,
+    min_size: Option<u64>,
+    max_size: Option<u64>,
+    limit: Option<usize>,
+    sort_by: Option<&str>,
+    descending: bool,
+) -> String {
+    let mut filtered: Vec<&FileEntry> = entries
+        .iter()
+        .filter(|e| kind.is_none() || e.kind.to_string() == kind.unwrap())
+        .filter(|e| ext.is_none() || e.ext.as_str() == ext.unwrap())
+        .filter(|e| min_size.is_none() || e.size >= min_size.unwrap())
+        .filter(|e| max_size.is_none() || e.size <= max_size.unwrap())
+        .collect();
+
+    if let Some(field) = sort_by {
+        filtered.sort_by(|a, b| {
+            let cmp = match field {
+                "size" => a.size.cmp(&b.size),
+                "name" => a.name.cmp(&b.name),
+                "path" => a.path.cmp(&b.path),
+                "ext" => a.ext.cmp(&b.ext),
+                "kind" => a.kind.to_string().cmp(&b.kind.to_string()),
+                "modified" => a.modified_epoch_us.cmp(&b.modified_epoch_us),
+                "created" => a.created_epoch_us.cmp(&b.created_epoch_us),
+                "depth" => a.depth.cmp(&b.depth),
+                _ => std::cmp::Ordering::Equal,
+            };
+            if descending { cmp.reverse() } else { cmp }
+        });
+    }
+
+    if let Some(n) = limit {
+        filtered.truncate(n);
+    }
+
+    let rows: Vec<serde_json::Value> = filtered.iter().map(|e| entry_to_json_value(e)).collect();
+    serde_json::to_string_pretty(&rows).unwrap_or_else(|_| "[]".to_string())
+}
+
+/// Newline-delimited paths with filtering, bypassing Arrow.
+#[allow(clippy::too_many_arguments)]
+pub fn entries_to_lines_filtered(
+    entries: &[FileEntry],
+    kind: Option<&str>,
+    ext: Option<&str>,
+    min_size: Option<u64>,
+    max_size: Option<u64>,
+    limit: Option<usize>,
+    sort_by: Option<&str>,
+    descending: bool,
+) -> String {
+    let mut filtered: Vec<&FileEntry> = entries
+        .iter()
+        .filter(|e| kind.is_none() || e.kind.to_string() == kind.unwrap())
+        .filter(|e| ext.is_none() || e.ext.as_str() == ext.unwrap())
+        .filter(|e| min_size.is_none() || e.size >= min_size.unwrap())
+        .filter(|e| max_size.is_none() || e.size <= max_size.unwrap())
+        .collect();
+
+    if let Some(field) = sort_by {
+        filtered.sort_by(|a, b| {
+            let cmp = match field {
+                "size" => a.size.cmp(&b.size),
+                "name" => a.name.cmp(&b.name),
+                "path" => a.path.cmp(&b.path),
+                "ext" => a.ext.cmp(&b.ext),
+                "modified" => a.modified_epoch_us.cmp(&b.modified_epoch_us),
+                "created" => a.created_epoch_us.cmp(&b.created_epoch_us),
+                "depth" => a.depth.cmp(&b.depth),
+                _ => std::cmp::Ordering::Equal,
+            };
+            if descending { cmp.reverse() } else { cmp }
+        });
+    }
+
+    if let Some(n) = limit {
+        filtered.truncate(n);
+    }
+
+    filtered
+        .iter()
+        .map(|e| e.path.as_str())
+        .collect::<Vec<_>>()
+        .join("\n")
+}
+
+fn epoch_us_to_string(us: i64) -> String {
+    chrono::DateTime::from_timestamp_micros(us)
+        .map(|dt| dt.format("%Y-%m-%d %H:%M:%S%.6f").to_string())
+        .unwrap_or_default()
+}
+
+fn entry_to_json_value(e: &FileEntry) -> serde_json::Value {
+    serde_json::json!({
+        "path": e.path.as_str(),
+        "name": e.name.as_str(),
+        "stem": e.stem.as_str(),
+        "ext": e.ext.as_str(),
+        "size": e.size,
+        "modified": epoch_us_to_string(e.modified_epoch_us),
+        "created": epoch_us_to_string(e.created_epoch_us),
+        "mime": e.mime.as_str(),
+        "kind": e.kind.to_string(),
+        "is_binary": e.is_binary,
+        "depth": e.depth,
+        "parent": e.parent.as_str(),
+        "width": e.width,
+        "height": e.height,
+    })
 }
 
 fn format_cell(batch: &RecordBatch, row: usize, col: usize) -> String {

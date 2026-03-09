@@ -48,6 +48,8 @@ vlmctx
 │   ├── Documents (PDF)
 │   │   ├── [x] Text extraction via pypdfium2 (Python CLI side)
 │   │   ├── [x] Page-by-page extraction
+│   │   ├── [x] PDF page mosaic grids (pypdfium2 render → Pillow tile, ~10ms/page)
+│   │   ├── [x] Configurable tile grid, thumbnail width, max pages, JPEG quality
 │   │   └── [~] Rust-side PDF extraction (currently returns raw bytes, not text)
 │   └── Hashing
 │       ├── [x] fast_fingerprint — partial hash (first+last 64KB + size), ~33x faster on 10MB
@@ -89,8 +91,9 @@ vlmctx
 │   ├── [x] info     — directory summary statistics panel
 │   ├── [x] keyframes — video keyframe mosaic extraction (--strategy keyframe|scene)
 │   ├── [x] audio    — audio extraction at Nx speed for transcription
-│   ├── [ ] tree     — hierarchical directory tree with metadata
-│   ├── [ ] wc       — count files, lines, words, tokens (LLM budgeting)
+│   ├── [x] wc       — count files, bytes, lines, estimated tokens (LLM budgeting)
+│   ├── [x] tree     — hierarchical directory tree with sizes (like tree + du)
+│   ├── [x] pages    — PDF page mosaic extraction (visual document snapshots)
 │   └── [ ] context  — LLM-ready context payload builder (token budgeting)
 │
 ├── Output Modes
@@ -102,6 +105,8 @@ vlmctx
 │
 ├── Data Transfer (Rust → Python)
 │   ├── [x] Arrow IPC serialization (RecordBatch → bytes → pyarrow.ipc.open_stream)
+│   ├── [x] Rust-native JSON (serde_json, bypasses Arrow+pyarrow for --json paths)
+│   ├── [x] Rust-native filtered/sorted output (kind, ext, size, sort, limit — all in Rust)
 │   ├── [x] Zero-copy to Polars (polars.from_arrow)
 │   ├── [x] DuckDB in-process SQL on Arrow tables
 │   └── [~] PyCapsule FFI (abandoned — compatibility issues with pyarrow)
@@ -110,11 +115,14 @@ vlmctx
 │   ├── L0 walk: ~5ms / 1K files, ~16ms / 10K files
 │   ├── L0 full pipeline: ~7ms / 1K mixed files (with image dims)
 │   ├── L0 real data: ~5ms / 249 files (~/data/1-demo)
+│   ├── CLI cold start: ~58ms (ls --json, find --json via Rust fast path)
+│   ├── CLI cold start: ~66ms (ls/find with Rich TTY output)
 │   ├── L1 code extraction: ~8μs/file
 │   ├── L1 image extraction: ~18μs/file (mmap)
 │   ├── L1 video metadata (native): ~10ms (6.4MB MP4, includes hash)
 │   ├── Partial hash 10MB: ~19μs (vs 610μs full, 33x speedup)
 │   ├── Keyframe mosaic (86min video): ~820ms → 5 mosaic grids
+│   ├── PDF page mosaic (68 pages): ~280ms → 2 mosaic grids
 │   └── Audio 2x (163s video): ~200ms → 2.5MB Whisper-ready WAV
 │
 ├── Tests
