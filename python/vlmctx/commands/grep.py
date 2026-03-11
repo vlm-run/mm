@@ -101,6 +101,8 @@ def grep_cmd(
 
             from vlmctx.display import output_console
 
+            from rich import box
+
             t = RichTable(
                 caption=f"{sum(file_counts.values())} matches in {len(file_counts)} files",
                 caption_style="dim",
@@ -108,6 +110,7 @@ def grep_cmd(
                 padding=(0, 1),
                 border_style="dim",
                 header_style="bold",
+                box=box.ROUNDED,
             )
             t.add_column("file", style="white")
             t.add_column("matches", justify="right", style="bright_blue")

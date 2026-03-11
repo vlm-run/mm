@@ -57,12 +57,14 @@ vlmctx
 │       └── [x] full_hash_read — streaming fallback for special files
 │
 ├── L2 — Semantic Understanding (LLM-powered)
-│   ├── [x] OpenAI-compatible API client (urllib, no deps)
+│   ├── [x] OpenAI Python SDK (openai>=1.0, any compatible API)
 │   ├── [x] Image captioning (base64 vision API)
 │   ├── [x] File content description
-│   ├── [x] Configurable via VLMCTX_BASE_URL / API_KEY / MODEL env vars
+│   ├── [x] Video understanding via keyframe mosaic + LLM (auto at L2)
+│   ├── [x] Audio description via metadata + LLM (auto at L2)
+│   ├── [x] Configurable: CLI flags > env vars > ~/.vlmctx/config.toml > defaults
+│   ├── [x] think=false + reasoning_effort="none" + temperature=0.1
 │   ├── [x] Graceful fallback to L1 when unconfigured
-│   ├── [ ] Video understanding via keyframe mosaic + VLM (qwen3-2b inference)
 │   ├── [ ] Audio transcription via Whisper on 2x-speed extraction
 │   └── [ ] Embedding generation (SemanticAnalyzer trait defined, not implemented)
 │
@@ -79,21 +81,18 @@ vlmctx
 │   ├── [x] info() — Rich summary panel
 │   └── [x] save() — persist to .vlmctx/index.parquet
 │
-├── CLI Commands (Typer, Unix-philosophy composability)
+├── CLI Commands (6 + config, Typer, Unix-philosophy composability)
 │   ├── [x] find     — find files by kind/ext/size/depth (like fd)
-│   ├── [x] ls       — tabular listing with metadata (like eza)
-│   ├── [x] cat      — semantic content display at L0/L1/L2 (like bat)
-│   ├── [x] head     — first N lines/pages
-│   ├── [x] tail     — last N lines/pages
+│   ├── [x] ls       — tabular listing, tree view (--tree), schema (--schema)
+│   ├── [x] cat      — auto-detected content extraction at L0/L1/L2
+│   │   ├── [x] head/tail via -n (replaces old head/tail commands)
+│   │   ├── [x] video L2: auto-generates keyframe mosaic → LLM description
+│   │   ├── [x] audio L2: metadata → LLM description
+│   │   └── [x] --mosaic-*, --audio-* namespaced flags
 │   ├── [x] grep     — content search with context lines (like rg)
 │   ├── [x] sql      — DuckDB SQL on file index
-│   ├── [x] describe — column schema introspection (like DESCRIBE TABLE)
-│   ├── [x] info     — directory summary statistics panel
-│   ├── [x] keyframes — video keyframe mosaic extraction (--strategy keyframe|scene)
-│   ├── [x] audio    — audio extraction at Nx speed for transcription
-│   ├── [x] wc       — count files, bytes, lines, estimated tokens (LLM budgeting)
-│   ├── [x] tree     — hierarchical directory tree with sizes (like tree + du)
-│   ├── [x] pages    — PDF page mosaic extraction (visual document snapshots)
+│   ├── [x] wc       — count files, bytes, lines, estimated tokens
+│   ├── [x] config   — LLM provider management (show, init, set)
 │   └── [ ] context  — LLM-ready context payload builder (token budgeting)
 │
 ├── Output Modes

@@ -22,7 +22,7 @@ Always use `--json` for machine-readable output when parsing results programmati
 |---------|---------|
 | `find` | Locate files by kind/ext/size |
 | `ls` | Tabular listing, tree view, schema |
-| `cat` | Content extraction (text, visual mosaics, audio) |
+| `cat` | Content extraction (auto-detected by file type × level) |
 | `grep` | Content search across files |
 | `sql` | DuckDB SQL on file index |
 | `wc` | Count files, bytes, lines, tokens |
@@ -33,7 +33,7 @@ Always use `--json` for machine-readable output when parsing results programmati
 2. Use `vlmctx wc <dir> --by-kind` to estimate token counts for LLM context budgeting.
 3. Use `vlmctx ls <dir> --schema` to see available columns before writing SQL.
 4. Explore with `find`, `ls`, `sql`, `grep`, `cat` as needed.
-5. Use `cat --visual` / `cat --audio` for media extraction from PDFs and videos.
+5. Use `cat -l 2` for LLM-powered descriptions (auto-generates mosaics for video).
 
 ## find — locate files
 
@@ -88,39 +88,35 @@ Columns in the `files` table:
 | width | uint32 | Pixel width (images only, null otherwise) |
 | height | uint32 | Pixel height (images only, null otherwise) |
 
-## cat — content extraction
+## cat — content extraction (auto-detected)
 
-Unified content extraction: text, head/tail, visual mosaics, audio.
+Behaviour is auto-detected from (file type × processing level). No mode flags needed.
 
 ```bash
-# Text/metadata extraction (default mode)
+# Text/metadata extraction (L1 default, <100ms for media)
 vlmctx cat <file>                                       # L1 extracted content
 vlmctx cat <file> --level 0                             # raw file content
 vlmctx cat <file> --level 2                             # LLM caption (needs VLMCTX_BASE_URL)
+vlmctx cat <file> -l 2 --detail                         # ~80-word LLM description
 
-# Head / tail (replaces old `head`/`tail` commands)
+# Head / tail
 vlmctx cat <file> -n 20                                 # first 20 lines
 vlmctx cat <file> -n -10                                # last 10 lines
 
-# Visual mosaics (replaces old `keyframes`/`pages` commands)
-vlmctx cat <file.pdf> --visual                          # PDF page mosaic grid
-vlmctx cat <video.mp4> --visual                         # video keyframe mosaic
-vlmctx cat <video.mp4> --visual --strategy scene        # scene-change detection
-vlmctx cat <video.mp4> --visual --num-mosaics 4         # 4 grids (192 frames)
-vlmctx cat <file.pdf> --visual --max-pages 8            # limit rendered pages
-vlmctx cat <file> --visual --json                       # JSON with mosaic paths
-
-# Audio extraction (replaces old `audio` command)
-vlmctx cat <video.mp4> --audio                          # extract audio at 2x speed
-vlmctx cat <video.mp4> --audio --speed 1.0              # original speed
-vlmctx cat <video.mp4> --audio --json                   # JSON with audio path
+# L2 auto-generates mosaics for video
+vlmctx cat <video.mp4> -l 2                             # keyframe mosaic → LLM description
+vlmctx cat <video.mp4> -l 2 --mosaic-strategy scene     # scene-change mosaics
+vlmctx cat <video.mp4> -l 2 --mosaic-count 4            # 4 mosaic grids
+vlmctx cat <file.pdf> -l 2 --max-pages 8                # limit rendered pages
+vlmctx cat <file> --json                                # JSON output
 ```
 
-Level 1 behavior by file type:
-- **PDF**: text extraction via pypdfium2 (~220ms). Scanned/image-only PDFs return empty.
-- **Image** (.png/.jpg/.webp/.gif): dimensions, MIME, xxh3 hash, EXIF data (~61ms)
-- **Video** (.mp4/.mkv/.webm): resolution, duration, FPS, codecs + keyframe mosaic (~1.5s)
-- **Code/text/config**: raw content with line/word counts (~52ms)
+Level 1 behavior by file type (<100ms target):
+- **PDF**: text extraction via pypdfium2. Scanned/image-only PDFs return empty.
+- **Image** (.png/.jpg/.webp/.gif): dimensions, MIME, xxh3 hash, EXIF data.
+- **Video** (.mp4/.mkv/.webm): resolution, duration, FPS, codecs (metadata only, no ffmpeg).
+- **Audio** (.mp3/.wav/.flac): duration, codec, bitrate (metadata only).
+- **Code/text/config**: raw content passthrough.
 
 ## wc — count files, bytes, lines, tokens
 
@@ -182,6 +178,25 @@ vlmctx find <dir> --kind image | vlmctx ls <dir>        # find images, pipe to l
 vlmctx find <dir> --kind document --min-size 10mb | wc -l  # count large PDFs
 ```
 
+## config — LLM provider management
+
+```bash
+vlmctx config show                # show resolved config (key, value, source)
+vlmctx config init                # create ~/.vlmctx/config.toml with defaults
+vlmctx config init --force        # overwrite existing config
+vlmctx config set model gpt-4o   # update a key in config.toml
+vlmctx config set base_url https://api.openai.com
+```
+
+Provider settings resolved in order: CLI flags > env vars > config file > defaults.
+
+Default: Ollama at `http://localhost:11434` with `qwen3.5:0.8b`.
+
+Top-level CLI flags override everything:
+```bash
+vlmctx --base-url http://... --model gpt-4o cat photo.png -l 2
+```
+
 ## Tips
 
 - All L0 commands (`find`, `ls`, `wc` with `--json`) run in ~60ms via the Rust fast path.
@@ -190,7 +205,8 @@ vlmctx find <dir> --kind document --min-size 10mb | wc -l  # count large PDFs
 - Use `--json` when you need to parse output programmatically.
 - `find` returns paths only when piped; `ls` returns full metadata rows.
 - `sql` is the most powerful command — any DuckDB-compatible SQL works against the `files` table.
-- For PDFs, `cat` extracts text; if empty, the PDF is scanned — use `cat --visual` for page mosaics.
-- For videos, `cat --visual` generates mosaic grids suitable for VLM inference.
+- For PDFs, `cat` extracts text at L1; if empty, the PDF is scanned images.
+- For videos, `cat -l 2` auto-generates keyframe mosaics and sends to LLM for description.
+- L2 uses the `openai` Python SDK. Sends `think=false` and `reasoning_effort="none"` with temperature 0.1.
 - Size filters accept human units: `1kb`, `5mb`, `1gb`.
 - Extension matching is case-sensitive: `.pdf` ≠ `.PDF`.

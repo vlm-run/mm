@@ -138,6 +138,8 @@ def arrow_table_to_rich(
     elif total > 0:
         subtitle = f"{total} row{'s' if total != 1 else ''}"
 
+    from rich import box
+
     rich_table = Table(
         title=title,
         caption=subtitle,
@@ -146,6 +148,7 @@ def arrow_table_to_rich(
         padding=(0, 1),
         border_style="dim",
         header_style="bold",
+        box=box.ROUNDED,
     )
 
     cols = columns or table.column_names
@@ -226,4 +229,6 @@ def info_panel(stats: dict[str, Any], title: str = "vlmctx"):
     from rich.console import Group
 
     content = Group(*parts)
-    return Panel(content, title=f"[bold]{title}[/bold]", expand=False, padding=(1, 2))
+    from rich import box
+
+    return Panel(content, title=f"[bold]{title}[/bold]", title_align="left", expand=False, padding=(1, 2), box=box.ROUNDED)

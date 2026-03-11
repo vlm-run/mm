@@ -342,9 +342,12 @@ def _ls_schema(directory: Path, json_output: bool) -> None:
 
     from vlmctx.display import output_console
 
+    from rich import box
+
     rich_table = RichTable(
         caption=f"[dim]{table.num_rows} rows[/dim]",
         show_lines=True, padding=(0, 1), border_style="dim", header_style="bold",
+        box=box.ROUNDED,
     )
     rich_table.add_column("column", style="bold cyan", no_wrap=True)
     rich_table.add_column("type", style="green", no_wrap=True)

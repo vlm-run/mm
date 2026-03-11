@@ -28,9 +28,9 @@ vlmctx ls ~/data --tree --depth 1         # directory overview with sizes
 vlmctx wc ~/data --by-kind                # file/byte/token counts by kind
 vlmctx find ~/data --kind image --json    # find all images (60ms)
 vlmctx cat paper.pdf                      # extract text from PDF
-vlmctx cat paper.pdf --visual             # PDF page mosaics for VLM
-vlmctx cat video.mp4 --visual             # video keyframe mosaic grids
-vlmctx cat video.mp4 --audio --speed 2    # extract audio for transcription
+vlmctx cat video.mp4                      # video metadata (<100ms)
+vlmctx cat video.mp4 -l 2                 # keyframe mosaic → LLM description
+vlmctx cat photo.png -l 2 --detail        # LLM caption (~80 words)
 ```
 
 ### Command reference
@@ -39,7 +39,7 @@ vlmctx cat video.mp4 --audio --speed 2    # extract audio for transcription
 |---------|---------|-----------|
 | `find` | Locate files by kind/ext/size | `--kind`, `--ext`, `--min-size`, `--max-size`, `--sort`, `--limit`, `--json` |
 | `ls` | Tabular listing, tree view, schema | `--sort`, `--columns`, `--kind`, `--tree`, `--depth`, `--schema`, `--json` |
-| `cat` | Content extraction (text, visual, audio) | `--level 0/1/2`, `-n`, `--visual`, `--audio`, `--speed`, `--json` |
+| `cat` | Content extraction (auto-detected by file type) | `--level 0/1/2`, `-n`, `--detail`, `--mosaic-*`, `--audio-*`, `--json` |
 | `grep` | Content search across files | `--kind`, `--ext`, `-C`, `--count`, `--json` |
 | `sql` | DuckDB SQL on file index | `--dir`, `--json` |
 | `wc` | Count files, bytes, lines, tokens | `--kind`, `--by-kind`, `--json` |
@@ -70,12 +70,11 @@ vlmctx ls ~/data --json                            # full metadata JSON
 vlmctx cat paper.pdf                               # extract text (L1)
 vlmctx cat paper.pdf -n 20                         # first 20 lines (head)
 vlmctx cat paper.pdf -n -20                        # last 20 lines (tail)
-vlmctx cat photo.png                               # image dimensions, MIME, hash, EXIF
-vlmctx cat video.mp4                               # resolution, duration, codecs + mosaic
-vlmctx cat paper.pdf --visual                      # PDF page mosaic grids
-vlmctx cat video.mp4 --visual --strategy scene     # scene-change keyframe mosaics
-vlmctx cat video.mp4 --audio --speed 2             # extract audio track at 2x
-vlmctx cat photo.png --level 2                     # LLM-generated caption
+vlmctx cat photo.png                               # image dims, MIME, hash, EXIF
+vlmctx cat video.mp4                               # resolution, duration, codecs (<100ms)
+vlmctx cat video.mp4 -l 2                          # mosaic → LLM description
+vlmctx cat photo.png -l 2                          # LLM caption (~20 words)
+vlmctx cat photo.png -l 2 --detail                 # LLM description (~80 words)
 ```
 
 ### wc — count files, bytes, tokens
@@ -139,7 +138,7 @@ ctx.info()    # Rich summary panel
 | Level | What | Speed | How |
 |-------|------|-------|-----|
 | L0 | File metadata (path, size, kind, ext, timestamps, dimensions) | ~60ms / 700 files | Rust `stat()` + extension classification + image headers |
-| L1 | Content extraction (text from PDF, image hash/EXIF, video metadata) | 50ms-1.5s/file | pypdfium2 (PDF), Rust mmap (images), mp4parse/matroska (video) |
+| L1 | Content extraction (text from PDF, image hash/EXIF, video metadata) | <100ms/file | pypdfium2 (PDF), Rust mmap (images), mp4parse/matroska (video) |
 | L2 | Semantic understanding (captions, descriptions) | Varies | LLM API via `VLMCTX_BASE_URL` |
 
 ## Performance
@@ -155,7 +154,7 @@ Benchmarked on Apple Silicon (M-series), 702 files (7.2GB):
 | L1 code extraction | ~52ms |
 | L1 image extraction | ~61ms |
 | L1 PDF text extraction | ~220ms |
-| L1 video metadata + mosaic | ~1.5s |
+| L1 video metadata | <100ms |
 | PDF page mosaic (per page) | ~10ms |
 | Video keyframe mosaic (48 frames) | ~1s |
 
@@ -174,19 +173,28 @@ Rust (vlmctx-core)                   Python (vlmctx)
 │   code, image,      │<───────────>│ Rich display        │
 │   video (mp4parse,  │             │ pypdfium2 (PDF)     │
 │    matroska)        │             │ Pillow (mosaics)    │
-│ xxh3 hashing (mmap) │             │ ffmpeg (video/audio)│
-│ EXIF extraction     │             │ LlmBackend (L2)     │
+│ xxh3 hashing (mmap) │             │ ffmpeg (video L2)   │
+│ EXIF extraction     │             │ openai SDK (L2 LLM) │
 └─────────────────────┘             └─────────────────────┘
 ```
 
 ## L2 LLM Configuration
 
-For semantic understanding (`--level 2`), configure an OpenAI-compatible LLM backend:
+For semantic understanding (`--level 2`), vlmctx uses the `openai` Python SDK to call any OpenAI-compatible API. Provider settings are resolved in order: CLI flags > env vars > `~/.vlmctx/config.toml` > defaults.
 
 ```bash
-export VLMCTX_BASE_URL="http://localhost:11434"            # e.g. Ollama
-export VLMCTX_API_KEY=""                                    # if needed
-export VLMCTX_MODEL="qwen3.5:0.8b"                         # default model
+# Environment variables
+export VLMCTX_BASE_URL="http://localhost:11434"   # Ollama (default)
+export VLMCTX_API_KEY=""                           # if needed
+export VLMCTX_MODEL="qwen3.5:0.8b"                # default model
+
+# CLI flags (override everything)
+vlmctx --base-url http://... --model gpt-4o cat photo.png -l 2
+
+# Config file
+vlmctx config init                # create ~/.vlmctx/config.toml
+vlmctx config show                # show resolved config with sources
+vlmctx config set model gpt-4o   # update a key
 ```
 
 ## License

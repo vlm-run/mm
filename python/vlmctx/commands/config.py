@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Annotated, Optional
+from typing import Annotated
 
 import typer
 
@@ -50,9 +50,12 @@ def show(
         "default": "dim",
     }
 
+    from rich import box
+
     tbl = Table(
         caption=f"[dim]{CONFIG_PATH}[/dim]",
         show_lines=False, padding=(0, 1), border_style="dim", header_style="bold",
+        box=box.ROUNDED,
     )
     tbl.add_column("key", style="bold")
     tbl.add_column("value")

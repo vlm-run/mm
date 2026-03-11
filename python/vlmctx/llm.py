@@ -1,12 +1,10 @@
 """LLM backend for L2 semantic understanding.
 
-Supports any OpenAI-compatible API (Ollama, vLLM, OpenAI, etc.).
+Supports any OpenAI-compatible API (Ollama, vLLM, OpenAI, etc.)
+via the official openai Python SDK.
 
 Provider settings are resolved in order:
   CLI flags > env vars > ~/.vlmctx/config.toml [provider] > defaults
-
-Auto-detects Ollama and uses its native API for structured JSON output
-with thinking-enabled models (Qwen3-VL, etc).
 """
 
 from __future__ import annotations
@@ -14,13 +12,14 @@ from __future__ import annotations
 import base64
 import json
 import re
-import urllib.request
 from pathlib import Path
 from typing import Any
 
+from openai import OpenAI
+
 
 class LlmBackend:
-    """Wraps any OpenAI-compatible API for L2 semantic operations."""
+    """Wraps any OpenAI-compatible chat/completions API for L2 semantic operations."""
 
     def __init__(
         self,
@@ -31,54 +30,53 @@ class LlmBackend:
         from vlmctx.config import get_provider
 
         cfg = get_provider()
-        self.base_url = (base_url or cfg.base_url).rstrip("/")
-        self.api_key = api_key or cfg.api_key
+        resolved_base = (base_url or cfg.base_url).rstrip("/")
+        if not resolved_base.endswith("/v1"):
+            resolved_base = f"{resolved_base}/v1"
+        self.api_key = api_key or cfg.api_key or "no-key"
         self.model = model or cfg.model
+        self.client = OpenAI(base_url=resolved_base, api_key=self.api_key, timeout=120.0)
 
     @property
     def is_configured(self) -> bool:
-        return bool(self.base_url)
+        return bool(self.client.base_url)
 
-    @property
-    def _is_ollama(self) -> bool:
-        return "11434" in self.base_url
-
-    def caption(self, image_path: Path) -> str:
-        """Generate a caption for an image using the LLM."""
-        image_data = image_path.read_bytes()
-        b64 = base64.b64encode(image_data).decode()
+    def caption(self, image_path: Path, *, detail: bool = False) -> str:
+        """Generate a caption for an image."""
+        b64 = base64.b64encode(image_path.read_bytes()).decode()
         mime = _guess_image_mime(image_path)
 
-        messages = [
+        if detail:
+            prompt = "Describe this image in about 80 words. Cover the main subject, setting, and notable details."
+            max_tokens = 512
+        else:
+            prompt = "Describe this image in one sentence (max 20 words)."
+            max_tokens = 128
+
+        messages: list[dict[str, Any]] = [
             {
                 "role": "user",
                 "content": [
-                    {"type": "text", "text": "Describe this image in detail."},
-                    {
-                        "type": "image_url",
-                        "image_url": {"url": f"data:{mime};base64,{b64}"},
-                    },
+                    {"type": "text", "text": prompt},
+                    {"type": "image_url", "image_url": {"url": f"data:{mime};base64,{b64}"}},
                 ],
             }
         ]
+        return self._chat(messages, max_tokens=max_tokens)
 
-        return self._chat_openai(messages)
-
-    def describe(self, file_path: Path, content: str | None = None) -> str:
+    def describe(self, file_path: Path, content: str | None = None, *, detail: bool = False) -> str:
         """Generate a description of a file's content."""
         if content is None:
             content = file_path.read_text(errors="replace")[:4000]
 
-        messages = [
-            {
-                "role": "user",
-                "content": (
-                    f"Describe the contents of this file ({file_path.name}):\n\n```\n{content}\n```"
-                ),
-            }
-        ]
+        if detail:
+            prompt = f"Summarize this file ({file_path.name}) in about 80 words:\n\n```\n{content}\n```"
+            max_tokens = 512
+        else:
+            prompt = f"Summarize this file ({file_path.name}) in one sentence (max 20 words):\n\n```\n{content}\n```"
+            max_tokens = 128
 
-        return self._chat_openai(messages)
+        return self._chat([{"role": "user", "content": prompt}], max_tokens=max_tokens)
 
     def describe_video(
         self,
@@ -87,13 +85,7 @@ class LlmBackend:
         video_name: str = "",
         duration_s: float = 0,
     ) -> dict[str, Any]:
-        """Analyze video mosaics and return a suggested filename + tags.
-
-        Uses Ollama native API with format:json when available (reliable
-        with thinking models like Qwen3-VL). Falls back to OpenAI API.
-
-        Returns {"filename": "...", "tags": [...], "summary": "..."}.
-        """
+        """Analyze video mosaics and return {filename, tags, summary}."""
         images_b64 = [base64.b64encode(mp.read_bytes()).decode() for mp in mosaic_paths]
 
         dur_ctx = ""
@@ -106,117 +98,73 @@ class LlmBackend:
             "Give a descriptive content-based filename (not the original), tags, summary."
         )
 
-        if self._is_ollama:
-            raw = self._ollama_chat(prompt, images_b64, json_mode=True)
-        else:
-            content_parts: list[dict[str, Any]] = [{"type": "text", "text": prompt}]
-            for b64 in images_b64:
-                content_parts.append(
-                    {
-                        "type": "image_url",
-                        "image_url": {"url": f"data:image/jpeg;base64,{b64}"},
-                    }
-                )
-            raw = self._chat_openai(
-                [{"role": "user", "content": content_parts}],
-                temperature=0.1,
-                max_tokens=512,
-                json_mode=True,
+        content_parts: list[dict[str, Any]] = [{"type": "text", "text": prompt}]
+        for b64 in images_b64:
+            content_parts.append(
+                {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{b64}"}}
             )
 
+        raw = self._chat(
+            [{"role": "user", "content": content_parts}],
+            temperature=0.1,
+            max_tokens=512,
+            json_mode=True,
+        )
         return _parse_video_json(raw)
 
-    def _ollama_chat(
-        self,
-        prompt: str,
-        images_b64: list[str] | None = None,
-        *,
-        json_mode: bool = False,
-        temperature: float = 0.1,
-        max_tokens: int = 8192,
-        timeout: int = 30,
-    ) -> str:
-        """Ollama native /api/chat with format:json and thinking support.
-
-        Includes timeout-based retry: if the model's thinking phase
-        exceeds the timeout, retries with a shorter token budget.
-        """
-        base = self.base_url.replace("/v1", "")
-        url = f"{base}/api/chat"
-
-        msg: dict[str, Any] = {"role": "user", "content": prompt}
-        if images_b64:
-            msg["images"] = images_b64
-
-        for attempt_tokens in [max_tokens, max_tokens // 2]:
-            payload: dict[str, Any] = {
-                "model": self.model,
-                "messages": [msg],
-                "stream": False,
-                "options": {
-                    "num_predict": attempt_tokens,
-                    "temperature": temperature,
-                },
-            }
-            if json_mode:
-                payload["format"] = "json"
-
-            data = json.dumps(payload).encode()
-            req = urllib.request.Request(
-                url, data=data, headers={"Content-Type": "application/json"}
-            )
-
-            try:
-                with urllib.request.urlopen(req, timeout=timeout) as resp:
-                    result = json.loads(resp.read())
-                    content = result.get("message", {}).get("content", "")
-                    if content.strip():
-                        return content
-            except Exception:
-                continue
-
-        return ""
-
-    def _chat_openai(
+    def _chat(
         self,
         messages: list[dict[str, Any]],
         *,
         temperature: float | None = None,
-        max_tokens: int = 1024,
+        max_tokens: int = 128,
         json_mode: bool = False,
     ) -> str:
-        """Standard OpenAI-compatible chat completions."""
-        base = self.base_url
-        if self._is_ollama and not base.endswith("/v1"):
-            base = f"{base}/v1"
-        url = f"{base}/chat/completions"
-        payload: dict[str, Any] = {
+        """Single chat/completions call via the OpenAI SDK.
+
+        Thinking models consume tokens for reasoning before producing
+        the answer, so we request extra headroom (capped at 2048).
+        """
+        kwargs: dict[str, Any] = {
             "model": self.model,
             "messages": messages,
-            "max_tokens": max_tokens,
+            "max_tokens": min(max_tokens * 8, 2048),
         }
-        if temperature is not None:
-            payload["temperature"] = temperature
+        kwargs["temperature"] = temperature if temperature is not None else 0.1
         if json_mode:
-            payload["response_format"] = {"type": "json_object"}
+            kwargs["response_format"] = {"type": "json_object"}
 
-        headers = {"Content-Type": "application/json"}
-        if self.api_key:
-            headers["Authorization"] = f"Bearer {self.api_key}"
-
-        data = json.dumps(payload).encode()
-        req = urllib.request.Request(url, data=data, headers=headers, method="POST")
+        extra_body: dict[str, Any] = {"think": False, "reasoning_effort": "none"}
 
         try:
-            with urllib.request.urlopen(req, timeout=120) as resp:
-                result = json.loads(resp.read())
-                msg = result["choices"][0]["message"]
-                content = msg.get("content") or ""
-                if not content.strip():
-                    content = msg.get("reasoning") or msg.get("reasoning_content") or ""
+            response = self.client.chat.completions.create(**kwargs, extra_body=extra_body)
+            choice = response.choices[0].message
+            content = (choice.content or "").strip()
+            if content:
                 return content
+            reasoning = getattr(choice, "reasoning", None) or getattr(choice, "reasoning_content", None) or ""
+            if isinstance(reasoning, str) and reasoning.strip():
+                return _extract_answer_from_thinking(reasoning.strip())
+            return ""
         except Exception as e:
             return f"[LLM error: {e}]"
+
+
+def _extract_answer_from_thinking(thinking: str) -> str:
+    """Best-effort extraction of the final answer from a thinking trace.
+
+    Thinking models interleave reasoning with the answer. The actual
+    answer is typically the last quoted sentence or the last paragraph.
+    """
+    quotes = re.findall(r'"([^"]{10,})"', thinking)
+    if quotes:
+        return quotes[-1].strip()
+    paragraphs = [p.strip() for p in thinking.split("\n\n") if p.strip()]
+    if paragraphs:
+        last = paragraphs[-1]
+        last = re.sub(r"^(?:So|Answer|Result|Summary)[:\s]+", "", last, flags=re.IGNORECASE)
+        return last.strip()
+    return thinking.strip()
 
 
 def _parse_video_json(raw: str) -> dict[str, Any]:

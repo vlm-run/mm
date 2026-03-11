@@ -92,10 +92,10 @@ def wc_cmd(
     from vlmctx.display import format_number, format_size
 
     if is_piped_output():
-        print(f"files\tsize\tlines\ttokens")
+        print("files\tsize\tlines\ttokens")
         print(f"{total_files}\t{format_size(total_bytes)}\t{format_number(total_lines)}\t{format_number(total_tokens)}")
         if by_kind:
-            print(f"\nkind\tfiles\tsize\tlines\ttokens")
+            print("\nkind\tfiles\tsize\tlines\ttokens")
             for k, s in sorted(kind_stats.items()):
                 print(
                     f"{k}\t{s['files']}\t{format_size(int(s['bytes']))}"
@@ -111,12 +111,15 @@ def wc_cmd(
         from rich.table import Table as RichTable
         from rich.text import Text
 
+        from rich import box
+
         tbl = RichTable(
             show_header=True,
             header_style="bold",
             padding=(0, 1),
             border_style="dim",
             expand=False,
+            box=box.ROUNDED,
         )
         tbl.add_column("kind", style="cyan", no_wrap=True)
         tbl.add_column("files", justify="right")
@@ -158,9 +161,11 @@ def wc_cmd(
             subtitle=subtitle,
             expand=False,
             padding=(1, 2),
+            box=box.ROUNDED,
         )
         output_console.print(panel)
     else:
+        from rich import box
         from rich.panel import Panel
         from rich.text import Text
 
@@ -178,5 +183,6 @@ def wc_cmd(
             body,
             expand=False,
             padding=(1, 2),
+            box=box.ROUNDED,
         )
         output_console.print(panel)

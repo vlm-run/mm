@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import os
 from pathlib import Path
 
 import pytest
@@ -54,7 +53,6 @@ def mixed_1k_tree(tmp_path: Path) -> Path:
     import struct
 
     extensions = [".py", ".rs", ".js", ".ts", ".md", ".toml", ".json", ".yaml", ".txt", ".csv"]
-    img_extensions = [".png", ".jpg"]
 
     (tmp_path / "src").mkdir()
     (tmp_path / "docs").mkdir()

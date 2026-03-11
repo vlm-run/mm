@@ -8,7 +8,6 @@ and CLI integration for cat/head/tail/grep.
 from __future__ import annotations
 
 import json
-import shutil
 import struct
 import subprocess
 import zlib
