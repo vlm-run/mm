@@ -73,14 +73,36 @@ def pages_cmd(
                 print(mp)
         return
 
-    from vlmctx.display import output_console
+    from rich.table import Table as RichTable
+
+    from vlmctx.display import format_size, output_console
+
+    tbl = RichTable(
+        title="[bold]vlmctx pages[/bold]",
+        show_header=True,
+        header_style="bold",
+        padding=(0, 1),
+        border_style="dim",
+        expand=False,
+    )
+    tbl.add_column("pdf", style="bold")
+    tbl.add_column("pages", justify="right")
+    tbl.add_column("rendered", justify="right")
+    tbl.add_column("mosaics", justify="right")
+    tbl.add_column("time", justify="right", style="green")
+    tbl.add_column("output", style="cyan")
 
     for pdf, r in all_results:
-        output_console.print(
-            f"[bold]{pdf.name}[/bold]  "
-            f"[dim]{r.page_count} pages → {r.rendered_pages} rendered → "
-            f"{len(r.mosaic_paths)} mosaics[/dim]  "
-            f"[green]{r.elapsed_ms:.0f}ms[/green]"
+        mosaic_strs = "\n".join(
+            f"{mp}  ({format_size(mp.stat().st_size)})" for mp in r.mosaic_paths
         )
-        for mp in r.mosaic_paths:
-            output_console.print(f"  [cyan]{mp}[/cyan]  ({mp.stat().st_size // 1024}KB)")
+        tbl.add_row(
+            pdf.name,
+            str(r.page_count),
+            str(r.rendered_pages),
+            str(len(r.mosaic_paths)),
+            f"{r.elapsed_ms:.0f}ms",
+            mosaic_strs,
+        )
+
+    output_console.print(tbl)

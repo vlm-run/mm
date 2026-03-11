@@ -45,8 +45,8 @@ class Context:
         llm_api_key: str | None = None,
     ):
         self.root = Path(root).resolve()
-        self._llm_base_url = llm_base_url or os.environ.get("VLMCTX_LLM_BASE_URL")
-        self._llm_api_key = llm_api_key or os.environ.get("VLMCTX_LLM_API_KEY")
+        self._llm_base_url = llm_base_url or os.environ.get("VLMCTX_BASE_URL")
+        self._llm_api_key = llm_api_key or os.environ.get("VLMCTX_API_KEY")
 
         from vlmctx._vlmctx import Scanner
 

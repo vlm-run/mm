@@ -454,13 +454,13 @@ class TestHeadTailL1:
 
     def test_head_code_file(self, code_tree: Path):
         result = runner.invoke(app, [
-            "head", str(code_tree / "hello.py"), "-n", "2",
+            "cat", str(code_tree / "hello.py"), "-n", "2",
         ])
         assert result.exit_code == 0
 
     def test_tail_code_file(self, code_tree: Path):
         result = runner.invoke(app, [
-            "tail", str(code_tree / "hello.py"), "-n", "2",
+            "cat", str(code_tree / "hello.py"), "-n", "-2",
         ])
         assert result.exit_code == 0
 

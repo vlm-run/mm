@@ -4,6 +4,16 @@
 
 `vlmctx` is a high-performance multi-modal context management library + CLI. Rust core for speed, Python for developer experience, Unix philosophy for composability.
 
+## Core ideology
+
+- Unix philosophy for composability.
+- Speed, compression, devex is all what matters.
+- Rust core for speed + Python for developer experience.
+- Information-theoretical perspective on context
+    - Input tok/img or tok/px: PDF/image content measured in toks (tok), dimensions in pixels (px).
+    - Input tok/s: audio/video content measured in toks (tok), duration in seconds (s)
+    - Input tok/MB: audio/video content, Mtok/MB.
+
 ## Project layout
 
 ```
@@ -31,26 +41,20 @@ vlmctx/
 ├── python/vlmctx/              # Python package source
 │   ├── __init__.py             # Public API re-exports
 │   ├── _vlmctx.pyi            # Type stubs for Rust bindings
-│   ├── cli.py                  # Typer app — registers all commands
+│   ├── cli.py                  # Typer app — registers 6 commands
 │   ├── context.py              # Context class (main Python API)
 │   ├── df.py                   # arrow_to_polars / arrow_to_pandas
 │   ├── duck.py                 # DuckDB query helper
-│   ├── display.py              # Rich formatting (tables, panels)
+│   ├── display.py              # Rich formatting (tables, panels, format_size, format_number)
 │   ├── pipe.py                 # stdin/stdout pipe detection (uses select())
 │   ├── llm.py                  # LLM backend (OpenAI-compatible, L2)
-│   └── commands/               # CLI subcommands
+│   └── commands/               # CLI subcommands (6 total)
 │       ├── find.py             # vlmctx find
-│       ├── ls.py               # vlmctx ls
-│       ├── cat.py              # vlmctx cat (--level 0/1/2, pypdfium2 for PDF)
-│       ├── head.py             # vlmctx head
-│       ├── tail.py             # vlmctx tail
+│       ├── ls.py               # vlmctx ls (--tree, --schema)
+│       ├── cat.py              # vlmctx cat (-n, --visual, --audio, --level)
 │       ├── grep.py             # vlmctx grep
 │       ├── sql.py              # vlmctx sql (DuckDB)
-│       ├── describe.py         # vlmctx describe (column names, types, descriptions)
-│       ├── info.py             # vlmctx info
-│       ├── tree.py             # (stub — not yet implemented)
-│       ├── wc.py               # (stub — not yet implemented)
-│       └── context.py          # (stub — not yet implemented)
+│       └── wc.py               # vlmctx wc (--by-kind)
 └── tests/
     └── python/                 # pytest suite
         ├── conftest.py
@@ -93,32 +97,52 @@ vlmctx <command> [args]
 uv run vlmctx <command> [args]
 ```
 
-## CLI commands
+## CLI commands (6 total)
 
 | Command | Purpose | Key flags |
 |---------|---------|-----------|
-| `find`  | Find files by kind/ext/size | `--kind`, `--ext`, `--min-size`, `--max-size`, `--limit`, `--json` |
-| `ls`    | Tabular listing (all rows) | `--sort`, `--desc`, `--columns`, `--kind`, `--limit`, `--json` |
-| `cat`   | Semantic content display | `--level 0/1/2`, `--json` |
-| `head`  | First N lines/pages | `-n` |
-| `tail`  | Last N lines/pages | `-n` |
+| `find`  | Locate files by kind/ext/size | `--kind`, `--ext`, `--min-size`, `--max-size`, `--limit`, `--json` |
+| `ls`    | Tabular listing, tree view, schema | `--sort`, `--columns`, `--kind`, `--tree`, `--depth`, `--schema`, `--json` |
+| `cat`   | Content extraction (text, visual mosaics, audio) | `--level 0/1/2`, `-n` (head/tail), `--visual`, `--audio`, `--speed`, `--json` |
 | `grep`  | Content search across files | `--kind`, `--ext`, `-C` (context), `--count`, `--level`, `--json` |
 | `sql`   | DuckDB SQL on the file index | `--dir`, `--json` |
-| `describe` | Describe file index columns, types, and contents | `--json` |
-| `info`  | Summary panel | (directory argument) |
-| `keyframes` | Video keyframe mosaic extraction | `--strategy`, `--cols`, `--rows`, `--width`, `--num-mosaics` |
-| `audio` | Audio extraction at Nx speed for transcription | `--speed`, `--format`, `--sample-rate` |
 | `wc`    | Count files, bytes, lines, estimated tokens | `--kind`, `--by-kind`, `--json` |
-| `tree`  | Hierarchical directory view with sizes | `--depth`, `--kind`, `--size`, `--json` |
-| `pages` | PDF page mosaic extraction | `--cols`, `--rows`, `--width`, `--max-pages`, `--json` |
 
-### describe and SQL table
+### Consolidated commands
 
-Use `vlmctx describe <dir>` to see all available columns, their Arrow types, descriptions of what they contain, and a sample value. This is the equivalent of `DESCRIBE table` in SQL.
+The following commands were merged into the 6 core commands:
 
-Columns: `path`, `name`, `stem`, `ext`, `size`, `modified`, `created`, `mime`, `kind`, `is_binary`, `depth`, `parent`.
+- `head` / `tail` → `cat -n 10` (head) / `cat -n -10` (tail)
+- `keyframes` → `cat video.mp4 --visual`
+- `pages` → `cat document.pdf --visual`
+- `audio` → `cat video.mp4 --audio --speed 2`
+- `tree` → `ls --tree --depth 2`
+- `describe` → `ls --schema`
+- `info` → `wc` (default summary panel)
 
-`kind` values: `image`, `video`, `document`, `code`, `other`.
+### ls modes
+
+- `vlmctx ls ~/data` — tabular listing (default)
+- `vlmctx ls ~/data --tree --depth 2` — hierarchical tree view with sizes
+- `vlmctx ls ~/data --schema` — column names, Arrow types, descriptions, sample values
+
+### cat modes
+
+- `vlmctx cat file` — text/metadata extraction (default, L1)
+- `vlmctx cat file -n 20` — first 20 lines (head)
+- `vlmctx cat file -n -20` — last 20 lines (tail)
+- `vlmctx cat file --visual` — visual mosaic (PDF pages or video keyframes)
+- `vlmctx cat file --audio` — extract audio track from video/audio
+- `vlmctx cat file --level 0` — raw file content
+- `vlmctx cat file --level 2` — LLM-generated caption/description
+
+### Schema and SQL
+
+Use `vlmctx ls <dir> --schema` to see all available columns, their Arrow types, descriptions of what they contain, and a sample value.
+
+Columns: `path`, `name`, `stem`, `ext`, `size`, `modified`, `created`, `mime`, `kind`, `is_binary`, `depth`, `parent`, `width`, `height`.
+
+`kind` values: `image`, `video`, `document`, `code`, `audio`, `data`, `config`, `text`, `other`.
 
 ### Output modes
 
@@ -128,9 +152,9 @@ Columns: `path`, `name`, `stem`, `ext`, `size`, `modified`, `created`, `mime`, `
 
 ## Processing levels
 
-- **L0** (metadata): path, size, kind, ext, timestamps, depth, parent. Built in Rust with `ignore` + `rayon`. Measured at ~0.02ms/file on real multi-modal data (249 files in 5ms).
-- **L1** (content): The CLI `cat`/`head`/`tail` commands use `pypdfium2` for PDF text extraction and Rust extractors for image dimensions/MIME/xxh3 hash. Note: scanned/image-only PDFs yield empty text at L1. The Python `Context.cat()` method currently uses the Rust L1 extractor (returns raw bytes for PDFs, not pypdfium2-extracted text — this is a known gap).
-- **L2** (semantic): LLM-generated captions/descriptions via OpenAI-compatible API. Requires `VLMCTX_LLM_BASE_URL` env var. Falls back to L1 when unconfigured.
+- **L0** (metadata): path, size, kind, ext, timestamps, depth, parent, width, height. Built in Rust with `ignore` + `rayon`. Measured at ~0.02ms/file on real multi-modal data (249 files in 5ms).
+- **L1** (content): `cat` uses `pypdfium2` for PDF text extraction and Rust extractors for image dimensions/MIME/xxh3 hash. `--visual` renders PDF page mosaics or video keyframe grids. `--audio` extracts audio via ffmpeg. Scanned/image-only PDFs yield empty text at L1.
+- **L2** (semantic): LLM-generated captions/descriptions via OpenAI-compatible API. Requires `VLMCTX_BASE_URL` env var. Falls back to L1 when unconfigured.
 
 ## Python API
 
@@ -161,7 +185,7 @@ ctx.info()   # Rich summary panel
 - **Hashing**: xxh3 via `xxhash-rust` for fast content fingerprinting.
 - **PDF text extraction**: `pypdfium2` on the Python CLI side (in `commands/cat.py`). Scanned/image-only PDFs return empty text.
 - **Pipe detection**: `pipe.py` uses `select.select()` with zero timeout to avoid blocking when stdin is not a TTY but has no data (e.g. when run from automation tools).
-- **LLM backend**: OpenAI-compatible API. Env vars: `VLMCTX_LLM_BASE_URL`, `VLMCTX_LLM_API_KEY`, `VLMCTX_LLM_MODEL`.
+- **LLM backend**: OpenAI-compatible API. Env vars: `VLMCTX_BASE_URL`, `VLMCTX_API_KEY`, `VLMCTX_MODEL`.
 
 ## Testing
 
@@ -174,9 +198,7 @@ uv run pytest tests/python/test_benchmark.py --benchmark-only  # Python benchmar
 
 ## Known gaps / TODOs
 
-- `tree`, `wc`, `context` commands are stubbed but not implemented.
 - Python `Context.cat(level=1)` for PDFs uses Rust L1 extractor (raw bytes) instead of pypdfium2. The CLI `cat --level 1` correctly uses pypdfium2.
-- No video content extraction at L1 yet.
 - L2 requires an external LLM server; no built-in model.
 
 ## Key dependencies

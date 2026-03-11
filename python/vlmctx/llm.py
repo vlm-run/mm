@@ -1,7 +1,9 @@
 """LLM backend for L2 semantic understanding.
 
-Supports any OpenAI-compatible API (Ollama, vLLM, OpenAI, etc.)
-via --llm-base-url / --llm-api-key or environment variables.
+Supports any OpenAI-compatible API (Ollama, vLLM, OpenAI, etc.).
+
+Provider settings are resolved in order:
+  CLI flags > env vars > ~/.vlmctx/config.toml [provider] > defaults
 
 Auto-detects Ollama and uses its native API for structured JSON output
 with thinking-enabled models (Qwen3-VL, etc).
@@ -11,7 +13,6 @@ from __future__ import annotations
 
 import base64
 import json
-import os
 import re
 import urllib.request
 from pathlib import Path
@@ -27,12 +28,12 @@ class LlmBackend:
         api_key: str | None = None,
         model: str | None = None,
     ):
-        self.base_url = (
-            base_url or os.environ.get("VLMCTX_LLM_BASE_URL") or "http://localhost:11434/v1"
-        )
-        self.api_key = api_key or os.environ.get("VLMCTX_LLM_API_KEY", "")
-        self.model = model or os.environ.get("VLMCTX_LLM_MODEL", "llava")
-        self.base_url = self.base_url.rstrip("/")
+        from vlmctx.config import get_provider
+
+        cfg = get_provider()
+        self.base_url = (base_url or cfg.base_url).rstrip("/")
+        self.api_key = api_key or cfg.api_key
+        self.model = model or cfg.model
 
     @property
     def is_configured(self) -> bool:
@@ -185,7 +186,10 @@ class LlmBackend:
         json_mode: bool = False,
     ) -> str:
         """Standard OpenAI-compatible chat completions."""
-        url = f"{self.base_url}/chat/completions"
+        base = self.base_url
+        if self._is_ollama and not base.endswith("/v1"):
+            base = f"{base}/v1"
+        url = f"{base}/chat/completions"
         payload: dict[str, Any] = {
             "model": self.model,
             "messages": messages,

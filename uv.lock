@@ -1038,6 +1038,7 @@ dependencies = [
     { name = "pyarrow" },
     { name = "pypdfium2" },
     { name = "rich" },
+    { name = "tomli", marker = "python_full_version < '3.11'" },
     { name = "typer" },
 ]
 
@@ -1064,6 +1065,7 @@ requires-dist = [
     { name = "pytest-benchmark", marker = "extra == 'dev'", specifier = ">=4.0" },
     { name = "rich", specifier = ">=13.0" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.4" },
+    { name = "tomli", marker = "python_full_version < '3.11'", specifier = ">=1.0" },
     { name = "typer", specifier = ">=0.12" },
 ]
 provides-extras = ["dev"]

@@ -10,6 +10,17 @@ import typer
 
 from vlmctx.pipe import is_piped_output
 
+KIND_RICH_STYLES: dict[str, str] = {
+    "image": "yellow",
+    "video": "magenta",
+    "code": "green",
+    "document": "cyan",
+    "audio": "red",
+    "data": "dim",
+    "config": "dim",
+    "text": "white",
+}
+
 
 def _build_tree(entries: list[dict]) -> dict:
     """Build a nested dict from flat file entries."""
@@ -27,14 +38,6 @@ def _build_tree(entries: list[dict]) -> dict:
     return root
 
 
-def _format_size(size: int) -> str:
-    for unit in ("B", "KB", "MB", "GB"):
-        if size < 1024:
-            return f"{size:.0f}{unit}" if unit == "B" else f"{size:.1f}{unit}"
-        size /= 1024  # type: ignore[assignment]
-    return f"{size:.1f}TB"
-
-
 def _count_subtree(node: dict) -> tuple[int, int]:
     """Return (file_count, total_bytes) for a subtree."""
     files = len(node["__files__"])
@@ -46,13 +49,48 @@ def _count_subtree(node: dict) -> tuple[int, int]:
     return files, size
 
 
-def _render_tree(
+def _add_to_rich_tree(
+    node: dict,
+    rich_node,
+    depth: int,
+    max_depth: int | None,
+    show_size: bool,
+    format_size,
+) -> None:
+    from rich.text import Text
+
+    if max_depth is not None and depth > max_depth:
+        return
+
+    for dname in sorted(node["__dirs__"].keys()):
+        child_data = node["__dirs__"][dname]
+        fc, fs = _count_subtree(child_data)
+        label = Text()
+        label.append(f"{dname}/", style="bold bright_blue")
+        if show_size:
+            label.append(f"  {fc:,} files, {format_size(fs)}", style="dim")
+        else:
+            label.append(f"  {fc:,} files", style="dim")
+        branch = rich_node.add(label)
+        _add_to_rich_tree(branch, child_data, depth + 1, max_depth, show_size, format_size)
+
+    for f in sorted(node["__files__"], key=lambda x: x["name"]):
+        label = Text()
+        style = KIND_RICH_STYLES.get(f["kind"], "")
+        label.append(f["name"], style=style)
+        if show_size:
+            label.append(f"  {format_size(f['size'])}", style="dim")
+        rich_node.add(label)
+
+
+def _render_plain(
     node: dict,
     prefix: str,
     lines: list[str],
     depth: int,
     max_depth: int | None,
     show_size: bool,
+    format_size,
 ) -> None:
     if max_depth is not None and depth > max_depth:
         return
@@ -73,27 +111,12 @@ def _render_tree(
 
         if is_dir and data is not None:
             fc, fs = _count_subtree(data)
-            suffix = f"  ({fc} files, {_format_size(fs)})" if show_size else f"  ({fc} files)"
-            lines.append(f"{prefix}{connector}\033[1;34m{name}/\033[0m{suffix}")
-            _render_tree(data, next_prefix, lines, depth + 1, max_depth, show_size)
+            suffix = f"  ({fc:,} files, {format_size(fs)})" if show_size else f"  ({fc:,} files)"
+            lines.append(f"{prefix}{connector}{name}/{suffix}")
+            _render_plain(data, next_prefix, lines, depth + 1, max_depth, show_size, format_size)
         else:
-            if show_size and data is not None:
-                suffix = f"  [{_format_size(data['size'])}]"
-            else:
-                suffix = ""
-            kind_str = data["kind"] if data else ""
-            kind_color = {
-                "image": "\033[33m",
-                "video": "\033[35m",
-                "code": "\033[32m",
-                "document": "\033[36m",
-                "audio": "\033[31m",
-                "data": "\033[90m",
-                "config": "\033[90m",
-                "text": "\033[37m",
-            }.get(kind_str, "")
-            reset = "\033[0m" if kind_color else ""
-            lines.append(f"{prefix}{connector}{kind_color}{name}{reset}{suffix}")
+            suffix = f"  [{format_size(data['size'])}]" if show_size and data else ""
+            lines.append(f"{prefix}{connector}{name}{suffix}")
 
 
 def _tree_to_json(node: dict, name: str = ".") -> dict:
@@ -139,14 +162,22 @@ def tree_cmd(
         print(json_mod.dumps(_tree_to_json(tree, str(directory)), indent=2))
         return
 
-    header = f"\033[1m{directory}\033[0m  ({total_files} files, {_format_size(total_bytes)})"
-    lines: list[str] = [header]
-    _render_tree(tree, "", lines, 0, depth, show_size=size)
-
-    output = "\n".join(lines)
+    from vlmctx.display import format_size
 
     if is_piped_output():
-        import re
-        print(re.sub(r"\033\[[0-9;]*m", "", output))
+        header = f"{directory}  ({total_files:,} files, {format_size(total_bytes)})"
+        lines: list[str] = [header]
+        _render_plain(tree, "", lines, 0, depth, show_size=size, format_size=format_size)
+        print("\n".join(lines))
     else:
-        print(output)
+        from rich.text import Text
+        from rich.tree import Tree
+
+        from vlmctx.display import output_console
+
+        root_label = Text()
+        root_label.append(f"{directory}", style="bold")
+        root_label.append(f"  {total_files:,} files, {format_size(total_bytes)}", style="dim")
+        rich_tree = Tree(root_label)
+        _add_to_rich_tree(rich_tree, tree, 0, depth, show_size=size, format_size=format_size)
+        output_console.print(rich_tree)

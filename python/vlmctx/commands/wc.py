@@ -20,16 +20,6 @@ def _estimate_tokens_for_image(width: int | None, height: int | None) -> int:
     return 85 + tiles * 170
 
 
-def _format_number(n: int | float) -> str:
-    if isinstance(n, float):
-        return f"{n:,.1f}"
-    if n >= 1_000_000:
-        return f"{n / 1_000_000:.1f}M"
-    if n >= 1_000:
-        return f"{n / 1_000:.1f}K"
-    return str(n)
-
-
 def wc_cmd(
     directory: Annotated[Path, typer.Argument(help="Directory to count")] = Path("."),
     kind: Annotated[Optional[str], typer.Option("--kind", "-k", help="Filter by kind")] = None,
@@ -99,50 +89,94 @@ def wc_cmd(
         print(json_mod.dumps(result, indent=2))
         return
 
+    from vlmctx.display import format_number, format_size
+
     if is_piped_output():
-        print(f"{total_files}\t{total_bytes}\t{total_lines}\t{total_tokens}")
+        print(f"files\tsize\tlines\ttokens")
+        print(f"{total_files}\t{format_size(total_bytes)}\t{format_number(total_lines)}\t{format_number(total_tokens)}")
         if by_kind:
+            print(f"\nkind\tfiles\tsize\tlines\ttokens")
             for k, s in sorted(kind_stats.items()):
-                print(f"{k}\t{s['files']}\t{s['bytes']}\t{s['lines']}\t{s['tokens']}")
+                print(
+                    f"{k}\t{s['files']}\t{format_size(int(s['bytes']))}"
+                    f"\t{format_number(int(s['lines']))}\t{format_number(int(s['tokens']))}"
+                )
         return
 
-    from vlmctx.display import format_size, output_console
-
-    output_console.print(
-        f"[bold]vlmctx wc[/bold] [dim]{directory}[/dim]\n"
-    )
-    output_console.print(f"  [bold]{total_files:,}[/bold] files")
-    output_console.print(f"  [bold]{format_size(total_bytes)}[/bold] total size")
-    output_console.print(f"  [bold]{_format_number(total_lines)}[/bold] lines (est.)")
-    output_console.print(
-        f"  [bold]{_format_number(total_tokens)}[/bold] tokens (est. ~{total_tokens * TOKEN_CHARS_RATIO:,} chars / {TOKEN_CHARS_RATIO})"
-    )
+    from vlmctx.display import KIND_STYLES, output_console
 
     if by_kind:
-        output_console.print("")
-
+        from rich.console import Group
+        from rich.panel import Panel
         from rich.table import Table as RichTable
+        from rich.text import Text
 
         tbl = RichTable(
-            title="By Kind",
-            border_style="dim",
+            show_header=True,
             header_style="bold",
             padding=(0, 1),
+            border_style="dim",
+            expand=False,
         )
-        tbl.add_column("kind", style="cyan")
+        tbl.add_column("kind", style="cyan", no_wrap=True)
         tbl.add_column("files", justify="right")
-        tbl.add_column("size", justify="right")
+        tbl.add_column("size", justify="right", style="bright_blue")
         tbl.add_column("lines", justify="right")
-        tbl.add_column("tokens", justify="right")
+        tbl.add_column("tokens", justify="right", style="bright_green")
 
         for k in sorted(kind_stats.keys()):
             s = kind_stats[k]
+            style = KIND_STYLES.get(k, "dim")
             tbl.add_row(
-                k,
-                str(s["files"]),
+                Text(k, style=style),
+                f"{int(s['files']):,}",
                 format_size(int(s["bytes"])),
-                _format_number(int(s["lines"])),
-                _format_number(int(s["tokens"])),
+                format_number(int(s["lines"])),
+                format_number(int(s["tokens"])),
             )
 
-        output_console.print(tbl)
+        tbl.add_section()
+        tbl.add_row(
+            Text("total", style="bold"),
+            f"[bold]{total_files:,}[/bold]",
+            f"[bold]{format_size(total_bytes)}[/bold]",
+            f"[bold]{format_number(total_lines)}[/bold]",
+            f"[bold]{format_number(total_tokens)}[/bold]",
+        )
+
+        subtitle = Text.assemble(
+            ("~", "dim"),
+            (f"{format_number(total_tokens)}", "bold bright_green"),
+            (" tokens  ", "dim"),
+            (f"{total_files:,}", "bold"),
+            (" files  ", "dim"),
+            (format_size(total_bytes), "bright_blue"),
+        )
+
+        panel = Panel(
+            Group(tbl),
+            subtitle=subtitle,
+            expand=False,
+            padding=(1, 2),
+        )
+        output_console.print(panel)
+    else:
+        from rich.panel import Panel
+        from rich.text import Text
+
+        body = Text()
+        body.append(f"  {total_files:,}", style="bold bright_blue")
+        body.append("  files\n", style="dim")
+        body.append(f"  {format_size(total_bytes)}", style="bold bright_blue")
+        body.append("  total size\n", style="dim")
+        body.append(f"  {format_number(total_lines)}", style="bold")
+        body.append("  lines (est.)\n", style="dim")
+        body.append(f"  {format_number(total_tokens)}", style="bold bright_green")
+        body.append("  tokens (est.)", style="dim")
+
+        panel = Panel(
+            body,
+            expand=False,
+            padding=(1, 2),
+        )
+        output_console.print(panel)

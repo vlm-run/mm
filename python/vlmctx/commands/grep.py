@@ -102,7 +102,6 @@ def grep_cmd(
             from vlmctx.display import output_console
 
             t = RichTable(
-                title=f"vlmctx grep [dim]--count[/dim] [bold]'{pattern}'[/bold]",
                 caption=f"{sum(file_counts.values())} matches in {len(file_counts)} files",
                 caption_style="dim",
                 show_lines=False,

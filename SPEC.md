@@ -60,7 +60,7 @@ vlmctx
 │   ├── [x] OpenAI-compatible API client (urllib, no deps)
 │   ├── [x] Image captioning (base64 vision API)
 │   ├── [x] File content description
-│   ├── [x] Configurable via VLMCTX_LLM_BASE_URL / API_KEY / MODEL env vars
+│   ├── [x] Configurable via VLMCTX_BASE_URL / API_KEY / MODEL env vars
 │   ├── [x] Graceful fallback to L1 when unconfigured
 │   ├── [ ] Video understanding via keyframe mosaic + VLM (qwen3-2b inference)
 │   ├── [ ] Audio transcription via Whisper on 2x-speed extraction

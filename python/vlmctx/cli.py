@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
+from typing import Annotated, Optional
+
 import typer
 
-from vlmctx.commands import (
-    audio, cat, describe, find, grep, head, info, keyframes, ls, pages, sql, tail, tree, wc,
-)
+from vlmctx.commands import cat, find, grep, ls, sql, wc
+from vlmctx.commands.config import config_app
 
 app = typer.Typer(
     name="vlmctx",
@@ -15,20 +16,32 @@ app = typer.Typer(
     pretty_exceptions_enable=False,
 )
 
+
+@app.callback()
+def _main(
+    base_url: Annotated[
+        Optional[str], typer.Option("--base-url", help="LLM API base URL")
+    ] = None,
+    api_key: Annotated[
+        Optional[str], typer.Option("--api-key", help="LLM API key")
+    ] = None,
+    model: Annotated[
+        Optional[str], typer.Option("--model", help="LLM model name")
+    ] = None,
+) -> None:
+    """High-performance multi-modal context management."""
+    from vlmctx.config import set_cli_overrides
+
+    set_cli_overrides(base_url=base_url, api_key=api_key, model=model)
+
+
 app.command(name="find")(find.find_cmd)
 app.command(name="ls")(ls.ls_cmd)
 app.command(name="cat")(cat.cat_cmd)
-app.command(name="head")(head.head_cmd)
-app.command(name="tail")(tail.tail_cmd)
 app.command(name="grep")(grep.grep_cmd)
 app.command(name="sql")(sql.sql_cmd)
-app.command(name="describe")(describe.describe_cmd)
-app.command(name="info")(info.info_cmd)
-app.command(name="keyframes")(keyframes.keyframes_cmd)
-app.command(name="audio")(audio.audio_cmd)
 app.command(name="wc")(wc.wc_cmd)
-app.command(name="tree")(tree.tree_cmd)
-app.command(name="pages")(pages.pages_cmd)
+app.add_typer(config_app, name="config")
 
 
 if __name__ == "__main__":

@@ -46,19 +46,29 @@ def test_ls_with_columns(small_tree: Path):
     assert result.exit_code == 0
 
 
+def test_ls_tree(small_tree: Path):
+    result = runner.invoke(app, ["ls", str(small_tree), "--tree"])
+    assert result.exit_code == 0
+
+
+def test_ls_schema(small_tree: Path):
+    result = runner.invoke(app, ["ls", str(small_tree), "--schema"])
+    assert result.exit_code == 0
+
+
 def test_cat_file(small_tree: Path):
     result = runner.invoke(app, ["cat", str(small_tree / "src" / "main.py")])
     assert result.exit_code == 0
     assert "main" in result.output
 
 
-def test_head_file(small_tree: Path):
-    result = runner.invoke(app, ["head", str(small_tree / "src" / "main.py"), "-n", "1"])
+def test_cat_head(small_tree: Path):
+    result = runner.invoke(app, ["cat", str(small_tree / "src" / "main.py"), "-n", "1"])
     assert result.exit_code == 0
 
 
-def test_tail_file(small_tree: Path):
-    result = runner.invoke(app, ["tail", str(small_tree / "src" / "main.py"), "-n", "1"])
+def test_cat_tail(small_tree: Path):
+    result = runner.invoke(app, ["cat", str(small_tree / "src" / "main.py"), "-n", "-1"])
     assert result.exit_code == 0
 
 
@@ -102,6 +112,6 @@ def test_sql_json(small_tree: Path):
     assert data[0]["total"] > 0
 
 
-def test_info_basic(small_tree: Path):
-    result = runner.invoke(app, ["info", str(small_tree)])
+def test_wc_basic(small_tree: Path):
+    result = runner.invoke(app, ["wc", str(small_tree)])
     assert result.exit_code == 0

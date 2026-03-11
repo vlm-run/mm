@@ -1,0 +1,40 @@
+# ~/.vlmctx/config.toml
+#
+# vlmctx configuration file.
+# Copy to ~/.vlmctx/config.toml and edit to your needs.
+# Generate with: vlmctx config init
+
+# ── LLM provider (used by `cat -l 2`, `grep -l 2`, etc.) ────────────
+[provider]
+
+# Base URL for OpenAI-compatible API.
+# Ollama:    http://localhost:11434        (default)
+# vLLM:      http://localhost:8000/v1=
+# VLM Run:   https://api.vlm.run/v1
+# Gemini:    https://generativelanguage.googleapis.com/v1beta/openai/
+# OpenAI:    https://api.openai.com/v1
+base_url = "http://localhost:11434"
+
+# API key (leave empty for local Ollama).
+api_key = ""
+
+# Model name.
+# Ollama:    `qwen3.5:0.8b`  (default, fast text)
+#            `qwen3-vl:2b`   (vision, for image captioning)
+#            `qwen3-vl:8b`   (vision, higher quality)
+# VLM Run:   `vlm-1` / `vlmrun-orion-1:auto`, `vlmrun-orion-1:fast`, `vlmrun-orion-1:pro`
+# Gemini:    `gemini-3.1-flash-lite-preview` (default, fast text)
+# OpenAI:    `gpt-5-nano-2025-08-07`
+model = "qwen3.5:0.8b"
+
+
+# ── Environment variable overrides ───────────────────────────────────
+#
+# These override config.toml values (but are overridden by CLI flags):
+#
+#   VLMCTX_BASE_URL
+#   VLMCTX_API_KEY
+#   VLMCTX_MODEL
+#
+# Resolution order:
+#   CLI flags  >  env vars  >  config.toml  >  built-in defaults

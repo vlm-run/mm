@@ -71,17 +71,47 @@ def audio_cmd(
         }
         all_results.append(entry)
 
-        if not json_output:
-            if is_piped_output():
-                output_console.print(str(result.path))
-            else:
-                kb = result.path.stat().st_size // 1024 if result.path.exists() else 0
-                output_console.print(
-                    f"  {media_path.name} → {result.path} "
-                    f"({kb}KB, {speed}x, {rate}Hz, {'mono' if mono else 'stereo'})"
-                )
+    if not all_results:
+        return
 
     if json_output:
         import json
 
         output_console.print(json.dumps(all_results, indent=2))
+        return
+
+    if is_piped_output():
+        for entry in all_results:
+            output_console.print(entry["audio"])
+    else:
+        from rich.table import Table as RichTable
+
+        from vlmctx.display import format_size
+
+        tbl = RichTable(
+            title="[bold]vlmctx audio[/bold]",
+            show_header=True,
+            header_style="bold",
+            padding=(0, 1),
+            border_style="dim",
+            expand=False,
+        )
+        tbl.add_column("source", style="bold")
+        tbl.add_column("output", style="cyan")
+        tbl.add_column("size", justify="right", style="bright_blue")
+        tbl.add_column("speed", justify="right")
+        tbl.add_column("rate", justify="right")
+        tbl.add_column("channels", justify="right")
+
+        for entry in all_results:
+            out_size = format_size(entry["size_kb"] * 1024)
+            tbl.add_row(
+                Path(entry["source"]).name,
+                str(entry["audio"]),
+                out_size,
+                f"{entry['speed']}x",
+                f"{entry['sample_rate']}Hz",
+                str(entry["channels"]),
+            )
+
+        output_console.print(tbl)

@@ -65,6 +65,25 @@ def format_size(size_bytes: int | float) -> str:
     return f"{size_bytes:.1f} PB"
 
 
+def format_number(n: int | float) -> str:
+    """Format a large number with human-readable suffix (K, M, B, T)."""
+    if isinstance(n, float):
+        if n >= 1_000_000_000:
+            return f"{n / 1_000_000_000:.1f}B"
+        if n >= 1_000_000:
+            return f"{n / 1_000_000:.1f}M"
+        if n >= 1_000:
+            return f"{n / 1_000:.1f}K"
+        return f"{n:,.1f}"
+    if n >= 1_000_000_000:
+        return f"{n / 1_000_000_000:.2f}B"
+    if n >= 1_000_000:
+        return f"{n / 1_000_000:.1f}M"
+    if n >= 1_000:
+        return f"{n / 1_000:.1f}K"
+    return f"{n:,}"
+
+
 def _style_cell(col: str, val: Any):
     """Apply per-column styling to a cell value."""
     from rich.text import Text

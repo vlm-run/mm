@@ -105,26 +105,9 @@ def find_cmd(
     else:
         from vlmctx.display import arrow_table_to_rich, output_console
 
-        filters: list[str] = []
-        if kind:
-            filters.append(f"kind={kind}")
-        if ext:
-            filters.append(f"ext={ext}")
-        if min_size:
-            filters.append(f"min={min_size}")
-        if max_size:
-            filters.append(f"max={max_size}")
-        if depth is not None:
-            filters.append(f"depth<={depth}")
-
-        title = f"vlmctx find [dim]{directory}[/dim]"
-        if filters:
-            title += "  " + " ".join(f"[dim]--{f}[/dim]" for f in filters)
-
         rich_table = arrow_table_to_rich(
             table,
             columns=["path", "kind", "size", "ext"],
             limit=limit,
-            title=title,
         )
         output_console.print(rich_table)
