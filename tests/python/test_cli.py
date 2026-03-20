@@ -47,7 +47,7 @@ class TestFind:
         assert len(data) <= 2
 
     def test_sort_by_size(self, small_tree: Path):
-        r = runner.invoke(app, ["find", str(small_tree), "--sort", "size", "--desc", "--json"])
+        r = runner.invoke(app, ["find", str(small_tree), "--sort", "size", "--reverse", "--json"])
         data = json.loads(r.output)
         sizes = [row["size"] for row in data]
         assert sizes == sorted(sizes, reverse=True)
@@ -169,7 +169,7 @@ class TestGrep:
 
     def test_no_match(self, small_tree: Path):
         r = runner.invoke(app, ["grep", "zzz_nonexistent_zzz", str(small_tree)])
-        assert r.exit_code == 0
+        assert r.exit_code == 1  # exit 1 on no match (grep/rg convention)
 
 
 # ── sql ──────────────────────────────────────────────────────────────

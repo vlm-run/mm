@@ -28,11 +28,17 @@ def _main(
     model: Annotated[
         Optional[str], typer.Option("--model", help="LLM model name")
     ] = None,
+    color: Annotated[
+        str, typer.Option("--color", help="Color output: auto, always, never")
+    ] = "auto",
 ) -> None:
     """High-performance multi-modal context management."""
     from vlmctx.config import set_cli_overrides
+    from vlmctx.display import set_color_mode
 
     set_cli_overrides(base_url=base_url, api_key=api_key, model=model)
+    if color != "auto":
+        set_color_mode(color)
 
 
 app.command(name="find")(find.find_cmd)

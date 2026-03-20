@@ -20,8 +20,15 @@ def is_piped_input() -> bool:
 def is_piped_output() -> bool:
     """Check if stdout is piped (not a terminal).
 
-    Uses sys.stdout.isatty() for zero-import-overhead detection.
+    Respects --color always/never: when color is forced on, we treat
+    output as non-piped (rich) even if stdout is a pipe.
     """
+    from vlmctx.display import _color_override
+
+    if _color_override is True:
+        return False
+    if _color_override is False:
+        return True
     return not sys.stdout.isatty()
 
 

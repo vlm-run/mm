@@ -42,12 +42,12 @@ KIND_TREE_STYLES: dict[str, str] = {
 def ls_cmd(
     directory: Annotated[Path, typer.Argument(help="Directory to list")] = Path("."),
     sort: Annotated[Optional[str], typer.Option("--sort", "-s", help="Sort by column")] = None,
-    desc: Annotated[bool, typer.Option("--desc", help="Sort descending")] = False,
+    reverse: Annotated[bool, typer.Option("--reverse", "-r", help="Reverse sort order")] = False,
     columns: Annotated[
         Optional[str], typer.Option("--columns", "-c", help="Columns to show, comma-separated")
     ] = None,
     limit: Annotated[
-        Optional[int], typer.Option("--limit", "-n", help="Max rows to display")
+        Optional[int], typer.Option("--limit", help="Max rows to display")
     ] = None,
     kind: Annotated[Optional[str], typer.Option("--kind", "-k", help="Filter by kind")] = None,
     tree: Annotated[bool, typer.Option("--tree", help="Hierarchical tree view")] = False,
@@ -76,13 +76,13 @@ def ls_cmd(
         _ls_schema(directory, json_output)
         return
 
-    _ls_table(directory, sort, desc, columns, limit, kind, json_output)
+    _ls_table(directory, sort, reverse, columns, limit, kind, json_output)
 
 
 def _ls_table(
     directory: Path,
     sort: str | None,
-    desc: bool,
+    reverse: bool,
     columns: str | None,
     limit: int | None,
     kind: str | None,
@@ -98,7 +98,7 @@ def _ls_table(
         scanner.scan()
         print(
             scanner.to_json_fast(
-                kind=kind, sort_by=sort, descending=desc, limit=limit,
+                kind=kind, sort_by=sort, descending=reverse, limit=limit,
             )
         )
         return
@@ -120,7 +120,7 @@ def _ls_table(
     if sort:
         from vlmctx.duck import query_arrow_table
 
-        order = "DESC" if desc else "ASC"
+        order = "DESC" if reverse else "ASC"
         table = query_arrow_table(table, f"SELECT * FROM files ORDER BY {sort} {order}")
 
     cols = columns.split(",") if columns else None

@@ -19,7 +19,7 @@ def grep_cmd(
         Optional[str], typer.Option("--ext", "-e", help="Filter by extension(s)")
     ] = None,
     context_lines: Annotated[int, typer.Option("-C", help="Context lines around match")] = 0,
-    count: Annotated[bool, typer.Option("--count", help="Show only match counts per file")] = False,
+    count: Annotated[bool, typer.Option("--count", "-c", help="Show only match counts per file")] = False,
     level: Annotated[int, typer.Option("--level", "-l", help="Processing level")] = 1,
     json_output: Annotated[bool, typer.Option("--json", help="Force JSON output")] = False,
 ) -> None:
@@ -86,6 +86,9 @@ def grep_cmd(
         except Exception:
             continue
 
+    # Exit 1 on no matches (standard grep/rg behaviour for composability).
+    has_matches = bool(file_counts)
+
     if json_output:
         import json
 
@@ -93,6 +96,8 @@ def grep_cmd(
             print(json.dumps(file_counts, indent=2))
         else:
             print(json.dumps(all_matches, indent=2, default=str))
+        if not has_matches:
+            raise typer.Exit(1)
         return
 
     if count:
@@ -157,3 +162,6 @@ def grep_cmd(
     else:
         for m in all_matches:
             print(f"{m['path']}:{m['line_number']}:{m['line']}")
+
+    if not has_matches:
+        raise typer.Exit(1)

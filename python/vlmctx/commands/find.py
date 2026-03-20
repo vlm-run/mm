@@ -34,9 +34,9 @@ def find_cmd(
         Optional[int], typer.Option("--depth", "-d", help="Maximum directory depth")
     ] = None,
     sort: Annotated[Optional[str], typer.Option("--sort", "-s", help="Sort by column")] = None,
-    desc: Annotated[bool, typer.Option("--desc", help="Sort descending")] = False,
+    reverse: Annotated[bool, typer.Option("--reverse", "-r", help="Reverse sort order")] = False,
     json_output: Annotated[bool, typer.Option("--json", help="Force JSON output")] = False,
-    limit: Annotated[Optional[int], typer.Option("--limit", "-n", help="Max results")] = None,
+    limit: Annotated[Optional[int], typer.Option("--limit", help="Max results")] = None,
 ) -> None:
     """Find files matching criteria (like fd/find)."""
 
@@ -57,7 +57,7 @@ def find_cmd(
             max_size=max_bytes,
             limit=limit,
             sort_by=sort,
-            descending=desc,
+            descending=reverse,
         )
 
         if json_output:
@@ -85,7 +85,7 @@ def find_cmd(
     if sort:
         from vlmctx.duck import query_arrow_table
 
-        order = "DESC" if desc else "ASC"
+        order = "DESC" if reverse else "ASC"
         table = query_arrow_table(table, f"SELECT * FROM files ORDER BY {sort} {order}")
 
     if limit:

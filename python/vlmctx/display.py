@@ -10,18 +10,44 @@ if TYPE_CHECKING:
     from rich.console import Console
 
 
+# Color mode override: None = auto (default), True = always, False = never.
+_color_override: bool | None = None
+
+
+def set_color_mode(mode: str) -> None:
+    """Set color output mode: 'auto', 'always', or 'never'."""
+    global _color_override  # noqa: PLW0603
+    if mode == "always":
+        _color_override = True
+    elif mode == "never":
+        _color_override = False
+    else:
+        _color_override = None
+    # Clear cached consoles so they pick up the new setting.
+    _get_console.cache_clear()
+    _get_output_console.cache_clear()
+
+
 @functools.cache
 def _get_console() -> Console:
     from rich.console import Console
 
-    return Console(stderr=True)
+    kwargs: dict[str, Any] = {"stderr": True}
+    if _color_override is not None:
+        kwargs["force_terminal"] = _color_override
+        kwargs["no_color"] = not _color_override
+    return Console(**kwargs)
 
 
 @functools.cache
 def _get_output_console() -> Console:
     from rich.console import Console
 
-    return Console()
+    kwargs: dict[str, Any] = {}
+    if _color_override is not None:
+        kwargs["force_terminal"] = _color_override
+        kwargs["no_color"] = not _color_override
+    return Console(**kwargs)
 
 
 class _LazyConsole:
