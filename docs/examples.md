@@ -774,3 +774,303 @@ vlmctx find ~/data --kind image --min-size 1MB | vlmctx cat -l 1 --json
 3. **Three levels**: L0 (raw bytes, ~0ms), L1 (structured metadata, <100ms, no external deps), L2 (LLM-generated semantics, requires API).
 4. **Composability**: `find` outputs paths → `cat` reads paths from stdin → `wc` counts tokens. Standard Unix pipes, multimodal awareness.
 5. **Speed**: Rust core with `rayon` parallelism. L0 indexes 249 files in 5ms. L1 image metadata in <1ms/file. Video metadata without ffmpeg.
+
+---
+
+## Piping to DuckDB CLI
+
+vlmctx's TSV piped output is designed to be read directly by DuckDB via `/dev/stdin`. This lets you escape the built-in `vlmctx sql` when you need full DuckDB power (CTEs, window functions, `.explain`, extensions) without giving up the vlmctx index.
+
+### Pipe the full index into DuckDB
+
+```bash
+# vlmctx ls pipes TSV; DuckDB reads it as a table instantly.
+vlmctx ls ~/data --columns name,kind,size,ext \
+  | duckdb -c "
+      SELECT kind, COUNT(*) AS n, SUM(size) AS bytes
+      FROM read_csv('/dev/stdin', delim='\t', header=true)
+      GROUP BY kind ORDER BY bytes DESC"
+```
+
+```
+┌──────────┬─────┬────────────┐
+│   kind   │  n  │   bytes    │
+├──────────┼─────┼────────────┤
+│ video    │  12 │ 2576980378 │
+│ image    │  89 │  363855462 │
+│ document │  23 │   47185920 │
+│ code     │ 156 │    1258291 │
+└──────────┴─────┴────────────┘
+```
+
+### Window functions: rank files within each kind
+
+```bash
+vlmctx ls ~/data --columns name,kind,size \
+  | duckdb -c "
+      WITH ranked AS (
+        SELECT *, ROW_NUMBER() OVER (PARTITION BY kind ORDER BY size DESC) AS rn
+        FROM read_csv('/dev/stdin', delim='\t', header=true)
+      )
+      SELECT name, kind, size FROM ranked WHERE rn <= 3"
+```
+
+This gives you the 3 largest files per kind — a query that would be awkward in `vlmctx sql` but natural in DuckDB.
+
+### Cross-join with external data
+
+```bash
+# Compare file counts against a budget CSV
+vlmctx ls ~/data --columns kind,size \
+  | duckdb -c "
+      WITH files AS (
+        SELECT * FROM read_csv('/dev/stdin', delim='\t', header=true)
+      ),
+      budget AS (
+        SELECT * FROM read_csv('token_budget.csv')
+      )
+      SELECT f.kind, COUNT(*) AS n, SUM(f.size) AS bytes, b.max_tokens
+      FROM files f JOIN budget b ON f.kind = b.kind
+      GROUP BY f.kind, b.max_tokens"
+```
+
+### Export to Parquet for later analysis
+
+```bash
+# One-liner: index → Parquet (DuckDB does the heavy lifting)
+vlmctx ls ~/data \
+  | duckdb -c "
+      COPY (SELECT * FROM read_csv('/dev/stdin', delim='\t', header=true))
+      TO 'index.parquet' (FORMAT PARQUET)"
+```
+
+### Find → filter in DuckDB → feed back to vlmctx cat
+
+```bash
+# Find images > 1MB via DuckDB, then extract their metadata
+vlmctx find ~/photos --kind image \
+  | duckdb -c "
+      SELECT path FROM read_csv('/dev/stdin', delim='\t',
+             header=false, columns={'kind':'VARCHAR','size':'BIGINT','path':'VARCHAR'})
+      WHERE size > 1048576" --csv --noheader \
+  | vlmctx cat -l 1
+```
+
+---
+
+## Piping to Simon Willison's `llm`
+
+[`llm`](https://github.com/simonw/llm) is the Swiss Army knife for sending text to any LLM from the command line. vlmctx's piped output is designed to be the perfect input — structured, token-efficient, and self-describing.
+
+The core pattern: **vlmctx extracts context, `llm` reasons over it.**
+
+### Describe what's in a directory
+
+```bash
+vlmctx ls ~/project --tree --depth 2 | llm -s "Describe this project structure"
+```
+
+The tree output is compact enough to fit in a single prompt, and self-describing enough that the LLM can reason about the project layout without any extra context.
+
+### Summarize a PDF
+
+```bash
+vlmctx cat paper.pdf | llm -s "Summarize this paper in 3 bullet points"
+```
+
+vlmctx extracts the text via pypdfium2 (L1, <100ms), then `llm` does the reasoning. No need for vlmctx's built-in L2 — use whichever model you've configured in `llm`.
+
+### Caption images from metadata
+
+```bash
+vlmctx find ~/photos --kind image | vlmctx cat -l 1 \
+  | llm -s "For each image below, suggest a descriptive filename based on the EXIF metadata. Output as: original → suggested"
+```
+
+**What `llm` sees on stdin:**
+```
+--- photos/DSC_0042.jpg (image, 4915200B) ---
+Dimensions: 4000x3000
+MIME:       image/jpeg
+Camera:     Canon EOS R5
+Date:       2024-03-15T14:32:01
+GPS:        37.7749,-122.4194
+--- photos/DSC_0043.jpg (image, 5033164B) ---
+Dimensions: 4000x3000
+MIME:       image/jpeg
+Camera:     Canon EOS R5
+Date:       2024-03-15T14:35:22
+GPS:        37.7750,-122.4195
+```
+
+The `--- file (kind, size) ---` headers (new in piped multi-file mode) let the LLM distinguish files without JSON overhead.
+
+### Code review via grep → llm
+
+```bash
+vlmctx grep "TODO" --kind code | llm -s "Triage these TODOs by priority (P0/P1/P2). Explain why."
+```
+
+### Token budget check before stuffing context
+
+```bash
+# Check if a directory fits in a context window before sending it
+vlmctx wc ~/project --kind code
+# → files  size     lines   tokens  tok/MB
+# → 156    1.2 MB   38K     285K    243.1K
+
+# It fits — send all code to llm
+vlmctx find ~/project --kind code | vlmctx cat -l 0 \
+  | llm -s "Review this codebase for security vulnerabilities"
+```
+
+### SQL analytics → natural language
+
+```bash
+vlmctx sql "SELECT kind, COUNT(*) as n, SUM(size) as bytes FROM files GROUP BY kind ORDER BY bytes DESC" --json \
+  | llm -s "Explain this storage breakdown. Which kinds should I clean up first?"
+```
+
+### Save as a reusable llm template
+
+```bash
+# Create a reusable "describe-dir" prompt
+llm -s 'You are a project analyst. Describe the structure, purpose, and notable files in this directory listing.' --save describe-dir
+
+# Use it anytime
+vlmctx ls ~/any-project --tree | llm -t describe-dir
+```
+
+### Batch-caption images with llm + vision model
+
+```bash
+# Use llm's attachment support with vlmctx's file discovery
+for img in $(vlmctx find ~/photos --kind image --ext jpg | cut -f3); do
+  echo "=== $img ==="
+  llm -a "$img" "Describe this photo in one sentence" -m gpt-4o
+done
+```
+
+### Build a multimodal digest
+
+```bash
+# Morning report: what changed in the last 24 hours?
+{
+  echo "## File changes (last 24h)"
+  vlmctx sql "SELECT name, kind, size, modified FROM files WHERE modified > CURRENT_TIMESTAMP - INTERVAL 1 DAY ORDER BY modified DESC"
+  echo ""
+  echo "## Token budget"
+  vlmctx wc ~/project --kind code
+  echo ""
+  echo "## TODOs"
+  vlmctx grep "TODO\|FIXME\|HACK" --kind code
+} | llm -s "Generate a morning standup summary from this project state"
+```
+
+---
+
+## Design Suggestions
+
+Ideas for future directions — particularly around composability, progressive disclosure, and making multimodal data as explorable as a SQLite database.
+
+### 1. Fragment loader plugin for `llm`
+
+Simon Willison's `llm` supports [fragment loaders](https://llm.datasette.io/en/stable/fragments.html) — plugins that expand a prefix like `github:user/repo` into a set of text fragments. A `vlmctx:` fragment loader would let you do:
+
+```bash
+# Load an entire directory's context into an llm prompt
+llm -f vlmctx:~/project "What does this codebase do?"
+
+# Filter by kind
+llm -f vlmctx:~/data?kind=code "Review this code for bugs"
+
+# Use L1 extraction for images/videos (metadata, not raw bytes)
+llm -f vlmctx:~/photos?level=1 "Organize these photos by event"
+```
+
+The fragment loader would call vlmctx internally, returning one fragment per file (text content for code, structured metadata for images/video, extracted text for PDFs). This is the most natural integration point — it makes vlmctx invisible to the user while providing multimodal context to any `llm` model.
+
+The loader could also return **attachments** for image files when using vision models (like `llm-video-frames` does for video), giving `llm` both the metadata fragment and the actual image.
+
+### 2. Datasette-style exploration
+
+Datasette makes any SQLite database instantly explorable in a browser. vlmctx could serve a similar role for multimodal directories:
+
+```bash
+# Serve an interactive explorer on localhost
+vlmctx serve ~/data --port 8001
+```
+
+This would expose:
+- The Arrow index as a browsable, filterable table (like Datasette's table view)
+- Image thumbnails inline in the table
+- Video metadata + keyframe previews
+- PDF text previews on hover/click
+- The full SQL interface for ad-hoc queries
+- A `/api/` endpoint returning JSON for programmatic access
+
+The key insight from Datasette: **data should be explorable before you know what question to ask.** vlmctx already has all the ingredients (Arrow index, DuckDB, L1 extraction) — it just needs a thin web layer.
+
+### 3. `--tsv` as a first-class output mode (not just a pipe side-effect)
+
+Currently, TSV output happens automatically when stdout is piped. But Simon's tools often make output formats explicit and composable. Adding `--tsv` (or `--csv`) as a flag would let users force machine-readable output even in a TTY:
+
+```bash
+# Explicit TSV even in a terminal (for copy-paste into spreadsheets)
+vlmctx ls ~/data --tsv | pbcopy
+
+# Pair with --json for structured output
+vlmctx find ~/data --kind image --tsv > manifest.tsv
+```
+
+This follows the principle: **don't make the user guess how to get machine-readable output** — make it a flag.
+
+### 4. `vlmctx logs` — prompt/response logging like `llm logs`
+
+One of `llm`'s most valuable features is that every prompt and response is logged to SQLite. vlmctx could do the same for L2 extractions:
+
+```bash
+# See all LLM captions you've generated
+vlmctx logs
+
+# Filter by file type
+vlmctx logs --kind image
+
+# Re-query past results without re-running the LLM
+vlmctx logs --sql "SELECT path, response FROM logs WHERE model='gpt-4o' ORDER BY created DESC LIMIT 10"
+```
+
+This turns ephemeral LLM output into a queryable knowledge base — exactly the Datasette philosophy of "everything should be in a database."
+
+### 5. Content-addressed caching for L1/L2
+
+vlmctx already computes xxh3 hashes for every file. These could be used as cache keys for L1/L2 results:
+
+```bash
+# First run: extracts metadata (slow for L2)
+vlmctx cat photo.jpg -l 2        # → calls LLM, caches result
+
+# Second run: instant (hash unchanged)
+vlmctx cat photo.jpg -l 2        # → returns cached result
+```
+
+The cache would be a SQLite database (naturally), keyed by `(content_hash, level, model)`. This is the same pattern `llm` uses for response caching, and it means that re-running vlmctx on a directory that hasn't changed is effectively free.
+
+### 6. Token budget awareness in `wc`
+
+The `tok/MB` metric already tells you information density per kind. The next step is making `wc` context-window-aware:
+
+```bash
+$ vlmctx wc ~/project --budget 200k
+```
+
+```
+files  size     tokens   budget    fit?
+156    1.2 MB   285K     200K      NO (143% of budget)
+
+Suggestion: filter to --kind code --ext py,rs to fit in 200K
+  → vlmctx find ~/project --kind code --ext py,rs | vlmctx wc
+  → estimated: 142K tokens (71% of budget)
+```
+
+This answers the question every LLM user asks: **"Does this fit in my context window?"** — and suggests how to trim it if not.
