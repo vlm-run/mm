@@ -79,6 +79,14 @@ def ls_cmd(
     _ls_table(directory, sort, reverse, columns, limit, kind, json_output)
 
 
+def _has_media_dimensions(table) -> bool:
+    """Check if any rows have non-null width/height (i.e. images/video present)."""
+    if "width" not in table.column_names:
+        return False
+    col = table.column("width")
+    return col.null_count < col.length()
+
+
 def _ls_table(
     directory: Path,
     sort: str | None,
@@ -94,11 +102,19 @@ def _ls_table(
     if json_output and not stdin_paths and not columns:
         from vlmctx._vlmctx import Scanner
 
+        import json as _json
+
+        from vlmctx.display import json_dumps
+
         scanner = Scanner(str(Path(directory).resolve()))
         scanner.scan()
         print(
-            scanner.to_json_fast(
-                kind=kind, sort_by=sort, descending=reverse, limit=limit,
+            json_dumps(
+                _json.loads(
+                    scanner.to_json_fast(
+                        kind=kind, sort_by=sort, descending=reverse, limit=limit,
+                    )
+                )
             )
         )
         return
@@ -138,18 +154,21 @@ def _ls_table(
             writer.writerow(str(table.column(c)[i].as_py()) for c in display_cols)
         print(buf.getvalue(), end="")
     elif json_output:
-        import json
+        from vlmctx.display import json_dumps
 
         display_cols = cols or table.column_names
         rows = []
         n = table.num_rows if limit is None else min(limit, table.num_rows)
         for i in range(n):
             rows.append({c: table.column(c)[i].as_py() for c in display_cols})
-        print(json.dumps(rows, indent=2, default=str))
+        print(json_dumps(rows))
     else:
         from vlmctx.display import arrow_table_to_rich, output_console
 
+        # Smart defaults: include width/height when media files are present.
         default_cols = ["name", "kind", "size", "ext"]
+        if not cols and _has_media_dimensions(table):
+            default_cols = ["name", "kind", "size", "width", "height", "ext"]
         display_cols = cols or default_cols
 
         rich_table = arrow_table_to_rich(table, columns=display_cols, limit=limit)
@@ -260,7 +279,9 @@ def _ls_tree(
     total_files, total_bytes = _count_subtree(tree_data)
 
     if json_output:
-        print(json_mod.dumps(_tree_to_json(tree_data, str(directory)), indent=2))
+        from vlmctx.display import json_dumps
+
+        print(json_dumps(_tree_to_json(tree_data, str(directory))))
         return
 
     from vlmctx.display import format_size
@@ -320,7 +341,7 @@ def _ls_schema(directory: Path, json_output: bool) -> None:
         return f"{desc} (e.g. {example})" if desc else f"e.g. {example}"
 
     if json_output:
-        import json
+        from vlmctx.display import json_dumps
 
         info = []
         for field in table.schema:
@@ -329,7 +350,7 @@ def _ls_schema(directory: Path, json_output: bool) -> None:
                 "type": str(field.type),
                 "description": _desc_with_example(field.name, table),
             })
-        print(json.dumps(info, indent=2, default=str))
+        print(json_dumps(info))
         return
 
     if is_piped_output():

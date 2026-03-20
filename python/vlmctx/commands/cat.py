@@ -137,6 +137,7 @@ def cat_cmd(
     )
 
     use_rich = not is_piped_output() and not json_output
+    multi_file = len(paths) > 1 or bool(stdin_paths)
     results: list[dict] = []
 
     for file_path in paths:
@@ -156,12 +157,18 @@ def cat_cmd(
         elif use_rich:
             _display_rich(p, content, level, n)
         else:
+            # When piping multiple files, emit a compact header so LLMs can
+            # distinguish which content belongs to which file.
+            if multi_file:
+                kind = _file_kind(p)
+                size = p.stat().st_size
+                print(f"--- {p} ({kind}, {size}B) ---")
             print(content)
 
     if json_output:
-        import json
+        from vlmctx.display import json_dumps
 
-        print(json.dumps(results, indent=2, default=str))
+        print(json_dumps(results))
 
 
 # ---------------------------------------------------------------------------

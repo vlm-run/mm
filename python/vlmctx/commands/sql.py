@@ -33,12 +33,12 @@ def sql_cmd(
             writer.writerow(str(result.column(c)[i].as_py()) for c in result.column_names)
         print(buf.getvalue(), end="")
     elif json_output:
-        import json
+        from vlmctx.display import json_dumps
 
         rows = []
         for i in range(result.num_rows):
             rows.append({c: result.column(c)[i].as_py() for c in result.column_names})
-        print(json.dumps(rows, indent=2, default=str))
+        print(json_dumps(rows))
     else:
         from vlmctx.display import arrow_table_to_rich, output_console
 

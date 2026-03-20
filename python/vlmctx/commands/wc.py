@@ -85,25 +85,46 @@ def wc_cmd(
     if by_kind:
         result["by_kind"] = kind_stats  # type: ignore[assignment]
 
+    # Add information-theoretic density metrics.
+    total_mb = total_bytes / (1024 * 1024) if total_bytes else 0
+    if total_mb > 0:
+        result["tok_per_mb"] = round(total_tokens / total_mb)
+    if kind_stats:
+        for k, s in kind_stats.items():
+            mb = s["bytes"] / (1024 * 1024) if s["bytes"] else 0
+            if mb > 0:
+                s["tok_per_mb"] = round(s["tokens"] / mb)
+            if k == "image" and s["files"] > 0:
+                s["tok_per_img"] = round(s["tokens"] / s["files"])
+
     if json_output:
-        print(json_mod.dumps(result, indent=2))
+        from vlmctx.display import json_dumps
+
+        print(json_dumps(result))
         return
 
     from vlmctx.display import format_number, format_size
 
     if is_piped_output():
-        print("files\tsize\tlines\ttokens")
-        print(f"{total_files}\t{format_size(total_bytes)}\t{format_number(total_lines)}\t{format_number(total_tokens)}")
+        tok_mb = result.get("tok_per_mb", 0)
+        print("files\tsize\tlines\ttokens\ttok/MB")
+        print(f"{total_files}\t{format_size(total_bytes)}\t{format_number(total_lines)}\t{format_number(total_tokens)}\t{format_number(tok_mb) if tok_mb else '—'}")
         if by_kind:
-            print("\nkind\tfiles\tsize\tlines\ttokens")
+            print("\nkind\tfiles\tsize\tlines\ttokens\ttok/MB")
             for k, s in sorted(kind_stats.items()):
+                stm = s.get("tok_per_mb")
                 print(
                     f"{k}\t{s['files']}\t{format_size(int(s['bytes']))}"
                     f"\t{format_number(int(s['lines']))}\t{format_number(int(s['tokens']))}"
+                    f"\t{format_number(stm) if stm else '—'}"
                 )
         return
 
     from vlmctx.display import KIND_STYLES, output_console
+
+    # Auto-enable by-kind when multiple kinds exist (richer default).
+    if not by_kind and len(kind_stats) > 1:
+        by_kind = True
 
     if by_kind:
         from rich.console import Group
@@ -126,18 +147,23 @@ def wc_cmd(
         tbl.add_column("size", justify="right", style="bright_blue")
         tbl.add_column("lines", justify="right")
         tbl.add_column("tokens", justify="right", style="bright_green")
+        tbl.add_column("tok/MB", justify="right", style="dim")
 
         for k in sorted(kind_stats.keys()):
             s = kind_stats[k]
             style = KIND_STYLES.get(k, "dim")
+            tok_mb = s.get("tok_per_mb")
+            tok_mb_str = format_number(tok_mb) if tok_mb else "—"
             tbl.add_row(
                 Text(k, style=style),
                 f"{int(s['files']):,}",
                 format_size(int(s["bytes"])),
                 format_number(int(s["lines"])),
                 format_number(int(s["tokens"])),
+                tok_mb_str,
             )
 
+        total_tok_mb = round(total_tokens / (total_bytes / (1024 * 1024))) if total_bytes else 0
         tbl.add_section()
         tbl.add_row(
             Text("total", style="bold"),
@@ -145,6 +171,7 @@ def wc_cmd(
             f"[bold]{format_size(total_bytes)}[/bold]",
             f"[bold]{format_number(total_lines)}[/bold]",
             f"[bold]{format_number(total_tokens)}[/bold]",
+            f"[bold]{format_number(total_tok_mb)}[/bold]" if total_tok_mb else "—",
         )
 
         subtitle = Text.assemble(

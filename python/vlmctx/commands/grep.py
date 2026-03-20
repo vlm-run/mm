@@ -56,9 +56,9 @@ def grep_cmd(
                 continue
 
             if level >= 1 and f.kind == "document":
-                from vlmctx.commands.cat import _extract_l1_content
+                from vlmctx.commands.cat import _l1_pdf
 
-                content = _extract_l1_content(full_path)
+                content = _l1_pdf(full_path)
             elif f.is_binary:
                 continue
             else:
@@ -90,12 +90,12 @@ def grep_cmd(
     has_matches = bool(file_counts)
 
     if json_output:
-        import json
+        from vlmctx.display import json_dumps
 
         if count:
-            print(json.dumps(file_counts, indent=2))
+            print(json_dumps(file_counts))
         else:
-            print(json.dumps(all_matches, indent=2, default=str))
+            print(json_dumps(all_matches))
         if not has_matches:
             raise typer.Exit(1)
         return

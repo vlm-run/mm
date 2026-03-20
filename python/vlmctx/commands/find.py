@@ -61,11 +61,17 @@ def find_cmd(
         )
 
         if json_output:
-            print(scanner.to_json_fast(**filter_args))
+            from vlmctx.display import json_dumps
+
+            import json as json_mod
+
+            print(json_dumps(json_mod.loads(scanner.to_json_fast(**filter_args))))
         else:
-            result = scanner.to_lines_fast(**filter_args)
-            if result:
-                print(result)
+            # Compact kind<TAB>size<TAB>path per line (richer than bare paths).
+            import json as json_mod
+
+            for entry in json_mod.loads(scanner.to_json_fast(**filter_args)):
+                print(f"{entry['kind']}\t{entry['size']}\t{entry['path']}")
         return
 
     from vlmctx.context import Context
@@ -92,16 +98,21 @@ def find_cmd(
         table = table.slice(0, limit)
 
     if is_piped_output() and not json_output:
+        # Compact one-line-per-file: kind<TAB>size<TAB>path — gives LLMs
+        # enough context to reason about file types without --json overhead.
         for i in range(table.num_rows):
-            print(table.column("path")[i].as_py())
+            kind_val = table.column("kind")[i].as_py()
+            size_val = table.column("size")[i].as_py()
+            path_val = table.column("path")[i].as_py()
+            print(f"{kind_val}\t{size_val}\t{path_val}")
     elif json_output:
-        import json
+        from vlmctx.display import json_dumps
 
         rows = []
         for i in range(table.num_rows):
             row = {col: table.column(col)[i].as_py() for col in table.column_names}
             rows.append(row)
-        print(json.dumps(rows, indent=2, default=str))
+        print(json_dumps(rows))
     else:
         from vlmctx.display import arrow_table_to_rich, output_console
 

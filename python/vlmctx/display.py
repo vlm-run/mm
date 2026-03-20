@@ -80,6 +80,22 @@ KIND_ICONS: dict[str, str] = {
 }
 
 
+def json_dumps(obj: Any, *, indent: int | None = None) -> str:
+    """Serialize to JSON — compact when piped (saves tokens), pretty in TTY.
+
+    When *indent* is not given explicitly the function checks whether stdout
+    is a TTY.  TTY → ``indent=2`` for human readability; piped → no indent
+    for maximum token-efficiency when feeding output to other LLMs.
+    """
+    import json
+
+    from vlmctx.pipe import is_piped_output
+
+    if indent is None:
+        indent = None if is_piped_output() else 2
+    return json.dumps(obj, indent=indent, default=str, ensure_ascii=False)
+
+
 def format_size(size_bytes: int | float) -> str:
     """Format bytes as human-readable size."""
     for unit in ("B", "KB", "MB", "GB", "TB"):
