@@ -777,6 +777,66 @@ vlmctx find ~/data --kind image --min-size 1MB | vlmctx cat -l 1 --json
 
 ---
 
+## Self-pipes: vlmctx → vlmctx
+
+Every command reads paths from stdin (via `read_paths_from_stdin()`), so the output of one vlmctx command feeds directly into another. The stdin reader auto-detects TSV — if a line has tabs, it takes the last field as the path.
+
+### 1. Multimodal triage: find → cat → wc pipeline
+
+The killer self-pipe: discover files by kind, extract structured content, then count tokens — all in one pipeline, all under 100ms.
+
+```bash
+# How many tokens would it cost to send all my PDFs to an LLM?
+$ vlmctx find ~/research --kind document | vlmctx wc
+files  size      lines   tokens  tok/MB
+23     45.0 MB   12K     89K     2.0K
+
+# Too many tokens — which PDFs are the biggest?
+$ vlmctx find ~/research --kind document | vlmctx cat -l 1 -n 5
+--- papers/attention-is-all-you-need.pdf (pdf, 2158592B) ---
+Attention Is All You Need
+
+Abstract
+The dominant sequence transduction models are based on complex recurrent or
+convolutional neural networks that include an encoder and a decoder.
+--- papers/scaling-laws.pdf (pdf, 1835008B) ---
+Scaling Laws for Neural Language Models
+
+Abstract
+We study empirical scaling laws for language model performance on the
+cross-entropy loss.
+```
+
+The `--- file (kind, size) ---` headers in multi-file piped mode make it trivial for a downstream LLM to attribute content to files.
+
+### 2. SQL-driven extraction: sql → cat for targeted deep dives
+
+Use SQL to surgically select files, then extract their content at any level:
+
+```bash
+# Find the 5 largest images, then get their EXIF metadata
+$ vlmctx sql "SELECT path FROM files WHERE kind='image' ORDER BY size DESC LIMIT 5" \
+    --dir ~/photos \
+  | vlmctx cat -l 1
+
+--- photos/panorama.png (image, 15728640B) ---
+Dimensions: 8000x2000
+MIME:       image/png
+Hash:       c4a29f1e73b05d82
+--- photos/DSC_0042.jpg (image, 5033164B) ---
+Dimensions: 4000x3000
+MIME:       image/jpeg
+Hash:       a3f7c2d91e4b0856
+Camera:     Canon EOS R5
+Date:       2024-03-15T14:32:01
+GPS:        37.7749,-122.4194
+...
+```
+
+The power here: SQL gives you arbitrary WHERE/ORDER BY/LIMIT, and cat gives you type-aware extraction. Together they let you ask "show me the EXIF for the 5 biggest photos taken in March" in one pipeline.
+
+---
+
 ## Piping to DuckDB CLI
 
 vlmctx's TSV piped output is designed to be read directly by DuckDB via `/dev/stdin`. This lets you escape the built-in `vlmctx sql` when you need full DuckDB power (CTEs, window functions, `.explain`, extensions) without giving up the vlmctx index.
@@ -1074,3 +1134,308 @@ Suggestion: filter to --kind code --ext py,rs to fit in 200K
 ```
 
 This answers the question every LLM user asks: **"Does this fit in my context window?"** — and suggests how to trim it if not.
+
+---
+
+## Integrating with the CLI Ecosystem
+
+vlmctx speaks TSV on stdout and reads paths on stdin. This makes it a natural participant in Unix pipelines with tools from the broader Rust, PyPI, and system CLI ecosystem.
+
+### exiftool / mediainfo: the metadata escape hatch
+
+vlmctx's Rust L1 extractors handle common image/video formats natively. But for edge cases (RAW photos, obscure codecs, embedded ICC profiles), shell out to `exiftool` or `mediainfo`:
+
+```bash
+# vlmctx finds the files, exiftool goes deep on metadata
+vlmctx find ~/photos --kind image --ext cr3,nef,arw \
+  | cut -f3 \
+  | xargs exiftool -json -q \
+  | jq '.[] | {file: .SourceFile, iso: .ISO, shutter: .ShutterSpeed, aperture: .Aperture}'
+
+# mediainfo for container-level video details vlmctx doesn't parse
+vlmctx find ~/videos --kind video \
+  | cut -f3 \
+  | xargs -I{} mediainfo --Output=JSON "{}" \
+  | jq '.media.track[] | select(.["@type"]=="Video") | {codec: .Format, bitrate: .BitRate, hdr: .HDR_Format}'
+```
+
+The design principle: vlmctx handles the 95% case in <1ms via Rust; for the long tail, pipe to a specialist.
+
+### magika: AI-powered file type detection
+
+[magika](https://github.com/google/magika) is Google's deep-learning file type classifier — much more accurate than extension or magic-byte sniffing for polyglot files, obfuscated binaries, or extensionless data:
+
+```bash
+# Find files vlmctx classifies as "other" and get magika's opinion
+vlmctx find ~/data --kind other \
+  | cut -f3 \
+  | xargs magika --json \
+  | jq '.[] | {file: .path, magika_type: .result.label, confidence: .result.score}'
+```
+
+This is a feedback loop: magika's output could inform vlmctx's `kind` classification for files that don't have recognizable extensions.
+
+### pandoc: universal document conversion
+
+vlmctx extracts PDF text via pypdfium2, but what about `.docx`, `.epub`, `.rst`, `.org`, `.rtf`? Pandoc converts anything to plain text:
+
+```bash
+# Extract text from every document, regardless of format
+vlmctx find ~/docs --kind document \
+  | cut -f3 \
+  | while read -r f; do
+      echo "--- $f ---"
+      pandoc -t plain "$f" 2>/dev/null || echo "[conversion failed]"
+    done \
+  | llm -s "Summarize the key themes across these documents"
+```
+
+A future `vlmctx cat` could auto-detect pandoc and use it as an L1 fallback for non-PDF documents.
+
+### tesseract: OCR for scanned PDFs
+
+vlmctx's `cat` already detects when a PDF yields no extractable text (image-only/scanned). The natural next step:
+
+```bash
+# Find PDFs with no text → OCR them
+vlmctx find ~/scans --ext pdf \
+  | cut -f3 \
+  | while read -r f; do
+      text=$(vlmctx cat "$f" -l 1)
+      if echo "$text" | grep -q "scanned images only"; then
+        echo "--- $f (OCR) ---"
+        pdftoppm -r 300 "$f" /tmp/ocr_page -png
+        tesseract /tmp/ocr_page-1.png stdout 2>/dev/null
+      else
+        echo "--- $f ---"
+        echo "$text"
+      fi
+    done
+```
+
+### ripgrep / fd: when you need their specific powers
+
+vlmctx's `find` and `grep` are multimodal-aware but simpler than `fd` and `rg`. For complex regex, gitignore nuance, or massive repos, use them together:
+
+```bash
+# rg finds pattern across code; vlmctx counts the token cost
+rg -l "unsafe" --type rust ~/project \
+  | vlmctx cat -l 0 \
+  | vlmctx wc
+
+# fd finds by complex pattern; vlmctx provides the metadata
+fd -e png -e jpg --size +1m ~/data \
+  | vlmctx cat -l 1
+```
+
+### jq / xsv / miller: structured data post-processing
+
+vlmctx's `--json` output pairs naturally with the structured data toolkit:
+
+```bash
+# jq: filter JSON output
+vlmctx ls ~/data --json | jq '[.[] | select(.kind=="image")] | length'
+
+# miller (mlr): column transforms on TSV
+vlmctx ls ~/data | mlr --tsvlite --from - then sort-by -nr size then head -n 10
+
+# xsv: fast CSV operations
+vlmctx ls ~/data | xsv sort -s size -R -d '\t' | xsv slice -l 10 -d '\t'
+```
+
+---
+
+## Binary Format Parsing: The Kaitai Struct Frontier
+
+The most exciting integration opportunity. vlmctx's L1 extractors handle open formats (PNG, JPEG, MP4, MKV, PDF) via Rust. But the world is full of **closed/proprietary binary formats** that Python libraries can't read and whose specs are either paywalled or nonexistent:
+
+| Format | Domain | Current L1 | Gap |
+|--------|--------|-----------|-----|
+| `.psd` | Photoshop | extension only | layers, color mode, embedded thumbnails |
+| `.ai` | Illustrator | extension only | artboard count, linked assets |
+| `.sketch` | Sketch | extension only (it's a zip) | page/artboard names, symbol count |
+| `.fig` | Figma (export) | extension only | component tree, variants |
+| `.blend` | Blender | extension only | scene hierarchy, mesh vertex counts |
+| `.dwg` / `.dxf` | CAD | extension only | layer names, entity counts, bounding box |
+| `.3ds` / `.fbx` / `.glb` | 3D models | extension only | mesh count, material names, vertex count |
+| `.indd` | InDesign | extension only | page count, linked images |
+| `.prproj` | Premiere Pro | extension only | sequence count, timeline duration |
+| `.aep` | After Effects | extension only | composition tree, duration |
+| `.als` / `.flp` | Ableton/FL Studio | extension only | BPM, track count, plugin list |
+
+These files appear constantly in creative/design/engineering directories. Today vlmctx returns `kind: other, size: 48 MB` — useless for an LLM trying to understand a project.
+
+### Approach 1: Kaitai Struct DSL → Rust codegen
+
+[Kaitai Struct](https://kaitai.io) is a declarative DSL for describing binary formats. A `.ksy` file describes the header layout, and the compiler generates parsers in multiple languages (including rudimentary Rust support).
+
+The idea: **ship `.ksy` definitions for common creative formats, compile to Rust, and integrate as L1 extractors.**
+
+```yaml
+# psd.ksy — Photoshop Document header
+meta:
+  id: psd
+  file-extension: psd
+  endian: be
+seq:
+  - id: magic
+    contents: "8BPS"
+  - id: version
+    type: u2
+  - id: reserved
+    size: 6
+  - id: num_channels
+    type: u2
+  - id: height
+    type: u4
+  - id: width
+    type: u4
+  - id: depth
+    type: u2
+  - id: color_mode
+    type: u2
+    enum: color_modes
+enums:
+  color_modes:
+    0: bitmap
+    1: grayscale
+    2: indexed
+    3: rgb
+    4: cmyk
+    7: multichannel
+    8: duotone
+    9: lab
+```
+
+What `vlmctx cat design.psd -l 1` could output:
+
+```
+Dimensions: 4096x2160
+Channels:   4
+Depth:      16-bit
+Color:      CMYK
+Layers:     23
+Hash:       d4f2a1b7c3e09856
+```
+
+### Approach 2: `binrw` in Rust (native, no codegen)
+
+[binrw](https://github.com/jam1garner/binrw) is a Rust derive macro for binary reading. More idiomatic than Kaitai codegen, and integrates directly into vlmctx's existing extractor trait:
+
+```rust
+use binrw::BinRead;
+
+#[derive(BinRead)]
+#[br(magic = b"8BPS")]
+struct PsdHeader {
+    version: u16,
+    #[br(pad_before = 6)]
+    channels: u16,
+    height: u32,
+    width: u32,
+    depth: u16,
+    color_mode: u16,
+}
+```
+
+This compiles to zero-copy, zero-allocation parsing — exactly the performance profile vlmctx needs for L1.
+
+### Approach 3: Header-only probing via `nom`
+
+For formats where we only need the first 64-512 bytes (dimensions, version, magic), [nom](https://github.com/rust-bakery/nom) parser combinators are the lightest option:
+
+```rust
+// Parse Blender file header (first 12 bytes)
+fn blend_header(input: &[u8]) -> IResult<&[u8], BlendHeader> {
+    let (input, _) = tag(b"BLENDER")(input)?;
+    let (input, pointer_size) = alt((
+        map(tag(b"-"), |_| 8u8),  // 64-bit
+        map(tag(b"_"), |_| 4u8),  // 32-bit
+    ))(input)?;
+    let (input, endianness) = alt((
+        map(tag(b"v"), |_| "little"),
+        map(tag(b"V"), |_| "big"),
+    ))(input)?;
+    let (input, version) = take(3u8)(input)?;
+    Ok((input, BlendHeader { pointer_size, endianness, version }))
+}
+```
+
+### Approach 4: Plugin system with Python fallbacks
+
+For formats with existing Python libraries (even slow ones), a plugin system lets the community contribute extractors without touching Rust:
+
+```python
+# ~/.vlmctx/extractors/psd.py
+from vlmctx.extractors import register
+
+@register(extensions=[".psd"], kind="image")
+def extract_psd(path: Path) -> dict:
+    """L1 extractor for Photoshop files."""
+    from psd_tools import PSDImage
+    psd = PSDImage.open(path)
+    return {
+        "dimensions": f"{psd.width}x{psd.height}",
+        "channels": psd.channels,
+        "depth": psd.depth,
+        "color_mode": psd.color_mode.name,
+        "layers": len(psd),
+        "has_transparency": psd.has_transparency,
+    }
+```
+
+### Recommended path: layered strategy
+
+1. **Immediate (nom):** Header-only probing for the top 10 creative formats. Just dimensions + version + magic. 50-100 lines of Rust per format, zero dependencies, <1ms.
+
+2. **Medium-term (binrw):** Deeper parsing for formats where we want layer counts, embedded thumbnails, or timeline data. binrw's derive macros keep the code declarative.
+
+3. **Long-term (Kaitai + plugin system):** Community-contributed `.ksy` files for the long tail. Python plugin system for formats with existing libraries. The Kaitai ecosystem already has [400+ format definitions](https://formats.kaitai.io/) — many could be compiled to Rust and shipped with vlmctx.
+
+4. **Escape hatch (exiftool):** For the truly exotic, pipe to `exiftool -json` and parse the result. exiftool handles ~500 formats and is the gold standard for metadata extraction.
+
+### What this unlocks for LLMs
+
+Today, if you point an LLM at a design directory:
+
+```
+$ vlmctx ls ~/design
+name              kind    size      ext
+mockup-v3.psd     other   48.2 MB   psd
+logo-final.ai     other   12.1 MB   ai
+prototype.fig     other   8.4 MB    fig
+scene.blend       other   156 MB    blend
+```
+
+The LLM sees `other` four times — zero signal. With binary format parsing:
+
+```
+$ vlmctx ls ~/design
+name              kind    size      width   height  ext
+mockup-v3.psd     image   48.2 MB   4096    2160    psd
+logo-final.ai     image   12.1 MB   1024    1024    ai
+prototype.fig     data    8.4 MB    —       —       fig
+scene.blend       data    156 MB    —       —       blend
+
+$ vlmctx cat mockup-v3.psd -l 1
+Dimensions: 4096x2160
+Channels:   4 (CMYK + alpha)
+Depth:      16-bit
+Color:      CMYK
+Layers:     23
+Linked:     textures/wood.jpg, textures/marble.png
+Hash:       d4f2a1b7c3e09856
+
+$ vlmctx cat scene.blend -l 1
+Blender:    4.1
+Scenes:     2
+Objects:    147
+Meshes:     89 (2.4M vertices)
+Materials:  34
+Textures:   12 linked
+Hash:       f7c2d91e4b085623
+```
+
+Now the LLM can reason about the project: "This is a product visualization project with a 4K CMYK mockup (print-ready), a vector logo, a Figma prototype, and a complex Blender scene with 2.4M vertices."
+
+That's the difference between `kind: other` and actual multimodal understanding.

@@ -33,7 +33,25 @@ def is_piped_output() -> bool:
 
 
 def read_paths_from_stdin() -> list[str]:
-    """Read newline-delimited paths from stdin when piped."""
+    """Read paths from stdin when piped.
+
+    Handles two formats transparently:
+      1. Bare paths (one per line):  ``src/main.py``
+      2. TSV with path in last column:  ``code\\t4301\\tsrc/main.py``
+
+    The heuristic is simple: if a line contains a tab, take the last field.
+    This lets ``vlmctx find | vlmctx cat`` work regardless of whether
+    find emits bare paths or the richer ``kind\\tsize\\tpath`` format.
+    """
     if not is_piped_input():
         return []
-    return [line.strip() for line in sys.stdin if line.strip()]
+    paths: list[str] = []
+    for line in sys.stdin:
+        line = line.strip()
+        if not line:
+            continue
+        # TSV: take last field (the path column)
+        if "\t" in line:
+            line = line.rsplit("\t", 1)[-1]
+        paths.append(line)
+    return paths
