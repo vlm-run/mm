@@ -193,6 +193,25 @@ def _fmt_rate(rate: float, unit: str) -> str:
     return f"{format_number(rate)} {unit}"
 
 
+# Latency thresholds (ms) per group: (green_cutoff, yellow_cutoff).
+# Below green → dim green, between → dim yellow, above → dim red.
+_LATENCY_THRESHOLDS: dict[str, tuple[float, float]] = {
+    "L0": (10.0, 50.0),      # metadata: <10ms green, 10-50ms yellow, >50ms red
+    "L1": (50.0, 200.0),     # extraction: <50ms green, 50-200ms yellow, >200ms red
+    "L2": (1000.0, 5000.0),  # semantic/LLM: <1s green, 1-5s yellow, >5s red
+}
+
+
+def _latency_style(ms: float, group: str) -> str:
+    """Return a rich style based on latency relative to group thresholds."""
+    green, yellow = _LATENCY_THRESHOLDS.get(group, (50.0, 200.0))
+    if ms <= green:
+        return "dim green"
+    if ms <= yellow:
+        return "dim yellow"
+    return "dim red"
+
+
 def _render_summary(results: list[BenchResult], target_info: dict[str, Any]) -> None:
     """Render alternating command / stats rows in a panel."""
     from rich import box
@@ -246,22 +265,23 @@ def _render_summary(results: list[BenchResult], target_info: dict[str, Any]) -> 
             cmd_line.append(r.name, style="bold white")
             parts.append(cmd_line)
 
-            # Line 2: stats, indented
+            # Line 2: stats, indented — colorized by latency
+            color = _latency_style(r.mean_ms, r.group)
             stats_line = Text()
             stats_line.append("    ", style="")
-            stats_line.append(_fmt_ms(r.mean_ms), style="bold bright_green")
+            stats_line.append(_fmt_ms(r.mean_ms), style=f"bold {color}")
             stats_line.append(" ±", style="dim")
-            stats_line.append(_fmt_ms(r.std_ms), style="dim")
+            stats_line.append(_fmt_ms(r.std_ms), style=color)
             stats_line.append("  min ", style="dim")
-            stats_line.append(_fmt_ms(r.min_ms), style="cyan")
+            stats_line.append(_fmt_ms(r.min_ms), style=color)
             stats_line.append("  max ", style="dim")
-            stats_line.append(_fmt_ms(r.max_ms), style="cyan")
+            stats_line.append(_fmt_ms(r.max_ms), style=color)
             if r.files_per_sec > 0:
                 stats_line.append("  ", style="")
-                stats_line.append(_fmt_rate(r.files_per_sec, "files/s"), style="bright_blue")
+                stats_line.append(_fmt_rate(r.files_per_sec, "files/s"), style=color)
             if r.mb_per_sec > 0:
                 stats_line.append("  ", style="")
-                stats_line.append(_fmt_rate(r.mb_per_sec, "MB/s"), style="bright_blue")
+                stats_line.append(_fmt_rate(r.mb_per_sec, "MB/s"), style=color)
             parts.append(stats_line)
 
     # Bottleneck analysis
