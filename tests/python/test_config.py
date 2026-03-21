@@ -25,6 +25,10 @@ def _isolate_config(tmp_path: Path, monkeypatch):
     """Point config module at a temp dir and clear CLI overrides + env vars."""
     monkeypatch.setattr("vlmctx.config.CONFIG_DIR", tmp_path)
     monkeypatch.setattr("vlmctx.config.CONFIG_PATH", tmp_path / "config.toml")
+    monkeypatch.setattr("vlmctx.config.CONFIG_DIR_XDG", tmp_path)
+    monkeypatch.setattr("vlmctx.config.CONFIG_PATH_XDG", tmp_path / "config.toml")
+    monkeypatch.setattr("vlmctx.config.CONFIG_DIR_LEGACY", tmp_path / "legacy")
+    monkeypatch.setattr("vlmctx.config.CONFIG_PATH_LEGACY", tmp_path / "legacy" / "config.toml")
 
     set_cli_overrides(None, None, None)
 

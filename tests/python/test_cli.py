@@ -237,18 +237,25 @@ class TestConfig:
         r = runner.invoke(app, ["config", "show"])
         assert r.exit_code == 0
 
-    def test_show_json(self):
+    def test_show_json(self, tmp_path: Path, monkeypatch):
+        monkeypatch.setattr("vlmctx.config.CONFIG_PATH_XDG", tmp_path / "vlmctx.toml")
+        monkeypatch.setattr("vlmctx.config.CONFIG_DIR_XDG", tmp_path)
+        monkeypatch.setattr("vlmctx.config.CONFIG_PATH_LEGACY", tmp_path / "legacy" / "config.toml")
+        monkeypatch.setattr("vlmctx.config.CONFIG_DIR_LEGACY", tmp_path / "legacy")
         r = runner.invoke(app, ["config", "show", "--format", "json"])
         assert r.exit_code == 0
         data = json.loads(r.output)
         assert isinstance(data, dict)
-        assert "base_url" in data
-        assert "model" in data
+        assert "provider" in data
+        assert "base_url" in data["provider"]
 
     def test_init_creates_file(self, tmp_path: Path, monkeypatch):
-        config_path = tmp_path / "config.toml"
-        monkeypatch.setattr("vlmctx.config.CONFIG_PATH", config_path)
+        config_path = tmp_path / "vlmctx.toml"
+        monkeypatch.setattr("vlmctx.config.CONFIG_PATH_XDG", config_path)
+        monkeypatch.setattr("vlmctx.config.CONFIG_DIR_XDG", tmp_path)
         monkeypatch.setattr("vlmctx.config.CONFIG_DIR", tmp_path)
+        monkeypatch.setattr("vlmctx.config.CONFIG_PATH_LEGACY", tmp_path / "legacy" / "config.toml")
+        monkeypatch.setattr("vlmctx.config.CONFIG_DIR_LEGACY", tmp_path / "legacy")
         r = runner.invoke(app, ["config", "init"])
         assert r.exit_code == 0
         assert config_path.exists()

@@ -592,15 +592,17 @@ def _l2_video_modal(path: Path, opts: _CatOpts, mode: str) -> str:
     from vlmctx.whisper import whisper_available
 
     if whisper_available():
+        from vlmctx.config import get_mode_config
+        mode_cfg = get_mode_config(mode)
+
         t_audio = time.monotonic()
-        audio_speed = 2.0 if mode == "fast" else 1.0
-        audio_result = extract_audio(path, speed=audio_speed)
+        audio_result = extract_audio(path, speed=mode_cfg.audio_speed)
         timing["audio_extraction_ms"] = (time.monotonic() - t_audio) * 1000
 
         t_whisper = time.monotonic()
         from vlmctx.whisper import transcribe
 
-        whisper_model = "tiny" if mode == "fast" else "medium"
+        whisper_model = mode_cfg.whisper_model
         whisper_result = transcribe(audio_result.path, model_size=whisper_model)
         transcript = whisper_result.text
         timing["whisper_transcription_ms"] = whisper_result.elapsed_ms
@@ -663,17 +665,19 @@ def _l2_audio_modal(path: Path, opts: _CatOpts, mode: str) -> str:
     if not whisper_available():
         return "[whisper not installed — pip install vlmctx[extract]]"
 
+    from vlmctx.config import get_mode_config
+    mode_cfg = get_mode_config(mode)
+
     timing: dict[str, float] = {}
     t_total = time.monotonic()
 
     # 1. Extract audio
     t0 = time.monotonic()
-    audio_speed = 2.0 if mode == "fast" else 1.0
-    audio_result = extract_audio(path, speed=audio_speed)
+    audio_result = extract_audio(path, speed=mode_cfg.audio_speed)
     timing["audio_extraction_ms"] = (time.monotonic() - t0) * 1000
 
     # 2. Transcribe
-    whisper_model = "tiny" if mode == "fast" else "medium"
+    whisper_model = mode_cfg.whisper_model
     whisper_result = transcribe(audio_result.path, model_size=whisper_model)
     timing["whisper_ms"] = whisper_result.elapsed_ms
     transcript = whisper_result.text

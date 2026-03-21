@@ -1,18 +1,24 @@
 """Configuration management for vlmctx.
 
-Reads ~/.vlmctx/config.toml and merges with env vars and CLI flags.
+Config file locations (checked in order, first found wins):
+  1. ~/.config/vlmctx/vlmctx.toml   (XDG-compliant, preferred)
+  2. ~/.vlmctx/config.toml          (legacy, still supported)
 
-Resolution order (highest priority first):
+Resolution order for provider settings (highest priority first):
   1. CLI flags (--base-url, --api-key, --model)
   2. Environment variables (VLMCTX_BASE_URL, etc.)
-  3. Config file (~/.vlmctx/config.toml [provider] section)
+  3. Config file [provider] section
   4. Built-in defaults (local Ollama)
+
+The config file also supports [mode.fast] and [mode.accurate] sections
+for per-mode defaults (whisper model, audio speed, etc.).
 """
 
 from __future__ import annotations
 
 import os
-from dataclasses import dataclass
+import platform
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
@@ -21,8 +27,30 @@ try:
 except ModuleNotFoundError:
     import tomli as tomllib  # type: ignore[no-redef]
 
-CONFIG_DIR = Path.home() / ".vlmctx"
-CONFIG_PATH = CONFIG_DIR / "config.toml"
+# ── Config paths ────────────────────────────────────────────────────
+
+CONFIG_DIR_XDG = Path.home() / ".config" / "vlmctx"
+CONFIG_PATH_XDG = CONFIG_DIR_XDG / "vlmctx.toml"
+CONFIG_DIR_LEGACY = Path.home() / ".vlmctx"
+CONFIG_PATH_LEGACY = CONFIG_DIR_LEGACY / "config.toml"
+
+
+def _find_config_path() -> Path:
+    """Return the first existing config path, or the XDG path as default."""
+    if CONFIG_PATH_XDG.exists():
+        return CONFIG_PATH_XDG
+    if CONFIG_PATH_LEGACY.exists():
+        return CONFIG_PATH_LEGACY
+    return CONFIG_PATH_XDG
+
+
+# Expose for display / init commands
+CONFIG_DIR = CONFIG_DIR_XDG
+CONFIG_PATH = CONFIG_PATH_XDG
+
+# ── Defaults ────────────────────────────────────────────────────────
+
+_SYSTEM = platform.system().lower()  # "darwin", "linux", "windows"
 
 DEFAULTS = {
     "base_url": "http://localhost:11434",
@@ -36,6 +64,77 @@ ENV_VARS = {
     "model": "VLMCTX_MODEL",
 }
 
+
+@dataclass
+class ModeConfig:
+    """Per-mode extraction settings."""
+
+    whisper_model: str = ""
+    audio_speed: float = 0.0  # 0 = not set, use default
+
+
+# Platform-aware mode defaults
+_MODE_DEFAULTS: dict[str, ModeConfig] = {
+    "fast": ModeConfig(whisper_model="tiny", audio_speed=2.0),
+    "accurate": ModeConfig(whisper_model="medium", audio_speed=1.0),
+}
+
+
+@dataclass
+class ProviderConfig:
+    base_url: str = DEFAULTS["base_url"]
+    api_key: str = DEFAULTS["api_key"]
+    model: str = DEFAULTS["model"]
+
+
+@dataclass
+class VlmctxConfig:
+    """Full resolved configuration."""
+
+    provider: ProviderConfig = field(default_factory=ProviderConfig)
+    mode_fast: ModeConfig = field(default_factory=lambda: ModeConfig(whisper_model="tiny", audio_speed=2.0))
+    mode_accurate: ModeConfig = field(default_factory=lambda: ModeConfig(whisper_model="medium", audio_speed=1.0))
+
+
+# ── Template ────────────────────────────────────────────────────────
+
+TEMPLATE_DARWIN = """\
+# vlmctx configuration — macOS
+# Docs: https://github.com/autonomi-ai/vlmctx
+
+[provider]
+base_url = "http://localhost:11434"   # Ollama default
+api_key = ""
+model = "qwen3.5:0.8b"               # Ollama model tag
+
+[mode.fast]
+whisper_model = "tiny"                # faster-whisper model size
+audio_speed = 2.0                     # 2x speedup for fast transcription
+
+[mode.accurate]
+whisper_model = "medium"              # higher quality transcription
+audio_speed = 1.0                     # no speedup
+"""
+
+TEMPLATE_LINUX = """\
+# vlmctx configuration — Linux (vLLM)
+# Docs: https://github.com/autonomi-ai/vlmctx
+
+[provider]
+base_url = "http://localhost:8000"    # vLLM default
+api_key = ""
+model = "Qwen/Qwen3.5-0.8B"          # HuggingFace model ID
+
+[mode.fast]
+whisper_model = "tiny"                # faster-whisper model size
+audio_speed = 2.0                     # 2x speedup for fast transcription
+
+[mode.accurate]
+whisper_model = "medium"              # higher quality transcription
+audio_speed = 1.0                     # no speedup
+"""
+
+# Legacy template (flat, for backward compat)
 TEMPLATE = """\
 # vlmctx configuration
 # Docs: https://github.com/autonomi-ai/vlmctx
@@ -47,12 +146,24 @@ model = "{model}"
 """
 
 
-@dataclass
-class ProviderConfig:
-    base_url: str = DEFAULTS["base_url"]
-    api_key: str = DEFAULTS["api_key"]
-    model: str = DEFAULTS["model"]
+def _platform_template() -> str:
+    if _SYSTEM == "linux":
+        return TEMPLATE_LINUX
+    return TEMPLATE_DARWIN
 
+
+def _platform_defaults() -> dict[str, str]:
+    """Return platform-specific provider defaults."""
+    if _SYSTEM == "linux":
+        return {
+            "base_url": "http://localhost:8000",
+            "api_key": "",
+            "model": "Qwen/Qwen3.5-0.8B",
+        }
+    return dict(DEFAULTS)
+
+
+# ── CLI overrides ───────────────────────────────────────────────────
 
 @dataclass
 class _CliOverrides:
@@ -76,11 +187,14 @@ def set_cli_overrides(
     _cli_overrides.model = model
 
 
+# ── File reading ────────────────────────────────────────────────────
+
 def _read_config_file() -> dict[str, Any]:
-    if not CONFIG_PATH.exists():
+    path = _find_config_path()
+    if not path.exists():
         return {}
     try:
-        return tomllib.loads(CONFIG_PATH.read_text())
+        return tomllib.loads(path.read_text())
     except Exception:
         return {}
 
@@ -93,8 +207,11 @@ def _resolve(key: str, file_cfg: dict[str, Any]) -> tuple[str, str]:
         return val, "env"
     if val := file_cfg.get(key):
         return str(val), "file"
-    return DEFAULTS[key], "default"
+    # Platform-specific defaults
+    return _platform_defaults().get(key, DEFAULTS[key]), "default"
 
+
+# ── Public API ──────────────────────────────────────────────────────
 
 def get_provider() -> ProviderConfig:
     """Resolve provider settings: CLI flags > env vars > config.toml > defaults."""
@@ -103,6 +220,34 @@ def get_provider() -> ProviderConfig:
         base_url=_resolve("base_url", file_cfg)[0],
         api_key=_resolve("api_key", file_cfg)[0],
         model=_resolve("model", file_cfg)[0],
+    )
+
+
+def get_mode_config(mode: str) -> ModeConfig:
+    """Resolve mode-specific settings from config file, falling back to defaults.
+
+    Args:
+        mode: "fast" or "accurate"
+
+    Returns:
+        ModeConfig with whisper_model and audio_speed.
+    """
+    file_data = _read_config_file()
+    mode_section = file_data.get("mode", {}).get(mode, {})
+    defaults = _MODE_DEFAULTS.get(mode, ModeConfig())
+
+    return ModeConfig(
+        whisper_model=str(mode_section.get("whisper_model", defaults.whisper_model)),
+        audio_speed=float(mode_section.get("audio_speed", defaults.audio_speed)),
+    )
+
+
+def get_full_config() -> VlmctxConfig:
+    """Return the full resolved configuration."""
+    return VlmctxConfig(
+        provider=get_provider(),
+        mode_fast=get_mode_config("fast"),
+        mode_accurate=get_mode_config("accurate"),
     )
 
 
@@ -117,12 +262,23 @@ def get_provider_with_sources() -> list[tuple[str, str, str, str]]:
     return rows
 
 
+# ── Write / update ──────────────────────────────────────────────────
+
 def write_config(base_url: str, api_key: str, model: str) -> Path:
-    """Write config.toml and return path."""
+    """Write config.toml and return path. Uses legacy format for backward compat."""
     CONFIG_DIR.mkdir(parents=True, exist_ok=True)
     content = TEMPLATE.format(base_url=base_url, api_key=api_key, model=model)
-    CONFIG_PATH.write_text(content)
-    return CONFIG_PATH
+    path = _find_config_path()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(content)
+    return path
+
+
+def write_platform_config() -> Path:
+    """Write a platform-aware config with mode sections. Returns path."""
+    CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+    CONFIG_PATH_XDG.write_text(_platform_template())
+    return CONFIG_PATH_XDG
 
 
 def update_config(key: str, value: str) -> Path:
@@ -131,7 +287,7 @@ def update_config(key: str, value: str) -> Path:
     Creates the file with defaults if it doesn't exist.
     """
     file_data = _read_config_file()
-    provider = file_data.get("provider", dict(DEFAULTS))
+    provider = file_data.get("provider", dict(_platform_defaults()))
     provider[key] = value
     return write_config(
         base_url=provider.get("base_url", DEFAULTS["base_url"]),
