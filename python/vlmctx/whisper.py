@@ -57,7 +57,7 @@ def _get_device() -> tuple[str, str]:
         import ctranslate2
         if "cuda" in ctranslate2.get_supported_compute_types("cuda"):
             return "cuda", "float16"
-    except (ImportError, RuntimeError):
+    except (ImportError, RuntimeError, ValueError):
         pass
     return "cpu", "int8"
 
