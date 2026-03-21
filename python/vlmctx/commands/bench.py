@@ -262,8 +262,6 @@ def _render_summary(results: list[BenchResult], target_info: dict[str, Any]) -> 
             if r.mb_per_sec > 0:
                 stats_line.append("  ", style="")
                 stats_line.append(_fmt_rate(r.mb_per_sec, "MB/s"), style="bright_blue")
-            stats_line.append("  ", style="")
-            stats_line.append(_sparkline(r.timings_ms), style="dim green")
             parts.append(stats_line)
 
     # Bottleneck analysis
