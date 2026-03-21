@@ -8,7 +8,7 @@ from typing import Annotated, Optional
 
 import typer
 
-from vlmctx.pipe import is_piped_output, read_paths_from_stdin
+from vlmctx.pipe import read_paths_from_stdin
 
 COLUMN_DOCS: dict[str, str] = {
     "path": "Relative path from the scanned root directory",
@@ -58,7 +58,9 @@ def ls_cmd(
     schema: Annotated[
         bool, typer.Option("--schema", help="Show table schema (column names, types, descriptions)")
     ] = False,
-    json_output: Annotated[bool, typer.Option("--json", help="Force JSON output")] = False,
+    format: Annotated[
+        Optional[str], typer.Option("--format", help="Output format: json, tsv, csv")
+    ] = None,
 ) -> None:
     """Tabular file listing with metadata (like eza/ls -l).
 
@@ -68,15 +70,19 @@ def ls_cmd(
       vlmctx ls ~/data --tree --depth 2    # hierarchical tree view
       vlmctx ls ~/data --schema            # column schema introspection
     """
+    from vlmctx.display import resolve_format
+
+    fmt = resolve_format(format)
+
     if tree:
-        _ls_tree(directory, kind, depth, size, json_output)
+        _ls_tree(directory, kind, depth, size, fmt)
         return
 
     if schema:
-        _ls_schema(directory, json_output)
+        _ls_schema(directory, fmt)
         return
 
-    _ls_table(directory, sort, reverse, columns, limit, kind, json_output)
+    _ls_table(directory, sort, reverse, columns, limit, kind, fmt)
 
 
 def _has_media_dimensions(table) -> bool:
@@ -94,12 +100,12 @@ def _ls_table(
     columns: str | None,
     limit: int | None,
     kind: str | None,
-    json_output: bool,
+    fmt: str,
 ) -> None:
     """Default tabular listing."""
     stdin_paths = read_paths_from_stdin()
 
-    if json_output and not stdin_paths and not columns:
+    if fmt == "json" and not stdin_paths and not columns:
         from vlmctx._vlmctx import Scanner
 
         import json as _json
@@ -141,19 +147,7 @@ def _ls_table(
 
     cols = columns.split(",") if columns else None
 
-    if is_piped_output() and not json_output:
-        import csv
-        import io
-
-        display_cols = cols or table.column_names
-        buf = io.StringIO()
-        writer = csv.writer(buf, delimiter="\t")
-        writer.writerow(display_cols)
-        n = table.num_rows if limit is None else min(limit, table.num_rows)
-        for i in range(n):
-            writer.writerow(str(table.column(c)[i].as_py()) for c in display_cols)
-        print(buf.getvalue(), end="")
-    elif json_output:
+    if fmt == "json":
         from vlmctx.display import json_dumps
 
         display_cols = cols or table.column_names
@@ -162,6 +156,19 @@ def _ls_table(
         for i in range(n):
             rows.append({c: table.column(c)[i].as_py() for c in display_cols})
         print(json_dumps(rows))
+    elif fmt in ("tsv", "csv"):
+        import csv
+        import io
+
+        display_cols = cols or table.column_names
+        buf = io.StringIO()
+        sep = "\t" if fmt == "tsv" else ","
+        writer = csv.writer(buf, delimiter=sep)
+        writer.writerow(display_cols)
+        n = table.num_rows if limit is None else min(limit, table.num_rows)
+        for i in range(n):
+            writer.writerow(str(table.column(c)[i].as_py()) for c in display_cols)
+        print(buf.getvalue(), end="")
     else:
         from vlmctx.display import arrow_table_to_rich, output_console
 
@@ -267,7 +274,7 @@ def _tree_to_json(node: dict, name: str = ".") -> dict:
 
 
 def _ls_tree(
-    directory: Path, kind: str | None, depth: int | None, show_size: bool, json_output: bool
+    directory: Path, kind: str | None, depth: int | None, show_size: bool, fmt: str
 ) -> None:
     from vlmctx._vlmctx import Scanner
 
@@ -278,7 +285,7 @@ def _ls_tree(
     tree_data = _build_tree(raw)
     total_files, total_bytes = _count_subtree(tree_data)
 
-    if json_output:
+    if fmt == "json":
         from vlmctx.display import json_dumps
 
         print(json_dumps(_tree_to_json(tree_data, str(directory))))
@@ -288,7 +295,7 @@ def _ls_tree(
 
     effective_depth = depth
 
-    if is_piped_output():
+    if fmt in ("tsv", "csv", "text"):
         header = f"{directory}  ({total_files:,} files, {format_size(total_bytes)})"
         lines: list[str] = [header]
         _render_plain_tree(tree_data, "", lines, 0, effective_depth, show_size=show_size, format_size=format_size)
@@ -318,7 +325,7 @@ def _ls_tree(
 # --- Schema mode ---
 
 
-def _ls_schema(directory: Path, json_output: bool) -> None:
+def _ls_schema(directory: Path, fmt: str) -> None:
     from vlmctx.context import Context
 
     ctx = Context(directory)
@@ -340,7 +347,7 @@ def _ls_schema(directory: Path, json_output: bool) -> None:
             example = s[:60] + "..." if len(s) > 60 else s
         return f"{desc} (e.g. {example})" if desc else f"e.g. {example}"
 
-    if json_output:
+    if fmt == "json":
         from vlmctx.display import json_dumps
 
         info = []
@@ -353,10 +360,11 @@ def _ls_schema(directory: Path, json_output: bool) -> None:
         print(json_dumps(info))
         return
 
-    if is_piped_output():
-        print("column\ttype\tdescription")
+    if fmt in ("tsv", "csv"):
+        sep = "\t" if fmt == "tsv" else ","
+        print(f"column{sep}type{sep}description")
         for field in table.schema:
-            print(f"{field.name}\t{field.type}\t{_desc_with_example(field.name, table)}")
+            print(f"{field.name}{sep}{field.type}{sep}{_desc_with_example(field.name, table)}")
         return
 
     from rich.table import Table as RichTable

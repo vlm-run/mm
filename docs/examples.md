@@ -1,6 +1,13 @@
 # vlmctx — Prototypical Output Examples
 
-Every command has three output modes: **TTY** (rich formatting for humans), **piped** (compact machine-readable for LLMs), and **`--json`** (structured). The piped mode is the primary LLM-consumable format — designed for maximum information density per token.
+Every command has three output modes controlled by `--format`:
+
+- **`rich`** (default in TTY) — Rich formatted tables, panels, and syntax highlighting.
+- **`tsv`** (default when piped) — Tab-separated values with header. Maximum token efficiency.
+- **`csv`** — Comma-separated values with header. Spreadsheet-friendly.
+- **`json`** — Structured JSON. Compact when piped (no indent), pretty in TTY.
+
+When stdout is piped, vlmctx auto-selects `tsv`. Override with `--format json` etc.
 
 ---
 
@@ -41,7 +48,7 @@ screenshots/v2-ui.png
 ### Example 2: Find large video files
 
 ```bash
-$ vlmctx find ~/data --kind video --min-size 100MB --json
+$ vlmctx find ~/data --kind video --min-size 100MB --format json
 ```
 
 ```json
@@ -230,7 +237,7 @@ height	int32	Image/video height in px (e.g. 1080)
 ### Example 5: JSON tree (for programmatic consumption)
 
 ```bash
-$ vlmctx ls ~/project --tree --depth 1 --json
+$ vlmctx ls ~/project --tree --depth 1 --format json
 ```
 
 ```json
@@ -404,7 +411,7 @@ with data filtering, 2:45-3:00 closing with GitHub link.
 ### Example 7: Multiple files via pipe composition
 
 ```bash
-$ vlmctx find ~/data --kind image --max-size 500KB | vlmctx cat -l 1 --json
+$ vlmctx find ~/data --kind image --max-size 500KB | vlmctx cat -l 1 --format json
 ```
 
 ```json
@@ -510,7 +517,7 @@ models/transformer.py:48:        return self.norm(attn + src)
 ### Example 5: JSON output for programmatic use
 
 ```bash
-$ vlmctx grep "attention" --kind document --json
+$ vlmctx grep "attention" --kind document --format json
 ```
 
 ```json
@@ -609,7 +616,7 @@ notes.md	text	2048	2024-03-18 11:45:00
 ### Example 5: Extension frequency distribution
 
 ```bash
-$ vlmctx sql "SELECT ext, COUNT(*) as n, SUM(size) as total_bytes FROM files GROUP BY ext ORDER BY n DESC LIMIT 10" --json
+$ vlmctx sql "SELECT ext, COUNT(*) as n, SUM(size) as total_bytes FROM files GROUP BY ext ORDER BY n DESC LIMIT 10" --format json
 ```
 
 ```json
@@ -698,7 +705,7 @@ text	18	32 KB	980	3.2K
 ### Example 3: JSON output
 
 ```bash
-$ vlmctx wc ~/project --by-kind --json
+$ vlmctx wc ~/project --by-kind --format json
 ```
 
 ```json
@@ -759,10 +766,10 @@ vlmctx find ~/papers --ext pdf | vlmctx cat -l 1 | grep "attention"
 vlmctx find ~/project --kind code | vlmctx wc
 
 # SQL query → pipe to jq for further processing
-vlmctx sql "SELECT name, size FROM files WHERE kind='image'" --json | jq '.[].name'
+vlmctx sql "SELECT name, size FROM files WHERE kind='image'" --format json | jq '.[].name'
 
 # Find large images → get their metadata as JSON for an LLM
-vlmctx find ~/data --kind image --min-size 1MB | vlmctx cat -l 1 --json
+vlmctx find ~/data --kind image --min-size 1MB | vlmctx cat -l 1 --format json
 ```
 
 ---
@@ -987,7 +994,7 @@ vlmctx find ~/project --kind code | vlmctx cat -l 0 \
 ### SQL analytics → natural language
 
 ```bash
-vlmctx sql "SELECT kind, COUNT(*) as n, SUM(size) as bytes FROM files GROUP BY kind ORDER BY bytes DESC" --json \
+vlmctx sql "SELECT kind, COUNT(*) as n, SUM(size) as bytes FROM files GROUP BY kind ORDER BY bytes DESC" --format json \
   | llm -s "Explain this storage breakdown. Which kinds should I clean up first?"
 ```
 
@@ -1079,7 +1086,7 @@ Currently, TSV output happens automatically when stdout is piped. But Simon's to
 # Explicit TSV even in a terminal (for copy-paste into spreadsheets)
 vlmctx ls ~/data --tsv | pbcopy
 
-# Pair with --json for structured output
+# Pair with --format json for structured output
 vlmctx find ~/data --kind image --tsv > manifest.tsv
 ```
 
@@ -1230,11 +1237,11 @@ fd -e png -e jpg --size +1m ~/data \
 
 ### jq / xsv / miller: structured data post-processing
 
-vlmctx's `--json` output pairs naturally with the structured data toolkit:
+vlmctx's `--format json` output pairs naturally with the structured data toolkit:
 
 ```bash
 # jq: filter JSON output
-vlmctx ls ~/data --json | jq '[.[] | select(.kind=="image")] | length'
+vlmctx ls ~/data --format json | jq '[.[] | select(.kind=="image")] | length'
 
 # miller (mlr): column transforms on TSV
 vlmctx ls ~/data | mlr --tsvlite --from - then sort-by -nr size then head -n 10
@@ -1245,9 +1252,9 @@ vlmctx ls ~/data | xsv sort -s size -R -d '\t' | xsv slice -l 10 -d '\t'
 
 ---
 
-## Binary Format Parsing: The Kaitai Struct Frontier
+## Binary Format Parsing: Proprietary Formats
 
-The most exciting integration opportunity. vlmctx's L1 extractors handle open formats (PNG, JPEG, MP4, MKV, PDF) via Rust. But the world is full of **closed/proprietary binary formats** that Python libraries can't read and whose specs are either paywalled or nonexistent:
+vlmctx's L1 extractors handle open formats (PNG, JPEG, MP4, MKV, PDF) via Rust. But the world is full of **closed/proprietary binary formats** that Python libraries can't read:
 
 | Format | Domain | Current L1 | Gap |
 |--------|--------|-----------|-----|
@@ -1265,62 +1272,9 @@ The most exciting integration opportunity. vlmctx's L1 extractors handle open fo
 
 These files appear constantly in creative/design/engineering directories. Today vlmctx returns `kind: other, size: 48 MB` — useless for an LLM trying to understand a project.
 
-### Approach 1: Kaitai Struct DSL → Rust codegen
+### Approach 1: `binrw` in Rust (native, zero-copy)
 
-[Kaitai Struct](https://kaitai.io) is a declarative DSL for describing binary formats. A `.ksy` file describes the header layout, and the compiler generates parsers in multiple languages (including rudimentary Rust support).
-
-The idea: **ship `.ksy` definitions for common creative formats, compile to Rust, and integrate as L1 extractors.**
-
-```yaml
-# psd.ksy — Photoshop Document header
-meta:
-  id: psd
-  file-extension: psd
-  endian: be
-seq:
-  - id: magic
-    contents: "8BPS"
-  - id: version
-    type: u2
-  - id: reserved
-    size: 6
-  - id: num_channels
-    type: u2
-  - id: height
-    type: u4
-  - id: width
-    type: u4
-  - id: depth
-    type: u2
-  - id: color_mode
-    type: u2
-    enum: color_modes
-enums:
-  color_modes:
-    0: bitmap
-    1: grayscale
-    2: indexed
-    3: rgb
-    4: cmyk
-    7: multichannel
-    8: duotone
-    9: lab
-```
-
-What `vlmctx cat design.psd -l 1` could output:
-
-```
-Dimensions: 4096x2160
-Channels:   4
-Depth:      16-bit
-Color:      CMYK
-Layers:     23
-Hash:       d4f2a1b7c3e09856
-```
-
-### Approach 2: `binrw` in Rust (native, no codegen)
-
-[binrw](https://github.com/jam1garner/binrw) is a Rust derive macro for binary reading. More idiomatic than Kaitai codegen, and integrates directly into vlmctx's existing extractor trait:
+[binrw](https://github.com/jam1garner/binrw) is a Rust derive macro for binary reading. Integrates directly into vlmctx's existing extractor trait:
 
 ```rust
 use binrw::BinRead;
@@ -1340,7 +1294,7 @@ struct PsdHeader {
 
 This compiles to zero-copy, zero-allocation parsing — exactly the performance profile vlmctx needs for L1.
 
-### Approach 3: Header-only probing via `nom`
+### Approach 2: Header-only probing via `nom`
 
 For formats where we only need the first 64-512 bytes (dimensions, version, magic), [nom](https://github.com/rust-bakery/nom) parser combinators are the lightest option:
 
@@ -1361,7 +1315,7 @@ fn blend_header(input: &[u8]) -> IResult<&[u8], BlendHeader> {
 }
 ```
 
-### Approach 4: Plugin system with Python fallbacks
+### Approach 3: Plugin system with Python fallbacks
 
 For formats with existing Python libraries (even slow ones), a plugin system lets the community contribute extractors without touching Rust:
 
@@ -1384,15 +1338,13 @@ def extract_psd(path: Path) -> dict:
     }
 ```
 
-### Recommended path: layered strategy
+### Recommended path
 
 1. **Immediate (nom):** Header-only probing for the top 10 creative formats. Just dimensions + version + magic. 50-100 lines of Rust per format, zero dependencies, <1ms.
 
 2. **Medium-term (binrw):** Deeper parsing for formats where we want layer counts, embedded thumbnails, or timeline data. binrw's derive macros keep the code declarative.
 
-3. **Long-term (Kaitai + plugin system):** Community-contributed `.ksy` files for the long tail. Python plugin system for formats with existing libraries. The Kaitai ecosystem already has [400+ format definitions](https://formats.kaitai.io/) — many could be compiled to Rust and shipped with vlmctx.
-
-4. **Escape hatch (exiftool):** For the truly exotic, pipe to `exiftool -json` and parse the result. exiftool handles ~500 formats and is the gold standard for metadata extraction.
+3. **Escape hatch (exiftool):** For the truly exotic, pipe to `exiftool -json` and parse the result. exiftool handles ~500 formats and is the gold standard for metadata extraction.
 
 ### What this unlocks for LLMs
 

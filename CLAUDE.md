@@ -144,12 +144,12 @@ uv run vlmctx <command> [args]
 
 | Command | Purpose | Key flags |
 |---------|---------|-----------|
-| `find`  | Locate files by kind/ext/size | `--kind`, `--ext`, `--min-size`, `--max-size`, `--limit`, `--json` |
-| `ls`    | Tabular listing, tree view, schema | `--sort`, `--columns`, `--kind`, `--tree`, `--depth`, `--schema`, `--json` |
-| `cat`   | Content extraction (auto-detected by file type) | `--level 0/1/2`, `-n` (head/tail), `--detail`, `--mosaic-*`, `--audio-*`, `--json` |
-| `grep`  | Content search across files | `--kind`, `--ext`, `-C` (context), `--count`, `--level`, `--json` |
-| `sql`   | DuckDB SQL on the file index | `--dir`, `--json` |
-| `wc`    | Count files, bytes, lines, estimated tokens | `--kind`, `--by-kind`, `--json` |
+| `find`  | Locate files by kind/ext/size | `--kind`, `--ext`, `--min-size`, `--max-size`, `--limit`, `--format` |
+| `ls`    | Tabular listing, tree view, schema | `--sort`, `--columns`, `--kind`, `--tree`, `--depth`, `--schema`, `--format` |
+| `cat`   | Content extraction (auto-detected by file type) | `--level 0/1/2`, `-n` (head/tail), `--detail`, `--mosaic-*`, `--audio-*`, `--format` |
+| `grep`  | Content search across files | `--kind`, `--ext`, `-C` (context), `--count`, `--level`, `--format` |
+| `sql`   | DuckDB SQL on the file index | `--dir`, `--format` |
+| `wc`    | Count files, bytes, lines, estimated tokens | `--kind`, `--by-kind`, `--format` |
 
 ### Consolidated commands
 
@@ -187,11 +187,12 @@ Columns: `path`, `name`, `stem`, `ext`, `size`, `modified`, `created`, `mime`, `
 
 `kind` values: `image`, `video`, `document`, `code`, `audio`, `data`, `config`, `text`, `other`.
 
-### Output modes
+### Output modes (`--format`)
 
-- **TTY stdout**: Rich formatted tables/panels
-- **Piped stdout**: plain TSV/text (machine-readable, no ANSI)
-- **`--json` flag**: JSON output on any command that supports it
+- **`rich`** (default in TTY): Rich formatted tables/panels
+- **`tsv`** (default when piped): Tab-separated values, no ANSI
+- **`csv`**: Comma-separated values
+- **`json`**: Structured JSON (compact when piped, pretty in TTY)
 
 ## Processing levels
 
@@ -224,7 +225,7 @@ ctx.info()   # Rich summary panel
 ## Architecture notes
 
 - **Rust → Python data path**: Arrow RecordBatch serialized to IPC bytes in Rust, deserialized via `pyarrow.ipc.open_stream` in Python. Not PyCapsule FFI (had compatibility issues with pyarrow).
-- **Rust fast path**: `find --json`, `ls --json`, `wc --json` bypass pyarrow entirely — serde_json in Rust, ~60ms cold start.
+- **Rust fast path**: `find --format json`, `ls --format json`, `wc --format json` bypass pyarrow entirely — serde_json in Rust, ~60ms cold start.
 - **Parallel scanning**: `ignore` crate for gitignore-aware walking + `rayon` for parallelism.
 - **Hashing**: xxh3 via `xxhash-rust` for fast content fingerprinting (full file via mmap).
 - **Video metadata (L1)**: Native MP4 parsing (mp4parse) and MKV/WebM parsing (matroska) in Rust. No ffmpeg at L1 — metadata only, <100ms.

@@ -96,6 +96,52 @@ def json_dumps(obj: Any, *, indent: int | None = None) -> str:
     return json.dumps(obj, indent=indent, default=str, ensure_ascii=False)
 
 
+def resolve_format(fmt: str | None) -> str:
+    """Resolve the effective output format.
+
+    Priority: explicit ``--format`` flag > pipe detection > rich.
+
+    Returns one of: ``"json"``, ``"tsv"``, ``"csv"``, ``"text"``, ``"rich"``.
+    """
+    from vlmctx.pipe import is_piped_output
+
+    if fmt:
+        return fmt
+    return "tsv" if is_piped_output() else "rich"
+
+
+def emit_tsv(rows: list[dict], columns: list[str] | None = None) -> None:
+    """Print rows as TSV with a header line."""
+    import csv
+    import io
+
+    if not rows:
+        return
+    cols = columns or list(rows[0].keys())
+    buf = io.StringIO()
+    writer = csv.writer(buf, delimiter="\t")
+    writer.writerow(cols)
+    for row in rows:
+        writer.writerow(str(row.get(c, "")) for c in cols)
+    print(buf.getvalue(), end="")
+
+
+def emit_csv(rows: list[dict], columns: list[str] | None = None) -> None:
+    """Print rows as CSV with a header line."""
+    import csv
+    import io
+
+    if not rows:
+        return
+    cols = columns or list(rows[0].keys())
+    buf = io.StringIO()
+    writer = csv.writer(buf)
+    writer.writerow(cols)
+    for row in rows:
+        writer.writerow(str(row.get(c, "")) for c in cols)
+    print(buf.getvalue(), end="")
+
+
 def format_size(size_bytes: int | float) -> str:
     """Format bytes as human-readable size."""
     for unit in ("B", "KB", "MB", "GB", "TB"):

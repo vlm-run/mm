@@ -364,7 +364,7 @@ class TestParquetRoundtrip:
 class TestL0Cli:
 
     def test_describe_shows_width_height(self, media_tree: Path):
-        result = runner.invoke(app, ["ls", str(media_tree), "--schema", "--json"])
+        result = runner.invoke(app, ["ls", str(media_tree), "--schema", "--format", "json"])
         assert result.exit_code == 0
         data = json.loads(result.output)
         names = [c["column"] for c in data]
@@ -382,7 +382,7 @@ class TestL0Cli:
             "sql",
             "SELECT name, width, height FROM files WHERE width IS NOT NULL",
             "--dir", str(media_tree),
-            "--json",
+            "--format", "json",
         ])
         assert result.exit_code == 0
         data = json.loads(result.output)
@@ -390,7 +390,7 @@ class TestL0Cli:
         assert all("width" in row for row in data)
 
     def test_find_json_has_dimensions(self, media_tree: Path):
-        result = runner.invoke(app, ["find", str(media_tree), "--kind", "image", "--json"])
+        result = runner.invoke(app, ["find", str(media_tree), "--kind", "image", "--format", "json"])
         assert result.exit_code == 0
         data = json.loads(result.output)
         assert len(data) > 0

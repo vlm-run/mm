@@ -7,8 +7,6 @@ from typing import Annotated, Optional
 
 import typer
 
-from vlmctx.pipe import is_piped_output
-
 TOKEN_CHARS_RATIO = 4
 
 
@@ -24,10 +22,15 @@ def wc_cmd(
     directory: Annotated[Path, typer.Argument(help="Directory to count")] = Path("."),
     kind: Annotated[Optional[str], typer.Option("--kind", "-k", help="Filter by kind")] = None,
     by_kind: Annotated[bool, typer.Option("--by-kind", help="Break down by file kind")] = False,
-    json_output: Annotated[bool, typer.Option("--json", help="Force JSON output")] = False,
+    format: Annotated[
+        Optional[str], typer.Option("--format", help="Output format: json, tsv, csv")
+    ] = None,
 ) -> None:
     """Count files, bytes, lines, and estimated tokens (like wc for LLM context)."""
     from vlmctx._vlmctx import Scanner
+    from vlmctx.display import resolve_format
+
+    fmt = resolve_format(format)
 
     scanner = Scanner(str(Path(directory).resolve()))
     scanner.scan()
@@ -97,7 +100,7 @@ def wc_cmd(
             if k == "image" and s["files"] > 0:
                 s["tok_per_img"] = round(s["tokens"] / s["files"])
 
-    if json_output:
+    if fmt == "json":
         from vlmctx.display import json_dumps
 
         print(json_dumps(result))
@@ -105,18 +108,19 @@ def wc_cmd(
 
     from vlmctx.display import format_number, format_size
 
-    if is_piped_output():
+    if fmt in ("tsv", "csv"):
+        sep = "\t" if fmt == "tsv" else ","
         tok_mb = result.get("tok_per_mb", 0)
-        print("files\tsize\tlines\ttokens\ttok/MB")
-        print(f"{total_files}\t{format_size(total_bytes)}\t{format_number(total_lines)}\t{format_number(total_tokens)}\t{format_number(tok_mb) if tok_mb else '—'}")
+        print(f"files{sep}size{sep}lines{sep}tokens{sep}tok/MB")
+        print(f"{total_files}{sep}{format_size(total_bytes)}{sep}{format_number(total_lines)}{sep}{format_number(total_tokens)}{sep}{format_number(tok_mb) if tok_mb else '—'}")
         if by_kind:
-            print("\nkind\tfiles\tsize\tlines\ttokens\ttok/MB")
+            print(f"\nkind{sep}files{sep}size{sep}lines{sep}tokens{sep}tok/MB")
             for k, s in sorted(kind_stats.items()):
                 stm = s.get("tok_per_mb")
                 print(
-                    f"{k}\t{s['files']}\t{format_size(int(s['bytes']))}"
-                    f"\t{format_number(int(s['lines']))}\t{format_number(int(s['tokens']))}"
-                    f"\t{format_number(stm) if stm else '—'}"
+                    f"{k}{sep}{s['files']}{sep}{format_size(int(s['bytes']))}"
+                    f"{sep}{format_number(int(s['lines']))}{sep}{format_number(int(s['tokens']))}"
+                    f"{sep}{format_number(stm) if stm else '—'}"
                 )
         return
 
