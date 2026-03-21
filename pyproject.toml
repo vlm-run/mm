@@ -25,6 +25,11 @@ dependencies = [
 vlmctx = "vlmctx.cli:app"
 
 [project.optional-dependencies]
+extract = [
+    "faster-whisper>=1.0",
+    "scenedetect[opencv]>=0.6",
+    "docling>=2.0",
+]
 dev = [
     "pytest>=8.0",
     "pytest-benchmark>=4.0",

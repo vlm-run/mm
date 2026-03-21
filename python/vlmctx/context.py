@@ -146,17 +146,34 @@ class Context:
 
     # --- Content access ---
 
-    def cat(self, path: str, *, level: int = 1) -> str:
+    def cat(self, path: str, *, level: int = 1, mode: str | None = None) -> str:
         """Read semantic content of a file.
 
         Level 0: raw content (for text files)
         Level 1: extracted content (text from PDF, image metadata)
         Level 2: LLM-generated description (requires LLM config)
+
+        Args:
+            path: Relative path within the context root.
+            level: Processing level (0=raw, 1=extracted, 2=semantic).
+            mode: Extraction mode for L2: "fast" or "accurate". None uses default L2.
         """
         full_path = self.root / path
 
         if level == 0:
             return full_path.read_text(errors="replace")
+
+        if level >= 2 and mode is not None:
+            # Use the CLI's modal extraction pipeline
+            from vlmctx.commands.cat import _CatOpts, _extract
+            opts = _CatOpts(
+                level=level, n=None, detail=False, output_dir=None,
+                max_pages=None, mosaic_tile="4x4", image_width=160,
+                mosaic_count=1, mosaic_strategy="uniform",
+                audio_speed=2.0, audio_sample_rate=16000,
+                mode=mode, json_output=False,
+            )
+            return _extract(full_path, opts)
 
         if level >= 1:
             result = self._scanner.extract_l1(path)
