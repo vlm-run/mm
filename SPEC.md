@@ -62,10 +62,16 @@ vlmctx
 │   ├── [x] File content description
 │   ├── [x] Video understanding via keyframe mosaic + LLM (auto at L2)
 │   ├── [x] Audio description via metadata + LLM (auto at L2)
-│   ├── [x] Configurable: CLI flags > env vars > ~/.vlmctx/config.toml > defaults
+│   ├── [x] Configurable: CLI flags > env vars > ~/.config/vlmctx/vlmctx.toml > defaults
 │   ├── [x] think=false + reasoning_effort="none" + temperature=0.1
 │   ├── [x] Graceful fallback to L1 when unconfigured
-│   ├── [ ] Audio transcription via Whisper on 2x-speed extraction
+│   ├── [x] --mode fast|accurate per-modality extraction strategies
+│   ├── [x] Audio transcription via ffmpeg + whisper (2x speed, greedy beam=1)
+│   ├── [x] Whisper backend auto-select: MLX Metal GPU > CTranslate2 CPU/CUDA
+│   ├── [x] Parallel visual + audio extraction (ThreadPoolExecutor)
+│   ├── [x] Video: mosaic (4x4 @ 1500px) + transcript → LLM markdown
+│   ├── [x] Image: fast (10 words + 5 tags) / accurate (200 words + 10 tags + objects)
+│   ├── [x] Document extraction via docling (PDF/DOCX/PPTX → markdown)
 │   └── [ ] Embedding generation (SemanticAnalyzer trait defined, not implemented)
 │
 ├── Python API (Context class)
@@ -86,8 +92,11 @@ vlmctx
 │   ├── [x] ls       — tabular listing, tree view (--tree), schema (--schema)
 │   ├── [x] cat      — auto-detected content extraction at L0/L1/L2
 │   │   ├── [x] head/tail via -n (replaces old head/tail commands)
-│   │   ├── [x] video L2: auto-generates keyframe mosaic → LLM description
-│   │   ├── [x] audio L2: metadata → LLM description
+│   │   ├── [x] --mode fast|accurate (L2 modal extraction)
+│   │   ├── [x] video L2: parallel mosaic + whisper → LLM (102x realtime)
+│   │   ├── [x] audio L2: ffmpeg 2x + whisper → LLM transcript summary
+│   │   ├── [x] image L2: fast (10w+5tags) / accurate (200w+10tags+objects)
+│   │   ├── [x] document L2: docling PDF/DOCX/PPTX → markdown → LLM
 │   │   └── [x] --mosaic-*, --audio-* namespaced flags
 │   ├── [x] grep     — content search with context lines (like rg)
 │   ├── [x] sql      — DuckDB SQL on file index
@@ -122,14 +131,21 @@ vlmctx
 │   ├── Partial hash 10MB: ~19μs (vs 610μs full, 33x speedup)
 │   ├── Keyframe mosaic (86min video): ~820ms → 5 mosaic grids
 │   ├── PDF page mosaic (68 pages): ~280ms → 2 mosaic grids
-│   └── Audio 2x (163s video): ~200ms → 2.5MB Whisper-ready WAV
+│   ├── Audio 2x (163s video): ~200ms → 2.5MB Whisper-ready WAV
+│   ├── L2 video (17min, fast mode): ~9.9s total = 102x realtime
+│   │   ├── Visual: 16 frames + 4x4 mosaic @ 1500px — 375ms (parallel)
+│   │   ├── Audio: ffmpeg 2x + whisper tiny MLX Metal — 3.0s (parallel)
+│   │   ├── LLM: qwen3.5:0.8b mosaic+transcript → markdown — 5.2s
+│   │   └── Optimization path: beam=5→1 (1.5x), CTranslate2→MLX (5.9x), parallel (6%)
+│   ├── L2 image (fast): ~1.0s (qwen3.5:0.8b, Ollama local)
+│   └── L2 image (accurate): ~2.6s (qwen3.5:0.8b, Ollama local)
 │
 ├── Tests
 │   ├── Rust: 65 tests (meta, walk, detect, schema, table, code, image, video, hash)
-│   ├── Python: 132 tests (CLI, Context API, pipe, L0 metadata, L1 extraction, benchmarks)
+│   ├── Python: 271 tests (CLI, Context API, pipe, L0/L1/L2, config, whisper, scenes, docling, bench)
 │   ├── Criterion benchmarks: l0_walk, l0_index, hash_strategies, l1_extract
-│   ├── pytest-benchmark: 11 benchmarks (L0, L1, ffmpeg, e2e)
-│   └── hyperfine CLI: bench_cli.sh (find, ls, sql, cat, keyframes, audio)
+│   ├── vlmctx bench: 24 commands (L0×10, L1×8, L2×6) with bits/s throughput
+│   └── pytest-benchmark: 11 benchmarks (L0, L1, ffmpeg, e2e)
 │
 └── Build & Tooling
     ├── [x] Maturin build backend (Rust → Python wheel)
