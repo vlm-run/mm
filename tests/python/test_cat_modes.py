@@ -63,7 +63,7 @@ class TestCatOptsMode:
             max_pages=None, mosaic_tile="4x4", image_width=160,
             mosaic_count=1, mosaic_strategy="uniform",
             audio_speed=2.0, audio_sample_rate=16000,
-            mode=None, json_output=False,
+            mode=None, format="rich",
         )
         assert opts.mode is None
 
@@ -73,7 +73,7 @@ class TestCatOptsMode:
             max_pages=None, mosaic_tile="4x4", image_width=160,
             mosaic_count=1, mosaic_strategy="uniform",
             audio_speed=2.0, audio_sample_rate=16000,
-            mode="fast", json_output=False,
+            mode="fast", format="rich",
         )
         assert opts.mode == "fast"
 
@@ -83,7 +83,7 @@ class TestCatOptsMode:
             max_pages=None, mosaic_tile="4x4", image_width=160,
             mosaic_count=1, mosaic_strategy="uniform",
             audio_speed=2.0, audio_sample_rate=16000,
-            mode="accurate", json_output=False,
+            mode="accurate", format="rich",
         )
         assert opts.mode == "accurate"
 
@@ -97,7 +97,7 @@ class TestL2ModalDispatch:
             max_pages=None, mosaic_tile="4x4", image_width=160,
             mosaic_count=1, mosaic_strategy="uniform",
             audio_speed=2.0, audio_sample_rate=16000,
-            mode=mode, json_output=False,
+            mode=mode, format="rich",
         )
 
     def test_unknown_mode(self, tmp_path):

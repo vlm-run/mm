@@ -171,7 +171,7 @@ class Context:
                 max_pages=None, mosaic_tile="4x4", image_width=160,
                 mosaic_count=1, mosaic_strategy="uniform",
                 audio_speed=2.0, audio_sample_rate=16000,
-                mode=mode, json_output=False,
+                mode=mode, format="rich",
             )
             return _extract(full_path, opts)
 

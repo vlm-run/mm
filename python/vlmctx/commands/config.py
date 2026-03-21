@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Annotated
+from typing import Annotated, Optional
 
 import typer
 
@@ -15,27 +15,31 @@ config_app = typer.Typer(
 
 @config_app.command()
 def show(
-    json_output: Annotated[bool, typer.Option("--json", help="JSON output")] = False,
+    format: Annotated[
+        Optional[str], typer.Option("--format", help="Output format: json, tsv, csv")
+    ] = None,
 ) -> None:
     """Show resolved configuration with source annotations."""
     from vlmctx.config import CONFIG_PATH, get_provider_with_sources
-    from vlmctx.pipe import is_piped_output
+    from vlmctx.display import resolve_format
+
+    fmt = resolve_format(format)
 
     rows = get_provider_with_sources()
 
-    if json_output:
-        import json
+    if fmt == "json":
+        from vlmctx.display import json_dumps
 
-        print(json.dumps(
+        print(json_dumps(
             {r[0]: {"value": r[1], "source": r[2]} for r in rows},
-            indent=2,
         ))
         return
 
-    if is_piped_output():
-        print("key\tvalue\tsource")
+    if fmt in ("tsv", "csv"):
+        sep = "\t" if fmt == "tsv" else ","
+        print(f"key{sep}value{sep}source")
         for key, val, src, _ in rows:
-            print(f"{key}\t{val}\t{src}")
+            print(f"{key}{sep}{val}{sep}{src}")
         return
 
     from rich.table import Table

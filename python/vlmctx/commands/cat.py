@@ -84,7 +84,9 @@ def cat_cmd(
         Optional[str],
         typer.Option("--mode", "-m", help="Extraction mode: fast or accurate (L2 only)"),
     ] = None,
-    json_output: Annotated[bool, typer.Option("--json", help="Force JSON output")] = False,
+    format: Annotated[
+        Optional[str], typer.Option("--format", help="Output format: json, tsv, csv")
+    ] = None,
 ) -> None:
     """Display file content semantically (like bat/cat).
 
@@ -133,15 +135,18 @@ def cat_cmd(
         typer.echo("Error: No files specified.", err=True)
         raise typer.Exit(1)
 
+    from vlmctx.display import resolve_format
+
+    fmt = resolve_format(format)
+
     opts = _CatOpts(
         level=level, n=n, detail=detail, output_dir=output_dir,
         max_pages=max_pages, mosaic_tile=mosaic_tile, image_width=image_width,
         mosaic_count=mosaic_count, mosaic_strategy=mosaic_strategy,
         audio_speed=audio_speed, audio_sample_rate=audio_sample_rate,
-        mode=mode, json_output=json_output,
+        mode=mode, format=fmt,
     )
 
-    use_rich = not is_piped_output() and not json_output
     multi_file = len(paths) > 1 or bool(stdin_paths)
     results: list[dict] = []
 
@@ -157,12 +162,12 @@ def cat_cmd(
             all_lines = content.splitlines()
             content = "\n".join(all_lines[:n] if n >= 0 else all_lines[n:])
 
-        if json_output:
+        if fmt == "json":
             entry: dict = {"path": str(p), "level": level, "content": content}
             if mode:
                 entry["mode"] = mode
             results.append(entry)
-        elif use_rich:
+        elif fmt == "rich":
             _display_rich(p, content, level, n)
         else:
             # When piping multiple files, emit a compact header so LLMs can
@@ -173,7 +178,7 @@ def cat_cmd(
                 print(f"--- {p} ({kind}, {size}B) ---")
             print(content)
 
-    if json_output:
+    if fmt == "json":
         from vlmctx.display import json_dumps
 
         print(json_dumps(results))
@@ -189,7 +194,7 @@ class _CatOpts:
     __slots__ = (
         "level", "n", "detail", "output_dir", "max_pages",
         "mosaic_tile", "image_width", "mosaic_count", "mosaic_strategy",
-        "audio_speed", "audio_sample_rate", "mode", "json_output",
+        "audio_speed", "audio_sample_rate", "mode", "format",
     )
 
     def __init__(self, **kwargs):  # noqa: ANN003

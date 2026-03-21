@@ -302,7 +302,7 @@ class TestImageL1:
 
     def test_cat_image_json(self, image_tree: Path):
         result = runner.invoke(app, [
-            "cat", str(image_tree / "small.png"), "--level", "1", "--json",
+            "cat", str(image_tree / "small.png"), "--level", "1", "--format", "json",
         ])
         assert result.exit_code == 0
         data = json.loads(result.output)
@@ -367,7 +367,7 @@ class TestVideoL1:
 
     def test_cat_level1_video_json(self, video_tree: Path):
         result = runner.invoke(app, [
-            "cat", str(video_tree / "test_clip.mp4"), "--level", "1", "--json",
+            "cat", str(video_tree / "test_clip.mp4"), "--level", "1", "--format", "json",
         ])
         assert result.exit_code == 0
         data = json.loads(result.output)

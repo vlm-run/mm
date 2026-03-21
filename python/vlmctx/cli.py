@@ -6,7 +6,7 @@ from typing import Annotated, Optional
 
 import typer
 
-from vlmctx.commands import cat, find, grep, ls, sql, wc
+from vlmctx.commands import bench, cat, find, grep, ls, sql, wc
 from vlmctx.commands.config import config_app
 
 app = typer.Typer(
@@ -41,6 +41,7 @@ def _main(
         set_color_mode(color)
 
 
+app.command(name="bench")(bench.bench_cmd)
 app.command(name="find")(find.find_cmd)
 app.command(name="ls")(ls.ls_cmd)
 app.command(name="cat")(cat.cat_cmd)
