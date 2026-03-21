@@ -7,8 +7,6 @@ from typing import Annotated, Optional
 
 import typer
 
-from vlmctx.pipe import is_piped_output
-
 
 def _parse_size(size_str: str) -> int:
     size_str = size_str.strip().upper()
@@ -34,14 +32,19 @@ def find_cmd(
         Optional[int], typer.Option("--depth", "-d", help="Maximum directory depth")
     ] = None,
     sort: Annotated[Optional[str], typer.Option("--sort", "-s", help="Sort by column")] = None,
-    desc: Annotated[bool, typer.Option("--desc", help="Sort descending")] = False,
-    json_output: Annotated[bool, typer.Option("--json", help="Force JSON output")] = False,
-    limit: Annotated[Optional[int], typer.Option("--limit", "-n", help="Max results")] = None,
+    reverse: Annotated[bool, typer.Option("--reverse", "-r", help="Reverse sort order")] = False,
+    format: Annotated[
+        Optional[str], typer.Option("--format", help="Output format: json, tsv, csv")
+    ] = None,
+    limit: Annotated[Optional[int], typer.Option("--limit", help="Max results")] = None,
 ) -> None:
     """Find files matching criteria (like fd/find)."""
+    from vlmctx.display import resolve_format
 
-    # Fast path: --json or piped output bypass pyarrow entirely
-    if (json_output or is_piped_output()) and depth is None:
+    fmt = resolve_format(format)
+
+    # Fast path: non-rich output bypasses pyarrow entirely
+    if fmt != "rich" and depth is None:
         from vlmctx._vlmctx import Scanner
 
         scanner = Scanner(str(Path(directory).resolve()))
@@ -57,15 +60,23 @@ def find_cmd(
             max_size=max_bytes,
             limit=limit,
             sort_by=sort,
-            descending=desc,
+            descending=reverse,
         )
 
-        if json_output:
-            print(scanner.to_json_fast(**filter_args))
+        if fmt == "json":
+            import json as json_mod
+
+            from vlmctx.display import json_dumps
+
+            print(json_dumps(json_mod.loads(scanner.to_json_fast(**filter_args))))
         else:
-            result = scanner.to_lines_fast(**filter_args)
-            if result:
-                print(result)
+            import json as json_mod
+
+            entries = json_mod.loads(scanner.to_json_fast(**filter_args))
+            sep = "," if fmt == "csv" else "\t"
+            print(f"kind{sep}size{sep}path")
+            for entry in entries:
+                print(f"{entry['kind']}{sep}{entry['size']}{sep}{entry['path']}")
         return
 
     from vlmctx.context import Context
@@ -85,23 +96,27 @@ def find_cmd(
     if sort:
         from vlmctx.duck import query_arrow_table
 
-        order = "DESC" if desc else "ASC"
+        order = "DESC" if reverse else "ASC"
         table = query_arrow_table(table, f"SELECT * FROM files ORDER BY {sort} {order}")
 
     if limit:
         table = table.slice(0, limit)
 
-    if is_piped_output() and not json_output:
-        for i in range(table.num_rows):
-            print(table.column("path")[i].as_py())
-    elif json_output:
-        import json
+    if fmt == "json":
+        from vlmctx.display import json_dumps
 
         rows = []
         for i in range(table.num_rows):
             row = {col: table.column(col)[i].as_py() for col in table.column_names}
             rows.append(row)
-        print(json.dumps(rows, indent=2, default=str))
+        print(json_dumps(rows))
+    elif fmt in ("tsv", "csv"):
+        cols = ["kind", "size", "path"]
+        sep = "," if fmt == "csv" else "\t"
+        print(sep.join(cols))
+        for i in range(table.num_rows):
+            vals = [str(table.column(c)[i].as_py()) for c in cols]
+            print(sep.join(vals))
     else:
         from vlmctx.display import arrow_table_to_rich, output_console
 

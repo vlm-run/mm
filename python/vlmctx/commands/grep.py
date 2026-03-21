@@ -8,7 +8,7 @@ from typing import Annotated, Optional
 
 import typer
 
-from vlmctx.pipe import is_piped_output, read_paths_from_stdin
+from vlmctx.pipe import read_paths_from_stdin
 
 
 def grep_cmd(
@@ -19,11 +19,17 @@ def grep_cmd(
         Optional[str], typer.Option("--ext", "-e", help="Filter by extension(s)")
     ] = None,
     context_lines: Annotated[int, typer.Option("-C", help="Context lines around match")] = 0,
-    count: Annotated[bool, typer.Option("--count", help="Show only match counts per file")] = False,
+    count: Annotated[bool, typer.Option("--count", "-c", help="Show only match counts per file")] = False,
     level: Annotated[int, typer.Option("--level", "-l", help="Processing level")] = 1,
-    json_output: Annotated[bool, typer.Option("--json", help="Force JSON output")] = False,
+    format: Annotated[
+        Optional[str], typer.Option("--format", help="Output format: json, tsv, csv")
+    ] = None,
 ) -> None:
     """Search file contents -- text and semantic (like rg/grep)."""
+    from vlmctx.display import resolve_format
+
+    fmt = resolve_format(format)
+
     from vlmctx.context import Context
 
     ctx = Context(directory)
@@ -33,7 +39,6 @@ def grep_cmd(
         ctx = ctx.filter(ext=ext)
 
     stdin_paths = read_paths_from_stdin()
-    use_rich = not is_piped_output() and not json_output
 
     try:
         regex = re.compile(pattern)
@@ -56,9 +61,9 @@ def grep_cmd(
                 continue
 
             if level >= 1 and f.kind == "document":
-                from vlmctx.commands.cat import _extract_l1_content
+                from vlmctx.commands.cat import _l1_pdf
 
-                content = _extract_l1_content(full_path)
+                content = _l1_pdf(full_path)
             elif f.is_binary:
                 continue
             else:
@@ -86,17 +91,22 @@ def grep_cmd(
         except Exception:
             continue
 
-    if json_output:
-        import json
+    # Exit 1 on no matches (standard grep/rg behaviour for composability).
+    has_matches = bool(file_counts)
+
+    if fmt == "json":
+        from vlmctx.display import json_dumps
 
         if count:
-            print(json.dumps(file_counts, indent=2))
+            print(json_dumps(file_counts))
         else:
-            print(json.dumps(all_matches, indent=2, default=str))
+            print(json_dumps(all_matches))
+        if not has_matches:
+            raise typer.Exit(1)
         return
 
     if count:
-        if use_rich:
+        if fmt == "rich":
             from rich.table import Table as RichTable
 
             from vlmctx.display import output_console
@@ -125,7 +135,7 @@ def grep_cmd(
     total_matches = len(all_matches)
     total_files = len(file_counts)
 
-    if use_rich:
+    if fmt == "rich":
         from rich.text import Text
 
         from vlmctx.display import output_console
@@ -157,3 +167,6 @@ def grep_cmd(
     else:
         for m in all_matches:
             print(f"{m['path']}:{m['line_number']}:{m['line']}")
+
+    if not has_matches:
+        raise typer.Exit(1)

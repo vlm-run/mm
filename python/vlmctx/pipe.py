@@ -20,13 +20,38 @@ def is_piped_input() -> bool:
 def is_piped_output() -> bool:
     """Check if stdout is piped (not a terminal).
 
-    Uses sys.stdout.isatty() for zero-import-overhead detection.
+    Respects --color always/never: when color is forced on, we treat
+    output as non-piped (rich) even if stdout is a pipe.
     """
+    from vlmctx.display import _color_override
+
+    if _color_override is True:
+        return False
+    if _color_override is False:
+        return True
     return not sys.stdout.isatty()
 
 
 def read_paths_from_stdin() -> list[str]:
-    """Read newline-delimited paths from stdin when piped."""
+    """Read paths from stdin when piped.
+
+    Handles two formats transparently:
+      1. Bare paths (one per line):  ``src/main.py``
+      2. TSV with path in last column:  ``code\\t4301\\tsrc/main.py``
+
+    The heuristic is simple: if a line contains a tab, take the last field.
+    This lets ``vlmctx find | vlmctx cat`` work regardless of whether
+    find emits bare paths or the richer ``kind\\tsize\\tpath`` format.
+    """
     if not is_piped_input():
         return []
-    return [line.strip() for line in sys.stdin if line.strip()]
+    paths: list[str] = []
+    for line in sys.stdin:
+        line = line.strip()
+        if not line:
+            continue
+        # TSV: take last field (the path column)
+        if "\t" in line:
+            line = line.rsplit("\t", 1)[-1]
+        paths.append(line)
+    return paths

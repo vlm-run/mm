@@ -10,18 +10,44 @@ if TYPE_CHECKING:
     from rich.console import Console
 
 
+# Color mode override: None = auto (default), True = always, False = never.
+_color_override: bool | None = None
+
+
+def set_color_mode(mode: str) -> None:
+    """Set color output mode: 'auto', 'always', or 'never'."""
+    global _color_override  # noqa: PLW0603
+    if mode == "always":
+        _color_override = True
+    elif mode == "never":
+        _color_override = False
+    else:
+        _color_override = None
+    # Clear cached consoles so they pick up the new setting.
+    _get_console.cache_clear()
+    _get_output_console.cache_clear()
+
+
 @functools.cache
 def _get_console() -> Console:
     from rich.console import Console
 
-    return Console(stderr=True)
+    kwargs: dict[str, Any] = {"stderr": True}
+    if _color_override is not None:
+        kwargs["force_terminal"] = _color_override
+        kwargs["no_color"] = not _color_override
+    return Console(**kwargs)
 
 
 @functools.cache
 def _get_output_console() -> Console:
     from rich.console import Console
 
-    return Console()
+    kwargs: dict[str, Any] = {}
+    if _color_override is not None:
+        kwargs["force_terminal"] = _color_override
+        kwargs["no_color"] = not _color_override
+    return Console(**kwargs)
 
 
 class _LazyConsole:
@@ -52,6 +78,68 @@ KIND_ICONS: dict[str, str] = {
     "code": "src",
     "other": "---",
 }
+
+
+def json_dumps(obj: Any, *, indent: int | None = None) -> str:
+    """Serialize to JSON — compact when piped (saves tokens), pretty in TTY.
+
+    When *indent* is not given explicitly the function checks whether stdout
+    is a TTY.  TTY → ``indent=2`` for human readability; piped → no indent
+    for maximum token-efficiency when feeding output to other LLMs.
+    """
+    import json
+
+    from vlmctx.pipe import is_piped_output
+
+    if indent is None:
+        indent = None if is_piped_output() else 2
+    return json.dumps(obj, indent=indent, default=str, ensure_ascii=False)
+
+
+def resolve_format(fmt: str | None) -> str:
+    """Resolve the effective output format.
+
+    Priority: explicit ``--format`` flag > pipe detection > rich.
+
+    Returns one of: ``"json"``, ``"tsv"``, ``"csv"``, ``"text"``, ``"rich"``.
+    """
+    from vlmctx.pipe import is_piped_output
+
+    if fmt:
+        return fmt
+    return "tsv" if is_piped_output() else "rich"
+
+
+def emit_tsv(rows: list[dict], columns: list[str] | None = None) -> None:
+    """Print rows as TSV with a header line."""
+    import csv
+    import io
+
+    if not rows:
+        return
+    cols = columns or list(rows[0].keys())
+    buf = io.StringIO()
+    writer = csv.writer(buf, delimiter="\t")
+    writer.writerow(cols)
+    for row in rows:
+        writer.writerow(str(row.get(c, "")) for c in cols)
+    print(buf.getvalue(), end="")
+
+
+def emit_csv(rows: list[dict], columns: list[str] | None = None) -> None:
+    """Print rows as CSV with a header line."""
+    import csv
+    import io
+
+    if not rows:
+        return
+    cols = columns or list(rows[0].keys())
+    buf = io.StringIO()
+    writer = csv.writer(buf)
+    writer.writerow(cols)
+    for row in rows:
+        writer.writerow(str(row.get(c, "")) for c in cols)
+    print(buf.getvalue(), end="")
 
 
 def format_size(size_bytes: int | float) -> str:

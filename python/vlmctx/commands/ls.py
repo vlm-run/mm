@@ -8,7 +8,7 @@ from typing import Annotated, Optional
 
 import typer
 
-from vlmctx.pipe import is_piped_output, read_paths_from_stdin
+from vlmctx.pipe import read_paths_from_stdin
 
 COLUMN_DOCS: dict[str, str] = {
     "path": "Relative path from the scanned root directory",
@@ -42,12 +42,12 @@ KIND_TREE_STYLES: dict[str, str] = {
 def ls_cmd(
     directory: Annotated[Path, typer.Argument(help="Directory to list")] = Path("."),
     sort: Annotated[Optional[str], typer.Option("--sort", "-s", help="Sort by column")] = None,
-    desc: Annotated[bool, typer.Option("--desc", help="Sort descending")] = False,
+    reverse: Annotated[bool, typer.Option("--reverse", "-r", help="Reverse sort order")] = False,
     columns: Annotated[
         Optional[str], typer.Option("--columns", "-c", help="Columns to show, comma-separated")
     ] = None,
     limit: Annotated[
-        Optional[int], typer.Option("--limit", "-n", help="Max rows to display")
+        Optional[int], typer.Option("--limit", help="Max rows to display")
     ] = None,
     kind: Annotated[Optional[str], typer.Option("--kind", "-k", help="Filter by kind")] = None,
     tree: Annotated[bool, typer.Option("--tree", help="Hierarchical tree view")] = False,
@@ -58,7 +58,9 @@ def ls_cmd(
     schema: Annotated[
         bool, typer.Option("--schema", help="Show table schema (column names, types, descriptions)")
     ] = False,
-    json_output: Annotated[bool, typer.Option("--json", help="Force JSON output")] = False,
+    format: Annotated[
+        Optional[str], typer.Option("--format", help="Output format: json, tsv, csv")
+    ] = None,
 ) -> None:
     """Tabular file listing with metadata (like eza/ls -l).
 
@@ -68,37 +70,57 @@ def ls_cmd(
       vlmctx ls ~/data --tree --depth 2    # hierarchical tree view
       vlmctx ls ~/data --schema            # column schema introspection
     """
+    from vlmctx.display import resolve_format
+
+    fmt = resolve_format(format)
+
     if tree:
-        _ls_tree(directory, kind, depth, size, json_output)
+        _ls_tree(directory, kind, depth, size, fmt)
         return
 
     if schema:
-        _ls_schema(directory, json_output)
+        _ls_schema(directory, fmt)
         return
 
-    _ls_table(directory, sort, desc, columns, limit, kind, json_output)
+    _ls_table(directory, sort, reverse, columns, limit, kind, fmt)
+
+
+def _has_media_dimensions(table) -> bool:
+    """Check if any rows have non-null width/height (i.e. images/video present)."""
+    if "width" not in table.column_names:
+        return False
+    col = table.column("width")
+    return col.null_count < col.length()
 
 
 def _ls_table(
     directory: Path,
     sort: str | None,
-    desc: bool,
+    reverse: bool,
     columns: str | None,
     limit: int | None,
     kind: str | None,
-    json_output: bool,
+    fmt: str,
 ) -> None:
     """Default tabular listing."""
     stdin_paths = read_paths_from_stdin()
 
-    if json_output and not stdin_paths and not columns:
+    if fmt == "json" and not stdin_paths and not columns:
         from vlmctx._vlmctx import Scanner
+
+        import json as _json
+
+        from vlmctx.display import json_dumps
 
         scanner = Scanner(str(Path(directory).resolve()))
         scanner.scan()
         print(
-            scanner.to_json_fast(
-                kind=kind, sort_by=sort, descending=desc, limit=limit,
+            json_dumps(
+                _json.loads(
+                    scanner.to_json_fast(
+                        kind=kind, sort_by=sort, descending=reverse, limit=limit,
+                    )
+                )
             )
         )
         return
@@ -120,36 +142,40 @@ def _ls_table(
     if sort:
         from vlmctx.duck import query_arrow_table
 
-        order = "DESC" if desc else "ASC"
+        order = "DESC" if reverse else "ASC"
         table = query_arrow_table(table, f"SELECT * FROM files ORDER BY {sort} {order}")
 
     cols = columns.split(",") if columns else None
 
-    if is_piped_output() and not json_output:
-        import csv
-        import io
-
-        display_cols = cols or table.column_names
-        buf = io.StringIO()
-        writer = csv.writer(buf, delimiter="\t")
-        writer.writerow(display_cols)
-        n = table.num_rows if limit is None else min(limit, table.num_rows)
-        for i in range(n):
-            writer.writerow(str(table.column(c)[i].as_py()) for c in display_cols)
-        print(buf.getvalue(), end="")
-    elif json_output:
-        import json
+    if fmt == "json":
+        from vlmctx.display import json_dumps
 
         display_cols = cols or table.column_names
         rows = []
         n = table.num_rows if limit is None else min(limit, table.num_rows)
         for i in range(n):
             rows.append({c: table.column(c)[i].as_py() for c in display_cols})
-        print(json.dumps(rows, indent=2, default=str))
+        print(json_dumps(rows))
+    elif fmt in ("tsv", "csv"):
+        import csv
+        import io
+
+        display_cols = cols or table.column_names
+        buf = io.StringIO()
+        sep = "\t" if fmt == "tsv" else ","
+        writer = csv.writer(buf, delimiter=sep)
+        writer.writerow(display_cols)
+        n = table.num_rows if limit is None else min(limit, table.num_rows)
+        for i in range(n):
+            writer.writerow(str(table.column(c)[i].as_py()) for c in display_cols)
+        print(buf.getvalue(), end="")
     else:
         from vlmctx.display import arrow_table_to_rich, output_console
 
+        # Smart defaults: include width/height when media files are present.
         default_cols = ["name", "kind", "size", "ext"]
+        if not cols and _has_media_dimensions(table):
+            default_cols = ["name", "kind", "size", "width", "height", "ext"]
         display_cols = cols or default_cols
 
         rich_table = arrow_table_to_rich(table, columns=display_cols, limit=limit)
@@ -248,7 +274,7 @@ def _tree_to_json(node: dict, name: str = ".") -> dict:
 
 
 def _ls_tree(
-    directory: Path, kind: str | None, depth: int | None, show_size: bool, json_output: bool
+    directory: Path, kind: str | None, depth: int | None, show_size: bool, fmt: str
 ) -> None:
     from vlmctx._vlmctx import Scanner
 
@@ -259,15 +285,17 @@ def _ls_tree(
     tree_data = _build_tree(raw)
     total_files, total_bytes = _count_subtree(tree_data)
 
-    if json_output:
-        print(json_mod.dumps(_tree_to_json(tree_data, str(directory)), indent=2))
+    if fmt == "json":
+        from vlmctx.display import json_dumps
+
+        print(json_dumps(_tree_to_json(tree_data, str(directory))))
         return
 
     from vlmctx.display import format_size
 
     effective_depth = depth
 
-    if is_piped_output():
+    if fmt in ("tsv", "csv", "text"):
         header = f"{directory}  ({total_files:,} files, {format_size(total_bytes)})"
         lines: list[str] = [header]
         _render_plain_tree(tree_data, "", lines, 0, effective_depth, show_size=show_size, format_size=format_size)
@@ -297,7 +325,7 @@ def _ls_tree(
 # --- Schema mode ---
 
 
-def _ls_schema(directory: Path, json_output: bool) -> None:
+def _ls_schema(directory: Path, fmt: str) -> None:
     from vlmctx.context import Context
 
     ctx = Context(directory)
@@ -319,8 +347,8 @@ def _ls_schema(directory: Path, json_output: bool) -> None:
             example = s[:60] + "..." if len(s) > 60 else s
         return f"{desc} (e.g. {example})" if desc else f"e.g. {example}"
 
-    if json_output:
-        import json
+    if fmt == "json":
+        from vlmctx.display import json_dumps
 
         info = []
         for field in table.schema:
@@ -329,13 +357,14 @@ def _ls_schema(directory: Path, json_output: bool) -> None:
                 "type": str(field.type),
                 "description": _desc_with_example(field.name, table),
             })
-        print(json.dumps(info, indent=2, default=str))
+        print(json_dumps(info))
         return
 
-    if is_piped_output():
-        print("column\ttype\tdescription")
+    if fmt in ("tsv", "csv"):
+        sep = "\t" if fmt == "tsv" else ","
+        print(f"column{sep}type{sep}description")
         for field in table.schema:
-            print(f"{field.name}\t{field.type}\t{_desc_with_example(field.name, table)}")
+            print(f"{field.name}{sep}{field.type}{sep}{_desc_with_example(field.name, table)}")
         return
 
     from rich.table import Table as RichTable

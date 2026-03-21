@@ -34,7 +34,7 @@ class TestFind:
         assert "main.py" in r.output
 
     def test_json_returns_list(self, small_tree: Path):
-        r = runner.invoke(app, ["find", str(small_tree), "--json"])
+        r = runner.invoke(app, ["find", str(small_tree), "--format", "json"])
         assert r.exit_code == 0
         data = json.loads(r.output)
         assert isinstance(data, list)
@@ -42,12 +42,12 @@ class TestFind:
         assert "path" in data[0]
 
     def test_limit(self, small_tree: Path):
-        r = runner.invoke(app, ["find", str(small_tree), "--limit", "2", "--json"])
+        r = runner.invoke(app, ["find", str(small_tree), "--limit", "2", "--format", "json"])
         data = json.loads(r.output)
         assert len(data) <= 2
 
     def test_sort_by_size(self, small_tree: Path):
-        r = runner.invoke(app, ["find", str(small_tree), "--sort", "size", "--desc", "--json"])
+        r = runner.invoke(app, ["find", str(small_tree), "--sort", "size", "--reverse", "--format", "json"])
         data = json.loads(r.output)
         sizes = [row["size"] for row in data]
         assert sizes == sorted(sizes, reverse=True)
@@ -69,7 +69,7 @@ class TestLs:
         assert r.exit_code == 0
 
     def test_tree_json(self, small_tree: Path):
-        r = runner.invoke(app, ["ls", str(small_tree), "--tree", "--json"])
+        r = runner.invoke(app, ["ls", str(small_tree), "--tree", "--format", "json"])
         assert r.exit_code == 0
 
     def test_schema(self, small_tree: Path):
@@ -77,7 +77,7 @@ class TestLs:
         assert r.exit_code == 0
 
     def test_schema_json_has_columns(self, small_tree: Path):
-        r = runner.invoke(app, ["ls", str(small_tree), "--schema", "--json"])
+        r = runner.invoke(app, ["ls", str(small_tree), "--schema", "--format", "json"])
         assert r.exit_code == 0
         data = json.loads(r.output)
         names = [c["column"] for c in data]
@@ -86,7 +86,7 @@ class TestLs:
         assert "size" in names
 
     def test_json_returns_list(self, small_tree: Path):
-        r = runner.invoke(app, ["ls", str(small_tree), "--json"])
+        r = runner.invoke(app, ["ls", str(small_tree), "--format", "json"])
         assert r.exit_code == 0
         data = json.loads(r.output)
         assert isinstance(data, list)
@@ -120,7 +120,7 @@ class TestCat:
         assert len(lines) == 1
 
     def test_json_output(self, small_tree: Path):
-        r = runner.invoke(app, ["cat", str(small_tree / "src" / "main.py"), "--json"])
+        r = runner.invoke(app, ["cat", str(small_tree / "src" / "main.py"), "--format", "json"])
         assert r.exit_code == 0
         data = json.loads(r.output)
         assert len(data) == 1
@@ -137,7 +137,7 @@ class TestCat:
             "cat",
             str(small_tree / "src" / "main.py"),
             str(small_tree / "src" / "lib.rs"),
-            "--json",
+            "--format", "json",
         ])
         assert r.exit_code == 0
         data = json.loads(r.output)
@@ -154,7 +154,7 @@ class TestGrep:
         assert "hello" in r.output
 
     def test_json_output(self, small_tree: Path):
-        r = runner.invoke(app, ["grep", "hello", str(small_tree), "--json"])
+        r = runner.invoke(app, ["grep", "hello", str(small_tree), "--format", "json"])
         assert r.exit_code == 0
         data = json.loads(r.output)
         assert isinstance(data, list)
@@ -169,7 +169,7 @@ class TestGrep:
 
     def test_no_match(self, small_tree: Path):
         r = runner.invoke(app, ["grep", "zzz_nonexistent_zzz", str(small_tree)])
-        assert r.exit_code == 0
+        assert r.exit_code == 1  # exit 1 on no match (grep/rg convention)
 
 
 # ── sql ──────────────────────────────────────────────────────────────
@@ -186,7 +186,7 @@ class TestSql:
     def test_json_count(self, small_tree: Path):
         r = runner.invoke(app, [
             "sql", "SELECT COUNT(*) as total FROM files",
-            "--dir", str(small_tree), "--json",
+            "--dir", str(small_tree), "--format", "json",
         ])
         assert r.exit_code == 0
         data = json.loads(r.output)
@@ -195,7 +195,7 @@ class TestSql:
     def test_where_clause(self, small_tree: Path):
         r = runner.invoke(app, [
             "sql", "SELECT name FROM files WHERE ext = '.py'",
-            "--dir", str(small_tree), "--json",
+            "--dir", str(small_tree), "--format", "json",
         ])
         assert r.exit_code == 0
         data = json.loads(r.output)
@@ -214,14 +214,14 @@ class TestWc:
         assert r.exit_code == 0
 
     def test_json_output(self, small_tree: Path):
-        r = runner.invoke(app, ["wc", str(small_tree), "--json"])
+        r = runner.invoke(app, ["wc", str(small_tree), "--format", "json"])
         assert r.exit_code == 0
         data = json.loads(r.output)
         assert "files" in data
         assert "bytes" in data
 
     def test_by_kind_json(self, small_tree: Path):
-        r = runner.invoke(app, ["wc", str(small_tree), "--by-kind", "--json"])
+        r = runner.invoke(app, ["wc", str(small_tree), "--by-kind", "--format", "json"])
         assert r.exit_code == 0
         data = json.loads(r.output)
         assert "files" in data
@@ -238,7 +238,7 @@ class TestConfig:
         assert r.exit_code == 0
 
     def test_show_json(self):
-        r = runner.invoke(app, ["config", "show", "--json"])
+        r = runner.invoke(app, ["config", "show", "--format", "json"])
         assert r.exit_code == 0
         data = json.loads(r.output)
         assert isinstance(data, dict)

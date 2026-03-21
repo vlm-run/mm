@@ -100,7 +100,7 @@ class TestL0:
         assert "port" in r.output
 
     def test_l0_json(self, mixed_dir: Path):
-        r = runner.invoke(app, ["cat", str(mixed_dir / "main.py"), "-l", "0", "--json"])
+        r = runner.invoke(app, ["cat", str(mixed_dir / "main.py"), "-l", "0", "--format", "json"])
         assert r.exit_code == 0
         data = json.loads(r.output)
         assert data[0]["level"] == 0
@@ -117,7 +117,7 @@ class TestL1Image:
         assert "64x48" in r.output
 
     def test_image_l1_shows_hash(self, mixed_dir: Path):
-        r = runner.invoke(app, ["cat", str(mixed_dir / "photo.png"), "-l", "1", "--json"])
+        r = runner.invoke(app, ["cat", str(mixed_dir / "photo.png"), "-l", "1", "--format", "json"])
         data = json.loads(r.output)
         assert "Hash" in data[0]["content"] or "hash" in data[0]["content"].lower()
 
@@ -182,7 +182,7 @@ class TestMultiFile:
             "cat",
             str(mixed_dir / "main.py"),
             str(mixed_dir / "readme.md"),
-            "--json",
+            "--format", "json",
         ])
         assert r.exit_code == 0
         data = json.loads(r.output)
@@ -196,7 +196,7 @@ class TestMultiFile:
             "cat",
             str(mixed_dir / "main.py"),
             str(mixed_dir / "photo.png"),
-            "--json",
+            "--format", "json",
         ])
         assert r.exit_code == 0
         data = json.loads(r.output)
@@ -221,7 +221,7 @@ class TestErrors:
             "cat",
             str(mixed_dir / "main.py"),
             str(mixed_dir / "missing.txt"),
-            "--json",
+            "--format", "json",
         ])
         assert r.exit_code == 0
         assert "not found" in r.output.lower()
