@@ -11,6 +11,8 @@ from typing import Annotated, Any, Callable, Optional
 
 import typer
 
+from vlmctx.commands.bench_commands import ALL_COMMANDS, BenchCommand
+
 
 # ── Sparkline rendering ─────────────────────────────────────────────
 
@@ -116,15 +118,7 @@ def _time_fn(fn: Callable[[], Any], rounds: int, warmup: int) -> list[float]:
     return timings
 
 
-# ── Benchmark definitions ───────────────────────────────────────────
-
-
-def _pick_file_by_kind(files: list, kind: str) -> str | None:
-    """Pick the first file of a given kind from the file list."""
-    for f in files:
-        if f.kind == kind:
-            return f.path
-    return None
+# ── Benchmark runner ─────────────────────────────────────────────────
 
 
 def _run_benchmarks(
@@ -133,16 +127,11 @@ def _run_benchmarks(
     warmup: int,
     on_progress: Callable[[str, str], None] | None = None,
 ) -> tuple[list[BenchResult], dict[str, Any]]:
-    """Run all benchmark groups, return (results, target_info)."""
+    """Run all benchmark commands, return (results, target_info)."""
     from vlmctx._vlmctx import Scanner
     from vlmctx.context import Context
 
-    resolved = str(directory.resolve())
     results: list[BenchResult] = []
-
-    def _progress(group: str, name: str) -> None:
-        if on_progress:
-            on_progress(group, name)
 
     # Pre-scan to get target info and representative files.
     ctx = Context(directory)
@@ -159,185 +148,24 @@ def _run_benchmarks(
         "warmup": warmup,
     }
 
-    # ── L0: Metadata scanning ───────────────────────────────────────
+    for cmd in ALL_COMMANDS:
+        if on_progress:
+            on_progress(cmd.group, cmd.name)
 
-    if num_files == 0:
-        # No files — skip all benchmarks but report target info.
-        for name in ["find .", "ls .", "wc .", "sql GROUP BY", "find --kind image"]:
-            results.append(BenchResult(name, "L0", skipped=True, skip_reason="empty directory"))
-        for name in ["cat code", "cat image", "cat video", "cat pdf", "grep pattern"]:
-            results.append(BenchResult(name, "L1", skipped=True, skip_reason="empty directory"))
-        return results, target_info
+        if num_files == 0:
+            results.append(BenchResult(cmd.name, cmd.group, skipped=True, skip_reason="empty directory"))
+            continue
 
-    # find .
-    _progress("L0", "find .")
+        fn = cmd.make_fn(directory, files, Scanner)
+        if fn is None:
+            results.append(BenchResult(cmd.name, cmd.group, skipped=True, skip_reason=cmd.skip_reason))
+            continue
 
-    def _bench_find():
-        s = Scanner(resolved)
-        s.scan()
-        s.to_json_fast()
+        fc = cmd.files_count_fn(directory, files) if cmd.files_count_fn else num_files
+        tb = cmd.total_bytes_fn(directory, files) if cmd.total_bytes_fn else total_bytes
 
-    r = BenchResult("find .", "L0", files_count=num_files, total_bytes=total_bytes)
-    r.timings_ms = _time_fn(_bench_find, rounds, warmup)
-    results.append(r)
-
-    # ls .
-    _progress("L0", "ls .")
-
-    def _bench_ls():
-        c = Context(directory)
-        c.to_arrow()
-
-    r = BenchResult("ls .", "L0", files_count=num_files, total_bytes=total_bytes)
-    r.timings_ms = _time_fn(_bench_ls, rounds, warmup)
-    results.append(r)
-
-    # wc .
-    _progress("L0", "wc .")
-
-    def _bench_wc():
-        import json as json_mod
-
-        s = Scanner(resolved)
-        s.scan()
-        json_mod.loads(s.to_json_fast())
-
-    r = BenchResult("wc .", "L0", files_count=num_files, total_bytes=total_bytes)
-    r.timings_ms = _time_fn(_bench_wc, rounds, warmup)
-    results.append(r)
-
-    # sql GROUP BY
-    _progress("L0", "sql GROUP BY")
-
-    def _bench_sql():
-        c = Context(directory)
-        c.sql("SELECT kind, COUNT(*) as n FROM files GROUP BY kind")
-
-    r = BenchResult("sql GROUP BY", "L0", files_count=num_files, total_bytes=total_bytes)
-    r.timings_ms = _time_fn(_bench_sql, rounds, warmup)
-    results.append(r)
-
-    # find --kind image (filtered scan)
-    _progress("L0", "find --kind image")
-
-    def _bench_find_image():
-        s = Scanner(resolved)
-        s.scan()
-        s.to_json_fast(kind="image")
-
-    r = BenchResult("find --kind image", "L0", files_count=num_files, total_bytes=total_bytes)
-    r.timings_ms = _time_fn(_bench_find_image, rounds, warmup)
-    results.append(r)
-
-    # ── L1: Content extraction ──────────────────────────────────────
-
-    # cat on code files (batch)
-    code_files = [f.path for f in files if f.kind == "code"][:20]
-    if code_files:
-        _progress("L1", f"cat code (x{len(code_files)})")
-        scanner = Scanner(resolved)
-        scanner.scan()
-
-        def _bench_cat_code():
-            for p in code_files:
-                scanner.extract_l1(p)
-
-        r = BenchResult(
-            f"cat code (x{len(code_files)})", "L1",
-            files_count=len(code_files), total_bytes=sum(
-                (directory.resolve() / p).stat().st_size for p in code_files
-            ),
-        )
-        r.timings_ms = _time_fn(_bench_cat_code, rounds, warmup)
-        results.append(r)
-    else:
-        r = BenchResult("cat code", "L1", skipped=True, skip_reason="no code files")
-        results.append(r)
-
-    # cat on a single image
-    img_path = _pick_file_by_kind(files, "image")
-    if img_path:
-        _progress("L1", "cat image")
-        scanner = Scanner(resolved)
-        scanner.scan()
-
-        def _bench_cat_image():
-            scanner.extract_l1(img_path)
-
-        img_bytes = (directory.resolve() / img_path).stat().st_size
-        r = BenchResult("cat image", "L1", files_count=1, total_bytes=img_bytes)
-        r.timings_ms = _time_fn(_bench_cat_image, rounds, warmup)
-        results.append(r)
-    else:
-        r = BenchResult("cat image", "L1", skipped=True, skip_reason="no image files")
-        results.append(r)
-
-    # cat on a single video
-    vid_path = _pick_file_by_kind(files, "video")
-    if vid_path:
-        _progress("L1", "cat video")
-        scanner = Scanner(resolved)
-        scanner.scan()
-
-        def _bench_cat_video():
-            scanner.extract_l1(vid_path)
-
-        vid_bytes = (directory.resolve() / vid_path).stat().st_size
-        r = BenchResult("cat video", "L1", files_count=1, total_bytes=vid_bytes)
-        r.timings_ms = _time_fn(_bench_cat_video, rounds, warmup)
-        results.append(r)
-    else:
-        r = BenchResult("cat video", "L1", skipped=True, skip_reason="no video files")
-        results.append(r)
-
-    # cat on a PDF
-    doc_path = _pick_file_by_kind(files, "document")
-    if doc_path:
-        _progress("L1", "cat pdf")
-
-        def _bench_cat_pdf():
-            from vlmctx.commands.cat import _l1_pdf
-            _l1_pdf(directory.resolve() / doc_path)
-
-        doc_bytes = (directory.resolve() / doc_path).stat().st_size
-        r = BenchResult("cat pdf", "L1", files_count=1, total_bytes=doc_bytes)
-        r.timings_ms = _time_fn(_bench_cat_pdf, rounds, warmup)
-        results.append(r)
-    else:
-        r = BenchResult("cat pdf", "L1", skipped=True, skip_reason="no PDF files")
-        results.append(r)
-
-    # grep across all text files
-    text_files = [f for f in files if not f.is_binary or f.kind == "document"]
-    if text_files:
-        _progress("L1", "grep pattern")
-
-        def _bench_grep():
-            import re
-            regex = re.compile(r"import|include|require")
-            for f in text_files[:50]:
-                try:
-                    full_path = directory.resolve() / f.path
-                    content = full_path.read_text(errors="replace")
-                    for line in content.splitlines():
-                        regex.search(line)
-                except Exception:
-                    continue
-
-        grep_bytes = sum(
-            (directory.resolve() / f.path).stat().st_size
-            for f in text_files[:50]
-            if (directory.resolve() / f.path).exists()
-        )
-        r = BenchResult(
-            "grep pattern", "L1",
-            files_count=min(len(text_files), 50),
-            total_bytes=grep_bytes,
-        )
-        r.timings_ms = _time_fn(_bench_grep, rounds, warmup)
-        results.append(r)
-    else:
-        r = BenchResult("grep pattern", "L1", skipped=True, skip_reason="no text files")
+        r = BenchResult(cmd.name, cmd.group, files_count=fc, total_bytes=tb)
+        r.timings_ms = _time_fn(fn, rounds, warmup)
         results.append(r)
 
     return results, target_info
@@ -366,11 +194,10 @@ def _fmt_rate(rate: float, unit: str) -> str:
 
 
 def _render_summary(results: list[BenchResult], target_info: dict[str, Any]) -> None:
-    """Render the default summary panel."""
+    """Render alternating command / stats rows in a panel."""
     from rich import box
     from rich.console import Group
     from rich.panel import Panel
-    from rich.table import Table
     from rich.text import Text
 
     from vlmctx.display import format_size, output_console
@@ -387,83 +214,79 @@ def _render_summary(results: list[BenchResult], target_info: dict[str, Any]) -> 
     header.append(f"  Warmup {target_info['warmup']}", style="dim")
     parts.append(header)
 
-    # Build tables per group
-    for group_name, group_label in [("L0", "L0 · Metadata Scanning"), ("L1", "L1 · Content Extraction")]:
-        group_results = [r for r in results if r.group == group_name and not r.skipped]
-        skipped = [r for r in results if r.group == group_name and r.skipped]
-        if not group_results and not skipped:
-            continue
+    # Group results by group name
+    groups_seen: list[str] = []
+    groups_map: dict[str, list[BenchResult]] = {}
+    for r in results:
+        if r.group not in groups_map:
+            groups_seen.append(r.group)
+            groups_map[r.group] = []
+        groups_map[r.group].append(r)
+
+    for group_name in groups_seen:
+        group_results = groups_map[group_name]
+        group_label = {"L0": "L0 · Metadata", "L1": "L1 · Extraction"}.get(group_name, group_name)
 
         parts.append(Text())  # spacer
-
-        tbl = Table(
-            title=f"[bold]{group_label}[/bold]",
-            title_style="",
-            show_header=True,
-            header_style="bold dim",
-            padding=(0, 1),
-            border_style="dim",
-            expand=False,
-            box=box.SIMPLE_HEAVY,
-        )
-        tbl.add_column("Command", style="white", no_wrap=True, min_width=20)
-        tbl.add_column("Mean", justify="right", style="bold bright_green", min_width=8)
-        tbl.add_column("±Std", justify="right", style="dim", min_width=8)
-        tbl.add_column("Min", justify="right", style="dim cyan", min_width=8)
-        tbl.add_column("Max", justify="right", style="dim cyan", min_width=8)
-        tbl.add_column("Files/s", justify="right", style="bright_blue", min_width=8)
-        tbl.add_column("MB/s", justify="right", style="bright_blue", min_width=8)
+        section_header = Text()
+        section_header.append(f"  {group_label}", style="bold underline")
+        parts.append(section_header)
 
         for r in group_results:
-            tbl.add_row(
-                r.name,
-                _fmt_ms(r.mean_ms),
-                _fmt_ms(r.std_ms),
-                _fmt_ms(r.min_ms),
-                _fmt_ms(r.max_ms),
-                _fmt_rate(r.files_per_sec, ""),
-                _fmt_rate(r.mb_per_sec, ""),
-            )
+            cmd_line = Text()
 
-        for r in skipped:
-            tbl.add_row(
-                Text(r.name, style="dim"),
-                Text("—", style="dim"),
-                Text("", style="dim"),
-                Text("", style="dim"),
-                Text("", style="dim"),
-                Text("", style="dim"),
-                Text(r.skip_reason, style="dim italic"),
-            )
+            if r.skipped:
+                cmd_line.append(f"  $ {r.name}", style="dim")
+                cmd_line.append(f"  — {r.skip_reason}", style="dim italic")
+                parts.append(cmd_line)
+                continue
 
-        parts.append(tbl)
+            # Line 1: full-width command
+            cmd_line.append("  $ ", style="dim")
+            cmd_line.append(r.name, style="bold white")
+            parts.append(cmd_line)
+
+            # Line 2: stats, indented
+            stats_line = Text()
+            stats_line.append("    ", style="")
+            stats_line.append(_fmt_ms(r.mean_ms), style="bold bright_green")
+            stats_line.append(" ±", style="dim")
+            stats_line.append(_fmt_ms(r.std_ms), style="dim")
+            stats_line.append("  min ", style="dim")
+            stats_line.append(_fmt_ms(r.min_ms), style="cyan")
+            stats_line.append("  max ", style="dim")
+            stats_line.append(_fmt_ms(r.max_ms), style="cyan")
+            if r.files_per_sec > 0:
+                stats_line.append("  ", style="")
+                stats_line.append(_fmt_rate(r.files_per_sec, "files/s"), style="bright_blue")
+            if r.mb_per_sec > 0:
+                stats_line.append("  ", style="")
+                stats_line.append(_fmt_rate(r.mb_per_sec, "MB/s"), style="bright_blue")
+            stats_line.append("  ", style="")
+            stats_line.append(_sparkline(r.timings_ms), style="dim green")
+            parts.append(stats_line)
 
     # Bottleneck analysis
     measured = [r for r in results if not r.skipped and r.timings_ms]
     if measured:
         slowest = max(measured, key=lambda r: r.mean_ms)
-        l0_results = [r for r in measured if r.group == "L0"]
-        fastest_l0 = min(l0_results, key=lambda r: r.mean_ms) if l0_results else None
+        fastest = min(measured, key=lambda r: r.mean_ms)
 
         parts.append(Text())  # spacer
         footer = Text()
-        footer.append("  Bottleneck  ", style="dim")
+        footer.append("  Slowest   ", style="dim")
         footer.append(slowest.name, style="bold yellow")
-        footer.append(f" ({_fmt_ms(slowest.mean_ms)})", style="dim")
-        if fastest_l0:
-            footer.append(f"\n  Fastest L0  ", style="dim")
-            footer.append(fastest_l0.name, style="bold green")
-            footer.append(f" ({_fmt_ms(fastest_l0.mean_ms)}", style="dim")
-            if fastest_l0.files_per_sec > 0:
-                footer.append(f", {_fmt_rate(fastest_l0.files_per_sec, 'files/s')}", style="dim")
-            footer.append(")", style="dim")
+        footer.append(f"  {_fmt_ms(slowest.mean_ms)}", style="dim")
+        footer.append(f"\n  Fastest   ", style="dim")
+        footer.append(fastest.name, style="bold green")
+        footer.append(f"  {_fmt_ms(fastest.mean_ms)}", style="dim")
         parts.append(footer)
 
     panel = Panel(
         Group(*parts),
         title="[bold]vlmctx bench[/bold]",
         title_align="left",
-        expand=False,
+        expand=True,
         padding=(1, 2),
         box=box.ROUNDED,
     )

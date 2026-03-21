@@ -94,9 +94,9 @@ class TestBenchCommand:
             for result in data["results"]
             if result.get("skipped")
         }
-        assert "cat image" in skipped_names
-        assert "cat video" in skipped_names
-        assert "cat pdf" in skipped_names
+        assert "vlmctx cat <image>" in skipped_names
+        assert "vlmctx cat <video>" in skipped_names
+        assert "vlmctx cat <pdf>" in skipped_names
 
     def test_empty_directory(self, tmp_path: Path):
         """Bench handles empty directory gracefully."""
@@ -124,11 +124,11 @@ class TestBenchCommand:
             for result in data["results"]
             if result["group"] == "L0" and not result.get("skipped")
         }
-        assert "find ." in l0_names
-        assert "ls ." in l0_names
-        assert "wc ." in l0_names
-        assert "sql GROUP BY" in l0_names
-        assert "find --kind image" in l0_names
+        assert "vlmctx find ." in l0_names
+        assert "vlmctx ls ." in l0_names
+        assert "vlmctx wc ." in l0_names
+        assert "vlmctx sql 'GROUP BY kind'" in l0_names
+        assert "vlmctx find --kind image" in l0_names
 
     def test_timings_are_positive(self, small_tree: Path):
         """All timings should be positive numbers."""
@@ -206,6 +206,26 @@ class TestBenchResult:
         assert d["group"] == "L0"
         assert d["mean_ms"] > 0
         assert len(d["timings_ms"]) == 3
+
+
+class TestBenchCommands:
+    """Tests for bench_commands registry."""
+
+    def test_all_commands_non_empty(self):
+        from vlmctx.commands.bench_commands import ALL_COMMANDS, L0_COMMANDS, L1_COMMANDS
+
+        assert len(ALL_COMMANDS) > 0
+        assert len(L0_COMMANDS) > 0
+        assert len(L1_COMMANDS) > 0
+        assert len(ALL_COMMANDS) == len(L0_COMMANDS) + len(L1_COMMANDS)
+
+    def test_command_has_required_fields(self):
+        from vlmctx.commands.bench_commands import ALL_COMMANDS
+
+        for cmd in ALL_COMMANDS:
+            assert cmd.name
+            assert cmd.group in ("L0", "L1")
+            assert callable(cmd.make_fn)
 
 
 class TestSparkline:
