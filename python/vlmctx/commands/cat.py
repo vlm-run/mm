@@ -524,8 +524,9 @@ def _l2_video_modal(path: Path, opts: _CatOpts, mode: str) -> str:
     if duration <= 0:
         return f"[Could not determine duration for {path.name}]"
 
-    # 2. Frame extraction (mode-dependent)
-    t0 = time.monotonic()
+    # 2+3. Frame extraction and audio transcription run in parallel —
+    #       they are independent and converge only at the LLM call.
+    from concurrent.futures import ThreadPoolExecutor, Future
 
     tile_cols, tile_rows = 4, 4
     if mode == "accurate":
@@ -535,63 +536,61 @@ def _l2_video_modal(path: Path, opts: _CatOpts, mode: str) -> str:
         num_frames = 16
         num_mosaics = 1
 
-    # Target ~1500px mosaic width — compute per-tile width from grid size
+    # Target ~1500px mosaic width
     mosaic_max_width = 1500
     thumb_width = mosaic_max_width // tile_cols  # 375px per tile
 
     use_scenes = (mode == "accurate") or (mode == "fast" and duration >= 300)
 
-    mosaic_paths: list[Path] = []
-    if use_scenes:
-        from vlmctx.scenes import (
-            detect_scenes,
-            sample_scene_timestamps,
-            sample_uniform_timestamps,
-            scenedetect_available,
-        )
+    def _extract_visual() -> list[Path]:
+        """Extract frames and assemble mosaics."""
+        t0 = time.monotonic()
+        if use_scenes:
+            from vlmctx.scenes import (
+                detect_scenes,
+                sample_scene_timestamps,
+                sample_uniform_timestamps,
+                scenedetect_available,
+            )
 
-        if scenedetect_available():
-            t_scene = time.monotonic()
-            scene_result = detect_scenes(path)
-            timing["scene_detection_ms"] = (time.monotonic() - t_scene) * 1000
-
-            if scene_result.scenes:
-                timestamps = sample_scene_timestamps(scene_result.scenes, num_frames)
+            if scenedetect_available():
+                t_scene = time.monotonic()
+                scene_result = detect_scenes(path)
+                timing["scene_detection_ms"] = (time.monotonic() - t_scene) * 1000
+                if scene_result.scenes:
+                    timestamps = sample_scene_timestamps(scene_result.scenes, num_frames)
+                else:
+                    timestamps = sample_uniform_timestamps(duration, num_frames)
             else:
                 timestamps = sample_uniform_timestamps(duration, num_frames)
+
+            frames = extract_frames_at_timestamps(
+                path, timestamps, thumb_width=thumb_width,
+                out_dir=opts.output_dir,
+            )
+            timing["frame_extraction_ms"] = (time.monotonic() - t0) * 1000
+
+            t_tile = time.monotonic()
+            mosaics = tile_frames_to_mosaics(
+                frames, tile_cols=tile_cols, tile_rows=tile_rows, stem=path.stem,
+                out_dir=opts.output_dir,
+            )
+            timing["mosaic_assembly_ms"] = (time.monotonic() - t_tile) * 1000
         else:
-            from vlmctx.scenes import sample_uniform_timestamps
-            timestamps = sample_uniform_timestamps(duration, num_frames)
+            result = extract_uniform_mosaics(
+                path, out_dir=opts.output_dir, tile_cols=tile_cols, tile_rows=tile_rows,
+                thumb_width=thumb_width, num_mosaics=num_mosaics,
+            )
+            mosaics = result.mosaic_paths
+            timing["frame_extraction_ms"] = result.elapsed_ms
+        return mosaics
 
-        frames = extract_frames_at_timestamps(
-            path, timestamps, thumb_width=thumb_width,
-            out_dir=opts.output_dir,
-        )
-        timing["frame_extraction_ms"] = (time.monotonic() - t0) * 1000
+    def _extract_audio_transcript() -> str:
+        """Extract audio and transcribe with whisper."""
+        from vlmctx.whisper import whisper_available
+        if not whisper_available():
+            return ""
 
-        t_tile = time.monotonic()
-        mosaic_paths = tile_frames_to_mosaics(
-            frames, tile_cols=tile_cols, tile_rows=tile_rows, stem=path.stem,
-            out_dir=opts.output_dir,
-        )
-        timing["mosaic_assembly_ms"] = (time.monotonic() - t_tile) * 1000
-    else:
-        # Short video fast mode: uniform sampling via existing function
-        result = extract_uniform_mosaics(
-            path, out_dir=opts.output_dir, tile_cols=tile_cols, tile_rows=tile_rows,
-            thumb_width=thumb_width, num_mosaics=num_mosaics,
-        )
-        mosaic_paths = result.mosaic_paths
-        timing["frame_extraction_ms"] = result.elapsed_ms
-
-    if not mosaic_paths:
-        return f"[No frames extracted from {path.name}]"
-
-    # 3. Audio transcription via Whisper
-    transcript = ""
-    from vlmctx.whisper import whisper_available
-
-    if whisper_available():
         from vlmctx.config import get_mode_config
         mode_cfg = get_mode_config(mode)
 
@@ -599,24 +598,30 @@ def _l2_video_modal(path: Path, opts: _CatOpts, mode: str) -> str:
         audio_result = extract_audio(path, speed=mode_cfg.audio_speed)
         timing["audio_extraction_ms"] = (time.monotonic() - t_audio) * 1000
 
-        t_whisper = time.monotonic()
         from vlmctx.whisper import transcribe
-
-        whisper_model = mode_cfg.whisper_model
         whisper_result = transcribe(
             audio_result.path,
-            model_size=whisper_model,
+            model_size=mode_cfg.whisper_model,
             beam_size=mode_cfg.beam_size or 1,
             audio_speed=mode_cfg.audio_speed,
         )
-        transcript = whisper_result.text
         timing["whisper_transcription_ms"] = whisper_result.elapsed_ms
 
-        # Cleanup audio temp file
         try:
             audio_result.path.unlink(missing_ok=True)
         except Exception:
             pass
+        return whisper_result.text
+
+    # Run visual + audio in parallel
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        visual_future: Future[list[Path]] = pool.submit(_extract_visual)
+        audio_future: Future[str] = pool.submit(_extract_audio_transcript)
+        mosaic_paths = visual_future.result()
+        transcript = audio_future.result()
+
+    if not mosaic_paths:
+        return f"[No frames extracted from {path.name}]"
 
     # 4. Combined LLM analysis
     t_llm = time.monotonic()
