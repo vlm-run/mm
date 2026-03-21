@@ -261,6 +261,18 @@ cargo bench --workspace                                     # Rust benchmarks (C
 uv run pytest tests/python/test_benchmark.py --benchmark-only  # Python benchmarks
 ```
 
+## Keeping SPEC.md in sync
+
+<!-- AUTO-SYNC: After any implementation change (new feature, bug fix, refactor, schema change,
+     new/removed CLI flag, new extractor, perf improvement, dependency change), update SPEC.md
+     to reflect the current state. Rules:
+     - Toggle [x]/[ ]/[~] checkboxes to match what's actually implemented
+     - Add new line items for new capabilities; remove items that were deleted
+     - Update performance numbers only when re-measured
+     - Update test counts when tests are added/removed
+     - Keep it factual and terse — no prose, just the tree structure
+     - Do NOT update SPEC.md for docs-only, test-only, or CI-only changes -->
+
 ## Known gaps / TODOs
 
 - Python `Context.cat(level=1)` for PDFs uses Rust L1 extractor (raw bytes) instead of pypdfium2. The CLI `cat --level 1` correctly uses pypdfium2.
