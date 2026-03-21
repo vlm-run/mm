@@ -40,6 +40,7 @@ class BenchResult:
     timings_ms: list[float] = field(default_factory=list)
     files_count: int = 0
     total_bytes: int = 0
+    preview_lines: list[str] = field(default_factory=list)
     skipped: bool = False
     skip_reason: str = ""
 
@@ -164,7 +165,15 @@ def _run_benchmarks(
         fc = cmd.files_count_fn(directory, files) if cmd.files_count_fn else num_files
         tb = cmd.total_bytes_fn(directory, files) if cmd.total_bytes_fn else total_bytes
 
-        r = BenchResult(cmd.name, cmd.group, files_count=fc, total_bytes=tb)
+        # Collect preview output
+        preview: list[str] = []
+        if cmd.preview_fn:
+            try:
+                preview = cmd.preview_fn(directory, files, Scanner)
+            except Exception:
+                preview = []
+
+        r = BenchResult(cmd.name, cmd.group, files_count=fc, total_bytes=tb, preview_lines=preview)
         r.timings_ms = _time_fn(fn, rounds, warmup)
         results.append(r)
 
@@ -210,6 +219,38 @@ def _latency_style(ms: float, group: str) -> str:
     if ms <= yellow:
         return "dim yellow"
     return "dim red"
+
+
+def _render_previews(results: list[BenchResult]) -> None:
+    """Render streaming command previews (output before the summary panel)."""
+    from rich.text import Text
+
+    from vlmctx.display import output_console
+
+    current_group = None
+    for r in results:
+        # Group header
+        if r.group != current_group:
+            current_group = r.group
+            group_label = {"L0": "L0 · Metadata", "L1": "L1 · Extraction"}.get(r.group, r.group)
+            output_console.print()
+            output_console.print(Text(group_label, style="bold underline"))
+            output_console.print()
+
+        # Command line
+        cmd = Text()
+        cmd.append("  $ ", style="dim")
+        cmd.append(r.name, style="bold white")
+        if r.skipped:
+            cmd.append(f"  — {r.skip_reason}", style="dim italic")
+        output_console.print(cmd)
+
+        # Preview output (dim, indented)
+        if not r.skipped and r.preview_lines:
+            for line in r.preview_lines:
+                output_console.print(Text(f"    {line}", style="dim"))
+
+        output_console.print()
 
 
 def _render_summary(results: list[BenchResult], target_info: dict[str, Any]) -> None:
@@ -430,6 +471,7 @@ def bench_cmd(
         finally:
             status.stop()
 
+        _render_previews(results)
         if verbose:
             _render_verbose(results, target_info)
         else:
