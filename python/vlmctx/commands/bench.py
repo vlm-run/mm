@@ -76,6 +76,27 @@ class BenchResult:
             return (self.total_bytes / (1024 * 1024)) / (self.mean_ms / 1000.0)
         return 0.0
 
+    @property
+    def bits_per_sec(self) -> float:
+        """Information throughput in bits/s."""
+        if self.mean_ms > 0 and self.total_bytes > 0:
+            return (self.total_bytes * 8) / (self.mean_ms / 1000.0)
+        return 0.0
+
+    @property
+    def bits_per_sec_str(self) -> str:
+        """Human-readable bits/s throughput."""
+        bps = self.bits_per_sec
+        if bps >= 1e9:
+            return f"{bps / 1e9:.2f} Gbps"
+        if bps >= 1e6:
+            return f"{bps / 1e6:.2f} Mbps"
+        if bps >= 1e3:
+            return f"{bps / 1e3:.2f} kbps"
+        if bps > 0:
+            return f"{bps:.0f} bps"
+        return "—"
+
     def to_dict(self) -> dict[str, Any]:
         if self.skipped:
             return {
@@ -94,6 +115,8 @@ class BenchResult:
             "median_ms": round(self.median_ms, 2),
             "files_per_sec": round(self.files_per_sec),
             "mb_per_sec": round(self.mb_per_sec, 1),
+            "bits_per_sec": round(self.bits_per_sec),
+            "bits_per_sec_str": self.bits_per_sec_str,
             "timings_ms": [round(t, 2) for t in self.timings_ms],
         }
 
@@ -323,6 +346,9 @@ def _render_summary(results: list[BenchResult], target_info: dict[str, Any]) -> 
             if r.mb_per_sec > 0:
                 stats_line.append("  ", style="")
                 stats_line.append(_fmt_rate(r.mb_per_sec, "MB/s"), style=color)
+            if r.bits_per_sec > 0:
+                stats_line.append("  ", style="")
+                stats_line.append(r.bits_per_sec_str, style="bright_cyan")
             parts.append(stats_line)
 
     # Bottleneck analysis
@@ -420,6 +446,9 @@ def _render_verbose(results: list[BenchResult], target_info: dict[str, Any]) -> 
                 body.append("  ", style="dim")
             if r.mb_per_sec > 0:
                 body.append(_fmt_rate(r.mb_per_sec, "MB/s"), style="bright_blue")
+            if r.bits_per_sec > 0:
+                body.append("  ", style="dim")
+                body.append(r.bits_per_sec_str, style="bright_cyan")
 
         # Slowest flag
         if slowest and r is slowest and len(measured) > 1:

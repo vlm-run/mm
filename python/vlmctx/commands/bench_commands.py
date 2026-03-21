@@ -390,4 +390,121 @@ L1_COMMANDS: list[BenchCommand] = [
     BenchCommand("vlmctx grep /pattern/", "L1", _make_grep, "no text files", _preview_grep, _grep_count, _grep_bytes),
 ]
 
-ALL_COMMANDS: list[BenchCommand] = L0_COMMANDS + L1_COMMANDS
+# ── L2 modal command factories ──────────────────────────────────────
+
+
+def _make_cat_image_l2_fast(directory: Path, files: list, scanner_cls: type) -> Callable[[], Any] | None:
+    img_path = _pick_file_by_kind(files, "image")
+    if not img_path:
+        return None
+    full_path = directory.resolve() / img_path
+
+    def run():
+        from vlmctx.commands.cat import _CatOpts, _extract
+        opts = _CatOpts(
+            level=2, n=None, detail=False, output_dir=None,
+            max_pages=None, mosaic_tile="4x4", image_width=160,
+            mosaic_count=1, mosaic_strategy="uniform",
+            audio_speed=2.0, audio_sample_rate=16000,
+            mode="fast", format="json",
+        )
+        _extract(full_path, opts)
+
+    return run
+
+
+def _make_cat_image_l2_accurate(directory: Path, files: list, scanner_cls: type) -> Callable[[], Any] | None:
+    img_path = _pick_file_by_kind(files, "image")
+    if not img_path:
+        return None
+    full_path = directory.resolve() / img_path
+
+    def run():
+        from vlmctx.commands.cat import _CatOpts, _extract
+        opts = _CatOpts(
+            level=2, n=None, detail=False, output_dir=None,
+            max_pages=None, mosaic_tile="4x4", image_width=160,
+            mosaic_count=1, mosaic_strategy="uniform",
+            audio_speed=2.0, audio_sample_rate=16000,
+            mode="accurate", format="json",
+        )
+        _extract(full_path, opts)
+
+    return run
+
+
+def _make_cat_video_l2_fast(directory: Path, files: list, scanner_cls: type) -> Callable[[], Any] | None:
+    vid_path = _pick_file_by_kind(files, "video")
+    if not vid_path:
+        return None
+    full_path = directory.resolve() / vid_path
+
+    def run():
+        from vlmctx.commands.cat import _CatOpts, _extract
+        opts = _CatOpts(
+            level=2, n=None, detail=False, output_dir=None,
+            max_pages=None, mosaic_tile="4x4", image_width=160,
+            mosaic_count=1, mosaic_strategy="uniform",
+            audio_speed=2.0, audio_sample_rate=16000,
+            mode="fast", format="json",
+        )
+        _extract(full_path, opts)
+
+    return run
+
+
+def _make_cat_video_l2_accurate(directory: Path, files: list, scanner_cls: type) -> Callable[[], Any] | None:
+    vid_path = _pick_file_by_kind(files, "video")
+    if not vid_path:
+        return None
+    full_path = directory.resolve() / vid_path
+
+    def run():
+        from vlmctx.commands.cat import _CatOpts, _extract
+        opts = _CatOpts(
+            level=2, n=None, detail=False, output_dir=None,
+            max_pages=None, mosaic_tile="4x4", image_width=160,
+            mosaic_count=8, mosaic_strategy="uniform",
+            audio_speed=1.0, audio_sample_rate=16000,
+            mode="accurate", format="json",
+        )
+        _extract(full_path, opts)
+
+    return run
+
+
+def _l2_preview(kind: str, mode: str, directory: Path, files: list, scanner_cls: type) -> list[str]:
+    f = next((f for f in files if f.kind == kind), None)
+    if not f:
+        return []
+    return [f"{f.path}  (mode={mode})"]
+
+
+L2_COMMANDS: list[BenchCommand] = [
+    BenchCommand(
+        "vlmctx cat <image> -l2 --mode fast", "L2",
+        _make_cat_image_l2_fast, "no image files",
+        lambda d, f, s: _l2_preview("image", "fast", d, f, s),
+        _cat_image_count, _cat_image_bytes,
+    ),
+    BenchCommand(
+        "vlmctx cat <image> -l2 --mode accurate", "L2",
+        _make_cat_image_l2_accurate, "no image files",
+        lambda d, f, s: _l2_preview("image", "accurate", d, f, s),
+        _cat_image_count, _cat_image_bytes,
+    ),
+    BenchCommand(
+        "vlmctx cat <video> -l2 --mode fast", "L2",
+        _make_cat_video_l2_fast, "no video files",
+        lambda d, f, s: _l2_preview("video", "fast", d, f, s),
+        _cat_video_count, _cat_video_bytes,
+    ),
+    BenchCommand(
+        "vlmctx cat <video> -l2 --mode accurate", "L2",
+        _make_cat_video_l2_accurate, "no video files",
+        lambda d, f, s: _l2_preview("video", "accurate", d, f, s),
+        _cat_video_count, _cat_video_bytes,
+    ),
+]
+
+ALL_COMMANDS: list[BenchCommand] = L0_COMMANDS + L1_COMMANDS + L2_COMMANDS
