@@ -603,7 +603,12 @@ def _l2_video_modal(path: Path, opts: _CatOpts, mode: str) -> str:
         from vlmctx.whisper import transcribe
 
         whisper_model = mode_cfg.whisper_model
-        whisper_result = transcribe(audio_result.path, model_size=whisper_model)
+        whisper_result = transcribe(
+            audio_result.path,
+            model_size=whisper_model,
+            beam_size=mode_cfg.beam_size or 1,
+            audio_speed=mode_cfg.audio_speed,
+        )
         transcript = whisper_result.text
         timing["whisper_transcription_ms"] = whisper_result.elapsed_ms
 
@@ -678,7 +683,12 @@ def _l2_audio_modal(path: Path, opts: _CatOpts, mode: str) -> str:
 
     # 2. Transcribe
     whisper_model = mode_cfg.whisper_model
-    whisper_result = transcribe(audio_result.path, model_size=whisper_model)
+    whisper_result = transcribe(
+        audio_result.path,
+        model_size=whisper_model,
+        beam_size=mode_cfg.beam_size or 1,
+        audio_speed=mode_cfg.audio_speed,
+    )
     timing["whisper_ms"] = whisper_result.elapsed_ms
     transcript = whisper_result.text
 

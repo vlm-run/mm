@@ -80,7 +80,8 @@ def transcribe(
     *,
     model_size: str = "tiny",
     language: str | None = None,
-    beam_size: int = 5,
+    beam_size: int = 1,
+    audio_speed: float = 1.0,
 ) -> TranscriptionResult:
     """Transcribe audio file using faster-whisper.
 
@@ -88,10 +89,12 @@ def transcribe(
         audio_path: Path to audio file (WAV, MP3, etc.)
         model_size: Whisper model size ("tiny", "base", "small", "medium", "large-v3")
         language: ISO language code (auto-detected if None)
-        beam_size: Beam size for decoding (higher = more accurate, slower)
+        beam_size: Beam size for decoding (1=greedy fastest, 5=beam search best quality)
+        audio_speed: Speed multiplier the audio was extracted at. Timestamps
+            are scaled back to original time (e.g. 3.0 means multiply by 3).
 
     Returns:
-        TranscriptionResult with text, segments, language, and timing.
+        TranscriptionResult with text, segments (original timestamps), language, and timing.
     """
     if not whisper_available():
         return TranscriptionResult(
@@ -111,12 +114,15 @@ def transcribe(
         vad_parameters={"min_silence_duration_ms": 500},
     )
 
+    # Scale timestamps back to original time if audio was sped up
+    ts_scale = audio_speed if audio_speed > 0 else 1.0
+
     segments: list[dict[str, Any]] = []
     text_parts: list[str] = []
     for seg in segments_iter:
         segments.append({
-            "start": round(seg.start, 3),
-            "end": round(seg.end, 3),
+            "start": round(seg.start * ts_scale, 3),
+            "end": round(seg.end * ts_scale, 3),
             "text": seg.text.strip(),
         })
         text_parts.append(seg.text.strip())

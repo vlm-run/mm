@@ -37,8 +37,8 @@ def show(
         data = {
             "provider": {r[0]: {"value": r[1], "source": r[2]} for r in rows},
             "mode": {
-                "fast": {"whisper_model": cfg.mode_fast.whisper_model, "audio_speed": cfg.mode_fast.audio_speed},
-                "accurate": {"whisper_model": cfg.mode_accurate.whisper_model, "audio_speed": cfg.mode_accurate.audio_speed},
+                "fast": {"whisper_model": cfg.mode_fast.whisper_model, "audio_speed": cfg.mode_fast.audio_speed, "beam_size": cfg.mode_fast.beam_size},
+                "accurate": {"whisper_model": cfg.mode_accurate.whisper_model, "audio_speed": cfg.mode_accurate.audio_speed, "beam_size": cfg.mode_accurate.beam_size},
             },
         }
         print(json_dumps(data))
@@ -97,9 +97,10 @@ def show(
     mode_tbl.add_column("mode", style="bold")
     mode_tbl.add_column("whisper_model")
     mode_tbl.add_column("audio_speed", justify="right")
+    mode_tbl.add_column("beam_size", justify="right")
 
-    mode_tbl.add_row("fast", cfg.mode_fast.whisper_model, str(cfg.mode_fast.audio_speed))
-    mode_tbl.add_row("accurate", cfg.mode_accurate.whisper_model, str(cfg.mode_accurate.audio_speed))
+    mode_tbl.add_row("fast", cfg.mode_fast.whisper_model, str(cfg.mode_fast.audio_speed), str(cfg.mode_fast.beam_size))
+    mode_tbl.add_row("accurate", cfg.mode_accurate.whisper_model, str(cfg.mode_accurate.audio_speed), str(cfg.mode_accurate.beam_size))
     output_console.print(mode_tbl)
 
 
@@ -151,9 +152,9 @@ def set_key(
     # Parse dotted keys for mode settings
     if key.startswith("mode."):
         parts = key.split(".")
-        if len(parts) != 3 or parts[1] not in ("fast", "accurate") or parts[2] not in ("whisper_model", "audio_speed"):
+        if len(parts) != 3 or parts[1] not in ("fast", "accurate") or parts[2] not in ("whisper_model", "audio_speed", "beam_size"):
             output_console.print(f"[red]Unknown key:[/red] {key}")
-            output_console.print("[dim]Valid mode keys: mode.fast.whisper_model, mode.fast.audio_speed, mode.accurate.whisper_model, mode.accurate.audio_speed[/dim]")
+            output_console.print("[dim]Valid mode keys: mode.{fast,accurate}.{whisper_model,audio_speed,beam_size}[/dim]")
             raise typer.Exit(1)
 
         path = _update_mode_key(parts[1], parts[2], value)
@@ -196,6 +197,8 @@ def _update_mode_key(mode: str, key: str, value: str) -> str:
     # Coerce types
     if key == "audio_speed":
         file_data["mode"][mode][key] = float(value)
+    elif key == "beam_size":
+        file_data["mode"][mode][key] = int(value)
     else:
         file_data["mode"][mode][key] = value
 

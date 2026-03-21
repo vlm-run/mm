@@ -71,12 +71,13 @@ class ModeConfig:
 
     whisper_model: str = ""
     audio_speed: float = 0.0  # 0 = not set, use default
+    beam_size: int = 0        # 0 = not set, use default
 
 
 # Platform-aware mode defaults
 _MODE_DEFAULTS: dict[str, ModeConfig] = {
-    "fast": ModeConfig(whisper_model="tiny", audio_speed=2.0),
-    "accurate": ModeConfig(whisper_model="medium", audio_speed=1.0),
+    "fast": ModeConfig(whisper_model="tiny", audio_speed=2.0, beam_size=1),
+    "accurate": ModeConfig(whisper_model="medium", audio_speed=1.0, beam_size=5),
 }
 
 
@@ -92,8 +93,8 @@ class VlmctxConfig:
     """Full resolved configuration."""
 
     provider: ProviderConfig = field(default_factory=ProviderConfig)
-    mode_fast: ModeConfig = field(default_factory=lambda: ModeConfig(whisper_model="tiny", audio_speed=2.0))
-    mode_accurate: ModeConfig = field(default_factory=lambda: ModeConfig(whisper_model="medium", audio_speed=1.0))
+    mode_fast: ModeConfig = field(default_factory=lambda: ModeConfig(whisper_model="tiny", audio_speed=2.0, beam_size=1))
+    mode_accurate: ModeConfig = field(default_factory=lambda: ModeConfig(whisper_model="medium", audio_speed=1.0, beam_size=5))
 
 
 # ── Template ────────────────────────────────────────────────────────
@@ -110,10 +111,12 @@ model = "qwen3.5:0.8b"               # Ollama model tag
 [mode.fast]
 whisper_model = "tiny"                # faster-whisper model size
 audio_speed = 2.0                     # 2x speedup for fast transcription
+beam_size = 1                         # greedy decoding (fastest)
 
 [mode.accurate]
 whisper_model = "medium"              # higher quality transcription
 audio_speed = 1.0                     # no speedup
+beam_size = 5                         # beam search (best quality)
 """
 
 TEMPLATE_LINUX = """\
@@ -128,10 +131,12 @@ model = "Qwen/Qwen3.5-0.8B"          # HuggingFace model ID
 [mode.fast]
 whisper_model = "tiny"                # faster-whisper model size
 audio_speed = 2.0                     # 2x speedup for fast transcription
+beam_size = 1                         # greedy decoding (fastest)
 
 [mode.accurate]
 whisper_model = "medium"              # higher quality transcription
 audio_speed = 1.0                     # no speedup
+beam_size = 5                         # beam search (best quality)
 """
 
 # Legacy template (flat, for backward compat)
@@ -239,6 +244,7 @@ def get_mode_config(mode: str) -> ModeConfig:
     return ModeConfig(
         whisper_model=str(mode_section.get("whisper_model", defaults.whisper_model)),
         audio_speed=float(mode_section.get("audio_speed", defaults.audio_speed)),
+        beam_size=int(mode_section.get("beam_size", defaults.beam_size)),
     )
 
 
