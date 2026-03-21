@@ -527,12 +527,17 @@ def _l2_video_modal(path: Path, opts: _CatOpts, mode: str) -> str:
     # 2. Frame extraction (mode-dependent)
     t0 = time.monotonic()
 
+    tile_cols, tile_rows = 4, 4
     if mode == "accurate":
         num_frames = 128
         num_mosaics = 8
     else:
         num_frames = 16
         num_mosaics = 1
+
+    # Target ~1500px mosaic width — compute per-tile width from grid size
+    mosaic_max_width = 1500
+    thumb_width = mosaic_max_width // tile_cols  # 375px per tile
 
     use_scenes = (mode == "accurate") or (mode == "fast" and duration >= 300)
 
@@ -559,20 +564,22 @@ def _l2_video_modal(path: Path, opts: _CatOpts, mode: str) -> str:
             timestamps = sample_uniform_timestamps(duration, num_frames)
 
         frames = extract_frames_at_timestamps(
-            path, timestamps, thumb_width=opts.image_width,
+            path, timestamps, thumb_width=thumb_width,
+            out_dir=opts.output_dir,
         )
         timing["frame_extraction_ms"] = (time.monotonic() - t0) * 1000
 
         t_tile = time.monotonic()
         mosaic_paths = tile_frames_to_mosaics(
-            frames, tile_cols=4, tile_rows=4, stem=path.stem,
+            frames, tile_cols=tile_cols, tile_rows=tile_rows, stem=path.stem,
+            out_dir=opts.output_dir,
         )
         timing["mosaic_assembly_ms"] = (time.monotonic() - t_tile) * 1000
     else:
         # Short video fast mode: uniform sampling via existing function
         result = extract_uniform_mosaics(
-            path, tile_cols=4, tile_rows=4,
-            thumb_width=opts.image_width, num_mosaics=num_mosaics,
+            path, out_dir=opts.output_dir, tile_cols=tile_cols, tile_rows=tile_rows,
+            thumb_width=thumb_width, num_mosaics=num_mosaics,
         )
         mosaic_paths = result.mosaic_paths
         timing["frame_extraction_ms"] = result.elapsed_ms
