@@ -542,8 +542,11 @@ def _l2_video_modal(path: Path, opts: _CatOpts, mode: str) -> str:
 
     use_scenes = (mode == "accurate") or (mode == "fast" and duration >= 300)
 
-    def _extract_visual() -> list[Path]:
-        """Extract frames and assemble mosaics."""
+    def _extract_visual_and_vlm() -> tuple[list[Path], str]:
+        """Extract frames, assemble mosaics, run VLM — all sequential.
+
+        Returns (mosaic_paths, vlm_analysis).
+        """
         t0 = time.monotonic()
         if use_scenes:
             from vlmctx.scenes import (
@@ -583,7 +586,21 @@ def _l2_video_modal(path: Path, opts: _CatOpts, mode: str) -> str:
             )
             mosaics = result.mosaic_paths
             timing["frame_extraction_ms"] = result.elapsed_ms
-        return mosaics
+
+        if not mosaics:
+            return mosaics, ""
+
+        # VLM call on mosaic only — no transcript in prompt
+        t_vlm = time.monotonic()
+        llm = LlmBackend()
+        analysis = llm.analyze_video_visual(
+            mosaics,
+            video_name=path.name,
+            duration_s=duration,
+            mode=mode,
+        )
+        timing["vlm_call_ms"] = (time.monotonic() - t_vlm) * 1000
+        return mosaics, analysis
 
     def _extract_audio_transcript() -> str:
         """Extract audio and transcribe with whisper."""
@@ -613,30 +630,20 @@ def _l2_video_modal(path: Path, opts: _CatOpts, mode: str) -> str:
             pass
         return whisper_result.text
 
-    # Run visual + audio in parallel
+    # Run (visual → VLM) ∥ (audio → whisper) in parallel
+    # The VLM sees only the mosaic; transcript is concatenated at the end.
     with ThreadPoolExecutor(max_workers=2) as pool:
-        visual_future: Future[list[Path]] = pool.submit(_extract_visual)
+        visual_future: Future[tuple[list[Path], str]] = pool.submit(_extract_visual_and_vlm)
         audio_future: Future[str] = pool.submit(_extract_audio_transcript)
-        mosaic_paths = visual_future.result()
+        mosaic_paths, analysis = visual_future.result()
         transcript = audio_future.result()
 
     if not mosaic_paths:
         return f"[No frames extracted from {path.name}]"
 
-    # 4. Combined LLM analysis
-    t_llm = time.monotonic()
-    llm = LlmBackend()
-    analysis = llm.analyze_video_with_transcript(
-        mosaic_paths,
-        transcript,
-        video_name=path.name,
-        duration_s=duration,
-        mode=mode,
-    )
-    timing["llm_call_ms"] = (time.monotonic() - t_llm) * 1000
     timing["total_ms"] = (time.monotonic() - t_total) * 1000
 
-    # 5. Cleanup temp mosaics (unless --output-dir was specified)
+    # Cleanup temp mosaics (unless --output-dir was specified)
     if opts.output_dir is None:
         for mp in mosaic_paths:
             try:
@@ -647,14 +654,14 @@ def _l2_video_modal(path: Path, opts: _CatOpts, mode: str) -> str:
             except Exception:
                 pass
 
-    # 6. Format output
+    # Concatenate: VLM visual analysis + whisper transcript
     parts: list[str] = [analysis]
     if transcript:
         word_count = len(transcript.split())
-        parts.append(f"\n[Transcript: {word_count} words]")
+        parts.append(f"\n## Transcript ({word_count} words)\n{transcript}")
 
     timing_str = " | ".join(f"{k}: {v:.0f}ms" for k, v in timing.items() if k != "total_ms")
-    parts.append(f"[mode={mode}, total={timing['total_ms']:.0f}ms | {timing_str}]")
+    parts.append(f"\n[mode={mode}, total={timing['total_ms']:.0f}ms | {timing_str}]")
     return "\n".join(parts)
 
 

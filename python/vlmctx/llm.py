@@ -195,23 +195,21 @@ class LlmBackend:
         ]
         return self._chat(messages, max_tokens=max_tokens)
 
-    def analyze_video_with_transcript(
+    def analyze_video_visual(
         self,
         mosaic_paths: list[Path],
-        transcript: str,
         *,
         video_name: str = "",
         duration_s: float = 0,
         mode: str = "fast",
     ) -> str:
-        """Analyze video using visual mosaics + audio transcript.
+        """Analyze video from visual mosaics only (no transcript).
 
-        Combines keyframe/scene mosaics with Whisper transcript in a
-        single LLM call for comprehensive video understanding.
+        Pure vision call — faster because no transcript text in prompt.
+        Transcript is concatenated separately in the output.
 
         Args:
             mosaic_paths: List of mosaic JPEG paths.
-            transcript: Whisper transcript text.
             video_name: Original video filename.
             duration_s: Video duration in seconds.
             mode: "fast" (concise) or "accurate" (detailed).
@@ -226,19 +224,11 @@ class LlmBackend:
             mins, secs = divmod(duration_s, 60)
             dur_ctx = f" Duration: {int(mins)}m{secs:.0f}s."
 
-        transcript_ctx = ""
-        if transcript and not transcript.startswith("["):
-            max_chars = 2000 if mode == "fast" else 8000
-            t = transcript[:max_chars]
-            if len(transcript) > max_chars:
-                t += "..."
-            transcript_ctx = f"\n\nAudio transcript:\n{t}"
-
         if mode == "accurate":
             prompt = (
-                f"Analyze this video ({video_name}).{dur_ctx}{transcript_ctx}\n\n"
-                "Provide a detailed analysis (~200 words), up to 10 keyword tags, "
-                "and describe each major scene or segment.\n\n"
+                f"Analyze this video mosaic ({video_name}).{dur_ctx}\n\n"
+                "Provide a detailed visual analysis (~200 words), up to 10 keyword tags, "
+                "and describe each major scene or segment visible in the frames.\n\n"
                 "Use this format:\n"
                 "## Summary\n<detailed analysis>\n\n"
                 "## Tags\n- tag1\n- tag2\n...\n\n"
@@ -247,7 +237,7 @@ class LlmBackend:
             max_tokens = 1536
         else:
             prompt = (
-                f"Analyze this video ({video_name}).{dur_ctx}{transcript_ctx}\n\n"
+                f"Analyze this video mosaic ({video_name}).{dur_ctx}\n\n"
                 "Provide a concise summary (~50 words), 5 keyword tags, "
                 "and a brief scene list.\n\n"
                 "Use this format:\n"
