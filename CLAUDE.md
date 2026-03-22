@@ -270,7 +270,7 @@ Run the integrated benchmark suite against a data directory:
 vlmctx bench ~/data/mmbench-mini --format rich --rounds 3
 
 # JSON output for archival
-vlmctx bench ~/data/mmbench-mini --format json --rounds 3 > benchmarks/YYMMDD/bench.json
+vlmctx bench ~/data/mmbench-mini --format json --rounds 3 > benchmarks/mm-bench-YYYYMMDD.json
 
 # Single-file video benchmark
 vlmctx cat video.mp4 -l 2 --mode fast   # timing + token metrics in footer
@@ -278,20 +278,25 @@ vlmctx cat video.mp4 -l 2 --mode fast   # timing + token metrics in footer
 
 ### Saving benchmark results
 
-After each benchmark run, save results to `benchmarks/<YYMMDD>/`:
-- `bench.json` — full `vlmctx bench` JSON output
-- `bench.txt` — Rich-formatted output for readability
-- `summary.md` — key numbers and comparison with previous runs
+After each benchmark run, save results to `benchmarks/` as flat files:
+- `benchmarks/mm-bench-YYYYMMDD.json` — full `vlmctx bench` JSON output
+- `benchmarks/mm-bench-YYYYMMDD.md` — key numbers and comparison with previous runs
 
-Structure: `benchmarks/<YYMMDD>/` with date as directory name (e.g. `benchmarks/260321/`).
+Naming: `mm-bench-YYYYMMDD` (e.g. `mm-bench-260322`).
 
 ### Key metrics to track
 
 - **L0**: files/s, MB/s, bits/s (metadata scanning throughput)
 - **L1**: per-file latency, MB/s (content extraction)
-- **L2**: total wall time, realtime multiplier, VLM prompt→completion tokens
+- **L2**: total wall time, realtime multiplier, prompt→completion tokens
 - **Video pipeline**: frame_extraction_ms, audio_extraction_ms, audio_transcription_ms, vlm_call_ms
 - **Information-theoretic**: bits/s throughput at each level
+
+### CHANGELOG.md
+
+Every commit that changes performance numbers or adds/modifies benchmarks should update `CHANGELOG.md` with:
+- The benchmark result (`benchmarks/mm-bench-YYYYMMDD.md`)
+- What changed and the measured impact
 
 ## Keeping SPEC.md in sync
 

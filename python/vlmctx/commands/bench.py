@@ -36,13 +36,15 @@ class BenchResult:
     """Timing results for a single benchmark."""
 
     name: str
-    group: str  # "L0", "L1", "Pipe"
+    group: str  # "L0", "L1", "L2"
     timings_ms: list[float] = field(default_factory=list)
     files_count: int = 0
     total_bytes: int = 0
     preview_lines: list[str] = field(default_factory=list)
     skipped: bool = False
     skip_reason: str = ""
+    prompt_tokens: int = 0
+    completion_tokens: int = 0
 
     @property
     def mean_ms(self) -> float:
@@ -117,6 +119,8 @@ class BenchResult:
             "mb_per_sec": round(self.mb_per_sec, 1),
             "bits_per_sec": round(self.bits_per_sec),
             "bits_per_sec_str": self.bits_per_sec_str,
+            "prompt_tokens": self.prompt_tokens,
+            "completion_tokens": self.completion_tokens,
             "timings_ms": [round(t, 2) for t in self.timings_ms],
         }
 
@@ -198,6 +202,17 @@ def _run_benchmarks(
 
         r = BenchResult(cmd.name, cmd.group, files_count=fc, total_bytes=tb, preview_lines=preview)
         r.timings_ms = _time_fn(fn, rounds, warmup)
+
+        # Capture token usage for L2 commands (from last LLM/VLM call)
+        if cmd.group == "L2":
+            try:
+                from vlmctx.llm import get_last_usage
+                usage = get_last_usage()
+                r.prompt_tokens = usage.prompt_tokens
+                r.completion_tokens = usage.completion_tokens
+            except Exception:
+                pass
+
         results.append(r)
 
     return results, target_info
@@ -349,6 +364,9 @@ def _render_summary(results: list[BenchResult], target_info: dict[str, Any]) -> 
             if r.bits_per_sec > 0:
                 stats_line.append("  ", style="")
                 stats_line.append(r.bits_per_sec_str, style="bright_cyan")
+            if r.prompt_tokens > 0:
+                stats_line.append("  ", style="")
+                stats_line.append(f"{r.prompt_tokens}→{r.completion_tokens} tok", style="bright_magenta")
             parts.append(stats_line)
 
     # Bottleneck analysis
@@ -449,6 +467,9 @@ def _render_verbose(results: list[BenchResult], target_info: dict[str, Any]) -> 
             if r.bits_per_sec > 0:
                 body.append("  ", style="dim")
                 body.append(r.bits_per_sec_str, style="bright_cyan")
+            if r.prompt_tokens > 0:
+                body.append("  ", style="dim")
+                body.append(f"{r.prompt_tokens}→{r.completion_tokens} tok", style="bright_magenta")
 
         # Slowest flag
         if slowest and r is slowest and len(measured) > 1:

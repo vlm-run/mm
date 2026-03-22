@@ -28,6 +28,17 @@ class LlmUsage:
     total_tokens: int = 0
 
 
+# Module-level usage tracker — updated by every _chat() call.
+# Allows callers without access to the LlmBackend instance
+# (e.g. bench command factories) to read token usage after _extract().
+_last_global_usage = LlmUsage()
+
+
+def get_last_usage() -> LlmUsage:
+    """Return token usage from the most recent LLM/VLM call."""
+    return _last_global_usage
+
+
 class LlmBackend:
     """Wraps any OpenAI-compatible chat/completions API for L2 semantic operations."""
 
@@ -152,13 +163,16 @@ class LlmBackend:
         try:
             response = self.client.chat.completions.create(**kwargs, extra_body=extra_body)
 
-            # Capture token usage
+            # Capture token usage (instance + global)
             if response.usage:
-                self.last_usage = LlmUsage(
+                global _last_global_usage
+                usage = LlmUsage(
                     prompt_tokens=response.usage.prompt_tokens or 0,
                     completion_tokens=response.usage.completion_tokens or 0,
                     total_tokens=response.usage.total_tokens or 0,
                 )
+                self.last_usage = usage
+                _last_global_usage = usage
 
             choice = response.choices[0].message
             content = (choice.content or "").strip()
