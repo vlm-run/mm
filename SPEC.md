@@ -87,9 +87,8 @@ vlmctx
 │   ├── [x] info() — Rich summary panel
 │   └── [x] save() — persist to .vlmctx/index.parquet
 │
-├── CLI Commands (6 + config, Typer, Unix-philosophy composability)
-│   ├── [x] find     — find files by kind/ext/size/depth (like fd)
-│   ├── [x] ls       — tabular listing, tree view (--tree), schema (--schema)
+├── CLI Commands (5 + config, Typer, Unix-philosophy composability)
+│   ├── [x] find     — find/list files, tree view (--tree), schema (--schema), columns (--columns)
 │   ├── [x] cat      — auto-detected content extraction at L0/L1/L2
 │   │   ├── [x] head/tail via -n (replaces old head/tail commands)
 │   │   ├── [x] --mode fast|accurate (L2 modal extraction)
@@ -123,8 +122,8 @@ vlmctx
 │   ├── L0 walk: ~5ms / 1K files, ~16ms / 10K files
 │   ├── L0 full pipeline: ~7ms / 1K mixed files (with image dims)
 │   ├── L0 real data: ~5ms / 249 files (~/data/1-demo)
-│   ├── CLI cold start: ~58ms (ls --json, find --json via Rust fast path)
-│   ├── CLI cold start: ~66ms (ls/find with Rich TTY output)
+│   ├── CLI cold start: ~58ms (find --format json via Rust fast path)
+│   ├── CLI cold start: ~66ms (find with Rich TTY output)
 │   ├── L1 code extraction: ~8μs/file
 │   ├── L1 image extraction: ~18μs/file (mmap)
 │   ├── L1 video metadata (native): ~10ms (6.4MB MP4, includes hash)

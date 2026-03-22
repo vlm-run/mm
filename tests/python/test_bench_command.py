@@ -125,7 +125,7 @@ class TestBenchCommand:
             if result["group"] == "L0" and not result.get("skipped")
         }
         assert "vlmctx find ." in l0_names
-        assert "vlmctx ls ." in l0_names
+        assert "vlmctx find . (table)" in l0_names
         assert "vlmctx wc ." in l0_names
         assert "vlmctx sql 'GROUP BY kind'" in l0_names
         assert "vlmctx find --kind image" in l0_names

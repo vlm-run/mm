@@ -364,16 +364,16 @@ class TestParquetRoundtrip:
 class TestL0Cli:
 
     def test_describe_shows_width_height(self, media_tree: Path):
-        result = runner.invoke(app, ["ls", str(media_tree), "--schema", "--format", "json"])
+        result = runner.invoke(app, ["find", str(media_tree), "--schema", "--format", "json"])
         assert result.exit_code == 0
         data = json.loads(result.output)
         names = [c["column"] for c in data]
         assert "width" in names
         assert "height" in names
 
-    def test_ls_width_height_columns(self, media_tree: Path):
+    def test_find_width_height_columns(self, media_tree: Path):
         result = runner.invoke(app, [
-            "ls", str(media_tree), "--columns", "name,kind,width,height",
+            "find", str(media_tree), "--columns", "name,kind,width,height",
         ])
         assert result.exit_code == 0
 

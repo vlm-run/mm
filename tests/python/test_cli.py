@@ -53,31 +53,28 @@ class TestFind:
         assert sizes == sorted(sizes, reverse=True)
 
 
-# ── ls ───────────────────────────────────────────────────────────────
+# ── find (table, tree, schema) ────────────────────────────────────────
 
 
-class TestLs:
-    def test_exit_zero(self, small_tree: Path):
-        assert runner.invoke(app, ["ls", str(small_tree)]).exit_code == 0
-
+class TestFindTable:
     def test_columns_select(self, small_tree: Path):
-        r = runner.invoke(app, ["ls", str(small_tree), "--columns", "path,size,kind"])
+        r = runner.invoke(app, ["find", str(small_tree), "--columns", "path,size,kind"])
         assert r.exit_code == 0
 
     def test_tree(self, small_tree: Path):
-        r = runner.invoke(app, ["ls", str(small_tree), "--tree"])
+        r = runner.invoke(app, ["find", str(small_tree), "--tree"])
         assert r.exit_code == 0
 
     def test_tree_json(self, small_tree: Path):
-        r = runner.invoke(app, ["ls", str(small_tree), "--tree", "--format", "json"])
+        r = runner.invoke(app, ["find", str(small_tree), "--tree", "--format", "json"])
         assert r.exit_code == 0
 
     def test_schema(self, small_tree: Path):
-        r = runner.invoke(app, ["ls", str(small_tree), "--schema"])
+        r = runner.invoke(app, ["find", str(small_tree), "--schema"])
         assert r.exit_code == 0
 
     def test_schema_json_has_columns(self, small_tree: Path):
-        r = runner.invoke(app, ["ls", str(small_tree), "--schema", "--format", "json"])
+        r = runner.invoke(app, ["find", str(small_tree), "--schema", "--format", "json"])
         assert r.exit_code == 0
         data = json.loads(r.output)
         names = [c["column"] for c in data]
@@ -86,7 +83,7 @@ class TestLs:
         assert "size" in names
 
     def test_json_returns_list(self, small_tree: Path):
-        r = runner.invoke(app, ["ls", str(small_tree), "--format", "json"])
+        r = runner.invoke(app, ["find", str(small_tree), "--format", "json"])
         assert r.exit_code == 0
         data = json.loads(r.output)
         assert isinstance(data, list)

@@ -92,7 +92,8 @@ def _preview_find(directory: Path, files: list, scanner_cls: type) -> list[str]:
     return _truncate(paths, len(paths))
 
 
-def _make_ls(directory: Path, files: list, scanner_cls: type) -> Callable[[], Any]:
+def _make_find_table(directory: Path, files: list, scanner_cls: type) -> Callable[[], Any]:
+    """Benchmark find with tabular output (Context + Arrow path)."""
     from vlmctx.context import Context
 
     def run():
@@ -102,7 +103,7 @@ def _make_ls(directory: Path, files: list, scanner_cls: type) -> Callable[[], An
     return run
 
 
-def _preview_ls(directory: Path, files: list, scanner_cls: type) -> list[str]:
+def _preview_find_table(directory: Path, files: list, scanner_cls: type) -> list[str]:
     from vlmctx.display import format_size
     lines = []
     for f in files[:_MAX_PREVIEW_LINES]:
@@ -567,7 +568,7 @@ def _preview_cat_pdfs_batch(directory: Path, files: list, scanner_cls: type) -> 
 
 L0_COMMANDS: list[BenchCommand] = [
     BenchCommand("vlmctx find .", "L0", _make_find, "empty directory", _preview_find, _all_count, _all_bytes),
-    BenchCommand("vlmctx ls .", "L0", _make_ls, "empty directory", _preview_ls, _all_count, _all_bytes),
+    BenchCommand("vlmctx find . (table)", "L0", _make_find_table, "empty directory", _preview_find_table, _all_count, _all_bytes),
     BenchCommand("vlmctx wc .", "L0", _make_wc, "empty directory", _preview_wc, _all_count, _all_bytes),
     BenchCommand("vlmctx sql 'GROUP BY kind'", "L0", _make_sql, "empty directory", _preview_sql, _all_count, _all_bytes),
     BenchCommand("vlmctx sql 'SUM(size) BY kind'", "L0", _make_sql_size_by_kind, "empty directory", _preview_sql_size_by_kind, _all_count, _all_bytes),
