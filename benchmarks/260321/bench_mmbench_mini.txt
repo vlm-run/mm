@@ -1,0 +1,40 @@
+│  Gbps                                                                        │
+│    $ vlmctx cat <audio>                                                      │
+│      43.7ms ±1.46ms  min 42.3ms  max 45.2ms  22.9 files/s  9.6K MB/s  80.73  │
+│  Gbps                                                                        │
+│    $ vlmctx cat <video>                                                      │
+│      646ms ±11.3ms  min 635ms  max 658ms  1.5 files/s  754.7 MB/s  6.33      │
+│  Gbps                                                                        │
+│    $ vlmctx cat <pdf>                                                        │
+│      29.6ms ±1.20ms  min 28.4ms  max 30.8ms  33.8 files/s  71.5 MB/s         │
+│  600.19 Mbps                                                                 │
+│    $ vlmctx cat <pdf> (x10)                                                  │
+│      685ms ±3.72ms  min 683ms  max 689ms  14.6 files/s  21.1 MB/s  176.87    │
+│  Mbps                                                                        │
+│    $ vlmctx grep /pattern/                                                   │
+│      260ms ±6.39ms  min 253ms  max 266ms  53.9 files/s  57.0 MB/s  478.47    │
+│  Mbps                                                                        │
+│                                                                              │
+│    L2                                                                        │
+│    $ vlmctx cat <image> -l2 --mode fast                                      │
+│      760ms ±11.3ms  min 748ms  max 771ms  1.3 files/s  0.8 MB/s  7.05 Mbps   │
+│    $ vlmctx cat <image> -l2 --mode accurate                                  │
+│      21.32s ±98.2ms  min 21.23s  max 21.42s  0.0 files/s  0.0 MB/s  251.27   │
+│  kbps                                                                        │
+│    $ vlmctx cat <video> -l2 --mode fast                                      │
+│      26.52s ±572ms  min 26.05s  max 27.16s  0.0 files/s  18.4 MB/s  154.14   │
+│  Mbps                                                                        │
+│    $ vlmctx cat <video> -l2 --mode accurate                                  │
+│      341.23s ±51.22s  min 283.13s  max 379.85s  0.0 files/s  1.4 MB/s        │
+│  11.98 Mbps                                                                  │
+│    $ vlmctx cat <audio> -l2 --mode fast                                      │
+│      66.86s ±776ms  min 66.27s  max 67.74s  0.0 files/s  6.3 MB/s  52.78     │
+│  Mbps                                                                        │
+│    $ vlmctx cat <audio> -l2 --mode accurate                                  │
+│      759.90s ±13.58s  min 749.82s  max 775.35s  0.0 files/s  0.6 MB/s  4.64  │
+│  Mbps                                                                        │
+│                                                                              │
+│    Slowest   vlmctx cat <audio> -l2 --mode accurate  759.90s                 │
+│    Fastest   vlmctx cat <image>  0.27ms                                      │
+│                                                                              │
+╰──────────────────────────────────────────────────────────────────────────────╯
