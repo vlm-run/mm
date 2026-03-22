@@ -672,8 +672,21 @@ def _make_cat_video_l2_accurate(directory: Path, files: list, scanner_cls: type)
     return run
 
 
+def _pick_smallest_audio(files: list, directory: Path, max_duration_s: float = 600) -> str | None:
+    """Pick the smallest audio file under max_duration_s for benchmarking.
+
+    Avoids GPU timeouts from running whisper on multi-hour podcasts.
+    """
+    audio_files = [f for f in files if f.kind == "audio"]
+    if not audio_files:
+        return None
+    # Sort by file size (smallest first) as proxy for duration
+    audio_files.sort(key=lambda f: (directory.resolve() / f.path).stat().st_size if (directory.resolve() / f.path).exists() else float("inf"))
+    return audio_files[0].path
+
+
 def _make_cat_audio_l2_fast(directory: Path, files: list, scanner_cls: type) -> Callable[[], Any] | None:
-    aud_path = _pick_file_by_kind(files, "audio")
+    aud_path = _pick_smallest_audio(files, directory)
     if not aud_path:
         return None
     full_path = directory.resolve() / aud_path
@@ -693,7 +706,7 @@ def _make_cat_audio_l2_fast(directory: Path, files: list, scanner_cls: type) -> 
 
 
 def _make_cat_audio_l2_accurate(directory: Path, files: list, scanner_cls: type) -> Callable[[], Any] | None:
-    aud_path = _pick_file_by_kind(files, "audio")
+    aud_path = _pick_smallest_audio(files, directory)
     if not aud_path:
         return None
     full_path = directory.resolve() / aud_path
@@ -747,13 +760,13 @@ L2_COMMANDS: list[BenchCommand] = [
     BenchCommand(
         "vlmctx cat <audio> -l2 --mode fast", "L2",
         _make_cat_audio_l2_fast, "no audio files",
-        lambda d, f, s: _l2_preview("audio", "fast", d, f, s),
+        lambda d, f, s: [f"{_pick_smallest_audio(f, d) or '?'}  (mode=fast, smallest audio)"],
         _cat_audio_count, _cat_audio_bytes,
     ),
     BenchCommand(
         "vlmctx cat <audio> -l2 --mode accurate", "L2",
         _make_cat_audio_l2_accurate, "no audio files",
-        lambda d, f, s: _l2_preview("audio", "accurate", d, f, s),
+        lambda d, f, s: [f"{_pick_smallest_audio(f, d) or '?'}  (mode=accurate, smallest audio)"],
         _cat_audio_count, _cat_audio_bytes,
     ),
 ]
