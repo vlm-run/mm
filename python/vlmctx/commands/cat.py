@@ -486,10 +486,12 @@ def _l2_image_modal(path: Path, mode: str) -> str:
     from vlmctx.llm import LlmBackend
 
     t0 = time.monotonic()
-    content = LlmBackend().caption_modal(path, mode=mode)
+    llm = LlmBackend()
+    content = llm.caption_modal(path, mode=mode)
     elapsed = (time.monotonic() - t0) * 1000
+    u = llm.last_usage
 
-    return f"{content}\n\n[mode={mode}, {elapsed:.0f}ms]"
+    return f"{content}\n\n[mode={mode}, {elapsed:.0f}ms, {u.prompt_tokens}→{u.completion_tokens} tokens]"
 
 
 def _l2_video_modal(path: Path, opts: _CatOpts, mode: str) -> str:
@@ -600,6 +602,8 @@ def _l2_video_modal(path: Path, opts: _CatOpts, mode: str) -> str:
             mode=mode,
         )
         timing["vlm_call_ms"] = (time.monotonic() - t_vlm) * 1000
+        timing["vlm_prompt_tokens"] = llm.last_usage.prompt_tokens
+        timing["vlm_completion_tokens"] = llm.last_usage.completion_tokens
         return mosaics, analysis
 
     def _extract_audio_transcript() -> str:
@@ -622,7 +626,7 @@ def _l2_video_modal(path: Path, opts: _CatOpts, mode: str) -> str:
             beam_size=mode_cfg.beam_size or 1,
             audio_speed=mode_cfg.audio_speed,
         )
-        timing["whisper_transcription_ms"] = whisper_result.elapsed_ms
+        timing["audio_transcription_ms"] = whisper_result.elapsed_ms
 
         try:
             audio_result.path.unlink(missing_ok=True)
@@ -660,16 +664,20 @@ def _l2_video_modal(path: Path, opts: _CatOpts, mode: str) -> str:
         word_count = len(transcript.split())
         parts.append(f"\n## Transcript ({word_count} words)\n{transcript}")
 
-    timing_str = " | ".join(f"{k}: {v:.0f}ms" for k, v in timing.items() if k != "total_ms")
-    parts.append(f"\n[mode={mode}, total={timing['total_ms']:.0f}ms | {timing_str}]")
+    # Separate timing and token metrics
+    time_keys = {k: v for k, v in timing.items() if k.endswith("_ms") and k != "total_ms"}
+    token_keys = {k: v for k, v in timing.items() if "tokens" in k}
+    timing_str = " | ".join(f"{k}: {v:.0f}ms" for k, v in time_keys.items())
+    token_str = f" | {int(token_keys.get('vlm_prompt_tokens', 0))}→{int(token_keys.get('vlm_completion_tokens', 0))} tokens" if token_keys else ""
+    parts.append(f"\n[mode={mode}, total={timing['total_ms']:.0f}ms{token_str} | {timing_str}]")
     return "\n".join(parts)
 
 
 def _l2_audio_modal(path: Path, opts: _CatOpts, mode: str) -> str:
-    """Audio extraction with whisper transcription.
+    """Audio extraction with transcription.
 
-    fast:     2x speed + whisper tiny
-    accurate: 1x speed + whisper medium
+    fast:     2x speed + tiny model + greedy decoding
+    accurate: 1x speed + medium model + beam search
     """
     import time
 
@@ -701,7 +709,7 @@ def _l2_audio_modal(path: Path, opts: _CatOpts, mode: str) -> str:
         beam_size=mode_cfg.beam_size or 1,
         audio_speed=mode_cfg.audio_speed,
     )
-    timing["whisper_ms"] = whisper_result.elapsed_ms
+    timing["audio_transcription_ms"] = whisper_result.elapsed_ms
     transcript = whisper_result.text
 
     # Cleanup temp audio
@@ -721,14 +729,15 @@ def _l2_audio_modal(path: Path, opts: _CatOpts, mode: str) -> str:
     summary = llm.summarize_transcript(transcript, mode=mode, filename=path.name)
     timing["llm_call_ms"] = (time.monotonic() - t_llm) * 1000
     timing["total_ms"] = (time.monotonic() - t_total) * 1000
+    u = llm.last_usage
 
     # 4. Format output
     word_count = len(transcript.split())
     timing_str = " | ".join(f"{k}: {v:.0f}ms" for k, v in timing.items() if k != "total_ms")
     return (
         f"{summary}\n\n"
-        f"[Transcript: {word_count} words, model={whisper_model}]\n"
-        f"[mode={mode}, total={timing['total_ms']:.0f}ms | {timing_str}]"
+        f"[Transcript: {word_count} words]\n"
+        f"[mode={mode}, total={timing['total_ms']:.0f}ms, {u.prompt_tokens}→{u.completion_tokens} tokens | {timing_str}]"
     )
 
 

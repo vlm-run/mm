@@ -261,6 +261,38 @@ cargo bench --workspace                                     # Rust benchmarks (C
 uv run pytest tests/python/test_benchmark.py --benchmark-only  # Python benchmarks
 ```
 
+## Benchmarking
+
+Run the integrated benchmark suite against a data directory:
+
+```bash
+# Full bench (L0 + L1 + L2) with Rich output
+vlmctx bench ~/data/mmbench-mini --format rich --rounds 3
+
+# JSON output for archival
+vlmctx bench ~/data/mmbench-mini --format json --rounds 3 > benchmarks/YYMMDD/bench.json
+
+# Single-file video benchmark
+vlmctx cat video.mp4 -l 2 --mode fast   # timing + token metrics in footer
+```
+
+### Saving benchmark results
+
+After each benchmark run, save results to `benchmarks/<YYMMDD>/`:
+- `bench.json` — full `vlmctx bench` JSON output
+- `bench.txt` — Rich-formatted output for readability
+- `summary.md` — key numbers and comparison with previous runs
+
+Structure: `benchmarks/<YYMMDD>/` with date as directory name (e.g. `benchmarks/260321/`).
+
+### Key metrics to track
+
+- **L0**: files/s, MB/s, bits/s (metadata scanning throughput)
+- **L1**: per-file latency, MB/s (content extraction)
+- **L2**: total wall time, realtime multiplier, VLM prompt→completion tokens
+- **Video pipeline**: frame_extraction_ms, audio_extraction_ms, audio_transcription_ms, vlm_call_ms
+- **Information-theoretic**: bits/s throughput at each level
+
 ## Keeping SPEC.md in sync
 
 <!-- AUTO-SYNC: After any implementation change (new feature, bug fix, refactor, schema change,

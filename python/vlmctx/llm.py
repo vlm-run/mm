@@ -12,14 +12,26 @@ from __future__ import annotations
 import base64
 import json
 import re
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
 from openai import OpenAI
 
 
+@dataclass
+class LlmUsage:
+    """Token usage from a single LLM/VLM call."""
+
+    prompt_tokens: int = 0
+    completion_tokens: int = 0
+    total_tokens: int = 0
+
+
 class LlmBackend:
     """Wraps any OpenAI-compatible chat/completions API for L2 semantic operations."""
+
+    last_usage: LlmUsage
 
     def __init__(
         self,
@@ -36,6 +48,7 @@ class LlmBackend:
         self.api_key = api_key or cfg.api_key or "no-key"
         self.model = model or cfg.model
         self.client = OpenAI(base_url=resolved_base, api_key=self.api_key, timeout=120.0)
+        self.last_usage = LlmUsage()
 
     @property
     def is_configured(self) -> bool:
@@ -138,6 +151,15 @@ class LlmBackend:
 
         try:
             response = self.client.chat.completions.create(**kwargs, extra_body=extra_body)
+
+            # Capture token usage
+            if response.usage:
+                self.last_usage = LlmUsage(
+                    prompt_tokens=response.usage.prompt_tokens or 0,
+                    completion_tokens=response.usage.completion_tokens or 0,
+                    total_tokens=response.usage.total_tokens or 0,
+                )
+
             choice = response.choices[0].message
             content = (choice.content or "").strip()
             if content:
