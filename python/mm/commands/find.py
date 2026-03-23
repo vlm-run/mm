@@ -412,8 +412,10 @@ def _find_schema(directory: Path, fmt: str) -> None:
     from mm.display import output_console
 
     rich_table = RichTable(
-        caption=f"[dim]{table.num_rows} rows[/dim]",
-        show_lines=True, padding=(0, 1), border_style="dim", header_style="bold",
+        caption=f"{table.num_rows} rows",
+        caption_style="dim",
+        caption_justify="right",
+        show_lines=True, padding=(0, 1), border_style="dim", header_style="bold white",
         box=box.ROUNDED,
     )
     rich_table.add_column("column", style="bold cyan", no_wrap=True)

@@ -131,16 +131,19 @@ def wc_cmd(
         by_kind = True
 
     if by_kind:
-        from rich.console import Group
-        from rich.panel import Panel
         from rich.table import Table as RichTable
         from rich.text import Text
 
         from rich import box
 
+        caption = f"{total_files:,} files  {format_size(total_bytes)}"
+
         tbl = RichTable(
+            caption=caption,
+            caption_style="dim",
+            caption_justify="right",
             show_header=True,
-            header_style="bold",
+            header_style="bold white",
             padding=(0, 1),
             border_style="dim",
             expand=False,
@@ -178,42 +181,29 @@ def wc_cmd(
             f"[bold]{format_number(total_tok_mb)}[/bold]" if total_tok_mb else "—",
         )
 
-        subtitle = Text.assemble(
-            ("~", "dim"),
-            (f"{format_number(total_tokens)}", "bold bright_green"),
-            (" tokens  ", "dim"),
-            (f"{total_files:,}", "bold"),
-            (" files  ", "dim"),
-            (format_size(total_bytes), "bright_blue"),
-        )
-
-        panel = Panel(
-            Group(tbl),
-            subtitle=subtitle,
-            expand=False,
-            padding=(1, 2),
-            box=box.ROUNDED,
-        )
-        output_console.print(panel)
+        output_console.print(tbl)
     else:
         from rich import box
-        from rich.panel import Panel
-        from rich.text import Text
+        from rich.table import Table as RichTable
 
-        body = Text()
-        body.append(f"  {total_files:,}", style="bold bright_blue")
-        body.append("  files\n", style="dim")
-        body.append(f"  {format_size(total_bytes)}", style="bold bright_blue")
-        body.append("  total size\n", style="dim")
-        body.append(f"  {format_number(total_lines)}", style="bold")
-        body.append("  lines (est.)\n", style="dim")
-        body.append(f"  {format_number(total_tokens)}", style="bold bright_green")
-        body.append("  tokens (est.)", style="dim")
+        caption = f"{total_files:,} files  {format_size(total_bytes)}"
 
-        panel = Panel(
-            body,
+        tbl = RichTable(
+            caption=caption,
+            caption_style="dim",
+            caption_justify="right",
+            show_header=True,
+            header_style="bold white",
+            padding=(0, 1),
+            border_style="dim",
             expand=False,
-            padding=(1, 2),
             box=box.ROUNDED,
         )
-        output_console.print(panel)
+        tbl.add_column("metric", style="dim")
+        tbl.add_column("value", justify="right")
+        tbl.add_row("files", f"[bold bright_blue]{total_files:,}[/bold bright_blue]")
+        tbl.add_row("size", f"[bold bright_blue]{format_size(total_bytes)}[/bold bright_blue]")
+        tbl.add_row("lines (est.)", f"[bold]{format_number(total_lines)}[/bold]")
+        tbl.add_row("tokens (est.)", f"[bold bright_green]{format_number(total_tokens)}[/bold bright_green]")
+
+        output_console.print(tbl)

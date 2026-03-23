@@ -222,22 +222,29 @@ def _latency_style(ms: float, group: str) -> str:
 
 def _render_table(results: list[BenchResult], target_info: dict[str, Any]) -> None:
     """Render all results as a single Rich table."""
+    from rich import box
     from rich.table import Table
     from rich.text import Text
 
     from mm.display import format_number, format_size, output_console
 
-    # Header info
-    header = Text()
-    header.append("mm bench", style="bold")
-    header.append(f"  {target_info['directory']}", style="dim")
-    header.append(f"  ({target_info['files']:,} files, {format_size(target_info['total_bytes'])})", style="dim")
-    header.append(f"  rounds={target_info['rounds']} warmup={target_info['warmup']}", style="dim")
-    output_console.print(header)
-    output_console.print()
+    caption = (
+        f"{target_info['files']:,} files  "
+        f"{format_size(target_info['total_bytes'])}  "
+        f"rounds={target_info['rounds']}  warmup={target_info['warmup']}"
+    )
 
-    table = Table(show_header=True, header_style="bold", expand=True, padding=(0, 1))
-    table.add_column("Group", style="dim", width=4)
+    table = Table(
+        caption=caption,
+        caption_style="dim",
+        caption_justify="right",
+        show_header=True,
+        header_style="bold white",
+        padding=(0, 1),
+        border_style="dim",
+        box=box.ROUNDED,
+    )
+    table.add_column("Group", style="dim", width=5)
     table.add_column("Command", no_wrap=True)
     table.add_column("Mean", justify="right")
     table.add_column("\u00b1Std", justify="right", style="dim")

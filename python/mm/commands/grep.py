@@ -116,10 +116,11 @@ def grep_cmd(
             t = RichTable(
                 caption=f"{sum(file_counts.values())} matches in {len(file_counts)} files",
                 caption_style="dim",
+                caption_justify="right",
                 show_lines=False,
                 padding=(0, 1),
                 border_style="dim",
-                header_style="bold",
+                header_style="bold white",
                 box=box.ROUNDED,
             )
             t.add_column("file", style="white")

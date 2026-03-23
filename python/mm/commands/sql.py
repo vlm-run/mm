@@ -46,5 +46,5 @@ def sql_cmd(
     else:
         from mm.display import arrow_table_to_rich, output_console
 
-        rich_table = arrow_table_to_rich(result, title="[dim]sql[/dim]")
+        rich_table = arrow_table_to_rich(result)
         output_console.print(rich_table)

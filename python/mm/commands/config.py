@@ -73,8 +73,10 @@ def show(
 
     tbl = Table(
         title="[bold]Provider",
-        caption=f"[dim]{config_path}[/dim]",
-        show_lines=False, padding=(0, 1), border_style="dim", header_style="bold",
+        caption=str(config_path) if config_path else None,
+        caption_style="dim",
+        caption_justify="right",
+        show_lines=False, padding=(0, 1), border_style="dim", header_style="bold white",
         box=box.ROUNDED,
     )
     tbl.add_column("key", style="bold")
@@ -91,7 +93,7 @@ def show(
     # Mode settings
     mode_tbl = Table(
         title="[bold]Extraction Modes",
-        show_lines=False, padding=(0, 1), border_style="dim", header_style="bold",
+        show_lines=False, padding=(0, 1), border_style="dim", header_style="bold white",
         box=box.ROUNDED,
     )
     mode_tbl.add_column("mode", style="bold")

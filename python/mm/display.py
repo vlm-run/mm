@@ -220,11 +220,17 @@ def arrow_table_to_rich(
     total = table.num_rows
     num_rows = total if limit is None else min(limit, total)
 
-    subtitle = None
+    # Build caption with row count + total size if available
+    parts = []
     if limit is not None and total > limit:
-        subtitle = f"showing {num_rows} of {total}"
+        parts.append(f"showing {num_rows} of {total}")
     elif total > 0:
-        subtitle = f"{total} row{'s' if total != 1 else ''}"
+        parts.append(f"{total:,} file{'s' if total != 1 else ''}")
+    if "size" in table.column_names and total > 0:
+        total_bytes = sum(r.as_py() for r in table.column("size") if r.as_py() is not None)
+        if total_bytes > 0:
+            parts.append(format_size(total_bytes))
+    subtitle = "  ".join(parts) if parts else None
 
     from rich import box
 
@@ -232,10 +238,11 @@ def arrow_table_to_rich(
         title=title,
         caption=subtitle,
         caption_style="dim",
+        caption_justify="right",
         show_lines=False,
         padding=(0, 1),
         border_style="dim",
-        header_style="bold",
+        header_style="bold white",
         box=box.ROUNDED,
     )
 
