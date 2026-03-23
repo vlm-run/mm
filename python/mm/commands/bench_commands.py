@@ -71,33 +71,52 @@ def _pick_files(files: list, kind: str, limit: int) -> list[str]:
     return [f.path for f in files if f.kind == kind][:limit]
 
 
-def _get_media_duration(directory: Path, rel_path: str) -> float:
-    """Get media duration in seconds via Rust L1 extraction."""
+@dataclass
+class MediaInfo:
+    """Media properties extracted via L1 for throughput calculations."""
+    duration_s: float = 0.0
+    width: int = 0
+    height: int = 0
+    fps: float = 0.0
+
+
+def _get_media_info(directory: Path, rel_path: str) -> MediaInfo:
+    """Get media properties via Rust L1 extraction."""
     try:
         from mm._mm import Scanner
         scanner = Scanner(str(directory.resolve()))
         scanner.scan()
         r = scanner.extract_l1(rel_path)
-        return r.duration_s or 0.0
+        w, h = 0, 0
+        if r.dimensions:
+            parts = r.dimensions.split("x")
+            if len(parts) == 2:
+                w, h = int(parts[0]), int(parts[1])
+        return MediaInfo(
+            duration_s=r.duration_s or 0.0,
+            width=w,
+            height=h,
+            fps=r.fps or 0.0,
+        )
     except Exception:
-        return 0.0
+        return MediaInfo()
 
 
-_MEDIA_KINDS = frozenset(("video", "audio"))
+_MEDIA_KINDS = frozenset(("video", "audio", "image"))
 
 
 def resolve_command(
     cmd: BenchCommand,
     directory: Path,
     files: list,
-) -> tuple[list[str], int, int, float] | None:
-    """Resolve a command template into (argv, files_count, total_bytes, media_duration_s).
+) -> tuple[list[str], int, int, MediaInfo] | None:
+    """Resolve a command template into (argv, files_count, total_bytes, media_info).
 
     Returns None if the command should be skipped (missing files).
     """
     resolved_dir = str(directory.resolve())
     template = cmd.cmd_template
-    media_duration_s = 0.0
+    media = MediaInfo()
 
     if cmd.requires_kind is not None:
         # Check kind exists (for skip logic even on directory-level commands)
@@ -126,7 +145,7 @@ def resolve_command(
             count = 1
             total = (directory.resolve() / picked_one).stat().st_size if (directory.resolve() / picked_one).exists() else 0
             if cmd.requires_kind in _MEDIA_KINDS:
-                media_duration_s = _get_media_duration(directory, picked_one)
+                media = _get_media_info(directory, picked_one)
         else:
             # Directory-level command with requires_kind just for skip logic
             count = len(files)
@@ -145,7 +164,7 @@ def resolve_command(
 
     template = template.replace("{dir}", shlex.quote(resolved_dir))
     argv = shlex.split(template)
-    return argv, count, total, media_duration_s
+    return argv, count, total, media
 
 
 # ── Command registries ──────────────────────────────────────────────

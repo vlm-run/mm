@@ -31,6 +31,9 @@ class BenchResult:
     skipped: bool = False
     skip_reason: str = ""
     media_duration_s: float = 0.0
+    media_width: int = 0
+    media_height: int = 0
+    media_fps: float = 0.0
     prompt_tokens: int = 0
     completion_tokens: int = 0
 
@@ -62,24 +65,23 @@ class BenchResult:
 
     @property
     def speed_str(self) -> str:
-        """Human-readable speed: realtime multiplier for media, files/s otherwise."""
+        """Realtime multiplier: Nx for all benchmarks."""
         if self.mean_ms <= 0:
             return "—"
+        processing_s = self.mean_ms / 1000.0
         if self.media_duration_s > 0:
-            multiplier = self.media_duration_s / (self.mean_ms / 1000.0)
-            if multiplier >= 100:
-                return f"{multiplier:.0f}x"
-            if multiplier >= 10:
-                return f"{multiplier:.1f}x"
-            return f"{multiplier:.2f}x"
-        if self.files_count > 0:
-            fps = self.files_per_sec
-            if fps >= 100:
-                return f"{fps:.0f}/s"
-            if fps >= 10:
-                return f"{fps:.1f}/s"
-            return f"{fps:.2f}/s"
-        return "—"
+            # Audio/video: media duration vs processing time
+            multiplier = self.media_duration_s / processing_s
+        elif self.files_count > 0:
+            # Files: files per second as multiplier
+            multiplier = self.files_count / processing_s
+        else:
+            return "—"
+        if multiplier >= 100:
+            return f"{multiplier:.0f}x"
+        if multiplier >= 10:
+            return f"{multiplier:.1f}x"
+        return f"{multiplier:.2f}x"
 
     @property
     def mb_per_sec(self) -> float:
@@ -88,10 +90,29 @@ class BenchResult:
         return 0.0
 
     @property
+    def uncompressed_bits(self) -> float:
+        """Total uncompressed bits for the benchmark target.
+
+        Images:  width × height × 24 (RGB)
+        Video:   width × height × 24 × fps × duration
+        Other:   file size × 8
+        """
+        if self.media_width > 0 and self.media_height > 0:
+            pixel_bits = self.media_width * self.media_height * 24
+            if self.media_duration_s > 0 and self.media_fps > 0:
+                # Video: full uncompressed frame stream
+                return pixel_bits * self.media_fps * self.media_duration_s
+            # Image: single frame
+            return float(pixel_bits)
+        return self.total_bytes * 8
+
+    @property
     def bits_per_sec(self) -> float:
-        """Information throughput in bits/s."""
-        if self.mean_ms > 0 and self.total_bytes > 0:
-            return (self.total_bytes * 8) / (self.mean_ms / 1000.0)
+        """Throughput in bits/s (uncompressed for image/video)."""
+        if self.mean_ms > 0:
+            bits = self.uncompressed_bits
+            if bits > 0:
+                return bits / (self.mean_ms / 1000.0)
         return 0.0
 
     @property
@@ -200,12 +221,17 @@ def _run_benchmarks(
             results.append(BenchResult(cmd.name, cmd.group, skipped=True, skip_reason=cmd.skip_reason))
             continue
 
-        argv, fc, tb, dur = resolved
+        argv, fc, tb, media = resolved
 
         # Preview is the resolved shell command
         preview = [shlex.join(argv)]
 
-        r = BenchResult(cmd.name, cmd.group, files_count=fc, total_bytes=tb, media_duration_s=dur, preview_lines=preview)
+        r = BenchResult(
+            cmd.name, cmd.group, files_count=fc, total_bytes=tb,
+            media_duration_s=media.duration_s, media_width=media.width,
+            media_height=media.height, media_fps=media.fps,
+            preview_lines=preview,
+        )
         r.timings_ms = _time_cmd(argv, rounds, warmup)
 
         results.append(r)
