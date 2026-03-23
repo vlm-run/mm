@@ -36,13 +36,15 @@ class BenchResult:
     """Timing results for a single benchmark."""
 
     name: str
-    group: str  # "L0", "L1", "Pipe"
+    group: str  # "L0", "L1", "L2"
     timings_ms: list[float] = field(default_factory=list)
     files_count: int = 0
     total_bytes: int = 0
     preview_lines: list[str] = field(default_factory=list)
     skipped: bool = False
     skip_reason: str = ""
+    prompt_tokens: int = 0
+    completion_tokens: int = 0
 
     @property
     def mean_ms(self) -> float:
@@ -76,6 +78,27 @@ class BenchResult:
             return (self.total_bytes / (1024 * 1024)) / (self.mean_ms / 1000.0)
         return 0.0
 
+    @property
+    def bits_per_sec(self) -> float:
+        """Information throughput in bits/s."""
+        if self.mean_ms > 0 and self.total_bytes > 0:
+            return (self.total_bytes * 8) / (self.mean_ms / 1000.0)
+        return 0.0
+
+    @property
+    def bits_per_sec_str(self) -> str:
+        """Human-readable bits/s throughput."""
+        bps = self.bits_per_sec
+        if bps >= 1e9:
+            return f"{bps / 1e9:.2f} Gbps"
+        if bps >= 1e6:
+            return f"{bps / 1e6:.2f} Mbps"
+        if bps >= 1e3:
+            return f"{bps / 1e3:.2f} kbps"
+        if bps > 0:
+            return f"{bps:.0f} bps"
+        return "—"
+
     def to_dict(self) -> dict[str, Any]:
         if self.skipped:
             return {
@@ -94,6 +117,10 @@ class BenchResult:
             "median_ms": round(self.median_ms, 2),
             "files_per_sec": round(self.files_per_sec),
             "mb_per_sec": round(self.mb_per_sec, 1),
+            "bits_per_sec": round(self.bits_per_sec),
+            "bits_per_sec_str": self.bits_per_sec_str,
+            "prompt_tokens": self.prompt_tokens,
+            "completion_tokens": self.completion_tokens,
             "timings_ms": [round(t, 2) for t in self.timings_ms],
         }
 
@@ -175,6 +202,17 @@ def _run_benchmarks(
 
         r = BenchResult(cmd.name, cmd.group, files_count=fc, total_bytes=tb, preview_lines=preview)
         r.timings_ms = _time_fn(fn, rounds, warmup)
+
+        # Capture token usage for L2 commands (from last LLM/VLM call)
+        if cmd.group == "L2":
+            try:
+                from vlmctx.llm import get_last_usage
+                usage = get_last_usage()
+                r.prompt_tokens = usage.prompt_tokens
+                r.completion_tokens = usage.completion_tokens
+            except Exception:
+                pass
+
         results.append(r)
 
     return results, target_info
@@ -323,6 +361,12 @@ def _render_summary(results: list[BenchResult], target_info: dict[str, Any]) -> 
             if r.mb_per_sec > 0:
                 stats_line.append("  ", style="")
                 stats_line.append(_fmt_rate(r.mb_per_sec, "MB/s"), style=color)
+            if r.bits_per_sec > 0:
+                stats_line.append("  ", style="")
+                stats_line.append(r.bits_per_sec_str, style="bright_cyan")
+            if r.prompt_tokens > 0:
+                stats_line.append("  ", style="")
+                stats_line.append(f"{r.prompt_tokens}→{r.completion_tokens} tok", style="bright_magenta")
             parts.append(stats_line)
 
     # Bottleneck analysis
@@ -420,6 +464,12 @@ def _render_verbose(results: list[BenchResult], target_info: dict[str, Any]) -> 
                 body.append("  ", style="dim")
             if r.mb_per_sec > 0:
                 body.append(_fmt_rate(r.mb_per_sec, "MB/s"), style="bright_blue")
+            if r.bits_per_sec > 0:
+                body.append("  ", style="dim")
+                body.append(r.bits_per_sec_str, style="bright_cyan")
+            if r.prompt_tokens > 0:
+                body.append("  ", style="dim")
+                body.append(f"{r.prompt_tokens}→{r.completion_tokens} tok", style="bright_magenta")
 
         # Slowest flag
         if slowest and r is slowest and len(measured) > 1:

@@ -92,7 +92,8 @@ def _preview_find(directory: Path, files: list, scanner_cls: type) -> list[str]:
     return _truncate(paths, len(paths))
 
 
-def _make_ls(directory: Path, files: list, scanner_cls: type) -> Callable[[], Any]:
+def _make_find_table(directory: Path, files: list, scanner_cls: type) -> Callable[[], Any]:
+    """Benchmark find with tabular output (Context + Arrow path)."""
     from vlmctx.context import Context
 
     def run():
@@ -102,7 +103,7 @@ def _make_ls(directory: Path, files: list, scanner_cls: type) -> Callable[[], An
     return run
 
 
-def _preview_ls(directory: Path, files: list, scanner_cls: type) -> list[str]:
+def _preview_find_table(directory: Path, files: list, scanner_cls: type) -> list[str]:
     from vlmctx.display import format_size
     lines = []
     for f in files[:_MAX_PREVIEW_LINES]:
@@ -171,6 +172,99 @@ def _preview_find_kind_image(directory: Path, files: list, scanner_cls: type) ->
     if not img_files:
         return ["(no image files)"]
     return _truncate(img_files, len(img_files))
+
+
+def _make_find_kind_audio(directory: Path, files: list, scanner_cls: type) -> Callable[[], Any] | None:
+    if not any(f.kind == "audio" for f in files):
+        return None
+    resolved = str(directory.resolve())
+
+    def run():
+        s = scanner_cls(resolved)
+        s.scan()
+        s.to_json_fast(kind="audio")
+
+    return run
+
+
+def _make_find_kind_document(directory: Path, files: list, scanner_cls: type) -> Callable[[], Any] | None:
+    if not any(f.kind == "document" for f in files):
+        return None
+    resolved = str(directory.resolve())
+
+    def run():
+        s = scanner_cls(resolved)
+        s.scan()
+        s.to_json_fast(kind="document")
+
+    return run
+
+
+def _preview_find_kind(kind: str, directory: Path, files: list, scanner_cls: type) -> list[str]:
+    matched = [f.path for f in files if f.kind == kind]
+    if not matched:
+        return [f"(no {kind} files)"]
+    return _truncate(matched, len(matched))
+
+
+def _make_sql_size_by_kind(directory: Path, files: list, scanner_cls: type) -> Callable[[], Any]:
+    from vlmctx.context import Context
+
+    def run():
+        c = Context(directory)
+        c.sql("SELECT kind, COUNT(*) as n, SUM(size) as total_bytes, ROUND(AVG(size)) as avg_bytes FROM files GROUP BY kind ORDER BY total_bytes DESC")
+
+    return run
+
+
+def _preview_sql_size_by_kind(directory: Path, files: list, scanner_cls: type) -> list[str]:
+    from collections import Counter, defaultdict
+    counts: Counter = Counter()
+    sizes: dict[str, int] = defaultdict(int)
+    for f in files:
+        counts[f.kind] += 1
+        sizes[f.kind] += getattr(f, 'size', 0) if hasattr(f, 'size') else 0
+    lines = [f"{'kind':<12} {'n':>5}  {'total':>12}"]
+    for kind, n in counts.most_common():
+        from vlmctx.display import format_size
+        lines.append(f"{kind:<12} {n:>5}  {format_size(sizes[kind]):>12}")
+    return lines
+
+
+def _make_sql_top_k_largest(directory: Path, files: list, scanner_cls: type) -> Callable[[], Any]:
+    from vlmctx.context import Context
+
+    def run():
+        c = Context(directory)
+        c.sql("SELECT name, kind, size FROM files ORDER BY size DESC LIMIT 10")
+
+    return run
+
+
+def _preview_sql_top_k(directory: Path, files: list, scanner_cls: type) -> list[str]:
+    from vlmctx.display import format_size
+    sorted_files = sorted(files, key=lambda f: getattr(f, 'size', 0) if hasattr(f, 'size') else 0, reverse=True)[:5]
+    lines = []
+    for f in sorted_files:
+        sz = getattr(f, 'size', 0) if hasattr(f, 'size') else 0
+        lines.append(f"{f.path:<50} {format_size(sz):>10}")
+    return lines
+
+
+def _make_sql_ext_breakdown(directory: Path, files: list, scanner_cls: type) -> Callable[[], Any]:
+    from vlmctx.context import Context
+
+    def run():
+        c = Context(directory)
+        c.sql("SELECT ext, COUNT(*) as n, SUM(size) as total_bytes FROM files GROUP BY ext ORDER BY n DESC")
+
+    return run
+
+
+def _preview_sql_ext(directory: Path, files: list, scanner_cls: type) -> list[str]:
+    from collections import Counter
+    counts = Counter(f.ext for f in files)
+    return [f"{ext:<8} {n:>5}" for ext, n in counts.most_common(5)]
 
 
 # ── L1 command factories ────────────────────────────────────────────
@@ -287,7 +381,7 @@ def _make_cat_pdf(directory: Path, files: list, scanner_cls: type) -> Callable[[
     full_path = directory.resolve() / doc_path
 
     def run():
-        from vlmctx.commands.cat import _l1_pdf
+        from vlmctx.commands.cat import _l1_pdf_fallback as _l1_pdf
         _l1_pdf(full_path)
 
     return run
@@ -299,7 +393,7 @@ def _preview_cat_pdf(directory: Path, files: list, scanner_cls: type) -> list[st
         return []
     # Try to extract first few lines of text
     try:
-        from vlmctx.commands.cat import _l1_pdf
+        from vlmctx.commands.cat import _l1_pdf_fallback as _l1_pdf
         text = _l1_pdf(directory.resolve() / doc.path)
         lines = [f"# {doc.path}"] + text.splitlines()[:4]
         return lines
@@ -372,22 +466,310 @@ def _grep_bytes(directory: Path, files: list) -> int:
     )
 
 
+# ── L1 audio + batch factories ──────────────────────────────────────
+
+
+def _make_cat_audio(directory: Path, files: list, scanner_cls: type) -> Callable[[], Any] | None:
+    aud_path = _pick_file_by_kind(files, "audio")
+    if not aud_path:
+        return None
+    resolved = str(directory.resolve())
+    scanner = scanner_cls(resolved)
+    scanner.scan()
+
+    def run():
+        scanner.extract_l1(aud_path)
+
+    return run
+
+
+def _preview_cat_audio(directory: Path, files: list, scanner_cls: type) -> list[str]:
+    aud = next((f for f in files if f.kind == "audio"), None)
+    if not aud:
+        return []
+    return [aud.path]
+
+
+def _cat_audio_count(directory: Path, files: list) -> int:
+    return 1 if _pick_file_by_kind(files, "audio") else 0
+
+
+def _cat_audio_bytes(directory: Path, files: list) -> int:
+    p = _pick_file_by_kind(files, "audio")
+    return (directory.resolve() / p).stat().st_size if p else 0
+
+
+def _make_cat_images_batch(directory: Path, files: list, scanner_cls: type) -> Callable[[], Any] | None:
+    img_files = [f.path for f in files if f.kind == "image"][:20]
+    if not img_files:
+        return None
+    resolved = str(directory.resolve())
+    scanner = scanner_cls(resolved)
+    scanner.scan()
+
+    def run():
+        for p in img_files:
+            scanner.extract_l1(p)
+
+    return run
+
+
+def _cat_images_batch_count(directory: Path, files: list) -> int:
+    return min(len([f for f in files if f.kind == "image"]), 20)
+
+
+def _cat_images_batch_bytes(directory: Path, files: list) -> int:
+    img_files = [f.path for f in files if f.kind == "image"][:20]
+    return sum(
+        (directory.resolve() / p).stat().st_size
+        for p in img_files
+        if (directory.resolve() / p).exists()
+    )
+
+
+def _preview_cat_images_batch(directory: Path, files: list, scanner_cls: type) -> list[str]:
+    img_files = [f.path for f in files if f.kind == "image"][:20]
+    return _truncate(img_files, len(img_files))
+
+
+def _make_cat_pdfs_batch(directory: Path, files: list, scanner_cls: type) -> Callable[[], Any] | None:
+    doc_files = [f for f in files if f.kind == "document"][:10]
+    if not doc_files:
+        return None
+    resolved_dir = directory.resolve()
+
+    def run():
+        from vlmctx.commands.cat import _l1_pdf_fallback as _l1_pdf
+        for f in doc_files:
+            _l1_pdf(resolved_dir / f.path)
+
+    return run
+
+
+def _cat_pdfs_batch_count(directory: Path, files: list) -> int:
+    return min(len([f for f in files if f.kind == "document"]), 10)
+
+
+def _cat_pdfs_batch_bytes(directory: Path, files: list) -> int:
+    doc_files = [f.path for f in files if f.kind == "document"][:10]
+    return sum(
+        (directory.resolve() / p).stat().st_size
+        for p in doc_files
+        if (directory.resolve() / p).exists()
+    )
+
+
+def _preview_cat_pdfs_batch(directory: Path, files: list, scanner_cls: type) -> list[str]:
+    doc_files = [f.path for f in files if f.kind == "document"][:10]
+    return _truncate(doc_files, len(doc_files), "PDFs")
+
+
 # ── Command registries ──────────────────────────────────────────────
 
 L0_COMMANDS: list[BenchCommand] = [
     BenchCommand("vlmctx find .", "L0", _make_find, "empty directory", _preview_find, _all_count, _all_bytes),
-    BenchCommand("vlmctx ls .", "L0", _make_ls, "empty directory", _preview_ls, _all_count, _all_bytes),
+    BenchCommand("vlmctx find . (table)", "L0", _make_find_table, "empty directory", _preview_find_table, _all_count, _all_bytes),
     BenchCommand("vlmctx wc .", "L0", _make_wc, "empty directory", _preview_wc, _all_count, _all_bytes),
     BenchCommand("vlmctx sql 'GROUP BY kind'", "L0", _make_sql, "empty directory", _preview_sql, _all_count, _all_bytes),
+    BenchCommand("vlmctx sql 'SUM(size) BY kind'", "L0", _make_sql_size_by_kind, "empty directory", _preview_sql_size_by_kind, _all_count, _all_bytes),
+    BenchCommand("vlmctx sql 'TOP 10 largest'", "L0", _make_sql_top_k_largest, "empty directory", _preview_sql_top_k, _all_count, _all_bytes),
+    BenchCommand("vlmctx sql 'GROUP BY ext'", "L0", _make_sql_ext_breakdown, "empty directory", _preview_sql_ext, _all_count, _all_bytes),
     BenchCommand("vlmctx find --kind image", "L0", _make_find_kind_image, "empty directory", _preview_find_kind_image, _all_count, _all_bytes),
+    BenchCommand("vlmctx find --kind audio", "L0", _make_find_kind_audio, "no audio files", lambda d, f, s: _preview_find_kind("audio", d, f, s), _all_count, _all_bytes),
+    BenchCommand("vlmctx find --kind document", "L0", _make_find_kind_document, "no document files", lambda d, f, s: _preview_find_kind("document", d, f, s), _all_count, _all_bytes),
 ]
 
 L1_COMMANDS: list[BenchCommand] = [
     BenchCommand("vlmctx cat <code> (x20)", "L1", _make_cat_code, "no code files", _preview_cat_code, _cat_code_count, _cat_code_bytes),
     BenchCommand("vlmctx cat <image>", "L1", _make_cat_image, "no image files", _preview_cat_image, _cat_image_count, _cat_image_bytes),
+    BenchCommand("vlmctx cat <image> (x20)", "L1", _make_cat_images_batch, "no image files", _preview_cat_images_batch, _cat_images_batch_count, _cat_images_batch_bytes),
+    BenchCommand("vlmctx cat <audio>", "L1", _make_cat_audio, "no audio files", _preview_cat_audio, _cat_audio_count, _cat_audio_bytes),
     BenchCommand("vlmctx cat <video>", "L1", _make_cat_video, "no video files", _preview_cat_video, _cat_video_count, _cat_video_bytes),
     BenchCommand("vlmctx cat <pdf>", "L1", _make_cat_pdf, "no PDF files", _preview_cat_pdf, _cat_pdf_count, _cat_pdf_bytes),
+    BenchCommand("vlmctx cat <pdf> (x10)", "L1", _make_cat_pdfs_batch, "no PDF files", _preview_cat_pdfs_batch, _cat_pdfs_batch_count, _cat_pdfs_batch_bytes),
     BenchCommand("vlmctx grep /pattern/", "L1", _make_grep, "no text files", _preview_grep, _grep_count, _grep_bytes),
 ]
 
-ALL_COMMANDS: list[BenchCommand] = L0_COMMANDS + L1_COMMANDS
+# ── L2 modal command factories ──────────────────────────────────────
+
+
+def _make_cat_image_l2_fast(directory: Path, files: list, scanner_cls: type) -> Callable[[], Any] | None:
+    img_path = _pick_file_by_kind(files, "image")
+    if not img_path:
+        return None
+    full_path = directory.resolve() / img_path
+
+    def run():
+        from vlmctx.commands.cat import _CatOpts, _extract
+        opts = _CatOpts(
+            level=2, n=None, detail=False, output_dir=None,
+            max_pages=None, mosaic_tile="4x4", image_width=160,
+            mosaic_count=1, mosaic_strategy="uniform",
+            audio_speed=2.0, audio_sample_rate=16000,
+            mode="fast", format="json",
+        )
+        _extract(full_path, opts)
+
+    return run
+
+
+def _make_cat_image_l2_accurate(directory: Path, files: list, scanner_cls: type) -> Callable[[], Any] | None:
+    img_path = _pick_file_by_kind(files, "image")
+    if not img_path:
+        return None
+    full_path = directory.resolve() / img_path
+
+    def run():
+        from vlmctx.commands.cat import _CatOpts, _extract
+        opts = _CatOpts(
+            level=2, n=None, detail=False, output_dir=None,
+            max_pages=None, mosaic_tile="4x4", image_width=160,
+            mosaic_count=1, mosaic_strategy="uniform",
+            audio_speed=2.0, audio_sample_rate=16000,
+            mode="accurate", format="json",
+        )
+        _extract(full_path, opts)
+
+    return run
+
+
+def _make_cat_video_l2_fast(directory: Path, files: list, scanner_cls: type) -> Callable[[], Any] | None:
+    vid_path = _pick_file_by_kind(files, "video")
+    if not vid_path:
+        return None
+    full_path = directory.resolve() / vid_path
+
+    def run():
+        from vlmctx.commands.cat import _CatOpts, _extract
+        opts = _CatOpts(
+            level=2, n=None, detail=False, output_dir=None,
+            max_pages=None, mosaic_tile="4x4", image_width=160,
+            mosaic_count=1, mosaic_strategy="uniform",
+            audio_speed=2.0, audio_sample_rate=16000,
+            mode="fast", format="json",
+        )
+        _extract(full_path, opts)
+
+    return run
+
+
+def _make_cat_video_l2_accurate(directory: Path, files: list, scanner_cls: type) -> Callable[[], Any] | None:
+    vid_path = _pick_file_by_kind(files, "video")
+    if not vid_path:
+        return None
+    full_path = directory.resolve() / vid_path
+
+    def run():
+        from vlmctx.commands.cat import _CatOpts, _extract
+        opts = _CatOpts(
+            level=2, n=None, detail=False, output_dir=None,
+            max_pages=None, mosaic_tile="4x4", image_width=160,
+            mosaic_count=8, mosaic_strategy="uniform",
+            audio_speed=1.0, audio_sample_rate=16000,
+            mode="accurate", format="json",
+        )
+        _extract(full_path, opts)
+
+    return run
+
+
+def _pick_smallest_audio(files: list, directory: Path, max_duration_s: float = 600) -> str | None:
+    """Pick the smallest audio file under max_duration_s for benchmarking.
+
+    Avoids GPU timeouts from running whisper on multi-hour podcasts.
+    """
+    audio_files = [f for f in files if f.kind == "audio"]
+    if not audio_files:
+        return None
+    # Sort by file size (smallest first) as proxy for duration
+    audio_files.sort(key=lambda f: (directory.resolve() / f.path).stat().st_size if (directory.resolve() / f.path).exists() else float("inf"))
+    return audio_files[0].path
+
+
+def _make_cat_audio_l2_fast(directory: Path, files: list, scanner_cls: type) -> Callable[[], Any] | None:
+    aud_path = _pick_smallest_audio(files, directory)
+    if not aud_path:
+        return None
+    full_path = directory.resolve() / aud_path
+
+    def run():
+        from vlmctx.commands.cat import _CatOpts, _extract
+        opts = _CatOpts(
+            level=2, n=None, detail=False, output_dir=None,
+            max_pages=None, mosaic_tile="4x4", image_width=160,
+            mosaic_count=1, mosaic_strategy="uniform",
+            audio_speed=2.0, audio_sample_rate=16000,
+            mode="fast", format="json",
+        )
+        _extract(full_path, opts)
+
+    return run
+
+
+def _make_cat_audio_l2_accurate(directory: Path, files: list, scanner_cls: type) -> Callable[[], Any] | None:
+    aud_path = _pick_smallest_audio(files, directory)
+    if not aud_path:
+        return None
+    full_path = directory.resolve() / aud_path
+
+    def run():
+        from vlmctx.commands.cat import _CatOpts, _extract
+        opts = _CatOpts(
+            level=2, n=None, detail=False, output_dir=None,
+            max_pages=None, mosaic_tile="4x4", image_width=160,
+            mosaic_count=1, mosaic_strategy="uniform",
+            audio_speed=1.0, audio_sample_rate=16000,
+            mode="accurate", format="json",
+        )
+        _extract(full_path, opts)
+
+    return run
+
+
+def _l2_preview(kind: str, mode: str, directory: Path, files: list, scanner_cls: type) -> list[str]:
+    f = next((f for f in files if f.kind == kind), None)
+    if not f:
+        return []
+    return [f"{f.path}  (mode={mode})"]
+
+
+L2_COMMANDS: list[BenchCommand] = [
+    BenchCommand(
+        "vlmctx cat <image> -l2 --mode fast", "L2",
+        _make_cat_image_l2_fast, "no image files",
+        lambda d, f, s: _l2_preview("image", "fast", d, f, s),
+        _cat_image_count, _cat_image_bytes,
+    ),
+    BenchCommand(
+        "vlmctx cat <image> -l2 --mode accurate", "L2",
+        _make_cat_image_l2_accurate, "no image files",
+        lambda d, f, s: _l2_preview("image", "accurate", d, f, s),
+        _cat_image_count, _cat_image_bytes,
+    ),
+    BenchCommand(
+        "vlmctx cat <video> -l2 --mode fast", "L2",
+        _make_cat_video_l2_fast, "no video files",
+        lambda d, f, s: _l2_preview("video", "fast", d, f, s),
+        _cat_video_count, _cat_video_bytes,
+    ),
+    BenchCommand(
+        "vlmctx cat <video> -l2 --mode accurate", "L2",
+        _make_cat_video_l2_accurate, "no video files",
+        lambda d, f, s: _l2_preview("video", "accurate", d, f, s),
+        _cat_video_count, _cat_video_bytes,
+    ),
+    BenchCommand(
+        "vlmctx cat <audio> -l2 --mode fast", "L2",
+        _make_cat_audio_l2_fast, "no audio files",
+        lambda d, f, s: [f"{_pick_smallest_audio(f, d) or '?'}  (mode=fast, smallest audio)"],
+        _cat_audio_count, _cat_audio_bytes,
+    ),
+    BenchCommand(
+        "vlmctx cat <audio> -l2 --mode accurate", "L2",
+        _make_cat_audio_l2_accurate, "no audio files",
+        lambda d, f, s: [f"{_pick_smallest_audio(f, d) or '?'}  (mode=accurate, smallest audio)"],
+        _cat_audio_count, _cat_audio_bytes,
+    ),
+]
+
+ALL_COMMANDS: list[BenchCommand] = L0_COMMANDS + L1_COMMANDS + L2_COMMANDS

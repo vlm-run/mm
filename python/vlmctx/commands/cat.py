@@ -41,6 +41,7 @@ IMAGE_EXTS = frozenset((
 AUDIO_EXTS = frozenset((
     ".mp3", ".wav", ".flac", ".aac", ".ogg", ".m4a", ".wma", ".opus",
 ))
+DOCUMENT_EXTS = frozenset((".pdf", ".docx", ".pptx"))
 
 
 def cat_cmd(
@@ -79,6 +80,10 @@ def cat_cmd(
     audio_sample_rate: Annotated[
         int, typer.Option("--audio-sample-rate", help="Audio sample rate Hz")
     ] = 16000,
+    mode: Annotated[
+        Optional[str],
+        typer.Option("--mode", "-m", help="Extraction mode: fast or accurate (L2 only)"),
+    ] = None,
     format: Annotated[
         Optional[str], typer.Option("--format", help="Output format: json, tsv, csv")
     ] = None,
@@ -139,7 +144,7 @@ def cat_cmd(
         max_pages=max_pages, mosaic_tile=mosaic_tile, image_width=image_width,
         mosaic_count=mosaic_count, mosaic_strategy=mosaic_strategy,
         audio_speed=audio_speed, audio_sample_rate=audio_sample_rate,
-        format=fmt,
+        mode=mode, format=fmt,
     )
 
     multi_file = len(paths) > 1 or bool(stdin_paths)
@@ -158,7 +163,10 @@ def cat_cmd(
             content = "\n".join(all_lines[:n] if n >= 0 else all_lines[n:])
 
         if fmt == "json":
-            results.append({"path": str(p), "level": level, "content": content})
+            entry: dict = {"path": str(p), "level": level, "content": content}
+            if mode:
+                entry["mode"] = mode
+            results.append(entry)
         elif fmt == "rich":
             _display_rich(p, content, level, n)
         else:
@@ -186,7 +194,7 @@ class _CatOpts:
     __slots__ = (
         "level", "n", "detail", "output_dir", "max_pages",
         "mosaic_tile", "image_width", "mosaic_count", "mosaic_strategy",
-        "audio_speed", "audio_sample_rate", "format",
+        "audio_speed", "audio_sample_rate", "mode", "format",
     )
 
     def __init__(self, **kwargs):  # noqa: ANN003
@@ -206,8 +214,8 @@ def _file_kind(path: Path) -> str:
         return "video"
     if ext in AUDIO_EXTS:
         return "audio"
-    if ext == ".pdf":
-        return "pdf"
+    if ext in DOCUMENT_EXTS:
+        return "document"
     return "text"
 
 
@@ -219,6 +227,9 @@ def _extract(path: Path, opts: _CatOpts) -> str:
     kind = _file_kind(path)
 
     if opts.level >= 2:
+        # When --mode is set, use the new modal extraction pipeline
+        if opts.mode is not None:
+            return _l2_modal(path, kind, opts)
         return _l2(path, kind, opts)
 
     return _l1(path, kind)
@@ -235,8 +246,8 @@ def _l1(path: Path, kind: str) -> str:
         return _l1_video(path)
     if kind == "audio":
         return _l1_audio(path)
-    if kind == "pdf":
-        return _l1_pdf(path)
+    if kind == "document":
+        return _l1_document(path)
     return path.read_text(errors="replace")
 
 
@@ -317,7 +328,23 @@ def _l1_audio(path: Path) -> str:
         return f"[Audio extraction failed: {e}]"
 
 
-def _l1_pdf(path: Path) -> str:
+def _l1_document(path: Path) -> str:
+    """Extract document content. Uses docling if available, falls back to pypdfium2 for PDFs."""
+    from vlmctx.docling_extract import convert_to_markdown, docling_available
+
+    if docling_available():
+        result = convert_to_markdown(path)
+        return result.markdown
+
+    # Fallback: pypdfium2 for PDFs only
+    ext = path.suffix.lower()
+    if ext == ".pdf":
+        return _l1_pdf_fallback(path)
+    return f"[docling not installed — pip install vlmctx[extract] for {ext} support]"
+
+
+def _l1_pdf_fallback(path: Path) -> str:
+    """Fallback PDF text extraction via pypdfium2."""
     try:
         import pypdfium2 as pdfium
 
@@ -350,7 +377,7 @@ def _l2(path: Path, kind: str, opts: _CatOpts) -> str:
     if kind == "audio":
         return _l2_audio(path, opts)
 
-    # pdf / text: extract L1 text then summarise
+    # document / text: extract L1 text then summarise
     from vlmctx.llm import LlmBackend
 
     content = _l1(path, kind)
@@ -421,6 +448,300 @@ def _l2_audio(path: Path, opts: _CatOpts) -> str:
 
 
 # ---------------------------------------------------------------------------
+# L2 Modal — mode-aware extraction (--mode fast|accurate)
+# ---------------------------------------------------------------------------
+
+def _l2_modal(path: Path, kind: str, opts: _CatOpts) -> str:
+    """Dispatch modal extraction based on file kind and --mode flag."""
+    mode = opts.mode or "fast"
+    if mode not in ("fast", "accurate"):
+        return f"[Unknown mode: {mode}. Use 'fast' or 'accurate'.]"
+
+    if kind == "image":
+        return _l2_image_modal(path, mode)
+    if kind == "video":
+        return _l2_video_modal(path, opts, mode)
+    if kind == "audio":
+        return _l2_audio_modal(path, opts, mode)
+    if kind == "document":
+        # Documents use docling at L1; at L2, summarize via LLM
+        from vlmctx.llm import LlmBackend
+        content = _l1(path, kind)
+        return LlmBackend().describe(path, content, detail=(mode == "accurate"))
+
+    # text/code: summarize
+    from vlmctx.llm import LlmBackend
+    content = _l1(path, kind)
+    return LlmBackend().describe(path, content, detail=(mode == "accurate"))
+
+
+def _l2_image_modal(path: Path, mode: str) -> str:
+    """Image extraction with mode-specific LLM prompts.
+
+    fast:     10-word description + 5 tags
+    accurate: 200-word description + 10 tags + 10 objects
+    """
+    import time
+
+    from vlmctx.llm import LlmBackend
+
+    t0 = time.monotonic()
+    llm = LlmBackend()
+    content = llm.caption_modal(path, mode=mode)
+    elapsed = (time.monotonic() - t0) * 1000
+    u = llm.last_usage
+
+    return f"{content}\n\n[mode={mode}, {elapsed:.0f}ms, {u.prompt_tokens}→{u.completion_tokens} tokens]"
+
+
+def _l2_video_modal(path: Path, opts: _CatOpts, mode: str) -> str:
+    """Video extraction with mode-aware mosaic + whisper + LLM pipeline.
+
+    fast (<5min):  16 uniform frames, 1 mosaic, whisper tiny @ 2x
+    fast (≥5min):  scene detection → 16 shots, 1 mosaic, whisper tiny @ 2x
+    accurate:      scene detection → 128 shots, 8 mosaics, whisper medium @ 1x
+    """
+    import json as _json
+    import shutil
+    import time
+
+    from vlmctx.ffmpeg import (
+        extract_audio,
+        extract_frames_at_timestamps,
+        extract_uniform_mosaics,
+        ffmpeg_available,
+        probe_duration,
+        tile_frames_to_mosaics,
+    )
+    from vlmctx.llm import LlmBackend
+
+    if not ffmpeg_available():
+        return f"[ffmpeg not found — cannot process {path.name}]"
+
+    timing: dict[str, float] = {}
+    t_total = time.monotonic()
+
+    # 1. Get duration
+    duration = probe_duration(path)
+    if duration <= 0:
+        return f"[Could not determine duration for {path.name}]"
+
+    # 2+3. Frame extraction and audio transcription run in parallel —
+    #       they are independent and converge only at the LLM call.
+    from concurrent.futures import ThreadPoolExecutor, Future
+
+    tile_cols, tile_rows = 4, 4
+    if mode == "accurate":
+        num_frames = 128
+        num_mosaics = 8
+    else:
+        num_frames = 16
+        num_mosaics = 1
+
+    # Target ~1500px mosaic width
+    mosaic_max_width = 1500
+    thumb_width = mosaic_max_width // tile_cols  # 375px per tile
+
+    use_scenes = (mode == "accurate") or (mode == "fast" and duration >= 300)
+
+    def _extract_visual_and_vlm() -> tuple[list[Path], str]:
+        """Extract frames, assemble mosaics, run VLM — all sequential.
+
+        Returns (mosaic_paths, vlm_analysis).
+        """
+        t0 = time.monotonic()
+        if use_scenes:
+            from vlmctx.scenes import (
+                detect_scenes,
+                sample_scene_timestamps,
+                sample_uniform_timestamps,
+                scenedetect_available,
+            )
+
+            if scenedetect_available():
+                t_scene = time.monotonic()
+                scene_result = detect_scenes(path)
+                timing["scene_detection_ms"] = (time.monotonic() - t_scene) * 1000
+                if scene_result.scenes:
+                    timestamps = sample_scene_timestamps(scene_result.scenes, num_frames)
+                else:
+                    timestamps = sample_uniform_timestamps(duration, num_frames)
+            else:
+                timestamps = sample_uniform_timestamps(duration, num_frames)
+
+            frames = extract_frames_at_timestamps(
+                path, timestamps, thumb_width=thumb_width,
+                out_dir=opts.output_dir,
+            )
+            timing["frame_extraction_ms"] = (time.monotonic() - t0) * 1000
+
+            t_tile = time.monotonic()
+            mosaics = tile_frames_to_mosaics(
+                frames, tile_cols=tile_cols, tile_rows=tile_rows, stem=path.stem,
+                out_dir=opts.output_dir,
+            )
+            timing["mosaic_assembly_ms"] = (time.monotonic() - t_tile) * 1000
+        else:
+            result = extract_uniform_mosaics(
+                path, out_dir=opts.output_dir, tile_cols=tile_cols, tile_rows=tile_rows,
+                thumb_width=thumb_width, num_mosaics=num_mosaics,
+            )
+            mosaics = result.mosaic_paths
+            timing["frame_extraction_ms"] = result.elapsed_ms
+
+        if not mosaics:
+            return mosaics, ""
+
+        # VLM call on mosaic only — no transcript in prompt
+        t_vlm = time.monotonic()
+        llm = LlmBackend()
+        analysis = llm.analyze_video_visual(
+            mosaics,
+            video_name=path.name,
+            duration_s=duration,
+            mode=mode,
+        )
+        timing["vlm_call_ms"] = (time.monotonic() - t_vlm) * 1000
+        timing["vlm_prompt_tokens"] = llm.last_usage.prompt_tokens
+        timing["vlm_completion_tokens"] = llm.last_usage.completion_tokens
+        return mosaics, analysis
+
+    def _extract_audio_transcript() -> str:
+        """Extract audio and transcribe with whisper."""
+        from vlmctx.whisper import whisper_available
+        if not whisper_available():
+            return ""
+
+        from vlmctx.config import get_mode_config
+        mode_cfg = get_mode_config(mode)
+
+        t_audio = time.monotonic()
+        audio_result = extract_audio(path, speed=mode_cfg.audio_speed)
+        timing["audio_extraction_ms"] = (time.monotonic() - t_audio) * 1000
+
+        from vlmctx.whisper import transcribe
+        whisper_result = transcribe(
+            audio_result.path,
+            model_size=mode_cfg.whisper_model,
+            beam_size=mode_cfg.beam_size or 1,
+            audio_speed=mode_cfg.audio_speed,
+        )
+        timing["audio_transcription_ms"] = whisper_result.elapsed_ms
+
+        try:
+            audio_result.path.unlink(missing_ok=True)
+        except Exception:
+            pass
+        return whisper_result.text
+
+    # Run (visual → VLM) ∥ (audio → whisper) in parallel
+    # The VLM sees only the mosaic; transcript is concatenated at the end.
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        visual_future: Future[tuple[list[Path], str]] = pool.submit(_extract_visual_and_vlm)
+        audio_future: Future[str] = pool.submit(_extract_audio_transcript)
+        mosaic_paths, analysis = visual_future.result()
+        transcript = audio_future.result()
+
+    if not mosaic_paths:
+        return f"[No frames extracted from {path.name}]"
+
+    timing["total_ms"] = (time.monotonic() - t_total) * 1000
+
+    # Cleanup temp mosaics (unless --output-dir was specified)
+    if opts.output_dir is None:
+        for mp in mosaic_paths:
+            try:
+                parent = mp.parent
+                mp.unlink(missing_ok=True)
+                if parent.name.startswith("vlmctx_"):
+                    shutil.rmtree(parent, ignore_errors=True)
+            except Exception:
+                pass
+
+    # Concatenate: VLM visual analysis + whisper transcript
+    parts: list[str] = [analysis]
+    if transcript:
+        word_count = len(transcript.split())
+        parts.append(f"\n## Transcript ({word_count} words)\n{transcript}")
+
+    # Separate timing and token metrics
+    time_keys = {k: v for k, v in timing.items() if k.endswith("_ms") and k != "total_ms"}
+    token_keys = {k: v for k, v in timing.items() if "tokens" in k}
+    timing_str = " | ".join(f"{k}: {v:.0f}ms" for k, v in time_keys.items())
+    token_str = f" | {int(token_keys.get('vlm_prompt_tokens', 0))}→{int(token_keys.get('vlm_completion_tokens', 0))} tokens" if token_keys else ""
+    parts.append(f"\n[mode={mode}, total={timing['total_ms']:.0f}ms{token_str} | {timing_str}]")
+    return "\n".join(parts)
+
+
+def _l2_audio_modal(path: Path, opts: _CatOpts, mode: str) -> str:
+    """Audio extraction with transcription.
+
+    fast:     2x speed + tiny model + greedy decoding
+    accurate: 1x speed + medium model + beam search
+    """
+    import time
+
+    from vlmctx.ffmpeg import extract_audio, ffmpeg_available
+    from vlmctx.whisper import transcribe, whisper_available
+
+    if not ffmpeg_available():
+        return f"[ffmpeg not found — cannot process {path.name}]"
+
+    if not whisper_available():
+        return "[whisper not installed — pip install vlmctx[extract]]"
+
+    from vlmctx.config import get_mode_config
+    mode_cfg = get_mode_config(mode)
+
+    timing: dict[str, float] = {}
+    t_total = time.monotonic()
+
+    # 1. Extract audio
+    t0 = time.monotonic()
+    audio_result = extract_audio(path, speed=mode_cfg.audio_speed)
+    timing["audio_extraction_ms"] = (time.monotonic() - t0) * 1000
+
+    # 2. Transcribe
+    whisper_model = mode_cfg.whisper_model
+    whisper_result = transcribe(
+        audio_result.path,
+        model_size=whisper_model,
+        beam_size=mode_cfg.beam_size or 1,
+        audio_speed=mode_cfg.audio_speed,
+    )
+    timing["audio_transcription_ms"] = whisper_result.elapsed_ms
+    transcript = whisper_result.text
+
+    # Cleanup temp audio
+    try:
+        audio_result.path.unlink(missing_ok=True)
+    except Exception:
+        pass
+
+    if not transcript or transcript.startswith("["):
+        return transcript or "[No speech detected]"
+
+    # 3. Optionally summarize via LLM
+    from vlmctx.llm import LlmBackend
+
+    t_llm = time.monotonic()
+    llm = LlmBackend()
+    summary = llm.summarize_transcript(transcript, mode=mode, filename=path.name)
+    timing["llm_call_ms"] = (time.monotonic() - t_llm) * 1000
+    timing["total_ms"] = (time.monotonic() - t_total) * 1000
+    u = llm.last_usage
+
+    # 4. Format output
+    word_count = len(transcript.split())
+    timing_str = " | ".join(f"{k}: {v:.0f}ms" for k, v in timing.items() if k != "total_ms")
+    return (
+        f"{summary}\n\n"
+        f"[Transcript: {word_count} words]\n"
+        f"[mode={mode}, total={timing['total_ms']:.0f}ms, {u.prompt_tokens}→{u.completion_tokens} tokens | {timing_str}]"
+    )
+
+
+# ---------------------------------------------------------------------------
 # Display
 # ---------------------------------------------------------------------------
 
@@ -472,7 +793,7 @@ def _display_rich(path: Path, content: str, level: int, n: int | None) -> None:
         output_console.print(
             Panel(safe_content, title=title, title_align="left", subtitle=subtitle, expand=False, border_style="green", box=box.ROUNDED)
         )
-    elif kind == "pdf":
+    elif kind == "document":
         line_count = len(content.splitlines())
         if line_count > 0:
             subtitle.append(f"  {line_count} lines", style="dim")

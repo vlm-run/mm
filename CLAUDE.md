@@ -87,8 +87,7 @@ vlmctx/
 │   ├── ffmpeg.py               # ffmpeg wrappers (keyframe mosaics, audio extraction)
 │   ├── video.py                # Video metadata helpers
 │   └── commands/               # CLI subcommands (6 + config)
-│       ├── find.py             # vlmctx find
-│       ├── ls.py               # vlmctx ls (--tree, --schema)
+│       ├── find.py             # vlmctx find (--tree, --schema, --columns)
 │       ├── cat.py              # vlmctx cat (-n, --level, auto-detect by type)
 │       ├── grep.py             # vlmctx grep
 │       ├── sql.py              # vlmctx sql (DuckDB)
@@ -144,30 +143,29 @@ uv run vlmctx <command> [args]
 
 | Command | Purpose | Key flags |
 |---------|---------|-----------|
-| `find`  | Locate files by kind/ext/size | `--kind`, `--ext`, `--min-size`, `--max-size`, `--limit`, `--format` |
-| `ls`    | Tabular listing, tree view, schema | `--sort`, `--columns`, `--kind`, `--tree`, `--depth`, `--schema`, `--format` |
-| `cat`   | Content extraction (auto-detected by file type) | `--level 0/1/2`, `-n` (head/tail), `--detail`, `--mosaic-*`, `--audio-*`, `--format` |
+| `find`  | Find/list files, tree view, schema | `--kind`, `--ext`, `--min-size`, `--max-size`, `--sort`, `--columns`, `--tree`, `--depth`, `--schema`, `--limit`, `--format` |
+| `cat`   | Content extraction (auto-detected by file type) | `--level 0/1/2`, `-n` (head/tail), `--detail`, `--mode`, `--mosaic-*`, `--audio-*`, `--format` |
 | `grep`  | Content search across files | `--kind`, `--ext`, `-C` (context), `--count`, `--level`, `--format` |
 | `sql`   | DuckDB SQL on the file index | `--dir`, `--format` |
 | `wc`    | Count files, bytes, lines, estimated tokens | `--kind`, `--by-kind`, `--format` |
 
 ### Consolidated commands
 
-The following commands were merged into the 6 core commands:
+The following commands were merged into the 5 core commands:
 
 - `head` / `tail` → `cat -n 10` (head) / `cat -n -10` (tail)
 - `keyframes` → `cat video.mp4 -l 2` (auto-generates mosaic)
 - `pages` → `cat document.pdf` (auto-extracts text at L1)
 - `audio` → `cat audio.mp3 -l 2` (metadata → LLM description)
-- `tree` → `ls --tree --depth 2`
-- `describe` → `ls --schema`
+- `ls` / `tree` / `describe` → `find` with `--tree`, `--schema`, `--columns`
 - `info` → `wc` (default summary panel)
 
-### ls modes
+### find modes
 
-- `vlmctx ls ~/data` — tabular listing (default)
-- `vlmctx ls ~/data --tree --depth 2` — hierarchical tree view with sizes
-- `vlmctx ls ~/data --schema` — column names, Arrow types, descriptions, sample values
+- `vlmctx find ~/data` — tabular listing (default)
+- `vlmctx find ~/data --tree --depth 2` — hierarchical tree view with sizes
+- `vlmctx find ~/data --schema` — column names, Arrow types, descriptions, sample values
+- `vlmctx find ~/data --columns name,size,kind` — custom column selection
 
 ### cat modes (auto-detected from file type × level)
 
@@ -181,7 +179,7 @@ The following commands were merged into the 6 core commands:
 
 ### Schema and SQL
 
-Use `vlmctx ls <dir> --schema` to see all available columns, their Arrow types, descriptions of what they contain, and a sample value.
+Use `vlmctx find <dir> --schema` to see all available columns, their Arrow types, descriptions of what they contain, and a sample value.
 
 Columns: `path`, `name`, `stem`, `ext`, `size`, `modified`, `created`, `mime`, `kind`, `is_binary`, `depth`, `parent`, `width`, `height`.
 
@@ -225,7 +223,7 @@ ctx.info()   # Rich summary panel
 ## Architecture notes
 
 - **Rust → Python data path**: Arrow RecordBatch serialized to IPC bytes in Rust, deserialized via `pyarrow.ipc.open_stream` in Python. Not PyCapsule FFI (had compatibility issues with pyarrow).
-- **Rust fast path**: `find --format json`, `ls --format json`, `wc --format json` bypass pyarrow entirely — serde_json in Rust, ~60ms cold start.
+- **Rust fast path**: `find --format json`, `wc --format json` bypass pyarrow entirely — serde_json in Rust, ~60ms cold start.
 - **Parallel scanning**: `ignore` crate for gitignore-aware walking + `rayon` for parallelism.
 - **Hashing**: xxh3 via `xxhash-rust` for fast content fingerprinting (full file via mmap).
 - **Video metadata (L1)**: Native MP4 parsing (mp4parse) and MKV/WebM parsing (matroska) in Rust. No ffmpeg at L1 — metadata only, <100ms.
@@ -260,6 +258,43 @@ uv run pytest tests/python -v                               # Python tests
 cargo bench --workspace                                     # Rust benchmarks (Criterion)
 uv run pytest tests/python/test_benchmark.py --benchmark-only  # Python benchmarks
 ```
+
+## Benchmarking
+
+Run the integrated benchmark suite against a data directory:
+
+```bash
+# Full bench (L0 + L1 + L2) with Rich output
+vlmctx bench ~/data/mmbench-mini --format rich --rounds 3
+
+# JSON output for archival
+vlmctx bench ~/data/mmbench-mini --format json --rounds 3 > benchmarks/mm-bench-YYYYMMDD.json
+
+# Single-file video benchmark
+vlmctx cat video.mp4 -l 2 --mode fast   # timing + token metrics in footer
+```
+
+### Saving benchmark results
+
+After each benchmark run, save results to `benchmarks/` as flat files:
+- `benchmarks/mm-bench-YYYYMMDD.json` — full `vlmctx bench` JSON output
+- `benchmarks/mm-bench-YYYYMMDD.md` — key numbers and comparison with previous runs
+
+Naming: `mm-bench-YYYYMMDD` (e.g. `mm-bench-260322`).
+
+### Key metrics to track
+
+- **L0**: files/s, MB/s, bits/s (metadata scanning throughput)
+- **L1**: per-file latency, MB/s (content extraction)
+- **L2**: total wall time, realtime multiplier, prompt→completion tokens
+- **Video pipeline**: frame_extraction_ms, audio_extraction_ms, audio_transcription_ms, vlm_call_ms
+- **Information-theoretic**: bits/s throughput at each level
+
+### CHANGELOG.md
+
+Every commit that changes performance numbers or adds/modifies benchmarks should update `CHANGELOG.md` with:
+- The benchmark result (`benchmarks/mm-bench-YYYYMMDD.md`)
+- What changed and the measured impact
 
 ## Keeping SPEC.md in sync
 

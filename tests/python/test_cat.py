@@ -76,7 +76,7 @@ class TestFileKindDetection:
         assert _file_kind(Path(f"test{ext}")) == "audio"
 
     def test_pdf(self):
-        assert _file_kind(Path("paper.pdf")) == "pdf"
+        assert _file_kind(Path("paper.pdf")) == "document"
 
     @pytest.mark.parametrize("ext", [".py", ".rs", ".js", ".md", ".toml", ".txt", ".csv"])
     def test_text_fallback(self, ext):

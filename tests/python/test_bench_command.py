@@ -125,7 +125,7 @@ class TestBenchCommand:
             if result["group"] == "L0" and not result.get("skipped")
         }
         assert "vlmctx find ." in l0_names
-        assert "vlmctx ls ." in l0_names
+        assert "vlmctx find . (table)" in l0_names
         assert "vlmctx wc ." in l0_names
         assert "vlmctx sql 'GROUP BY kind'" in l0_names
         assert "vlmctx find --kind image" in l0_names
@@ -212,19 +212,20 @@ class TestBenchCommands:
     """Tests for bench_commands registry."""
 
     def test_all_commands_non_empty(self):
-        from vlmctx.commands.bench_commands import ALL_COMMANDS, L0_COMMANDS, L1_COMMANDS
+        from vlmctx.commands.bench_commands import ALL_COMMANDS, L0_COMMANDS, L1_COMMANDS, L2_COMMANDS
 
         assert len(ALL_COMMANDS) > 0
         assert len(L0_COMMANDS) > 0
         assert len(L1_COMMANDS) > 0
-        assert len(ALL_COMMANDS) == len(L0_COMMANDS) + len(L1_COMMANDS)
+        assert len(L2_COMMANDS) > 0
+        assert len(ALL_COMMANDS) == len(L0_COMMANDS) + len(L1_COMMANDS) + len(L2_COMMANDS)
 
     def test_command_has_required_fields(self):
         from vlmctx.commands.bench_commands import ALL_COMMANDS
 
         for cmd in ALL_COMMANDS:
             assert cmd.name
-            assert cmd.group in ("L0", "L1")
+            assert cmd.group in ("L0", "L1", "L2")
             assert callable(cmd.make_fn)
 
 

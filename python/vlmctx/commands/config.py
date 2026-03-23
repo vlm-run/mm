@@ -20,28 +20,43 @@ def show(
     ] = None,
 ) -> None:
     """Show resolved configuration with source annotations."""
-    from vlmctx.config import CONFIG_PATH, get_provider_with_sources
+    from vlmctx.config import (
+        _find_config_path,
+        get_full_config,
+        get_provider_with_sources,
+    )
     from vlmctx.display import resolve_format
 
     fmt = resolve_format(format)
-
-    rows = get_provider_with_sources()
+    cfg = get_full_config()
 
     if fmt == "json":
         from vlmctx.display import json_dumps
 
-        print(json_dumps(
-            {r[0]: {"value": r[1], "source": r[2]} for r in rows},
-        ))
+        rows = get_provider_with_sources()
+        data = {
+            "provider": {r[0]: {"value": r[1], "source": r[2]} for r in rows},
+            "mode": {
+                "fast": {"whisper_model": cfg.mode_fast.whisper_model, "audio_speed": cfg.mode_fast.audio_speed, "beam_size": cfg.mode_fast.beam_size},
+                "accurate": {"whisper_model": cfg.mode_accurate.whisper_model, "audio_speed": cfg.mode_accurate.audio_speed, "beam_size": cfg.mode_accurate.beam_size},
+            },
+        }
+        print(json_dumps(data))
         return
 
     if fmt in ("tsv", "csv"):
         sep = "\t" if fmt == "tsv" else ","
+        rows = get_provider_with_sources()
         print(f"key{sep}value{sep}source")
         for key, val, src, _ in rows:
             print(f"{key}{sep}{val}{sep}{src}")
+        print(f"mode.fast.whisper_model{sep}{cfg.mode_fast.whisper_model}{sep}config")
+        print(f"mode.fast.audio_speed{sep}{cfg.mode_fast.audio_speed}{sep}config")
+        print(f"mode.accurate.whisper_model{sep}{cfg.mode_accurate.whisper_model}{sep}config")
+        print(f"mode.accurate.audio_speed{sep}{cfg.mode_accurate.audio_speed}{sep}config")
         return
 
+    from rich import box
     from rich.table import Table
     from rich.text import Text
 
@@ -54,10 +69,11 @@ def show(
         "default": "dim",
     }
 
-    from rich import box
+    config_path = _find_config_path()
 
     tbl = Table(
-        caption=f"[dim]{CONFIG_PATH}[/dim]",
+        title="[bold]Provider",
+        caption=f"[dim]{config_path}[/dim]",
         show_lines=False, padding=(0, 1), border_style="dim", header_style="bold",
         box=box.ROUNDED,
     )
@@ -65,60 +81,150 @@ def show(
     tbl.add_column("value")
     tbl.add_column("source", justify="right")
 
+    rows = get_provider_with_sources()
     for key, val, src, _ in rows:
         style = SOURCE_STYLES.get(src, "")
         tbl.add_row(key, Text(val, style=style), Text(src, style=style))
-
     output_console.print(tbl)
+    output_console.print()
+
+    # Mode settings
+    mode_tbl = Table(
+        title="[bold]Extraction Modes",
+        show_lines=False, padding=(0, 1), border_style="dim", header_style="bold",
+        box=box.ROUNDED,
+    )
+    mode_tbl.add_column("mode", style="bold")
+    mode_tbl.add_column("whisper_model")
+    mode_tbl.add_column("audio_speed", justify="right")
+    mode_tbl.add_column("beam_size", justify="right")
+
+    mode_tbl.add_row("fast", cfg.mode_fast.whisper_model, str(cfg.mode_fast.audio_speed), str(cfg.mode_fast.beam_size))
+    mode_tbl.add_row("accurate", cfg.mode_accurate.whisper_model, str(cfg.mode_accurate.audio_speed), str(cfg.mode_accurate.beam_size))
+    output_console.print(mode_tbl)
 
 
 @config_app.command()
 def init(
     force: Annotated[bool, typer.Option("--force", "-f", help="Overwrite existing config")] = False,
 ) -> None:
-    """Create ~/.vlmctx/config.toml with defaults."""
-    from vlmctx.config import CONFIG_PATH, DEFAULTS, write_config
+    """Create platform-aware config at ~/.config/vlmctx/vlmctx.toml.
 
-    if CONFIG_PATH.exists() and not force:
-        from vlmctx.display import output_console
+    \b
+    macOS:  Ollama + qwen3.5:0.8b
+    Linux:  vLLM + Qwen/Qwen3.5-0.8B (placeholder)
+    """
+    from vlmctx.config import CONFIG_PATH_XDG, _find_config_path, write_platform_config
+    from vlmctx.display import output_console
 
-        output_console.print(f"[yellow]Config already exists:[/yellow] {CONFIG_PATH}")
+    existing = _find_config_path()
+    if existing.exists() and not force:
+        output_console.print(f"[yellow]Config already exists:[/yellow] {existing}")
         output_console.print("[dim]Use --force to overwrite.[/dim]")
         raise typer.Exit(1)
 
-    path = write_config(**DEFAULTS)
-
-    from vlmctx.display import output_console
-
+    path = write_platform_config()
     output_console.print(f"[green]Created[/green] {path}")
 
 
 @config_app.command("set")
 def set_key(
-    key: Annotated[str, typer.Argument(help="Key to set (base_url, api_key, model)")],
+    key: Annotated[str, typer.Argument(help="Key to set (e.g. base_url, model, mode.fast.whisper_model)")],
     value: Annotated[str, typer.Argument(help="Value to set")],
 ) -> None:
-    """Set a provider config value.
+    """Set a config value.
 
     \b
-    Examples:
+    Provider keys:
+      vlmctx config set base_url http://localhost:11434
       vlmctx config set model qwen3-vl:8b
-      vlmctx config set base_url https://api.openai.com/v1
       vlmctx config set api_key sk-...
+
+    Mode keys:
+      vlmctx config set mode.fast.whisper_model tiny
+      vlmctx config set mode.fast.audio_speed 2.0
+      vlmctx config set mode.accurate.whisper_model medium
+      vlmctx config set mode.accurate.audio_speed 1.0
     """
-    from vlmctx.config import DEFAULTS, update_config
-
-    valid_keys = set(DEFAULTS.keys())
-    if key not in valid_keys:
-        from vlmctx.display import output_console
-
-        output_console.print(f"[red]Unknown key:[/red] {key}")
-        output_console.print(f"[dim]Valid keys: {', '.join(sorted(valid_keys))}[/dim]")
-        raise typer.Exit(1)
-
-    path = update_config(key, value)
-
+    from vlmctx.config import DEFAULTS, _find_config_path, _read_config_file
     from vlmctx.display import output_console
 
+    # Parse dotted keys for mode settings
+    if key.startswith("mode."):
+        parts = key.split(".")
+        if len(parts) != 3 or parts[1] not in ("fast", "accurate") or parts[2] not in ("whisper_model", "audio_speed", "beam_size"):
+            output_console.print(f"[red]Unknown key:[/red] {key}")
+            output_console.print("[dim]Valid mode keys: mode.{fast,accurate}.{whisper_model,audio_speed,beam_size}[/dim]")
+            raise typer.Exit(1)
+
+        path = _update_mode_key(parts[1], parts[2], value)
+        display_val = value
+        output_console.print(f"[green]Set[/green] {key} = {display_val}  [dim]({path})[/dim]")
+        return
+
+    # Provider keys
+    valid_keys = set(DEFAULTS.keys())
+    if key not in valid_keys:
+        output_console.print(f"[red]Unknown key:[/red] {key}")
+        output_console.print(f"[dim]Valid keys: {', '.join(sorted(valid_keys))}, mode.fast.*, mode.accurate.*[/dim]")
+        raise typer.Exit(1)
+
+    from vlmctx.config import update_config
+
+    path = update_config(key, value)
     display_val = "••••" if key == "api_key" else value
     output_console.print(f"[green]Set[/green] {key} = {display_val}  [dim]({path})[/dim]")
+
+
+def _update_mode_key(mode: str, key: str, value: str) -> str:
+    """Update a mode-specific key in the config file."""
+    from vlmctx.config import _find_config_path, _read_config_file
+
+    try:
+        import tomllib
+    except ModuleNotFoundError:
+        import tomli as tomllib  # type: ignore[no-redef]
+
+    path = _find_config_path()
+    file_data = _read_config_file()
+
+    # Ensure nested structure
+    if "mode" not in file_data:
+        file_data["mode"] = {}
+    if mode not in file_data["mode"]:
+        file_data["mode"][mode] = {}
+
+    # Coerce types
+    if key == "audio_speed":
+        file_data["mode"][mode][key] = float(value)
+    elif key == "beam_size":
+        file_data["mode"][mode][key] = int(value)
+    else:
+        file_data["mode"][mode][key] = value
+
+    # Write back — reconstruct TOML manually to preserve comments
+    lines: list[str] = []
+
+    # [provider]
+    provider = file_data.get("provider", {})
+    lines.append("[provider]")
+    for k in ("base_url", "api_key", "model"):
+        v = provider.get(k, "")
+        lines.append(f'{k} = "{v}"')
+    lines.append("")
+
+    # [mode.fast] and [mode.accurate]
+    for m in ("fast", "accurate"):
+        mode_data = file_data.get("mode", {}).get(m, {})
+        if mode_data:
+            lines.append(f"[mode.{m}]")
+            for mk, mv in mode_data.items():
+                if isinstance(mv, (int, float)):
+                    lines.append(f"{mk} = {mv}")
+                else:
+                    lines.append(f'{mk} = "{mv}"')
+            lines.append("")
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text("\n".join(lines) + "\n")
+    return str(path)
