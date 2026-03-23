@@ -60,8 +60,8 @@ class TestCatOptsMode:
     def test_mode_none(self):
         opts = _CatOpts(
             level=2, n=None, detail=False, output_dir=None,
-            max_pages=None, mosaic_tile="4x4", image_width=160,
-            mosaic_count=1, mosaic_strategy="uniform",
+            max_pages=None, mosaic_tile="4x4", mosaic_image_width=160,
+            video_mosaic_count=1, video_mosaic_strategy="uniform",
             audio_speed=2.0, audio_sample_rate=16000,
             mode=None, format="rich",
         )
@@ -70,8 +70,8 @@ class TestCatOptsMode:
     def test_mode_fast(self):
         opts = _CatOpts(
             level=2, n=None, detail=False, output_dir=None,
-            max_pages=None, mosaic_tile="4x4", image_width=160,
-            mosaic_count=1, mosaic_strategy="uniform",
+            max_pages=None, mosaic_tile="4x4", mosaic_image_width=160,
+            video_mosaic_count=1, video_mosaic_strategy="uniform",
             audio_speed=2.0, audio_sample_rate=16000,
             mode="fast", format="rich",
         )
@@ -80,8 +80,8 @@ class TestCatOptsMode:
     def test_mode_accurate(self):
         opts = _CatOpts(
             level=2, n=None, detail=False, output_dir=None,
-            max_pages=None, mosaic_tile="4x4", image_width=160,
-            mosaic_count=1, mosaic_strategy="uniform",
+            max_pages=None, mosaic_tile="4x4", mosaic_image_width=160,
+            video_mosaic_count=1, video_mosaic_strategy="uniform",
             audio_speed=2.0, audio_sample_rate=16000,
             mode="accurate", format="rich",
         )
@@ -94,8 +94,8 @@ class TestL2ModalDispatch:
     def _make_opts(self, mode: str = "fast") -> _CatOpts:
         return _CatOpts(
             level=2, n=None, detail=False, output_dir=None,
-            max_pages=None, mosaic_tile="4x4", image_width=160,
-            mosaic_count=1, mosaic_strategy="uniform",
+            max_pages=None, mosaic_tile="4x4", mosaic_image_width=160,
+            video_mosaic_count=1, video_mosaic_strategy="uniform",
             audio_speed=2.0, audio_sample_rate=16000,
             mode=mode, format="rich",
         )

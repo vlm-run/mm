@@ -105,8 +105,8 @@ vlmctx cat <file> -n -10                                # last 10 lines
 
 # L2 auto-generates mosaics for video
 vlmctx cat <video.mp4> -l 2                             # keyframe mosaic → LLM description
-vlmctx cat <video.mp4> -l 2 --mosaic-strategy scene     # scene-change mosaics
-vlmctx cat <video.mp4> -l 2 --mosaic-count 4            # 4 mosaic grids
+vlmctx cat <video.mp4> -l 2 --video-mosaic-strategy scene  # scene-change mosaics
+vlmctx cat <video.mp4> -l 2 --video-mosaic-count 4       # 4 mosaic grids
 vlmctx cat <file.pdf> -l 2 --max-pages 8                # limit rendered pages
 vlmctx cat <file> --json                                # JSON output
 ```

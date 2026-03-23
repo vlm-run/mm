@@ -603,8 +603,8 @@ def _make_cat_image_l2_fast(directory: Path, files: list, scanner_cls: type) -> 
         from vlmctx.commands.cat import _CatOpts, _extract
         opts = _CatOpts(
             level=2, n=None, detail=False, output_dir=None,
-            max_pages=None, mosaic_tile="4x4", image_width=160,
-            mosaic_count=1, mosaic_strategy="uniform",
+            max_pages=None, mosaic_tile="4x4", mosaic_image_width=160,
+            video_mosaic_count=1, video_mosaic_strategy="uniform",
             audio_speed=2.0, audio_sample_rate=16000,
             mode="fast", format="json",
         )
@@ -623,8 +623,8 @@ def _make_cat_image_l2_accurate(directory: Path, files: list, scanner_cls: type)
         from vlmctx.commands.cat import _CatOpts, _extract
         opts = _CatOpts(
             level=2, n=None, detail=False, output_dir=None,
-            max_pages=None, mosaic_tile="4x4", image_width=160,
-            mosaic_count=1, mosaic_strategy="uniform",
+            max_pages=None, mosaic_tile="4x4", mosaic_image_width=160,
+            video_mosaic_count=1, video_mosaic_strategy="uniform",
             audio_speed=2.0, audio_sample_rate=16000,
             mode="accurate", format="json",
         )
@@ -643,8 +643,8 @@ def _make_cat_video_l2_fast(directory: Path, files: list, scanner_cls: type) -> 
         from vlmctx.commands.cat import _CatOpts, _extract
         opts = _CatOpts(
             level=2, n=None, detail=False, output_dir=None,
-            max_pages=None, mosaic_tile="4x4", image_width=160,
-            mosaic_count=1, mosaic_strategy="uniform",
+            max_pages=None, mosaic_tile="4x4", mosaic_image_width=160,
+            video_mosaic_count=1, video_mosaic_strategy="uniform",
             audio_speed=2.0, audio_sample_rate=16000,
             mode="fast", format="json",
         )
@@ -663,8 +663,8 @@ def _make_cat_video_l2_accurate(directory: Path, files: list, scanner_cls: type)
         from vlmctx.commands.cat import _CatOpts, _extract
         opts = _CatOpts(
             level=2, n=None, detail=False, output_dir=None,
-            max_pages=None, mosaic_tile="4x4", image_width=160,
-            mosaic_count=8, mosaic_strategy="uniform",
+            max_pages=None, mosaic_tile="4x4", mosaic_image_width=160,
+            video_mosaic_count=8, video_mosaic_strategy="uniform",
             audio_speed=1.0, audio_sample_rate=16000,
             mode="accurate", format="json",
         )
@@ -696,8 +696,8 @@ def _make_cat_audio_l2_fast(directory: Path, files: list, scanner_cls: type) -> 
         from vlmctx.commands.cat import _CatOpts, _extract
         opts = _CatOpts(
             level=2, n=None, detail=False, output_dir=None,
-            max_pages=None, mosaic_tile="4x4", image_width=160,
-            mosaic_count=1, mosaic_strategy="uniform",
+            max_pages=None, mosaic_tile="4x4", mosaic_image_width=160,
+            video_mosaic_count=1, video_mosaic_strategy="uniform",
             audio_speed=2.0, audio_sample_rate=16000,
             mode="fast", format="json",
         )
@@ -716,8 +716,8 @@ def _make_cat_audio_l2_accurate(directory: Path, files: list, scanner_cls: type)
         from vlmctx.commands.cat import _CatOpts, _extract
         opts = _CatOpts(
             level=2, n=None, detail=False, output_dir=None,
-            max_pages=None, mosaic_tile="4x4", image_width=160,
-            mosaic_count=1, mosaic_strategy="uniform",
+            max_pages=None, mosaic_tile="4x4", mosaic_image_width=160,
+            video_mosaic_count=1, video_mosaic_strategy="uniform",
             audio_speed=1.0, audio_sample_rate=16000,
             mode="accurate", format="json",
         )

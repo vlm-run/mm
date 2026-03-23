@@ -168,8 +168,8 @@ class Context:
             from vlmctx.commands.cat import _CatOpts, _extract
             opts = _CatOpts(
                 level=level, n=None, detail=False, output_dir=None,
-                max_pages=None, mosaic_tile="4x4", image_width=160,
-                mosaic_count=1, mosaic_strategy="uniform",
+                max_pages=None, mosaic_tile="4x4", mosaic_image_width=160,
+                video_mosaic_count=1, video_mosaic_strategy="uniform",
                 audio_speed=2.0, audio_sample_rate=16000,
                 mode=mode, format="rich",
             )

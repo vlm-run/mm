@@ -65,14 +65,14 @@ def cat_cmd(
     mosaic_tile: Annotated[
         str, typer.Option("--mosaic-tile", help="Mosaic tile grid COLSxROWS")
     ] = "6x8",
-    image_width: Annotated[
-        int, typer.Option("--image-width", help="Thumbnail width in pixels for mosaics")
+    mosaic_image_width: Annotated[
+        int, typer.Option("--mosaic-image-width", help="Thumbnail width in pixels for mosaics")
     ] = 160,
-    mosaic_count: Annotated[
-        int, typer.Option("--mosaic-count", help="Number of mosaics for video (1-8)")
+    video_mosaic_count: Annotated[
+        int, typer.Option("--video-mosaic-count", help="Number of mosaics for video (1-8)")
     ] = 1,
-    mosaic_strategy: Annotated[
-        str, typer.Option("--mosaic-strategy", help="Video frame selection: uniform, keyframe, scene")
+    video_mosaic_strategy: Annotated[
+        str, typer.Option("--video-mosaic-strategy", help="Video frame selection: uniform, keyframe, scene")
     ] = "uniform",
     audio_speed: Annotated[
         float, typer.Option("--audio-speed", help="Audio playback speed multiplier")
@@ -141,8 +141,8 @@ def cat_cmd(
 
     opts = _CatOpts(
         level=level, n=n, detail=detail, output_dir=output_dir,
-        max_pages=max_pages, mosaic_tile=mosaic_tile, image_width=image_width,
-        mosaic_count=mosaic_count, mosaic_strategy=mosaic_strategy,
+        max_pages=max_pages, mosaic_tile=mosaic_tile, mosaic_image_width=mosaic_image_width,
+        video_mosaic_count=video_mosaic_count, video_mosaic_strategy=video_mosaic_strategy,
         audio_speed=audio_speed, audio_sample_rate=audio_sample_rate,
         mode=mode, format=fmt,
     )
@@ -193,7 +193,7 @@ class _CatOpts:
 
     __slots__ = (
         "level", "n", "detail", "output_dir", "max_pages",
-        "mosaic_tile", "image_width", "mosaic_count", "mosaic_strategy",
+        "mosaic_tile", "mosaic_image_width", "video_mosaic_count", "video_mosaic_strategy",
         "audio_speed", "audio_sample_rate", "mode", "format",
     )
 
@@ -406,22 +406,22 @@ def _l2_video(path: Path, opts: _CatOpts) -> str:
             return f"[ffmpeg not found — cannot generate mosaic for {path.name}]"
 
         cols, rows = _parse_tile(opts.mosaic_tile)
-        count = max(1, min(opts.mosaic_count, 8))
+        count = max(1, min(opts.video_mosaic_count, 8))
 
-        if opts.mosaic_strategy == "uniform":
+        if opts.video_mosaic_strategy == "uniform":
             result = extract_uniform_mosaics(
                 path, out_dir=opts.output_dir, tile_cols=cols, tile_rows=rows,
-                thumb_width=opts.image_width, num_mosaics=count,
+                thumb_width=opts.mosaic_image_width, num_mosaics=count,
             )
-        elif opts.mosaic_strategy == "scene":
+        elif opts.video_mosaic_strategy == "scene":
             result = extract_scene_mosaics(
                 path, out_dir=opts.output_dir, tile_cols=cols, tile_rows=rows,
-                thumb_width=opts.image_width, max_mosaics=count,
+                thumb_width=opts.mosaic_image_width, max_mosaics=count,
             )
         else:
             result = extract_keyframe_mosaics(
                 path, out_dir=opts.output_dir, tile_cols=cols, tile_rows=rows,
-                thumb_width=opts.image_width, max_mosaics=count,
+                thumb_width=opts.mosaic_image_width, max_mosaics=count,
             )
 
         if not result.mosaic_paths:
