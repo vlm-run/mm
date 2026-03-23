@@ -13,8 +13,8 @@ import pyarrow as pa
 import pytest
 from typer.testing import CliRunner
 
-from vlmctx.cli import app
-from vlmctx.context import Context
+from mm.cli import app
+from mm.context import Context
 
 runner = CliRunner()
 

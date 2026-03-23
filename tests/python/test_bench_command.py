@@ -1,4 +1,4 @@
-"""Tests for the vlmctx bench subcommand."""
+"""Tests for the mm bench subcommand."""
 
 from __future__ import annotations
 
@@ -7,13 +7,13 @@ from pathlib import Path
 
 from typer.testing import CliRunner
 
-from vlmctx.cli import app
+from mm.cli import app
 
 runner = CliRunner()
 
 
 class TestBenchCommand:
-    """Tests for vlmctx bench."""
+    """Tests for mm bench."""
 
     def test_exit_zero(self, small_tree: Path):
         """Bench runs successfully on a small directory."""
@@ -94,9 +94,9 @@ class TestBenchCommand:
             for result in data["results"]
             if result.get("skipped")
         }
-        assert "vlmctx cat <image>" in skipped_names
-        assert "vlmctx cat <video>" in skipped_names
-        assert "vlmctx cat <pdf>" in skipped_names
+        assert "mm cat <image>" in skipped_names
+        assert "mm cat <video>" in skipped_names
+        assert "mm cat <pdf>" in skipped_names
 
     def test_empty_directory(self, tmp_path: Path):
         """Bench handles empty directory gracefully."""
@@ -124,11 +124,11 @@ class TestBenchCommand:
             for result in data["results"]
             if result["group"] == "L0" and not result.get("skipped")
         }
-        assert "vlmctx find ." in l0_names
-        assert "vlmctx find . (table)" in l0_names
-        assert "vlmctx wc ." in l0_names
-        assert "vlmctx sql 'GROUP BY kind'" in l0_names
-        assert "vlmctx find --kind image" in l0_names
+        assert "mm find ." in l0_names
+        assert "mm find . (table)" in l0_names
+        assert "mm wc ." in l0_names
+        assert "mm sql 'GROUP BY kind'" in l0_names
+        assert "mm find --kind image" in l0_names
 
     def test_timings_are_positive(self, small_tree: Path):
         """All timings should be positive numbers."""
@@ -165,7 +165,7 @@ class TestBenchResult:
     """Tests for BenchResult dataclass."""
 
     def test_properties(self):
-        from vlmctx.commands.bench import BenchResult
+        from mm.commands.bench import BenchResult
 
         r = BenchResult(
             name="test",
@@ -183,7 +183,7 @@ class TestBenchResult:
         assert r.mb_per_sec > 0
 
     def test_skipped_result(self):
-        from vlmctx.commands.bench import BenchResult
+        from mm.commands.bench import BenchResult
 
         r = BenchResult(name="test", group="L1", skipped=True, skip_reason="no files")
         d = r.to_dict()
@@ -192,7 +192,7 @@ class TestBenchResult:
         assert "mean_ms" not in d
 
     def test_to_dict(self):
-        from vlmctx.commands.bench import BenchResult
+        from mm.commands.bench import BenchResult
 
         r = BenchResult(
             name="find .",
@@ -212,7 +212,7 @@ class TestBenchCommands:
     """Tests for bench_commands registry."""
 
     def test_all_commands_non_empty(self):
-        from vlmctx.commands.bench_commands import ALL_COMMANDS, L0_COMMANDS, L1_COMMANDS, L2_COMMANDS
+        from mm.commands.bench_commands import ALL_COMMANDS, L0_COMMANDS, L1_COMMANDS, L2_COMMANDS
 
         assert len(ALL_COMMANDS) > 0
         assert len(L0_COMMANDS) > 0
@@ -221,29 +221,29 @@ class TestBenchCommands:
         assert len(ALL_COMMANDS) == len(L0_COMMANDS) + len(L1_COMMANDS) + len(L2_COMMANDS)
 
     def test_command_has_required_fields(self):
-        from vlmctx.commands.bench_commands import ALL_COMMANDS
+        from mm.commands.bench_commands import ALL_COMMANDS
 
         for cmd in ALL_COMMANDS:
             assert cmd.name
             assert cmd.group in ("L0", "L1", "L2")
             assert cmd.cmd_template
-            assert "vlmctx" in cmd.cmd_template
+            assert "mm" in cmd.cmd_template
 
 
 class TestFmtMs:
     """Tests for _fmt_ms formatting."""
 
     def test_seconds(self):
-        from vlmctx.commands.bench import _fmt_ms
+        from mm.commands.bench import _fmt_ms
 
         assert _fmt_ms(1500.0) == "1.50s"
 
     def test_milliseconds(self):
-        from vlmctx.commands.bench import _fmt_ms
+        from mm.commands.bench import _fmt_ms
 
         assert _fmt_ms(15.3) == "15.3ms"
 
     def test_sub_10ms(self):
-        from vlmctx.commands.bench import _fmt_ms
+        from mm.commands.bench import _fmt_ms
 
         assert _fmt_ms(5.12) == "5.12ms"

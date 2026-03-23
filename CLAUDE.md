@@ -1,8 +1,8 @@
-# CLAUDE.md — vlmctx
+# CLAUDE.md — mm
 
 ## What this is
 
-`vlmctx` is a high-performance multi-modal context management library + CLI. Rust core for speed, Python for developer experience, Unix philosophy for composability.
+`mm` is a high-performance multi-modal context management library + CLI. Rust core for speed, Python for developer experience, Unix philosophy for composability.
 
 ## Core ideology
 
@@ -28,7 +28,7 @@
 - Pillow — image mosaic tiling
 - tomli — TOML config parsing (Python <3.11)
 
-**Rust (vlmctx-core):**
+**Rust (mm-core):**
 - arrow / parquet — Arrow RecordBatch + Parquet I/O
 - pyo3 — Python bindings
 - rayon — parallel iteration
@@ -48,7 +48,7 @@
 ## Project layout
 
 ```
-vlmctx/
+mm/
 ├── Cargo.toml                  # Rust workspace root (edition 2024)
 ├── pyproject.toml              # Python package (maturin build backend)
 ├── Makefile                    # Common dev targets (all via uv)
@@ -56,7 +56,7 @@ vlmctx/
 ├── config/
 │   └── config.example.toml     # Sample LLM provider config
 ├── crates/
-│   ├── vlmctx-core/            # Rust core library
+│   ├── mm-core/            # Rust core library
 │   │   ├── src/
 │   │   │   ├── lib.rs          # Re-exports all modules
 │   │   │   ├── walk.rs         # Parallel directory scanning (ignore crate)
@@ -70,14 +70,14 @@ vlmctx/
 │   │   │   ├── cache.rs        # Manifest-based incremental re-indexing
 │   │   │   └── format.rs       # Output formatting helpers
 │   │   └── benches/            # Criterion benchmarks (l0_walk, l0_index, l1_extract, hash)
-│   └── vlmctx-python/          # PyO3 bindings (Scanner, L1Result)
+│   └── mm-python/          # PyO3 bindings (Scanner, L1Result)
 │       └── src/lib.rs          # Arrow IPC transfer to Python
-├── python/vlmctx/              # Python package source
+├── python/mm/              # Python package source
 │   ├── __init__.py             # Public API re-exports
-│   ├── _vlmctx.pyi            # Type stubs for Rust bindings
+│   ├── _mm.pyi            # Type stubs for Rust bindings
 │   ├── cli.py                  # Typer app — registers 6 commands + config
 │   ├── context.py              # Context class (main Python API)
-│   ├── config.py               # LLM provider config (~/.vlmctx/config.toml)
+│   ├── config.py               # LLM provider config (~/.mm/config.toml)
 │   ├── llm.py                  # LLM backend (OpenAI SDK, L2)
 │   ├── df.py                   # arrow_to_polars / arrow_to_pandas
 │   ├── duck.py                 # DuckDB query helper
@@ -87,12 +87,12 @@ vlmctx/
 │   ├── ffmpeg.py               # ffmpeg wrappers (keyframe mosaics, audio extraction)
 │   ├── video.py                # Video metadata helpers
 │   └── commands/               # CLI subcommands (6 + config)
-│       ├── find.py             # vlmctx find (--tree, --schema, --columns)
-│       ├── cat.py              # vlmctx cat (-n, --level, auto-detect by type)
-│       ├── grep.py             # vlmctx grep
-│       ├── sql.py              # vlmctx sql (DuckDB)
-│       ├── wc.py               # vlmctx wc (--by-kind)
-│       └── config.py           # vlmctx config (show, init, set)
+│       ├── find.py             # mm find (--tree, --schema, --columns)
+│       ├── cat.py              # mm cat (-n, --level, auto-detect by type)
+│       ├── grep.py             # mm grep
+│       ├── sql.py              # mm sql (DuckDB)
+│       ├── wc.py               # mm wc (--by-kind)
+│       └── config.py           # mm config (show, init, set)
 ├── tests/
 │   └── python/                 # pytest suite
 │       ├── conftest.py
@@ -133,10 +133,10 @@ After modifying Rust code, you **must** re-run `make develop` before Python will
 
 ```bash
 # From the activated venv:
-vlmctx <command> [args]
+mm <command> [args]
 
 # Or without activating:
-uv run vlmctx <command> [args]
+uv run mm <command> [args]
 ```
 
 ## CLI commands (6 total)
@@ -162,24 +162,24 @@ The following commands were merged into the 5 core commands:
 
 ### find modes
 
-- `vlmctx find ~/data` — tabular listing (default)
-- `vlmctx find ~/data --tree --depth 2` — hierarchical tree view with sizes
-- `vlmctx find ~/data --schema` — column names, Arrow types, descriptions, sample values
-- `vlmctx find ~/data --columns name,size,kind` — custom column selection
+- `mm find ~/data` — tabular listing (default)
+- `mm find ~/data --tree --depth 2` — hierarchical tree view with sizes
+- `mm find ~/data --schema` — column names, Arrow types, descriptions, sample values
+- `mm find ~/data --columns name,size,kind` — custom column selection
 
 ### cat modes (auto-detected from file type × level)
 
-- `vlmctx cat file` — text/metadata extraction (default, L1, <100ms)
-- `vlmctx cat file -n 20` — first 20 lines (head)
-- `vlmctx cat file -n -20` — last 20 lines (tail)
-- `vlmctx cat file --level 0` — raw file content
-- `vlmctx cat file --level 2` — LLM-generated caption/description
-- `vlmctx cat video.mp4 -l 2` — auto-generates keyframe mosaic → LLM description
-- `vlmctx cat photo.png -l 2 --detail` — LLM caption (~80 words)
+- `mm cat file` — text/metadata extraction (default, L1, <100ms)
+- `mm cat file -n 20` — first 20 lines (head)
+- `mm cat file -n -20` — last 20 lines (tail)
+- `mm cat file --level 0` — raw file content
+- `mm cat file --level 2` — LLM-generated caption/description
+- `mm cat video.mp4 -l 2` — auto-generates keyframe mosaic → LLM description
+- `mm cat photo.png -l 2 --detail` — LLM caption (~80 words)
 
 ### Schema and SQL
 
-Use `vlmctx find <dir> --schema` to see all available columns, their Arrow types, descriptions of what they contain, and a sample value.
+Use `mm find <dir> --schema` to see all available columns, their Arrow types, descriptions of what they contain, and a sample value.
 
 Columns: `path`, `name`, `stem`, `ext`, `size`, `modified`, `created`, `mime`, `kind`, `is_binary`, `depth`, `parent`, `width`, `height`.
 
@@ -196,12 +196,12 @@ Columns: `path`, `name`, `stem`, `ext`, `size`, `modified`, `created`, `mime`, `
 
 - **L0** (metadata): path, size, kind, ext, timestamps, depth, parent, width, height. Built in Rust with `ignore` + `rayon`. Measured at ~0.02ms/file on real multi-modal data (249 files in 5ms).
 - **L1** (content): `cat` auto-detects file type. PDFs → text via pypdfium2. Images → dimensions/MIME/xxh3/EXIF via Rust. Video/audio → metadata only (resolution, duration, codecs, <100ms, no ffmpeg). Code/text → raw passthrough. Scanned/image-only PDFs yield empty text at L1.
-- **L2** (semantic): LLM-generated captions/descriptions via OpenAI-compatible API. Requires `VLMCTX_BASE_URL` env var. Falls back to L1 when unconfigured.
+- **L2** (semantic): LLM-generated captions/descriptions via OpenAI-compatible API. Requires `MM_BASE_URL` env var. Falls back to L1 when unconfigured.
 
 ## Python API
 
 ```python
-from vlmctx import Context
+from mm import Context
 
 ctx = Context("~/data/1-demo")         # L0 scan happens here (~5ms for 249 files)
 
@@ -233,21 +233,21 @@ ctx.info()   # Rich summary panel
 
 ## LLM configuration
 
-Provider settings resolved in order: CLI flags > env vars > `~/.vlmctx/config.toml` > defaults.
+Provider settings resolved in order: CLI flags > env vars > `~/.mm/config.toml` > defaults.
 
 ```bash
 # Env vars
-export VLMCTX_BASE_URL="http://localhost:11434"   # Ollama default
-export VLMCTX_API_KEY=""                           # if needed
-export VLMCTX_MODEL="qwen3.5:0.8b"                # default model
+export MM_BASE_URL="http://localhost:11434"   # Ollama default
+export MM_API_KEY=""                           # if needed
+export MM_MODEL="qwen3.5:0.8b"                # default model
 
 # CLI flags (override everything)
-vlmctx --base-url http://... --model gpt-4o cat photo.png -l 2
+mm --base-url http://... --model gpt-4o cat photo.png -l 2
 
 # Config file management
-vlmctx config show                # show resolved config with sources
-vlmctx config init                # create ~/.vlmctx/config.toml
-vlmctx config set model gpt-4o   # update a key
+mm config show                # show resolved config with sources
+mm config init                # create ~/.mm/config.toml
+mm config set model gpt-4o   # update a key
 ```
 
 ## Testing
@@ -265,19 +265,19 @@ Run the integrated benchmark suite against a data directory:
 
 ```bash
 # Full bench (L0 + L1 + L2) with Rich output
-vlmctx bench ~/data/mmbench-mini --format rich --rounds 3
+mm bench ~/data/mmbench-mini --format rich --rounds 3
 
 # JSON output for archival
-vlmctx bench ~/data/mmbench-mini --format json --rounds 3 > benchmarks/mm-bench-YYYYMMDD.json
+mm bench ~/data/mmbench-mini --format json --rounds 3 > benchmarks/mm-bench-YYYYMMDD.json
 
 # Single-file video benchmark
-vlmctx cat video.mp4 -l 2 --mode fast   # timing + token metrics in footer
+mm cat video.mp4 -l 2 --mode fast   # timing + token metrics in footer
 ```
 
 ### Saving benchmark results
 
 After each benchmark run, save results to `benchmarks/` as flat files:
-- `benchmarks/mm-bench-YYYYMMDD.json` — full `vlmctx bench` JSON output
+- `benchmarks/mm-bench-YYYYMMDD.json` — full `mm bench` JSON output
 - `benchmarks/mm-bench-YYYYMMDD.md` — key numbers and comparison with previous runs
 
 Naming: `mm-bench-YYYYMMDD` (e.g. `mm-bench-260322`).

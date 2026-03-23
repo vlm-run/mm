@@ -1,4 +1,4 @@
-"""Tests for vlmctx.whisper — Whisper transcription wrapper."""
+"""Tests for mm.whisper — Whisper transcription wrapper."""
 
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ import pytest
 
 def test_whisper_available_true():
     """whisper_available() returns True when a backend is available."""
-    from vlmctx.whisper import whisper_available
+    from mm.whisper import whisper_available
     # At least one backend should be installed in the test env
     # (either faster_whisper or lightning_whisper_mlx)
     assert isinstance(whisper_available(), bool)
@@ -17,7 +17,7 @@ def test_whisper_available_true():
 
 def test_transcription_result_defaults():
     """TranscriptionResult has sensible defaults."""
-    from vlmctx.whisper import TranscriptionResult
+    from mm.whisper import TranscriptionResult
 
     r = TranscriptionResult(text="hello world")
     assert r.text == "hello world"
@@ -31,9 +31,9 @@ def test_transcription_result_defaults():
 
 def test_transcribe_without_whisper():
     """transcribe() returns error message when no backend is available."""
-    from vlmctx.whisper import transcribe
+    from mm.whisper import transcribe
 
-    with patch("vlmctx.whisper._detect_backend", return_value=None):
+    with patch("mm.whisper._detect_backend", return_value=None):
         result = transcribe("/tmp/test.wav", model_size="tiny")
         assert "not installed" in result.text
         assert result.model_size == "tiny"
@@ -57,11 +57,11 @@ def test_transcribe_with_mock_ct2(tmp_path):
     mock_model.transcribe.return_value = ([mock_segment], mock_info)
 
     with (
-        patch("vlmctx.whisper._detect_backend", return_value="ctranslate2"),
-        patch("vlmctx.whisper._get_ct2_model", return_value=mock_model),
-        patch("vlmctx.whisper._get_device", return_value=("cpu", "int8")),
+        patch("mm.whisper._detect_backend", return_value="ctranslate2"),
+        patch("mm.whisper._get_ct2_model", return_value=mock_model),
+        patch("mm.whisper._get_device", return_value=("cpu", "int8")),
     ):
-        from vlmctx.whisper import transcribe
+        from mm.whisper import transcribe
 
         result = transcribe(str(audio_file), model_size="tiny")
         assert result.text == "Hello world"
@@ -93,11 +93,11 @@ def test_transcribe_ct2_timestamp_scaling(tmp_path):
     mock_model.transcribe.return_value = ([mock_segment], mock_info)
 
     with (
-        patch("vlmctx.whisper._detect_backend", return_value="ctranslate2"),
-        patch("vlmctx.whisper._get_ct2_model", return_value=mock_model),
-        patch("vlmctx.whisper._get_device", return_value=("cpu", "int8")),
+        patch("mm.whisper._detect_backend", return_value="ctranslate2"),
+        patch("mm.whisper._get_ct2_model", return_value=mock_model),
+        patch("mm.whisper._get_device", return_value=("cpu", "int8")),
     ):
-        from vlmctx.whisper import transcribe
+        from mm.whisper import transcribe
 
         result = transcribe(str(audio_file), model_size="tiny", audio_speed=2.0)
         assert result.segments[0]["start"] == 2.0  # 1.0 * 2.0
@@ -117,10 +117,10 @@ def test_transcribe_mlx_segment_format(tmp_path):
     }
 
     with (
-        patch("vlmctx.whisper._detect_backend", return_value="mlx"),
-        patch("vlmctx.whisper._get_mlx_model", return_value=mock_model),
+        patch("mm.whisper._detect_backend", return_value="mlx"),
+        patch("mm.whisper._get_mlx_model", return_value=mock_model),
     ):
-        from vlmctx.whisper import transcribe
+        from mm.whisper import transcribe
 
         result = transcribe(str(audio_file), model_size="tiny", audio_speed=2.0)
         assert result.text == "Hello from MLX"
@@ -136,7 +136,7 @@ def test_transcribe_mlx_segment_format(tmp_path):
 
 def test_detect_backend_preference():
     """MLX is preferred over CTranslate2 when available."""
-    import vlmctx.whisper as w
+    import mm.whisper as w
     # Reset cached backend
     w._BACKEND = None
     backend = w._detect_backend()

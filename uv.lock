@@ -1252,6 +1252,61 @@ wheels = [
 ]
 
 [[package]]
+name = "mm"
+version = "0.1.0"
+source = { editable = "." }
+dependencies = [
+    { name = "duckdb" },
+    { name = "openai" },
+    { name = "pandas", version = "2.3.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
+    { name = "pandas", version = "3.0.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
+    { name = "pillow" },
+    { name = "polars" },
+    { name = "pyarrow" },
+    { name = "pypdfium2" },
+    { name = "rich" },
+    { name = "tomli", marker = "python_full_version < '3.11'" },
+    { name = "typer" },
+]
+
+[package.optional-dependencies]
+dev = [
+    { name = "maturin" },
+    { name = "mypy" },
+    { name = "pytest" },
+    { name = "pytest-benchmark" },
+    { name = "ruff" },
+]
+extract = [
+    { name = "docling" },
+    { name = "faster-whisper" },
+    { name = "scenedetect", extra = ["opencv"] },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "docling", marker = "extra == 'extract'", specifier = ">=2.0" },
+    { name = "duckdb", specifier = ">=1.0" },
+    { name = "faster-whisper", marker = "extra == 'extract'", specifier = ">=1.0" },
+    { name = "maturin", marker = "extra == 'dev'", specifier = ">=1.7" },
+    { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.10" },
+    { name = "openai", specifier = ">=1.0" },
+    { name = "pandas", specifier = ">=2.0" },
+    { name = "pillow", specifier = ">=10.0" },
+    { name = "polars", specifier = ">=1.0" },
+    { name = "pyarrow", specifier = ">=15.0" },
+    { name = "pypdfium2", specifier = ">=4.0" },
+    { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.0" },
+    { name = "pytest-benchmark", marker = "extra == 'dev'", specifier = ">=4.0" },
+    { name = "rich", specifier = ">=13.0" },
+    { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.4" },
+    { name = "scenedetect", extras = ["opencv"], marker = "extra == 'extract'", specifier = ">=0.6" },
+    { name = "tomli", marker = "python_full_version < '3.11'", specifier = ">=1.0" },
+    { name = "typer", specifier = ">=0.12" },
+]
+provides-extras = ["extract", "dev"]
+
+[[package]]
 name = "mpire"
 version = "2.10.2"
 source = { registry = "https://pypi.org/simple" }
@@ -3860,61 +3915,6 @@ sdist = { url = "https://files.pythonhosted.org/packages/c7/24/5f1b3bdffd70275f6
 wheels = [
     { url = "https://files.pythonhosted.org/packages/39/08/aaaad47bc4e9dc8c725e68f9d04865dbcb2052843ff09c97b08904852d84/urllib3-2.6.3-py3-none-any.whl", hash = "sha256:bf272323e553dfb2e87d9bfd225ca7b0f467b919d7bbd355436d3fd37cb0acd4", size = 131584 },
 ]
-
-[[package]]
-name = "vlmctx"
-version = "0.1.0"
-source = { editable = "." }
-dependencies = [
-    { name = "duckdb" },
-    { name = "openai" },
-    { name = "pandas", version = "2.3.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
-    { name = "pandas", version = "3.0.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
-    { name = "pillow" },
-    { name = "polars" },
-    { name = "pyarrow" },
-    { name = "pypdfium2" },
-    { name = "rich" },
-    { name = "tomli", marker = "python_full_version < '3.11'" },
-    { name = "typer" },
-]
-
-[package.optional-dependencies]
-dev = [
-    { name = "maturin" },
-    { name = "mypy" },
-    { name = "pytest" },
-    { name = "pytest-benchmark" },
-    { name = "ruff" },
-]
-extract = [
-    { name = "docling" },
-    { name = "faster-whisper" },
-    { name = "scenedetect", extra = ["opencv"] },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "docling", marker = "extra == 'extract'", specifier = ">=2.0" },
-    { name = "duckdb", specifier = ">=1.0" },
-    { name = "faster-whisper", marker = "extra == 'extract'", specifier = ">=1.0" },
-    { name = "maturin", marker = "extra == 'dev'", specifier = ">=1.7" },
-    { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.10" },
-    { name = "openai", specifier = ">=1.0" },
-    { name = "pandas", specifier = ">=2.0" },
-    { name = "pillow", specifier = ">=10.0" },
-    { name = "polars", specifier = ">=1.0" },
-    { name = "pyarrow", specifier = ">=15.0" },
-    { name = "pypdfium2", specifier = ">=4.0" },
-    { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.0" },
-    { name = "pytest-benchmark", marker = "extra == 'dev'", specifier = ">=4.0" },
-    { name = "rich", specifier = ">=13.0" },
-    { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.4" },
-    { name = "scenedetect", extras = ["opencv"], marker = "extra == 'extract'", specifier = ">=0.6" },
-    { name = "tomli", marker = "python_full_version < '3.11'", specifier = ">=1.0" },
-    { name = "typer", specifier = ">=0.12" },
-]
-provides-extras = ["extract", "dev"]
 
 [[package]]
 name = "xlsxwriter"

@@ -1,4 +1,4 @@
-"""Tests for vlmctx.docling_extract — Docling document conversion wrapper."""
+"""Tests for mm.docling_extract — Docling document conversion wrapper."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from vlmctx.docling_extract import (
+from mm.docling_extract import (
     DoclingResult,
     SUPPORTED_EXTS,
     convert_to_markdown,
@@ -44,7 +44,7 @@ class TestConvertToMarkdown:
     def test_docx_without_docling(self, tmp_path):
         docx = tmp_path / "test.docx"
         docx.write_bytes(b"fake")
-        with patch("vlmctx.docling_extract.docling_available", return_value=False):
+        with patch("mm.docling_extract.docling_available", return_value=False):
             result = convert_to_markdown(docx)
             assert "not installed" in result.markdown
 
@@ -52,8 +52,8 @@ class TestConvertToMarkdown:
         pdf = tmp_path / "test.pdf"
         pdf.write_bytes(b"fake pdf")
         with (
-            patch("vlmctx.docling_extract.docling_available", return_value=False),
-            patch("vlmctx.docling_extract._fallback_pdf") as mock_fb,
+            patch("mm.docling_extract.docling_available", return_value=False),
+            patch("mm.docling_extract._fallback_pdf") as mock_fb,
         ):
             mock_fb.return_value = DoclingResult(markdown="extracted text", pages=3)
             result = convert_to_markdown(pdf)
@@ -75,15 +75,15 @@ class TestConvertToMarkdown:
         mock_converter.convert.return_value = mock_result
 
         with (
-            patch("vlmctx.docling_extract.docling_available", return_value=True),
+            patch("mm.docling_extract.docling_available", return_value=True),
             patch(
-                "vlmctx.docling_extract.DocumentConverter",
+                "mm.docling_extract.DocumentConverter",
                 create=True,
                 return_value=mock_converter,
             ),
         ):
             # Need to patch at import time
-            import vlmctx.docling_extract as de
+            import mm.docling_extract as de
             original = de.convert_to_markdown
 
             # Directly test the mock path

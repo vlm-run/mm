@@ -1,4 +1,4 @@
-"""Tests for vlmctx.scenes — PySceneDetect wrapper."""
+"""Tests for mm.scenes — PySceneDetect wrapper."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ from unittest.mock import patch
 
 import pytest
 
-from vlmctx.scenes import (
+from mm.scenes import (
     sample_scene_timestamps,
     sample_uniform_timestamps,
 )
@@ -78,9 +78,9 @@ class TestSceneDetectAvailability:
     """Test graceful degradation when scenedetect is not installed."""
 
     def test_detect_scenes_without_scenedetect(self):
-        from vlmctx.scenes import detect_scenes
+        from mm.scenes import detect_scenes
 
-        with patch("vlmctx.scenes.scenedetect_available", return_value=False):
+        with patch("mm.scenes.scenedetect_available", return_value=False):
             result = detect_scenes("/tmp/video.mp4")
             assert result.scenes == []
             assert result.num_scenes == 0

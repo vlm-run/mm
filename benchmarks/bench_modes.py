@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-"""Information-theoretic benchmarks for vlmctx multi-modal extraction.
+"""Information-theoretic benchmarks for mm multi-modal extraction.
 
 Measures bits/s throughput — how fast we extract semantic information
 from raw media data. Maximize bits/s, minimize latency.
 
 Usage:
     python benchmarks/bench_modes.py [data_dir]
-    vlmctx cat benchmarks/bench_modes.py -l 0  # or just run directly
+    mm cat benchmarks/bench_modes.py -l 0  # or just run directly
 """
 
 from __future__ import annotations
@@ -110,10 +110,10 @@ def _run_bench(cmd: list[str], runs: int = 3) -> float:
 
 
 def _probe_image(path: Path) -> tuple[str, int]:
-    """Get image dimensions via vlmctx L1."""
+    """Get image dimensions via mm L1."""
     try:
         r = subprocess.run(
-            ["vlmctx", "cat", str(path), "-l", "1"],
+            ["mm", "cat", str(path), "-l", "1"],
             capture_output=True, text=True, timeout=10,
         )
         import re
@@ -127,10 +127,10 @@ def _probe_image(path: Path) -> tuple[str, int]:
 
 
 def _probe_video(path: Path) -> tuple[str, float, float]:
-    """Get video resolution, duration, fps via vlmctx L1."""
+    """Get video resolution, duration, fps via mm L1."""
     try:
         r = subprocess.run(
-            ["vlmctx", "cat", str(path), "-l", "1"],
+            ["mm", "cat", str(path), "-l", "1"],
             capture_output=True, text=True, timeout=10,
         )
         import re
@@ -167,7 +167,7 @@ def bench_image(path: Path, runs: int = 3) -> list[BenchResult]:
     results = []
     for mode in ("fast", "accurate"):
         console.print(f"  [dim]Benchmarking image {mode}...[/dim]", end="\r")
-        t = _run_bench(["vlmctx", "cat", str(path), "-l", "2", "--mode", mode, "--json"], runs)
+        t = _run_bench(["mm", "cat", str(path), "-l", "2", "--mode", mode, "--json"], runs)
         results.append(BenchResult(
             label=f"image/{mode}", file=path.name, file_bytes=path.stat().st_size,
             wall_s=t, mode=mode, resolution=dims, pixels=pixels,
@@ -180,7 +180,7 @@ def bench_video(path: Path, runs: int = 2) -> list[BenchResult]:
     results = []
     for mode in ("fast", "accurate"):
         console.print(f"  [dim]Benchmarking video {mode}...[/dim]", end="\r")
-        t = _run_bench(["vlmctx", "cat", str(path), "-l", "2", "--mode", mode, "--json"], runs)
+        t = _run_bench(["mm", "cat", str(path), "-l", "2", "--mode", mode, "--json"], runs)
         results.append(BenchResult(
             label=f"video/{mode}", file=path.name, file_bytes=path.stat().st_size,
             wall_s=t, mode=mode, resolution=dims, duration_s=dur, fps=fps,
@@ -191,7 +191,7 @@ def bench_video(path: Path, runs: int = 2) -> list[BenchResult]:
 def bench_pdf(path: Path, runs: int = 5) -> list[BenchResult]:
     pages = _probe_pdf_pages(path)
     console.print("  [dim]Benchmarking PDF L1...[/dim]", end="\r")
-    t = _run_bench(["vlmctx", "cat", str(path), "-l", "1", "--json"], runs)
+    t = _run_bench(["mm", "cat", str(path), "-l", "1", "--json"], runs)
     return [BenchResult(
         label="document/L1", file=path.name, file_bytes=path.stat().st_size,
         wall_s=t, mode="L1", pages=pages,
@@ -199,7 +199,7 @@ def bench_pdf(path: Path, runs: int = 5) -> list[BenchResult]:
 
 
 def _sysinfo_panel() -> Panel:
-    from vlmctx.sysinfo import collect
+    from mm.sysinfo import collect
     info = collect()
     lines = [
         f"[bold]ffmpeg[/bold]       {info.ffmpeg_version or '[red]not found[/red]'}",
@@ -267,7 +267,7 @@ def main():
 
     console.print()
     console.print(Panel(
-        "[bold]vlmctx multi-modal extraction benchmarks[/bold]\n"
+        "[bold]mm multi-modal extraction benchmarks[/bold]\n"
         "[dim]Information-theoretic: maximize bits/s, minimize latency[/dim]",
         border_style="bright_blue", box=box.DOUBLE,
     ))

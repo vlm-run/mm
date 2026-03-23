@@ -1,7 +1,7 @@
 Documents
  - Find where in the document "a specific term" is mentioned
 
-## Benchmark commands (`vlmctx bench`)
+## Benchmark commands (`mm bench`)
 
 Each benchmark is a real CLI invocation measured end-to-end via subprocess.
 
@@ -9,38 +9,38 @@ Each benchmark is a real CLI invocation measured end-to-end via subprocess.
 
 | Name | Command |
 |------|---------|
-| `vlmctx find .` | `vlmctx find {dir} --format json` |
-| `vlmctx find . (table)` | `vlmctx find {dir} --format tsv` |
-| `vlmctx wc .` | `vlmctx wc {dir} --format json` |
-| `vlmctx sql 'GROUP BY kind'` | `vlmctx sql 'SELECT kind, COUNT(*) ...' --dir {dir} --format json` |
-| `vlmctx sql 'SUM(size) BY kind'` | `vlmctx sql 'SELECT kind, COUNT(*), SUM(size), AVG(size) ...' --dir {dir} --format json` |
-| `vlmctx sql 'TOP 10 largest'` | `vlmctx sql 'SELECT name, kind, size ... LIMIT 10' --dir {dir} --format json` |
-| `vlmctx sql 'GROUP BY ext'` | `vlmctx sql 'SELECT ext, COUNT(*), SUM(size) ...' --dir {dir} --format json` |
-| `vlmctx find --kind image` | `vlmctx find {dir} --kind image --format json` |
-| `vlmctx find --kind audio` | `vlmctx find {dir} --kind audio --format json` (skipped if no audio) |
-| `vlmctx find --kind document` | `vlmctx find {dir} --kind document --format json` (skipped if no documents) |
+| `mm find .` | `mm find {dir} --format json` |
+| `mm find . (table)` | `mm find {dir} --format tsv` |
+| `mm wc .` | `mm wc {dir} --format json` |
+| `mm sql 'GROUP BY kind'` | `mm sql 'SELECT kind, COUNT(*) ...' --dir {dir} --format json` |
+| `mm sql 'SUM(size) BY kind'` | `mm sql 'SELECT kind, COUNT(*), SUM(size), AVG(size) ...' --dir {dir} --format json` |
+| `mm sql 'TOP 10 largest'` | `mm sql 'SELECT name, kind, size ... LIMIT 10' --dir {dir} --format json` |
+| `mm sql 'GROUP BY ext'` | `mm sql 'SELECT ext, COUNT(*), SUM(size) ...' --dir {dir} --format json` |
+| `mm find --kind image` | `mm find {dir} --kind image --format json` |
+| `mm find --kind audio` | `mm find {dir} --kind audio --format json` (skipped if no audio) |
+| `mm find --kind document` | `mm find {dir} --kind document --format json` (skipped if no documents) |
 
 ### L1 — Content extraction (file-level)
 
 | Name | Command | Selection |
 |------|---------|-----------|
-| `vlmctx cat <code> (x20)` | `vlmctx cat {files} --format json` | first 20 code files |
-| `vlmctx cat <image>` | `vlmctx cat {file} --format json` | first image |
-| `vlmctx cat <image> (x20)` | `vlmctx cat {files} --format json` | first 20 images |
-| `vlmctx cat <audio>` | `vlmctx cat {file} --format json` | first audio |
-| `vlmctx cat <video>` | `vlmctx cat {file} --format json` | first video |
-| `vlmctx cat <pdf>` | `vlmctx cat {file} --format json` | first document |
-| `vlmctx cat <pdf> (x10)` | `vlmctx cat {files} --format json` | first 10 documents |
-| `vlmctx grep /pattern/` | `vlmctx grep 'import\|include\|require' {dir} --format json` | all text files |
+| `mm cat <code> (x20)` | `mm cat {files} --format json` | first 20 code files |
+| `mm cat <image>` | `mm cat {file} --format json` | first image |
+| `mm cat <image> (x20)` | `mm cat {files} --format json` | first 20 images |
+| `mm cat <audio>` | `mm cat {file} --format json` | first audio |
+| `mm cat <video>` | `mm cat {file} --format json` | first video |
+| `mm cat <pdf>` | `mm cat {file} --format json` | first document |
+| `mm cat <pdf> (x10)` | `mm cat {files} --format json` | first 10 documents |
+| `mm grep /pattern/` | `mm grep 'import\|include\|require' {dir} --format json` | all text files |
 
 ### L2 — Semantic (LLM-powered)
 
 | Name | Command | Selection |
 |------|---------|-----------|
-| `vlmctx cat <image> -l2 --mode fast` | `vlmctx cat {file} -l 2 --mode fast --format json` | first image |
-| `vlmctx cat <image> -l2 --mode accurate` | `vlmctx cat {file} -l 2 --mode accurate --format json` | first image |
-| `vlmctx cat <video> -l2 --mode fast` | `vlmctx cat {file} -l 2 --mode fast --format json` | first video |
-| `vlmctx cat <audio> -l2 --mode fast` | `vlmctx cat {file} -l 2 --mode fast --format json` | smallest audio |
+| `mm cat <image> -l2 --mode fast` | `mm cat {file} -l 2 --mode fast --format json` | first image |
+| `mm cat <image> -l2 --mode accurate` | `mm cat {file} -l 2 --mode accurate --format json` | first image |
+| `mm cat <video> -l2 --mode fast` | `mm cat {file} -l 2 --mode fast --format json` | first video |
+| `mm cat <audio> -l2 --mode fast` | `mm cat {file} -l 2 --mode fast --format json` | smallest audio |
 
 ### Placeholders
 

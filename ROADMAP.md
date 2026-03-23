@@ -1,4 +1,4 @@
-# vlmctx Roadmap
+# mm Roadmap
 
 > Make every multi-modal directory instantly queryable. Speed is the feature.
 
@@ -6,7 +6,7 @@ Design principle: **70-80% semantic coverage at 1000x the speed of full VLM infe
 Same philosophy as `fast_fingerprint` — trade marginal precision for orders-of-magnitude speedup.
 
 ```
-vlmctx roadmap
+mm roadmap
 │
 ├── P0 — Sub-100ms Everything (DX + Speed)
 │   │
@@ -15,7 +15,7 @@ vlmctx roadmap
 │   │   the single biggest value-add over alternatives.
 │   │
 │   ├── Persistent index with incremental rebuild
-│   │   ├── Write .vlmctx/index.parquet on first scan (~already exists)
+│   │   ├── Write .mm/index.parquet on first scan (~already exists)
 │   │   ├── On subsequent runs: stat() only changed files (mtime+size)
 │   │   ├── Merge changed entries into existing RecordBatch (no full rescan)
 │   │   ├── Target: <2ms for 1K files when nothing changed (vs 5ms full scan)
@@ -34,14 +34,14 @@ vlmctx roadmap
 │   │   ├── 218 images: already fast, but batch hashing benefits from IO overlap
 │   │   └── Return Vec<L1Record> as Arrow RecordBatch (L1 schema)
 │   │
-│   ├── [DONE] vlmctx wc — token counting for LLM budgeting
+│   ├── [DONE] mm wc — token counting for LLM budgeting
 │   │   ├── Fast byte-level token estimator (~4 chars/token for text)
 │   │   ├── Image token estimation via OpenAI-style tile counting
 │   │   ├── Per-file, per-kind, total token counts (--by-kind)
 │   │   ├── [ ] --budget 128K flag: show what fits in a context window
 │   │   └── [ ] Optional tiktoken/cl100k for exact counts
 │   │
-│   ├── [DONE] vlmctx tree — hierarchical directory view
+│   ├── [DONE] mm tree — hierarchical directory view
 │   │   ├── Size-annotated tree (file counts + sizes per directory)
 │   │   ├── Kind-colored branches (ANSI: image yellow, video magenta, etc.)
 │   │   ├── --depth, --kind filters, --size toggle
@@ -54,7 +54,7 @@ vlmctx roadmap
 │   │
 │   ├── Faster grep on document directories
 │   │   ├── Current: L1 extraction on every file → 81s for 545 PDFs
-│   │   ├── Pre-index text content in .vlmctx/text_cache/ (one-time cost)
+│   │   ├── Pre-index text content in .mm/text_cache/ (one-time cost)
 │   │   ├── Subsequent greps search the text cache (< 1s for 500 files)
 │   │   ├── Rust-native regex search over cached text (bypass Python)
 │   │   └── --no-cache flag for fresh extraction
@@ -70,13 +70,13 @@ vlmctx roadmap
 │   │   local, deterministic, sub-second operations. No network calls,
 │   │   no GPU, no model weights. This is the "L1.5" layer.
 │   │
-│   ├── [DONE] PDF → visual snapshots (vlmctx pages)
+│   ├── [DONE] PDF → visual snapshots (mm pages)
 │   │   ├── Render pages to thumbnails via pypdfium2 + Pillow
 │   │   ├── Tile into mosaic grids (4x4 default, configurable)
 │   │   ├── Captures tables, charts, diagrams that text extraction misses
 │   │   ├── 68-page PDF → 5 mosaics in 1.1s (~10ms/page)
 │   │   ├── Single-page invoice → 5ms
-│   │   └── vlmctx pages <file/dir> --max-pages N --json
+│   │   └── mm pages <file/dir> --max-pages N --json
 │   │
 │   ├── Image perceptual fingerprint
 │   │   ├── pHash (perceptual hash) — 64-bit, invariant to resize/compression
@@ -117,7 +117,7 @@ vlmctx roadmap
 │       ├── Exact: xxh3 content hash (already done)
 │       ├── Near-exact: fast_fingerprint for large file dedup
 │       ├── Perceptual: pHash for image near-dupes
-│       ├── vlmctx dedup — find and report duplicate clusters
+│       ├── mm dedup — find and report duplicate clusters
 │       └── --dry-run shows what would be removed, --symlink replaces dupes
 │
 ├── P2 — VLM-in-the-Loop (Remaining 20%)
@@ -129,44 +129,44 @@ vlmctx roadmap
 │   ├── Keyframe mosaic → VLM video summary
 │   │   ├── Feed mosaic grid(s) to qwen3-2b / llava for scene description
 │   │   ├── describe_video() already implemented, needs CLI integration
-│   │   ├── vlmctx cat video.mp4 --level 2 → mosaic + VLM caption
-│   │   ├── Batch: vlmctx find --kind video | vlmctx cat --level 2 --json
+│   │   ├── mm cat video.mp4 --level 2 → mosaic + VLM caption
+│   │   ├── Batch: mm find --kind video | mm cat --level 2 --json
 │   │   └── Output: {filename_suggestion, tags, summary, scenes}
 │   │
 │   ├── Audio transcription pipeline
 │   │   ├── 2x audio extraction already done (Whisper-optimized WAV)
 │   │   ├── Local Whisper via whisper.cpp or faster-whisper (Python)
 │   │   ├── API-based: OpenAI Whisper API, Groq, Deepgram
-│   │   ├── vlmctx transcribe video.mp4 → timestamped transcript
+│   │   ├── mm transcribe video.mp4 → timestamped transcript
 │   │   ├── Speaker diarization as post-process on transcript
-│   │   └── Cache transcripts in .vlmctx/transcripts/{hash}.txt
+│   │   └── Cache transcripts in .mm/transcripts/{hash}.txt
 │   │
 │   ├── PDF visual understanding
 │   │   ├── Page thumbnails (from P1) → VLM for table/chart extraction
 │   │   ├── Targeted: only pages where text extraction returned <50 chars
 │   │   ├── Output structured data: extracted tables as CSV, chart descriptions
-│   │   └── vlmctx cat scanned.pdf --level 2 → OCR + layout understanding
+│   │   └── mm cat scanned.pdf --level 2 → OCR + layout understanding
 │   │
 │   ├── Embedding generation
 │   │   ├── SemanticAnalyzer.embed() trait already defined in Rust
 │   │   ├── CLIP/SigLIP for images (via Python or ONNX Runtime)
 │   │   ├── Text embeddings for code/documents (sentence-transformers)
-│   │   ├── Store in .vlmctx/embeddings.parquet (path, embedding vector)
-│   │   └── Enable: vlmctx search "sunset over mountains" --kind image
+│   │   ├── Store in .mm/embeddings.parquet (path, embedding vector)
+│   │   └── Enable: mm search "sunset over mountains" --kind image
 │   │
 │   └── Semantic search
-│       ├── vlmctx search "query" — natural language search across all files
+│       ├── mm search "query" — natural language search across all files
 │       ├── Hybrid: keyword (grep) + vector (embedding cosine similarity)
 │       ├── Cross-modal: text query → image/video/document results
 │       └── Ranking: combine L0 metadata, L1 features, L2 embeddings
 │
 ├── P3 — Context Builder (The Killer Feature)
 │   │
-│   │   This is what "vlmctx" exists for: construct optimal LLM context
+│   │   This is what "mm" exists for: construct optimal LLM context
 │   │   payloads from multi-modal directories. Given a token budget and a
 │   │   task, select and format the most relevant content.
 │   │
-│   ├── vlmctx context — LLM-ready payload builder
+│   ├── mm context — LLM-ready payload builder
 │   │   ├── --budget 128K: fit as much as possible in N tokens
 │   │   ├── --task "describe the architecture": relevance-weighted selection
 │   │   ├── --format markdown|xml|json: output format for LLM consumption
@@ -189,28 +189,28 @@ vlmctx roadmap
 │   │   └── --since "2h" flag: only files modified in last 2 hours
 │   │
 │   └── Context profiles
-│       ├── .vlmctx/profiles/code-review.toml — predefined configurations
+│       ├── .mm/profiles/code-review.toml — predefined configurations
 │       ├── Profiles: code-review, bug-report, documentation, data-analysis
 │       ├── Each profile defines: kinds, priorities, format, budget
-│       └── vlmctx context --profile code-review
+│       └── mm context --profile code-review
 │
 ├── P4 — Ecosystem & Integrations
 │   │
 │   ├── MCP server (Model Context Protocol)
-│   │   ├── Expose vlmctx as an MCP tool server
+│   │   ├── Expose mm as an MCP tool server
 │   │   ├── Tools: scan, find, cat, grep, sql, keyframes, context
 │   │   ├── Resources: directory index as MCP resource
-│   │   ├── LLM agents can query file systems via vlmctx natively
-│   │   └── Zero-config: vlmctx serve --mcp
+│   │   ├── LLM agents can query file systems via mm natively
+│   │   └── Zero-config: mm serve --mcp
 │   │
 │   ├── Watch mode
-│   │   ├── vlmctx watch — inotify/FSEvents file watcher
+│   │   ├── mm watch — inotify/FSEvents file watcher
 │   │   ├── Keep index hot in memory, update incrementally
 │   │   ├── Emit events on file changes (for downstream consumers)
 │   │   ├── WebSocket/SSE endpoint for real-time dashboards
 │   │   └── Combined with MCP: always-fresh context for LLM agents
 │   │
-│   ├── vlmctx diff — compare two directories
+│   ├── mm diff — compare two directories
 │   │   ├── Structural diff: files added, removed, modified, moved
 │   │   ├── Content diff: changed hash, changed dimensions, etc.
 │   │   ├── Semantic diff: different VLM captions (expensive, opt-in)
@@ -219,13 +219,13 @@ vlmctx roadmap
 │   ├── Cloud storage backends
 │   │   ├── S3/GCS/Azure Blob as scan targets (list + head requests)
 │   │   ├── Lazy download: only fetch content for L1+ when needed
-│   │   └── Cache metadata locally in .vlmctx/
+│   │   └── Cache metadata locally in .mm/
 │   │
 │   └── Pre-built wheels + Homebrew
 │       ├── CI/CD: maturin build for manylinux, macOS arm64/x86, Windows
-│       ├── PyPI: pip install vlmctx (no Rust toolchain needed)
-│       ├── Homebrew: brew install vlmctx (standalone binary)
-│       └── Docker: ghcr.io/spillai/vlmctx (with ffmpeg pre-installed)
+│       ├── PyPI: pip install mm (no Rust toolchain needed)
+│       ├── Homebrew: brew install mm (standalone binary)
+│       └── Docker: ghcr.io/spillai/mm (with ffmpeg pre-installed)
 │
 └── Performance Targets
     │
@@ -251,7 +251,7 @@ vlmctx roadmap
     │   └── Video scene graph: <2s for 86min video
     │
     └── Context generation
-        ├── vlmctx context (L0+L1): <200ms for 1K files
-        ├── vlmctx context --level 2: depends on VLM latency
+        ├── mm context (L0+L1): <200ms for 1K files
+        ├── mm context --level 2: depends on VLM latency
         └── Token estimation: <1ms/file (byte heuristic)
 ```

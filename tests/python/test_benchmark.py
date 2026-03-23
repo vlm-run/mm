@@ -1,4 +1,4 @@
-"""Performance benchmarks for vlmctx Python API."""
+"""Performance benchmarks for mm Python API."""
 
 from __future__ import annotations
 
@@ -14,7 +14,7 @@ import pytest
 
 def test_bench_context_creation(benchmark, large_tree: Path):
     """Benchmark Context creation (L0 scan + Arrow build)."""
-    from vlmctx.context import Context
+    from mm.context import Context
 
     result = benchmark(Context, large_tree)
     assert result.num_files > 0
@@ -22,7 +22,7 @@ def test_bench_context_creation(benchmark, large_tree: Path):
 
 def test_bench_context_1k_mixed(benchmark, mixed_1k_tree: Path):
     """Benchmark L0 scan on 1000 mixed files (code + images)."""
-    from vlmctx.context import Context
+    from mm.context import Context
 
     result = benchmark(Context, mixed_1k_tree)
     assert result.num_files >= 900
@@ -30,7 +30,7 @@ def test_bench_context_1k_mixed(benchmark, mixed_1k_tree: Path):
 
 def test_bench_to_polars(benchmark, large_tree: Path):
     """Benchmark to_polars() conversion."""
-    from vlmctx.context import Context
+    from mm.context import Context
 
     ctx = Context(large_tree)
 
@@ -40,7 +40,7 @@ def test_bench_to_polars(benchmark, large_tree: Path):
 
 def test_bench_to_pandas(benchmark, large_tree: Path):
     """Benchmark to_pandas() conversion."""
-    from vlmctx.context import Context
+    from mm.context import Context
 
     ctx = Context(large_tree)
 
@@ -50,7 +50,7 @@ def test_bench_to_pandas(benchmark, large_tree: Path):
 
 def test_bench_sql_query(benchmark, large_tree: Path):
     """Benchmark SQL query via DuckDB."""
-    from vlmctx.context import Context
+    from mm.context import Context
 
     ctx = Context(large_tree)
 
@@ -60,7 +60,7 @@ def test_bench_sql_query(benchmark, large_tree: Path):
 
 def test_bench_filter(benchmark, large_tree: Path):
     """Benchmark filtering."""
-    from vlmctx.context import Context
+    from mm.context import Context
 
     ctx = Context(large_tree)
 
@@ -75,7 +75,7 @@ def test_bench_filter(benchmark, large_tree: Path):
 
 def test_bench_l1_code_batch(benchmark, mixed_1k_tree: Path):
     """Benchmark L1 extraction on code files."""
-    from vlmctx._vlmctx import Scanner
+    from mm._mm import Scanner
 
     scanner = Scanner(str(mixed_1k_tree))
     scanner.scan()
@@ -94,7 +94,7 @@ def test_bench_l1_video_native(benchmark, youtube_dir):
     if youtube_dir is None:
         pytest.skip("~/data/youtube not available")
 
-    from vlmctx._vlmctx import Scanner
+    from mm._mm import Scanner
 
     scanner = Scanner(str(youtube_dir))
     scanner.scan()
@@ -120,7 +120,7 @@ def test_bench_keyframe_mosaic(benchmark, youtube_dir):
     if youtube_dir is None:
         pytest.skip("~/data/youtube not available")
 
-    from vlmctx.ffmpeg import extract_keyframe_mosaics, ffmpeg_available
+    from mm.ffmpeg import extract_keyframe_mosaics, ffmpeg_available
 
     if not ffmpeg_available():
         pytest.skip("ffmpeg not available")
@@ -136,7 +136,7 @@ def test_bench_audio_2x(benchmark, youtube_dir):
     if youtube_dir is None:
         pytest.skip("~/data/youtube not available")
 
-    from vlmctx.ffmpeg import extract_audio, ffmpeg_available
+    from mm.ffmpeg import extract_audio, ffmpeg_available
 
     if not ffmpeg_available():
         pytest.skip("ffmpeg not available")
@@ -157,7 +157,7 @@ def test_bench_e2e_demo_dir(benchmark, demo_dir):
     if demo_dir is None:
         pytest.skip("~/data/1-demo not available")
 
-    from vlmctx.context import Context
+    from mm.context import Context
 
     result = benchmark(Context, demo_dir)
     assert result.num_files > 200

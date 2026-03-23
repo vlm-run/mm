@@ -1,4 +1,4 @@
-"""Tests for `vlmctx cat` auto-detection and dispatch.
+"""Tests for `mm cat` auto-detection and dispatch.
 
 Verifies that the CLI correctly auto-detects file types (image, video,
 audio, pdf, text) and dispatches to the right L0 / L1 handler based on
@@ -15,8 +15,8 @@ from pathlib import Path
 import pytest
 from typer.testing import CliRunner
 
-from vlmctx.cli import app
-from vlmctx.commands.cat import IMAGE_EXTS, VIDEO_EXTS, AUDIO_EXTS, _file_kind
+from mm.cli import app
+from mm.commands.cat import IMAGE_EXTS, VIDEO_EXTS, AUDIO_EXTS, _file_kind
 
 runner = CliRunner()
 

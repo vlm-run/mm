@@ -18,10 +18,10 @@
 - Audio: ffmpeg 2x speed + whisper tiny (MLX Metal GPU on macOS)
 - Document: docling PDF/DOCX/PPTX → markdown with pypdfium2 fallback
 - Whisper backend auto-select: MLX Metal GPU > CTranslate2 CPU/CUDA
-- `~/.config/vlmctx/vlmctx.toml` config with `[mode.fast]` / `[mode.accurate]` sections
+- `~/.config/mm/mm.toml` config with `[mode.fast]` / `[mode.accurate]` sections
 - `beam_size` config (fast=1 greedy, accurate=5 beam search)
 - Token metrics (prompt→completion) in LLM/VLM output footers
-- `vlmctx bench` with 24 commands (L0×10, L1×8, L2×6), bits/s throughput
+- `mm bench` with 24 commands (L0×10, L1×8, L2×6), bits/s throughput
 - `sysinfo.py` — system capability detection (ffmpeg, GPU, optional deps)
 - `scenes.py` — PySceneDetect wrapper with uniform scene sampling
 - `docling_extract.py` — docling document conversion wrapper
@@ -29,7 +29,7 @@
 
 ### Changed
 - Mosaic resolution: 160px → 375px per tile (1500px wide mosaic)
-- Config path: `~/.vlmctx/config.toml` → `~/.config/vlmctx/vlmctx.toml` (XDG, legacy supported)
+- Config path: `~/.mm/config.toml` → `~/.config/mm/mm.toml` (XDG, legacy supported)
 - `--json` flag → `--format json|tsv|csv` across all commands
 - `whisper_transcription_ms` → `audio_transcription_ms` in timing output
 - File kind `"pdf"` → `"document"` (includes DOCX, PPTX)

@@ -1,4 +1,4 @@
-"""Shared test fixtures for vlmctx Python tests."""
+"""Shared test fixtures for mm Python tests."""
 
 from __future__ import annotations
 

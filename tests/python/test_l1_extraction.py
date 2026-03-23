@@ -16,8 +16,8 @@ from pathlib import Path
 import pytest
 from typer.testing import CliRunner
 
-from vlmctx.cli import app
-from vlmctx.context import Context
+from mm.cli import app
+from mm.context import Context
 
 runner = CliRunner()
 
@@ -318,42 +318,42 @@ class TestVideoL1:
     """L1 extraction for video files via ffprobe."""
 
     def test_video_resolution(self, video_tree: Path):
-        from vlmctx.video import extract_video_metadata
+        from mm.video import extract_video_metadata
         meta = extract_video_metadata(video_tree / "test_clip.mp4")
         assert meta.width == 320
         assert meta.height == 240
 
     def test_video_duration(self, video_tree: Path):
-        from vlmctx.video import extract_video_metadata
+        from mm.video import extract_video_metadata
         meta = extract_video_metadata(video_tree / "test_clip.mp4")
         assert meta.duration_s is not None
         assert 1.5 < meta.duration_s < 3.0  # approx 2s
 
     def test_video_fps(self, video_tree: Path):
-        from vlmctx.video import extract_video_metadata
+        from mm.video import extract_video_metadata
         meta = extract_video_metadata(video_tree / "test_clip.mp4")
         assert meta.fps is not None
         assert meta.fps > 0
 
     def test_video_codec(self, video_tree: Path):
-        from vlmctx.video import extract_video_metadata
+        from mm.video import extract_video_metadata
         meta = extract_video_metadata(video_tree / "test_clip.mp4")
         assert meta.video_codec is not None
         assert meta.video_codec == "h264"
 
     def test_video_has_audio(self, video_tree: Path):
-        from vlmctx.video import extract_video_metadata
+        from mm.video import extract_video_metadata
         meta = extract_video_metadata(video_tree / "test_clip.mp4")
         assert meta.has_audio is True
         assert meta.audio_codec is not None
 
     def test_video_bitrate(self, video_tree: Path):
-        from vlmctx.video import extract_video_metadata
+        from mm.video import extract_video_metadata
         meta = extract_video_metadata(video_tree / "test_clip.mp4")
         assert meta.bitrate is not None and meta.bitrate > 0
 
     def test_video_pixel_format(self, video_tree: Path):
-        from vlmctx.video import extract_video_metadata
+        from mm.video import extract_video_metadata
         meta = extract_video_metadata(video_tree / "test_clip.mp4")
         assert meta.pixel_format == "yuv420p"
 
@@ -383,25 +383,25 @@ class TestVideoModule:
     """Test the video.py module directly."""
 
     def test_nonexistent_file(self):
-        from vlmctx.video import extract_video_metadata
+        from mm.video import extract_video_metadata
         meta = extract_video_metadata("/nonexistent/file.mp4")
         assert meta.width is None
         assert meta.duration_s is None
 
     def test_invalid_file(self, tmp_path: Path):
         (tmp_path / "garbage.mp4").write_bytes(b"\x00" * 100)
-        from vlmctx.video import extract_video_metadata
+        from mm.video import extract_video_metadata
         meta = extract_video_metadata(tmp_path / "garbage.mp4")
         # ffprobe might partially parse or fail; either way no crash
         assert isinstance(meta.has_audio, bool)
 
     def test_ffprobe_available_check(self):
-        from vlmctx.video import ffprobe_available
+        from mm.video import ffprobe_available
         result = ffprobe_available()
         assert isinstance(result, bool)
 
     def test_parse_fraction(self):
-        from vlmctx.video import _parse_fraction
+        from mm.video import _parse_fraction
         assert _parse_fraction("30000/1001") == pytest.approx(29.97, abs=0.01)
         assert _parse_fraction("24/1") == 24.0
         assert _parse_fraction("0/0") is None

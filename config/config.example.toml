@@ -1,8 +1,8 @@
-# ~/.vlmctx/config.toml
+# ~/.mm/config.toml
 #
-# vlmctx configuration file.
-# Copy to ~/.vlmctx/config.toml and edit to your needs.
-# Generate with: vlmctx config init
+# mm configuration file.
+# Copy to ~/.mm/config.toml and edit to your needs.
+# Generate with: mm config init
 
 # ── LLM provider (used by `cat -l 2`, `grep -l 2`, etc.) ────────────
 [provider]
@@ -32,9 +32,9 @@ model = "qwen3.5:0.8b"
 #
 # These override config.toml values (but are overridden by CLI flags):
 #
-#   VLMCTX_BASE_URL
-#   VLMCTX_API_KEY
-#   VLMCTX_MODEL
+#   MM_BASE_URL
+#   MM_API_KEY
+#   MM_MODEL
 #
 # Resolution order:
 #   CLI flags  >  env vars  >  config.toml  >  built-in defaults
