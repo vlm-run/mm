@@ -30,6 +30,7 @@ class BenchResult:
     preview_lines: list[str] = field(default_factory=list)
     skipped: bool = False
     skip_reason: str = ""
+    media_duration_s: float = 0.0
     prompt_tokens: int = 0
     completion_tokens: int = 0
 
@@ -58,6 +59,27 @@ class BenchResult:
         if self.mean_ms > 0 and self.files_count > 0:
             return self.files_count / (self.mean_ms / 1000.0)
         return 0.0
+
+    @property
+    def speed_str(self) -> str:
+        """Human-readable speed: realtime multiplier for media, files/s otherwise."""
+        if self.mean_ms <= 0:
+            return "—"
+        if self.media_duration_s > 0:
+            multiplier = self.media_duration_s / (self.mean_ms / 1000.0)
+            if multiplier >= 100:
+                return f"{multiplier:.0f}x"
+            if multiplier >= 10:
+                return f"{multiplier:.1f}x"
+            return f"{multiplier:.2f}x"
+        if self.files_count > 0:
+            fps = self.files_per_sec
+            if fps >= 100:
+                return f"{fps:.0f}/s"
+            if fps >= 10:
+                return f"{fps:.1f}/s"
+            return f"{fps:.2f}/s"
+        return "—"
 
     @property
     def mb_per_sec(self) -> float:
@@ -103,6 +125,8 @@ class BenchResult:
             "max_ms": round(self.max_ms, 2),
             "median_ms": round(self.median_ms, 2),
             "files_per_sec": round(self.files_per_sec),
+            "media_duration_s": round(self.media_duration_s, 2) if self.media_duration_s else 0,
+            "speed": self.speed_str,
             "mb_per_sec": round(self.mb_per_sec, 1),
             "bits_per_sec": round(self.bits_per_sec),
             "bits_per_sec_str": self.bits_per_sec_str,
@@ -176,12 +200,12 @@ def _run_benchmarks(
             results.append(BenchResult(cmd.name, cmd.group, skipped=True, skip_reason=cmd.skip_reason))
             continue
 
-        argv, fc, tb = resolved
+        argv, fc, tb, dur = resolved
 
         # Preview is the resolved shell command
         preview = [shlex.join(argv)]
 
-        r = BenchResult(cmd.name, cmd.group, files_count=fc, total_bytes=tb, preview_lines=preview)
+        r = BenchResult(cmd.name, cmd.group, files_count=fc, total_bytes=tb, media_duration_s=dur, preview_lines=preview)
         r.timings_ms = _time_cmd(argv, rounds, warmup)
 
         results.append(r)
@@ -255,7 +279,7 @@ def _render_table(results: list[BenchResult], target_info: dict[str, Any]) -> No
     table.add_column("\u00b1Std", justify="right", style="dim")
     table.add_column("Min", justify="right")
     table.add_column("Max", justify="right")
-    table.add_column("files/s", justify="right")
+    table.add_column("Speed", justify="right")
     table.add_column("MB/s", justify="right")
     table.add_column("bps", justify="right")
 
@@ -282,7 +306,7 @@ def _render_table(results: list[BenchResult], target_info: dict[str, Any]) -> No
             Text(_fmt_ms(r.std_ms)),
             Text(_fmt_ms(r.min_ms), style=color),
             Text(_fmt_ms(r.max_ms), style=color),
-            Text(format_number(r.files_per_sec) if r.files_per_sec > 0 else "\u2014"),
+            Text(r.speed_str),
             Text(f"{r.mb_per_sec:.1f}" if r.mb_per_sec > 0 else "\u2014"),
             Text(r.bits_per_sec_str, style="bright_cyan") if r.bits_per_sec > 0 else Text("\u2014"),
         )
@@ -358,4 +382,4 @@ def bench_cmd(
         from mm.display import emit_tsv
 
         rows = [r.to_dict() for r in results if not r.skipped]
-        emit_tsv(rows, columns=["group", "name", "mean_ms", "std_ms", "min_ms", "max_ms", "files_per_sec", "mb_per_sec"])
+        emit_tsv(rows, columns=["group", "name", "mean_ms", "std_ms", "min_ms", "max_ms", "speed", "mb_per_sec"])

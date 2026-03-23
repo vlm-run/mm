@@ -71,17 +71,33 @@ def _pick_files(files: list, kind: str, limit: int) -> list[str]:
     return [f.path for f in files if f.kind == kind][:limit]
 
 
+def _get_media_duration(directory: Path, rel_path: str) -> float:
+    """Get media duration in seconds via Rust L1 extraction."""
+    try:
+        from mm._mm import Scanner
+        scanner = Scanner(str(directory.resolve()))
+        scanner.scan()
+        r = scanner.extract_l1(rel_path)
+        return r.duration_s or 0.0
+    except Exception:
+        return 0.0
+
+
+_MEDIA_KINDS = frozenset(("video", "audio"))
+
+
 def resolve_command(
     cmd: BenchCommand,
     directory: Path,
     files: list,
-) -> tuple[list[str], int, int] | None:
-    """Resolve a command template into (argv, files_count, total_bytes).
+) -> tuple[list[str], int, int, float] | None:
+    """Resolve a command template into (argv, files_count, total_bytes, media_duration_s).
 
     Returns None if the command should be skipped (missing files).
     """
     resolved_dir = str(directory.resolve())
     template = cmd.cmd_template
+    media_duration_s = 0.0
 
     if cmd.requires_kind is not None:
         # Check kind exists (for skip logic even on directory-level commands)
@@ -109,6 +125,8 @@ def resolve_command(
             template = template.replace("{file}", shlex.quote(abs_path))
             count = 1
             total = (directory.resolve() / picked_one).stat().st_size if (directory.resolve() / picked_one).exists() else 0
+            if cmd.requires_kind in _MEDIA_KINDS:
+                media_duration_s = _get_media_duration(directory, picked_one)
         else:
             # Directory-level command with requires_kind just for skip logic
             count = len(files)
@@ -127,7 +145,7 @@ def resolve_command(
 
     template = template.replace("{dir}", shlex.quote(resolved_dir))
     argv = shlex.split(template)
-    return argv, count, total
+    return argv, count, total, media_duration_s
 
 
 # ── Command registries ──────────────────────────────────────────────
