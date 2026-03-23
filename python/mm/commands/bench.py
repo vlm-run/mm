@@ -146,6 +146,7 @@ def _run_benchmarks(
         commands = ALL_COMMANDS
 
     results: list[BenchResult] = []
+    t_wall = time.perf_counter_ns()
 
     # Pre-scan to get target info and pick representative files.
     ctx = Context(directory)
@@ -185,6 +186,7 @@ def _run_benchmarks(
 
         results.append(r)
 
+    target_info["total_wall_ms"] = (time.perf_counter_ns() - t_wall) / 1_000_000
     return results, target_info
 
 
@@ -228,10 +230,13 @@ def _render_table(results: list[BenchResult], target_info: dict[str, Any]) -> No
 
     from mm.display import format_number, format_size, output_console
 
+    wall_ms = target_info.get("total_wall_ms", 0)
+    wall_str = _fmt_ms(wall_ms) if wall_ms else "—"
     caption = (
         f"{target_info['files']:,} files  "
         f"{format_size(target_info['total_bytes'])}  "
-        f"rounds={target_info['rounds']}  warmup={target_info['warmup']}"
+        f"rounds={target_info['rounds']}  warmup={target_info['warmup']}  "
+        f"total={wall_str}"
     )
 
     table = Table(
@@ -290,7 +295,7 @@ def _render_table(results: list[BenchResult], target_info: dict[str, Any]) -> No
 
 def bench_cmd(
     directory: Annotated[Path, typer.Argument(help="Directory to benchmark")] = Path("."),
-    rounds: Annotated[int, typer.Option("--rounds", "-r", help="Measurement rounds")] = 5,
+    rounds: Annotated[int, typer.Option("--rounds", "-r", help="Measurement rounds")] = 3,
     warmup: Annotated[int, typer.Option("--warmup", "-w", help="Warmup rounds")] = 1,
     mode: Annotated[
         Optional[str], typer.Option("--mode", "-m", help="L2 modes to bench: fast (default), accurate, all")
