@@ -66,14 +66,14 @@ class TestBenchCommand:
             if not result.get("skipped"):
                 assert len(result["timings_ms"]) == rounds
 
-    def test_verbose_output(self, small_tree: Path):
-        """Verbose mode runs without error."""
+    def test_mode_filter(self, small_tree: Path):
+        """Mode filter runs without error."""
         r = runner.invoke(app, [
             "bench", str(small_tree),
             "--rounds", "2", "--warmup", "0",
-            "--verbose",
+            "--mode", "fast",
         ])
-        assert r.exit_code == 0, f"bench --verbose failed: {r.output}"
+        assert r.exit_code == 0, f"bench --mode fast failed: {r.output}"
 
     def test_skips_missing_file_types(self, tmp_path: Path):
         """L1 benchmarks for missing types are skipped gracefully."""
@@ -226,27 +226,24 @@ class TestBenchCommands:
         for cmd in ALL_COMMANDS:
             assert cmd.name
             assert cmd.group in ("L0", "L1", "L2")
-            assert callable(cmd.make_fn)
+            assert cmd.cmd_template
+            assert "vlmctx" in cmd.cmd_template
 
 
-class TestSparkline:
-    """Tests for sparkline rendering."""
+class TestFmtMs:
+    """Tests for _fmt_ms formatting."""
 
-    def test_basic(self):
-        from vlmctx.commands.bench import _sparkline
+    def test_seconds(self):
+        from vlmctx.commands.bench import _fmt_ms
 
-        result = _sparkline([1.0, 2.0, 3.0, 4.0, 5.0])
-        assert len(result) == 5
-        assert result[0] == "▁"
-        assert result[-1] == "█"
+        assert _fmt_ms(1500.0) == "1.50s"
 
-    def test_empty(self):
-        from vlmctx.commands.bench import _sparkline
+    def test_milliseconds(self):
+        from vlmctx.commands.bench import _fmt_ms
 
-        assert _sparkline([]) == ""
+        assert _fmt_ms(15.3) == "15.3ms"
 
-    def test_constant(self):
-        from vlmctx.commands.bench import _sparkline
+    def test_sub_10ms(self):
+        from vlmctx.commands.bench import _fmt_ms
 
-        result = _sparkline([5.0, 5.0, 5.0])
-        assert len(result) == 3
+        assert _fmt_ms(5.12) == "5.12ms"

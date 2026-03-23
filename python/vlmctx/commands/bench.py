@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
-import gc
+import shlex
 import statistics
+import subprocess
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -11,21 +12,7 @@ from typing import Annotated, Any, Callable, Optional
 
 import typer
 
-from vlmctx.commands.bench_commands import ALL_COMMANDS, BenchCommand
-
-
-# ── Sparkline rendering ─────────────────────────────────────────────
-
-_SPARK_CHARS = "▁▂▃▄▅▆▇█"
-
-
-def _sparkline(values: list[float]) -> str:
-    """Render a list of floats as a sparkline string."""
-    if not values:
-        return ""
-    lo, hi = min(values), max(values)
-    span = hi - lo if hi > lo else 1.0
-    return "".join(_SPARK_CHARS[min(int((v - lo) / span * (len(_SPARK_CHARS) - 1)), len(_SPARK_CHARS) - 1)] for v in values)
+from vlmctx.commands.bench_commands import ALL_COMMANDS, resolve_command
 
 
 # ── Data model ──────────────────────────────────────────────────────
@@ -128,20 +115,16 @@ class BenchResult:
 # ── Timing harness ──────────────────────────────────────────────────
 
 
-def _time_fn(fn: Callable[[], Any], rounds: int, warmup: int) -> list[float]:
-    """Run fn with warmup, return list of elapsed times in ms."""
+def _time_cmd(argv: list[str], rounds: int, warmup: int) -> list[float]:
+    """Run a shell command with warmup, return list of elapsed times in ms."""
     for _ in range(warmup):
-        fn()
-        gc.collect()
+        subprocess.run(argv, capture_output=True)
 
     timings: list[float] = []
     for _ in range(rounds):
-        gc.collect()
-        gc.disable()
         t0 = time.perf_counter_ns()
-        fn()
+        subprocess.run(argv, capture_output=True)
         t1 = time.perf_counter_ns()
-        gc.enable()
         timings.append((t1 - t0) / 1_000_000)  # ns → ms
     return timings
 
@@ -154,14 +137,17 @@ def _run_benchmarks(
     rounds: int,
     warmup: int,
     on_progress: Callable[[str, str], None] | None = None,
+    commands: list | None = None,
 ) -> tuple[list[BenchResult], dict[str, Any]]:
-    """Run all benchmark commands, return (results, target_info)."""
-    from vlmctx._vlmctx import Scanner
+    """Run benchmark commands, return (results, target_info)."""
     from vlmctx.context import Context
+
+    if commands is None:
+        commands = ALL_COMMANDS
 
     results: list[BenchResult] = []
 
-    # Pre-scan to get target info and representative files.
+    # Pre-scan to get target info and pick representative files.
     ctx = Context(directory)
     table = ctx.to_arrow()
     total_bytes = sum(r.as_py() for r in table.column("size")) if table.num_rows > 0 else 0
@@ -176,7 +162,7 @@ def _run_benchmarks(
         "warmup": warmup,
     }
 
-    for cmd in ALL_COMMANDS:
+    for cmd in commands:
         if on_progress:
             on_progress(cmd.group, cmd.name)
 
@@ -184,34 +170,18 @@ def _run_benchmarks(
             results.append(BenchResult(cmd.name, cmd.group, skipped=True, skip_reason="empty directory"))
             continue
 
-        fn = cmd.make_fn(directory, files, Scanner)
-        if fn is None:
+        resolved = resolve_command(cmd, directory, files)
+        if resolved is None:
             results.append(BenchResult(cmd.name, cmd.group, skipped=True, skip_reason=cmd.skip_reason))
             continue
 
-        fc = cmd.files_count_fn(directory, files) if cmd.files_count_fn else num_files
-        tb = cmd.total_bytes_fn(directory, files) if cmd.total_bytes_fn else total_bytes
+        argv, fc, tb = resolved
 
-        # Collect preview output
-        preview: list[str] = []
-        if cmd.preview_fn:
-            try:
-                preview = cmd.preview_fn(directory, files, Scanner)
-            except Exception:
-                preview = []
+        # Preview is the resolved shell command
+        preview = [shlex.join(argv)]
 
         r = BenchResult(cmd.name, cmd.group, files_count=fc, total_bytes=tb, preview_lines=preview)
-        r.timings_ms = _time_fn(fn, rounds, warmup)
-
-        # Capture token usage for L2 commands (from last LLM/VLM call)
-        if cmd.group == "L2":
-            try:
-                from vlmctx.llm import get_last_usage
-                usage = get_last_usage()
-                r.prompt_tokens = usage.prompt_tokens
-                r.completion_tokens = usage.completion_tokens
-            except Exception:
-                pass
+        r.timings_ms = _time_cmd(argv, rounds, warmup)
 
         results.append(r)
 
@@ -232,179 +202,32 @@ def _fmt_ms(ms: float) -> str:
     return f"{ms:.2f}ms"
 
 
-def _fmt_rate(rate: float, unit: str) -> str:
-    """Format a throughput rate."""
-    from vlmctx.display import format_number
-    if rate <= 0:
-        return "—"
-    return f"{format_number(rate)} {unit}"
-
-
 # Latency thresholds (ms) per group: (green_cutoff, yellow_cutoff).
-# Below green → dim green, between → dim yellow, above → dim red.
 _LATENCY_THRESHOLDS: dict[str, tuple[float, float]] = {
-    "L0": (10.0, 50.0),      # metadata: <10ms green, 10-50ms yellow, >50ms red
-    "L1": (50.0, 200.0),     # extraction: <50ms green, 50-200ms yellow, >200ms red
-    "L2": (1000.0, 5000.0),  # semantic/LLM: <1s green, 1-5s yellow, >5s red
+    "L0": (100.0, 500.0),     # metadata: includes CLI startup (~60ms)
+    "L1": (200.0, 1000.0),    # extraction: includes CLI startup
+    "L2": (2000.0, 10000.0),  # semantic/LLM
 }
 
 
 def _latency_style(ms: float, group: str) -> str:
     """Return a rich style based on latency relative to group thresholds."""
-    green, yellow = _LATENCY_THRESHOLDS.get(group, (50.0, 200.0))
+    green, yellow = _LATENCY_THRESHOLDS.get(group, (200.0, 1000.0))
     if ms <= green:
-        return "dim green"
+        return "green"
     if ms <= yellow:
-        return "dim yellow"
-    return "dim red"
+        return "yellow"
+    return "red"
 
 
-def _render_previews(results: list[BenchResult]) -> None:
-    """Render streaming command previews (output before the summary panel)."""
+def _render_table(results: list[BenchResult], target_info: dict[str, Any]) -> None:
+    """Render all results as a single Rich table."""
+    from rich.table import Table
     from rich.text import Text
 
-    from vlmctx.display import output_console
+    from vlmctx.display import format_number, format_size, output_console
 
-    current_group = None
-    for r in results:
-        # Group header
-        if r.group != current_group:
-            current_group = r.group
-            group_label = {"L0": "L0 · Metadata", "L1": "L1 · Extraction"}.get(r.group, r.group)
-            output_console.print()
-            output_console.print(Text(group_label, style="bold underline"))
-            output_console.print()
-
-        # Command line
-        cmd = Text()
-        cmd.append("  $ ", style="dim")
-        cmd.append(r.name, style="bold white")
-        if r.skipped:
-            cmd.append(f"  — {r.skip_reason}", style="dim italic")
-        output_console.print(cmd)
-
-        # Preview output (dim, indented)
-        if not r.skipped and r.preview_lines:
-            for line in r.preview_lines:
-                output_console.print(Text(f"    {line}", style="dim"))
-
-        output_console.print()
-
-
-def _render_summary(results: list[BenchResult], target_info: dict[str, Any]) -> None:
-    """Render alternating command / stats rows in a panel."""
-    from rich import box
-    from rich.console import Group
-    from rich.panel import Panel
-    from rich.text import Text
-
-    from vlmctx.display import format_size, output_console
-
-    parts: list[Any] = []
-
-    # Header
-    header = Text()
-    header.append("  Target    ", style="dim")
-    header.append(target_info["directory"], style="bold")
-    header.append(f"  ({target_info['files']:,} files, {format_size(target_info['total_bytes'])})\n", style="dim")
-    header.append("  Rounds    ", style="dim")
-    header.append(f"{target_info['rounds']}", style="bold")
-    header.append(f"  Warmup {target_info['warmup']}", style="dim")
-    parts.append(header)
-
-    # Group results by group name
-    groups_seen: list[str] = []
-    groups_map: dict[str, list[BenchResult]] = {}
-    for r in results:
-        if r.group not in groups_map:
-            groups_seen.append(r.group)
-            groups_map[r.group] = []
-        groups_map[r.group].append(r)
-
-    for group_name in groups_seen:
-        group_results = groups_map[group_name]
-        group_label = {"L0": "L0 · Metadata", "L1": "L1 · Extraction"}.get(group_name, group_name)
-
-        parts.append(Text())  # spacer
-        section_header = Text()
-        section_header.append(f"  {group_label}", style="bold underline")
-        parts.append(section_header)
-
-        for r in group_results:
-            cmd_line = Text()
-
-            if r.skipped:
-                cmd_line.append(f"  $ {r.name}", style="dim")
-                cmd_line.append(f"  — {r.skip_reason}", style="dim italic")
-                parts.append(cmd_line)
-                continue
-
-            # Line 1: full-width command
-            cmd_line.append("  $ ", style="dim")
-            cmd_line.append(r.name, style="bold white")
-            parts.append(cmd_line)
-
-            # Line 2: stats, indented — colorized by latency
-            color = _latency_style(r.mean_ms, r.group)
-            stats_line = Text()
-            stats_line.append("    ", style="")
-            stats_line.append(_fmt_ms(r.mean_ms), style=f"bold {color}")
-            stats_line.append(" ±", style="dim")
-            stats_line.append(_fmt_ms(r.std_ms), style=color)
-            stats_line.append("  min ", style="dim")
-            stats_line.append(_fmt_ms(r.min_ms), style=color)
-            stats_line.append("  max ", style="dim")
-            stats_line.append(_fmt_ms(r.max_ms), style=color)
-            if r.files_per_sec > 0:
-                stats_line.append("  ", style="")
-                stats_line.append(_fmt_rate(r.files_per_sec, "files/s"), style=color)
-            if r.mb_per_sec > 0:
-                stats_line.append("  ", style="")
-                stats_line.append(_fmt_rate(r.mb_per_sec, "MB/s"), style=color)
-            if r.bits_per_sec > 0:
-                stats_line.append("  ", style="")
-                stats_line.append(r.bits_per_sec_str, style="bright_cyan")
-            if r.prompt_tokens > 0:
-                stats_line.append("  ", style="")
-                stats_line.append(f"{r.prompt_tokens}→{r.completion_tokens} tok", style="bright_magenta")
-            parts.append(stats_line)
-
-    # Bottleneck analysis
-    measured = [r for r in results if not r.skipped and r.timings_ms]
-    if measured:
-        slowest = max(measured, key=lambda r: r.mean_ms)
-        fastest = min(measured, key=lambda r: r.mean_ms)
-
-        parts.append(Text())  # spacer
-        footer = Text()
-        footer.append("  Slowest   ", style="dim")
-        footer.append(slowest.name, style="bold yellow")
-        footer.append(f"  {_fmt_ms(slowest.mean_ms)}", style="dim")
-        footer.append(f"\n  Fastest   ", style="dim")
-        footer.append(fastest.name, style="bold green")
-        footer.append(f"  {_fmt_ms(fastest.mean_ms)}", style="dim")
-        parts.append(footer)
-
-    panel = Panel(
-        Group(*parts),
-        title="[bold]vlmctx bench[/bold]",
-        title_align="left",
-        expand=True,
-        padding=(1, 2),
-        box=box.ROUNDED,
-    )
-    output_console.print(panel)
-
-
-def _render_verbose(results: list[BenchResult], target_info: dict[str, Any]) -> None:
-    """Render per-command detail panels with sparklines."""
-    from rich import box
-    from rich.panel import Panel
-    from rich.text import Text
-
-    from vlmctx.display import format_size, output_console
-
-    # Print header
+    # Header info
     header = Text()
     header.append("vlmctx bench", style="bold")
     header.append(f"  {target_info['directory']}", style="dim")
@@ -413,80 +236,46 @@ def _render_verbose(results: list[BenchResult], target_info: dict[str, Any]) -> 
     output_console.print(header)
     output_console.print()
 
-    measured = [r for r in results if not r.skipped]
-    slowest = max(measured, key=lambda r: r.mean_ms) if measured else None
+    table = Table(show_header=True, header_style="bold", expand=True, padding=(0, 1))
+    table.add_column("Group", style="dim", width=4)
+    table.add_column("Command", no_wrap=True)
+    table.add_column("Mean", justify="right")
+    table.add_column("\u00b1Std", justify="right", style="dim")
+    table.add_column("Min", justify="right")
+    table.add_column("Max", justify="right")
+    table.add_column("files/s", justify="right")
+    table.add_column("MB/s", justify="right")
+    table.add_column("bps", justify="right")
 
+    prev_group = None
     for r in results:
+        # Add section separator between groups
+        if prev_group is not None and r.group != prev_group:
+            table.add_section()
+        prev_group = r.group
+
         if r.skipped:
-            panel = Panel(
-                Text(f"  Skipped: {r.skip_reason}", style="dim italic"),
-                title=f"[dim]{r.group}[/dim] [bold]{r.name}[/bold]",
-                title_align="left",
-                expand=False,
-                padding=(0, 2),
-                box=box.ROUNDED,
-                border_style="dim",
+            table.add_row(
+                r.group, Text(r.name, style="dim"),
+                Text(f"skipped: {r.skip_reason}", style="dim italic"),
+                "", "", "", "", "", "",
             )
-            output_console.print(panel)
             continue
 
-        body = Text()
-
-        # Timings row
-        body.append("  Timings  ", style="dim")
-        body.append("  ".join(_fmt_ms(t) for t in r.timings_ms), style="bright_blue")
-        body.append("\n")
-
-        # Sparkline
-        body.append("  Spark    ", style="dim")
-        body.append(_sparkline(r.timings_ms), style="bright_green")
-        body.append("\n")
-
-        # Stats
-        body.append("  Mean ", style="dim")
-        body.append(_fmt_ms(r.mean_ms), style="bold bright_green")
-        body.append("  Std ", style="dim")
-        body.append(_fmt_ms(r.std_ms), style="white")
-        body.append("  Min ", style="dim")
-        body.append(_fmt_ms(r.min_ms), style="cyan")
-        body.append("  Max ", style="dim")
-        body.append(_fmt_ms(r.max_ms), style="cyan")
-        body.append("  Med ", style="dim")
-        body.append(_fmt_ms(r.median_ms), style="white")
-        body.append("\n")
-
-        # Throughput
-        if r.files_per_sec > 0 or r.mb_per_sec > 0:
-            body.append("  Throughput  ", style="dim")
-            if r.files_per_sec > 0:
-                body.append(_fmt_rate(r.files_per_sec, "files/s"), style="bright_blue")
-            if r.files_per_sec > 0 and r.mb_per_sec > 0:
-                body.append("  ", style="dim")
-            if r.mb_per_sec > 0:
-                body.append(_fmt_rate(r.mb_per_sec, "MB/s"), style="bright_blue")
-            if r.bits_per_sec > 0:
-                body.append("  ", style="dim")
-                body.append(r.bits_per_sec_str, style="bright_cyan")
-            if r.prompt_tokens > 0:
-                body.append("  ", style="dim")
-                body.append(f"{r.prompt_tokens}→{r.completion_tokens} tok", style="bright_magenta")
-
-        # Slowest flag
-        if slowest and r is slowest and len(measured) > 1:
-            body.append("\n")
-            body.append("  !! Slowest benchmark", style="bold yellow")
-
-        border_style = "yellow" if (slowest and r is slowest and len(measured) > 1) else "dim"
-        panel = Panel(
-            body,
-            title=f"[dim]{r.group}[/dim] [bold]{r.name}[/bold]",
-            title_align="left",
-            expand=False,
-            padding=(0, 2),
-            box=box.ROUNDED,
-            border_style=border_style,
+        color = _latency_style(r.mean_ms, r.group)
+        table.add_row(
+            r.group,
+            r.name,
+            Text(_fmt_ms(r.mean_ms), style=f"bold {color}"),
+            Text(_fmt_ms(r.std_ms)),
+            Text(_fmt_ms(r.min_ms), style=color),
+            Text(_fmt_ms(r.max_ms), style=color),
+            Text(format_number(r.files_per_sec) if r.files_per_sec > 0 else "\u2014"),
+            Text(f"{r.mb_per_sec:.1f}" if r.mb_per_sec > 0 else "\u2014"),
+            Text(r.bits_per_sec_str, style="bright_cyan") if r.bits_per_sec > 0 else Text("\u2014"),
         )
-        output_console.print(panel)
+
+    output_console.print(table)
 
 
 # ── CLI command ─────────────────────────────────────────────────────
@@ -496,15 +285,33 @@ def bench_cmd(
     directory: Annotated[Path, typer.Argument(help="Directory to benchmark")] = Path("."),
     rounds: Annotated[int, typer.Option("--rounds", "-r", help="Measurement rounds")] = 5,
     warmup: Annotated[int, typer.Option("--warmup", "-w", help="Warmup rounds")] = 1,
-    verbose: Annotated[bool, typer.Option("--verbose", "-v", help="Per-command detail panels")] = False,
+    mode: Annotated[
+        Optional[str], typer.Option("--mode", "-m", help="L2 modes to bench: fast (default), accurate, all")
+    ] = None,
     format: Annotated[
         Optional[str], typer.Option("--format", help="Output format: rich, json")
     ] = None,
 ) -> None:
-    """Benchmark all subcommands with statistical analysis."""
+    """Benchmark all subcommands with statistical analysis.
+
+    By default, only L2 --mode fast benchmarks run. Use --mode accurate
+    or --mode all to include accurate-mode benchmarks.
+    """
+    from vlmctx.commands.bench_commands import L0_COMMANDS, L1_COMMANDS, L2_COMMANDS
     from vlmctx.display import resolve_format
 
     fmt = resolve_format(format)
+
+    # Filter L2 commands by mode
+    bench_mode = mode or "fast"
+    if bench_mode == "all":
+        l2 = L2_COMMANDS
+    elif bench_mode == "accurate":
+        l2 = [c for c in L2_COMMANDS if "accurate" in c.cmd_template]
+    else:
+        l2 = [c for c in L2_COMMANDS if "accurate" not in c.cmd_template]
+
+    commands = L0_COMMANDS + L1_COMMANDS + l2
 
     # Progress callback for rich output
     if fmt == "rich":
@@ -517,17 +324,13 @@ def bench_cmd(
             status.update(f"[dim]{group}[/dim] [bold]{name}[/bold]")
 
         try:
-            results, target_info = _run_benchmarks(directory, rounds, warmup, on_progress)
+            results, target_info = _run_benchmarks(directory, rounds, warmup, on_progress, commands)
         finally:
             status.stop()
 
-        _render_previews(results)
-        if verbose:
-            _render_verbose(results, target_info)
-        else:
-            _render_summary(results, target_info)
+        _render_table(results, target_info)
     elif fmt == "json":
-        results, target_info = _run_benchmarks(directory, rounds, warmup)
+        results, target_info = _run_benchmarks(directory, rounds, warmup, commands=commands)
 
         from vlmctx.display import json_dumps
 
@@ -538,7 +341,7 @@ def bench_cmd(
         print(json_dumps(output))
     else:
         # tsv/csv fallback
-        results, target_info = _run_benchmarks(directory, rounds, warmup)
+        results, target_info = _run_benchmarks(directory, rounds, warmup, commands=commands)
 
         from vlmctx.display import emit_tsv
 
