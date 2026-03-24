@@ -1,6 +1,6 @@
-# vlmctx examples
+# mm examples
 
-Real outputs from running vlmctx against `~/data/domains` (702 files, 7.2 GB).
+Real outputs from running mm against `~/data/domains` (702 files, 7.2 GB).
 
 ---
 
@@ -9,7 +9,7 @@ Real outputs from running vlmctx against `~/data/domains` (702 files, 7.2 GB).
 ### Summary
 
 ```bash
-$ vlmctx wc ~/data/domains
+$ mm wc ~/data/domains
 ```
 
 ```
@@ -20,7 +20,7 @@ files  size     lines  tokens
 ### Breakdown by kind
 
 ```bash
-$ vlmctx wc ~/data/domains --by-kind
+$ mm wc ~/data/domains --by-kind
 ```
 
 ```
@@ -39,7 +39,7 @@ video     7      1.6 GB     0      595
 ### Filter to a single kind (JSON)
 
 ```bash
-$ vlmctx wc ~/data/domains --kind document --json
+$ mm wc ~/data/domains --kind document --json
 ```
 
 ```json
@@ -58,7 +58,7 @@ $ vlmctx wc ~/data/domains --kind document --json
 ### Tabular listing
 
 ```bash
-$ vlmctx ls ~/data/domains --kind video --columns name,kind,size,ext
+$ mm ls ~/data/domains --kind video --columns name,kind,size,ext
 ```
 
 ```
@@ -75,7 +75,7 @@ google_next_2025_keynote.mp4        video  511043010   .mp4
 ### Tree view
 
 ```bash
-$ vlmctx ls ~/data/domains --tree --depth 1
+$ mm ls ~/data/domains --tree --depth 1
 ```
 
 ```
@@ -114,7 +114,7 @@ $ vlmctx ls ~/data/domains --tree --depth 1
 ### Schema
 
 ```bash
-$ vlmctx ls ~/data/domains --schema
+$ mm ls ~/data/domains --schema
 ```
 
 ```
@@ -142,7 +142,7 @@ height    uint32        Pixel height (images from header, videos via ffprobe)   
 ### Find images sorted by size
 
 ```bash
-$ vlmctx find ~/data/domains --kind image --sort size --desc --limit 10
+$ mm find ~/data/domains --kind image --sort size --desc --limit 10
 ```
 
 ```
@@ -161,7 +161,7 @@ construction/construction-plan-tables.jpg
 ### Find large documents (>10MB)
 
 ```bash
-$ vlmctx find ~/data/domains --kind document --min-size 10mb --sort size --desc
+$ mm find ~/data/domains --kind document --min-size 10mb --sort size --desc
 ```
 
 ```
@@ -178,7 +178,7 @@ healthcare-codegen-reports/longevity_intake_form_scanned.pdf
 ### Find PNGs (JSON output)
 
 ```bash
-$ vlmctx find ~/data/domains --kind image --ext .png --limit 5 --json
+$ mm find ~/data/domains --kind image --ext .png --limit 5 --json
 ```
 
 ```json
@@ -200,7 +200,7 @@ $ vlmctx find ~/data/domains --kind image --ext .png --limit 5 --json
 ### Find videos sorted by size
 
 ```bash
-$ vlmctx find ~/data/domains --kind video --sort size --desc --limit 5
+$ mm find ~/data/domains --kind video --sort size --desc --limit 5
 ```
 
 ```
@@ -218,7 +218,7 @@ video.transcription/how_to_build_an_mvp.mp4
 ### Extract text from a PDF
 
 ```bash
-$ vlmctx cat ~/data/domains/document.invoice/sample-invoice.pdf -n 15
+$ mm cat ~/data/domains/document.invoice/sample-invoice.pdf -n 15
 ```
 
 ```
@@ -242,7 +242,7 @@ Amount
 ### Scanned PDF (no extractable text)
 
 ```bash
-$ vlmctx cat ~/data/domains/document.invoice/hub_examples_document.invoice_google_invoice.pdf
+$ mm cat ~/data/domains/document.invoice/hub_examples_document.invoice_google_invoice.pdf
 ```
 
 ```
@@ -252,7 +252,7 @@ $ vlmctx cat ~/data/domains/document.invoice/hub_examples_document.invoice_googl
 ### Image metadata
 
 ```bash
-$ vlmctx cat ~/data/domains/image.agent/tennis.jpg
+$ mm cat ~/data/domains/image.agent/tennis.jpg
 ```
 
 ```
@@ -264,7 +264,7 @@ Hash:       0eae1d0b9767689c
 ### Video metadata + keyframes
 
 ```bash
-$ vlmctx cat ~/data/domains/video.transcription/bakery.mp4
+$ mm cat ~/data/domains/video.transcription/bakery.mp4
 ```
 
 ```
@@ -276,13 +276,13 @@ Audio:      aac
 Hash:       70a5808a454ef93f
 Frames:     48 (uniform)
 Sampled:    992ms
-Mosaic:     /tmp/vlmctx_.../bakery_mosaic_1.jpg
+Mosaic:     /tmp/mm_.../bakery_mosaic_1.jpg
 ```
 
 ### Head / tail of code files
 
 ```bash
-$ vlmctx cat ~/data/domains/healthcare-codegen-reports/create_longevity_report.py -n 10 --level 0
+$ mm cat ~/data/domains/healthcare-codegen-reports/create_longevity_report.py -n 10 --level 0
 ```
 
 ```
@@ -305,7 +305,7 @@ from reportlab.lib.colors import HexColor, black, white, Color
 ### Count function definitions in code files
 
 ```bash
-$ vlmctx grep "def " ~/data/domains --kind code --count
+$ mm grep "def " ~/data/domains --kind code --count
 ```
 
 ```
@@ -318,7 +318,7 @@ healthcare-codegen-reports/create_realistic_intake.py:21
 ### Search with context lines
 
 ```bash
-$ vlmctx grep "longevity" ~/data/domains --kind code -C 1
+$ mm grep "longevity" ~/data/domains --kind code -C 1
 ```
 
 ```
@@ -342,7 +342,7 @@ healthcare-codegen-reports/create_longevity_report.py
 ### Kind breakdown with sizes
 
 ```bash
-$ vlmctx sql "SELECT kind, COUNT(*) as files, ROUND(SUM(size)/1e6,1) as mb \
+$ mm sql "SELECT kind, COUNT(*) as files, ROUND(SUM(size)/1e6,1) as mb \
   FROM files GROUP BY kind ORDER BY mb DESC" --dir ~/data/domains
 ```
 
@@ -359,7 +359,7 @@ code      4      0.2
 ### Extension analytics
 
 ```bash
-$ vlmctx sql "SELECT ext, COUNT(*) as files, ROUND(SUM(size)/1e6,1) as mb \
+$ mm sql "SELECT ext, COUNT(*) as files, ROUND(SUM(size)/1e6,1) as mb \
   FROM files GROUP BY ext ORDER BY files DESC LIMIT 10" --dir ~/data/domains
 ```
 
@@ -380,7 +380,7 @@ ext    files  mb
 ### Storage by directory
 
 ```bash
-$ vlmctx sql "SELECT parent, COUNT(*) as files, ROUND(SUM(size)/1e6,1) as mb \
+$ mm sql "SELECT parent, COUNT(*) as files, ROUND(SUM(size)/1e6,1) as mb \
   FROM files GROUP BY parent ORDER BY mb DESC LIMIT 10" --dir ~/data/domains
 ```
 
@@ -401,7 +401,7 @@ construction/.../Existing Drawings                           2      132.1
 ### File size distribution
 
 ```bash
-$ vlmctx sql "SELECT \
+$ mm sql "SELECT \
   CASE WHEN size < 100*1024 THEN '<100KB' \
        WHEN size < 1024*1024 THEN '100KB-1MB' \
        WHEN size < 10*1024*1024 THEN '1-10MB' \
@@ -426,11 +426,11 @@ bucket     files
 
 ```bash
 # Count large PDFs
-vlmctx find ~/data/domains --kind document --min-size 10mb | wc -l
+mm find ~/data/domains --kind document --min-size 10mb | wc -l
 
 # Find images then list with metadata
-vlmctx find ~/data/domains --kind image | vlmctx ls ~/data/domains
+mm find ~/data/domains --kind image | mm ls ~/data/domains
 
 # Get JSON metadata for videos, pipe to jq
-vlmctx find ~/data/domains --kind video --json | jq '.[].name'
+mm find ~/data/domains --kind video --json | jq '.[].name'
 ```

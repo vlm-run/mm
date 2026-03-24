@@ -19,12 +19,12 @@ bench:
 
 clean:
 	cargo clean
-	rm -rf target/ dist/ *.egg-info .vlmctx/
+	rm -rf target/ dist/ *.egg-info .mm/
 
 lint:
 	cargo clippy --workspace -- -D warnings
 	uv run ruff check python/
-	uv run mypy python/vlmctx/
+	uv run mypy python/mm/
 
 fmt:
 	cargo fmt --all

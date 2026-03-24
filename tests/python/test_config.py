@@ -1,4 +1,4 @@
-"""Tests for vlmctx configuration resolution.
+"""Tests for mm configuration resolution.
 
 Validates the priority chain: CLI flags > env vars > config file > defaults.
 """
@@ -9,7 +9,7 @@ from pathlib import Path
 
 import pytest
 
-from vlmctx.config import (
+from mm.config import (
     DEFAULTS,
     ProviderConfig,
     get_provider,
@@ -23,16 +23,16 @@ from vlmctx.config import (
 @pytest.fixture(autouse=True)
 def _isolate_config(tmp_path: Path, monkeypatch):
     """Point config module at a temp dir and clear CLI overrides + env vars."""
-    monkeypatch.setattr("vlmctx.config.CONFIG_DIR", tmp_path)
-    monkeypatch.setattr("vlmctx.config.CONFIG_PATH", tmp_path / "config.toml")
-    monkeypatch.setattr("vlmctx.config.CONFIG_DIR_XDG", tmp_path)
-    monkeypatch.setattr("vlmctx.config.CONFIG_PATH_XDG", tmp_path / "config.toml")
-    monkeypatch.setattr("vlmctx.config.CONFIG_DIR_LEGACY", tmp_path / "legacy")
-    monkeypatch.setattr("vlmctx.config.CONFIG_PATH_LEGACY", tmp_path / "legacy" / "config.toml")
+    monkeypatch.setattr("mm.config.CONFIG_DIR", tmp_path)
+    monkeypatch.setattr("mm.config.CONFIG_PATH", tmp_path / "config.toml")
+    monkeypatch.setattr("mm.config.CONFIG_DIR_XDG", tmp_path)
+    monkeypatch.setattr("mm.config.CONFIG_PATH_XDG", tmp_path / "config.toml")
+    monkeypatch.setattr("mm.config.CONFIG_DIR_LEGACY", tmp_path / "legacy")
+    monkeypatch.setattr("mm.config.CONFIG_PATH_LEGACY", tmp_path / "legacy" / "config.toml")
 
     set_cli_overrides(None, None, None)
 
-    for var in ("VLMCTX_BASE_URL", "VLMCTX_API_KEY", "VLMCTX_MODEL"):
+    for var in ("MM_BASE_URL", "MM_API_KEY", "MM_MODEL"):
         monkeypatch.delenv(var, raising=False)
 
 
@@ -73,15 +73,15 @@ class TestFileConfig:
 class TestEnvVars:
     def test_env_overrides_file(self, tmp_path: Path, monkeypatch):
         write_config(base_url="http://file:8000", api_key="", model="file-model")
-        monkeypatch.setenv("VLMCTX_MODEL", "env-model")
+        monkeypatch.setenv("MM_MODEL", "env-model")
         cfg = get_provider()
         assert cfg.model == "env-model"
         assert cfg.base_url == "http://file:8000"
 
     def test_all_env_vars(self, monkeypatch):
-        monkeypatch.setenv("VLMCTX_BASE_URL", "http://env:9000")
-        monkeypatch.setenv("VLMCTX_API_KEY", "env-key")
-        monkeypatch.setenv("VLMCTX_MODEL", "env-model")
+        monkeypatch.setenv("MM_BASE_URL", "http://env:9000")
+        monkeypatch.setenv("MM_API_KEY", "env-key")
+        monkeypatch.setenv("MM_MODEL", "env-model")
         cfg = get_provider()
         assert cfg.base_url == "http://env:9000"
         assert cfg.api_key == "env-key"
@@ -90,7 +90,7 @@ class TestEnvVars:
 
 class TestCliOverrides:
     def test_cli_overrides_env(self, monkeypatch):
-        monkeypatch.setenv("VLMCTX_MODEL", "env-model")
+        monkeypatch.setenv("MM_MODEL", "env-model")
         set_cli_overrides(model="cli-model")
         cfg = get_provider()
         assert cfg.model == "cli-model"
@@ -105,7 +105,7 @@ class TestCliOverrides:
 
     def test_source_labels(self, tmp_path: Path, monkeypatch):
         write_config(base_url="http://f:1", api_key="k", model="m")
-        monkeypatch.setenv("VLMCTX_API_KEY", "ek")
+        monkeypatch.setenv("MM_API_KEY", "ek")
         set_cli_overrides(model="cm")
         rows = get_provider_with_sources()
         sources = {r[0]: r[2] for r in rows}

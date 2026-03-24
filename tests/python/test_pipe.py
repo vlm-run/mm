@@ -5,7 +5,7 @@ from __future__ import annotations
 import io
 import sys
 
-from vlmctx.pipe import is_piped_input, is_piped_output, read_paths_from_stdin
+from mm.pipe import is_piped_input, is_piped_output, read_paths_from_stdin
 
 
 def test_is_piped_input_in_tests():
@@ -43,6 +43,6 @@ def test_read_paths_from_pipe(monkeypatch):
 
     fake_stdin = FakePipe("src/main.py\nsrc/lib.rs\n\n")
     monkeypatch.setattr(sys, "stdin", fake_stdin)
-    monkeypatch.setattr("vlmctx.pipe.is_piped_input", lambda: True)
+    monkeypatch.setattr("mm.pipe.is_piped_input", lambda: True)
     paths = read_paths_from_stdin()
     assert paths == ["src/main.py", "src/lib.rs"]

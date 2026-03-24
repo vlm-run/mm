@@ -1,4 +1,4 @@
-"""Tests for the vlmctx CLI commands.
+"""Tests for the mm CLI commands.
 
 Covers all 6 subcommands + config, verifying exit codes, JSON output
 structure, and basic flag behaviour. Uses the shared `small_tree` fixture.
@@ -11,7 +11,7 @@ from pathlib import Path
 
 from typer.testing import CliRunner
 
-from vlmctx.cli import app
+from mm.cli import app
 
 runner = CliRunner()
 
@@ -235,10 +235,10 @@ class TestConfig:
         assert r.exit_code == 0
 
     def test_show_json(self, tmp_path: Path, monkeypatch):
-        monkeypatch.setattr("vlmctx.config.CONFIG_PATH_XDG", tmp_path / "vlmctx.toml")
-        monkeypatch.setattr("vlmctx.config.CONFIG_DIR_XDG", tmp_path)
-        monkeypatch.setattr("vlmctx.config.CONFIG_PATH_LEGACY", tmp_path / "legacy" / "config.toml")
-        monkeypatch.setattr("vlmctx.config.CONFIG_DIR_LEGACY", tmp_path / "legacy")
+        monkeypatch.setattr("mm.config.CONFIG_PATH_XDG", tmp_path / "mm.toml")
+        monkeypatch.setattr("mm.config.CONFIG_DIR_XDG", tmp_path)
+        monkeypatch.setattr("mm.config.CONFIG_PATH_LEGACY", tmp_path / "legacy" / "config.toml")
+        monkeypatch.setattr("mm.config.CONFIG_DIR_LEGACY", tmp_path / "legacy")
         r = runner.invoke(app, ["config", "show", "--format", "json"])
         assert r.exit_code == 0
         data = json.loads(r.output)
@@ -247,12 +247,12 @@ class TestConfig:
         assert "base_url" in data["provider"]
 
     def test_init_creates_file(self, tmp_path: Path, monkeypatch):
-        config_path = tmp_path / "vlmctx.toml"
-        monkeypatch.setattr("vlmctx.config.CONFIG_PATH_XDG", config_path)
-        monkeypatch.setattr("vlmctx.config.CONFIG_DIR_XDG", tmp_path)
-        monkeypatch.setattr("vlmctx.config.CONFIG_DIR", tmp_path)
-        monkeypatch.setattr("vlmctx.config.CONFIG_PATH_LEGACY", tmp_path / "legacy" / "config.toml")
-        monkeypatch.setattr("vlmctx.config.CONFIG_DIR_LEGACY", tmp_path / "legacy")
+        config_path = tmp_path / "mm.toml"
+        monkeypatch.setattr("mm.config.CONFIG_PATH_XDG", config_path)
+        monkeypatch.setattr("mm.config.CONFIG_DIR_XDG", tmp_path)
+        monkeypatch.setattr("mm.config.CONFIG_DIR", tmp_path)
+        monkeypatch.setattr("mm.config.CONFIG_PATH_LEGACY", tmp_path / "legacy" / "config.toml")
+        monkeypatch.setattr("mm.config.CONFIG_DIR_LEGACY", tmp_path / "legacy")
         r = runner.invoke(app, ["config", "init"])
         assert r.exit_code == 0
         assert config_path.exists()

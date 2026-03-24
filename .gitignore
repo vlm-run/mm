@@ -20,8 +20,8 @@ venv/
 htmlcov/
 .coverage
 
-# vlmctx cache
-.vlmctx/
+# mm cache
+.mm/
 
 # IDE
 .idea/

@@ -1,4 +1,4 @@
-# vlmctx
+# mm
 
 High-performance multi-modal context management library + CLI.
 
@@ -8,7 +8,7 @@ Rust core for speed. Python for developer experience. Unix philosophy for compos
 
 ```bash
 # Development install (requires Rust toolchain + uv)
-git clone <repo-url> && cd vlmctx
+git clone <repo-url> && cd mm
 uv venv --python 3.12 && source .venv/bin/activate
 uv pip install -e ".[dev]"
 uv run maturin develop --release
@@ -24,13 +24,13 @@ L0 commands (`find`, `ls`, `wc` with `--json`) run in **~60ms** on 700 files via
 ### Quick start
 
 ```bash
-vlmctx ls ~/data --tree --depth 1         # directory overview with sizes
-vlmctx wc ~/data --by-kind                # file/byte/token counts by kind
-vlmctx find ~/data --kind image --json    # find all images (60ms)
-vlmctx cat paper.pdf                      # extract text from PDF
-vlmctx cat video.mp4                      # video metadata (<100ms)
-vlmctx cat video.mp4 -l 2                 # keyframe mosaic → LLM description
-vlmctx cat photo.png -l 2 --detail        # LLM caption (~80 words)
+mm ls ~/data --tree --depth 1         # directory overview with sizes
+mm wc ~/data --by-kind                # file/byte/token counts by kind
+mm find ~/data --kind image --json    # find all images (60ms)
+mm cat paper.pdf                      # extract text from PDF
+mm cat video.mp4                      # video metadata (<100ms)
+mm cat video.mp4 -l 2                 # keyframe mosaic → LLM description
+mm cat photo.png -l 2 --detail        # LLM caption (~80 words)
 ```
 
 ### Command reference
@@ -47,56 +47,56 @@ vlmctx cat photo.png -l 2 --detail        # LLM caption (~80 words)
 ### find — locate files
 
 ```bash
-vlmctx find ~/data --kind image                    # all images
-vlmctx find ~/data --kind video --sort size --desc  # videos by size
-vlmctx find ~/data --ext .pdf --min-size 10mb       # large PDFs
-vlmctx find ~/data --kind image --limit 5 --json    # JSON output
+mm find ~/data --kind image                    # all images
+mm find ~/data --kind video --sort size --desc  # videos by size
+mm find ~/data --ext .pdf --min-size 10mb       # large PDFs
+mm find ~/data --kind image --limit 5 --json    # JSON output
 ```
 
 ### ls — list, tree, and schema
 
 ```bash
-vlmctx ls ~/data --sort size --desc --limit 20     # tabular listing
-vlmctx ls ~/data --kind document --columns name,size,ext
-vlmctx ls ~/data --tree --depth 2                  # hierarchical tree view
-vlmctx ls ~/data --tree --kind video               # tree filtered to videos
-vlmctx ls ~/data --schema                          # column names, types, descriptions
-vlmctx ls ~/data --json                            # full metadata JSON
+mm ls ~/data --sort size --desc --limit 20     # tabular listing
+mm ls ~/data --kind document --columns name,size,ext
+mm ls ~/data --tree --depth 2                  # hierarchical tree view
+mm ls ~/data --tree --kind video               # tree filtered to videos
+mm ls ~/data --schema                          # column names, types, descriptions
+mm ls ~/data --json                            # full metadata JSON
 ```
 
 ### cat — content extraction
 
 ```bash
-vlmctx cat paper.pdf                               # extract text (L1)
-vlmctx cat paper.pdf -n 20                         # first 20 lines (head)
-vlmctx cat paper.pdf -n -20                        # last 20 lines (tail)
-vlmctx cat photo.png                               # image dims, MIME, hash, EXIF
-vlmctx cat video.mp4                               # resolution, duration, codecs (<100ms)
-vlmctx cat video.mp4 -l 2                          # mosaic → LLM description
-vlmctx cat photo.png -l 2                          # LLM caption (~20 words)
-vlmctx cat photo.png -l 2 --detail                 # LLM description (~80 words)
+mm cat paper.pdf                               # extract text (L1)
+mm cat paper.pdf -n 20                         # first 20 lines (head)
+mm cat paper.pdf -n -20                        # last 20 lines (tail)
+mm cat photo.png                               # image dims, MIME, hash, EXIF
+mm cat video.mp4                               # resolution, duration, codecs (<100ms)
+mm cat video.mp4 -l 2                          # mosaic → LLM description
+mm cat photo.png -l 2                          # LLM caption (~20 words)
+mm cat photo.png -l 2 --detail                 # LLM description (~80 words)
 ```
 
 ### wc — count files, bytes, tokens
 
 ```bash
-vlmctx wc ~/data --by-kind
-vlmctx wc ~/data --by-kind --json
+mm wc ~/data --by-kind
+mm wc ~/data --by-kind --json
 ```
 
 ### grep — content search
 
 ```bash
-vlmctx grep "attention" ~/data --kind document
-vlmctx grep "TODO" ~/data --kind code
-vlmctx grep "invoice" ~/data --count               # match counts per file
+mm grep "attention" ~/data --kind document
+mm grep "TODO" ~/data --kind code
+mm grep "invoice" ~/data --count               # match counts per file
 ```
 
 ### sql — query the index
 
 ```bash
-vlmctx ls ~/data --schema                          # see available columns
-vlmctx sql "SELECT kind, COUNT(*) as n, ROUND(SUM(size)/1e6,1) as mb \
+mm ls ~/data --schema                          # see available columns
+mm sql "SELECT kind, COUNT(*) as n, ROUND(SUM(size)/1e6,1) as mb \
   FROM files GROUP BY kind ORDER BY mb DESC" --dir ~/data
 ```
 
@@ -109,7 +109,7 @@ vlmctx sql "SELECT kind, COUNT(*) as n, ROUND(SUM(size)/1e6,1) as mb \
 ## Python API
 
 ```python
-from vlmctx import Context
+from mm import Context
 
 ctx = Context("~/data/domains")
 print(ctx)  # Context(root='/Users/.../domains', files=702)
@@ -139,7 +139,7 @@ ctx.info()    # Rich summary panel
 |-------|------|-------|-----|
 | L0 | File metadata (path, size, kind, ext, timestamps, dimensions) | ~60ms / 700 files | Rust `stat()` + extension classification + image headers |
 | L1 | Content extraction (text from PDF, image hash/EXIF, video metadata) | <100ms/file | pypdfium2 (PDF), Rust mmap (images), mp4parse/matroska (video) |
-| L2 | Semantic understanding (captions, descriptions) | Varies | LLM API via `VLMCTX_BASE_URL` |
+| L2 | Semantic understanding (captions, descriptions) | Varies | LLM API via `MM_BASE_URL` |
 
 ## Performance
 
@@ -161,7 +161,7 @@ Benchmarked on Apple Silicon (M-series), 702 files (7.2GB):
 ## Architecture
 
 ```
-Rust (vlmctx-core)                   Python (vlmctx)
+Rust (mm-core)                   Python (mm)
 ┌─────────────────────┐             ┌─────────────────────┐
 │ ignore (parallel     │  serde_json │ Typer CLI           │
 │   dir walk + stat)  │────────────>│   find/ls/wc        │
@@ -180,21 +180,21 @@ Rust (vlmctx-core)                   Python (vlmctx)
 
 ## L2 LLM Configuration
 
-For semantic understanding (`--level 2`), vlmctx uses the `openai` Python SDK to call any OpenAI-compatible API. Provider settings are resolved in order: CLI flags > env vars > `~/.vlmctx/config.toml` > defaults.
+For semantic understanding (`--level 2`), mm uses the `openai` Python SDK to call any OpenAI-compatible API. Provider settings are resolved in order: CLI flags > env vars > `~/.mm/config.toml` > defaults.
 
 ```bash
 # Environment variables
-export VLMCTX_BASE_URL="http://localhost:11434"   # Ollama (default)
-export VLMCTX_API_KEY=""                           # if needed
-export VLMCTX_MODEL="qwen3.5:0.8b"                # default model
+export MM_BASE_URL="http://localhost:11434"   # Ollama (default)
+export MM_API_KEY=""                           # if needed
+export MM_MODEL="qwen3.5:0.8b"                # default model
 
 # CLI flags (override everything)
-vlmctx --base-url http://... --model gpt-4o cat photo.png -l 2
+mm --base-url http://... --model gpt-4o cat photo.png -l 2
 
 # Config file
-vlmctx config init                # create ~/.vlmctx/config.toml
-vlmctx config show                # show resolved config with sources
-vlmctx config set model gpt-4o   # update a key
+mm config init                # create ~/.mm/config.toml
+mm config show                # show resolved config with sources
+mm config set model gpt-4o   # update a key
 ```
 
 ## License

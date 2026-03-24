@@ -1,4 +1,4 @@
-# vlmctx — Prototypical Output Examples
+# mm — Prototypical Output Examples
 
 Every command has three output modes controlled by `--format`:
 
@@ -7,18 +7,18 @@ Every command has three output modes controlled by `--format`:
 - **`csv`** — Comma-separated values with header. Spreadsheet-friendly.
 - **`json`** — Structured JSON. Compact when piped (no indent), pretty in TTY.
 
-When stdout is piped, vlmctx auto-selects `tsv`. Override with `--format json` etc.
+When stdout is piped, mm auto-selects `tsv`. Override with `--format json` etc.
 
 ---
 
 ## 1. `find` — Multimodal-aware file discovery
 
-Traditional `find` knows nothing about file semantics. vlmctx `find` classifies files by **kind** (image, video, document, code, audio, data, config, text) and filters by size, extension, and kind — all in ~5ms.
+Traditional `find` knows nothing about file semantics. mm `find` classifies files by **kind** (image, video, document, code, audio, data, config, text) and filters by size, extension, and kind — all in ~5ms.
 
 ### Example 1: Find all images
 
 ```bash
-$ vlmctx find ~/project --kind image
+$ mm find ~/project --kind image
 ```
 
 **TTY output:**
@@ -48,7 +48,7 @@ screenshots/v2-ui.png
 ### Example 2: Find large video files
 
 ```bash
-$ vlmctx find ~/data --kind video --min-size 100MB --format json
+$ mm find ~/data --kind video --min-size 100MB --format json
 ```
 
 ```json
@@ -62,7 +62,7 @@ $ vlmctx find ~/data --kind video --min-size 100MB --format json
 ### Example 3: Find documents, limit 5
 
 ```bash
-$ vlmctx find ~/research --kind document --limit 5
+$ mm find ~/research --kind document --limit 5
 ```
 
 **Piped:**
@@ -77,7 +77,7 @@ reports/annual-2024.pdf
 ### Example 4: Find code by extension
 
 ```bash
-$ vlmctx find . --ext rs --sort size
+$ mm find . --ext rs --sort size
 ```
 
 **Piped:**
@@ -92,7 +92,7 @@ crates/python/src/lib.rs
 ### Example 5: Composable pipe — find images, then cat metadata
 
 ```bash
-$ vlmctx find ~/photos --kind image --max-size 1MB | vlmctx cat --level 1
+$ mm find ~/photos --kind image --max-size 1MB | mm cat --level 1
 ```
 
 **Piped (each file's L1 metadata emitted sequentially):**
@@ -113,12 +113,12 @@ GPS:        37.7749,-122.4194
 
 ## 2. `ls` — Structured listing with multimodal metadata
 
-Traditional `ls` shows names and permissions. vlmctx `ls` exposes a full Arrow schema: dimensions, kind, depth, MIME — queryable columns that LLMs can reason over.
+Traditional `ls` shows names and permissions. mm `ls` exposes a full Arrow schema: dimensions, kind, depth, MIME — queryable columns that LLMs can reason over.
 
 ### Example 1: Default tabular listing
 
 ```bash
-$ vlmctx ls ~/project/assets
+$ mm ls ~/project/assets
 ```
 
 **TTY output:**
@@ -153,7 +153,7 @@ recording.mp3	audio	9122816	mp3
 ### Example 2: Extended columns with image dimensions
 
 ```bash
-$ vlmctx ls ~/photos --columns name,kind,size,width,height --sort size
+$ mm ls ~/photos --columns name,kind,size,width,height --sort size
 ```
 
 **Piped:**
@@ -169,7 +169,7 @@ icon.png	image	4096	64	64
 ### Example 3: Tree view
 
 ```bash
-$ vlmctx ls ~/project --tree --depth 2
+$ mm ls ~/project --tree --depth 2
 ```
 
 **TTY output:**
@@ -215,7 +215,7 @@ project  (47 files, 82.3 MB)
 ### Example 4: Schema introspection
 
 ```bash
-$ vlmctx ls ~/data --schema
+$ mm ls ~/data --schema
 ```
 
 **Piped:**
@@ -237,7 +237,7 @@ height	int32	Image/video height in px (e.g. 1080)
 ### Example 5: JSON tree (for programmatic consumption)
 
 ```bash
-$ vlmctx ls ~/project --tree --depth 1 --format json
+$ mm ls ~/project --tree --depth 1 --format json
 ```
 
 ```json
@@ -261,12 +261,12 @@ $ vlmctx ls ~/project --tree --depth 1 --format json
 
 ## 3. `cat` — Type-aware content extraction
 
-Traditional `cat` dumps raw bytes. vlmctx `cat` **auto-detects** the file type and extracts structured, token-efficient representations. An image becomes dimensions + EXIF. A video becomes resolution + duration + codecs. A PDF becomes extracted text. This is where multimodal understanding shines — every file type gets a representation an LLM can reason about.
+Traditional `cat` dumps raw bytes. mm `cat` **auto-detects** the file type and extracts structured, token-efficient representations. An image becomes dimensions + EXIF. A video becomes resolution + duration + codecs. A PDF becomes extracted text. This is where multimodal understanding shines — every file type gets a representation an LLM can reason about.
 
 ### Example 1: Image → structured metadata (L1)
 
 ```bash
-$ vlmctx cat photo.jpg --level 1
+$ mm cat photo.jpg --level 1
 ```
 
 **TTY output:**
@@ -296,7 +296,7 @@ Orientation: 1 (normal)
 ### Example 2: Video → native metadata (L1, no ffmpeg, <100ms)
 
 ```bash
-$ vlmctx cat interview.mp4 --level 1
+$ mm cat interview.mp4 --level 1
 ```
 
 **Piped:**
@@ -312,7 +312,7 @@ Hash:       e7b2f1a4c890d356
 ### Example 3: PDF → extracted text (L1)
 
 ```bash
-$ vlmctx cat paper.pdf --level 1
+$ mm cat paper.pdf --level 1
 ```
 
 **Piped:**
@@ -338,7 +338,7 @@ less time to train.
 ### Example 4: Code → syntax-highlighted (L0) or raw passthrough
 
 ```bash
-$ vlmctx cat src/main.rs --level 0 -n 15
+$ mm cat src/main.rs --level 0 -n 15
 ```
 
 **TTY output:**
@@ -384,7 +384,7 @@ fn main() {
 ### Example 5: Image → LLM caption (L2)
 
 ```bash
-$ vlmctx cat photo.jpg --level 2
+$ mm cat photo.jpg --level 2
 ```
 
 **Piped:**
@@ -397,7 +397,7 @@ trees lining a gravel path. Shot on Canon EOS R5, shallow depth of field.
 ### Example 6: Video → keyframe mosaic + LLM description (L2)
 
 ```bash
-$ vlmctx cat demo.mp4 --level 2
+$ mm cat demo.mp4 --level 2
 ```
 
 **Piped:**
@@ -411,7 +411,7 @@ with data filtering, 2:45-3:00 closing with GitHub link.
 ### Example 7: Multiple files via pipe composition
 
 ```bash
-$ vlmctx find ~/data --kind image --max-size 500KB | vlmctx cat -l 1 --format json
+$ mm find ~/data --kind image --max-size 500KB | mm cat -l 1 --format json
 ```
 
 ```json
@@ -425,12 +425,12 @@ $ vlmctx find ~/data --kind image --max-size 500KB | vlmctx cat -l 1 --format js
 
 ## 4. `grep` — Content search across multimodal files
 
-Traditional `grep` searches text. vlmctx `grep` searches across **extracted content** — meaning you can grep inside PDFs, search code by kind, and filter by file type. At L1, it searches extracted metadata; at L0, raw content.
+Traditional `grep` searches text. mm `grep` searches across **extracted content** — meaning you can grep inside PDFs, search code by kind, and filter by file type. At L1, it searches extracted metadata; at L0, raw content.
 
 ### Example 1: Search across all code files
 
 ```bash
-$ vlmctx grep "TODO" --kind code
+$ mm grep "TODO" --kind code
 ```
 
 **TTY output:**
@@ -442,7 +442,7 @@ src/extract.rs
 src/walk.rs
   215  // TODO: benchmark with ignore vs walkdir
 
-python/vlmctx/llm.py
+python/mm/llm.py
    89  # TODO: add retry with backoff
 
 3 matches in 3 files
@@ -453,13 +453,13 @@ python/vlmctx/llm.py
 src/extract.rs:42:// TODO: add HEIF support
 src/extract.rs:187:// TODO: handle corrupted EXIF gracefully
 src/walk.rs:215:// TODO: benchmark with ignore vs walkdir
-python/vlmctx/llm.py:89:# TODO: add retry with backoff
+python/mm/llm.py:89:# TODO: add retry with backoff
 ```
 
 ### Example 2: Search documents for a term
 
 ```bash
-$ vlmctx grep "transformer" --kind document --level 1
+$ mm grep "transformer" --kind document --level 1
 ```
 
 **Piped:**
@@ -472,7 +472,7 @@ papers/scaling.pdf:8:We study empirical scaling laws for transformer language mo
 ### Example 3: Count matches by file
 
 ```bash
-$ vlmctx grep "import" --kind code --count
+$ mm grep "import" --kind code --count
 ```
 
 **TTY output:**
@@ -502,7 +502,7 @@ src/cli.py:4
 ### Example 4: Search with context lines
 
 ```bash
-$ vlmctx grep "def forward" --ext py -C 2
+$ mm grep "def forward" --ext py -C 2
 ```
 
 **Piped:**
@@ -517,7 +517,7 @@ models/transformer.py:48:        return self.norm(attn + src)
 ### Example 5: JSON output for programmatic use
 
 ```bash
-$ vlmctx grep "attention" --kind document --format json
+$ mm grep "attention" --kind document --format json
 ```
 
 ```json
@@ -532,12 +532,12 @@ $ vlmctx grep "attention" --kind document --format json
 
 ## 5. `sql` — DuckDB analytics on the file index
 
-No traditional Unix equivalent. vlmctx exposes the full Arrow table as a DuckDB virtual table called `files`, enabling arbitrary SQL analytics on your multimodal directory.
+No traditional Unix equivalent. mm exposes the full Arrow table as a DuckDB virtual table called `files`, enabling arbitrary SQL analytics on your multimodal directory.
 
 ### Example 1: Storage breakdown by kind
 
 ```bash
-$ vlmctx sql "SELECT kind, COUNT(*) as n, SUM(size) as bytes FROM files GROUP BY kind ORDER BY bytes DESC"
+$ mm sql "SELECT kind, COUNT(*) as n, SUM(size) as bytes FROM files GROUP BY kind ORDER BY bytes DESC"
 ```
 
 **TTY output:**
@@ -572,7 +572,7 @@ text	18	32768
 ### Example 2: Find largest files per kind
 
 ```bash
-$ vlmctx sql "SELECT kind, name, size FROM files WHERE size = (SELECT MAX(size) FROM files f2 WHERE f2.kind = files.kind) ORDER BY size DESC"
+$ mm sql "SELECT kind, name, size FROM files WHERE size = (SELECT MAX(size) FROM files f2 WHERE f2.kind = files.kind) ORDER BY size DESC"
 ```
 
 **Piped:**
@@ -589,7 +589,7 @@ code	generated.rs	524288
 ### Example 3: Image resolution statistics
 
 ```bash
-$ vlmctx sql "SELECT MIN(width) as min_w, MAX(width) as max_w, AVG(width) as avg_w, MIN(height) as min_h, MAX(height) as max_h FROM files WHERE kind='image' AND width IS NOT NULL"
+$ mm sql "SELECT MIN(width) as min_w, MAX(width) as max_w, AVG(width) as avg_w, MIN(height) as min_h, MAX(height) as max_h FROM files WHERE kind='image' AND width IS NOT NULL"
 ```
 
 **Piped:**
@@ -601,7 +601,7 @@ min_w	max_w	avg_w	min_h	max_h
 ### Example 4: Files modified in last 7 days
 
 ```bash
-$ vlmctx sql "SELECT name, kind, size, modified FROM files WHERE modified > CURRENT_TIMESTAMP - INTERVAL 7 DAY ORDER BY modified DESC LIMIT 10"
+$ mm sql "SELECT name, kind, size, modified FROM files WHERE modified > CURRENT_TIMESTAMP - INTERVAL 7 DAY ORDER BY modified DESC LIMIT 10"
 ```
 
 **Piped:**
@@ -616,7 +616,7 @@ notes.md	text	2048	2024-03-18 11:45:00
 ### Example 5: Extension frequency distribution
 
 ```bash
-$ vlmctx sql "SELECT ext, COUNT(*) as n, SUM(size) as total_bytes FROM files GROUP BY ext ORDER BY n DESC LIMIT 10" --format json
+$ mm sql "SELECT ext, COUNT(*) as n, SUM(size) as total_bytes FROM files GROUP BY ext ORDER BY n DESC LIMIT 10" --format json
 ```
 
 ```json
@@ -638,12 +638,12 @@ $ vlmctx sql "SELECT ext, COUNT(*) as n, SUM(size) as total_bytes FROM files GRO
 
 ## 6. `wc` — Token-aware counting
 
-Traditional `wc` counts bytes, words, lines. vlmctx `wc` estimates **tokens** — the unit that matters for LLM context windows. It breaks down by kind, giving you an information-theoretic view of your data.
+Traditional `wc` counts bytes, words, lines. mm `wc` estimates **tokens** — the unit that matters for LLM context windows. It breaks down by kind, giving you an information-theoretic view of your data.
 
 ### Example 1: Summary panel
 
 ```bash
-$ vlmctx wc ~/project
+$ mm wc ~/project
 ```
 
 **TTY output:**
@@ -665,7 +665,7 @@ files	size	lines	tokens
 ### Example 2: Breakdown by kind
 
 ```bash
-$ vlmctx wc ~/project --by-kind
+$ mm wc ~/project --by-kind
 ```
 
 **TTY output:**
@@ -705,7 +705,7 @@ text	18	32 KB	980	3.2K
 ### Example 3: JSON output
 
 ```bash
-$ vlmctx wc ~/project --by-kind --format json
+$ mm wc ~/project --by-kind --format json
 ```
 
 ```json
@@ -729,7 +729,7 @@ $ vlmctx wc ~/project --by-kind --format json
 ### Example 4: Quick token budget check
 
 ```bash
-$ vlmctx wc ~/project --kind code
+$ mm wc ~/project --kind code
 ```
 
 **Piped:**
@@ -738,12 +738,12 @@ files	size	lines	tokens
 156	1258291	38000	285000
 ```
 
-One line: 156 code files, ~285K tokens. Fits in a 500K context window? Yes. This is the kind of instant decision-making vlmctx enables.
+One line: 156 code files, ~285K tokens. Fits in a 500K context window? Yes. This is the kind of instant decision-making mm enables.
 
 ### Example 5: Composable — count tokens for grep results
 
 ```bash
-$ vlmctx find ~/project --kind document | vlmctx wc
+$ mm find ~/project --kind document | mm wc
 ```
 
 **Piped:**
@@ -760,16 +760,16 @@ The real power is chaining commands. Every command's piped output is designed to
 
 ```bash
 # Find all PDFs → extract text → search for "attention"
-vlmctx find ~/papers --ext pdf | vlmctx cat -l 1 | grep "attention"
+mm find ~/papers --ext pdf | mm cat -l 1 | grep "attention"
 
 # Count tokens in just the code files
-vlmctx find ~/project --kind code | vlmctx wc
+mm find ~/project --kind code | mm wc
 
 # SQL query → pipe to jq for further processing
-vlmctx sql "SELECT name, size FROM files WHERE kind='image'" --format json | jq '.[].name'
+mm sql "SELECT name, size FROM files WHERE kind='image'" --format json | jq '.[].name'
 
 # Find large images → get their metadata as JSON for an LLM
-vlmctx find ~/data --kind image --min-size 1MB | vlmctx cat -l 1 --format json
+mm find ~/data --kind image --min-size 1MB | mm cat -l 1 --format json
 ```
 
 ---
@@ -784,9 +784,9 @@ vlmctx find ~/data --kind image --min-size 1MB | vlmctx cat -l 1 --format json
 
 ---
 
-## Self-pipes: vlmctx → vlmctx
+## Self-pipes: mm → mm
 
-Every command reads paths from stdin (via `read_paths_from_stdin()`), so the output of one vlmctx command feeds directly into another. The stdin reader auto-detects TSV — if a line has tabs, it takes the last field as the path.
+Every command reads paths from stdin (via `read_paths_from_stdin()`), so the output of one mm command feeds directly into another. The stdin reader auto-detects TSV — if a line has tabs, it takes the last field as the path.
 
 ### 1. Multimodal triage: find → cat → wc pipeline
 
@@ -794,12 +794,12 @@ The killer self-pipe: discover files by kind, extract structured content, then c
 
 ```bash
 # How many tokens would it cost to send all my PDFs to an LLM?
-$ vlmctx find ~/research --kind document | vlmctx wc
+$ mm find ~/research --kind document | mm wc
 files  size      lines   tokens  tok/MB
 23     45.0 MB   12K     89K     2.0K
 
 # Too many tokens — which PDFs are the biggest?
-$ vlmctx find ~/research --kind document | vlmctx cat -l 1 -n 5
+$ mm find ~/research --kind document | mm cat -l 1 -n 5
 --- papers/attention-is-all-you-need.pdf (pdf, 2158592B) ---
 Attention Is All You Need
 
@@ -822,9 +822,9 @@ Use SQL to surgically select files, then extract their content at any level:
 
 ```bash
 # Find the 5 largest images, then get their EXIF metadata
-$ vlmctx sql "SELECT path FROM files WHERE kind='image' ORDER BY size DESC LIMIT 5" \
+$ mm sql "SELECT path FROM files WHERE kind='image' ORDER BY size DESC LIMIT 5" \
     --dir ~/photos \
-  | vlmctx cat -l 1
+  | mm cat -l 1
 
 --- photos/panorama.png (image, 15728640B) ---
 Dimensions: 8000x2000
@@ -846,13 +846,13 @@ The power here: SQL gives you arbitrary WHERE/ORDER BY/LIMIT, and cat gives you 
 
 ## Piping to DuckDB CLI
 
-vlmctx's TSV piped output is designed to be read directly by DuckDB via `/dev/stdin`. This lets you escape the built-in `vlmctx sql` when you need full DuckDB power (CTEs, window functions, `.explain`, extensions) without giving up the vlmctx index.
+mm's TSV piped output is designed to be read directly by DuckDB via `/dev/stdin`. This lets you escape the built-in `mm sql` when you need full DuckDB power (CTEs, window functions, `.explain`, extensions) without giving up the mm index.
 
 ### Pipe the full index into DuckDB
 
 ```bash
-# vlmctx ls pipes TSV; DuckDB reads it as a table instantly.
-vlmctx ls ~/data --columns name,kind,size,ext \
+# mm ls pipes TSV; DuckDB reads it as a table instantly.
+mm ls ~/data --columns name,kind,size,ext \
   | duckdb -c "
       SELECT kind, COUNT(*) AS n, SUM(size) AS bytes
       FROM read_csv('/dev/stdin', delim='\t', header=true)
@@ -873,7 +873,7 @@ vlmctx ls ~/data --columns name,kind,size,ext \
 ### Window functions: rank files within each kind
 
 ```bash
-vlmctx ls ~/data --columns name,kind,size \
+mm ls ~/data --columns name,kind,size \
   | duckdb -c "
       WITH ranked AS (
         SELECT *, ROW_NUMBER() OVER (PARTITION BY kind ORDER BY size DESC) AS rn
@@ -882,13 +882,13 @@ vlmctx ls ~/data --columns name,kind,size \
       SELECT name, kind, size FROM ranked WHERE rn <= 3"
 ```
 
-This gives you the 3 largest files per kind — a query that would be awkward in `vlmctx sql` but natural in DuckDB.
+This gives you the 3 largest files per kind — a query that would be awkward in `mm sql` but natural in DuckDB.
 
 ### Cross-join with external data
 
 ```bash
 # Compare file counts against a budget CSV
-vlmctx ls ~/data --columns kind,size \
+mm ls ~/data --columns kind,size \
   | duckdb -c "
       WITH files AS (
         SELECT * FROM read_csv('/dev/stdin', delim='\t', header=true)
@@ -905,36 +905,36 @@ vlmctx ls ~/data --columns kind,size \
 
 ```bash
 # One-liner: index → Parquet (DuckDB does the heavy lifting)
-vlmctx ls ~/data \
+mm ls ~/data \
   | duckdb -c "
       COPY (SELECT * FROM read_csv('/dev/stdin', delim='\t', header=true))
       TO 'index.parquet' (FORMAT PARQUET)"
 ```
 
-### Find → filter in DuckDB → feed back to vlmctx cat
+### Find → filter in DuckDB → feed back to mm cat
 
 ```bash
 # Find images > 1MB via DuckDB, then extract their metadata
-vlmctx find ~/photos --kind image \
+mm find ~/photos --kind image \
   | duckdb -c "
       SELECT path FROM read_csv('/dev/stdin', delim='\t',
              header=false, columns={'kind':'VARCHAR','size':'BIGINT','path':'VARCHAR'})
       WHERE size > 1048576" --csv --noheader \
-  | vlmctx cat -l 1
+  | mm cat -l 1
 ```
 
 ---
 
 ## Piping to Simon Willison's `llm`
 
-[`llm`](https://github.com/simonw/llm) is the Swiss Army knife for sending text to any LLM from the command line. vlmctx's piped output is designed to be the perfect input — structured, token-efficient, and self-describing.
+[`llm`](https://github.com/simonw/llm) is the Swiss Army knife for sending text to any LLM from the command line. mm's piped output is designed to be the perfect input — structured, token-efficient, and self-describing.
 
-The core pattern: **vlmctx extracts context, `llm` reasons over it.**
+The core pattern: **mm extracts context, `llm` reasons over it.**
 
 ### Describe what's in a directory
 
 ```bash
-vlmctx ls ~/project --tree --depth 2 | llm -s "Describe this project structure"
+mm ls ~/project --tree --depth 2 | llm -s "Describe this project structure"
 ```
 
 The tree output is compact enough to fit in a single prompt, and self-describing enough that the LLM can reason about the project layout without any extra context.
@@ -942,15 +942,15 @@ The tree output is compact enough to fit in a single prompt, and self-describing
 ### Summarize a PDF
 
 ```bash
-vlmctx cat paper.pdf | llm -s "Summarize this paper in 3 bullet points"
+mm cat paper.pdf | llm -s "Summarize this paper in 3 bullet points"
 ```
 
-vlmctx extracts the text via pypdfium2 (L1, <100ms), then `llm` does the reasoning. No need for vlmctx's built-in L2 — use whichever model you've configured in `llm`.
+mm extracts the text via pypdfium2 (L1, <100ms), then `llm` does the reasoning. No need for mm's built-in L2 — use whichever model you've configured in `llm`.
 
 ### Caption images from metadata
 
 ```bash
-vlmctx find ~/photos --kind image | vlmctx cat -l 1 \
+mm find ~/photos --kind image | mm cat -l 1 \
   | llm -s "For each image below, suggest a descriptive filename based on the EXIF metadata. Output as: original → suggested"
 ```
 
@@ -975,26 +975,26 @@ The `--- file (kind, size) ---` headers (new in piped multi-file mode) let the L
 ### Code review via grep → llm
 
 ```bash
-vlmctx grep "TODO" --kind code | llm -s "Triage these TODOs by priority (P0/P1/P2). Explain why."
+mm grep "TODO" --kind code | llm -s "Triage these TODOs by priority (P0/P1/P2). Explain why."
 ```
 
 ### Token budget check before stuffing context
 
 ```bash
 # Check if a directory fits in a context window before sending it
-vlmctx wc ~/project --kind code
+mm wc ~/project --kind code
 # → files  size     lines   tokens  tok/MB
 # → 156    1.2 MB   38K     285K    243.1K
 
 # It fits — send all code to llm
-vlmctx find ~/project --kind code | vlmctx cat -l 0 \
+mm find ~/project --kind code | mm cat -l 0 \
   | llm -s "Review this codebase for security vulnerabilities"
 ```
 
 ### SQL analytics → natural language
 
 ```bash
-vlmctx sql "SELECT kind, COUNT(*) as n, SUM(size) as bytes FROM files GROUP BY kind ORDER BY bytes DESC" --format json \
+mm sql "SELECT kind, COUNT(*) as n, SUM(size) as bytes FROM files GROUP BY kind ORDER BY bytes DESC" --format json \
   | llm -s "Explain this storage breakdown. Which kinds should I clean up first?"
 ```
 
@@ -1005,14 +1005,14 @@ vlmctx sql "SELECT kind, COUNT(*) as n, SUM(size) as bytes FROM files GROUP BY k
 llm -s 'You are a project analyst. Describe the structure, purpose, and notable files in this directory listing.' --save describe-dir
 
 # Use it anytime
-vlmctx ls ~/any-project --tree | llm -t describe-dir
+mm ls ~/any-project --tree | llm -t describe-dir
 ```
 
 ### Batch-caption images with llm + vision model
 
 ```bash
-# Use llm's attachment support with vlmctx's file discovery
-for img in $(vlmctx find ~/photos --kind image --ext jpg | cut -f3); do
+# Use llm's attachment support with mm's file discovery
+for img in $(mm find ~/photos --kind image --ext jpg | cut -f3); do
   echo "=== $img ==="
   llm -a "$img" "Describe this photo in one sentence" -m gpt-4o
 done
@@ -1024,13 +1024,13 @@ done
 # Morning report: what changed in the last 24 hours?
 {
   echo "## File changes (last 24h)"
-  vlmctx sql "SELECT name, kind, size, modified FROM files WHERE modified > CURRENT_TIMESTAMP - INTERVAL 1 DAY ORDER BY modified DESC"
+  mm sql "SELECT name, kind, size, modified FROM files WHERE modified > CURRENT_TIMESTAMP - INTERVAL 1 DAY ORDER BY modified DESC"
   echo ""
   echo "## Token budget"
-  vlmctx wc ~/project --kind code
+  mm wc ~/project --kind code
   echo ""
   echo "## TODOs"
-  vlmctx grep "TODO\|FIXME\|HACK" --kind code
+  mm grep "TODO\|FIXME\|HACK" --kind code
 } | llm -s "Generate a morning standup summary from this project state"
 ```
 
@@ -1042,30 +1042,30 @@ Ideas for future directions — particularly around composability, progressive d
 
 ### 1. Fragment loader plugin for `llm`
 
-Simon Willison's `llm` supports [fragment loaders](https://llm.datasette.io/en/stable/fragments.html) — plugins that expand a prefix like `github:user/repo` into a set of text fragments. A `vlmctx:` fragment loader would let you do:
+Simon Willison's `llm` supports [fragment loaders](https://llm.datasette.io/en/stable/fragments.html) — plugins that expand a prefix like `github:user/repo` into a set of text fragments. A `mm:` fragment loader would let you do:
 
 ```bash
 # Load an entire directory's context into an llm prompt
-llm -f vlmctx:~/project "What does this codebase do?"
+llm -f mm:~/project "What does this codebase do?"
 
 # Filter by kind
-llm -f vlmctx:~/data?kind=code "Review this code for bugs"
+llm -f mm:~/data?kind=code "Review this code for bugs"
 
 # Use L1 extraction for images/videos (metadata, not raw bytes)
-llm -f vlmctx:~/photos?level=1 "Organize these photos by event"
+llm -f mm:~/photos?level=1 "Organize these photos by event"
 ```
 
-The fragment loader would call vlmctx internally, returning one fragment per file (text content for code, structured metadata for images/video, extracted text for PDFs). This is the most natural integration point — it makes vlmctx invisible to the user while providing multimodal context to any `llm` model.
+The fragment loader would call mm internally, returning one fragment per file (text content for code, structured metadata for images/video, extracted text for PDFs). This is the most natural integration point — it makes mm invisible to the user while providing multimodal context to any `llm` model.
 
 The loader could also return **attachments** for image files when using vision models (like `llm-video-frames` does for video), giving `llm` both the metadata fragment and the actual image.
 
 ### 2. Datasette-style exploration
 
-Datasette makes any SQLite database instantly explorable in a browser. vlmctx could serve a similar role for multimodal directories:
+Datasette makes any SQLite database instantly explorable in a browser. mm could serve a similar role for multimodal directories:
 
 ```bash
 # Serve an interactive explorer on localhost
-vlmctx serve ~/data --port 8001
+mm serve ~/data --port 8001
 ```
 
 This would expose:
@@ -1076,7 +1076,7 @@ This would expose:
 - The full SQL interface for ad-hoc queries
 - A `/api/` endpoint returning JSON for programmatic access
 
-The key insight from Datasette: **data should be explorable before you know what question to ask.** vlmctx already has all the ingredients (Arrow index, DuckDB, L1 extraction) — it just needs a thin web layer.
+The key insight from Datasette: **data should be explorable before you know what question to ask.** mm already has all the ingredients (Arrow index, DuckDB, L1 extraction) — it just needs a thin web layer.
 
 ### 3. `--tsv` as a first-class output mode (not just a pipe side-effect)
 
@@ -1084,51 +1084,51 @@ Currently, TSV output happens automatically when stdout is piped. But Simon's to
 
 ```bash
 # Explicit TSV even in a terminal (for copy-paste into spreadsheets)
-vlmctx ls ~/data --tsv | pbcopy
+mm ls ~/data --tsv | pbcopy
 
 # Pair with --format json for structured output
-vlmctx find ~/data --kind image --tsv > manifest.tsv
+mm find ~/data --kind image --tsv > manifest.tsv
 ```
 
 This follows the principle: **don't make the user guess how to get machine-readable output** — make it a flag.
 
-### 4. `vlmctx logs` — prompt/response logging like `llm logs`
+### 4. `mm logs` — prompt/response logging like `llm logs`
 
-One of `llm`'s most valuable features is that every prompt and response is logged to SQLite. vlmctx could do the same for L2 extractions:
+One of `llm`'s most valuable features is that every prompt and response is logged to SQLite. mm could do the same for L2 extractions:
 
 ```bash
 # See all LLM captions you've generated
-vlmctx logs
+mm logs
 
 # Filter by file type
-vlmctx logs --kind image
+mm logs --kind image
 
 # Re-query past results without re-running the LLM
-vlmctx logs --sql "SELECT path, response FROM logs WHERE model='gpt-4o' ORDER BY created DESC LIMIT 10"
+mm logs --sql "SELECT path, response FROM logs WHERE model='gpt-4o' ORDER BY created DESC LIMIT 10"
 ```
 
 This turns ephemeral LLM output into a queryable knowledge base — exactly the Datasette philosophy of "everything should be in a database."
 
 ### 5. Content-addressed caching for L1/L2
 
-vlmctx already computes xxh3 hashes for every file. These could be used as cache keys for L1/L2 results:
+mm already computes xxh3 hashes for every file. These could be used as cache keys for L1/L2 results:
 
 ```bash
 # First run: extracts metadata (slow for L2)
-vlmctx cat photo.jpg -l 2        # → calls LLM, caches result
+mm cat photo.jpg -l 2        # → calls LLM, caches result
 
 # Second run: instant (hash unchanged)
-vlmctx cat photo.jpg -l 2        # → returns cached result
+mm cat photo.jpg -l 2        # → returns cached result
 ```
 
-The cache would be a SQLite database (naturally), keyed by `(content_hash, level, model)`. This is the same pattern `llm` uses for response caching, and it means that re-running vlmctx on a directory that hasn't changed is effectively free.
+The cache would be a SQLite database (naturally), keyed by `(content_hash, level, model)`. This is the same pattern `llm` uses for response caching, and it means that re-running mm on a directory that hasn't changed is effectively free.
 
 ### 6. Token budget awareness in `wc`
 
 The `tok/MB` metric already tells you information density per kind. The next step is making `wc` context-window-aware:
 
 ```bash
-$ vlmctx wc ~/project --budget 200k
+$ mm wc ~/project --budget 200k
 ```
 
 ```
@@ -1136,7 +1136,7 @@ files  size     tokens   budget    fit?
 156    1.2 MB   285K     200K      NO (143% of budget)
 
 Suggestion: filter to --kind code --ext py,rs to fit in 200K
-  → vlmctx find ~/project --kind code --ext py,rs | vlmctx wc
+  → mm find ~/project --kind code --ext py,rs | mm wc
   → estimated: 142K tokens (71% of budget)
 ```
 
@@ -1146,49 +1146,49 @@ This answers the question every LLM user asks: **"Does this fit in my context wi
 
 ## Integrating with the CLI Ecosystem
 
-vlmctx speaks TSV on stdout and reads paths on stdin. This makes it a natural participant in Unix pipelines with tools from the broader Rust, PyPI, and system CLI ecosystem.
+mm speaks TSV on stdout and reads paths on stdin. This makes it a natural participant in Unix pipelines with tools from the broader Rust, PyPI, and system CLI ecosystem.
 
 ### exiftool / mediainfo: the metadata escape hatch
 
-vlmctx's Rust L1 extractors handle common image/video formats natively. But for edge cases (RAW photos, obscure codecs, embedded ICC profiles), shell out to `exiftool` or `mediainfo`:
+mm's Rust L1 extractors handle common image/video formats natively. But for edge cases (RAW photos, obscure codecs, embedded ICC profiles), shell out to `exiftool` or `mediainfo`:
 
 ```bash
-# vlmctx finds the files, exiftool goes deep on metadata
-vlmctx find ~/photos --kind image --ext cr3,nef,arw \
+# mm finds the files, exiftool goes deep on metadata
+mm find ~/photos --kind image --ext cr3,nef,arw \
   | cut -f3 \
   | xargs exiftool -json -q \
   | jq '.[] | {file: .SourceFile, iso: .ISO, shutter: .ShutterSpeed, aperture: .Aperture}'
 
-# mediainfo for container-level video details vlmctx doesn't parse
-vlmctx find ~/videos --kind video \
+# mediainfo for container-level video details mm doesn't parse
+mm find ~/videos --kind video \
   | cut -f3 \
   | xargs -I{} mediainfo --Output=JSON "{}" \
   | jq '.media.track[] | select(.["@type"]=="Video") | {codec: .Format, bitrate: .BitRate, hdr: .HDR_Format}'
 ```
 
-The design principle: vlmctx handles the 95% case in <1ms via Rust; for the long tail, pipe to a specialist.
+The design principle: mm handles the 95% case in <1ms via Rust; for the long tail, pipe to a specialist.
 
 ### magika: AI-powered file type detection
 
 [magika](https://github.com/google/magika) is Google's deep-learning file type classifier — much more accurate than extension or magic-byte sniffing for polyglot files, obfuscated binaries, or extensionless data:
 
 ```bash
-# Find files vlmctx classifies as "other" and get magika's opinion
-vlmctx find ~/data --kind other \
+# Find files mm classifies as "other" and get magika's opinion
+mm find ~/data --kind other \
   | cut -f3 \
   | xargs magika --json \
   | jq '.[] | {file: .path, magika_type: .result.label, confidence: .result.score}'
 ```
 
-This is a feedback loop: magika's output could inform vlmctx's `kind` classification for files that don't have recognizable extensions.
+This is a feedback loop: magika's output could inform mm's `kind` classification for files that don't have recognizable extensions.
 
 ### pandoc: universal document conversion
 
-vlmctx extracts PDF text via pypdfium2, but what about `.docx`, `.epub`, `.rst`, `.org`, `.rtf`? Pandoc converts anything to plain text:
+mm extracts PDF text via pypdfium2, but what about `.docx`, `.epub`, `.rst`, `.org`, `.rtf`? Pandoc converts anything to plain text:
 
 ```bash
 # Extract text from every document, regardless of format
-vlmctx find ~/docs --kind document \
+mm find ~/docs --kind document \
   | cut -f3 \
   | while read -r f; do
       echo "--- $f ---"
@@ -1197,18 +1197,18 @@ vlmctx find ~/docs --kind document \
   | llm -s "Summarize the key themes across these documents"
 ```
 
-A future `vlmctx cat` could auto-detect pandoc and use it as an L1 fallback for non-PDF documents.
+A future `mm cat` could auto-detect pandoc and use it as an L1 fallback for non-PDF documents.
 
 ### tesseract: OCR for scanned PDFs
 
-vlmctx's `cat` already detects when a PDF yields no extractable text (image-only/scanned). The natural next step:
+mm's `cat` already detects when a PDF yields no extractable text (image-only/scanned). The natural next step:
 
 ```bash
 # Find PDFs with no text → OCR them
-vlmctx find ~/scans --ext pdf \
+mm find ~/scans --ext pdf \
   | cut -f3 \
   | while read -r f; do
-      text=$(vlmctx cat "$f" -l 1)
+      text=$(mm cat "$f" -l 1)
       if echo "$text" | grep -q "scanned images only"; then
         echo "--- $f (OCR) ---"
         pdftoppm -r 300 "$f" /tmp/ocr_page -png
@@ -1222,39 +1222,39 @@ vlmctx find ~/scans --ext pdf \
 
 ### ripgrep / fd: when you need their specific powers
 
-vlmctx's `find` and `grep` are multimodal-aware but simpler than `fd` and `rg`. For complex regex, gitignore nuance, or massive repos, use them together:
+mm's `find` and `grep` are multimodal-aware but simpler than `fd` and `rg`. For complex regex, gitignore nuance, or massive repos, use them together:
 
 ```bash
-# rg finds pattern across code; vlmctx counts the token cost
+# rg finds pattern across code; mm counts the token cost
 rg -l "unsafe" --type rust ~/project \
-  | vlmctx cat -l 0 \
-  | vlmctx wc
+  | mm cat -l 0 \
+  | mm wc
 
-# fd finds by complex pattern; vlmctx provides the metadata
+# fd finds by complex pattern; mm provides the metadata
 fd -e png -e jpg --size +1m ~/data \
-  | vlmctx cat -l 1
+  | mm cat -l 1
 ```
 
 ### jq / xsv / miller: structured data post-processing
 
-vlmctx's `--format json` output pairs naturally with the structured data toolkit:
+mm's `--format json` output pairs naturally with the structured data toolkit:
 
 ```bash
 # jq: filter JSON output
-vlmctx ls ~/data --format json | jq '[.[] | select(.kind=="image")] | length'
+mm ls ~/data --format json | jq '[.[] | select(.kind=="image")] | length'
 
 # miller (mlr): column transforms on TSV
-vlmctx ls ~/data | mlr --tsvlite --from - then sort-by -nr size then head -n 10
+mm ls ~/data | mlr --tsvlite --from - then sort-by -nr size then head -n 10
 
 # xsv: fast CSV operations
-vlmctx ls ~/data | xsv sort -s size -R -d '\t' | xsv slice -l 10 -d '\t'
+mm ls ~/data | xsv sort -s size -R -d '\t' | xsv slice -l 10 -d '\t'
 ```
 
 ---
 
 ## Binary Format Parsing: Proprietary Formats
 
-vlmctx's L1 extractors handle open formats (PNG, JPEG, MP4, MKV, PDF) via Rust. But the world is full of **closed/proprietary binary formats** that Python libraries can't read:
+mm's L1 extractors handle open formats (PNG, JPEG, MP4, MKV, PDF) via Rust. But the world is full of **closed/proprietary binary formats** that Python libraries can't read:
 
 | Format | Domain | Current L1 | Gap |
 |--------|--------|-----------|-----|
@@ -1270,11 +1270,11 @@ vlmctx's L1 extractors handle open formats (PNG, JPEG, MP4, MKV, PDF) via Rust. 
 | `.aep` | After Effects | extension only | composition tree, duration |
 | `.als` / `.flp` | Ableton/FL Studio | extension only | BPM, track count, plugin list |
 
-These files appear constantly in creative/design/engineering directories. Today vlmctx returns `kind: other, size: 48 MB` — useless for an LLM trying to understand a project.
+These files appear constantly in creative/design/engineering directories. Today mm returns `kind: other, size: 48 MB` — useless for an LLM trying to understand a project.
 
 ### Approach 1: `binrw` in Rust (native, zero-copy)
 
-[binrw](https://github.com/jam1garner/binrw) is a Rust derive macro for binary reading. Integrates directly into vlmctx's existing extractor trait:
+[binrw](https://github.com/jam1garner/binrw) is a Rust derive macro for binary reading. Integrates directly into mm's existing extractor trait:
 
 ```rust
 use binrw::BinRead;
@@ -1292,7 +1292,7 @@ struct PsdHeader {
 }
 ```
 
-This compiles to zero-copy, zero-allocation parsing — exactly the performance profile vlmctx needs for L1.
+This compiles to zero-copy, zero-allocation parsing — exactly the performance profile mm needs for L1.
 
 ### Approach 2: Header-only probing via `nom`
 
@@ -1320,8 +1320,8 @@ fn blend_header(input: &[u8]) -> IResult<&[u8], BlendHeader> {
 For formats with existing Python libraries (even slow ones), a plugin system lets the community contribute extractors without touching Rust:
 
 ```python
-# ~/.vlmctx/extractors/psd.py
-from vlmctx.extractors import register
+# ~/.mm/extractors/psd.py
+from mm.extractors import register
 
 @register(extensions=[".psd"], kind="image")
 def extract_psd(path: Path) -> dict:
@@ -1351,7 +1351,7 @@ def extract_psd(path: Path) -> dict:
 Today, if you point an LLM at a design directory:
 
 ```
-$ vlmctx ls ~/design
+$ mm ls ~/design
 name              kind    size      ext
 mockup-v3.psd     other   48.2 MB   psd
 logo-final.ai     other   12.1 MB   ai
@@ -1362,14 +1362,14 @@ scene.blend       other   156 MB    blend
 The LLM sees `other` four times — zero signal. With binary format parsing:
 
 ```
-$ vlmctx ls ~/design
+$ mm ls ~/design
 name              kind    size      width   height  ext
 mockup-v3.psd     image   48.2 MB   4096    2160    psd
 logo-final.ai     image   12.1 MB   1024    1024    ai
 prototype.fig     data    8.4 MB    —       —       fig
 scene.blend       data    156 MB    —       —       blend
 
-$ vlmctx cat mockup-v3.psd -l 1
+$ mm cat mockup-v3.psd -l 1
 Dimensions: 4096x2160
 Channels:   4 (CMYK + alpha)
 Depth:      16-bit
@@ -1378,7 +1378,7 @@ Layers:     23
 Linked:     textures/wood.jpg, textures/marble.png
 Hash:       d4f2a1b7c3e09856
 
-$ vlmctx cat scene.blend -l 1
+$ mm cat scene.blend -l 1
 Blender:    4.1
 Scenes:     2
 Objects:    147

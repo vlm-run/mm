@@ -7,7 +7,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from vlmctx.commands.cat import (
+from mm.commands.cat import (
     DOCUMENT_EXTS,
     _CatOpts,
     _file_kind,
@@ -60,8 +60,8 @@ class TestCatOptsMode:
     def test_mode_none(self):
         opts = _CatOpts(
             level=2, n=None, detail=False, output_dir=None,
-            max_pages=None, mosaic_tile="4x4", image_width=160,
-            mosaic_count=1, mosaic_strategy="uniform",
+            max_pages=None, mosaic_tile="4x4", mosaic_image_width=160,
+            video_mosaic_count=1, video_mosaic_strategy="uniform",
             audio_speed=2.0, audio_sample_rate=16000,
             mode=None, format="rich",
         )
@@ -70,8 +70,8 @@ class TestCatOptsMode:
     def test_mode_fast(self):
         opts = _CatOpts(
             level=2, n=None, detail=False, output_dir=None,
-            max_pages=None, mosaic_tile="4x4", image_width=160,
-            mosaic_count=1, mosaic_strategy="uniform",
+            max_pages=None, mosaic_tile="4x4", mosaic_image_width=160,
+            video_mosaic_count=1, video_mosaic_strategy="uniform",
             audio_speed=2.0, audio_sample_rate=16000,
             mode="fast", format="rich",
         )
@@ -80,8 +80,8 @@ class TestCatOptsMode:
     def test_mode_accurate(self):
         opts = _CatOpts(
             level=2, n=None, detail=False, output_dir=None,
-            max_pages=None, mosaic_tile="4x4", image_width=160,
-            mosaic_count=1, mosaic_strategy="uniform",
+            max_pages=None, mosaic_tile="4x4", mosaic_image_width=160,
+            video_mosaic_count=1, video_mosaic_strategy="uniform",
             audio_speed=2.0, audio_sample_rate=16000,
             mode="accurate", format="rich",
         )
@@ -94,8 +94,8 @@ class TestL2ModalDispatch:
     def _make_opts(self, mode: str = "fast") -> _CatOpts:
         return _CatOpts(
             level=2, n=None, detail=False, output_dir=None,
-            max_pages=None, mosaic_tile="4x4", image_width=160,
-            mosaic_count=1, mosaic_strategy="uniform",
+            max_pages=None, mosaic_tile="4x4", mosaic_image_width=160,
+            video_mosaic_count=1, video_mosaic_strategy="uniform",
             audio_speed=2.0, audio_sample_rate=16000,
             mode=mode, format="rich",
         )
@@ -109,7 +109,7 @@ class TestL2ModalDispatch:
     def test_image_dispatch(self, tmp_path):
         f = tmp_path / "test.jpg"
         f.write_bytes(b"\xff\xd8\xff" + b"\x00" * 100)
-        with patch("vlmctx.commands.cat._l2_image_modal") as mock:
+        with patch("mm.commands.cat._l2_image_modal") as mock:
             mock.return_value = "mocked image result"
             result = _l2_modal(f, "image", self._make_opts("fast"))
             mock.assert_called_once_with(f, "fast")
@@ -118,7 +118,7 @@ class TestL2ModalDispatch:
     def test_video_dispatch(self, tmp_path):
         f = tmp_path / "test.mp4"
         f.write_bytes(b"\x00" * 100)
-        with patch("vlmctx.commands.cat._l2_video_modal") as mock:
+        with patch("mm.commands.cat._l2_video_modal") as mock:
             mock.return_value = "mocked video result"
             opts = self._make_opts("fast")
             result = _l2_modal(f, "video", opts)
@@ -128,7 +128,7 @@ class TestL2ModalDispatch:
     def test_audio_dispatch(self, tmp_path):
         f = tmp_path / "test.mp3"
         f.write_bytes(b"\x00" * 100)
-        with patch("vlmctx.commands.cat._l2_audio_modal") as mock:
+        with patch("mm.commands.cat._l2_audio_modal") as mock:
             mock.return_value = "mocked audio result"
             opts = self._make_opts("accurate")
             result = _l2_modal(f, "audio", opts)
@@ -139,8 +139,8 @@ class TestL2ModalDispatch:
         f = tmp_path / "test.pdf"
         f.write_bytes(b"%PDF-1.4 fake")
         with (
-            patch("vlmctx.commands.cat._l1") as mock_l1,
-            patch("vlmctx.llm.LlmBackend") as mock_llm_cls,
+            patch("mm.commands.cat._l1") as mock_l1,
+            patch("mm.llm.LlmBackend") as mock_llm_cls,
         ):
             mock_l1.return_value = "extracted text"
             mock_llm = MagicMock()

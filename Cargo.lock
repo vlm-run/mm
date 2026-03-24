@@ -1178,6 +1178,41 @@ dependencies = [
 ]
 
 [[package]]
+name = "mm-core"
+version = "0.1.0"
+dependencies = [
+ "arrow",
+ "chrono",
+ "compact_str",
+ "criterion",
+ "ignore",
+ "image",
+ "infer",
+ "kamadak-exif",
+ "matroska",
+ "memmap2",
+ "mime_guess",
+ "mp4parse",
+ "parquet",
+ "rayon",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror",
+ "tracing",
+ "xxhash-rust",
+]
+
+[[package]]
+name = "mm-python"
+version = "0.1.0"
+dependencies = [
+ "arrow",
+ "mm-core",
+ "pyo3",
+]
+
+[[package]]
 name = "moxcms"
 version = "0.7.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1921,41 +1956,6 @@ name = "version_check"
 version = "0.9.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0b928f33d975fc6ad9f86c8f283853ad26bdd5b10b7f1542aa2fa15e2289105a"
-
-[[package]]
-name = "vlmctx-core"
-version = "0.1.0"
-dependencies = [
- "arrow",
- "chrono",
- "compact_str",
- "criterion",
- "ignore",
- "image",
- "infer",
- "kamadak-exif",
- "matroska",
- "memmap2",
- "mime_guess",
- "mp4parse",
- "parquet",
- "rayon",
- "serde",
- "serde_json",
- "tempfile",
- "thiserror",
- "tracing",
- "xxhash-rust",
-]
-
-[[package]]
-name = "vlmctx-python"
-version = "0.1.0"
-dependencies = [
- "arrow",
- "pyo3",
- "vlmctx-core",
-]
 
 [[package]]
 name = "walkdir"

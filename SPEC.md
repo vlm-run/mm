@@ -1,11 +1,11 @@
-# vlmctx Spec
+# mm Spec
 
 > High-performance multi-modal context management. Rust core, Python API, Unix CLI.
 
 Legend: `[x]` implemented, `[ ]` roadmap, `[~]` partial/stubbed
 
 ```
-vlmctx
+mm
 ├── L0 — Metadata (Rust core, ~0.02ms/file)
 │   ├── [x] Parallel directory walk (ignore crate + per-thread batching, zero lock contention)
 │   ├── [x] Gitignore-aware (.gitignore, .git/info/exclude, global)
@@ -62,7 +62,7 @@ vlmctx
 │   ├── [x] File content description
 │   ├── [x] Video understanding via keyframe mosaic + LLM (auto at L2)
 │   ├── [x] Audio description via metadata + LLM (auto at L2)
-│   ├── [x] Configurable: CLI flags > env vars > ~/.config/vlmctx/vlmctx.toml > defaults
+│   ├── [x] Configurable: CLI flags > env vars > ~/.config/mm/mm.toml > defaults
 │   ├── [x] think=false + reasoning_effort="none" + temperature=0.1
 │   ├── [x] Graceful fallback to L1 when unconfigured
 │   ├── [x] --mode fast|accurate per-modality extraction strategies
@@ -85,7 +85,7 @@ vlmctx
 │   ├── [x] grep(pattern, kind) — regex search across file contents
 │   ├── [x] show(limit, columns) — Rich table display
 │   ├── [x] info() — Rich summary panel
-│   └── [x] save() — persist to .vlmctx/index.parquet
+│   └── [x] save() — persist to .mm/index.parquet
 │
 ├── CLI Commands (5 + config, Typer, Unix-philosophy composability)
 │   ├── [x] find     — find/list files, tree view (--tree), schema (--schema), columns (--columns)
@@ -143,7 +143,7 @@ vlmctx
 │   ├── Rust: 65 tests (meta, walk, detect, schema, table, code, image, video, hash)
 │   ├── Python: 271 tests (CLI, Context API, pipe, L0/L1/L2, config, whisper, scenes, docling, bench)
 │   ├── Criterion benchmarks: l0_walk, l0_index, hash_strategies, l1_extract
-│   ├── vlmctx bench: 24 commands (L0×10, L1×8, L2×6) with bits/s throughput
+│   ├── mm bench: 24 commands (L0×10, L1×8, L2×6) with bits/s throughput
 │   └── pytest-benchmark: 11 benchmarks (L0, L1, ffmpeg, e2e)
 │
 └── Build & Tooling
