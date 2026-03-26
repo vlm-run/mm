@@ -6,6 +6,8 @@ on:
       - "python/mm/**"
       - "tests/python/**"
       - "pyproject.toml"
+      - "crates/**"
+      - "Cargo.toml"
       - ".github/workflows/ci.yml"
   push:
     branches:
@@ -13,6 +15,8 @@ on:
     paths:
       - "python/mm/**"
       - "pyproject.toml"
+      - "crates/**"
+      - "Cargo.toml"
 
 jobs:
   test:
@@ -33,5 +37,17 @@ jobs:
           uv pip install -e ".[dev,extract]"
           uv run maturin develop --release
 
-      - name: Run pytest
-        run: uv run pytest tests/python -v
+      - name: Lint
+        run: make lint
+
+      - run: make test-rust
+      - run: make test-python
+
+  bench:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Run benchmarks
+        run: make bench
