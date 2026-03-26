@@ -160,8 +160,7 @@ def wc_cmd(
         for k in sorted(kind_stats.keys()):
             s = kind_stats[k]
             style = KIND_STYLES.get(k, "dim")
-            tok_mb = s.get("tok_per_mb")
-            tok_mb_str = format_number(tok_mb) if tok_mb else "—"
+            tok_mb_str = format_number(s["tok_per_mb"]) if s.get("tok_per_mb") else "—"
             tbl.add_row(
                 Text(k, style=style),
                 f"{int(s['files']):,}",

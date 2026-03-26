@@ -37,7 +37,7 @@ jobs:
           uv pip install -e ".[dev,extract]"
           uv run maturin develop --release
 
-      # - run: make lint
+      - run: make lint
       - run: make test-rust
       - run: make test-python
 

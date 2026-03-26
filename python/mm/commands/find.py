@@ -147,7 +147,7 @@ def _find_table(
         min_bytes = _parse_size(min_size) if min_size else None
         max_bytes = _parse_size(max_size) if max_size else None
 
-        filter_args = dict(
+        filter_args: dict = dict(
             kind=kind,
             ext=ext,
             min_size=min_bytes,

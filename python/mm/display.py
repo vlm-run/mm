@@ -250,7 +250,7 @@ def arrow_table_to_rich(
     nowrap_cols = {"ext", "mime", "kind", "size", "depth", "parent", "is_binary"}
     min_widths = {"size": 8, "kind": 8, "ext": 5}
     for col in cols:
-        justify = (
+        justify: Literal["left", "right"] = (
             "right"
             if col
             in (
