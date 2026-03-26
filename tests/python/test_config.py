@@ -8,7 +8,6 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-
 from mm.config import (
     DEFAULTS,
     ProviderConfig,
@@ -34,6 +33,9 @@ def _isolate_config(tmp_path: Path, monkeypatch):
 
     for var in ("MM_BASE_URL", "MM_API_KEY", "MM_MODEL"):
         monkeypatch.delenv(var, raising=False)
+
+    # Patch platform defaults to DEFAULTS for any OS (Linux CI uses different defaults)
+    monkeypatch.setattr("mm.config._platform_defaults", lambda: dict(DEFAULTS))
 
 
 class TestDefaults:
