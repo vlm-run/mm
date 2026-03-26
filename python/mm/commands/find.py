@@ -348,7 +348,13 @@ def _find_tree(
         header = f"{directory}  ({total_files:,} files, {format_size(total_bytes)})"
         lines: list[str] = [header]
         _render_plain_tree(
-            tree_data, "", lines, 0, effective_depth, show_size=show_size, format_size=format_size
+            tree_data,
+            "",
+            lines,
+            0,
+            effective_depth,
+            show_size=show_size,
+            format_size=format_size,
         )
         print("\n".join(lines))
     else:
@@ -365,7 +371,12 @@ def _find_tree(
         root_label.append(f"  {total_files:,} files, {format_size(total_bytes)}", style="dim")
         rich_tree = Tree(root_label)
         _add_to_rich_tree(
-            tree_data, rich_tree, 0, effective_depth, show_size=show_size, format_size=format_size
+            tree_data,
+            rich_tree,
+            0,
+            effective_depth,
+            show_size=show_size,
+            format_size=format_size,
         )
         output_console.print(rich_tree)
         if effective_depth is not None and depth is None:
