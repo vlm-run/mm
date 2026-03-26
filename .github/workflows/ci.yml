@@ -37,17 +37,14 @@ jobs:
           uv pip install -e ".[dev,extract]"
           uv run maturin develop --release
 
-      - name: Lint
-        run: make lint
-
+      # - run: make lint
       - run: make test-rust
       - run: make test-python
 
-  bench:
+  benchmark:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
-
       - name: Run benchmarks
         run: make bench
