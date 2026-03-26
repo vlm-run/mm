@@ -14,9 +14,12 @@ import json
 import re
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from openai import OpenAI
+
+if TYPE_CHECKING:
+    from mm.config import Mode
 
 
 @dataclass
@@ -94,7 +97,9 @@ class LlmBackend:
             content = file_path.read_text(errors="replace")[:4000]
 
         if detail:
-            prompt = f"Summarize this file ({file_path.name}) in about 80 words:\n\n```\n{content}\n```"
+            prompt = (
+                f"Summarize this file ({file_path.name}) in about 80 words:\n\n```\n{content}\n```"
+            )
             max_tokens = 512
         else:
             prompt = f"Summarize this file ({file_path.name}) in one sentence (max 20 words):\n\n```\n{content}\n```"
@@ -110,8 +115,6 @@ class LlmBackend:
         duration_s: float = 0,
     ) -> dict[str, Any]:
         """Analyze video mosaics and return {filename, tags, summary}."""
-        images_b64 = [base64.b64encode(mp.read_bytes()).decode() for mp in mosaic_paths]
-
         dur_ctx = ""
         if duration_s > 0:
             mins, secs = divmod(duration_s, 60)
@@ -123,7 +126,8 @@ class LlmBackend:
         )
 
         content_parts: list[dict[str, Any]] = [{"type": "text", "text": prompt}]
-        for b64 in images_b64:
+        for mp in mosaic_paths:
+            b64 = base64.b64encode(mp.read_bytes()).decode()
             content_parts.append(
                 {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{b64}"}}
             )
@@ -178,13 +182,16 @@ class LlmBackend:
             content = (choice.content or "").strip()
             if content:
                 return content
-            reasoning = getattr(choice, "reasoning", None) or getattr(choice, "reasoning_content", None) or ""
+            reasoning = (
+                getattr(choice, "reasoning", None)
+                or getattr(choice, "reasoning_content", None)
+                or ""
+            )
             if isinstance(reasoning, str) and reasoning.strip():
                 return _extract_answer_from_thinking(reasoning.strip())
             return ""
         except Exception as e:
             return f"[LLM error: {e}]"
-
 
     def caption_modal(self, image_path: Path, *, mode: str = "fast") -> str:
         """Generate a markdown image caption with mode-specific detail.
@@ -237,7 +244,7 @@ class LlmBackend:
         *,
         video_name: str = "",
         duration_s: float = 0,
-        mode: str = "fast",
+        mode: Mode = "fast",
     ) -> str:
         """Analyze video from visual mosaics only (no transcript).
 
@@ -253,8 +260,6 @@ class LlmBackend:
         Returns:
             Markdown string with summary, tags, and scenes.
         """
-        images_b64 = [base64.b64encode(mp.read_bytes()).decode() for mp in mosaic_paths]
-
         dur_ctx = ""
         if duration_s > 0:
             mins, secs = divmod(duration_s, 60)
@@ -284,7 +289,8 @@ class LlmBackend:
             max_tokens = 512
 
         content_parts: list[dict[str, Any]] = [{"type": "text", "text": prompt}]
-        for b64 in images_b64:
+        for mp in mosaic_paths:
+            b64 = base64.b64encode(mp.read_bytes()).decode()
             content_parts.append(
                 {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{b64}"}}
             )
