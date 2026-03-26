@@ -30,6 +30,7 @@ def docling_available() -> bool:
     """Check if docling is installed."""
     try:
         import docling  # noqa: F401
+
         return True
     except ImportError:
         return False

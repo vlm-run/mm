@@ -14,7 +14,6 @@ import typer
 
 from mm.commands.bench_commands import ALL_COMMANDS, resolve_command
 
-
 # ── Data model ──────────────────────────────────────────────────────
 
 
@@ -213,12 +212,16 @@ def _run_benchmarks(
             on_progress(cmd.group, cmd.name)
 
         if num_files == 0:
-            results.append(BenchResult(cmd.name, cmd.group, skipped=True, skip_reason="empty directory"))
+            results.append(
+                BenchResult(cmd.name, cmd.group, skipped=True, skip_reason="empty directory")
+            )
             continue
 
         resolved = resolve_command(cmd, directory, files)
         if resolved is None:
-            results.append(BenchResult(cmd.name, cmd.group, skipped=True, skip_reason=cmd.skip_reason))
+            results.append(
+                BenchResult(cmd.name, cmd.group, skipped=True, skip_reason=cmd.skip_reason)
+            )
             continue
 
         argv, fc, tb, media = resolved
@@ -227,9 +230,14 @@ def _run_benchmarks(
         preview = [shlex.join(argv)]
 
         r = BenchResult(
-            cmd.name, cmd.group, files_count=fc, total_bytes=tb,
-            media_duration_s=media.duration_s, media_width=media.width,
-            media_height=media.height, media_fps=media.fps,
+            cmd.name,
+            cmd.group,
+            files_count=fc,
+            total_bytes=tb,
+            media_duration_s=media.duration_s,
+            media_width=media.width,
+            media_height=media.height,
+            media_fps=media.fps,
             preview_lines=preview,
         )
         r.timings_ms = _time_cmd(argv, rounds, warmup)
@@ -256,8 +264,8 @@ def _fmt_ms(ms: float) -> str:
 
 # Latency thresholds (ms) per group: (green_cutoff, yellow_cutoff).
 _LATENCY_THRESHOLDS: dict[str, tuple[float, float]] = {
-    "L0": (100.0, 500.0),     # metadata: includes CLI startup (~60ms)
-    "L1": (200.0, 1000.0),    # extraction: includes CLI startup
+    "L0": (100.0, 500.0),  # metadata: includes CLI startup (~60ms)
+    "L1": (200.0, 1000.0),  # extraction: includes CLI startup
     "L2": (2000.0, 10000.0),  # semantic/LLM
 }
 
@@ -278,7 +286,7 @@ def _render_table(results: list[BenchResult], target_info: dict[str, Any]) -> No
     from rich.table import Table
     from rich.text import Text
 
-    from mm.display import format_number, format_size, output_console
+    from mm.display import format_size, output_console
 
     wall_ms = target_info.get("total_wall_ms", 0)
     wall_str = _fmt_ms(wall_ms) if wall_ms else "—"
@@ -318,9 +326,15 @@ def _render_table(results: list[BenchResult], target_info: dict[str, Any]) -> No
 
         if r.skipped:
             table.add_row(
-                r.group, Text(r.name, style="dim"),
+                r.group,
+                Text(r.name, style="dim"),
                 Text(f"skipped: {r.skip_reason}", style="dim italic"),
-                "", "", "", "", "", "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
             )
             continue
 
@@ -348,7 +362,8 @@ def bench_cmd(
     rounds: Annotated[int, typer.Option("--rounds", "-r", help="Measurement rounds")] = 3,
     warmup: Annotated[int, typer.Option("--warmup", "-w", help="Warmup rounds")] = 1,
     mode: Annotated[
-        Optional[str], typer.Option("--mode", "-m", help="L2 modes to bench: fast (default), accurate, all")
+        Optional[str],
+        typer.Option("--mode", "-m", help="L2 modes to bench: fast (default), accurate, all"),
     ] = None,
     format: Annotated[
         Optional[str], typer.Option("--format", help="Output format: rich, json")
@@ -408,4 +423,16 @@ def bench_cmd(
         from mm.display import emit_tsv
 
         rows = [r.to_dict() for r in results if not r.skipped]
-        emit_tsv(rows, columns=["group", "name", "mean_ms", "std_ms", "min_ms", "max_ms", "speed", "mb_per_sec"])
+        emit_tsv(
+            rows,
+            columns=[
+                "group",
+                "name",
+                "mean_ms",
+                "std_ms",
+                "min_ms",
+                "max_ms",
+                "speed",
+                "mb_per_sec",
+            ],
+        )

@@ -26,6 +26,7 @@ def scenedetect_available() -> bool:
     """Check if scenedetect is installed."""
     try:
         import scenedetect  # noqa: F401
+
         return True
     except ImportError:
         return False
@@ -56,17 +57,16 @@ def detect_scenes(
 
     video = open_video(str(video_path))
     scene_manager = SceneManager()
-    scene_manager.add_detector(ContentDetector(
-        threshold=threshold,
-        min_scene_len=min_scene_len,
-    ))
+    scene_manager.add_detector(
+        ContentDetector(
+            threshold=threshold,
+            min_scene_len=min_scene_len,
+        )
+    )
     scene_manager.detect_scenes(video)
     scene_list = scene_manager.get_scene_list()
 
-    scenes = [
-        (scene[0].get_seconds(), scene[1].get_seconds())
-        for scene in scene_list
-    ]
+    scenes = [(scene[0].get_seconds(), scene[1].get_seconds()) for scene in scene_list]
 
     elapsed = (time.monotonic() - t0) * 1000
 

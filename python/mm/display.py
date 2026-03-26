@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import functools
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Literal
 
 if TYPE_CHECKING:
     import pyarrow as pa
@@ -326,4 +326,11 @@ def info_panel(stats: dict[str, Any], title: str = "mm"):
     content = Group(*parts)
     from rich import box
 
-    return Panel(content, title=f"[bold]{title}[/bold]", title_align="left", expand=False, padding=(1, 2), box=box.ROUNDED)
+    return Panel(
+        content,
+        title=f"[bold]{title}[/bold]",
+        title_align="left",
+        expand=False,
+        padding=(1, 2),
+        box=box.ROUNDED,
+    )

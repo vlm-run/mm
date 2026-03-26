@@ -237,23 +237,21 @@ def cat_cmd(
 class _CatOpts:
     """Bag of resolved options threaded through extraction."""
 
-    __slots__ = (
-        "level",
-        "n",
-        "detail",
-        "output_dir",
-        "max_pages",
-        "mosaic_tile",
-        "mosaic_image_width",
-        "video_mosaic_count",
-        "video_mosaic_strategy",
-        "audio_speed",
-        "audio_sample_rate",
-        "mode",
-        "format",
-    )
+    level: int
+    n: int | None
+    detail: bool
+    output_dir: Path | None
+    max_pages: int | None
+    mosaic_tile: str
+    mosaic_image_width: int
+    video_mosaic_count: int
+    video_mosaic_strategy: str
+    audio_speed: float
+    audio_sample_rate: int
+    mode: Mode | None
+    format: str
 
-    def __init__(self, **kwargs):  # noqa: ANN003
+    def __init__(self, **kwargs: object) -> None:
         for k, v in kwargs.items():
             setattr(self, k, v)
 
