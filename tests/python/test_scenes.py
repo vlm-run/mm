@@ -5,7 +5,6 @@ from __future__ import annotations
 from unittest.mock import patch
 
 import pytest
-
 from mm.scenes import (
     sample_scene_timestamps,
     sample_uniform_timestamps,

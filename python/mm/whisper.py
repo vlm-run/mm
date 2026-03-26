@@ -6,7 +6,7 @@ Backends (checked in order, first available wins):
 
 Models cached lazily — first call loads, subsequent calls reuse.
 
-Install: pip install mm[extract]
+Install: pip install mm[extract] or pip install mm[extract,mlx] for MLX support on Apple Silicon.
 """
 
 from __future__ import annotations
@@ -18,11 +18,20 @@ from typing import Any
 
 
 @dataclass
+class TranscriptionSegment:
+    """Single segment of a transcription result."""
+
+    start: float
+    end: float
+    text: str
+
+
+@dataclass
 class TranscriptionResult:
     """Result of a Whisper transcription."""
 
     text: str
-    segments: list[dict[str, Any]] = field(default_factory=list)
+    segments: list[TranscriptionSegment] = field(default_factory=list)
     language: str = ""
     language_probability: float = 0.0
     elapsed_ms: float = 0.0
@@ -50,6 +59,7 @@ def _detect_backend() -> str | None:
     try:
         import lightning_whisper_mlx  # noqa: F401
         import mlx.core as mx
+
         if mx.metal.is_available():
             _BACKEND = "mlx"
             return _BACKEND
@@ -59,6 +69,7 @@ def _detect_backend() -> str | None:
     # Fall back to faster-whisper (CTranslate2)
     try:
         import faster_whisper  # noqa: F401
+
         _BACKEND = "ctranslate2"
         return _BACKEND
     except ImportError:
@@ -80,12 +91,14 @@ def _get_device() -> tuple[str, str]:
     """
     try:
         import torch
+
         if torch.cuda.is_available():
             return "cuda", "float16"
     except ImportError:
         pass
     try:
         import ctranslate2
+
         if "cuda" in ctranslate2.get_supported_compute_types("cuda"):
             return "cuda", "float16"
     except (ImportError, RuntimeError, ValueError):
@@ -128,14 +141,16 @@ def _transcribe_ct2(
     )
 
     ts_scale = audio_speed if audio_speed > 0 else 1.0
-    segments: list[dict[str, Any]] = []
+    segments: list[TranscriptionSegment] = []
     text_parts: list[str] = []
     for seg in segments_iter:
-        segments.append({
-            "start": round(seg.start * ts_scale, 3),
-            "end": round(seg.end * ts_scale, 3),
-            "text": seg.text.strip(),
-        })
+        segments.append(
+            TranscriptionSegment(
+                start=round(seg.start * ts_scale, 3),
+                end=round(seg.end * ts_scale, 3),
+                text=seg.text.strip(),
+            )
+        )
         text_parts.append(seg.text.strip())
 
     elapsed = (time.monotonic() - t0) * 1000
@@ -184,7 +199,7 @@ def _transcribe_mlx(
 
     # lightning-whisper-mlx segments: [start_ms, end_ms, text] lists
     raw_segments = result.get("segments", [])
-    segments: list[dict[str, Any]] = []
+    segments: list[TranscriptionSegment] = []
     for seg in raw_segments:
         if isinstance(seg, (list, tuple)) and len(seg) >= 3:
             start_s = seg[0] / 1000.0
@@ -196,11 +211,13 @@ def _transcribe_mlx(
             seg_text = seg.get("text", "").strip()
         else:
             continue
-        segments.append({
-            "start": round(start_s * ts_scale, 3),
-            "end": round(end_s * ts_scale, 3),
-            "text": seg_text,
-        })
+        segments.append(
+            TranscriptionSegment(
+                start=round(start_s * ts_scale, 3),
+                end=round(end_s * ts_scale, 3),
+                text=seg_text,
+            )
+        )
 
     elapsed = (time.monotonic() - t0) * 1000
     return TranscriptionResult(
@@ -248,7 +265,7 @@ def transcribe(
 
     if backend is None:
         return TranscriptionResult(
-            text="[whisper not installed — pip install mm[extract]]",
+            text="[whisper not installed — pip install mm[extract] or pip install mm[extract,mlx] for MLX support on Apple Silicon]",
             model_size=model_size,
         )
 

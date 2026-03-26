@@ -19,7 +19,7 @@ def small_tree(tmp_path: Path) -> Path:
     (tmp_path / "docs" / "readme.md").write_text("# Project\n\nA test project.\n")
 
     (tmp_path / "config").mkdir()
-    (tmp_path / "config" / "settings.toml").write_text('[server]\nport = 8080\n')
+    (tmp_path / "config" / "settings.toml").write_text("[server]\nport = 8080\n")
     (tmp_path / "config" / "data.json").write_text('{"key": "value"}\n')
 
     (tmp_path / "README.md").write_text("# Root README\n")
@@ -83,6 +83,7 @@ def mixed_1k_tree(tmp_path: Path) -> Path:
         png_sig = b"\x89PNG\r\n\x1a\n"
         ihdr_data = struct.pack(">IIBBBBB", w, h, 8, 2, 0, 0, 0)
         import zlib
+
         ihdr_crc = zlib.crc32(b"IHDR" + ihdr_data) & 0xFFFFFFFF
         ihdr = struct.pack(">I", 13) + b"IHDR" + ihdr_data + struct.pack(">I", ihdr_crc)
         iend_crc = zlib.crc32(b"IEND") & 0xFFFFFFFF
