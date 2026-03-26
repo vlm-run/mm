@@ -53,7 +53,7 @@ def detect_scenes(
 
     t0 = time.monotonic()
 
-    from scenedetect import ContentDetector, open_video, SceneManager
+    from scenedetect import ContentDetector, SceneManager, open_video
 
     video = open_video(str(video_path))
     scene_manager = SceneManager()

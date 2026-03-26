@@ -4,10 +4,7 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
-from typing import Any, TYPE_CHECKING
-
-if TYPE_CHECKING:
-    pass
+from typing import Any
 
 
 class FileEntry:
@@ -15,6 +12,14 @@ class FileEntry:
 
     def __init__(self, row: dict[str, Any]):
         self._data = row
+
+    @property
+    def kind(self) -> str:
+        return str(self._data["kind"])
+
+    @property
+    def path(self) -> str:
+        return str(self._data["path"])
 
     def __getattr__(self, name: str) -> Any:
         if name.startswith("_"):

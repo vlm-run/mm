@@ -12,6 +12,10 @@ from __future__ import annotations
 import shlex
 from dataclasses import dataclass
 from pathlib import Path
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from mm.context import FileEntry
 
 
 @dataclass
@@ -45,15 +49,15 @@ class BenchCommand:
 # ── Resolution ─────────────────────────────────────────────────────
 
 
-def _pick_file(files: list, kind: str) -> str | None:
+def _pick_file(files: list[FileEntry], kind: str) -> str | None:
     """Pick the first file matching kind."""
     for f in files:
         if f.kind == kind:
-            return str(f.path)
+            return f.path
     return None
 
 
-def _pick_smallest(files: list, kind: str, directory: Path) -> str | None:
+def _pick_smallest(files: list[FileEntry], kind: str, directory: Path) -> str | None:
     """Pick the smallest file of kind (by file size)."""
     candidates = [f for f in files if f.kind == kind]
     if not candidates:
@@ -65,10 +69,10 @@ def _pick_smallest(files: list, kind: str, directory: Path) -> str | None:
             else float("inf")
         )
     )
-    return str(candidates[0].path)
+    return candidates[0].path
 
 
-def _pick_files(files: list, kind: str, limit: int) -> list[str]:
+def _pick_files(files: list[FileEntry], kind: str, limit: int) -> list[str]:
     """Pick up to limit files matching kind."""
     return [f.path for f in files if f.kind == kind][:limit]
 
@@ -112,7 +116,7 @@ _MEDIA_KINDS = frozenset(("video", "audio", "image"))
 def resolve_command(
     cmd: BenchCommand,
     directory: Path,
-    files: list,
+    files: list[FileEntry],
 ) -> tuple[list[str], int, int, MediaInfo] | None:
     """Resolve a command template into (argv, files_count, total_bytes, media_info).
 
