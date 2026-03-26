@@ -25,22 +25,55 @@ File-type behaviour:
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Annotated, Optional
+from typing import TYPE_CHECKING, Annotated, Optional
 
 import typer
 
-from mm.pipe import is_piped_output, read_paths_from_stdin
+from mm.pipe import read_paths_from_stdin
 
-VIDEO_EXTS = frozenset((
-    ".mp4", ".mkv", ".avi", ".mov", ".wmv", ".flv", ".webm",
-    ".m4v", ".mpg", ".mpeg", ".3gp", ".ogv",
-))
-IMAGE_EXTS = frozenset((
-    ".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp", ".tiff", ".svg",
-))
-AUDIO_EXTS = frozenset((
-    ".mp3", ".wav", ".flac", ".aac", ".ogg", ".m4a", ".wma", ".opus",
-))
+if TYPE_CHECKING:
+    from mm.config import Mode
+
+VIDEO_EXTS = frozenset(
+    (
+        ".mp4",
+        ".mkv",
+        ".avi",
+        ".mov",
+        ".wmv",
+        ".flv",
+        ".webm",
+        ".m4v",
+        ".mpg",
+        ".mpeg",
+        ".3gp",
+        ".ogv",
+    )
+)
+IMAGE_EXTS = frozenset(
+    (
+        ".png",
+        ".jpg",
+        ".jpeg",
+        ".gif",
+        ".webp",
+        ".bmp",
+        ".tiff",
+        ".svg",
+    )
+)
+AUDIO_EXTS = frozenset(
+    (
+        ".mp3",
+        ".wav",
+        ".flac",
+        ".aac",
+        ".ogg",
+        ".m4a",
+        ".wma",
+        ".opus",
+    )
+)
 DOCUMENT_EXTS = frozenset((".pdf", ".docx", ".pptx"))
 
 
@@ -57,7 +90,8 @@ def cat_cmd(
         bool, typer.Option("--detail", help="L2: deeper ~80-word description (default is ~20-word)")
     ] = False,
     output_dir: Annotated[
-        Optional[Path], typer.Option("--output-dir", "-o", help="Output directory for mosaics/audio")
+        Optional[Path],
+        typer.Option("--output-dir", "-o", help="Output directory for mosaics/audio"),
     ] = None,
     max_pages: Annotated[
         Optional[int], typer.Option("--max-pages", help="Max PDF pages to render at L2")
@@ -72,7 +106,10 @@ def cat_cmd(
         int, typer.Option("--video-mosaic-count", help="Number of mosaics for video (1-8)")
     ] = 1,
     video_mosaic_strategy: Annotated[
-        str, typer.Option("--video-mosaic-strategy", help="Video frame selection: uniform, keyframe, scene")
+        str,
+        typer.Option(
+            "--video-mosaic-strategy", help="Video frame selection: uniform, keyframe, scene"
+        ),
     ] = "uniform",
     audio_speed: Annotated[
         float, typer.Option("--audio-speed", help="Audio playback speed multiplier")
@@ -140,11 +177,19 @@ def cat_cmd(
     fmt = resolve_format(format)
 
     opts = _CatOpts(
-        level=level, n=n, detail=detail, output_dir=output_dir,
-        max_pages=max_pages, mosaic_tile=mosaic_tile, mosaic_image_width=mosaic_image_width,
-        video_mosaic_count=video_mosaic_count, video_mosaic_strategy=video_mosaic_strategy,
-        audio_speed=audio_speed, audio_sample_rate=audio_sample_rate,
-        mode=mode, format=fmt,
+        level=level,
+        n=n,
+        detail=detail,
+        output_dir=output_dir,
+        max_pages=max_pages,
+        mosaic_tile=mosaic_tile,
+        mosaic_image_width=mosaic_image_width,
+        video_mosaic_count=video_mosaic_count,
+        video_mosaic_strategy=video_mosaic_strategy,
+        audio_speed=audio_speed,
+        audio_sample_rate=audio_sample_rate,
+        mode=mode,
+        format=fmt,
     )
 
     multi_file = len(paths) > 1 or bool(stdin_paths)
@@ -188,13 +233,24 @@ def cat_cmd(
 # Internal types
 # ---------------------------------------------------------------------------
 
+
 class _CatOpts:
     """Bag of resolved options threaded through extraction."""
 
     __slots__ = (
-        "level", "n", "detail", "output_dir", "max_pages",
-        "mosaic_tile", "mosaic_image_width", "video_mosaic_count", "video_mosaic_strategy",
-        "audio_speed", "audio_sample_rate", "mode", "format",
+        "level",
+        "n",
+        "detail",
+        "output_dir",
+        "max_pages",
+        "mosaic_tile",
+        "mosaic_image_width",
+        "video_mosaic_count",
+        "video_mosaic_strategy",
+        "audio_speed",
+        "audio_sample_rate",
+        "mode",
+        "format",
     )
 
     def __init__(self, **kwargs):  # noqa: ANN003
@@ -205,6 +261,7 @@ class _CatOpts:
 # ---------------------------------------------------------------------------
 # Dispatch
 # ---------------------------------------------------------------------------
+
 
 def _file_kind(path: Path) -> str:
     ext = path.suffix.lower()
@@ -238,6 +295,7 @@ def _extract(path: Path, opts: _CatOpts) -> str:
 # ---------------------------------------------------------------------------
 # L1 — structured extraction, <100ms per file
 # ---------------------------------------------------------------------------
+
 
 def _l1(path: Path, kind: str) -> str:
     if kind == "image":
@@ -369,6 +427,7 @@ def _l1_pdf_fallback(path: Path) -> str:
 # L2 — semantic understanding via LLM
 # ---------------------------------------------------------------------------
 
+
 def _l2(path: Path, kind: str, opts: _CatOpts) -> str:
     if kind == "image":
         return _l2_image(path, opts)
@@ -410,25 +469,36 @@ def _l2_video(path: Path, opts: _CatOpts) -> str:
 
         if opts.video_mosaic_strategy == "uniform":
             result = extract_uniform_mosaics(
-                path, out_dir=opts.output_dir, tile_cols=cols, tile_rows=rows,
-                thumb_width=opts.mosaic_image_width, num_mosaics=count,
+                path,
+                out_dir=opts.output_dir,
+                tile_cols=cols,
+                tile_rows=rows,
+                thumb_width=opts.mosaic_image_width,
+                num_mosaics=count,
             )
         elif opts.video_mosaic_strategy == "scene":
             result = extract_scene_mosaics(
-                path, out_dir=opts.output_dir, tile_cols=cols, tile_rows=rows,
-                thumb_width=opts.mosaic_image_width, max_mosaics=count,
+                path,
+                out_dir=opts.output_dir,
+                tile_cols=cols,
+                tile_rows=rows,
+                thumb_width=opts.mosaic_image_width,
+                max_mosaics=count,
             )
         else:
             result = extract_keyframe_mosaics(
-                path, out_dir=opts.output_dir, tile_cols=cols, tile_rows=rows,
-                thumb_width=opts.mosaic_image_width, max_mosaics=count,
+                path,
+                out_dir=opts.output_dir,
+                tile_cols=cols,
+                tile_rows=rows,
+                thumb_width=opts.mosaic_image_width,
+                max_mosaics=count,
             )
 
         if not result.mosaic_paths:
             return f"[No keyframes extracted from {path.name}]"
 
-        llm = LlmBackend()
-        info = llm.describe_video(
+        info = LlmBackend().describe_video(
             result.mosaic_paths,
             video_name=path.name,
             duration_s=result.duration_s,
@@ -451,6 +521,7 @@ def _l2_audio(path: Path, opts: _CatOpts) -> str:
 # L2 Modal — mode-aware extraction (--mode fast|accurate)
 # ---------------------------------------------------------------------------
 
+
 def _l2_modal(path: Path, kind: str, opts: _CatOpts) -> str:
     """Dispatch modal extraction based on file kind and --mode flag."""
     mode = opts.mode or "fast"
@@ -466,11 +537,13 @@ def _l2_modal(path: Path, kind: str, opts: _CatOpts) -> str:
     if kind == "document":
         # Documents use docling at L1; at L2, summarize via LLM
         from mm.llm import LlmBackend
+
         content = _l1(path, kind)
         return LlmBackend().describe(path, content, detail=(mode == "accurate"))
 
     # text/code: summarize
     from mm.llm import LlmBackend
+
     content = _l1(path, kind)
     return LlmBackend().describe(path, content, detail=(mode == "accurate"))
 
@@ -494,14 +567,13 @@ def _l2_image_modal(path: Path, mode: str) -> str:
     return f"{content}\n\n[mode={mode}, {elapsed:.0f}ms, {u.prompt_tokens}→{u.completion_tokens} tokens]"
 
 
-def _l2_video_modal(path: Path, opts: _CatOpts, mode: str) -> str:
+def _l2_video_modal(path: Path, opts: _CatOpts, mode: Mode) -> str:
     """Video extraction with mode-aware mosaic + whisper + LLM pipeline.
 
     fast (<5min):  16 uniform frames, 1 mosaic, whisper tiny @ 2x
     fast (≥5min):  scene detection → 16 shots, 1 mosaic, whisper tiny @ 2x
     accurate:      scene detection → 128 shots, 8 mosaics, whisper medium @ 1x
     """
-    import json as _json
     import shutil
     import time
 
@@ -528,7 +600,7 @@ def _l2_video_modal(path: Path, opts: _CatOpts, mode: str) -> str:
 
     # 2+3. Frame extraction and audio transcription run in parallel —
     #       they are independent and converge only at the LLM call.
-    from concurrent.futures import ThreadPoolExecutor, Future
+    from concurrent.futures import Future, ThreadPoolExecutor
 
     tile_cols, tile_rows = 4, 4
     if mode == "accurate":
@@ -570,21 +642,30 @@ def _l2_video_modal(path: Path, opts: _CatOpts, mode: str) -> str:
                 timestamps = sample_uniform_timestamps(duration, num_frames)
 
             frames = extract_frames_at_timestamps(
-                path, timestamps, thumb_width=thumb_width,
+                path,
+                timestamps,
+                thumb_width=thumb_width,
                 out_dir=opts.output_dir,
             )
             timing["frame_extraction_ms"] = (time.monotonic() - t0) * 1000
 
             t_tile = time.monotonic()
             mosaics = tile_frames_to_mosaics(
-                frames, tile_cols=tile_cols, tile_rows=tile_rows, stem=path.stem,
+                frames,
+                tile_cols=tile_cols,
+                tile_rows=tile_rows,
+                stem=path.stem,
                 out_dir=opts.output_dir,
             )
             timing["mosaic_assembly_ms"] = (time.monotonic() - t_tile) * 1000
         else:
             result = extract_uniform_mosaics(
-                path, out_dir=opts.output_dir, tile_cols=tile_cols, tile_rows=tile_rows,
-                thumb_width=thumb_width, num_mosaics=num_mosaics,
+                path,
+                out_dir=opts.output_dir,
+                tile_cols=tile_cols,
+                tile_rows=tile_rows,
+                thumb_width=thumb_width,
+                num_mosaics=num_mosaics,
             )
             mosaics = result.mosaic_paths
             timing["frame_extraction_ms"] = result.elapsed_ms
@@ -609,10 +690,12 @@ def _l2_video_modal(path: Path, opts: _CatOpts, mode: str) -> str:
     def _extract_audio_transcript() -> str:
         """Extract audio and transcribe with whisper."""
         from mm.whisper import whisper_available
+
         if not whisper_available():
             return ""
 
         from mm.config import get_mode_config
+
         mode_cfg = get_mode_config(mode)
 
         t_audio = time.monotonic()
@@ -620,6 +703,7 @@ def _l2_video_modal(path: Path, opts: _CatOpts, mode: str) -> str:
         timing["audio_extraction_ms"] = (time.monotonic() - t_audio) * 1000
 
         from mm.whisper import transcribe
+
         whisper_result = transcribe(
             audio_result.path,
             model_size=mode_cfg.whisper_model,
@@ -668,12 +752,16 @@ def _l2_video_modal(path: Path, opts: _CatOpts, mode: str) -> str:
     time_keys = {k: v for k, v in timing.items() if k.endswith("_ms") and k != "total_ms"}
     token_keys = {k: v for k, v in timing.items() if "tokens" in k}
     timing_str = " | ".join(f"{k}: {v:.0f}ms" for k, v in time_keys.items())
-    token_str = f" | {int(token_keys.get('vlm_prompt_tokens', 0))}→{int(token_keys.get('vlm_completion_tokens', 0))} tokens" if token_keys else ""
+    token_str = (
+        f" | {int(token_keys.get('vlm_prompt_tokens', 0))}→{int(token_keys.get('vlm_completion_tokens', 0))} tokens"
+        if token_keys
+        else ""
+    )
     parts.append(f"\n[mode={mode}, total={timing['total_ms']:.0f}ms{token_str} | {timing_str}]")
     return "\n".join(parts)
 
 
-def _l2_audio_modal(path: Path, opts: _CatOpts, mode: str) -> str:
+def _l2_audio_modal(path: Path, opts: _CatOpts, mode: Mode) -> str:
     """Audio extraction with transcription.
 
     fast:     2x speed + tiny model + greedy decoding
@@ -688,9 +776,10 @@ def _l2_audio_modal(path: Path, opts: _CatOpts, mode: str) -> str:
         return f"[ffmpeg not found — cannot process {path.name}]"
 
     if not whisper_available():
-        return "[whisper not installed — pip install mm[extract]]"
+        return "[whisper not installed — pip install mm[extract] or pip install mm[extract,mlx] for MLX support on Apple Silicon]"
 
     from mm.config import get_mode_config
+
     mode_cfg = get_mode_config(mode)
 
     timing: dict[str, float] = {}
@@ -745,6 +834,7 @@ def _l2_audio_modal(path: Path, opts: _CatOpts, mode: str) -> str:
 # Display
 # ---------------------------------------------------------------------------
 
+
 def _display_rich(path: Path, content: str, level: int, n: int | None) -> None:
     from rich import box
     from rich.panel import Panel
@@ -771,12 +861,31 @@ def _display_rich(path: Path, content: str, level: int, n: int | None) -> None:
             subtitle.append(f" of {total_lines}", style="dim")
 
     lang_map = {
-        "py": "python", "rs": "rust", "js": "javascript", "ts": "typescript",
-        "tsx": "typescript", "jsx": "javascript", "go": "go", "java": "java",
-        "c": "c", "cpp": "cpp", "h": "c", "hpp": "cpp", "rb": "ruby",
-        "sh": "bash", "bash": "bash", "zsh": "bash", "yaml": "yaml",
-        "yml": "yaml", "toml": "toml", "json": "json", "md": "markdown",
-        "html": "html", "css": "css", "sql": "sql", "xml": "xml",
+        "py": "python",
+        "rs": "rust",
+        "js": "javascript",
+        "ts": "typescript",
+        "tsx": "typescript",
+        "jsx": "javascript",
+        "go": "go",
+        "java": "java",
+        "c": "c",
+        "cpp": "cpp",
+        "h": "c",
+        "hpp": "cpp",
+        "rb": "ruby",
+        "sh": "bash",
+        "bash": "bash",
+        "zsh": "bash",
+        "yaml": "yaml",
+        "yml": "yaml",
+        "toml": "toml",
+        "json": "json",
+        "md": "markdown",
+        "html": "html",
+        "css": "css",
+        "sql": "sql",
+        "xml": "xml",
     }
 
     title = f"[bold]{path}[/bold]"
@@ -787,32 +896,73 @@ def _display_rich(path: Path, content: str, level: int, n: int | None) -> None:
     if ext in lang_map and level == 0:
         syntax = Syntax(content, lang_map[ext], theme="monokai", line_numbers=True)
         output_console.print(
-            Panel(syntax, title=title, title_align="left", subtitle=subtitle, expand=False, border_style="green", box=box.ROUNDED)
+            Panel(
+                syntax,
+                title=title,
+                title_align="left",
+                subtitle=subtitle,
+                expand=False,
+                border_style="green",
+                box=box.ROUNDED,
+            )
         )
     elif kind == "image":
         output_console.print(
-            Panel(safe_content, title=title, title_align="left", subtitle=subtitle, expand=False, border_style="green", box=box.ROUNDED)
+            Panel(
+                safe_content,
+                title=title,
+                title_align="left",
+                subtitle=subtitle,
+                expand=False,
+                border_style="green",
+                box=box.ROUNDED,
+            )
         )
     elif kind == "document":
         line_count = len(content.splitlines())
         if line_count > 0:
             subtitle.append(f"  {line_count} lines", style="dim")
         output_console.print(
-            Panel(safe_content, title=title, title_align="left", subtitle=subtitle, expand=False, border_style="cyan", box=box.ROUNDED)
+            Panel(
+                safe_content,
+                title=title,
+                title_align="left",
+                subtitle=subtitle,
+                expand=False,
+                border_style="cyan",
+                box=box.ROUNDED,
+            )
         )
     elif kind in ("video", "audio"):
         output_console.print(
-            Panel(safe_content, title=title, title_align="left", subtitle=subtitle, expand=False, border_style="magenta", box=box.ROUNDED)
+            Panel(
+                safe_content,
+                title=title,
+                title_align="left",
+                subtitle=subtitle,
+                expand=False,
+                border_style="magenta",
+                box=box.ROUNDED,
+            )
         )
     else:
         output_console.print(
-            Panel(safe_content, title=title, title_align="left", subtitle=subtitle, expand=False, border_style="blue", box=box.ROUNDED)
+            Panel(
+                safe_content,
+                title=title,
+                title_align="left",
+                subtitle=subtitle,
+                expand=False,
+                border_style="blue",
+                box=box.ROUNDED,
+            )
         )
 
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _parse_tile(tile: str) -> tuple[int, int]:
     parts = tile.lower().split("x")
