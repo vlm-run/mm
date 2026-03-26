@@ -20,7 +20,7 @@ import os
 import platform
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
+from typing import Any, Dict, Literal, cast
 
 try:
     import tomllib
@@ -65,17 +65,22 @@ ENV_VARS = {
 }
 
 
+WhisperModel = Literal["tiny", "medium"]  # can extend with more sizes if needed
+
+
 @dataclass
 class ModeConfig:
     """Per-mode extraction settings."""
 
-    whisper_model: str = ""
+    whisper_model: WhisperModel = "tiny"
     audio_speed: float = 0.0  # 0 = not set, use default
-    beam_size: int = 0        # 0 = not set, use default
+    beam_size: int = 0  # 0 = not set, use default
 
+
+Mode = Literal["fast", "accurate"]
 
 # Platform-aware mode defaults
-_MODE_DEFAULTS: dict[str, ModeConfig] = {
+_MODE_DEFAULTS: Dict[Mode, ModeConfig] = {
     "fast": ModeConfig(whisper_model="tiny", audio_speed=2.0, beam_size=1),
     "accurate": ModeConfig(whisper_model="medium", audio_speed=1.0, beam_size=5),
 }
@@ -93,8 +98,8 @@ class VlmctxConfig:
     """Full resolved configuration."""
 
     provider: ProviderConfig = field(default_factory=ProviderConfig)
-    mode_fast: ModeConfig = field(default_factory=lambda: ModeConfig(whisper_model="tiny", audio_speed=2.0, beam_size=1))
-    mode_accurate: ModeConfig = field(default_factory=lambda: ModeConfig(whisper_model="medium", audio_speed=1.0, beam_size=5))
+    mode_fast: ModeConfig = field(default_factory=lambda: _MODE_DEFAULTS["fast"])
+    mode_accurate: ModeConfig = field(default_factory=lambda: _MODE_DEFAULTS["accurate"])
 
 
 # ── Template ────────────────────────────────────────────────────────
@@ -170,6 +175,7 @@ def _platform_defaults() -> dict[str, str]:
 
 # ── CLI overrides ───────────────────────────────────────────────────
 
+
 @dataclass
 class _CliOverrides:
     """Mutable store for CLI-level --base-url / --api-key / --model flags."""
@@ -194,14 +200,14 @@ def set_cli_overrides(
 
 # ── File reading ────────────────────────────────────────────────────
 
+
 def _read_config_file() -> dict[str, Any]:
-    path = _find_config_path()
-    if not path.exists():
-        return {}
     try:
-        return tomllib.loads(path.read_text())
+        if (path := _find_config_path()) and path.exists():
+            return tomllib.loads(path.read_text())
     except Exception:
-        return {}
+        pass
+    return {}
 
 
 def _resolve(key: str, file_cfg: dict[str, Any]) -> tuple[str, str]:
@@ -218,6 +224,7 @@ def _resolve(key: str, file_cfg: dict[str, Any]) -> tuple[str, str]:
 
 # ── Public API ──────────────────────────────────────────────────────
 
+
 def get_provider() -> ProviderConfig:
     """Resolve provider settings: CLI flags > env vars > config.toml > defaults."""
     file_cfg = _read_config_file().get("provider", {})
@@ -228,7 +235,7 @@ def get_provider() -> ProviderConfig:
     )
 
 
-def get_mode_config(mode: str) -> ModeConfig:
+def get_mode_config(mode: Mode) -> ModeConfig:
     """Resolve mode-specific settings from config file, falling back to defaults.
 
     Args:
@@ -242,7 +249,7 @@ def get_mode_config(mode: str) -> ModeConfig:
     defaults = _MODE_DEFAULTS.get(mode, ModeConfig())
 
     return ModeConfig(
-        whisper_model=str(mode_section.get("whisper_model", defaults.whisper_model)),
+        whisper_model=cast(WhisperModel, mode_section.get("whisper_model", defaults.whisper_model)),
         audio_speed=float(mode_section.get("audio_speed", defaults.audio_speed)),
         beam_size=int(mode_section.get("beam_size", defaults.beam_size)),
     )
@@ -270,10 +277,12 @@ def get_provider_with_sources() -> list[tuple[str, str, str, str]]:
 
 # ── Write / update ──────────────────────────────────────────────────
 
+
 def write_config(base_url: str, api_key: str, model: str) -> Path:
     """Write config.toml and return path. Uses legacy format for backward compat."""
     CONFIG_DIR.mkdir(parents=True, exist_ok=True)
     content = TEMPLATE.format(base_url=base_url, api_key=api_key, model=model)
+
     path = _find_config_path()
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(content)
