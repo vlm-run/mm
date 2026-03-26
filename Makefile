@@ -26,6 +26,13 @@ lint:
 	uv run ruff check python/
 	uv run mypy python/mm/
 
+lint-rust:
+	cargo clippy --workspace -- -D warnings
+
+lint-python:
+	uv run ruff check python/
+	uv run mypy python/mm/
+
 fmt:
 	cargo fmt --all
 	uv run ruff format python/

@@ -19,7 +19,15 @@ on:
       - "Cargo.toml"
 
 jobs:
-  test:
+  test-rust:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - run: make lint-rust
+      - run: make test-rust
+
+  test-python:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -28,8 +36,7 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Install uv
-        uses: astral-sh/setup-uv@v4
+      - uses: astral-sh/setup-uv@v4
 
       - name: Install dependencies and build Rust extension
         run: |
@@ -37,8 +44,7 @@ jobs:
           uv pip install -e ".[dev,extract]"
           uv run maturin develop --release
 
-      - run: make lint
-      - run: make test-rust
+      - run: make lint-python
       - run: make test-python
 
   benchmark:
@@ -46,5 +52,4 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
-      - name: Run benchmarks
-        run: make bench
+      - run: make bench
