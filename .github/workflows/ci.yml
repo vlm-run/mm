@@ -35,7 +35,6 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-
       - uses: astral-sh/setup-uv@v4
 
       - name: Install dependencies and build Rust extension
@@ -48,8 +47,33 @@ jobs:
       - run: make test-python
 
   benchmark:
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
-      - run: make bench
+
+      - name: Run Criterion benchmarks
+        id: bench
+        run: |
+          cargo bench --workspace 2>&1 | tee bench_output.txt
+          {
+            echo "body<<BENCH_EOF"
+            cat bench_output.txt
+            echo "BENCH_EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Post benchmark results to PR
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          header: benchmark
+          message: |
+            ## Benchmark Results (Criterion)
+            <details>
+            <summary>Click to expand</summary>
+            ```
+            ${{ steps.bench.outputs.body }}
+            ```
+            </details>
