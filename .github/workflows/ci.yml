@@ -1,0 +1,55 @@
+name: CI
+
+on:
+  pull_request:
+    paths:
+      - "python/mm/**"
+      - "tests/python/**"
+      - "pyproject.toml"
+      - "crates/**"
+      - "Cargo.toml"
+      - ".github/workflows/ci.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "python/mm/**"
+      - "pyproject.toml"
+      - "crates/**"
+      - "Cargo.toml"
+
+jobs:
+  test-rust:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - run: make lint-rust
+      - run: make test-rust
+
+  test-python:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - uses: astral-sh/setup-uv@v4
+
+      - name: Install dependencies and build Rust extension
+        run: |
+          uv venv --python 3.12
+          uv pip install -e ".[dev,extract]"
+          uv run maturin develop --release
+
+      - run: make lint-python
+      - run: make test-python
+
+  benchmark:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - run: make bench

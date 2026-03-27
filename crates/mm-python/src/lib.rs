@@ -87,7 +87,9 @@ impl Scanner {
         descending: bool,
     ) -> PyResult<String> {
         if self.entries.is_empty() {
-            return Err(pyo3::exceptions::PyRuntimeError::new_err("Call scan() first"));
+            return Err(pyo3::exceptions::PyRuntimeError::new_err(
+                "Call scan() first",
+            ));
         }
         Ok(mm_core::entries_to_json_filtered(
             &self.entries,
@@ -147,7 +149,9 @@ impl Scanner {
         descending: bool,
     ) -> PyResult<String> {
         if self.entries.is_empty() {
-            return Err(pyo3::exceptions::PyRuntimeError::new_err("Call scan() first"));
+            return Err(pyo3::exceptions::PyRuntimeError::new_err(
+                "Call scan() first",
+            ));
         }
         Ok(mm_core::format::entries_to_lines_filtered(
             &self.entries,

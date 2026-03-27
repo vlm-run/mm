@@ -12,6 +12,10 @@ from __future__ import annotations
 import shlex
 from dataclasses import dataclass
 from pathlib import Path
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from mm.context import FileEntry
 
 
 @dataclass
@@ -45,7 +49,7 @@ class BenchCommand:
 # ── Resolution ─────────────────────────────────────────────────────
 
 
-def _pick_file(files: list, kind: str) -> str | None:
+def _pick_file(files: list[FileEntry], kind: str) -> str | None:
     """Pick the first file matching kind."""
     for f in files:
         if f.kind == kind:
@@ -53,20 +57,22 @@ def _pick_file(files: list, kind: str) -> str | None:
     return None
 
 
-def _pick_smallest(files: list, kind: str, directory: Path) -> str | None:
+def _pick_smallest(files: list[FileEntry], kind: str, directory: Path) -> str | None:
     """Pick the smallest file of kind (by file size)."""
     candidates = [f for f in files if f.kind == kind]
     if not candidates:
         return None
     candidates.sort(
-        key=lambda f: (directory.resolve() / f.path).stat().st_size
-        if (directory.resolve() / f.path).exists()
-        else float("inf")
+        key=lambda f: (
+            (directory.resolve() / f.path).stat().st_size
+            if (directory.resolve() / f.path).exists()
+            else float("inf")
+        )
     )
     return candidates[0].path
 
 
-def _pick_files(files: list, kind: str, limit: int) -> list[str]:
+def _pick_files(files: list[FileEntry], kind: str, limit: int) -> list[str]:
     """Pick up to limit files matching kind."""
     return [f.path for f in files if f.kind == kind][:limit]
 
@@ -74,6 +80,7 @@ def _pick_files(files: list, kind: str, limit: int) -> list[str]:
 @dataclass
 class MediaInfo:
     """Media properties extracted via L1 for throughput calculations."""
+
     duration_s: float = 0.0
     width: int = 0
     height: int = 0
@@ -84,6 +91,7 @@ def _get_media_info(directory: Path, rel_path: str) -> MediaInfo:
     """Get media properties via Rust L1 extraction."""
     try:
         from mm._mm import Scanner
+
         scanner = Scanner(str(directory.resolve()))
         scanner.scan()
         r = scanner.extract_l1(rel_path)
@@ -108,7 +116,7 @@ _MEDIA_KINDS = frozenset(("video", "audio", "image"))
 def resolve_command(
     cmd: BenchCommand,
     directory: Path,
-    files: list,
+    files: list[FileEntry],
 ) -> tuple[list[str], int, int, MediaInfo] | None:
     """Resolve a command template into (argv, files_count, total_bytes, media_info).
 
@@ -143,7 +151,11 @@ def resolve_command(
             abs_path = str(directory.resolve() / picked_one)
             template = template.replace("{file}", shlex.quote(abs_path))
             count = 1
-            total = (directory.resolve() / picked_one).stat().st_size if (directory.resolve() / picked_one).exists() else 0
+            total = (
+                (directory.resolve() / picked_one).stat().st_size
+                if (directory.resolve() / picked_one).exists()
+                else 0
+            )
             if cmd.requires_kind in _MEDIA_KINDS:
                 media = _get_media_info(directory, picked_one)
         else:
@@ -170,75 +182,147 @@ def resolve_command(
 # ── Command registries ──────────────────────────────────────────────
 
 L0_COMMANDS: list[BenchCommand] = [
-    BenchCommand("mm find .", "L0",
-                 "mm find {dir} --format json"),
-    BenchCommand("mm find . (table)", "L0",
-                 "mm find {dir} --format tsv"),
-    BenchCommand("mm wc .", "L0",
-                 "mm wc {dir} --format json"),
-    BenchCommand("mm sql 'GROUP BY kind'", "L0",
-                 "mm sql 'SELECT kind, COUNT(*) as n FROM files GROUP BY kind' --dir {dir} --format json"),
-    BenchCommand("mm sql 'SUM(size) BY kind'", "L0",
-                 "mm sql 'SELECT kind, COUNT(*) as n, SUM(size) as total_bytes, ROUND(AVG(size)) as avg_bytes FROM files GROUP BY kind ORDER BY total_bytes DESC' --dir {dir} --format json"),
-    BenchCommand("mm sql 'TOP 10 largest'", "L0",
-                 "mm sql 'SELECT name, kind, size FROM files ORDER BY size DESC LIMIT 10' --dir {dir} --format json"),
-    BenchCommand("mm sql 'GROUP BY ext'", "L0",
-                 "mm sql 'SELECT ext, COUNT(*) as n, SUM(size) as total_bytes FROM files GROUP BY ext ORDER BY n DESC' --dir {dir} --format json"),
-    BenchCommand("mm find --kind image", "L0",
-                 "mm find {dir} --kind image --format json"),
-    BenchCommand("mm find --kind audio", "L0",
-                 "mm find {dir} --kind audio --format json",
-                 requires_kind="audio", skip_reason="no audio files"),
-    BenchCommand("mm find --kind document", "L0",
-                 "mm find {dir} --kind document --format json",
-                 requires_kind="document", skip_reason="no document files"),
+    BenchCommand("mm find .", "L0", "mm find {dir} --format json"),
+    BenchCommand("mm find . (table)", "L0", "mm find {dir} --format tsv"),
+    BenchCommand("mm wc .", "L0", "mm wc {dir} --format json"),
+    BenchCommand(
+        "mm sql 'GROUP BY kind'",
+        "L0",
+        "mm sql 'SELECT kind, COUNT(*) as n FROM files GROUP BY kind' --dir {dir} --format json",
+    ),
+    BenchCommand(
+        "mm sql 'SUM(size) BY kind'",
+        "L0",
+        "mm sql 'SELECT kind, COUNT(*) as n, SUM(size) as total_bytes, ROUND(AVG(size)) as avg_bytes FROM files GROUP BY kind ORDER BY total_bytes DESC' --dir {dir} --format json",
+    ),
+    BenchCommand(
+        "mm sql 'TOP 10 largest'",
+        "L0",
+        "mm sql 'SELECT name, kind, size FROM files ORDER BY size DESC LIMIT 10' --dir {dir} --format json",
+    ),
+    BenchCommand(
+        "mm sql 'GROUP BY ext'",
+        "L0",
+        "mm sql 'SELECT ext, COUNT(*) as n, SUM(size) as total_bytes FROM files GROUP BY ext ORDER BY n DESC' --dir {dir} --format json",
+    ),
+    BenchCommand("mm find --kind image", "L0", "mm find {dir} --kind image --format json"),
+    BenchCommand(
+        "mm find --kind audio",
+        "L0",
+        "mm find {dir} --kind audio --format json",
+        requires_kind="audio",
+        skip_reason="no audio files",
+    ),
+    BenchCommand(
+        "mm find --kind document",
+        "L0",
+        "mm find {dir} --kind document --format json",
+        requires_kind="document",
+        skip_reason="no document files",
+    ),
 ]
 
 L1_COMMANDS: list[BenchCommand] = [
-    BenchCommand("mm cat <code> (x20)", "L1",
-                 "mm cat {files} --format json",
-                 requires_kind="code", batch=20, skip_reason="no code files"),
-    BenchCommand("mm cat <image>", "L1",
-                 "mm cat {file} --format json",
-                 requires_kind="image", skip_reason="no image files"),
-    BenchCommand("mm cat <image> (x20)", "L1",
-                 "mm cat {files} --format json",
-                 requires_kind="image", batch=20, skip_reason="no image files"),
-    BenchCommand("mm cat <audio>", "L1",
-                 "mm cat {file} --format json",
-                 requires_kind="audio", skip_reason="no audio files"),
-    BenchCommand("mm cat <video>", "L1",
-                 "mm cat {file} --format json",
-                 requires_kind="video", skip_reason="no video files"),
-    BenchCommand("mm cat <pdf>", "L1",
-                 "mm cat {file} --format json",
-                 requires_kind="document", skip_reason="no PDF files"),
-    BenchCommand("mm cat <pdf> (x10)", "L1",
-                 "mm cat {files} --format json",
-                 requires_kind="document", batch=10, skip_reason="no PDF files"),
-    BenchCommand("mm grep /pattern/", "L1",
-                 "mm grep 'import|include|require' {dir} --format json"),
+    BenchCommand(
+        "mm cat <code> (x20)",
+        "L1",
+        "mm cat {files} --format json",
+        requires_kind="code",
+        batch=20,
+        skip_reason="no code files",
+    ),
+    BenchCommand(
+        "mm cat <image>",
+        "L1",
+        "mm cat {file} --format json",
+        requires_kind="image",
+        skip_reason="no image files",
+    ),
+    BenchCommand(
+        "mm cat <image> (x20)",
+        "L1",
+        "mm cat {files} --format json",
+        requires_kind="image",
+        batch=20,
+        skip_reason="no image files",
+    ),
+    BenchCommand(
+        "mm cat <audio>",
+        "L1",
+        "mm cat {file} --format json",
+        requires_kind="audio",
+        skip_reason="no audio files",
+    ),
+    BenchCommand(
+        "mm cat <video>",
+        "L1",
+        "mm cat {file} --format json",
+        requires_kind="video",
+        skip_reason="no video files",
+    ),
+    BenchCommand(
+        "mm cat <pdf>",
+        "L1",
+        "mm cat {file} --format json",
+        requires_kind="document",
+        skip_reason="no PDF files",
+    ),
+    BenchCommand(
+        "mm cat <pdf> (x10)",
+        "L1",
+        "mm cat {files} --format json",
+        requires_kind="document",
+        batch=10,
+        skip_reason="no PDF files",
+    ),
+    BenchCommand("mm grep /pattern/", "L1", "mm grep 'import|include|require' {dir} --format json"),
 ]
 
 L2_COMMANDS: list[BenchCommand] = [
-    BenchCommand("mm cat <image> -l2 --mode fast", "L2",
-                 "mm cat {file} -l 2 --mode fast --format json",
-                 requires_kind="image", skip_reason="no image files"),
-    BenchCommand("mm cat <image> -l2 --mode accurate", "L2",
-                 "mm cat {file} -l 2 --mode accurate --format json",
-                 requires_kind="image", skip_reason="no image files"),
-    BenchCommand("mm cat <audio> -l2 --mode fast", "L2",
-                 "mm cat {file} -l 2 --mode fast --format json",
-                 requires_kind="audio", smallest=True, skip_reason="no audio files"),
-    BenchCommand("mm cat <audio> -l2 --mode accurate", "L2",
-                 "mm cat {file} -l 2 --mode accurate --format json",
-                 requires_kind="audio", smallest=True, skip_reason="no audio files"),
-    BenchCommand("mm cat <video> -l2 --mode fast", "L2",
-                 "mm cat {file} -l 2 --mode fast --format json",
-                 requires_kind="video", skip_reason="no video files"),
-    BenchCommand("mm cat <video> -l2 --mode accurate", "L2",
-                 "mm cat {file} -l 2 --mode accurate --format json",
-                 requires_kind="video", skip_reason="no video files"),
+    BenchCommand(
+        "mm cat <image> -l2 --mode fast",
+        "L2",
+        "mm cat {file} -l 2 --mode fast --format json",
+        requires_kind="image",
+        skip_reason="no image files",
+    ),
+    BenchCommand(
+        "mm cat <image> -l2 --mode accurate",
+        "L2",
+        "mm cat {file} -l 2 --mode accurate --format json",
+        requires_kind="image",
+        skip_reason="no image files",
+    ),
+    BenchCommand(
+        "mm cat <audio> -l2 --mode fast",
+        "L2",
+        "mm cat {file} -l 2 --mode fast --format json",
+        requires_kind="audio",
+        smallest=True,
+        skip_reason="no audio files",
+    ),
+    BenchCommand(
+        "mm cat <audio> -l2 --mode accurate",
+        "L2",
+        "mm cat {file} -l 2 --mode accurate --format json",
+        requires_kind="audio",
+        smallest=True,
+        skip_reason="no audio files",
+    ),
+    BenchCommand(
+        "mm cat <video> -l2 --mode fast",
+        "L2",
+        "mm cat {file} -l 2 --mode fast --format json",
+        requires_kind="video",
+        skip_reason="no video files",
+    ),
+    BenchCommand(
+        "mm cat <video> -l2 --mode accurate",
+        "L2",
+        "mm cat {file} -l 2 --mode accurate --format json",
+        requires_kind="video",
+        skip_reason="no video files",
+    ),
 ]
 
 ALL_COMMANDS: list[BenchCommand] = L0_COMMANDS + L1_COMMANDS + L2_COMMANDS

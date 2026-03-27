@@ -118,7 +118,7 @@ def _has_media_dimensions(table) -> bool:
     if "width" not in table.column_names:
         return False
     col = table.column("width")
-    return col.null_count < col.length()
+    return bool(col.null_count < col.length())
 
 
 def _find_table(
@@ -147,7 +147,7 @@ def _find_table(
         min_bytes = _parse_size(min_size) if min_size else None
         max_bytes = _parse_size(max_size) if max_size else None
 
-        filter_args = dict(
+        filter_args: dict = dict(
             kind=kind,
             ext=ext,
             min_size=min_bytes,
@@ -159,6 +159,7 @@ def _find_table(
 
         if fmt == "json":
             from mm.display import json_dumps
+
             print(json_dumps(json_mod.loads(scanner.to_json_fast(**filter_args))))
         else:
             entries = json_mod.loads(scanner.to_json_fast(**filter_args))
@@ -178,15 +179,18 @@ def _find_table(
 
     if stdin_paths:
         from mm.duck import query_arrow_table
+
         path_list = ", ".join(f"'{p}'" for p in stdin_paths)
         table = query_arrow_table(table, f"SELECT * FROM files WHERE path IN ({path_list})")
 
     if depth is not None:
         from mm.duck import query_arrow_table
+
         table = query_arrow_table(table, f"SELECT * FROM files WHERE depth <= {depth}")
 
     if sort:
         from mm.duck import query_arrow_table
+
         order = "DESC" if reverse else "ASC"
         table = query_arrow_table(table, f"SELECT * FROM files ORDER BY {sort} {order}")
 
@@ -194,6 +198,7 @@ def _find_table(
 
     if fmt == "json":
         from mm.display import json_dumps
+
         display_cols = cols or table.column_names
         n = table.num_rows if limit is None else min(limit, table.num_rows)
         rows = [{c: table.column(c)[i].as_py() for c in display_cols} for i in range(n)]
@@ -201,6 +206,7 @@ def _find_table(
     elif fmt in ("tsv", "csv"):
         import csv
         import io
+
         display_cols = cols or table.column_names
         buf = io.StringIO()
         sep = "\t" if fmt == "tsv" else ","
@@ -212,6 +218,7 @@ def _find_table(
         print(buf.getvalue(), end="")
     else:
         from mm.display import arrow_table_to_rich, output_console
+
         default_cols = ["name", "kind", "size", "ext"]
         if not cols and _has_media_dimensions(table):
             default_cols = ["name", "kind", "size", "width", "height", "ext"]
@@ -293,7 +300,9 @@ def _render_plain_tree(node, prefix, lines, depth, max_depth, show_size, format_
             fc, fs = _count_subtree(data)
             suffix = f"  ({fc:,} files, {format_size(fs)})" if show_size else f"  ({fc:,} files)"
             lines.append(f"{prefix}{connector}{name}/{suffix}")
-            _render_plain_tree(data, next_prefix, lines, depth + 1, max_depth, show_size, format_size)
+            _render_plain_tree(
+                data, next_prefix, lines, depth + 1, max_depth, show_size, format_size
+            )
         else:
             suffix = f"  [{format_size(data['size'])}]" if show_size and data else ""
             lines.append(f"{prefix}{connector}{name}{suffix}")
@@ -327,6 +336,7 @@ def _find_tree(
 
     if fmt == "json":
         from mm.display import json_dumps
+
         print(json_dumps(_tree_to_json(tree_data, str(directory))))
         return
 
@@ -337,7 +347,15 @@ def _find_tree(
     if fmt in ("tsv", "csv", "text"):
         header = f"{directory}  ({total_files:,} files, {format_size(total_bytes)})"
         lines: list[str] = [header]
-        _render_plain_tree(tree_data, "", lines, 0, effective_depth, show_size=show_size, format_size=format_size)
+        _render_plain_tree(
+            tree_data,
+            "",
+            lines,
+            0,
+            effective_depth,
+            show_size=show_size,
+            format_size=format_size,
+        )
         print("\n".join(lines))
     else:
         from rich.text import Text
@@ -352,7 +370,14 @@ def _find_tree(
         root_label.append(f"{directory}", style="bold")
         root_label.append(f"  {total_files:,} files, {format_size(total_bytes)}", style="dim")
         rich_tree = Tree(root_label)
-        _add_to_rich_tree(tree_data, rich_tree, 0, effective_depth, show_size=show_size, format_size=format_size)
+        _add_to_rich_tree(
+            tree_data,
+            rich_tree,
+            0,
+            effective_depth,
+            show_size=show_size,
+            format_size=format_size,
+        )
         output_console.print(rich_tree)
         if effective_depth is not None and depth is None:
             output_console.print(
@@ -390,13 +415,16 @@ def _find_schema(directory: Path, fmt: str) -> None:
 
     if fmt == "json":
         from mm.display import json_dumps
+
         info = []
         for field in table.schema:
-            info.append({
-                "column": field.name,
-                "type": str(field.type),
-                "description": _desc_with_example(field.name, table),
-            })
+            info.append(
+                {
+                    "column": field.name,
+                    "type": str(field.type),
+                    "description": _desc_with_example(field.name, table),
+                }
+            )
         print(json_dumps(info))
         return
 
@@ -407,15 +435,19 @@ def _find_schema(directory: Path, fmt: str) -> None:
             print(f"{field.name}{sep}{field.type}{sep}{_desc_with_example(field.name, table)}")
         return
 
-    from rich.table import Table as RichTable
     from rich import box
+    from rich.table import Table as RichTable
+
     from mm.display import output_console
 
     rich_table = RichTable(
         caption=f"{table.num_rows} rows",
         caption_style="dim",
         caption_justify="right",
-        show_lines=True, padding=(0, 1), border_style="dim", header_style="bold white",
+        show_lines=True,
+        padding=(0, 1),
+        border_style="dim",
+        header_style="bold white",
         box=box.ROUNDED,
     )
     rich_table.add_column("column", style="bold cyan", no_wrap=True)

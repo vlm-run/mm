@@ -37,8 +37,16 @@ def show(
         data = {
             "provider": {r[0]: {"value": r[1], "source": r[2]} for r in rows},
             "mode": {
-                "fast": {"whisper_model": cfg.mode_fast.whisper_model, "audio_speed": cfg.mode_fast.audio_speed, "beam_size": cfg.mode_fast.beam_size},
-                "accurate": {"whisper_model": cfg.mode_accurate.whisper_model, "audio_speed": cfg.mode_accurate.audio_speed, "beam_size": cfg.mode_accurate.beam_size},
+                "fast": {
+                    "whisper_model": cfg.mode_fast.whisper_model,
+                    "audio_speed": cfg.mode_fast.audio_speed,
+                    "beam_size": cfg.mode_fast.beam_size,
+                },
+                "accurate": {
+                    "whisper_model": cfg.mode_accurate.whisper_model,
+                    "audio_speed": cfg.mode_accurate.audio_speed,
+                    "beam_size": cfg.mode_accurate.beam_size,
+                },
             },
         }
         print(json_dumps(data))
@@ -76,7 +84,10 @@ def show(
         caption=str(config_path) if config_path else None,
         caption_style="dim",
         caption_justify="right",
-        show_lines=False, padding=(0, 1), border_style="dim", header_style="bold white",
+        show_lines=False,
+        padding=(0, 1),
+        border_style="dim",
+        header_style="bold white",
         box=box.ROUNDED,
     )
     tbl.add_column("key", style="bold")
@@ -93,7 +104,10 @@ def show(
     # Mode settings
     mode_tbl = Table(
         title="[bold]Extraction Modes",
-        show_lines=False, padding=(0, 1), border_style="dim", header_style="bold white",
+        show_lines=False,
+        padding=(0, 1),
+        border_style="dim",
+        header_style="bold white",
         box=box.ROUNDED,
     )
     mode_tbl.add_column("mode", style="bold")
@@ -101,8 +115,18 @@ def show(
     mode_tbl.add_column("audio_speed", justify="right")
     mode_tbl.add_column("beam_size", justify="right")
 
-    mode_tbl.add_row("fast", cfg.mode_fast.whisper_model, str(cfg.mode_fast.audio_speed), str(cfg.mode_fast.beam_size))
-    mode_tbl.add_row("accurate", cfg.mode_accurate.whisper_model, str(cfg.mode_accurate.audio_speed), str(cfg.mode_accurate.beam_size))
+    mode_tbl.add_row(
+        "fast",
+        cfg.mode_fast.whisper_model,
+        str(cfg.mode_fast.audio_speed),
+        str(cfg.mode_fast.beam_size),
+    )
+    mode_tbl.add_row(
+        "accurate",
+        cfg.mode_accurate.whisper_model,
+        str(cfg.mode_accurate.audio_speed),
+        str(cfg.mode_accurate.beam_size),
+    )
     output_console.print(mode_tbl)
 
 
@@ -116,7 +140,7 @@ def init(
     macOS:  Ollama + qwen3.5:0.8b
     Linux:  vLLM + Qwen/Qwen3.5-0.8B (placeholder)
     """
-    from mm.config import CONFIG_PATH_XDG, _find_config_path, write_platform_config
+    from mm.config import _find_config_path, write_platform_config
     from mm.display import output_console
 
     existing = _find_config_path()
@@ -131,7 +155,9 @@ def init(
 
 @config_app.command("set")
 def set_key(
-    key: Annotated[str, typer.Argument(help="Key to set (e.g. base_url, model, mode.fast.whisper_model)")],
+    key: Annotated[
+        str, typer.Argument(help="Key to set (e.g. base_url, model, mode.fast.whisper_model)")
+    ],
     value: Annotated[str, typer.Argument(help="Value to set")],
 ) -> None:
     """Set a config value.
@@ -148,15 +174,21 @@ def set_key(
       mm config set mode.accurate.whisper_model medium
       mm config set mode.accurate.audio_speed 1.0
     """
-    from mm.config import DEFAULTS, _find_config_path, _read_config_file
+    from mm.config import DEFAULTS
     from mm.display import output_console
 
     # Parse dotted keys for mode settings
     if key.startswith("mode."):
         parts = key.split(".")
-        if len(parts) != 3 or parts[1] not in ("fast", "accurate") or parts[2] not in ("whisper_model", "audio_speed", "beam_size"):
+        if (
+            len(parts) != 3
+            or parts[1] not in ("fast", "accurate")
+            or parts[2] not in ("whisper_model", "audio_speed", "beam_size")
+        ):
             output_console.print(f"[red]Unknown key:[/red] {key}")
-            output_console.print("[dim]Valid mode keys: mode.{fast,accurate}.{whisper_model,audio_speed,beam_size}[/dim]")
+            output_console.print(
+                "[dim]Valid mode keys: mode.{fast,accurate}.{whisper_model,audio_speed,beam_size}[/dim]"
+            )
             raise typer.Exit(1)
 
         path = _update_mode_key(parts[1], parts[2], value)
@@ -168,24 +200,21 @@ def set_key(
     valid_keys = set(DEFAULTS.keys())
     if key not in valid_keys:
         output_console.print(f"[red]Unknown key:[/red] {key}")
-        output_console.print(f"[dim]Valid keys: {', '.join(sorted(valid_keys))}, mode.fast.*, mode.accurate.*[/dim]")
+        output_console.print(
+            f"[dim]Valid keys: {', '.join(sorted(valid_keys))}, mode.fast.*, mode.accurate.*[/dim]"
+        )
         raise typer.Exit(1)
 
     from mm.config import update_config
 
-    path = update_config(key, value)
+    cfg_path = update_config(key, value)
     display_val = "••••" if key == "api_key" else value
-    output_console.print(f"[green]Set[/green] {key} = {display_val}  [dim]({path})[/dim]")
+    output_console.print(f"[green]Set[/green] {key} = {display_val}  [dim]({cfg_path})[/dim]")
 
 
 def _update_mode_key(mode: str, key: str, value: str) -> str:
     """Update a mode-specific key in the config file."""
     from mm.config import _find_config_path, _read_config_file
-
-    try:
-        import tomllib
-    except ModuleNotFoundError:
-        import tomli as tomllib  # type: ignore[no-redef]
 
     path = _find_config_path()
     file_data = _read_config_file()

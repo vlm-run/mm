@@ -1,0 +1,20 @@
+{
+  "[python]": {
+    "editor.formatOnSave": true,
+    "editor.defaultFormatter": "charliermarsh.ruff",
+    "editor.codeActionsOnSave": {
+      "source.fixAll.ruff": "explicit",
+      "source.organizeImports.ruff": "explicit"
+    }
+  },
+  "python.analysis.typeCheckingMode": "basic",
+  "python.analysis.extraPaths": ["python"],
+  "python.testing.pytestEnabled": true,
+  "python.testing.unittestEnabled": false,
+  "python.testing.pytestArgs": ["tests/python"],
+  "python.envFile": "${workspaceFolder}/.env",
+  "[rust]": {
+    "editor.formatOnSave": true
+  },
+  "editor.formatOnSaveMode": "file"
+}

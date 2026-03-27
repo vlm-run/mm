@@ -26,9 +26,15 @@ mm = "mm.cli:app"
 
 [project.optional-dependencies]
 extract = [
+    "torch>=2.0",
     "faster-whisper>=1.0",
     "scenedetect[opencv]>=0.6",
     "docling>=2.0",
+    "ctranslate2>=2.0",
+]
+mlx = [
+    "mlx>=0.31.1",
+    "lightning-whisper-mlx>=0.0.10",
 ]
 dev = [
     "pytest>=8.0",
@@ -55,3 +61,7 @@ line-length = 100
 python_version = "3.10"
 warn_return_any = true
 warn_unused_configs = true
+ignore_missing_imports = true
+
+[tool.pyright]
+reportMissingImports = "none"
