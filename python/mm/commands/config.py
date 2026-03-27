@@ -207,9 +207,9 @@ def set_key(
 
     from mm.config import update_config
 
-    path = update_config(key, value)
+    cfg_path = update_config(key, value)
     display_val = "••••" if key == "api_key" else value
-    output_console.print(f"[green]Set[/green] {key} = {display_val}  [dim]({path})[/dim]")
+    output_console.print(f"[green]Set[/green] {key} = {display_val}  [dim]({cfg_path})[/dim]")
 
 
 def _update_mode_key(mode: str, key: str, value: str) -> str:

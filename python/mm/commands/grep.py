@@ -19,7 +19,9 @@ def grep_cmd(
         Optional[str], typer.Option("--ext", "-e", help="Filter by extension(s)")
     ] = None,
     context_lines: Annotated[int, typer.Option("-C", help="Context lines around match")] = 0,
-    count: Annotated[bool, typer.Option("--count", "-c", help="Show only match counts per file")] = False,
+    count: Annotated[
+        bool, typer.Option("--count", "-c", help="Show only match counts per file")
+    ] = False,
     level: Annotated[int, typer.Option("--level", "-l", help="Processing level")] = 1,
     format: Annotated[
         Optional[str], typer.Option("--format", help="Output format: json, tsv, csv")
@@ -61,9 +63,9 @@ def grep_cmd(
                 continue
 
             if level >= 1 and f.kind == "document":
-                from mm.commands.cat import _l1_pdf
+                from mm.commands.cat import _l1_document
 
-                content = _l1_pdf(full_path)
+                content = _l1_document(full_path)
             elif f.is_binary:
                 continue
             else:
@@ -107,11 +109,10 @@ def grep_cmd(
 
     if count:
         if fmt == "rich":
+            from rich import box
             from rich.table import Table as RichTable
 
             from mm.display import output_console
-
-            from rich import box
 
             t = RichTable(
                 caption=f"{sum(file_counts.values())} matches in {len(file_counts)} files",

@@ -1,8 +1,8 @@
 use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
-use std::fs;
-use tempfile::TempDir;
 use mm_core::extract::ContentExtractor;
 use mm_core::extractors::{CodeExtractor, ImageExtractor};
+use std::fs;
+use tempfile::TempDir;
 
 fn create_code_tree(dir: &std::path::Path, count: usize) {
     for i in 0..count {

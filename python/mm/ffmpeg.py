@@ -434,13 +434,20 @@ def extract_frames_at_timestamps(
         frame_path = out_dir / f"frame_{idx:04d}.jpg"
         subprocess.run(
             [
-                "ffmpeg", "-y",
-                "-ss", f"{ts:.3f}",
-                "-i", str(video_path),
-                "-vf", f"thumbnail={blur_window},scale={thumb_width}:-1",
-                "-frames:v", "1",
-                "-q:v", str(quality),
-                "-update", "1",
+                "ffmpeg",
+                "-y",
+                "-ss",
+                f"{ts:.3f}",
+                "-i",
+                str(video_path),
+                "-vf",
+                f"thumbnail={blur_window},scale={thumb_width}:-1",
+                "-frames:v",
+                "1",
+                "-q:v",
+                str(quality),
+                "-update",
+                "1",
                 str(frame_path),
             ],
             capture_output=True,
@@ -517,11 +524,17 @@ def tile_frames_to_mosaics(
         filter_str = "".join(filter_parts)
         filter_str += f"concat=n={n}:v=1:a=0[out];[out]tile={tile_cols}x{tile_rows}"
 
-        cmd = ["ffmpeg", "-y"] + inputs + [
-            "-filter_complex", filter_str,
-            "-q:v", str(quality),
-            str(mosaic_path),
-        ]
+        cmd = (
+            ["ffmpeg", "-y"]
+            + inputs
+            + [
+                "-filter_complex",
+                filter_str,
+                "-q:v",
+                str(quality),
+                str(mosaic_path),
+            ]
+        )
 
         subprocess.run(cmd, capture_output=True, timeout=60)
         if mosaic_path.exists():

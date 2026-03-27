@@ -357,7 +357,7 @@ def _extract_answer_from_thinking(thinking: str) -> str:
     Thinking models interleave reasoning with the answer. The actual
     answer is typically the last quoted sentence or the last paragraph.
     """
-    quotes = re.findall(r'"([^"]{10,})"', thinking)
+    quotes: list[str] = re.findall(r'"([^"]{10,})"', thinking)
     if quotes:
         return quotes[-1].strip()
     paragraphs = [p.strip() for p in thinking.split("\n\n") if p.strip()]

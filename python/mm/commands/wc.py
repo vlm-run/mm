@@ -112,7 +112,9 @@ def wc_cmd(
         sep = "\t" if fmt == "tsv" else ","
         tok_mb = result.get("tok_per_mb", 0)
         print(f"files{sep}size{sep}lines{sep}tokens{sep}tok/MB")
-        print(f"{total_files}{sep}{format_size(total_bytes)}{sep}{format_number(total_lines)}{sep}{format_number(total_tokens)}{sep}{format_number(tok_mb) if tok_mb else '—'}")
+        print(
+            f"{total_files}{sep}{format_size(total_bytes)}{sep}{format_number(total_lines)}{sep}{format_number(total_tokens)}{sep}{format_number(tok_mb) if tok_mb else '—'}"
+        )
         if by_kind:
             print(f"\nkind{sep}files{sep}size{sep}lines{sep}tokens{sep}tok/MB")
             for k, s in sorted(kind_stats.items()):
@@ -131,10 +133,9 @@ def wc_cmd(
         by_kind = True
 
     if by_kind:
+        from rich import box
         from rich.table import Table as RichTable
         from rich.text import Text
-
-        from rich import box
 
         caption = f"{total_files:,} files  {format_size(total_bytes)}"
 
@@ -159,8 +160,7 @@ def wc_cmd(
         for k in sorted(kind_stats.keys()):
             s = kind_stats[k]
             style = KIND_STYLES.get(k, "dim")
-            tok_mb = s.get("tok_per_mb")
-            tok_mb_str = format_number(tok_mb) if tok_mb else "—"
+            tok_mb_str = format_number(s["tok_per_mb"]) if s.get("tok_per_mb") else "—"
             tbl.add_row(
                 Text(k, style=style),
                 f"{int(s['files']):,}",
@@ -204,6 +204,8 @@ def wc_cmd(
         tbl.add_row("files", f"[bold bright_blue]{total_files:,}[/bold bright_blue]")
         tbl.add_row("size", f"[bold bright_blue]{format_size(total_bytes)}[/bold bright_blue]")
         tbl.add_row("lines (est.)", f"[bold]{format_number(total_lines)}[/bold]")
-        tbl.add_row("tokens (est.)", f"[bold bright_green]{format_number(total_tokens)}[/bold bright_green]")
+        tbl.add_row(
+            "tokens (est.)", f"[bold bright_green]{format_number(total_tokens)}[/bold bright_green]"
+        )
 
         output_console.print(tbl)

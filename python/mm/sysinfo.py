@@ -44,18 +44,21 @@ def collect() -> SystemInfo:
     # Optional Python deps
     try:
         from mm.whisper import whisper_available
+
         info.whisper_available = whisper_available()
     except Exception:
         pass
 
     try:
         from mm.scenes import scenedetect_available
+
         info.scenedetect_available = scenedetect_available()
     except Exception:
         pass
 
     try:
         from mm.docling_extract import docling_available
+
         info.docling_available = docling_available()
     except Exception:
         pass
@@ -68,7 +71,9 @@ def _ffmpeg_version() -> str:
     try:
         result = subprocess.run(
             ["ffmpeg", "-version"],
-            capture_output=True, text=True, timeout=5,
+            capture_output=True,
+            text=True,
+            timeout=5,
         )
         first_line = result.stdout.split("\n")[0]
         # "ffmpeg version 6.1.1 ..." → "6.1.1"
@@ -88,7 +93,9 @@ def _detect_gpu() -> tuple[str, int]:
     try:
         result = subprocess.run(
             ["nvidia-smi", "--query-gpu=name,memory.total", "--format=csv,noheader,nounits"],
-            capture_output=True, text=True, timeout=5,
+            capture_output=True,
+            text=True,
+            timeout=5,
         )
         line = result.stdout.strip().split("\n")[0]
         parts = [p.strip() for p in line.split(",")]

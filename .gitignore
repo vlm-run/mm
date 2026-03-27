@@ -32,3 +32,5 @@ htmlcov/
 .DS_Store
 Thumbs.db
 mlx_models/
+
+.mypy_cache/

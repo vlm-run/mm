@@ -19,15 +19,9 @@ app = typer.Typer(
 
 @app.callback()
 def _main(
-    base_url: Annotated[
-        Optional[str], typer.Option("--base-url", help="LLM API base URL")
-    ] = None,
-    api_key: Annotated[
-        Optional[str], typer.Option("--api-key", help="LLM API key")
-    ] = None,
-    model: Annotated[
-        Optional[str], typer.Option("--model", help="LLM model name")
-    ] = None,
+    base_url: Annotated[Optional[str], typer.Option("--base-url", help="LLM API base URL")] = None,
+    api_key: Annotated[Optional[str], typer.Option("--api-key", help="LLM API key")] = None,
+    model: Annotated[Optional[str], typer.Option("--model", help="LLM model name")] = None,
     color: Annotated[
         str, typer.Option("--color", help="Color output: auto, always, never")
     ] = "auto",

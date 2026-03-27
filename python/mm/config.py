@@ -204,7 +204,7 @@ def set_cli_overrides(
 def _read_config_file() -> dict[str, Any]:
     try:
         if (path := _find_config_path()) and path.exists():
-            return tomllib.loads(path.read_text())
+            return dict(tomllib.loads(path.read_text()))
     except Exception:
         pass
     return {}
