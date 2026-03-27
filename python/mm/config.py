@@ -18,9 +18,9 @@ from __future__ import annotations
 
 import os
 import platform
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
-from typing import Any, Dict, Literal, cast
+from typing import Any, Literal
 
 try:
     import tomllib
@@ -80,7 +80,7 @@ class ModeConfig:
 Mode = Literal["fast", "accurate"]
 
 # Platform-aware mode defaults
-_MODE_DEFAULTS: Dict[Mode, ModeConfig] = {
+_MODE_DEFAULTS: dict[Mode, ModeConfig] = {
     "fast": ModeConfig(whisper_model="tiny", audio_speed=2.0, beam_size=1),
     "accurate": ModeConfig(whisper_model="medium", audio_speed=1.0, beam_size=5),
 }
@@ -98,8 +98,8 @@ class VlmctxConfig:
     """Full resolved configuration."""
 
     provider: ProviderConfig = field(default_factory=ProviderConfig)
-    mode_fast: ModeConfig = field(default_factory=lambda: _MODE_DEFAULTS["fast"])
-    mode_accurate: ModeConfig = field(default_factory=lambda: _MODE_DEFAULTS["accurate"])
+    mode_fast: ModeConfig = field(default_factory=lambda: replace(_MODE_DEFAULTS["fast"]))
+    mode_accurate: ModeConfig = field(default_factory=lambda: replace(_MODE_DEFAULTS["accurate"]))
 
 
 # ── Template ────────────────────────────────────────────────────────
@@ -249,7 +249,7 @@ def get_mode_config(mode: Mode) -> ModeConfig:
     defaults = _MODE_DEFAULTS.get(mode, ModeConfig())
 
     return ModeConfig(
-        whisper_model=cast(WhisperModel, mode_section.get("whisper_model", defaults.whisper_model)),
+        whisper_model=mode_section.get("whisper_model", defaults.whisper_model),
         audio_speed=float(mode_section.get("audio_speed", defaults.audio_speed)),
         beam_size=int(mode_section.get("beam_size", defaults.beam_size)),
     )

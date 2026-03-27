@@ -237,6 +237,22 @@ def cat_cmd(
 class _CatOpts:
     """Bag of resolved options threaded through extraction."""
 
+    __slots__ = (
+        "level",
+        "n",
+        "detail",
+        "output_dir",
+        "max_pages",
+        "mosaic_tile",
+        "mosaic_image_width",
+        "video_mosaic_count",
+        "video_mosaic_strategy",
+        "audio_speed",
+        "audio_sample_rate",
+        "mode",
+        "format",
+    )
+
     level: int
     n: int | None
     detail: bool

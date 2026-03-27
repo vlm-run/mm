@@ -216,11 +216,6 @@ def _update_mode_key(mode: str, key: str, value: str) -> str:
     """Update a mode-specific key in the config file."""
     from mm.config import _find_config_path, _read_config_file
 
-    try:
-        import tomllib  # noqa: F401
-    except ModuleNotFoundError:
-        pass  # type: ignore[no-redef]
-
     path = _find_config_path()
     file_data = _read_config_file()
 
