@@ -930,7 +930,7 @@ def _display_rich(
     kind = _file_kind(path)
     is_binary = kind in ("image", "document", "video", "audio") or "\x00" in content[:512]
     if is_binary:
-        safe_content = Text(content.replace("\x1b", "\ufffd"))
+        safe_content: Text | str = Text(content.replace("\x1b", "\ufffd"))
     else:
         safe_content = Text(content) if level >= 2 else content
 
