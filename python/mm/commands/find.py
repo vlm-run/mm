@@ -73,7 +73,7 @@ def find_cmd(
         bool, typer.Option("--schema", help="Show table schema (column names, types, descriptions)")
     ] = False,
     format: Annotated[
-        Optional[str], typer.Option("--format", help="Output format: json, tsv, csv")
+        Optional[str], typer.Option("--format", help="Output format: json, tsv, csv, dataset-jsonl, dataset-hf")
     ] = None,
     limit: Annotated[Optional[int], typer.Option("--limit", help="Max results")] = None,
 ) -> None:
@@ -161,6 +161,14 @@ def _find_table(
             from mm.display import json_dumps
 
             print(json_dumps(json_mod.loads(scanner.to_json_fast(**filter_args))))
+        elif fmt == "dataset-jsonl":
+            from mm.display import emit_dataset_jsonl
+
+            emit_dataset_jsonl(json_mod.loads(scanner.to_json_fast(**filter_args)))
+        elif fmt == "dataset-hf":
+            from mm.display import emit_dataset_hf
+
+            emit_dataset_hf(json_mod.loads(scanner.to_json_fast(**filter_args)))
         else:
             entries = json_mod.loads(scanner.to_json_fast(**filter_args))
             sep = "," if fmt == "csv" else "\t"
@@ -195,6 +203,20 @@ def _find_table(
         table = query_arrow_table(table, f"SELECT * FROM files ORDER BY {sort} {order}")
 
     cols = columns.split(",") if columns else None
+
+    if fmt in ("dataset-jsonl", "dataset-hf"):
+        display_cols = cols or table.column_names
+        n = table.num_rows if limit is None else min(limit, table.num_rows)
+        rows = [{c: table.column(c)[i].as_py() for c in display_cols} for i in range(n)]
+        if fmt == "dataset-jsonl":
+            from mm.display import emit_dataset_jsonl
+
+            emit_dataset_jsonl(rows)
+        else:
+            from mm.display import emit_dataset_hf
+
+            emit_dataset_hf(rows)
+        return
 
     if fmt == "json":
         from mm.display import json_dumps

@@ -122,7 +122,7 @@ def cat_cmd(
         typer.Option("--mode", "-m", help="Extraction mode: fast or accurate (L2 only)"),
     ] = None,
     format: Annotated[
-        Optional[str], typer.Option("--format", help="Output format: json, tsv, csv")
+        Optional[str], typer.Option("--format", help="Output format: json, tsv, csv, dataset-jsonl, dataset-hf")
     ] = None,
 ) -> None:
     """Display file content semantically (like bat/cat).
@@ -207,8 +207,22 @@ def cat_cmd(
             all_lines = content.splitlines()
             content = "\n".join(all_lines[:n] if n >= 0 else all_lines[n:])
 
-        if fmt == "json":
-            entry: dict = {"path": str(p), "level": level, "content": content}
+        if fmt in ("dataset-jsonl", "dataset-hf"):
+            kind = _file_kind(p)
+            stat = p.stat()
+            entry: dict = {
+                "file_name": p.name,
+                "file_path": str(p),
+                "file_type": kind,
+                "size": stat.st_size,
+                "level": level,
+                "content": content,
+            }
+            if mode:
+                entry["mode"] = mode
+            results.append(entry)
+        elif fmt == "json":
+            entry = {"path": str(p), "level": level, "content": content}
             if mode:
                 entry["mode"] = mode
             results.append(entry)
@@ -227,6 +241,14 @@ def cat_cmd(
         from mm.display import json_dumps
 
         print(json_dumps(results))
+    elif fmt == "dataset-jsonl":
+        from mm.display import emit_dataset_jsonl
+
+        emit_dataset_jsonl(results)
+    elif fmt == "dataset-hf":
+        from mm.display import emit_dataset_hf
+
+        emit_dataset_hf(results, output_dir=str(output_dir) if output_dir else "mm_dataset")
 
 
 # ---------------------------------------------------------------------------

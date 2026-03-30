@@ -24,7 +24,7 @@ def grep_cmd(
     ] = False,
     level: Annotated[int, typer.Option("--level", "-l", help="Processing level")] = 1,
     format: Annotated[
-        Optional[str], typer.Option("--format", help="Output format: json, tsv, csv")
+        Optional[str], typer.Option("--format", help="Output format: json, tsv, csv, dataset-jsonl, dataset-hf")
     ] = None,
 ) -> None:
     """Search file contents -- text and semantic (like rg/grep)."""
@@ -95,6 +95,20 @@ def grep_cmd(
 
     # Exit 1 on no matches (standard grep/rg behaviour for composability).
     has_matches = bool(file_counts)
+
+    if fmt in ("dataset-jsonl", "dataset-hf"):
+        data = [{"path": p, "count": c} for p, c in file_counts.items()] if count else all_matches
+        if fmt == "dataset-jsonl":
+            from mm.display import emit_dataset_jsonl
+
+            emit_dataset_jsonl(data)
+        else:
+            from mm.display import emit_dataset_hf
+
+            emit_dataset_hf(data)
+        if not has_matches:
+            raise typer.Exit(1)
+        return
 
     if fmt == "json":
         from mm.display import json_dumps

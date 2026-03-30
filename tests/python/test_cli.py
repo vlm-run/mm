@@ -9,9 +9,9 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from typer.testing import CliRunner
-
+import pytest
 from mm.cli import app
+from typer.testing import CliRunner
 
 runner = CliRunner()
 
@@ -47,10 +47,26 @@ class TestFind:
         assert len(data) <= 2
 
     def test_sort_by_size(self, small_tree: Path):
-        r = runner.invoke(app, ["find", str(small_tree), "--sort", "size", "--reverse", "--format", "json"])
+        r = runner.invoke(
+            app, ["find", str(small_tree), "--sort", "size", "--reverse", "--format", "json"]
+        )
         data = json.loads(r.output)
         sizes = [row["size"] for row in data]
         assert sizes == sorted(sizes, reverse=True)
+
+    def test_dataset_jsonl(self, small_tree: Path):
+        r = runner.invoke(app, ["find", str(small_tree), "--format", "dataset-jsonl"])
+        assert r.exit_code == 0
+        lines = [line for line in r.output.strip().splitlines() if line]
+        assert len(lines) > 0
+
+        row = json.loads(lines[0])
+        assert "path" in row
+        assert "kind" in row
+        assert "size" in row
+        # Each line must be valid JSON
+        for line in lines:
+            json.loads(line)
 
 
 # ── find (table, tree, schema) ────────────────────────────────────────
@@ -130,15 +146,59 @@ class TestCat:
         assert r.exit_code != 0 or "not found" in r.output.lower()
 
     def test_multiple_files(self, small_tree: Path):
-        r = runner.invoke(app, [
-            "cat",
-            str(small_tree / "src" / "main.py"),
-            str(small_tree / "src" / "lib.rs"),
-            "--format", "json",
-        ])
+        r = runner.invoke(
+            app,
+            [
+                "cat",
+                str(small_tree / "src" / "main.py"),
+                str(small_tree / "src" / "lib.rs"),
+                "--format",
+                "json",
+            ],
+        )
         assert r.exit_code == 0
         data = json.loads(r.output)
         assert len(data) == 2
+
+    def test_dataset_jsonl(self, small_tree: Path):
+        r = runner.invoke(
+            app,
+            [
+                "cat",
+                str(small_tree / "src" / "main.py"),
+                str(small_tree / "src" / "lib.rs"),
+                "--format",
+                "dataset-jsonl",
+            ],
+        )
+        assert r.exit_code == 0
+        lines = [line for line in r.output.strip().splitlines() if line]
+        assert len(lines) == 2
+
+        for line in lines:
+            row = json.loads(line)
+            assert "file_name" in row
+            assert "file_path" in row
+            assert "file_type" in row
+            assert "size" in row
+            assert "content" in row
+            assert "level" in row
+
+    def test_dataset_jsonl_single_file(self, small_tree: Path):
+        r = runner.invoke(
+            app,
+            [
+                "cat",
+                str(small_tree / "src" / "main.py"),
+                "--format",
+                "dataset-jsonl",
+            ],
+        )
+        assert r.exit_code == 0
+        row = json.loads(r.output.strip())
+        assert row["file_name"] == "main.py"
+        assert row["file_type"] == "text"
+        assert "def main" in row["content"]
 
 
 # ── grep ─────────────────────────────────────────────────────────────
@@ -168,35 +228,95 @@ class TestGrep:
         r = runner.invoke(app, ["grep", "zzz_nonexistent_zzz", str(small_tree)])
         assert r.exit_code == 1  # exit 1 on no match (grep/rg convention)
 
+    def test_dataset_jsonl(self, small_tree: Path):
+        r = runner.invoke(app, ["grep", "hello", str(small_tree), "--format", "dataset-jsonl"])
+        assert r.exit_code == 0
+        lines = [line for line in r.output.strip().splitlines() if line]
+        assert len(lines) > 0
+        row = json.loads(lines[0])
+        assert "path" in row
+        assert "line_number" in row
+        assert "line" in row
+
+    def test_dataset_jsonl_count(self, small_tree: Path):
+        r = runner.invoke(
+            app, ["grep", "hello", str(small_tree), "--count", "--format", "dataset-jsonl"]
+        )
+        assert r.exit_code == 0
+        lines = [line for line in r.output.strip().splitlines() if line]
+        assert len(lines) > 0
+        row = json.loads(lines[0])
+        assert "path" in row
+        assert "count" in row
+
 
 # ── sql ──────────────────────────────────────────────────────────────
 
 
 class TestSql:
     def test_group_by(self, small_tree: Path):
-        r = runner.invoke(app, [
-            "sql", "SELECT kind, COUNT(*) as n FROM files GROUP BY kind",
-            "--dir", str(small_tree),
-        ])
+        r = runner.invoke(
+            app,
+            [
+                "sql",
+                "SELECT kind, COUNT(*) as n FROM files GROUP BY kind",
+                "--dir",
+                str(small_tree),
+            ],
+        )
         assert r.exit_code == 0
 
     def test_json_count(self, small_tree: Path):
-        r = runner.invoke(app, [
-            "sql", "SELECT COUNT(*) as total FROM files",
-            "--dir", str(small_tree), "--format", "json",
-        ])
+        r = runner.invoke(
+            app,
+            [
+                "sql",
+                "SELECT COUNT(*) as total FROM files",
+                "--dir",
+                str(small_tree),
+                "--format",
+                "json",
+            ],
+        )
         assert r.exit_code == 0
         data = json.loads(r.output)
         assert data[0]["total"] > 0
 
     def test_where_clause(self, small_tree: Path):
-        r = runner.invoke(app, [
-            "sql", "SELECT name FROM files WHERE ext = '.py'",
-            "--dir", str(small_tree), "--format", "json",
-        ])
+        r = runner.invoke(
+            app,
+            [
+                "sql",
+                "SELECT name FROM files WHERE ext = '.py'",
+                "--dir",
+                str(small_tree),
+                "--format",
+                "json",
+            ],
+        )
         assert r.exit_code == 0
         data = json.loads(r.output)
         assert all(row["name"].endswith(".py") for row in data)
+
+    def test_dataset_jsonl(self, small_tree: Path):
+        r = runner.invoke(
+            app,
+            [
+                "sql",
+                "SELECT name, kind, size FROM files ORDER BY name",
+                "--dir",
+                str(small_tree),
+                "--format",
+                "dataset-jsonl",
+            ],
+        )
+        assert r.exit_code == 0
+        lines = [line for line in r.output.strip().splitlines() if line]
+        assert len(lines) > 0
+        row = json.loads(lines[0])
+        assert "name" in row
+        assert "kind" in row
+        assert "size" in row
 
 
 # ── wc ───────────────────────────────────────────────────────────────
@@ -224,6 +344,106 @@ class TestWc:
         assert "files" in data
         assert "by_kind" in data
         assert isinstance(data["by_kind"], dict)
+
+    def test_dataset_jsonl(self, small_tree: Path):
+        r = runner.invoke(app, ["wc", str(small_tree), "--format", "dataset-jsonl"])
+        assert r.exit_code == 0
+        lines = [line for line in r.output.strip().splitlines() if line]
+        assert len(lines) >= 1
+        for line in lines:
+            row = json.loads(line)
+            assert "files" in row or "kind" in row
+
+    def test_dataset_jsonl_by_kind(self, small_tree: Path):
+        r = runner.invoke(app, ["wc", str(small_tree), "--by-kind", "--format", "dataset-jsonl"])
+        assert r.exit_code == 0
+        lines = [line for line in r.output.strip().splitlines() if line]
+        assert len(lines) > 1  # multiple kinds
+        row = json.loads(lines[0])
+        assert "kind" in row
+        assert "files" in row
+        assert "tokens" in row
+
+
+# ── dataset-hf ──────────────────────────────────────────────────────
+
+
+class TestDatasetHf:
+    """Tests for --format dataset-hf (requires 'datasets' package)."""
+
+    def test_emit_helper_roundtrip(self, tmp_path: Path):
+        datasets = pytest.importorskip("datasets")
+        from mm.display import emit_dataset_hf
+
+        rows = [
+            {"file_name": "a.png", "file_type": "image", "size": 1024, "content": "dims: 100x100"},
+            {"file_name": "b.py", "file_type": "code", "size": 256, "content": "print('hi')"},
+        ]
+        out = str(tmp_path / "ds_out")
+        emit_dataset_hf(rows, output_dir=out)
+
+        ds = datasets.load_from_disk(out)
+        assert len(ds) == 2
+        assert ds[0]["file_name"] == "a.png"
+        assert ds[1]["file_type"] == "code"
+        assert ds[1]["content"] == "print('hi')"
+
+    def test_cat_dataset_hf(self, small_tree: Path, tmp_path: Path):
+        pytest.importorskip("datasets")
+        import datasets
+
+        out = str(tmp_path / "cat_ds")
+        r = runner.invoke(
+            app,
+            [
+                "cat",
+                str(small_tree / "src" / "main.py"),
+                str(small_tree / "src" / "lib.rs"),
+                "--format",
+                "dataset-hf",
+                "--output-dir",
+                out,
+            ],
+        )
+        assert r.exit_code == 0
+
+        ds = datasets.load_from_disk(out)
+        assert len(ds) == 2
+
+        names = {str(ds[i]["file_name"]) for i in range(len(ds))}
+        assert "main.py" in names
+        assert "lib.rs" in names
+
+        # Verify content was extracted
+        for i in range(len(ds)):
+            assert len(ds[i]["content"]) > 0
+
+    def test_find_dataset_hf(self, small_tree: Path, tmp_path: Path, monkeypatch):
+        pytest.importorskip("datasets")
+        import datasets
+
+        # find writes to mm_dataset/ by default — chdir to tmp so it lands there
+        monkeypatch.chdir(tmp_path)
+        r = runner.invoke(app, ["find", str(small_tree), "--format", "dataset-hf"])
+        assert r.exit_code == 0
+
+        ds = datasets.load_from_disk(str(tmp_path / "mm_dataset"))
+        assert len(ds) > 0
+        assert "path" in ds.column_names
+        assert "kind" in ds.column_names
+
+    def test_grep_dataset_hf(self, small_tree: Path, tmp_path: Path, monkeypatch):
+        pytest.importorskip("datasets")
+        import datasets
+
+        monkeypatch.chdir(tmp_path)
+        r = runner.invoke(app, ["grep", "hello", str(small_tree), "--format", "dataset-hf"])
+        assert r.exit_code == 0
+
+        ds = datasets.load_from_disk(str(tmp_path / "mm_dataset"))
+        assert len(ds) > 0
+        assert "path" in ds.column_names
+        assert "line" in ds.column_names
 
 
 # ── config ───────────────────────────────────────────────────────────
