@@ -111,9 +111,9 @@ def wc_cmd(
         else:
             if by_kind and kind_stats:
                 rows = [{"kind": k, **s} for k, s in kind_stats.items()]
+                emit_rows(fmt, rows)
             else:
-                rows = [result]  # type: ignore[list-item]
-            emit_rows(fmt, rows)
+                emit_rows(fmt, [result])
         return
 
     from mm.display import format_number, format_size
