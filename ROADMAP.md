@@ -79,11 +79,11 @@ mm roadmap
 │   │   └── mm pages <file/dir> --max-pages N --json
 │   │
 │   ├── Image perceptual fingerprint
-│   │   ├── pHash (perceptual hash) — 64-bit, invariant to resize/compression
+│   │   ├── pHash (perceptual hash) — 64-bit, invariant to resize/compression (DONE)
 │   │   ├── Average color histogram (dominant colors as hex triplet)
 │   │   ├── Aspect ratio + orientation classification (portrait/landscape/square)
-│   │   ├── Near-duplicate detection: hamming distance on pHash < 8
-│   │   ├── Add to L1Record: phash, dominant_colors, aspect
+│   │   ├── Near-duplicate detection: hamming distance on pHash < 8 (DONE)
+│   │   ├── Add to L1Record: phash, dominant_colors, aspect (DONE)
 │   │   └── All in Rust via image crate (already a dep), ~1ms/image
 │   │
 │   ├── Document structure extraction
@@ -116,7 +116,7 @@ mm roadmap
 │   └── Content deduplication
 │       ├── Exact: xxh3 content hash (already done)
 │       ├── Near-exact: fast_fingerprint for large file dedup
-│       ├── Perceptual: pHash for image near-dupes
+│       ├── Perceptual: pHash for image near-dupes (DONE)
 │       ├── mm dedup — find and report duplicate clusters
 │       └── --dry-run shows what would be removed, --symlink replaces dupes
 │
@@ -246,7 +246,7 @@ mm roadmap
     │
     ├── L1.5 smart extraction
     │   ├── PDF page thumbnails: <20ms/page
-    │   ├── Image pHash: <1ms/image
+    │   ├── Image pHash: <1ms/image (DONE)
     │   ├── Code symbol extraction: <5ms/file (tree-sitter)
     │   └── Video scene graph: <2s for 86min video
     │
