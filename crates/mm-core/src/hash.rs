@@ -48,6 +48,7 @@ pub fn full_hash_read(path: &Path) -> Option<u64> {
 /// Perceptual hash (pHash) of an image file.
 /// Produces a 64-bit hash invariant to resize and mild compression.
 /// Algorithm: resize to 32x32 grayscale → DCT → top-left 8x8 → median threshold.
+#[allow(clippy::needless_range_loop)]
 pub fn phash(data: &[u8]) -> Option<u64> {
     let img = image::ImageReader::new(Cursor::new(data))
         .with_guessed_format()
