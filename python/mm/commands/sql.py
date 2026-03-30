@@ -25,27 +25,11 @@ def sql_cmd(
     ctx = Context(directory)
     result = query_arrow_table(ctx.to_arrow(), query)
 
-    if fmt in ("dataset-jsonl", "dataset-hf"):
-        rows = []
-        for i in range(result.num_rows):
-            rows.append({c: result.column(c)[i].as_py() for c in result.column_names})
-        if fmt == "dataset-jsonl":
-            from mm.display import emit_dataset_jsonl
+    if fmt in ("json", "dataset-jsonl", "dataset-hf"):
+        from mm.display import emit_rows
 
-            emit_dataset_jsonl(rows)
-        else:
-            from mm.display import emit_dataset_hf
-
-            emit_dataset_hf(rows)
-        return
-
-    if fmt == "json":
-        from mm.display import json_dumps
-
-        rows = []
-        for i in range(result.num_rows):
-            rows.append({c: result.column(c)[i].as_py() for c in result.column_names})
-        print(json_dumps(rows))
+        rows = [{c: result.column(c)[i].as_py() for c in result.column_names} for i in range(result.num_rows)]
+        emit_rows(fmt, rows)
     elif fmt in ("tsv", "csv"):
         import csv
         import io

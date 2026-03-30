@@ -143,7 +143,20 @@ def emit_csv(rows: list[dict], columns: list[str] | None = None) -> None:
     print(buf.getvalue(), end="")
 
 
-def emit_dataset_jsonl(rows: list[dict]) -> None:
+def emit_rows(fmt: str, rows: list[dict], *, output_dir: str = "mm_dataset") -> None:
+    """Unified emitter for json, dataset-jsonl, and dataset-hf formats.
+
+    Dispatches to the appropriate serializer based on *fmt*.
+    """
+    if fmt == "json":
+        print(json_dumps(rows))
+    elif fmt == "dataset-jsonl":
+        _emit_dataset_jsonl(rows)
+    elif fmt == "dataset-hf":
+        _emit_dataset_hf(rows, output_dir=output_dir)
+
+
+def _emit_dataset_jsonl(rows: list[dict]) -> None:
     """Print rows as newline-delimited JSON (one JSON object per line).
 
     Suitable for ``datasets.load_dataset("json", data_files=...)``.
@@ -154,8 +167,10 @@ def emit_dataset_jsonl(rows: list[dict]) -> None:
         print(json.dumps(row, default=str, ensure_ascii=False))
 
 
-def emit_dataset_hf(rows: list[dict], output_dir: str = "mm_dataset") -> None:
+def _emit_dataset_hf(rows: list[dict], output_dir: str = "mm_dataset") -> None:
     """Save rows as a HuggingFace Dataset (Parquet + metadata on disk).
+
+    Saves to *output_dir* and prints the path to stderr.
 
     Install: pip install mm[datasets]
     """
@@ -168,7 +183,7 @@ def emit_dataset_hf(rows: list[dict], output_dir: str = "mm_dataset") -> None:
 
         print(
             "Error: 'datasets' package required for --format dataset-hf. "
-            "datasets not installed — pip install mm[datasets]",
+            "`datasets` not installed — pip install mm[datasets]",
             file=sys.stderr,
         )
         raise SystemExit(1)

@@ -371,16 +371,16 @@ class TestWc:
 class TestDatasetHf:
     """Tests for --format dataset-hf (requires 'datasets' package)."""
 
-    def test_emit_helper_roundtrip(self, tmp_path: Path):
+    def test_emit_rows_roundtrip(self, tmp_path: Path):
         datasets = pytest.importorskip("datasets")
-        from mm.display import emit_dataset_hf
+        from mm.display import emit_rows
 
         rows = [
             {"file_name": "a.png", "file_type": "image", "size": 1024, "content": "dims: 100x100"},
             {"file_name": "b.py", "file_type": "code", "size": 256, "content": "print('hi')"},
         ]
         out = str(tmp_path / "ds_out")
-        emit_dataset_hf(rows, output_dir=out)
+        emit_rows("dataset-hf", rows, output_dir=out)
 
         ds = datasets.load_from_disk(out)
         assert len(ds) == 2

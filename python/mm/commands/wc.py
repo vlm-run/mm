@@ -100,26 +100,21 @@ def wc_cmd(
             if k == "image" and s["files"] > 0:
                 s["tok_per_img"] = round(s["tokens"] / s["files"])
 
-    if fmt in ("dataset-jsonl", "dataset-hf"):
-        # For wc, emit per-kind rows when by_kind is set, else a single summary row.
-        if by_kind and kind_stats:
-            rows = [{"kind": k, **s} for k, s in kind_stats.items()]
+    if fmt in ("json", "dataset-jsonl", "dataset-hf"):
+        from mm.display import emit_rows
+
+        if fmt == "json":
+            # json emits the full result dict (with nested by_kind)
+            from mm.display import json_dumps
+
+            print(json_dumps(result))
         else:
-            rows = [result]
-        if fmt == "dataset-jsonl":
-            from mm.display import emit_dataset_jsonl
-
-            emit_dataset_jsonl(rows)
-        else:
-            from mm.display import emit_dataset_hf
-
-            emit_dataset_hf(rows)
-        return
-
-    if fmt == "json":
-        from mm.display import json_dumps
-
-        print(json_dumps(result))
+            # dataset formats emit flat rows — per-kind when by_kind, else summary
+            if by_kind and kind_stats:
+                rows = [{"kind": k, **s} for k, s in kind_stats.items()]
+            else:
+                rows = [result]
+            emit_rows(fmt, rows)
         return
 
     from mm.display import format_number, format_size

@@ -96,27 +96,19 @@ def grep_cmd(
     # Exit 1 on no matches (standard grep/rg behaviour for composability).
     has_matches = bool(file_counts)
 
-    if fmt in ("dataset-jsonl", "dataset-hf"):
-        data = [{"path": p, "count": c} for p, c in file_counts.items()] if count else all_matches
-        if fmt == "dataset-jsonl":
-            from mm.display import emit_dataset_jsonl
-
-            emit_dataset_jsonl(data)
-        else:
-            from mm.display import emit_dataset_hf
-
-            emit_dataset_hf(data)
-        if not has_matches:
-            raise typer.Exit(1)
-        return
-
-    if fmt == "json":
-        from mm.display import json_dumps
+    if fmt in ("json", "dataset-jsonl", "dataset-hf"):
+        from mm.display import emit_rows
 
         if count:
-            print(json_dumps(file_counts))
+            # json emits the raw dict; dataset formats need a list of rows
+            if fmt == "json":
+                from mm.display import json_dumps
+
+                print(json_dumps(file_counts))
+            else:
+                emit_rows(fmt, [{"path": p, "count": c} for p, c in file_counts.items()])
         else:
-            print(json_dumps(all_matches))
+            emit_rows(fmt, all_matches)
         if not has_matches:
             raise typer.Exit(1)
         return
