@@ -199,6 +199,7 @@ impl Scanner {
             audio_codec: record.audio_codec,
             fps: record.fps,
             has_audio: record.has_audio,
+            phash: record.phash,
         })
     }
 
@@ -248,14 +249,16 @@ struct L1Result {
     fps: Option<f64>,
     #[pyo3(get)]
     has_audio: Option<bool>,
+    #[pyo3(get)]
+    phash: Option<u64>,
 }
 
 #[pymethods]
 impl L1Result {
     fn __repr__(&self) -> String {
         format!(
-            "L1Result(hash={:?}, lines={:?}, lang={:?}, dims={:?})",
-            self.content_hash, self.line_count, self.language, self.dimensions
+            "L1Result(hash={:?}, lines={:?}, lang={:?}, dims={:?}, phash={:?})",
+            self.content_hash, self.line_count, self.language, self.dimensions, self.phash
         )
     }
 }
@@ -281,10 +284,18 @@ fn export_batch_to_pyarrow(py: Python<'_>, batch: &RecordBatch) -> PyResult<PyOb
     Ok(table.into_pyobject(py)?.into_any().unbind())
 }
 
+/// Hamming distance between two perceptual hashes.
+/// Returns the number of differing bits (0 = identical, <8 = near-duplicate).
+#[pyfunction]
+fn hamming_distance(a: u64, b: u64) -> u32 {
+    mm_core::hamming_distance(a, b)
+}
+
 #[pymodule]
 #[pyo3(name = "_mm")]
 fn mm_module(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<Scanner>()?;
     m.add_class::<L1Result>()?;
+    m.add_function(wrap_pyfunction!(hamming_distance, m)?)?;
     Ok(())
 }

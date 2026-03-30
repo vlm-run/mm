@@ -23,12 +23,15 @@ impl ContentExtractor for ImageExtractor {
             .and_then(|r| r.into_dimensions().ok())
             .map(|(w, h)| format!("{}x{}", w, h));
 
+        let phash = crate::hash::phash(&mmap);
+
         let exif_data = extract_exif(path);
 
         Ok(L1Record {
             content_hash: Some(content_hash),
             dimensions,
             magic_mime,
+            phash,
             exif_camera: exif_data.camera,
             exif_date: exif_data.date,
             exif_gps: exif_data.gps,
@@ -287,6 +290,25 @@ mod tests {
         assert!(result.exif_camera.is_none());
         assert!(result.exif_date.is_none());
         assert!(result.exif_gps.is_none());
+    }
+
+    #[test]
+    fn test_phash_populated_for_image() {
+        let dir = TempDir::new().unwrap();
+        let path = dir.path().join("test.png");
+        create_test_png(&path, 100, 100);
+        let result = ImageExtractor.extract(&path).unwrap();
+        assert!(result.phash.is_some());
+    }
+
+    #[test]
+    fn test_phash_deterministic_via_extractor() {
+        let dir = TempDir::new().unwrap();
+        let path = dir.path().join("test.png");
+        create_test_png(&path, 50, 50);
+        let h1 = ImageExtractor.extract(&path).unwrap().phash;
+        let h2 = ImageExtractor.extract(&path).unwrap().phash;
+        assert_eq!(h1, h2);
     }
 
     #[test]

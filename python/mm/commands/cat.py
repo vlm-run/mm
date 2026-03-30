@@ -202,7 +202,9 @@ def cat_cmd(
             typer.echo(f"Error: {file_path} not found.", err=True)
             continue
 
-        content = _extract(p, opts)
+        from mm.utils import get_elapsed_ms
+
+        content, elapsed_ms = get_elapsed_ms(_extract, p, opts)
 
         if n is not None:
             all_lines = content.splitlines()
@@ -224,7 +226,7 @@ def cat_cmd(
                 entry["mode"] = mode
             results.append(entry)
         elif fmt == "rich":
-            _display_rich(p, content, level, n)
+            _display_rich(p, content, level, n, elapsed_ms=elapsed_ms)
         else:
             # When piping multiple files, emit a compact header so LLMs can
             # distinguish which content belongs to which file.
@@ -348,6 +350,8 @@ def _l1_image(path: Path) -> str:
             parts.append(f"MIME:       {r.magic_mime}")
         if r.content_hash:
             parts.append(f"Hash:       {r.content_hash}")
+        if r.phash is not None:
+            parts.append(f"pHash:      {r.phash:016x}")
         if r.exif_camera:
             parts.append(f"Camera:     {r.exif_camera}")
         if r.exif_date:
@@ -860,13 +864,21 @@ def _l2_audio_modal(path: Path, opts: _CatOpts, mode: Mode) -> str:
 # ---------------------------------------------------------------------------
 
 
-def _display_rich(path: Path, content: str, level: int, n: int | None) -> None:
+def _display_rich(
+    path: Path,
+    content: str,
+    level: int,
+    n: int | None,
+    *,
+    elapsed_ms: float = 0.0,
+) -> None:
     from rich import box
     from rich.panel import Panel
     from rich.syntax import Syntax
     from rich.text import Text
 
     from mm.display import format_size, output_console
+    from mm.utils import inject_elapsed
 
     ext = path.suffix.lstrip(".")
     size_str = format_size(path.stat().st_size)
@@ -875,6 +887,7 @@ def _display_rich(path: Path, content: str, level: int, n: int | None) -> None:
     subtitle = Text()
     subtitle.append(f"{size_str}", style="bright_blue")
     subtitle.append(f"  L{level} {level_label}", style="dim")
+    subtitle = inject_elapsed(subtitle, elapsed_ms)
 
     if n is not None:
         total_lines = len(path.read_text(errors="replace").splitlines()) if level == 0 else None
@@ -914,9 +927,12 @@ def _display_rich(path: Path, content: str, level: int, n: int | None) -> None:
     }
 
     title = f"[bold]{path}[/bold]"
-    safe_content = Text(content) if level >= 2 else content
-
     kind = _file_kind(path)
+    is_binary = kind in ("image", "document", "video", "audio") or "\x00" in content[:512]
+    if is_binary:
+        safe_content: Text | str = Text(content.replace("\x1b", "\ufffd"))
+    else:
+        safe_content = Text(content) if level >= 2 else content
 
     if ext in lang_map and level == 0:
         syntax = Syntax(content, lang_map[ext], theme="monokai", line_numbers=True)
@@ -932,13 +948,15 @@ def _display_rich(path: Path, content: str, level: int, n: int | None) -> None:
             )
         )
     elif kind == "image":
+        min_width = len(subtitle.plain) + 10
         output_console.print(
             Panel(
                 safe_content,
                 title=title,
                 title_align="left",
                 subtitle=subtitle,
-                expand=False,
+                expand=True,
+                width=min_width,
                 border_style="green",
                 box=box.ROUNDED,
             )

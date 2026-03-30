@@ -59,3 +59,8 @@ class L1Result:
     audio_codec: str | None
     fps: float | None
     has_audio: bool | None
+    phash: int | None
+
+def hamming_distance(a: int, b: int) -> int:
+    """Hamming distance between two perceptual hashes (0 = identical, <8 = near-duplicate)."""
+    ...
