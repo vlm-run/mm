@@ -23,7 +23,8 @@ def wc_cmd(
     kind: Annotated[Optional[str], typer.Option("--kind", "-k", help="Filter by kind")] = None,
     by_kind: Annotated[bool, typer.Option("--by-kind", help="Break down by file kind")] = False,
     format: Annotated[
-        Optional[str], typer.Option("--format", help="Output format: json, tsv, csv, dataset-jsonl, dataset-hf")
+        Optional[str],
+        typer.Option("--format", help="Output format: json, tsv, csv, dataset-jsonl, dataset-hf"),
     ] = None,
 ) -> None:
     """Count files, bytes, lines, and estimated tokens (like wc for LLM context)."""
@@ -104,16 +105,14 @@ def wc_cmd(
         from mm.display import emit_rows
 
         if fmt == "json":
-            # json emits the full result dict (with nested by_kind)
             from mm.display import json_dumps
 
             print(json_dumps(result))
         else:
-            # dataset formats emit flat rows — per-kind when by_kind, else summary
             if by_kind and kind_stats:
                 rows = [{"kind": k, **s} for k, s in kind_stats.items()]
             else:
-                rows = [result]
+                rows = [result]  # type: ignore[list-item]
             emit_rows(fmt, rows)
         return
 

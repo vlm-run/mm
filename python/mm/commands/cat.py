@@ -212,7 +212,7 @@ def cat_cmd(
             if fmt == "json":
                 entry: dict = {"path": str(p), "level": level, "content": content}
             else:
-                entry: dict = {
+                entry = {
                     "path": str(p),
                     "level": level,
                     "content": content,
