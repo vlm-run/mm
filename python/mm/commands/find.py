@@ -73,7 +73,8 @@ def find_cmd(
         bool, typer.Option("--schema", help="Show table schema (column names, types, descriptions)")
     ] = False,
     format: Annotated[
-        Optional[str], typer.Option("--format", help="Output format: json, tsv, csv")
+        Optional[str],
+        typer.Option("--format", help="Output format: json, tsv, csv, dataset-jsonl, dataset-hf"),
     ] = None,
     limit: Annotated[Optional[int], typer.Option("--limit", help="Max results")] = None,
 ) -> None:
@@ -157,10 +158,10 @@ def _find_table(
             descending=reverse,
         )
 
-        if fmt == "json":
-            from mm.display import json_dumps
+        if fmt in ("json", "dataset-jsonl", "dataset-hf"):
+            from mm.display import emit_rows
 
-            print(json_dumps(json_mod.loads(scanner.to_json_fast(**filter_args))))
+            emit_rows(fmt, json_mod.loads(scanner.to_json_fast(**filter_args)))
         else:
             entries = json_mod.loads(scanner.to_json_fast(**filter_args))
             sep = "," if fmt == "csv" else "\t"
@@ -196,13 +197,15 @@ def _find_table(
 
     cols = columns.split(",") if columns else None
 
-    if fmt == "json":
-        from mm.display import json_dumps
+    if fmt in ("json", "dataset-jsonl", "dataset-hf"):
+        from mm.display import emit_rows
 
         display_cols = cols or table.column_names
         n = table.num_rows if limit is None else min(limit, table.num_rows)
         rows = [{c: table.column(c)[i].as_py() for c in display_cols} for i in range(n)]
-        print(json_dumps(rows))
+        emit_rows(fmt, rows)
+        return
+
     elif fmt in ("tsv", "csv"):
         import csv
         import io

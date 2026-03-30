@@ -101,7 +101,8 @@ def resolve_format(fmt: str | None) -> str:
 
     Priority: explicit ``--format`` flag > pipe detection > rich.
 
-    Returns one of: ``"json"``, ``"tsv"``, ``"csv"``, ``"text"``, ``"rich"``.
+    Returns one of: ``"json"``, ``"tsv"``, ``"csv"``, ``"text"``,
+    ``"dataset-jsonl"``, ``"dataset-hf"``, ``"rich"``.
     """
     from mm.pipe import is_piped_output
 
@@ -140,6 +141,65 @@ def emit_csv(rows: list[dict], columns: list[str] | None = None) -> None:
     for row in rows:
         writer.writerow(str(row.get(c, "")) for c in cols)
     print(buf.getvalue(), end="")
+
+
+def emit_rows(fmt: str, rows: list[dict], *, output_dir: str = "mm_dataset") -> None:
+    """Unified emitter for json, dataset-jsonl, and dataset-hf formats.
+
+    Dispatches to the appropriate serializer based on *fmt*.
+    """
+    if fmt == "json":
+        print(json_dumps(rows))
+    elif fmt == "dataset-jsonl":
+        _emit_dataset_jsonl(rows)
+    elif fmt == "dataset-hf":
+        _emit_dataset_hf(rows, output_dir=output_dir)
+
+
+def _emit_dataset_jsonl(rows: list[dict]) -> None:
+    """Print rows as newline-delimited JSON (one JSON object per line).
+
+    Suitable for ``datasets.load_dataset("json", data_files=...)``.
+    """
+    import json
+
+    for row in rows:
+        print(json.dumps(row, default=str, ensure_ascii=False))
+
+
+def _emit_dataset_hf(rows: list[dict], output_dir: str = "mm_dataset") -> None:
+    """Save rows as a HuggingFace Dataset (Parquet + metadata on disk).
+
+    Saves to *output_dir* and prints the path to stderr.
+
+    Install: pip install mm[datasets]
+    """
+    from pathlib import Path
+
+    try:
+        from datasets import Dataset
+    except ImportError:
+        import sys
+
+        print(
+            "Error: 'datasets' package required for --format dataset-hf. "
+            "`datasets` not installed — pip install mm[datasets]",
+            file=sys.stderr,
+        )
+        raise SystemExit(1)
+
+    if not rows:
+        import sys
+
+        print("No data to export.", file=sys.stderr)
+        return
+
+    ds = Dataset.from_list(rows)
+    out = Path(output_dir)
+    ds.save_to_disk(str(out))
+    import sys
+
+    print(f"Saved HuggingFace Dataset ({len(rows)} rows) → {out.resolve()}", file=sys.stderr)
 
 
 def format_size(size_bytes: int | float) -> str:

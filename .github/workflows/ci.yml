@@ -49,7 +49,7 @@ jobs:
       - name: Install dependencies and build Rust extension
         run: |
           uv venv --python ${{ matrix.python-version }}
-          uv pip install -e ".[dev,extract]"
+          uv pip install -e ".[dev,extract,datasets]"
           uv run maturin develop --release
       - run: make lint-python
       - run: make test-python

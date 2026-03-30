@@ -23,7 +23,8 @@ def wc_cmd(
     kind: Annotated[Optional[str], typer.Option("--kind", "-k", help="Filter by kind")] = None,
     by_kind: Annotated[bool, typer.Option("--by-kind", help="Break down by file kind")] = False,
     format: Annotated[
-        Optional[str], typer.Option("--format", help="Output format: json, tsv, csv")
+        Optional[str],
+        typer.Option("--format", help="Output format: json, tsv, csv, dataset-jsonl, dataset-hf"),
     ] = None,
 ) -> None:
     """Count files, bytes, lines, and estimated tokens (like wc for LLM context)."""
@@ -100,10 +101,19 @@ def wc_cmd(
             if k == "image" and s["files"] > 0:
                 s["tok_per_img"] = round(s["tokens"] / s["files"])
 
-    if fmt == "json":
-        from mm.display import json_dumps
+    if fmt in ("json", "dataset-jsonl", "dataset-hf"):
+        from mm.display import emit_rows
 
-        print(json_dumps(result))
+        if fmt == "json":
+            from mm.display import json_dumps
+
+            print(json_dumps(result))
+        else:
+            if by_kind and kind_stats:
+                rows = [{"kind": k, **s} for k, s in kind_stats.items()]
+                emit_rows(fmt, rows)
+            else:
+                emit_rows(fmt, [result])
         return
 
     from mm.display import format_number, format_size

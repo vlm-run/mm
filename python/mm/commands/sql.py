@@ -12,7 +12,7 @@ def sql_cmd(
     query: Annotated[str, typer.Argument(help="SQL query (table name is 'files')")],
     directory: Annotated[Path, typer.Option("--dir", "-d", help="Directory to index")] = Path("."),
     format: Annotated[
-        Optional[str], typer.Option("--format", help="Output format: json, tsv, csv")
+        Optional[str], typer.Option("--format", help="Output format: json, tsv, csv, dataset-jsonl, dataset-hf")
     ] = None,
 ) -> None:
     """Query the file index with SQL via DuckDB."""
@@ -25,13 +25,11 @@ def sql_cmd(
     ctx = Context(directory)
     result = query_arrow_table(ctx.to_arrow(), query)
 
-    if fmt == "json":
-        from mm.display import json_dumps
+    if fmt in ("json", "dataset-jsonl", "dataset-hf"):
+        from mm.display import emit_rows
 
-        rows = []
-        for i in range(result.num_rows):
-            rows.append({c: result.column(c)[i].as_py() for c in result.column_names})
-        print(json_dumps(rows))
+        rows = [{c: result.column(c)[i].as_py() for c in result.column_names} for i in range(result.num_rows)]
+        emit_rows(fmt, rows)
     elif fmt in ("tsv", "csv"):
         import csv
         import io

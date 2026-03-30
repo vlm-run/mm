@@ -122,7 +122,8 @@ def cat_cmd(
         typer.Option("--mode", "-m", help="Extraction mode: fast or accurate (L2 only)"),
     ] = None,
     format: Annotated[
-        Optional[str], typer.Option("--format", help="Output format: json, tsv, csv")
+        Optional[str],
+        typer.Option("--format", help="Output format: json, tsv, csv, dataset-jsonl, dataset-hf"),
     ] = None,
 ) -> None:
     """Display file content semantically (like bat/cat).
@@ -207,8 +208,18 @@ def cat_cmd(
             all_lines = content.splitlines()
             content = "\n".join(all_lines[:n] if n >= 0 else all_lines[n:])
 
-        if fmt == "json":
-            entry: dict = {"path": str(p), "level": level, "content": content}
+        if fmt in ("json", "dataset-jsonl", "dataset-hf"):
+            if fmt == "json":
+                entry: dict = {"path": str(p), "level": level, "content": content}
+            else:
+                entry = {
+                    "path": str(p),
+                    "level": level,
+                    "content": content,
+                    "name": p.name,
+                    "type": _file_kind(p),
+                    "size": p.stat().st_size,
+                }
             if mode:
                 entry["mode"] = mode
             results.append(entry)
@@ -223,10 +234,10 @@ def cat_cmd(
                 print(f"--- {p} ({kind}, {size}B) ---")
             print(content)
 
-    if fmt == "json":
-        from mm.display import json_dumps
+    if fmt in ("json", "dataset-jsonl", "dataset-hf"):
+        from mm.display import emit_rows
 
-        print(json_dumps(results))
+        emit_rows(fmt, results, output_dir=str(output_dir) if output_dir else "mm_dataset")
 
 
 # ---------------------------------------------------------------------------

@@ -32,6 +32,9 @@ extract = [
     "docling>=2.0",
     "ctranslate2>=2.0",
 ]
+dataset = [
+    "datasets>=2.0",
+]
 mlx = [
     "mlx>=0.31.1",
     "lightning-whisper-mlx>=0.0.10",
