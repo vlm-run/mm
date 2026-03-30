@@ -64,10 +64,14 @@ jobs:
       - uses: actions/checkout@v6
       - uses: dtolnay/rust-toolchain@stable
 
+      - name: Build benchmarks
+        run: cargo bench --workspace --no-run
+
       - name: Run Criterion benchmarks
         id: bench
         run: |
-          cargo bench --workspace 2>&1 | tee bench_output.txt
+          cargo bench --workspace -- --output-format bencher 2>&1 | tee full_bench_output.txt
+          grep '^test ' full_bench_output.txt > bench_output.txt || true
           {
             echo "body<<BENCH_EOF"
             cat bench_output.txt
