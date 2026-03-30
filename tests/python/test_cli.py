@@ -177,9 +177,9 @@ class TestCat:
 
         for line in lines:
             row = json.loads(line)
-            assert "file_name" in row
-            assert "file_path" in row
-            assert "file_type" in row
+            assert "name" in row
+            assert "path" in row
+            assert "type" in row
             assert "size" in row
             assert "content" in row
             assert "level" in row
@@ -196,8 +196,8 @@ class TestCat:
         )
         assert r.exit_code == 0
         row = json.loads(r.output.strip())
-        assert row["file_name"] == "main.py"
-        assert row["file_type"] == "text"
+        assert row["name"] == "main.py"
+        assert row["type"] == "text"
         assert "def main" in row["content"]
 
 
@@ -376,16 +376,16 @@ class TestDatasetHf:
         from mm.display import emit_rows
 
         rows = [
-            {"file_name": "a.png", "file_type": "image", "size": 1024, "content": "dims: 100x100"},
-            {"file_name": "b.py", "file_type": "code", "size": 256, "content": "print('hi')"},
+            {"name": "a.png", "type": "image", "size": 1024, "content": "dims: 100x100"},
+            {"name": "b.py", "type": "code", "size": 256, "content": "print('hi')"},
         ]
         out = str(tmp_path / "ds_out")
         emit_rows("dataset-hf", rows, output_dir=out)
 
         ds = datasets.load_from_disk(out)
         assert len(ds) == 2
-        assert ds[0]["file_name"] == "a.png"
-        assert ds[1]["file_type"] == "code"
+        assert ds[0]["name"] == "a.png"
+        assert ds[1]["type"] == "code"
         assert ds[1]["content"] == "print('hi')"
 
     def test_cat_dataset_hf(self, small_tree: Path, tmp_path: Path):
@@ -410,7 +410,7 @@ class TestDatasetHf:
         ds = datasets.load_from_disk(out)
         assert len(ds) == 2
 
-        names = {str(ds[i]["file_name"]) for i in range(len(ds))}
+        names = {str(ds[i]["name"]) for i in range(len(ds))}
         assert "main.py" in names
         assert "lib.rs" in names
 

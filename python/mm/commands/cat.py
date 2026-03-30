@@ -213,12 +213,12 @@ def cat_cmd(
                 entry: dict = {"path": str(p), "level": level, "content": content}
             else:
                 entry: dict = {
-                    "file_name": p.name,
-                    "file_path": str(p),
-                    "file_type": _file_kind(p),
-                    "size": p.stat().st_size,
+                    "path": str(p),
                     "level": level,
                     "content": content,
+                    "name": p.name,
+                    "type": _file_kind(p),
+                    "size": p.stat().st_size,
                 }
             if mode:
                 entry["mode"] = mode
