@@ -918,7 +918,10 @@ def _display_rich(path: Path, content: str, level: int, n: int | None) -> None:
     title = f"[bold]{path}[/bold]"
     kind = _file_kind(path)
     is_binary = kind in ("image", "document", "video", "audio") or "\x00" in content[:512]
-    safe_content = Text(content) if level >= 2 or is_binary else content
+    if is_binary:
+        safe_content = Text(content.replace("\x1b", "\ufffd"))
+    else:
+        safe_content = Text(content) if level >= 2 else content
 
     if ext in lang_map and level == 0:
         syntax = Syntax(content, lang_map[ext], theme="monokai", line_numbers=True)
