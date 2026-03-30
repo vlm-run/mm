@@ -48,7 +48,7 @@ jobs:
 
       - name: Install dependencies and build Rust extension
         run: |
-          uv venv --python 3.12
+          uv venv --python ${{ matrix.python-version }}
           uv pip install -e ".[dev,extract]"
           uv run maturin develop --release
       - run: make lint-python
