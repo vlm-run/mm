@@ -48,6 +48,7 @@ pub fn l1_schema() -> Schema {
         Arc::new(Field::new("audio_codec", DataType::Utf8, true)),
         Arc::new(Field::new("fps", DataType::Float64, true)),
         Arc::new(Field::new("has_audio", DataType::Boolean, true)),
+        Arc::new(Field::new("phash", DataType::UInt64, true)),
     ]);
     Schema::new(fields)
 }
@@ -77,7 +78,7 @@ mod tests {
         let l0 = l0_schema();
         let l1 = l1_schema();
         assert!(l1.fields().len() > l0.fields().len());
-        assert_eq!(l1.fields().len(), 31);
+        assert_eq!(l1.fields().len(), 32);
     }
 
     #[test]
