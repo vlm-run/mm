@@ -64,17 +64,7 @@ jobs:
       - uses: actions/checkout@v6
       - uses: dtolnay/rust-toolchain@stable
 
-      # - name: Build benchmarks
-      #   run: cargo bench --workspace --no-run
-      - name: Run Criterion benchmarks
-        id: bench
-        run: |
-          cargo bench --workspace 2>&1 | tee bench_output.txt
-          {
-            echo "body<<BENCH_EOF"
-            cat bench_output.txt
-            echo "BENCH_EOF"
-          } >> "$GITHUB_OUTPUT"
+      - run: cargo bench --workspace
 
       - name: Extract benchmark results from Criterion JSON
         run: |
