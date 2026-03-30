@@ -47,78 +47,67 @@ pub fn full_hash_read(path: &Path) -> Option<u64> {
 
 /// Perceptual hash (pHash) of an image file.
 /// Produces a 64-bit hash invariant to resize and mild compression.
-/// Algorithm: resize to 32x32 grayscale → DCT → top-left 8x8 → median threshold.
-#[allow(clippy::needless_range_loop)]
+/// Algorithm: resize to 32x32 grayscale → 2D DCT (via rustdct) → top-left 8x8 → median threshold.
 pub fn phash(data: &[u8]) -> Option<u64> {
+    use rustdct::DctPlanner;
+
     let img = image::ImageReader::new(Cursor::new(data))
         .with_guessed_format()
         .ok()?
         .decode()
         .ok()?;
 
+    let n = PHASH_SIZE as usize;
+
     // Resize to 32x32 and convert to grayscale
     let gray = img
-        .resize_exact(PHASH_SIZE, PHASH_SIZE, image::imageops::FilterType::Lanczos3)
+        .resize_exact(
+            PHASH_SIZE,
+            PHASH_SIZE,
+            image::imageops::FilterType::Lanczos3,
+        )
         .to_luma8();
 
-    // Convert to f64 matrix
-    let mut pixels = [[0.0f64; PHASH_SIZE as usize]; PHASH_SIZE as usize];
-    for y in 0..PHASH_SIZE as usize {
-        for x in 0..PHASH_SIZE as usize {
-            pixels[y][x] = gray.get_pixel(x as u32, y as u32).0[0] as f64;
-        }
+    // Flatten to row-major f64 matrix
+    let mut matrix: Vec<f64> = gray.pixels().map(|p| p.0[0] as f64).collect();
+
+    // 2D DCT via rustdct: DCT-II on rows, then on columns
+    let mut planner = DctPlanner::new();
+    let dct = planner.plan_dct2(n);
+    let mut scratch = vec![0.0f64; dct.get_scratch_len()];
+
+    // DCT on each row
+    for row in matrix.chunks_exact_mut(n) {
+        dct.process_dct2_with_scratch(row, &mut scratch);
     }
 
-    // Apply 2D DCT (rows then columns)
-    let mut dct = [[0.0f64; PHASH_SIZE as usize]; PHASH_SIZE as usize];
-
-    // DCT on rows
-    for y in 0..PHASH_SIZE as usize {
-        for u in 0..PHASH_SIZE as usize {
-            let mut sum = 0.0;
-            for x in 0..PHASH_SIZE as usize {
-                sum += pixels[y][x]
-                    * ((std::f64::consts::PI * (2.0 * x as f64 + 1.0) * u as f64)
-                        / (2.0 * PHASH_SIZE as f64))
-                        .cos();
-            }
-            dct[y][u] = sum;
+    // Transpose and DCT on columns
+    let mut transposed = vec![0.0f64; n * n];
+    for r in 0..n {
+        for c in 0..n {
+            transposed[c * n + r] = matrix[r * n + c];
         }
     }
-
-    // DCT on columns (in-place, only need first DCT_LOW columns)
-    let mut dct2 = [[0.0f64; PHASH_SIZE as usize]; PHASH_SIZE as usize];
-    for x in 0..DCT_LOW {
-        for v in 0..PHASH_SIZE as usize {
-            let mut sum = 0.0;
-            for y in 0..PHASH_SIZE as usize {
-                sum += dct[y][x]
-                    * ((std::f64::consts::PI * (2.0 * y as f64 + 1.0) * v as f64)
-                        / (2.0 * PHASH_SIZE as f64))
-                        .cos();
-            }
-            dct2[v][x] = sum;
-        }
+    for row in transposed.chunks_exact_mut(n) {
+        dct.process_dct2_with_scratch(row, &mut scratch);
     }
 
-    // Extract top-left 8x8 (excluding DC component at [0][0])
-    let mut coeffs = Vec::with_capacity(DCT_LOW * DCT_LOW - 1);
+    // Extract top-left 8x8 coefficients directly from transposed layout
+    let mut coeffs = Vec::with_capacity(DCT_LOW * DCT_LOW);
     for v in 0..DCT_LOW {
         for u in 0..DCT_LOW {
-            if v == 0 && u == 0 {
-                continue; // skip DC
-            }
-            coeffs.push(dct2[v][u]);
+            coeffs.push(transposed[u * n + v]);
         }
     }
 
-    // Median threshold → 64-bit hash
-    let mut sorted = coeffs.clone();
-    sorted.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
-    let median = sorted[sorted.len() / 2];
+    // Median of AC coefficients only (skip DC at index 0)
+    let mut ac_sorted: Vec<f64> = coeffs[1..].to_vec();
+    ac_sorted.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+    let median = ac_sorted[ac_sorted.len() / 2];
 
+    // Threshold all 64 coefficients against AC median → true 64-bit hash
     let mut hash: u64 = 0;
-    for (i, &c) in coeffs.iter().take(64).enumerate() {
+    for (i, &c) in coeffs.iter().enumerate() {
         if c > median {
             hash |= 1 << i;
         }
@@ -193,7 +182,11 @@ mod tests {
     fn test_phash_similar_after_resize() {
         // Create a 400x400 image with a complex pattern (checkerboard + gradient)
         let img = image::RgbImage::from_fn(400, 400, |x, y| {
-            let checker = if (x / 40 + y / 40) % 2 == 0 { 200u8 } else { 50u8 };
+            let checker = if (x / 40 + y / 40) % 2 == 0 {
+                200u8
+            } else {
+                50u8
+            };
             let gx = (x * 255 / 400) as u8;
             let gy = (y * 255 / 400) as u8;
             image::Rgb([checker, gx, gy])
@@ -204,8 +197,11 @@ mod tests {
             .unwrap();
 
         // Resize to 100x100 (4x downscale — typical real-world scenario)
-        let small = image::DynamicImage::ImageRgb8(img)
-            .resize_exact(100, 100, image::imageops::FilterType::Lanczos3);
+        let small = image::DynamicImage::ImageRgb8(img).resize_exact(
+            100,
+            100,
+            image::imageops::FilterType::Lanczos3,
+        );
         let mut buf_small = Vec::new();
         small
             .write_to(&mut Cursor::new(&mut buf_small), image::ImageFormat::Png)
