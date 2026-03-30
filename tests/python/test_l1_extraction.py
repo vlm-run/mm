@@ -309,6 +309,31 @@ class TestImageL1:
         assert len(data) == 1
         assert "16x16" in data[0]["content"]
 
+    def test_cat_level0_image_no_crash(self, image_tree: Path):
+        """L0 cat of binary image must not crash Rich with MarkupError."""
+        result = runner.invoke(app, [
+            "cat", str(image_tree / "small.png"), "--level", "0",
+        ])
+        assert result.exit_code == 0
+
+    def test_cat_level0_pdf_no_crash(self, tmp_path: Path):
+        """L0 cat of binary PDF must not crash Rich with MarkupError."""
+        # Minimal valid PDF with binary content and escape-like bytes
+        pdf = tmp_path / "test.pdf"
+        pdf.write_bytes(
+            b"%PDF-1.0\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n"
+            b"2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj\n"
+            b"3 0 obj<</Type/Page/MediaBox[0 0 612 792]/Parent 2 0 R>>endobj\n"
+            b"xref\n0 4\n0000000000 65535 f \n"
+            b"trailer<</Size 4/Root 1 0 R>>\nstartxref\n0\n%%EOF\n"
+            # Add bytes that look like ANSI escapes and Rich markup
+            b"\x1b[?1;2c \x1b[0m [bold]not markup[/bold]"
+        )
+        result = runner.invoke(app, [
+            "cat", str(pdf), "--level", "0",
+        ])
+        assert result.exit_code == 0
+
 
 # ── Video L1 Extraction ──────────────────────────────────────────────
 

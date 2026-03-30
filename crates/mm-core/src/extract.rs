@@ -28,6 +28,7 @@ pub struct L1Record {
     pub audio_codec: Option<String>,
     pub fps: Option<f64>,
     pub has_audio: Option<bool>,
+    pub phash: Option<u64>,
 }
 
 pub trait ContentExtractor: Send + Sync {
