@@ -94,7 +94,7 @@ jobs:
 
       - name: Benchmark result
         uses: benchmark-action/github-action-benchmark@v1
-        continue-on-error: true
+        continue-on-error: false
         with:
           tool: "customSmallerIsBetter"
           output-file-path: bench_output.json
