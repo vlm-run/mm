@@ -348,6 +348,8 @@ def _l1_image(path: Path) -> str:
             parts.append(f"MIME:       {r.magic_mime}")
         if r.content_hash:
             parts.append(f"Hash:       {r.content_hash}")
+        if r.phash is not None:
+            parts.append(f"pHash:      {r.phash:016x}")
         if r.exif_camera:
             parts.append(f"Camera:     {r.exif_camera}")
         if r.exif_date:
@@ -914,9 +916,9 @@ def _display_rich(path: Path, content: str, level: int, n: int | None) -> None:
     }
 
     title = f"[bold]{path}[/bold]"
-    safe_content = Text(content) if level >= 2 else content
-
     kind = _file_kind(path)
+    is_binary = kind in ("image", "document", "video", "audio") or "\x00" in content[:512]
+    safe_content = Text(content) if level >= 2 or is_binary else content
 
     if ext in lang_map and level == 0:
         syntax = Syntax(content, lang_map[ext], theme="monokai", line_numbers=True)
