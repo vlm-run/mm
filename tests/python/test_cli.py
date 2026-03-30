@@ -389,8 +389,7 @@ class TestDatasetHf:
         assert ds[1]["content"] == "print('hi')"
 
     def test_cat_dataset_hf(self, small_tree: Path, tmp_path: Path):
-        pytest.importorskip("datasets")
-        import datasets
+        datasets = pytest.importorskip("datasets")
 
         out = str(tmp_path / "cat_ds")
         r = runner.invoke(
@@ -419,8 +418,7 @@ class TestDatasetHf:
             assert len(ds[i]["content"]) > 0
 
     def test_find_dataset_hf(self, small_tree: Path, tmp_path: Path, monkeypatch):
-        pytest.importorskip("datasets")
-        import datasets
+        datasets = pytest.importorskip("datasets")
 
         # find writes to mm_dataset/ by default — chdir to tmp so it lands there
         monkeypatch.chdir(tmp_path)
@@ -433,8 +431,7 @@ class TestDatasetHf:
         assert "kind" in ds.column_names
 
     def test_grep_dataset_hf(self, small_tree: Path, tmp_path: Path, monkeypatch):
-        pytest.importorskip("datasets")
-        import datasets
+        datasets = pytest.importorskip("datasets")
 
         monkeypatch.chdir(tmp_path)
         r = runner.invoke(app, ["grep", "hello", str(small_tree), "--format", "dataset-hf"])
