@@ -18,6 +18,10 @@ on:
       - "crates/**"
       - "Cargo.toml"
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   test-rust:
     runs-on: ubuntu-latest
@@ -42,7 +46,6 @@ jobs:
           uv venv --python 3.12
           uv pip install -e ".[dev,extract]"
           uv run maturin develop --release
-
       - run: make lint-python
       - run: make test-python
 
@@ -50,6 +53,7 @@ jobs:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     permissions:
+      contents: write
       pull-requests: write
     steps:
       - uses: actions/checkout@v6
@@ -77,3 +81,21 @@ jobs:
             ${{ steps.bench.outputs.body }}
             ```
             </details>
+
+      - name: Download previous benchmark data
+        uses: actions/cache@v5
+        with:
+          path: ./cache
+          key: ${{ runner.os }}-benchmark
+
+      - name: Benchmark result
+        uses: benchmark-action/github-action-benchmark@v1
+        with:
+          tool: "cargo"
+          output-file-path: bench_output.txt
+          external-data-json-path: ./cache/benchmark-data.json
+          fail-on-alert: true
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          summary-always: true
+          comment-on-alert: true
+          alert-comment-cc-users: "@nwaughachukwuma"
