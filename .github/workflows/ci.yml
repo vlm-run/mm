@@ -70,13 +70,31 @@ jobs:
       - name: Run Criterion benchmarks
         id: bench
         run: |
-          cargo bench --workspace -- --output-format bencher 2>&1 | tee full_bench_output.txt
-          grep '^test ' full_bench_output.txt > bench_output.txt || true
+          cargo bench --workspace 2>&1 | tee bench_output.txt
           {
             echo "body<<BENCH_EOF"
             cat bench_output.txt
             echo "BENCH_EOF"
           } >> "$GITHUB_OUTPUT"
+
+      - name: Extract benchmark results from Criterion JSON
+        run: |
+          python3 -c "
+          import json, pathlib, sys
+          results = []
+          base = pathlib.Path('target/criterion')
+          if not base.exists():
+              print('No target/criterion directory found', file=sys.stderr)
+              sys.exit(1)
+          for est in sorted(base.rglob('new/estimates.json')):
+              data = json.loads(est.read_text())
+              parts = est.relative_to(base).parts
+              name = '/'.join(parts[:-2])  # group/bench
+              median_ns = data['median']['point_estimate']
+              results.append({'name': name, 'unit': 'ns', 'value': median_ns})
+          pathlib.Path('bench_output.json').write_text(json.dumps(results, indent=2))
+          print(f'Extracted {len(results)} benchmark results')
+          "
 
       - name: Post benchmark results to PR
         uses: marocchino/sticky-pull-request-comment@v2
@@ -100,8 +118,8 @@ jobs:
       - name: Benchmark result
         uses: benchmark-action/github-action-benchmark@v1
         with:
-          tool: "cargo"
-          output-file-path: bench_output.txt
+          tool: "customSmallerIsBetter"
+          output-file-path: bench_output.json
           external-data-json-path: ./cache/benchmark-data.json
           fail-on-alert: true
           github-token: ${{ secrets.GITHUB_TOKEN }}
