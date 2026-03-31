@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import os
 from pathlib import Path
 from typing import Any
 
@@ -50,8 +49,8 @@ class Context:
         llm_api_key: str | None = None,
     ):
         self.root = Path(root).resolve()
-        self._llm_base_url = llm_base_url or os.environ.get("MM_BASE_URL")
-        self._llm_api_key = llm_api_key or os.environ.get("MM_API_KEY")
+        self._llm_base_url = llm_base_url
+        self._llm_api_key = llm_api_key
 
         from mm._mm import Scanner
 

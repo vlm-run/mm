@@ -139,7 +139,7 @@ ctx.info()    # Rich summary panel
 |-------|------|-------|-----|
 | L0 | File metadata (path, size, kind, ext, timestamps, dimensions) | ~60ms / 700 files | Rust `stat()` + extension classification + image headers |
 | L1 | Content extraction (text from PDF, image hash/EXIF, video metadata) | <100ms/file | pypdfium2 (PDF), Rust mmap (images), mp4parse/matroska (video) |
-| L2 | Semantic understanding (captions, descriptions) | Varies | LLM API via `MM_BASE_URL` |
+| L2 | Semantic understanding (captions, descriptions) | Varies | LLM API via active profile |
 
 ## Performance
 
@@ -178,24 +178,80 @@ Rust (mm-core)                   Python (mm)
 └─────────────────────┘             └─────────────────────┘
 ```
 
-## L2 LLM Configuration
+## L2 LLM Configuration using Profiles
 
-For semantic understanding (`--level 2`), mm uses the `openai` Python SDK to call any OpenAI-compatible API. Provider settings are resolved in order: CLI flags > env vars > `~/.mm/config.toml` > defaults.
+For semantic understanding (`--level 2`), mm uses the `openai` Python SDK to call any OpenAI-compatible API. Provider settings are managed through **profiles** — named configurations stored in `~/.config/mm/mm.toml`.
+
+### Quick setup
 
 ```bash
-# Environment variables
-export MM_BASE_URL="http://localhost:11434"   # Ollama (default)
-export MM_API_KEY=""                           # if needed
-export MM_MODEL="qwen3.5:0.8b"                # default model
-
-# CLI flags (override everything)
-mm --base-url http://... --model gpt-4o cat photo.png -l 2
-
-# Config file
-mm config init                # create ~/.mm/config.toml
+mm config init                # create config with default profile (local Ollama)
 mm config show                # show resolved config with sources
-mm config set model gpt-4o   # update a key
 ```
+
+### Managing profiles
+
+Each profile stores `base_url`, `api_key`, and `model`. You can have as many as you need — one per provider, one per use-case, etc.
+
+```bash
+# Add profiles for different providers
+mm config profile add vlmrun --base-url https://api.vlm.run/v1 --api-key sk-... --model vlm-1
+mm config profile add openai --base-url https://api.openai.com/v1 --api-key sk-... --model gpt-4o
+mm config profile add ollama --base-url http://localhost:11434 --model qwen3-vl:8b
+
+# List all profiles (● = active)
+mm config profile list
+
+# Switch the active profile
+mm config profile use vlmrun
+
+# Update a field on an existing profile
+mm config profile update vlmrun --model vlm-2 --api-key sk-new-key
+
+# Remove a profile (cannot remove the active one)
+mm config profile remove ollama
+```
+
+### Selecting a profile per-command
+
+```bash
+# --profile flag (one-off override, does not change active profile)
+mm --profile openai cat photo.png -l 2
+
+# Environment variable
+MM_PROFILE=vlmrun mm cat photo.png -l 2
+```
+
+### Resolution order
+
+Provider settings (base_url, api_key, model) come from the active profile, falling back to built-in defaults.
+
+The active profile is resolved as:
+
+```
+--profile flag  >  MM_PROFILE env  >  active_profile in config file  >  "default"
+```
+
+### Config file format
+
+```toml
+# ~/.config/mm/mm.toml
+active_profile = "default"
+
+[profile.default]
+base_url = "http://localhost:11434"
+api_key = ""
+model = "qwen3.5:0.8b"
+
+[profile.vlmrun]
+base_url = "https://api.vlm.run/v1"
+api_key = "sk-..."
+model = "vlm-1"
+```
+
+### Backward compatibility
+
+Existing configs using the flat `[provider]` section continue to work — they are treated as `[profile.default]` automatically.
 
 ## License
 

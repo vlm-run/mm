@@ -480,8 +480,6 @@ def _l2_image(path: Path, opts: _CatOpts) -> str:
 
 def _l2_video(path: Path, opts: _CatOpts) -> str:
     """Generate keyframe mosaic then send to LLM for description."""
-    from mm.llm import LlmBackend
-
     try:
         from mm.ffmpeg import (
             extract_keyframe_mosaics,
@@ -489,9 +487,10 @@ def _l2_video(path: Path, opts: _CatOpts) -> str:
             extract_uniform_mosaics,
             ffmpeg_available,
         )
+        from mm.llm import LlmBackend
 
         if not ffmpeg_available():
-            return f"[ffmpeg not found — cannot generate mosaic for {path.name}]"
+            raise RuntimeError(f"ffmpeg not found — cannot generate mosaic for {path.name}")
 
         cols, rows = _parse_tile(opts.mosaic_tile)
         count = max(1, min(opts.video_mosaic_count, 8))
@@ -525,7 +524,7 @@ def _l2_video(path: Path, opts: _CatOpts) -> str:
             )
 
         if not result.mosaic_paths:
-            return f"[No keyframes extracted from {path.name}]"
+            raise RuntimeError(f"No keyframes extracted from {path.name}")
 
         info = LlmBackend().describe_video(
             result.mosaic_paths,
@@ -533,7 +532,6 @@ def _l2_video(path: Path, opts: _CatOpts) -> str:
             duration_s=result.duration_s,
         )
         return info.get("summary", "") or str(info)
-
     except Exception as e:
         return f"[Video L2 failed: {e}]"
 

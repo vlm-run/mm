@@ -1,40 +1,56 @@
-# ~/.mm/config.toml
+# ~/.config/mm/mm.toml
 #
 # mm configuration file.
-# Copy to ~/.mm/config.toml and edit to your needs.
+# Copy to ~/.config/mm/mm.toml and edit to your needs.
 # Generate with: mm config init
 
-# ── LLM provider (used by `cat -l 2`, `grep -l 2`, etc.) ────────────
-[provider]
+# ── Active profile ──────────────────────────────────────────────────
+# Switch with:  mm config profile use <name>
+# Per-command:  mm --profile vlmrun cat photo.png -l 2
+# Env var:      MM_PROFILE=vlmrun mm cat photo.png -l 2
+active_profile = "default"
 
-# Base URL for OpenAI-compatible API.
-# Ollama:    http://localhost:11434        (default)
-# vLLM:      http://localhost:8000/v1=
-# VLM Run:   https://api.vlm.run/v1
-# Gemini:    https://generativelanguage.googleapis.com/v1beta/openai/
-# OpenAI:    https://api.openai.com/v1
+# ── Profiles (LLM provider configs) ────────────────────────────────
+# Each profile has: base_url, api_key, model
+# List all:     mm config profile list
+# Add new:      mm config profile add <name> --base-url <url> --model <model>
+# Update:       mm config profile update <name> --api-key <key>
+
+[profile.default]
+# Ollama (local, default)
 base_url = "http://localhost:11434"
-
-# API key (leave empty for local Ollama).
 api_key = ""
-
-# Model name.
-# Ollama:    `qwen3.5:0.8b`  (default, fast text)
-#            `qwen3-vl:2b`   (vision, for image captioning)
-#            `qwen3-vl:8b`   (vision, higher quality)
-# VLM Run:   `vlm-1` / `vlmrun-orion-1:auto`, `vlmrun-orion-1:fast`, `vlmrun-orion-1:pro`
-# Gemini:    `gemini-3.1-flash-lite-preview` (default, fast text)
-# OpenAI:    `gpt-5-nano-2025-08-07`
 model = "qwen3.5:0.8b"
 
+# [profile.vllm]
+# base_url = "http://localhost:8000/v1"
+# api_key = ""
+# model = "Qwen/Qwen3.5-0.8B"
 
-# ── Environment variable overrides ───────────────────────────────────
+# [profile.vlmrun]
+# base_url = "https://api.vlm.run/v1"
+# api_key = ""
+# model = "vlm-1"
+
+# [profile.openrouter]
+# base_url = "https://openrouter.ai/api/v1"
+# api_key = ""
+# model = "qwen/qwen-2.5-vl-7b-instruct"
+
+# [profile.openai]
+# base_url = "https://api.openai.com/v1"
+# api_key = ""
+# model = "gpt-4o"
+
+# [profile.gemini]
+# base_url = "https://generativelanguage.googleapis.com/v1beta/openai/"
+# api_key = ""
+# model = "gemini-2.5-flash"
+
+
+# ── Environment variable ─────────────────────────────────────────────
 #
-# These override config.toml values (but are overridden by CLI flags):
-#
-#   MM_BASE_URL
-#   MM_API_KEY
-#   MM_MODEL
+#   MM_PROFILE     — override active_profile (e.g. MM_PROFILE=vlmrun mm cat ...)
 #
 # Resolution order:
-#   CLI flags  >  env vars  >  config.toml  >  built-in defaults
+#   active profile  >  built-in defaults
