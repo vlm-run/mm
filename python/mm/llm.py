@@ -61,7 +61,12 @@ class LlmBackend:
             resolved_base = f"{resolved_base}/v1"
         self.api_key = api_key or cfg.api_key or "no-key"
         self.model = model or cfg.model
-        self.client = OpenAI(base_url=resolved_base, api_key=self.api_key, timeout=120.0)
+        self.client = OpenAI(
+            base_url=resolved_base,
+            api_key=self.api_key,
+            timeout=120.0,
+            default_headers={"User-Agent": "mm-ctx/0.1.2"},
+        )
         self.last_usage = LlmUsage()
 
     @property
