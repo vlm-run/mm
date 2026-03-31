@@ -377,4 +377,4 @@ class TestL2CacheError:
                 mock_prov.return_value.model = "m"
                 _l2_cached(txt, "text", opts)
 
-            mock_put.assert_not_called(), f"Should not cache: {error_msg}"
+            mock_put.assert_not_called()
