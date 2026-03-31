@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Annotated, Optional
+from typing import Annotated, Optional, TypedDict
 
 import typer
 
@@ -189,9 +189,7 @@ def init(
 
 @config_app.command("set")
 def set_key(
-    key: Annotated[
-        str, typer.Argument(help="Key to set (e.g. mode.fast.whisper_model)")
-    ],
+    key: Annotated[str, typer.Argument(help="Key to set (e.g. mode.fast.whisper_model)")],
     value: Annotated[str, typer.Argument(help="Value to set")],
 ) -> None:
     """Set a mode config value.
@@ -215,13 +213,19 @@ def set_key(
     # Reject provider keys — redirect to profile update
     if key in PROFILE_KEYS:
         output_console.print(f"[red]Provider key '{key}' must be set per-profile.[/red]")
-        output_console.print("[dim]Use: mm config profile update <name> --{} <value>[/dim]".format(key.replace("_", "-")))
+        output_console.print(
+            "[dim]Use: mm config profile update <name> --{} <value>[/dim]".format(
+                key.replace("_", "-")
+            )
+        )
         raise typer.Exit(1)
 
     # Validate mode key format
     if not key.startswith("mode."):
         output_console.print(f"[red]Unknown key:[/red] {key}")
-        output_console.print("[dim]Valid keys: mode.{{fast,accurate}}.{{whisper_model,audio_speed,beam_size}}[/dim]")
+        output_console.print(
+            "[dim]Valid keys: mode.{{fast,accurate}}.{{whisper_model,audio_speed,beam_size}}[/dim]"
+        )
         raise typer.Exit(1)
 
     parts = key.split(".")
@@ -268,11 +272,13 @@ def profile_list(
     if fmt == "json":
         from mm.display import json_dumps
 
-        data = {
+        class JSONDataDict(TypedDict):
+            active: str
+            profiles: dict[str, dict[str, str]]
+
+        data: JSONDataDict = {
             "active": active,
-            "profiles": {
-                name: get_profile_section(file_data, name) for name in names
-            },
+            "profiles": {name: get_profile_section(file_data, name) for name in names},
         }
         # Mask api_key values
         for p in data["profiles"].values():
@@ -287,7 +293,9 @@ def profile_list(
         for name in names:
             section = get_profile_section(file_data, name)
             is_active = "✓" if name == active else ""
-            print(f"{name}{sep}{is_active}{sep}{section.get('base_url', '')}{sep}{section.get('model', '')}")
+            print(
+                f"{name}{sep}{is_active}{sep}{section.get('base_url', '')}{sep}{section.get('model', '')}"
+            )
         return
 
     from rich import box
@@ -338,7 +346,9 @@ def profile_use(
 
     try:
         path = set_active_profile(name)
-        output_console.print(f"[green]Switched to profile:[/green] [bold]{name}[/bold]  [dim]({path})[/dim]")
+        output_console.print(
+            f"[green]Switched to profile:[/green] [bold]{name}[/bold]  [dim]({path})[/dim]"
+        )
     except ValueError as e:
         output_console.print(f"[red]{e}[/red]")
         raise typer.Exit(1)
@@ -364,7 +374,9 @@ def profile_add(
 
     try:
         path = add_profile(name, base_url=base_url, api_key=api_key, model=model)
-        output_console.print(f"[green]Added profile:[/green] [bold]{name}[/bold]  [dim]({path})[/dim]")
+        output_console.print(
+            f"[green]Added profile:[/green] [bold]{name}[/bold]  [dim]({path})[/dim]"
+        )
     except ValueError as e:
         output_console.print(f"[red]{e}[/red]")
         raise typer.Exit(1)
@@ -373,7 +385,9 @@ def profile_add(
 @profile_app.command("update")
 def profile_update_cmd(
     name: Annotated[str, typer.Argument(help="Profile name to update")],
-    base_url: Annotated[Optional[str], typer.Option("--base-url", "-b", help="LLM API base URL")] = None,
+    base_url: Annotated[
+        Optional[str], typer.Option("--base-url", "-b", help="LLM API base URL")
+    ] = None,
     api_key: Annotated[Optional[str], typer.Option("--api-key", "-k", help="API key")] = None,
     model: Annotated[Optional[str], typer.Option("--model", "-m", help="Model name")] = None,
 ) -> None:
