@@ -178,23 +178,34 @@ mm find <dir> --kind image | mm ls <dir>        # find images, pipe to ls
 mm find <dir> --kind document --min-size 10mb | wc -l  # count large PDFs
 ```
 
-## config — LLM provider management
+## config — LLM provider management (profiles)
+
+Provider settings are managed through **profiles** stored in `~/.config/mm/mm.toml`.
 
 ```bash
-mm config show                # show resolved config (key, value, source)
-mm config init                # create ~/.mm/config.toml with defaults
-mm config init --force        # overwrite existing config
-mm config set model gpt-4o   # update a key in config.toml
-mm config set base_url https://api.openai.com
+# View and init
+mm config show                                                    # show resolved config with sources
+mm config init                                                    # create config with default profile
+mm config init --force                                            # overwrite existing config
+
+# Profile management
+mm config profile list                                            # list all profiles (● = active)
+mm config profile add vlmrun --base-url https://api.vlm.run/v1 --model vlm-1  # add (--base-url and --model required)
+mm config profile update default --model qwen3-vl:8b              # update fields on existing profile
+mm config profile use vlmrun                                      # switch active profile
+mm config profile remove vlmrun                                   # remove (cannot remove active or 'default')
+
+# Mode settings (whisper, audio speed, beam size)
+mm config set mode.fast.whisper_model tiny
+mm config set mode.accurate.beam_size 5
 ```
 
-Provider settings resolved in order: CLI flags > env vars > config file > defaults.
+Active profile resolved as: `--profile` flag > `MM_PROFILE` env > `active_profile` in config file > `"default"`.
 
-Default: Ollama at `http://localhost:11434` with `qwen3.5:0.8b`.
-
-Top-level CLI flags override everything:
+Per-command profile selection:
 ```bash
-mm --base-url http://... --model gpt-4o cat photo.png -l 2
+mm --profile vlmrun cat photo.png -l 2       # one-off override
+MM_PROFILE=vlmrun mm cat photo.png -l 2      # env override
 ```
 
 ## Tips
@@ -207,6 +218,6 @@ mm --base-url http://... --model gpt-4o cat photo.png -l 2
 - `sql` is the most powerful command — any DuckDB-compatible SQL works against the `files` table.
 - For PDFs, `cat` extracts text at L1; if empty, the PDF is scanned images.
 - For videos, `cat -l 2` auto-generates keyframe mosaics and sends to LLM for description.
-- L2 uses the `openai` Python SDK. Sends `think=false` and `reasoning_effort="none"` with temperature 0.1.
+- L2 uses the `openai` Python SDK via the active profile. Sends `think=false` and `reasoning_effort="none"` with temperature 0.1.
 - Size filters accept human units: `1kb`, `5mb`, `1gb`.
 - Extension matching is case-sensitive: `.pdf` ≠ `.PDF`.

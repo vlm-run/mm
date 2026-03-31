@@ -88,13 +88,18 @@ def migrate_to_profiles(file_data: dict[str, Any]) -> dict[str, Any]:
 # ── Serialization ──────────────────────────────────────────────────
 
 
+def _toml_str(value: str) -> str:
+    """Escape a string for TOML double-quoted format."""
+    return value.replace("\\", "\\\\").replace('"', '\\"')
+
+
 def write_full_config(file_data: dict[str, Any]) -> Path:
     """Serialize full config dict back to TOML and write to disk. Returns path."""
     lines: list[str] = []
 
     # Top-level active_profile
     active = file_data.get("active_profile", "default")
-    lines.append(f'active_profile = "{active}"')
+    lines.append(f'active_profile = "{_toml_str(active)}"')
     lines.append("")
 
     # [profile.*] sections
@@ -104,7 +109,7 @@ def write_full_config(file_data: dict[str, Any]) -> Path:
         lines.append(f"[profile.{name}]")
         for k in ("base_url", "api_key", "model"):
             if k in p:
-                lines.append(f'{k} = "{p[k]}"')
+                lines.append(f'{k} = "{_toml_str(p[k])}"')
         lines.append("")
 
     # [mode.*] sections
@@ -116,7 +121,7 @@ def write_full_config(file_data: dict[str, Any]) -> Path:
                 if isinstance(mv, (int, float)):
                     lines.append(f"{mk} = {mv}")
                 else:
-                    lines.append(f'{mk} = "{mv}"')
+                    lines.append(f'{mk} = "{_toml_str(mv)}"')
             lines.append("")
 
     path = _find_config_path()
