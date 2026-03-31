@@ -784,17 +784,17 @@ mm uses **profiles** to manage multiple LLM provider configurations. Each profil
 $ mm config init
 Created /Users/you/.config/mm/mm.toml
 
-$ mm config profile add vlmrun --base-url https://api.vlm.run/v1 --api-key sk-... --model vlm-1
+$ mm profile add vlmrun --base-url https://api.vlm.run/v1 --api-key sk-... --model vlm-1
 Added profile: vlmrun  (/Users/you/.config/mm/mm.toml)
 
-$ mm config profile add openrouter --base-url https://openrouter.ai/api/v1 --api-key sk-or-... --model qwen/qwen3.5-9b
+$ mm profile add openrouter --base-url https://openrouter.ai/api/v1 --api-key sk-or-... --model qwen/qwen3.5-9b
 Added profile: openrouter  (/Users/you/.config/mm/mm.toml)
 ```
 
 ### Example 2: List profiles
 
 ```bash
-$ mm config profile list
+$ mm profile list
 ```
 
 **TTY output:**
@@ -811,7 +811,7 @@ $ mm config profile list
 
 **JSON output:**
 ```bash
-$ mm config profile list --format json
+$ mm profile list --format json
 ```
 ```json
 {
@@ -828,7 +828,7 @@ $ mm config profile list --format json
 
 ```bash
 # Switch the active profile
-$ mm config profile use vlmrun
+$ mm profile use vlmrun
 Switched to profile: vlmrun  (/Users/you/.config/mm/mm.toml)
 
 # Use a different profile for a single command (does not change active)
@@ -853,15 +853,15 @@ $ mm --profile default cat photo.png -l 2
 
 ```bash
 # Update a single field
-$ mm config profile update vlmrun --model vlm-2
+$ mm profile update vlmrun --model vlm-2
 Updated profile: vlmrun (model=vlm-2)  (/Users/you/.config/mm/mm.toml)
 
 # Update multiple fields at once
-$ mm config profile update openrouter --api-key sk-new --model qwen/qwen-2.5-vl-7b-instruct
+$ mm profile update openrouter --api-key sk-new --model qwen/qwen-2.5-vl-7b-instruct
 Updated profile: openrouter (api_key=••••, model=qwen/qwen-2.5-vl-7b-instruct)
 
 # Remove a profile (must switch away from it first)
-$ mm config profile remove openrouter
+$ mm profile remove openrouter
 Removed profile: openrouter  (/Users/you/.config/mm/mm.toml)
 ```
 

@@ -62,7 +62,7 @@ mm
 │   ├── [x] File content description
 │   ├── [x] Video understanding via keyframe mosaic + LLM (auto at L2)
 │   ├── [x] Audio description via metadata + LLM (auto at L2)
-│   ├── [x] Configurable via profiles: mm config profile add/update/use
+│   ├── [x] Configurable via profiles: mm profile add/update/use
 │   ├── [x] think=false + reasoning_effort="none" + temperature=0.1
 │   ├── [x] L2 errors propagate directly (no silent fallback to L1)
 │   ├── [x] --mode fast|accurate per-modality extraction strategies

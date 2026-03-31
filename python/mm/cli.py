@@ -8,6 +8,7 @@ import typer
 
 from mm.commands import bench, cat, find, grep, sql, wc
 from mm.commands.config import config_app
+from mm.commands.profile import profile_app
 
 app = typer.Typer(
     name="mm",
@@ -21,7 +22,7 @@ app = typer.Typer(
 def _main(
     profile: Annotated[
         Optional[str],
-        typer.Option("--profile", "-p", help="Config profile to use (see: mm config profile list)"),
+        typer.Option("--profile", "-p", help="Config profile to use (see: mm profile list)"),
     ] = None,
     color: Annotated[
         str, typer.Option("--color", help="Color output: auto, always, never")
@@ -43,6 +44,7 @@ app.command(name="grep")(grep.grep_cmd)
 app.command(name="sql")(sql.sql_cmd)
 app.command(name="wc")(wc.wc_cmd)
 app.add_typer(config_app, name="config")
+app.add_typer(profile_app, name="profile")
 
 
 if __name__ == "__main__":

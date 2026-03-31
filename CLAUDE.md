@@ -86,13 +86,14 @@ mm/
 │   ├── pdf.py                  # PDF page mosaic extraction (pypdfium2 + Pillow)
 │   ├── ffmpeg.py               # ffmpeg wrappers (keyframe mosaics, audio extraction)
 │   ├── video.py                # Video metadata helpers
-│   └── commands/               # CLI subcommands (6 + config)
+│   └── commands/               # CLI subcommands (6 + config + profile)
 │       ├── find.py             # mm find (--tree, --schema, --columns)
 │       ├── cat.py              # mm cat (-n, --level, auto-detect by type)
 │       ├── grep.py             # mm grep
 │       ├── sql.py              # mm sql (DuckDB)
 │       ├── wc.py               # mm wc (--by-kind)
-│       └── config.py           # mm config (show, init, set)
+│       ├── config.py           # mm config (show, init, set)
+│       └── profile.py          # mm profile (list, add, update, use, remove)
 ├── tests/
 │   └── python/                 # pytest suite
 │       ├── conftest.py
@@ -196,7 +197,7 @@ Columns: `path`, `name`, `stem`, `ext`, `size`, `modified`, `created`, `mime`, `
 
 - **L0** (metadata): path, size, kind, ext, timestamps, depth, parent, width, height. Built in Rust with `ignore` + `rayon`. Measured at ~0.02ms/file on real multi-modal data (249 files in 5ms).
 - **L1** (content): `cat` auto-detects file type. PDFs → text via pypdfium2. Images → dimensions/MIME/xxh3/EXIF via Rust. Video/audio → metadata only (resolution, duration, codecs, <100ms, no ffmpeg). Code/text → raw passthrough. Scanned/image-only PDFs yield empty text at L1.
-- **L2** (semantic): LLM-generated captions/descriptions via OpenAI-compatible API. Requires a configured profile (`mm config profile add/update`).
+- **L2** (semantic): LLM-generated captions/descriptions via OpenAI-compatible API. Requires a configured profile (`mm profile add/update`).
 
 ## Python API
 
@@ -238,10 +239,10 @@ Provider settings (base_url, api_key, model) are configured per-profile. Active 
 ```bash
 # Profile management
 mm config init                                                    # create config with default profile
-mm config profile add vlmrun --base-url https://api.vlm.run/v1 --model vlm-1
-mm config profile update default --model qwen3-vl:8b              # update a field
-mm config profile use vlmrun                                      # switch active profile
-mm config profile list                                            # list all profiles
+mm profile add vlmrun --base-url https://api.vlm.run/v1 --model vlm-1
+mm profile update default --model qwen3-vl:8b              # update a field
+mm profile use vlmrun                                      # switch active profile
+mm profile list                                            # list all profiles
 mm config show                                                    # show resolved config with sources
 
 # Per-command profile selection

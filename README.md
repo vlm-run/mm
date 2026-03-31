@@ -195,21 +195,21 @@ Each profile stores `base_url`, `api_key`, and `model`. You can have as many as 
 
 ```bash
 # Add profiles for different providers
-mm config profile add vlmrun --base-url https://api.vlm.run/v1 --api-key sk-... --model vlm-1
-mm config profile add openai --base-url https://api.openai.com/v1 --api-key sk-... --model gpt-4o
-mm config profile add ollama --base-url http://localhost:11434 --model qwen3-vl:8b
+mm profile add vlmrun --base-url https://api.vlm.run/v1 --api-key sk-... --model vlm-1
+mm profile add openai --base-url https://api.openai.com/v1 --api-key sk-... --model gpt-4o
+mm profile add ollama --base-url http://localhost:11434 --model qwen3-vl:8b
 
 # List all profiles (● = active)
-mm config profile list
+mm profile list
 
 # Switch the active profile
-mm config profile use vlmrun
+mm profile use vlmrun
 
 # Update a field on an existing profile
-mm config profile update vlmrun --model vlm-2 --api-key sk-new-key
+mm profile update vlmrun --model vlm-2 --api-key sk-new-key
 
 # Remove a profile (cannot remove the active one)
-mm config profile remove ollama
+mm profile remove ollama
 ```
 
 ### Selecting a profile per-command

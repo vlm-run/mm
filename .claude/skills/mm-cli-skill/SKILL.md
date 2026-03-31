@@ -189,11 +189,11 @@ mm config init                                                    # create confi
 mm config init --force                                            # overwrite existing config
 
 # Profile management
-mm config profile list                                            # list all profiles (● = active)
-mm config profile add vlmrun --base-url https://api.vlm.run/v1 --model vlm-1  # add (--base-url and --model required)
-mm config profile update default --model qwen3-vl:8b              # update fields on existing profile
-mm config profile use vlmrun                                      # switch active profile
-mm config profile remove vlmrun                                   # remove (cannot remove active or 'default')
+mm profile list                                            # list all profiles (● = active)
+mm profile add vlmrun --base-url https://api.vlm.run/v1 --model vlm-1  # add (--base-url and --model required)
+mm profile update default --model qwen3-vl:8b              # update fields on existing profile
+mm profile use vlmrun                                      # switch active profile
+mm profile remove vlmrun                                   # remove (cannot remove active or 'default')
 
 # Mode settings (whisper, audio speed, beam size)
 mm config set mode.fast.whisper_model tiny

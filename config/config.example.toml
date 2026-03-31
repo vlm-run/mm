@@ -5,16 +5,16 @@
 # Generate with: mm config init
 
 # ── Active profile ──────────────────────────────────────────────────
-# Switch with:  mm config profile use <name>
+# Switch with:  mm profile use <name>
 # Per-command:  mm --profile vlmrun cat photo.png -l 2
 # Env var:      MM_PROFILE=vlmrun mm cat photo.png -l 2
 active_profile = "default"
 
 # ── Profiles (LLM provider configs) ────────────────────────────────
 # Each profile has: base_url, api_key, model
-# List all:     mm config profile list
-# Add new:      mm config profile add <name> --base-url <url> --model <model>
-# Update:       mm config profile update <name> --api-key <key>
+# List all:     mm profile list
+# Add new:      mm profile add <name> --base-url <url> --model <model>
+# Update:       mm profile update <name> --api-key <key>
 
 [profile.default]
 # Ollama (local, default)

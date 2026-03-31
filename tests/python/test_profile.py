@@ -359,7 +359,7 @@ class TestRemoveProfile:
             remove_profile("default")
 
     def test_remove_default_shows_alternatives(self, two_profile_config):
-        with pytest.raises(ValueError, match="mm config profile update default"):
+        with pytest.raises(ValueError, match="mm profile update default"):
             remove_profile("default")
 
     def test_remove_active_non_default_raises(self, two_profile_config):
@@ -440,14 +440,14 @@ class TestProfileCli:
 
     def test_profile_list_exit_zero(self, runner, two_profile_config):
         cli_runner, app = runner
-        result = cli_runner.invoke(app, ["config", "profile", "list", "--format", "tsv"])
+        result = cli_runner.invoke(app, ["profile","list", "--format", "tsv"])
         assert result.exit_code == 0
         assert "default" in result.output
         assert "vlmrun" in result.output
 
     def test_profile_list_json(self, runner, two_profile_config):
         cli_runner, app = runner
-        result = cli_runner.invoke(app, ["config", "profile", "list", "--format", "json"])
+        result = cli_runner.invoke(app, ["profile","list", "--format", "json"])
         assert result.exit_code == 0
         data = json.loads(result.output)
         assert data["active"] == "default"
@@ -458,7 +458,7 @@ class TestProfileCli:
 
     def test_profile_list_csv(self, runner, two_profile_config):
         cli_runner, app = runner
-        result = cli_runner.invoke(app, ["config", "profile", "list", "--format", "csv"])
+        result = cli_runner.invoke(app, ["profile","list", "--format", "csv"])
         assert result.exit_code == 0
         lines = result.output.strip().split("\n")
         assert lines[0] == "profile,active,base_url,model"
@@ -469,7 +469,6 @@ class TestProfileCli:
         result = cli_runner.invoke(
             app,
             [
-                "config",
                 "profile",
                 "add",
                 "openai",
@@ -482,20 +481,20 @@ class TestProfileCli:
         assert result.exit_code == 0
         assert "Added" in result.output
         # Verify it shows up
-        result2 = cli_runner.invoke(app, ["config", "profile", "list", "--format", "json"])
+        result2 = cli_runner.invoke(app, ["profile","list", "--format", "json"])
         data = json.loads(result2.output)
         assert "openai" in data["profiles"]
 
     def test_profile_add_duplicate_fails(self, runner, two_profile_config):
         cli_runner, app = runner
         result = cli_runner.invoke(
-            app, ["config", "profile", "add", "vlmrun", "--base-url", "http://dup", "--model", "dup-m"]
+            app, ["profile","add", "vlmrun", "--base-url", "http://dup", "--model", "dup-m"]
         )
         assert result.exit_code == 1
 
     def test_profile_use(self, runner, two_profile_config):
         cli_runner, app = runner
-        result = cli_runner.invoke(app, ["config", "profile", "use", "vlmrun"])
+        result = cli_runner.invoke(app, ["profile","use", "vlmrun"])
         assert result.exit_code == 0
         assert "Switched" in result.output
         # Verify via config show
@@ -505,19 +504,19 @@ class TestProfileCli:
 
     def test_profile_use_nonexistent_fails(self, runner, two_profile_config):
         cli_runner, app = runner
-        result = cli_runner.invoke(app, ["config", "profile", "use", "nope"])
+        result = cli_runner.invoke(app, ["profile","use", "nope"])
         assert result.exit_code == 1
 
     def test_profile_update_single_field(self, runner, two_profile_config):
         cli_runner, app = runner
         result = cli_runner.invoke(
-            app, ["config", "profile", "update", "vlmrun", "--model", "vlm-2"]
+            app, ["profile","update", "vlmrun", "--model", "vlm-2"]
         )
         assert result.exit_code == 0
         assert "Updated" in result.output
         assert "model=vlm-2" in result.output
         # Verify change persisted
-        result2 = cli_runner.invoke(app, ["config", "profile", "list", "--format", "json"])
+        result2 = cli_runner.invoke(app, ["profile","list", "--format", "json"])
         data = json.loads(result2.output)
         assert data["profiles"]["vlmrun"]["model"] == "vlm-2"
 
@@ -526,7 +525,6 @@ class TestProfileCli:
         result = cli_runner.invoke(
             app,
             [
-                "config",
                 "profile",
                 "update",
                 "vlmrun",
@@ -543,7 +541,7 @@ class TestProfileCli:
     def test_profile_update_api_key_masked(self, runner, two_profile_config):
         cli_runner, app = runner
         result = cli_runner.invoke(
-            app, ["config", "profile", "update", "vlmrun", "--api-key", "sk-secret"]
+            app, ["profile","update", "vlmrun", "--api-key", "sk-secret"]
         )
         assert result.exit_code == 0
         assert "api_key=••••" in result.output
@@ -551,29 +549,29 @@ class TestProfileCli:
 
     def test_profile_update_nonexistent_fails(self, runner, two_profile_config):
         cli_runner, app = runner
-        result = cli_runner.invoke(app, ["config", "profile", "update", "nope", "--model", "x"])
+        result = cli_runner.invoke(app, ["profile","update", "nope", "--model", "x"])
         assert result.exit_code == 1
 
     def test_profile_update_no_fields_fails(self, runner, two_profile_config):
         cli_runner, app = runner
-        result = cli_runner.invoke(app, ["config", "profile", "update", "vlmrun"])
+        result = cli_runner.invoke(app, ["profile","update", "vlmrun"])
         assert result.exit_code == 1
 
     def test_profile_remove(self, runner, two_profile_config):
         cli_runner, app = runner
-        result = cli_runner.invoke(app, ["config", "profile", "remove", "vlmrun"])
+        result = cli_runner.invoke(app, ["profile","remove", "vlmrun"])
         assert result.exit_code == 0
         assert "Removed" in result.output
-        result2 = cli_runner.invoke(app, ["config", "profile", "list", "--format", "json"])
+        result2 = cli_runner.invoke(app, ["profile","list", "--format", "json"])
         data = json.loads(result2.output)
         assert "vlmrun" not in data["profiles"]
 
     def test_profile_remove_default_fails_with_guidance(self, runner, two_profile_config):
         cli_runner, app = runner
-        result = cli_runner.invoke(app, ["config", "profile", "remove", "default"])
+        result = cli_runner.invoke(app, ["profile","remove", "default"])
         assert result.exit_code == 1
         assert "cannot be removed" in result.output
-        assert "mm config profile update default" in result.output
+        assert "mm profile update default" in result.output
 
     def test_profile_flag_override(self, runner, two_profile_config):
         cli_runner, app = runner
@@ -617,7 +615,6 @@ class TestProfileCli:
         r = cli_runner.invoke(
             app,
             [
-                "config",
                 "profile",
                 "add",
                 "test-p",
@@ -632,7 +629,6 @@ class TestProfileCli:
         r = cli_runner.invoke(
             app,
             [
-                "config",
                 "profile",
                 "update",
                 "test-p",
@@ -644,7 +640,7 @@ class TestProfileCli:
         )
         assert r.exit_code == 0
         # Use
-        r = cli_runner.invoke(app, ["config", "profile", "use", "test-p"])
+        r = cli_runner.invoke(app, ["profile","use", "test-p"])
         assert r.exit_code == 0
         # Verify active + updated values
         r = cli_runner.invoke(app, ["config", "show", "--format", "json"])
@@ -652,19 +648,19 @@ class TestProfileCli:
         assert data["active_profile"] == "test-p"
         assert data["provider"]["model"] == "test-m-v2"
         # Switch back before removing
-        r = cli_runner.invoke(app, ["config", "profile", "use", "default"])
+        r = cli_runner.invoke(app, ["profile","use", "default"])
         assert r.exit_code == 0
         # Remove
-        r = cli_runner.invoke(app, ["config", "profile", "remove", "test-p"])
+        r = cli_runner.invoke(app, ["profile","remove", "test-p"])
         assert r.exit_code == 0
         # Gone
-        r = cli_runner.invoke(app, ["config", "profile", "list", "--format", "json"])
+        r = cli_runner.invoke(app, ["profile","list", "--format", "json"])
         data = json.loads(r.output)
         assert "test-p" not in data["profiles"]
 
     def test_profile_help_shows_all_subcommands(self, runner):
         cli_runner, app = runner
-        result = cli_runner.invoke(app, ["config", "profile", "--help"])
+        result = cli_runner.invoke(app, ["profile","--help"])
         assert result.exit_code == 0
         for cmd in ("list", "use", "add", "update", "remove"):
             assert cmd in result.output
