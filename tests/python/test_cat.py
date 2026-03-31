@@ -13,10 +13,9 @@ import zlib
 from pathlib import Path
 
 import pytest
-from typer.testing import CliRunner
-
 from mm.cli import app
-from mm.commands.cat import IMAGE_EXTS, VIDEO_EXTS, AUDIO_EXTS, _file_kind
+from mm.commands.cat import AUDIO_EXTS, IMAGE_EXTS, VIDEO_EXTS, _file_kind
+from typer.testing import CliRunner
 
 runner = CliRunner()
 
@@ -178,12 +177,16 @@ class TestHeadTail:
 
 class TestMultiFile:
     def test_two_files_json(self, mixed_dir: Path):
-        r = runner.invoke(app, [
-            "cat",
-            str(mixed_dir / "main.py"),
-            str(mixed_dir / "readme.md"),
-            "--format", "json",
-        ])
+        r = runner.invoke(
+            app,
+            [
+                "cat",
+                str(mixed_dir / "main.py"),
+                str(mixed_dir / "readme.md"),
+                "--format",
+                "json",
+            ],
+        )
         assert r.exit_code == 0
         data = json.loads(r.output)
         assert len(data) == 2
@@ -192,12 +195,16 @@ class TestMultiFile:
         assert any("readme.md" in p for p in paths)
 
     def test_mixed_types_json(self, mixed_dir: Path):
-        r = runner.invoke(app, [
-            "cat",
-            str(mixed_dir / "main.py"),
-            str(mixed_dir / "photo.png"),
-            "--format", "json",
-        ])
+        r = runner.invoke(
+            app,
+            [
+                "cat",
+                str(mixed_dir / "main.py"),
+                str(mixed_dir / "photo.png"),
+                "--format",
+                "json",
+            ],
+        )
         assert r.exit_code == 0
         data = json.loads(r.output)
         assert len(data) == 2
@@ -217,12 +224,158 @@ class TestErrors:
         assert "not found" in combined.lower()
 
     def test_mix_of_existing_and_missing(self, mixed_dir: Path):
-        r = runner.invoke(app, [
-            "cat",
-            str(mixed_dir / "main.py"),
-            str(mixed_dir / "missing.txt"),
-            "--format", "json",
-        ])
+        r = runner.invoke(
+            app,
+            [
+                "cat",
+                str(mixed_dir / "main.py"),
+                str(mixed_dir / "missing.txt"),
+                "--format",
+                "json",
+            ],
+        )
         assert r.exit_code == 0
         assert "not found" in r.output.lower()
         assert "main.py" in r.output
+
+
+# ── L2 cache error handling ────────────────────────────────────────
+
+
+class TestL2CacheError:
+    """Verify that L2 error results are not persisted in the cache."""
+
+    def test_error_result_not_cached(self, tmp_path: Path):
+        """An error string like '[Video L2 failed: ...]' must not be stored."""
+        from unittest.mock import patch
+
+        from mm.commands.cat import _CatOpts, _l2_cached
+
+        txt = tmp_path / "test.txt"
+        txt.write_text("hello")
+
+        opts = _CatOpts(
+            level=2,
+            n=None,
+            detail=False,
+            output_dir=None,
+            max_pages=None,
+            mosaic_tile="4x4",
+            mosaic_image_width=160,
+            video_mosaic_count=1,
+            video_mosaic_strategy="uniform",
+            audio_speed=2.0,
+            audio_sample_rate=16000,
+            mode=None,
+            no_cache=False,
+            format="rich",
+        )
+
+        with (
+            patch("mm.commands.cat._l2", return_value="[LLM error: connection refused]"),
+            patch("mm.cache.get_content_hash", return_value="fakehash123"),
+            patch("mm.cache.get", return_value=None),
+            patch("mm.cache.put") as mock_put,
+            patch("mm.config.get_provider") as mock_prov,
+        ):
+            mock_prov.return_value.name = "default"
+            mock_prov.return_value.model = "test-model"
+            result = _l2_cached(txt, "text", opts)
+
+        assert result == "[LLM error: connection refused]"
+        mock_put.assert_not_called()
+
+    def test_success_result_is_cached(self, tmp_path: Path):
+        """A normal result should be stored in the cache."""
+        from unittest.mock import patch
+
+        from mm.commands.cat import _CatOpts, _l2_cached
+
+        txt = tmp_path / "test.txt"
+        txt.write_text("hello")
+
+        opts = _CatOpts(
+            level=2,
+            n=None,
+            detail=False,
+            output_dir=None,
+            max_pages=None,
+            mosaic_tile="4x4",
+            mosaic_image_width=160,
+            video_mosaic_count=1,
+            video_mosaic_strategy="uniform",
+            audio_speed=2.0,
+            audio_sample_rate=16000,
+            mode=None,
+            no_cache=False,
+            format="rich",
+        )
+
+        with (
+            patch("mm.commands.cat._l2", return_value="A beautiful sunset over the ocean."),
+            patch("mm.cache.get_content_hash", return_value="fakehash123"),
+            patch("mm.cache.get", return_value=None),
+            patch("mm.cache.put") as mock_put,
+            patch("mm.config.get_provider") as mock_prov,
+        ):
+            mock_prov.return_value.name = "default"
+            mock_prov.return_value.model = "test-model"
+            result = _l2_cached(txt, "text", opts)
+
+        assert result == "A beautiful sunset over the ocean."
+        mock_put.assert_called_once_with(
+            "fakehash123",
+            "default",
+            "test-model",
+            "A beautiful sunset over the ocean.",
+            None,
+            False,
+            extra="",
+        )
+
+    def test_various_error_prefixes_not_cached(self, tmp_path: Path):
+        """All bracket-prefixed error strings should be skipped."""
+        from unittest.mock import patch
+
+        from mm.commands.cat import _CatOpts, _l2_cached
+
+        txt = tmp_path / "test.txt"
+        txt.write_text("hello")
+
+        opts = _CatOpts(
+            level=2,
+            n=None,
+            detail=False,
+            output_dir=None,
+            max_pages=None,
+            mosaic_tile="4x4",
+            mosaic_image_width=160,
+            video_mosaic_count=1,
+            video_mosaic_strategy="uniform",
+            audio_speed=2.0,
+            audio_sample_rate=16000,
+            mode=None,
+            no_cache=False,
+            format="rich",
+        )
+
+        error_messages = [
+            "[Video L2 failed: timeout]",
+            "[ffmpeg not found — cannot process video.mp4]",
+            "[whisper not installed — pip install mm[extract]]",
+            "[LLM error: 401 Unauthorized]",
+        ]
+
+        for error_msg in error_messages:
+            with (
+                patch("mm.commands.cat._l2", return_value=error_msg),
+                patch("mm.cache.get_content_hash", return_value="hash"),
+                patch("mm.cache.get", return_value=None),
+                patch("mm.cache.put") as mock_put,
+                patch("mm.config.get_provider") as mock_prov,
+            ):
+                mock_prov.return_value.name = "default"
+                mock_prov.return_value.model = "m"
+                _l2_cached(txt, "text", opts)
+
+            mock_put.assert_not_called()

@@ -150,7 +150,7 @@ class Context:
 
     # --- Content access ---
 
-    def cat(self, path: str, *, level: int = 1, mode: str | None = None) -> str:
+    def cat(self, path: str, *, level: int = 1, mode: str | None = None, no_cache: bool = False) -> str:
         """Read semantic content of a file.
 
         Level 0: raw content (for text files)
@@ -161,6 +161,7 @@ class Context:
             path: Relative path within the context root.
             level: Processing level (0=raw, 1=extracted, 2=semantic).
             mode: Extraction mode for L2: "fast" or "accurate". None uses default L2.
+            no_cache: Skip L2 cache lookup and force a fresh LLM call.
         """
         full_path = self.root / path
 
@@ -184,6 +185,7 @@ class Context:
                 audio_speed=2.0,
                 audio_sample_rate=16000,
                 mode=mode,
+                no_cache=no_cache,
                 format="rich",
             )
             return _extract(full_path, opts)
