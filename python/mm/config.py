@@ -12,7 +12,7 @@ Active profile resolved as:
   --profile flag > MM_PROFILE env > active_profile in file > "default"
 
 Provider settings (base_url, api_key, model) are configured per-profile.
-Use ``mm config profile add/update`` to manage profiles, and
+Use ``mm profile add/update`` to manage profiles, and
 ``mm --profile <name>`` or ``MM_PROFILE=<name>`` to select one.
 
 See mm.profile for profile management (CRUD, migration, resolution).
@@ -115,7 +115,7 @@ TEMPLATE_DARWIN = """\
 # Docs: https://github.com/autonomi-ai/mm
 #
 # Profiles let you store multiple provider configs in one file.
-# Switch with: mm config profile use <name>
+# Switch with: mm profile use <name>
 # Or per-command: mm --profile vlmrun cat photo.png -l 2
 
 active_profile = "default"
@@ -151,7 +151,7 @@ TEMPLATE_LINUX = """\
 # Docs: https://github.com/autonomi-ai/mm
 #
 # Profiles let you store multiple provider configs in one file.
-# Switch with: mm config profile use <name>
+# Switch with: mm profile use <name>
 # Or per-command: mm --profile vlmrun cat photo.png -l 2
 
 active_profile = "default"
