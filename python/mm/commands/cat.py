@@ -337,8 +337,24 @@ def _l2_cached(path: Path, kind: str, opts: _CatOpts) -> str:
     model = provider.model
     content_hash = cache.get_content_hash(path)
 
+    # Include video mosaic parameters in cache key for different mosaic configs.
+    extra_parts: list[str] = []
+    if kind == "video":
+        extra_parts.append(opts.mosaic_tile)
+        extra_parts.append(str(opts.mosaic_image_width))
+        extra_parts.append(str(opts.video_mosaic_count))
+        extra_parts.append(opts.video_mosaic_strategy)
+    extra = "|".join(extra_parts)
+
     if content_hash:
-        cached = cache.get(content_hash, profile, model, opts.mode, opts.detail)
+        cached = cache.get(
+            content_hash,
+            profile,
+            model,
+            opts.mode,
+            opts.detail,
+            extra=extra,
+        )
         if cached is not None:
             return cached
 
@@ -348,9 +364,9 @@ def _l2_cached(path: Path, kind: str, opts: _CatOpts) -> str:
     else:
         result = _l2(path, kind, opts)
 
-    # Store in cache — skip error results so transient failures aren't cached permanently
-    if content_hash and not result.startswith("["):
-        cache.put(content_hash, profile, model, result, opts.mode, opts.detail)
+    # Store in cache — skip error/empty results so transient failures aren't cached permanently
+    if content_hash and result and not result.startswith("["):
+        cache.put(content_hash, profile, model, result, opts.mode, opts.detail, extra=extra)
 
     return result
 

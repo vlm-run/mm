@@ -330,6 +330,7 @@ class TestL2CacheError:
             "A beautiful sunset over the ocean.",
             None,
             False,
+            extra="",
         )
 
     def test_various_error_prefixes_not_cached(self, tmp_path: Path):
