@@ -460,8 +460,8 @@ class TestConfig:
         assert r.exit_code == 0
         data = json.loads(r.output)
         assert isinstance(data, dict)
-        assert "provider" in data
-        assert "base_url" in data["provider"]
+        assert "mode" in data
+        assert "fast" in data["mode"]
 
     def test_init_creates_file(self, tmp_path: Path, monkeypatch):
         config_path = tmp_path / "mm.toml"

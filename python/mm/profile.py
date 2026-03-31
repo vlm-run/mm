@@ -176,7 +176,7 @@ def add_profile(
 
     if name in file_data["profile"]:
         raise ValueError(
-            f"Profile '{name}' already exists. Use 'mm config profile update' to modify it"
+            f"Profile '{name}' already exists. Use 'mm profile update' to modify it"
         )
 
     if not base_url:
@@ -242,9 +242,9 @@ def remove_profile(name: str) -> Path:
         raise ValueError(
             "The 'default' profile cannot be removed.\n\n"
             "You can:\n"
-            "  mm config profile update default --base-url <url> --model <model>   # change its settings\n"
-            "  mm config profile use <other>                                        # switch to a different profile\n"
-            "  mm config profile add <name> --base-url <url>                        # create a new profile"
+            "  mm profile update default --base-url <url> --model <model>   # change its settings\n"
+            "  mm profile use <other>                                        # switch to a different profile\n"
+            "  mm profile add <name> --base-url <url>                        # create a new profile"
         )
 
     file_data = _read_config_file()

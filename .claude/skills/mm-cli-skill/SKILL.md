@@ -18,14 +18,15 @@ Always use `--json` for machine-readable output when parsing results programmati
 
 ## Commands (6 total)
 
-| Command | Purpose |
-|---------|---------|
-| `find` | Locate files by kind/ext/size |
-| `ls` | Tabular listing, tree view, schema |
-| `cat` | Content extraction (auto-detected by file type × level) |
-| `grep` | Content search across files |
-| `sql` | DuckDB SQL on file index |
-| `wc` | Count files, bytes, lines, tokens |
+| Command   | Purpose                                                       |
+| --------- | ------------------------------------------------------------- |
+| `find`    | Locate files by kind/ext/size                                 |
+| `ls`      | Tabular listing, tree view, schema                            |
+| `cat`     | Content extraction (auto-detected by file type × level)       |
+| `grep`    | Content search across files                                   |
+| `sql`     | DuckDB SQL on file index                                      |
+| `wc`      | Count files, bytes, lines, tokens                             |
+| `profile` | Manage LLM provider profiles (list, add, update, use, remove) |
 
 ## Workflow
 
@@ -71,22 +72,22 @@ mm ls <dir> --schema --json                         # machine-readable
 
 Columns in the `files` table:
 
-| Column | Type | Description |
-|--------|------|-------------|
-| path | string | Relative path from scan root |
-| name | string | File name with extension |
-| stem | string | File name without extension |
-| ext | string | Extension including dot (`.png`, `.pdf`) |
-| size | uint64 | File size in bytes |
-| modified | timestamp | Last modification time |
-| created | timestamp | Creation time |
-| mime | string | MIME type (`image/png`, `application/pdf`) |
-| kind | string | `image`, `video`, `document`, `code`, `audio`, `data`, `config`, `text`, `other` |
-| is_binary | bool | Whether file is binary |
-| depth | uint16 | Directory depth (0 = top-level) |
-| parent | string | Parent directory path |
-| width | uint32 | Pixel width (images only, null otherwise) |
-| height | uint32 | Pixel height (images only, null otherwise) |
+| Column    | Type      | Description                                                                      |
+| --------- | --------- | -------------------------------------------------------------------------------- |
+| path      | string    | Relative path from scan root                                                     |
+| name      | string    | File name with extension                                                         |
+| stem      | string    | File name without extension                                                      |
+| ext       | string    | Extension including dot (`.png`, `.pdf`)                                         |
+| size      | uint64    | File size in bytes                                                               |
+| modified  | timestamp | Last modification time                                                           |
+| created   | timestamp | Creation time                                                                    |
+| mime      | string    | MIME type (`image/png`, `application/pdf`)                                       |
+| kind      | string    | `image`, `video`, `document`, `code`, `audio`, `data`, `config`, `text`, `other` |
+| is_binary | bool      | Whether file is binary                                                           |
+| depth     | uint16    | Directory depth (0 = top-level)                                                  |
+| parent    | string    | Parent directory path                                                            |
+| width     | uint32    | Pixel width (images only, null otherwise)                                        |
+| height    | uint32    | Pixel height (images only, null otherwise)                                       |
 
 ## cat — content extraction (auto-detected)
 
@@ -112,6 +113,7 @@ mm cat <file> --json                                # JSON output
 ```
 
 Level 1 behavior by file type (<100ms target):
+
 - **PDF**: text extraction via pypdfium2. Scanned/image-only PDFs return empty.
 - **Image** (.png/.jpg/.webp/.gif): dimensions, MIME, xxh3 hash, EXIF data.
 - **Video** (.mp4/.mkv/.webm): resolution, duration, FPS, codecs (metadata only, no ffmpeg).
@@ -178,24 +180,24 @@ mm find <dir> --kind image | mm ls <dir>        # find images, pipe to ls
 mm find <dir> --kind document --min-size 10mb | wc -l  # count large PDFs
 ```
 
-## config — LLM provider management (profiles)
+## profile — LLM provider management
 
 Provider settings are managed through **profiles** stored in `~/.config/mm/mm.toml`.
 
 ```bash
-# View and init
-mm config show                                                    # show resolved config with sources
+mm profile list                                            # list all profiles (● = active)
+mm profile add vlmrun --base-url https://api.vlm.run/v1 --model vlm-1  # add (--base-url and --model required)
+mm profile update default --model qwen3-vl:8b              # update fields on existing profile
+mm profile use vlmrun                                      # switch active profile
+mm profile remove vlmrun                                   # remove (cannot remove active or 'default')
+```
+
+## config — extraction mode settings
+
+```bash
+mm config show                                                    # show extraction mode settings
 mm config init                                                    # create config with default profile
 mm config init --force                                            # overwrite existing config
-
-# Profile management
-mm config profile list                                            # list all profiles (● = active)
-mm config profile add vlmrun --base-url https://api.vlm.run/v1 --model vlm-1  # add (--base-url and --model required)
-mm config profile update default --model qwen3-vl:8b              # update fields on existing profile
-mm config profile use vlmrun                                      # switch active profile
-mm config profile remove vlmrun                                   # remove (cannot remove active or 'default')
-
-# Mode settings (whisper, audio speed, beam size)
 mm config set mode.fast.whisper_model tiny
 mm config set mode.accurate.beam_size 5
 ```
@@ -203,6 +205,7 @@ mm config set mode.accurate.beam_size 5
 Active profile resolved as: `--profile` flag > `MM_PROFILE` env > `active_profile` in config file > `"default"`.
 
 Per-command profile selection:
+
 ```bash
 mm --profile vlmrun cat photo.png -l 2       # one-off override
 MM_PROFILE=vlmrun mm cat photo.png -l 2      # env override
