@@ -12,6 +12,13 @@ config_app = typer.Typer(
     no_args_is_help=True,
 )
 
+profile_app = typer.Typer(
+    name="profile",
+    help="Manage configuration profiles.",
+    no_args_is_help=True,
+)
+config_app.add_typer(profile_app, name="profile")
+
 
 @config_app.command()
 def show(
@@ -26,15 +33,20 @@ def show(
         get_provider_with_sources,
     )
     from mm.display import resolve_format
+    from mm.profile import get_active_profile_name, get_profile_names
 
     fmt = resolve_format(format)
     cfg = get_full_config()
+    active_profile = get_active_profile_name()
+    all_profiles = get_profile_names()
 
     if fmt == "json":
         from mm.display import json_dumps
 
         rows = get_provider_with_sources()
         data = {
+            "active_profile": active_profile,
+            "profiles": all_profiles,
             "provider": {r[0]: {"value": r[1], "source": r[2]} for r in rows},
             "mode": {
                 "fast": {
@@ -56,6 +68,7 @@ def show(
         sep = "\t" if fmt == "tsv" else ","
         rows = get_provider_with_sources()
         print(f"key{sep}value{sep}source")
+        print(f"active_profile{sep}{active_profile}{sep}config")
         for key, val, src, _ in rows:
             print(f"{key}{sep}{val}{sep}{src}")
         print(f"mode.fast.whisper_model{sep}{cfg.mode_fast.whisper_model}{sep}config")
@@ -73,14 +86,21 @@ def show(
     SOURCE_STYLES = {
         "cli": "bold bright_green",
         "env": "bright_yellow",
-        "file": "cyan",
         "default": "dim",
     }
 
     config_path = _find_config_path()
 
+    # Profile info line
+    profiles_display = ", ".join(
+        f"[bold green]{p}[/bold green]" if p == active_profile else f"[dim]{p}[/dim]"
+        for p in all_profiles
+    )
+    output_console.print(f"[bold]Profile:[/bold] {active_profile}  [dim]({profiles_display})[/dim]")
+    output_console.print()
+
     tbl = Table(
-        title="[bold]Provider",
+        title=f"[bold]Provider[/bold] [dim](profile: {active_profile})[/dim]",
         caption=str(config_path) if config_path else None,
         caption_style="dim",
         caption_justify="right",
@@ -96,7 +116,9 @@ def show(
 
     rows = get_provider_with_sources()
     for key, val, src, _ in rows:
-        style = SOURCE_STYLES.get(src, "")
+        # Match source style — "file (profile_name)" starts with "file"
+        style_key = src.split()[0] if " " in src else src
+        style = SOURCE_STYLES.get(style_key, "cyan")
         tbl.add_row(key, Text(val, style=style), Text(src, style=style))
     output_console.print(tbl)
     output_console.print()
@@ -214,10 +236,11 @@ def set_key(
 
 def _update_mode_key(mode: str, key: str, value: str) -> str:
     """Update a mode-specific key in the config file."""
-    from mm.config import _find_config_path, _read_config_file
+    from mm.config import _read_config_file
+    from mm.profile import migrate_to_profiles, write_full_config
 
-    path = _find_config_path()
     file_data = _read_config_file()
+    migrate_to_profiles(file_data)
 
     # Ensure nested structure
     if "mode" not in file_data:
@@ -233,29 +256,146 @@ def _update_mode_key(mode: str, key: str, value: str) -> str:
     else:
         file_data["mode"][mode][key] = value
 
-    # Write back — reconstruct TOML manually to preserve comments
-    lines: list[str] = []
-
-    # [provider]
-    provider = file_data.get("provider", {})
-    lines.append("[provider]")
-    for k in ("base_url", "api_key", "model"):
-        v = provider.get(k, "")
-        lines.append(f'{k} = "{v}"')
-    lines.append("")
-
-    # [mode.fast] and [mode.accurate]
-    for m in ("fast", "accurate"):
-        mode_data = file_data.get("mode", {}).get(m, {})
-        if mode_data:
-            lines.append(f"[mode.{m}]")
-            for mk, mv in mode_data.items():
-                if isinstance(mv, (int, float)):
-                    lines.append(f"{mk} = {mv}")
-                else:
-                    lines.append(f'{mk} = "{mv}"')
-            lines.append("")
-
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text("\n".join(lines) + "\n")
+    path = write_full_config(file_data)
     return str(path)
+
+
+# ── Profile subcommands ────────────────────────────────────────────
+
+
+@profile_app.command("list")
+def profile_list(
+    format: Annotated[
+        Optional[str], typer.Option("--format", help="Output format: json, tsv, csv")
+    ] = None,
+) -> None:
+    """List all configuration profiles."""
+    from mm.config import _read_config_file
+    from mm.display import resolve_format
+    from mm.profile import get_active_profile_name, get_profile_names, get_profile_section
+
+    fmt = resolve_format(format)
+    names = get_profile_names()
+    active = get_active_profile_name()
+    file_data = _read_config_file()
+
+    if fmt == "json":
+        from mm.display import json_dumps
+
+        data = {
+            "active": active,
+            "profiles": {
+                name: get_profile_section(file_data, name) for name in names
+            },
+        }
+        # Mask api_key values
+        for p in data["profiles"].values():
+            if p.get("api_key"):
+                p["api_key"] = "••••"
+        print(json_dumps(data))
+        return
+
+    if fmt in ("tsv", "csv"):
+        sep = "\t" if fmt == "tsv" else ","
+        print(f"profile{sep}active{sep}base_url{sep}model")
+        for name in names:
+            section = get_profile_section(file_data, name)
+            is_active = "✓" if name == active else ""
+            print(f"{name}{sep}{is_active}{sep}{section.get('base_url', '')}{sep}{section.get('model', '')}")
+        return
+
+    from rich import box
+    from rich.table import Table
+    from rich.text import Text
+
+    from mm.display import output_console
+
+    tbl = Table(
+        title="[bold]Profiles",
+        show_lines=False,
+        padding=(0, 1),
+        border_style="dim",
+        header_style="bold white",
+        box=box.ROUNDED,
+    )
+    tbl.add_column("", width=2)  # active marker
+    tbl.add_column("profile", style="bold")
+    tbl.add_column("base_url")
+    tbl.add_column("model")
+
+    for name in names:
+        section = get_profile_section(file_data, name)
+        marker = Text("●", style="bold green") if name == active else Text(" ")
+        style = "bold" if name == active else "dim"
+        tbl.add_row(
+            marker,
+            Text(name, style=style),
+            section.get("base_url", ""),
+            section.get("model", ""),
+        )
+    output_console.print(tbl)
+
+
+@profile_app.command("use")
+def profile_use(
+    name: Annotated[str, typer.Argument(help="Profile name to activate")],
+) -> None:
+    """Switch to a different profile.
+
+    \b
+    Example:
+      mm config profile use vlmrun
+    """
+    from mm.display import output_console
+    from mm.profile import set_active_profile
+
+    try:
+        path = set_active_profile(name)
+        output_console.print(f"[green]Switched to profile:[/green] [bold]{name}[/bold]  [dim]({path})[/dim]")
+    except ValueError as e:
+        output_console.print(f"[red]{e}[/red]")
+        raise typer.Exit(1)
+
+
+@profile_app.command("add")
+def profile_add(
+    name: Annotated[str, typer.Argument(help="Profile name")],
+    base_url: Annotated[str, typer.Option("--base-url", "-b", help="LLM API base URL")] = "",
+    api_key: Annotated[str, typer.Option("--api-key", "-k", help="API key")] = "",
+    model: Annotated[str, typer.Option("--model", "-m", help="Model name")] = "",
+) -> None:
+    """Add a new profile.
+
+    \b
+    Examples:
+      mm config profile add vlmrun --base-url https://api.vlm.run/v1 --model vlm-1
+      mm config profile add ollama --base-url http://localhost:11434 --model qwen3-vl:8b
+    """
+    from mm.display import output_console
+    from mm.profile import add_profile
+
+    try:
+        path = add_profile(name, base_url=base_url, api_key=api_key, model=model)
+        output_console.print(f"[green]Added profile:[/green] [bold]{name}[/bold]  [dim]({path})[/dim]")
+    except ValueError as e:
+        output_console.print(f"[red]{e}[/red]")
+        raise typer.Exit(1)
+
+
+@profile_app.command("remove")
+def profile_remove(
+    name: Annotated[str, typer.Argument(help="Profile name to remove")],
+) -> None:
+    """Remove a profile.
+
+    Cannot remove the currently active profile — switch first.
+    """
+    from mm.display import output_console
+    from mm.profile import remove_profile
+
+    try:
+        path = remove_profile(name)
+        output_console.print(f"[green]Removed profile:[/green] {name}  [dim]({path})[/dim]")
+    except ValueError as e:
+        output_console.print(f"[red]{e}[/red]")
+        raise typer.Exit(1)

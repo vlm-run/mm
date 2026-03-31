@@ -29,9 +29,9 @@ def _isolate_config(tmp_path: Path, monkeypatch):
     monkeypatch.setattr("mm.config.CONFIG_DIR_LEGACY", tmp_path / "legacy")
     monkeypatch.setattr("mm.config.CONFIG_PATH_LEGACY", tmp_path / "legacy" / "config.toml")
 
-    set_cli_overrides(None, None, None)
+    set_cli_overrides(None, None, None, None)
 
-    for var in ("MM_BASE_URL", "MM_API_KEY", "MM_MODEL"):
+    for var in ("MM_BASE_URL", "MM_API_KEY", "MM_MODEL", "MM_PROFILE"):
         monkeypatch.delenv(var, raising=False)
 
     # Patch platform defaults to DEFAULTS for any OS (Linux CI uses different defaults)
@@ -111,7 +111,7 @@ class TestCliOverrides:
         set_cli_overrides(model="cm")
         rows = get_provider_with_sources()
         sources = {r[0]: r[2] for r in rows}
-        assert sources["base_url"] == "file"
+        assert sources["base_url"].startswith("file")  # "file (default)" with profiles
         assert sources["api_key"] == "env"
         assert sources["model"] == "cli"
 

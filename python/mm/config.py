@@ -5,10 +5,16 @@ Config file locations (checked in order, first found wins):
   2. ~/.mm/config.toml          (legacy, still supported)
 
 Resolution order for provider settings (highest priority first):
-  1. CLI flags (--base-url, --api-key, --model)
-  2. Environment variables (MM_BASE_URL, etc.)
-  3. Config file [provider] section
+  1. CLI flags (--base-url, --api-key, --model, --profile)
+  2. Environment variables (MM_BASE_URL, MM_PROFILE, etc.)
+  3. Config file [profile.<name>] section (active profile)
   4. Built-in defaults (local Ollama)
+
+Profiles allow multiple provider configurations in a single config file.
+See mm.profile for profile management (CRUD, migration, resolution).
+
+Legacy [provider] sections are treated as [profile.default] for backward
+compatibility.
 
 The config file also supports [mode.fast] and [mode.accurate] sections
 for per-mode defaults (whisper model, audio speed, etc.).
@@ -64,6 +70,8 @@ ENV_VARS = {
     "model": "MM_MODEL",
 }
 
+ENV_PROFILE = "MM_PROFILE"
+
 
 WhisperModel = Literal["tiny", "medium"]  # can extend with more sizes if needed
 
@@ -107,11 +115,27 @@ class VlmctxConfig:
 TEMPLATE_DARWIN = """\
 # mm configuration — macOS
 # Docs: https://github.com/autonomi-ai/mm
+#
+# Profiles let you store multiple provider configs in one file.
+# Switch with: mm config profile use <name>
+# Or per-command: mm --profile vlmrun cat photo.png -l 2
 
-[provider]
+active_profile = "default"
+
+[profile.default]
 base_url = "http://localhost:11434"   # Ollama default
 api_key = ""
 model = "qwen3.5:0.8b"               # Ollama model tag
+
+# [profile.vlmrun]
+# base_url = "https://api.vlm.run/v1"
+# api_key = ""
+# model = "vlm-1"
+
+# [profile.openai]
+# base_url = "https://api.openai.com/v1"
+# api_key = ""
+# model = "gpt-4o"
 
 [mode.fast]
 whisper_model = "tiny"                # faster-whisper model size
@@ -127,11 +151,22 @@ beam_size = 5                         # beam search (best quality)
 TEMPLATE_LINUX = """\
 # mm configuration — Linux (vLLM)
 # Docs: https://github.com/autonomi-ai/mm
+#
+# Profiles let you store multiple provider configs in one file.
+# Switch with: mm config profile use <name>
+# Or per-command: mm --profile vlmrun cat photo.png -l 2
 
-[provider]
+active_profile = "default"
+
+[profile.default]
 base_url = "http://localhost:8000"    # vLLM default
 api_key = ""
 model = "Qwen/Qwen3.5-0.8B"          # HuggingFace model ID
+
+# [profile.vlmrun]
+# base_url = "https://api.vlm.run/v1"
+# api_key = ""
+# model = "vlm-1"
 
 [mode.fast]
 whisper_model = "tiny"                # faster-whisper model size
@@ -142,17 +177,6 @@ beam_size = 1                         # greedy decoding (fastest)
 whisper_model = "medium"              # higher quality transcription
 audio_speed = 1.0                     # no speedup
 beam_size = 5                         # beam search (best quality)
-"""
-
-# Legacy template (flat, for backward compat)
-TEMPLATE = """\
-# mm configuration
-# Docs: https://github.com/autonomi-ai/mm
-
-[provider]
-base_url = "{base_url}"
-api_key = "{api_key}"
-model = "{model}"
 """
 
 
@@ -178,11 +202,12 @@ def _platform_defaults() -> dict[str, str]:
 
 @dataclass
 class _CliOverrides:
-    """Mutable store for CLI-level --base-url / --api-key / --model flags."""
+    """Mutable store for CLI-level --base-url / --api-key / --model / --profile flags."""
 
     base_url: str | None = None
     api_key: str | None = None
     model: str | None = None
+    profile: str | None = None
 
 
 _cli_overrides = _CliOverrides()
@@ -192,10 +217,12 @@ def set_cli_overrides(
     base_url: str | None = None,
     api_key: str | None = None,
     model: str | None = None,
+    profile: str | None = None,
 ) -> None:
     _cli_overrides.base_url = base_url
     _cli_overrides.api_key = api_key
     _cli_overrides.model = model
+    _cli_overrides.profile = profile
 
 
 # ── File reading ────────────────────────────────────────────────────
@@ -226,8 +253,12 @@ def _resolve(key: str, file_cfg: dict[str, Any]) -> tuple[str, str]:
 
 
 def get_provider() -> ProviderConfig:
-    """Resolve provider settings: CLI flags > env vars > config.toml > defaults."""
-    file_cfg = _read_config_file().get("provider", {})
+    """Resolve provider settings: CLI flags > env vars > active profile > defaults."""
+    from mm.profile import get_active_profile_name, get_profile_section
+
+    file_data = _read_config_file()
+    profile_name = get_active_profile_name()
+    file_cfg = get_profile_section(file_data, profile_name)
     return ProviderConfig(
         base_url=_resolve("base_url", file_cfg)[0],
         api_key=_resolve("api_key", file_cfg)[0],
@@ -266,10 +297,17 @@ def get_full_config() -> VlmctxConfig:
 
 def get_provider_with_sources() -> list[tuple[str, str, str, str]]:
     """Return [(key, value, source, env_var), ...] for display."""
-    file_cfg = _read_config_file().get("provider", {})
+    from mm.profile import get_active_profile_name, get_profile_section
+
+    file_data = _read_config_file()
+    profile_name = get_active_profile_name()
+    file_cfg = get_profile_section(file_data, profile_name)
     rows = []
     for key in ("base_url", "api_key", "model"):
         val, src = _resolve(key, file_cfg)
+        # Annotate file source with profile name
+        if src == "file":
+            src = f"file ({profile_name})"
         display_val = "••••" if key == "api_key" and val and src != "default" else val
         rows.append((key, display_val, src, ENV_VARS[key]))
     return rows
@@ -279,14 +317,20 @@ def get_provider_with_sources() -> list[tuple[str, str, str, str]]:
 
 
 def write_config(base_url: str, api_key: str, model: str) -> Path:
-    """Write config.toml and return path. Uses legacy format for backward compat."""
-    CONFIG_DIR.mkdir(parents=True, exist_ok=True)
-    content = TEMPLATE.format(base_url=base_url, api_key=api_key, model=model)
+    """Write config.toml with a default profile. Returns path."""
+    from mm.profile import get_active_profile_name, migrate_to_profiles, write_full_config
 
-    path = _find_config_path()
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(content)
-    return path
+    file_data = _read_config_file()
+    migrate_to_profiles(file_data)
+    file_data.setdefault("active_profile", "default")
+    file_data.setdefault("profile", {})
+    profile_name = get_active_profile_name()
+    file_data["profile"][profile_name] = {
+        "base_url": base_url,
+        "api_key": api_key,
+        "model": model,
+    }
+    return write_full_config(file_data)
 
 
 def write_platform_config() -> Path:
@@ -297,15 +341,19 @@ def write_platform_config() -> Path:
 
 
 def update_config(key: str, value: str) -> Path:
-    """Update a single key in [provider] and return path.
+    """Update a single key in the active profile and return path.
 
     Creates the file with defaults if it doesn't exist.
     """
+    from mm.profile import get_active_profile_name, migrate_to_profiles, write_full_config
+
     file_data = _read_config_file()
-    provider = file_data.get("provider", dict(_platform_defaults()))
-    provider[key] = value
-    return write_config(
-        base_url=provider.get("base_url", DEFAULTS["base_url"]),
-        api_key=provider.get("api_key", DEFAULTS["api_key"]),
-        model=provider.get("model", DEFAULTS["model"]),
-    )
+    migrate_to_profiles(file_data)
+    file_data.setdefault("active_profile", "default")
+    file_data.setdefault("profile", {})
+
+    profile_name = get_active_profile_name()
+    profile = file_data["profile"].get(profile_name, dict(_platform_defaults()))
+    profile[key] = value
+    file_data["profile"][profile_name] = profile
+    return write_full_config(file_data)
