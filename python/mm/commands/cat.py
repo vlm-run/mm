@@ -331,10 +331,10 @@ def _l2_cached(path: Path, kind: str, opts: _CatOpts) -> str:
 
     from mm import cache
     from mm.config import get_provider
-    from mm.profile import get_active_profile_name
 
-    profile = get_active_profile_name()
-    model = get_provider().model
+    provider = get_provider()
+    profile = provider.name
+    model = provider.model
     content_hash = cache.get_content_hash(path)
 
     if content_hash:

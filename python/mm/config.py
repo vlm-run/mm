@@ -93,6 +93,7 @@ _MODE_DEFAULTS: dict[Mode, ModeConfig] = {
 
 @dataclass
 class ProviderConfig:
+    name: str = "default"
     base_url: str = DEFAULTS["base_url"]
     api_key: str = DEFAULTS["api_key"]
     model: str = DEFAULTS["model"]
@@ -246,11 +247,10 @@ def get_provider() -> ProviderConfig:
     # If a profile was explicitly requested and doesn't exist, fail loudly.
     if not file_cfg and profile_name != "default":
         available = sorted(file_data.get("profile", {}).keys()) or ["default"]
-        raise ValueError(
-            f"Profile '{profile_name}' not found. Available: {', '.join(available)}"
-        )
+        raise ValueError(f"Profile '{profile_name}' not found. Available: {', '.join(available)}")
 
     return ProviderConfig(
+        name=profile_name,
         base_url=_resolve("base_url", file_cfg)[0],
         api_key=_resolve("api_key", file_cfg)[0],
         model=_resolve("model", file_cfg)[0],
@@ -296,9 +296,7 @@ def get_provider_with_sources() -> list[tuple[str, str, str, str]]:
 
     if not file_cfg and profile_name != "default":
         available = sorted(file_data.get("profile", {}).keys()) or ["default"]
-        raise ValueError(
-            f"Profile '{profile_name}' not found. Available: {', '.join(available)}"
-        )
+        raise ValueError(f"Profile '{profile_name}' not found. Available: {', '.join(available)}")
 
     rows = []
     for key in ("base_url", "api_key", "model"):

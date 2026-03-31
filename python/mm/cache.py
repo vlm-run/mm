@@ -43,7 +43,8 @@ def get(
     if not path.exists():
         return None
     try:
-        data = json.loads(path.read_text())
+        with path.open("r", encoding="utf-8") as f:
+            data = json.load(f)
         return data.get("content")
     except Exception:
         return None
