@@ -347,9 +347,9 @@ def profile_use(
 @profile_app.command("add")
 def profile_add(
     name: Annotated[str, typer.Argument(help="Profile name")],
-    base_url: Annotated[str, typer.Option("--base-url", "-b", help="LLM API base URL")] = "",
+    base_url: Annotated[str, typer.Option("--base-url", "-b", help="LLM API base URL (required)")],
+    model: Annotated[str, typer.Option("--model", "-m", help="Model name (required)")],
     api_key: Annotated[str, typer.Option("--api-key", "-k", help="API key")] = "",
-    model: Annotated[str, typer.Option("--model", "-m", help="Model name")] = "",
 ) -> None:
     """Add a new profile.
 

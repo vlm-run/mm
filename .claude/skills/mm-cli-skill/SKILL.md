@@ -96,7 +96,7 @@ Behaviour is auto-detected from (file type × processing level). No mode flags n
 # Text/metadata extraction (L1 default, <100ms for media)
 mm cat <file>                                       # L1 extracted content
 mm cat <file> --level 0                             # raw file content
-mm cat <file> --level 2                             # LLM caption (needs MM_BASE_URL)
+mm cat <file> --level 2                             # LLM caption (needs configured profile)
 mm cat <file> -l 2 --detail                         # ~80-word LLM description
 
 # Head / tail

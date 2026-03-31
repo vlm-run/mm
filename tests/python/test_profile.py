@@ -46,8 +46,7 @@ def _isolate_config(tmp_path: Path, monkeypatch):
 
     set_cli_overrides(None)
 
-    for var in ("MM_BASE_URL", "MM_API_KEY", "MM_MODEL", "MM_PROFILE"):
-        monkeypatch.delenv(var, raising=False)
+    monkeypatch.delenv("MM_PROFILE", raising=False)
 
     monkeypatch.setattr("mm.config._platform_defaults", lambda: dict(DEFAULTS))
 
@@ -202,13 +201,6 @@ class TestProviderWithProfiles:
         cfg = get_provider()
         assert cfg.base_url == "https://api.vlm.run/v1"
 
-    def test_env_var_overrides_profile_value(self, two_profile_config, monkeypatch):
-        monkeypatch.setenv("MM_PROFILE", "vlmrun")
-        monkeypatch.setenv("MM_MODEL", "override-model")
-        cfg = get_provider()
-        assert cfg.model == "override-model"
-        assert cfg.base_url == "https://api.vlm.run/v1"
-
     def test_source_label_includes_profile_name(self, two_profile_config):
         set_cli_overrides(profile="vlmrun")
         rows = get_provider_with_sources()
@@ -234,14 +226,15 @@ class TestAddProfile:
 
     def test_add_duplicate_raises(self, two_profile_config):
         with pytest.raises(ValueError, match="already exists"):
-            add_profile("vlmrun", base_url="http://dup")
+            add_profile("vlmrun", base_url="http://dup", model="dup-m")
 
-    def test_add_with_defaults(self, two_profile_config):
-        add_profile("minimal", base_url="")
-        file_data = _read_config_file()
-        section = file_data["profile"]["minimal"]
-        assert section["base_url"] == DEFAULTS["base_url"]
-        assert section["model"] == DEFAULTS["model"]
+    def test_add_requires_base_url(self, two_profile_config):
+        with pytest.raises(ValueError, match="base_url is required"):
+            add_profile("broken", base_url="", model="some-model")
+
+    def test_add_requires_model(self, two_profile_config):
+        with pytest.raises(ValueError, match="model is required"):
+            add_profile("broken", base_url="http://localhost:8000", model="")
 
     def test_add_to_legacy_config(self, legacy_config):
         add_profile("newone", base_url="http://new:9000", model="new-m")
@@ -279,6 +272,20 @@ class TestUpdateProfile:
         assert p["api_key"] == "k"
         assert p["model"] == "m"
 
+    def test_update_rejects_empty_base_url(self, two_profile_config):
+        with pytest.raises(ValueError, match="base_url cannot be empty"):
+            update_profile("vlmrun", base_url="")
+
+    def test_update_rejects_empty_model(self, two_profile_config):
+        with pytest.raises(ValueError, match="model cannot be empty"):
+            update_profile("vlmrun", model="")
+
+    def test_update_allows_empty_api_key(self, two_profile_config):
+        """api_key can be set to empty (e.g. local Ollama needs no key)."""
+        update_profile("vlmrun", api_key="")
+        file_data = _read_config_file()
+        assert file_data["profile"]["vlmrun"]["api_key"] == ""
+
     def test_update_nonexistent_raises(self, two_profile_config):
         with pytest.raises(ValueError, match="not found"):
             update_profile("nope", model="x")
@@ -306,9 +313,20 @@ class TestRemoveProfile:
         names = get_profile_names()
         assert "vlmrun" not in names
 
-    def test_remove_active_raises(self, two_profile_config):
-        with pytest.raises(ValueError, match="Cannot remove the active profile"):
+    def test_remove_default_always_fails(self, two_profile_config):
+        """'default' cannot be removed even when it's not the active profile."""
+        set_active_profile("vlmrun")
+        with pytest.raises(ValueError, match="cannot be removed"):
             remove_profile("default")
+
+    def test_remove_default_shows_alternatives(self, two_profile_config):
+        with pytest.raises(ValueError, match="mm config profile update default"):
+            remove_profile("default")
+
+    def test_remove_active_non_default_raises(self, two_profile_config):
+        set_active_profile("vlmrun")
+        with pytest.raises(ValueError, match="Cannot remove the active profile"):
+            remove_profile("vlmrun")
 
     def test_remove_nonexistent_raises(self, two_profile_config):
         with pytest.raises(ValueError, match="not found"):
@@ -432,7 +450,7 @@ class TestProfileCli:
     def test_profile_add_duplicate_fails(self, runner, two_profile_config):
         cli_runner, app = runner
         result = cli_runner.invoke(
-            app, ["config", "profile", "add", "vlmrun", "--base-url", "http://dup"]
+            app, ["config", "profile", "add", "vlmrun", "--base-url", "http://dup", "--model", "dup-m"]
         )
         assert result.exit_code == 1
 
@@ -511,10 +529,12 @@ class TestProfileCli:
         data = json.loads(result2.output)
         assert "vlmrun" not in data["profiles"]
 
-    def test_profile_remove_active_fails(self, runner, two_profile_config):
+    def test_profile_remove_default_fails_with_guidance(self, runner, two_profile_config):
         cli_runner, app = runner
         result = cli_runner.invoke(app, ["config", "profile", "remove", "default"])
         assert result.exit_code == 1
+        assert "cannot be removed" in result.output
+        assert "mm config profile update default" in result.output
 
     def test_profile_flag_override(self, runner, two_profile_config):
         cli_runner, app = runner

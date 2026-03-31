@@ -5,9 +5,11 @@ Config file locations (checked in order, first found wins):
   2. ~/.mm/config.toml          (legacy, still supported)
 
 Resolution order for provider settings (highest priority first):
-  1. Environment variables (MM_BASE_URL, MM_PROFILE, etc.)
-  2. Config file [profile.<name>] section (active profile)
-  3. Built-in defaults (local Ollama)
+  1. Active profile [profile.<name>] section
+  2. Built-in defaults (local Ollama)
+
+Active profile resolved as:
+  --profile flag > MM_PROFILE env > active_profile in file > "default"
 
 Provider settings (base_url, api_key, model) are configured per-profile.
 Use ``mm config profile add/update`` to manage profiles, and
@@ -24,7 +26,6 @@ for per-mode defaults (whisper model, audio speed, etc.).
 
 from __future__ import annotations
 
-import os
 import platform
 from dataclasses import dataclass, field, replace
 from pathlib import Path
@@ -64,12 +65,6 @@ DEFAULTS = {
     "base_url": "http://localhost:11434",
     "api_key": "",
     "model": "qwen3.5:0.8b",
-}
-
-ENV_VARS = {
-    "base_url": "MM_BASE_URL",
-    "api_key": "MM_API_KEY",
-    "model": "MM_MODEL",
 }
 
 ENV_PROFILE = "MM_PROFILE"
@@ -231,12 +226,9 @@ def _read_config_file() -> dict[str, Any]:
 
 
 def _resolve(key: str, file_cfg: dict[str, Any]) -> tuple[str, str]:
-    """Return (value, source) for a provider key."""
-    if val := os.environ.get(ENV_VARS[key]):
-        return val, "env"
+    """Return (value, source) for a provider key: profile > defaults."""
     if val := file_cfg.get(key):
         return str(val), "file"
-    # Platform-specific defaults
     return _platform_defaults().get(key, DEFAULTS[key]), "default"
 
 
@@ -244,7 +236,7 @@ def _resolve(key: str, file_cfg: dict[str, Any]) -> tuple[str, str]:
 
 
 def get_provider() -> ProviderConfig:
-    """Resolve provider settings: CLI flags > env vars > active profile > defaults."""
+    """Resolve provider settings: active profile > defaults."""
     from mm.profile import get_active_profile_name, get_profile_section
 
     file_data = _read_config_file()
@@ -300,7 +292,7 @@ def get_provider_with_sources() -> list[tuple[str, str, str, str]]:
         if src == "file":
             src = f"file ({profile_name})"
         display_val = "••••" if key == "api_key" and val and src != "default" else val
-        rows.append((key, display_val, src, ENV_VARS[key]))
+        rows.append((key, display_val, src, ""))
     return rows
 
 

@@ -31,10 +31,8 @@ from mm.config import (
     ENV_PROFILE,
     _cli_overrides,
     _find_config_path,
-    _platform_defaults,
     _read_config_file,
 )
-
 
 # ── Resolution ─────────────────────────────────────────────────────
 
@@ -143,9 +141,10 @@ def set_active_profile(name: str) -> Path:
 
 def add_profile(
     name: str,
+    *,
     base_url: str,
+    model: str,
     api_key: str = "",
-    model: str = "",
 ) -> Path:
     """Add a new profile to the config file. Returns path."""
     file_data = _read_config_file()
@@ -154,13 +153,19 @@ def add_profile(
     file_data.setdefault("profile", {})
 
     if name in file_data["profile"]:
-        raise ValueError(f"Profile '{name}' already exists. Use 'mm config profile update' to modify it.")
+        raise ValueError(
+            f"Profile '{name}' already exists. Use 'mm config profile update' to modify it"
+        )
 
-    defaults = _platform_defaults()
+    if not base_url:
+        raise ValueError("base_url is required to add a new profile.")
+    if not model:
+        raise ValueError("model is required to add a new profile.")
+
     file_data["profile"][name] = {
-        "base_url": base_url or defaults["base_url"],
+        "base_url": base_url,
         "api_key": api_key,
-        "model": model or defaults["model"],
+        "model": model,
     }
     return write_full_config(file_data)
 
@@ -184,18 +189,26 @@ def update_profile(
     file_data.setdefault("profile", {})
 
     if name not in file_data.get("profile", {}):
-        raise ValueError(f"Profile '{name}' not found. Available: {', '.join(sorted(file_data['profile']))}")
+        raise ValueError(
+            f"Profile '{name}' not found. Available: {', '.join(sorted(file_data['profile']))}"
+        )
 
     updates: dict[str, str] = {}
     if base_url is not None:
+        if not base_url:
+            raise ValueError("base_url cannot be empty.")
         updates["base_url"] = base_url
     if api_key is not None:
         updates["api_key"] = api_key
     if model is not None:
+        if not model:
+            raise ValueError("model cannot be empty.")
         updates["model"] = model
 
     if not updates:
-        raise ValueError("No fields to update. Provide at least one of: --base-url, --api-key, --model")
+        raise ValueError(
+            "No fields to update. Provide at least one of: --base-url, --api-key, --model"
+        )
 
     file_data["profile"][name].update(updates)
     return write_full_config(file_data)
@@ -203,6 +216,15 @@ def update_profile(
 
 def remove_profile(name: str) -> Path:
     """Remove a profile from the config file. Returns path."""
+    if name == "default":
+        raise ValueError(
+            "The 'default' profile cannot be removed.\n\n"
+            "You can:\n"
+            "  mm config profile update default --base-url <url> --model <model>   # change its settings\n"
+            "  mm config profile use <other>                                        # switch to a different profile\n"
+            "  mm config profile add <name> --base-url <url>                        # create a new profile"
+        )
+
     file_data = _read_config_file()
     migrate_to_profiles(file_data)
     profiles = file_data.get("profile", {})
@@ -210,7 +232,9 @@ def remove_profile(name: str) -> Path:
     if name not in profiles:
         raise ValueError(f"Profile '{name}' not found.")
     if name == file_data.get("active_profile", "default"):
-        raise ValueError(f"Cannot remove the active profile '{name}'. Switch to another profile first.")
+        raise ValueError(
+            f"Cannot remove the active profile '{name}'. Switch to another profile first."
+        )
 
     del profiles[name]
     return write_full_config(file_data)

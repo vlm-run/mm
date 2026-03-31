@@ -1,6 +1,6 @@
 """Tests for mm configuration resolution.
 
-Validates the priority chain: env vars > config file (active profile) > defaults.
+Validates the priority chain: active profile > defaults.
 """
 
 from __future__ import annotations
@@ -21,7 +21,7 @@ from mm.config import (
 
 @pytest.fixture(autouse=True)
 def _isolate_config(tmp_path: Path, monkeypatch):
-    """Point config module at a temp dir and clear CLI overrides + env vars."""
+    """Point config module at a temp dir and clear CLI overrides."""
     monkeypatch.setattr("mm.config.CONFIG_DIR", tmp_path)
     monkeypatch.setattr("mm.config.CONFIG_PATH", tmp_path / "config.toml")
     monkeypatch.setattr("mm.config.CONFIG_DIR_XDG", tmp_path)
@@ -31,8 +31,7 @@ def _isolate_config(tmp_path: Path, monkeypatch):
 
     set_cli_overrides(None)
 
-    for var in ("MM_BASE_URL", "MM_API_KEY", "MM_MODEL", "MM_PROFILE"):
-        monkeypatch.delenv(var, raising=False)
+    monkeypatch.delenv("MM_PROFILE", raising=False)
 
     # Patch platform defaults to DEFAULTS for any OS (Linux CI uses different defaults)
     monkeypatch.setattr("mm.config._platform_defaults", lambda: dict(DEFAULTS))
@@ -70,33 +69,6 @@ class TestFileConfig:
         (tmp_path / "config.toml").write_text("not valid toml {{{}}}}")
         cfg = get_provider()
         assert cfg == ProviderConfig()
-
-
-class TestEnvVars:
-    def test_env_overrides_file(self, tmp_path: Path, monkeypatch):
-        write_config(base_url="http://file:8000", api_key="", model="file-model")
-        monkeypatch.setenv("MM_MODEL", "env-model")
-        cfg = get_provider()
-        assert cfg.model == "env-model"
-        assert cfg.base_url == "http://file:8000"
-
-    def test_all_env_vars(self, monkeypatch):
-        monkeypatch.setenv("MM_BASE_URL", "http://env:9000")
-        monkeypatch.setenv("MM_API_KEY", "env-key")
-        monkeypatch.setenv("MM_MODEL", "env-model")
-        cfg = get_provider()
-        assert cfg.base_url == "http://env:9000"
-        assert cfg.api_key == "env-key"
-        assert cfg.model == "env-model"
-
-    def test_source_labels(self, tmp_path: Path, monkeypatch):
-        write_config(base_url="http://f:1", api_key="k", model="m")
-        monkeypatch.setenv("MM_API_KEY", "ek")
-        rows = get_provider_with_sources()
-        sources = {r[0]: r[2] for r in rows}
-        assert sources["base_url"].startswith("file")  # "file (default)" with profiles
-        assert sources["api_key"] == "env"
-        assert sources["model"].startswith("file")
 
 
 class TestWriteConfig:

@@ -62,9 +62,9 @@ mm
 │   ├── [x] File content description
 │   ├── [x] Video understanding via keyframe mosaic + LLM (auto at L2)
 │   ├── [x] Audio description via metadata + LLM (auto at L2)
-│   ├── [x] Configurable: CLI flags > env vars > ~/.config/mm/mm.toml > defaults
+│   ├── [x] Configurable via profiles: mm config profile add/update/use
 │   ├── [x] think=false + reasoning_effort="none" + temperature=0.1
-│   ├── [x] Graceful fallback to L1 when unconfigured
+│   ├── [x] L2 errors propagate directly (no silent fallback to L1)
 │   ├── [x] --mode fast|accurate per-modality extraction strategies
 │   ├── [x] Audio transcription via ffmpeg + whisper (2x speed, greedy beam=1)
 │   ├── [x] Whisper backend auto-select: MLX Metal GPU > CTranslate2 CPU/CUDA

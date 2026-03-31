@@ -774,6 +774,130 @@ mm find ~/data --kind image --min-size 1MB | mm cat -l 1 --format json
 
 ---
 
+## `config` — Configuration and Profile Management
+
+mm uses **profiles** to manage multiple LLM provider configurations. Each profile stores `base_url`, `api_key`, and `model`. Switch between them instantly — no env vars, no file editing.
+
+### Example 1: Set up profiles
+
+```bash
+$ mm config init
+Created /Users/you/.config/mm/mm.toml
+
+$ mm config profile add vlmrun --base-url https://api.vlm.run/v1 --api-key sk-... --model vlm-1
+Added profile: vlmrun  (/Users/you/.config/mm/mm.toml)
+
+$ mm config profile add openrouter --base-url https://openrouter.ai/api/v1 --api-key sk-or-... --model qwen/qwen3.5-9b
+Added profile: openrouter  (/Users/you/.config/mm/mm.toml)
+```
+
+### Example 2: List profiles
+
+```bash
+$ mm config profile list
+```
+
+**TTY output:**
+```
+              Profiles
+╭────┬────────────┬──────────────────────────────┬─────────────────╮
+│    │ profile    │ base_url                     │ model           │
+├────┼────────────┼──────────────────────────────┼─────────────────┤
+│ ●  │ default    │ http://localhost:11434        │ qwen3-vl:2b     │
+│    │ openrouter │ https://openrouter.ai/api/v1 │ qwen/qwen3.5-9b │
+│    │ vlmrun     │ https://api.vlm.run/v1       │ vlm-1           │
+╰────┴────────────┴──────────────────────────────┴─────────────────╯
+```
+
+**JSON output:**
+```bash
+$ mm config profile list --format json
+```
+```json
+{
+  "active": "default",
+  "profiles": {
+    "default": {"base_url": "http://localhost:11434", "api_key": "", "model": "qwen3-vl:2b"},
+    "openrouter": {"base_url": "https://openrouter.ai/api/v1", "api_key": "••••", "model": "qwen/qwen3.5-9b"},
+    "vlmrun": {"base_url": "https://api.vlm.run/v1", "api_key": "••••", "model": "vlm-1"}
+  }
+}
+```
+
+### Example 3: Switch and use profiles
+
+```bash
+# Switch the active profile
+$ mm config profile use vlmrun
+Switched to profile: vlmrun  (/Users/you/.config/mm/mm.toml)
+
+# Use a different profile for a single command (does not change active)
+$ mm --profile openrouter cat photo.png -l 2
+╭─ photo.png ──────────────────────╮
+│ Sagittal MRI of a human brain    │
+│ showing the cerebrum, cerebellum,│
+│ and brainstem.                   │
+╰─── 214.7 KB  L2 semantic  3s   ──╯
+
+# Compare results across providers
+$ mm --profile default cat photo.png -l 2
+╭─ photo.png ───────────────────────╮
+│ An MRI scan of a human brain,     │
+│ displaying cerebral cortex,       │
+│ brainstem, and surrounding        │
+│ structures.                       │
+╰─── 214.7 KB  L2 semantic  6s    ──╯
+```
+
+### Example 4: Update and remove profiles
+
+```bash
+# Update a single field
+$ mm config profile update vlmrun --model vlm-2
+Updated profile: vlmrun (model=vlm-2)  (/Users/you/.config/mm/mm.toml)
+
+# Update multiple fields at once
+$ mm config profile update openrouter --api-key sk-new --model qwen/qwen-2.5-vl-7b-instruct
+Updated profile: openrouter (api_key=••••, model=qwen/qwen-2.5-vl-7b-instruct)
+
+# Remove a profile (must switch away from it first)
+$ mm config profile remove openrouter
+Removed profile: openrouter  (/Users/you/.config/mm/mm.toml)
+```
+
+### Example 5: View resolved config
+
+```bash
+$ mm config show
+```
+
+**TTY output:**
+```
+Profile: vlmrun  (default, vlmrun)
+
+         Provider (profile: vlmrun)
+╭──────────┬──────────────────────────┬────────────────╮
+│ key      │ value                    │         source │
+├──────────┼──────────────────────────┼────────────────┤
+│ base_url │ https://api.vlm.run/v1   │ file (vlmrun)  │
+│ api_key  │ ••••                     │ file (vlmrun)  │
+│ model    │ vlm-1                    │ file (vlmrun)  │
+╰──────────┴──────────────────────────┴────────────────╯
+```
+
+### Environment variable
+
+```bash
+# Override active profile for a session
+export MM_PROFILE=vlmrun
+mm cat photo.png -l 2          # uses vlmrun profile
+
+# Or 
+MM_PROFILE=openai mm cat photo.png -l 2
+```
+
+---
+
 ## Design Principles
 
 1. **Token efficiency**: Piped output uses minimal formatting — no borders, no color codes, no padding. Every byte carries information.

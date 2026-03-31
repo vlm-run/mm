@@ -48,14 +48,9 @@ model = "qwen3.5:0.8b"
 # model = "gemini-2.5-flash"
 
 
-# ── Environment variable overrides ───────────────────────────────────
+# ── Environment variable ─────────────────────────────────────────────
 #
-# These override config file values:
-#
-#   MM_BASE_URL    — override base_url from active profile
-#   MM_API_KEY     — override api_key from active profile
-#   MM_MODEL       — override model from active profile
-#   MM_PROFILE     — override active_profile
+#   MM_PROFILE     — override active_profile (e.g. MM_PROFILE=vlmrun mm cat ...)
 #
 # Resolution order:
-#   env vars  >  active profile  >  built-in defaults
+#   active profile  >  built-in defaults
