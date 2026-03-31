@@ -133,6 +133,21 @@ def write_full_config(file_data: dict[str, Any]) -> Path:
 # ── CRUD ───────────────────────────────────────────────────────────
 
 
+def _validate_profile_name(name: str) -> None:
+    """Ensure profile name is safe for TOML section headers.
+
+    Allows alphanumeric, hyphens, and underscores. Must start with alphanumeric.
+    """
+    import re
+
+    _PROFILE_NAME_RE = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9_-]*$")
+    if not name or not _PROFILE_NAME_RE.match(name):
+        raise ValueError(
+            f"Invalid profile name: '{name}'. "
+            "Use only letters, digits, hyphens, and underscores (e.g. 'vlmrun', 'my-provider', 'openai_v2')."
+        )
+
+
 def set_active_profile(name: str) -> Path:
     """Set the active profile in the config file. Returns path."""
     file_data = _read_config_file()
@@ -152,6 +167,8 @@ def add_profile(
     api_key: str = "",
 ) -> Path:
     """Add a new profile to the config file. Returns path."""
+    _validate_profile_name(name)
+
     file_data = _read_config_file()
     migrate_to_profiles(file_data)
     file_data.setdefault("active_profile", "default")

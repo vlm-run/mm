@@ -236,6 +236,22 @@ class TestAddProfile:
         with pytest.raises(ValueError, match="model is required"):
             add_profile("broken", base_url="http://localhost:8000", model="")
 
+    def test_add_rejects_dots_in_name(self, two_profile_config):
+        with pytest.raises(ValueError, match="Invalid profile name"):
+            add_profile("my.provider", base_url="http://x", model="m")
+
+    def test_add_rejects_spaces_in_name(self, two_profile_config):
+        with pytest.raises(ValueError, match="Invalid profile name"):
+            add_profile("my provider", base_url="http://x", model="m")
+
+    def test_add_rejects_empty_name(self, two_profile_config):
+        with pytest.raises(ValueError, match="Invalid profile name"):
+            add_profile("", base_url="http://x", model="m")
+
+    def test_add_allows_hyphens_and_underscores(self, two_profile_config):
+        add_profile("my-provider_v2", base_url="http://x", model="m")
+        assert "my-provider_v2" in get_profile_names()
+
     def test_add_to_legacy_config(self, legacy_config):
         add_profile("newone", base_url="http://new:9000", model="new-m")
         names = get_profile_names()
