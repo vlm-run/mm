@@ -121,6 +121,9 @@ def cat_cmd(
         Optional[str],
         typer.Option("--mode", "-m", help="Extraction mode: fast or accurate (L2 only)"),
     ] = None,
+    no_cache: Annotated[
+        bool, typer.Option("--no-cache", help="Bypass L2 cache and force a fresh LLM run")
+    ] = False,
     format: Annotated[
         Optional[str],
         typer.Option("--format", help="Output format: json, tsv, csv, dataset-jsonl, dataset-hf"),
@@ -190,6 +193,7 @@ def cat_cmd(
         audio_speed=audio_speed,
         audio_sample_rate=audio_sample_rate,
         mode=mode,
+        no_cache=no_cache,
         format=fmt,
     )
 
@@ -263,6 +267,7 @@ class _CatOpts:
         "audio_speed",
         "audio_sample_rate",
         "mode",
+        "no_cache",
         "format",
     )
 
@@ -278,6 +283,7 @@ class _CatOpts:
     audio_speed: float
     audio_sample_rate: int
     mode: Mode | None
+    no_cache: bool
     format: str
 
     def __init__(self, **kwargs: object) -> None:
@@ -311,12 +317,42 @@ def _extract(path: Path, opts: _CatOpts) -> str:
     kind = _file_kind(path)
 
     if opts.level >= 2:
-        # When --mode is set, use the new modal extraction pipeline
+        return _l2_cached(path, kind, opts)
+
+    return _l1(path, kind)
+
+
+def _l2_cached(path: Path, kind: str, opts: _CatOpts) -> str:
+    """Run L2 with cache lookup/store unless --no-cache."""
+    if opts.no_cache:
         if opts.mode is not None:
             return _l2_modal(path, kind, opts)
         return _l2(path, kind, opts)
 
-    return _l1(path, kind)
+    from mm import cache
+    from mm.config import get_provider
+    from mm.profile import get_active_profile_name
+
+    profile = get_active_profile_name()
+    model = get_provider().model
+    content_hash = cache.get_content_hash(path)
+
+    if content_hash:
+        cached = cache.get(content_hash, profile, model, opts.mode, opts.detail)
+        if cached is not None:
+            return cached
+
+    # Run the actual L2 extraction
+    if opts.mode is not None:
+        result = _l2_modal(path, kind, opts)
+    else:
+        result = _l2(path, kind, opts)
+
+    # Store in cache
+    if content_hash:
+        cache.put(content_hash, profile, model, result, opts.mode, opts.detail)
+
+    return result
 
 
 # ---------------------------------------------------------------------------
@@ -888,6 +924,12 @@ def _display_rich(
     subtitle.append(f"{size_str}", style="bright_blue")
     subtitle.append(f"  L{level} {level_label}", style="dim")
     subtitle = inject_elapsed(subtitle, elapsed_ms)
+
+    if level >= 2:
+        from mm.profile import get_active_profile_name
+
+        profile_name = get_active_profile_name()
+        subtitle.append(f"  {profile_name}", style="yellow")
 
     if n is not None:
         total_lines = len(path.read_text(errors="replace").splitlines()) if level == 0 else None

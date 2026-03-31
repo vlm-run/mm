@@ -184,6 +184,7 @@ class Context:
                 audio_speed=2.0,
                 audio_sample_rate=16000,
                 mode=mode,
+                no_cache=False,
                 format="rich",
             )
             return _extract(full_path, opts)
