@@ -59,7 +59,7 @@ def show(
         data = {
             "active_profile": active_profile,
             "profiles": all_profiles,
-            "provider": {r[0]: {"value": r[1], "source": r[2]} for r in rows},
+            "provider": {r[0]: r[1] for r in rows},
             "mode": {
                 "fast": {
                     "whisper_model": cfg.mode_fast.whisper_model,
@@ -79,14 +79,14 @@ def show(
     if fmt in ("tsv", "csv"):
         sep = "\t" if fmt == "tsv" else ","
         rows = get_provider_with_sources()
-        print(f"key{sep}value{sep}source")
-        print(f"active_profile{sep}{active_profile}{sep}config")
-        for key, val, src, _ in rows:
-            print(f"{key}{sep}{val}{sep}{src}")
-        print(f"mode.fast.whisper_model{sep}{cfg.mode_fast.whisper_model}{sep}config")
-        print(f"mode.fast.audio_speed{sep}{cfg.mode_fast.audio_speed}{sep}config")
-        print(f"mode.accurate.whisper_model{sep}{cfg.mode_accurate.whisper_model}{sep}config")
-        print(f"mode.accurate.audio_speed{sep}{cfg.mode_accurate.audio_speed}{sep}config")
+        print(f"key{sep}value")
+        print(f"active_profile{sep}{active_profile}")
+        for key, val, _src, _ in rows:
+            print(f"{key}{sep}{val}")
+        print(f"mode.fast.whisper_model{sep}{cfg.mode_fast.whisper_model}")
+        print(f"mode.fast.audio_speed{sep}{cfg.mode_fast.audio_speed}")
+        print(f"mode.accurate.whisper_model{sep}{cfg.mode_accurate.whisper_model}")
+        print(f"mode.accurate.audio_speed{sep}{cfg.mode_accurate.audio_speed}")
         return
 
     from rich import box
@@ -94,12 +94,6 @@ def show(
     from rich.text import Text
 
     from mm.display import output_console
-
-    SOURCE_STYLES = {
-        "cli": "bold bright_green",
-        "env": "bright_yellow",
-        "default": "dim",
-    }
 
     config_path = _find_config_path()
 
@@ -124,14 +118,10 @@ def show(
     )
     tbl.add_column("key", style="bold")
     tbl.add_column("value")
-    tbl.add_column("source", justify="right")
 
     rows = get_provider_with_sources()
-    for key, val, src, _ in rows:
-        # Match source style — "file (profile_name)" starts with "file"
-        style_key = src.split()[0] if " " in src else src
-        style = SOURCE_STYLES.get(style_key, "cyan")
-        tbl.add_row(key, Text(val, style=style), Text(src, style=style))
+    for key, val, _src, _ in rows:
+        tbl.add_row(key, Text(val, style="cyan"))
     output_console.print(tbl)
     output_console.print()
 

@@ -227,8 +227,8 @@ def _read_config_file() -> dict[str, Any]:
 
 def _resolve(key: str, file_cfg: dict[str, Any]) -> tuple[str, str]:
     """Return (value, source) for a provider key: profile > defaults."""
-    if val := file_cfg.get(key):
-        return str(val), "file"
+    if key in file_cfg and file_cfg[key] is not None:
+        return str(file_cfg[key]), "file"
     return _platform_defaults().get(key, DEFAULTS[key]), "default"
 
 
@@ -242,6 +242,14 @@ def get_provider() -> ProviderConfig:
     file_data = _read_config_file()
     profile_name = get_active_profile_name()
     file_cfg = get_profile_section(file_data, profile_name)
+
+    # If a profile was explicitly requested and doesn't exist, fail loudly.
+    if not file_cfg and profile_name != "default":
+        available = sorted(file_data.get("profile", {}).keys()) or ["default"]
+        raise ValueError(
+            f"Profile '{profile_name}' not found. Available: {', '.join(available)}"
+        )
+
     return ProviderConfig(
         base_url=_resolve("base_url", file_cfg)[0],
         api_key=_resolve("api_key", file_cfg)[0],
@@ -285,6 +293,13 @@ def get_provider_with_sources() -> list[tuple[str, str, str, str]]:
     file_data = _read_config_file()
     profile_name = get_active_profile_name()
     file_cfg = get_profile_section(file_data, profile_name)
+
+    if not file_cfg and profile_name != "default":
+        available = sorted(file_data.get("profile", {}).keys()) or ["default"]
+        raise ValueError(
+            f"Profile '{profile_name}' not found. Available: {', '.join(available)}"
+        )
+
     rows = []
     for key in ("base_url", "api_key", "model"):
         val, src = _resolve(key, file_cfg)

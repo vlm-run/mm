@@ -568,8 +568,6 @@ def _l2_video(path: Path, opts: _CatOpts) -> str:
             duration_s=result.duration_s,
         )
         return info.get("summary", "") or str(info)
-    except RuntimeError:
-        raise
     except Exception as e:
         return f"[Video L2 failed: {e}]"
 
