@@ -348,8 +348,8 @@ def _l2_cached(path: Path, kind: str, opts: _CatOpts) -> str:
     else:
         result = _l2(path, kind, opts)
 
-    # Store in cache
-    if content_hash:
+    # Store in cache — skip error results so transient failures aren't cached permanently
+    if content_hash and not result.startswith("["):
         cache.put(content_hash, profile, model, result, opts.mode, opts.detail)
 
     return result
