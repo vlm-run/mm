@@ -207,6 +207,29 @@ class TestProviderWithProfiles:
         sources = {r[0]: r[2] for r in rows}
         assert sources["base_url"] == "file (vlmrun)"
 
+    def test_empty_api_key_source_is_file_not_default(self, two_profile_config):
+        """api_key = '' in profile should show source as 'file', not 'default'."""
+        rows = get_provider_with_sources()
+        sources = {r[0]: r[2] for r in rows}
+        assert sources["api_key"].startswith("file")
+
+    def test_nonexistent_profile_raises(self, two_profile_config):
+        """--profile with a typo should fail, not silently use defaults."""
+        set_cli_overrides(profile="typo-profile")
+        with pytest.raises(ValueError, match="not found"):
+            get_provider()
+
+    def test_nonexistent_profile_via_env_raises(self, two_profile_config, monkeypatch):
+        monkeypatch.setenv("MM_PROFILE", "doesnt-exist")
+        with pytest.raises(ValueError, match="not found"):
+            get_provider()
+
+    def test_default_without_config_file_uses_builtins(self):
+        """No config file at all — default profile resolves to built-in defaults."""
+        cfg = get_provider()
+        assert cfg.base_url == DEFAULTS["base_url"]
+        assert cfg.model == DEFAULTS["model"]
+
     def test_legacy_provider_works(self, legacy_config):
         cfg = get_provider()
         assert cfg.base_url == "http://legacy:8000"
@@ -560,7 +583,7 @@ class TestProfileCli:
         assert result.exit_code == 0
         data = json.loads(result.output)
         assert data["active_profile"] == "vlmrun"
-        assert data["provider"]["base_url"]["source"] == "file (vlmrun)"
+        assert data["provider"]["base_url"] == "https://api.vlm.run/v1"
 
     def test_no_top_level_base_url_flag(self, runner):
         """--base-url is no longer a top-level flag."""
@@ -627,7 +650,7 @@ class TestProfileCli:
         r = cli_runner.invoke(app, ["config", "show", "--format", "json"])
         data = json.loads(r.output)
         assert data["active_profile"] == "test-p"
-        assert data["provider"]["model"]["value"] == "test-m-v2"
+        assert data["provider"]["model"] == "test-m-v2"
         # Switch back before removing
         r = cli_runner.invoke(app, ["config", "profile", "use", "default"])
         assert r.exit_code == 0
@@ -665,4 +688,4 @@ class TestEnvProfileCli:
         assert result.exit_code == 0
         data = json.loads(result.output)
         assert data["active_profile"] == "vlmrun"
-        assert data["provider"]["base_url"]["source"] == "file (vlmrun)"
+        assert data["provider"]["base_url"] == "https://api.vlm.run/v1"
