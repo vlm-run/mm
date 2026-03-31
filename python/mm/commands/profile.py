@@ -161,7 +161,7 @@ def profile_add(
 
 
 @profile_app.command("update")
-def profile_update_cmd(
+def profile_update(
     name: Annotated[str, typer.Argument(help="Profile name to update")],
     base_url: Annotated[
         Optional[str], typer.Option("--base-url", "-b", help="LLM API base URL")
