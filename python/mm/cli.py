@@ -20,7 +20,8 @@ app = typer.Typer(
 @app.callback()
 def _main(
     profile: Annotated[
-        Optional[str], typer.Option("--profile", "-p", help="Config profile to use (see: mm config profile list)")
+        Optional[str],
+        typer.Option("--profile", "-p", help="Config profile to use (see: mm config profile list)"),
     ] = None,
     color: Annotated[
         str, typer.Option("--color", help="Color output: auto, always, never")

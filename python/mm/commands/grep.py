@@ -24,7 +24,8 @@ def grep_cmd(
     ] = False,
     level: Annotated[int, typer.Option("--level", "-l", help="Processing level")] = 1,
     format: Annotated[
-        Optional[str], typer.Option("--format", help="Output format: json, tsv, csv, dataset-jsonl, dataset-hf")
+        Optional[str],
+        typer.Option("--format", help="Output format: json, tsv, csv, dataset-jsonl, dataset-hf"),
     ] = None,
 ) -> None:
     """Search file contents -- text and semantic (like rg/grep)."""
