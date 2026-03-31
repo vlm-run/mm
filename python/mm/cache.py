@@ -24,9 +24,11 @@ def _cache_key(
     model: str,
     mode: str | None,
     detail: bool,
+    *,
+    extra: str = "",
 ) -> str:
     """Build a deterministic cache key from extraction parameters."""
-    raw = f"{content_hash}:{profile}:{model}:{mode or ''}:{detail}"
+    raw = f"{content_hash}:{profile}:{model}:{mode or ''}:{detail}:{extra}"
     return hashlib.sha256(raw.encode()).hexdigest()[:24]
 
 
@@ -36,9 +38,17 @@ def get(
     model: str,
     mode: str | None = None,
     detail: bool = False,
+    extra: str = "",
 ) -> str | None:
     """Return cached L2 result, or None if not cached."""
-    key = _cache_key(content_hash, profile, model, mode, detail)
+    key = _cache_key(
+        content_hash,
+        profile,
+        model,
+        mode,
+        detail,
+        extra=extra,
+    )
     path = _CACHE_DIR / f"{key}.json"
     if not path.exists():
         return None
@@ -58,9 +68,18 @@ def put(
     content: str,
     mode: str | None = None,
     detail: bool = False,
+    *,
+    extra: str = "",
 ) -> None:
     """Store an L2 result in the cache."""
-    key = _cache_key(content_hash, profile, model, mode, detail)
+    key = _cache_key(
+        content_hash,
+        profile,
+        model,
+        mode,
+        detail,
+        extra=extra,
+    )
     _CACHE_DIR.mkdir(parents=True, exist_ok=True)
     path = _CACHE_DIR / f"{key}.json"
     data: dict[str, Any] = {
