@@ -14,6 +14,7 @@ active_profile = "default"
 # Each profile has: base_url, api_key, model
 # List all:     mm config profile list
 # Add new:      mm config profile add <name> --base-url <url> --model <model>
+# Update:       mm config profile update <name> --api-key <key>
 
 [profile.default]
 # Ollama (local, default)
@@ -49,12 +50,12 @@ model = "qwen3.5:0.8b"
 
 # ── Environment variable overrides ───────────────────────────────────
 #
-# These override config.toml values (but are overridden by CLI flags):
+# These override config file values:
 #
-#   MM_BASE_URL    — override base_url
-#   MM_API_KEY     — override api_key
-#   MM_MODEL       — override model
+#   MM_BASE_URL    — override base_url from active profile
+#   MM_API_KEY     — override api_key from active profile
+#   MM_MODEL       — override model from active profile
 #   MM_PROFILE     — override active_profile
 #
 # Resolution order:
-#   CLI flags  >  env vars  >  active profile  >  built-in defaults
+#   env vars  >  active profile  >  built-in defaults

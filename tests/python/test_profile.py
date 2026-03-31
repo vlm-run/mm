@@ -1,7 +1,7 @@
 """Tests for mm profile management.
 
-Covers: profile CRUD, active profile resolution, backward-compat migration,
-CLI subcommands (list/use/add/remove), --profile flag, MM_PROFILE env.
+Covers: profile CRUD (including update), active profile resolution, backward-compat
+migration, CLI subcommands (list/use/add/update/remove), --profile flag, MM_PROFILE env.
 """
 
 from __future__ import annotations
@@ -19,6 +19,7 @@ from mm.config import (
     write_config,
 )
 from mm.profile import (
+    PROFILE_KEYS,
     add_profile,
     get_active_profile_name,
     get_profile_names,
@@ -26,9 +27,9 @@ from mm.profile import (
     migrate_to_profiles,
     remove_profile,
     set_active_profile,
+    update_profile,
     write_full_config,
 )
-
 
 # ── Fixtures ────────────────────────────────────────────────────────
 
@@ -43,7 +44,7 @@ def _isolate_config(tmp_path: Path, monkeypatch):
     monkeypatch.setattr("mm.config.CONFIG_DIR_LEGACY", tmp_path / "legacy")
     monkeypatch.setattr("mm.config.CONFIG_PATH_LEGACY", tmp_path / "legacy" / "config.toml")
 
-    set_cli_overrides(None, None, None, None)
+    set_cli_overrides(None)
 
     for var in ("MM_BASE_URL", "MM_API_KEY", "MM_MODEL", "MM_PROFILE"):
         monkeypatch.delenv(var, raising=False)
@@ -154,10 +155,10 @@ class TestGetProfileNames:
 class TestMigrateToProfiles:
     def test_migrates_provider_to_profile(self):
         data = {"provider": {"base_url": "http://old", "model": "old-m"}}
-        migrate_to_profiles(data)
+        new_data = migrate_to_profiles(data)
         assert "provider" not in data
-        assert data["profile"]["default"]["base_url"] == "http://old"
-        assert data["active_profile"] == "default"
+        assert new_data["profile"]["default"]["base_url"] == "http://old"
+        assert new_data["active_profile"] == "default"
 
     def test_noop_when_profiles_exist(self):
         data = {
@@ -171,6 +172,14 @@ class TestMigrateToProfiles:
         data = {}
         migrate_to_profiles(data)
         assert "profile" not in data
+
+
+# ── Profile keys constant ──────────────────────────────────────────
+
+
+class TestProfileKeys:
+    def test_contains_expected_keys(self):
+        assert PROFILE_KEYS == {"base_url", "api_key", "model"}
 
 
 # ── Provider resolution with profiles ───────────────────────────────
@@ -193,8 +202,9 @@ class TestProviderWithProfiles:
         cfg = get_provider()
         assert cfg.base_url == "https://api.vlm.run/v1"
 
-    def test_cli_flag_overrides_profile_value(self, two_profile_config):
-        set_cli_overrides(profile="vlmrun", model="override-model")
+    def test_env_var_overrides_profile_value(self, two_profile_config, monkeypatch):
+        monkeypatch.setenv("MM_PROFILE", "vlmrun")
+        monkeypatch.setenv("MM_MODEL", "override-model")
         cfg = get_provider()
         assert cfg.model == "override-model"
         assert cfg.base_url == "https://api.vlm.run/v1"
@@ -240,6 +250,56 @@ class TestAddProfile:
         assert "newone" in names
 
 
+class TestUpdateProfile:
+    def test_update_single_field(self, two_profile_config):
+        update_profile("vlmrun", model="vlm-2")
+        file_data = _read_config_file()
+        assert file_data["profile"]["vlmrun"]["model"] == "vlm-2"
+        # Other fields preserved
+        assert file_data["profile"]["vlmrun"]["base_url"] == "https://api.vlm.run/v1"
+        assert file_data["profile"]["vlmrun"]["api_key"] == "sk-vlm-test"
+
+    def test_update_multiple_fields(self, two_profile_config):
+        update_profile("vlmrun", base_url="http://new-vlm:8000", model="vlm-3")
+        file_data = _read_config_file()
+        assert file_data["profile"]["vlmrun"]["base_url"] == "http://new-vlm:8000"
+        assert file_data["profile"]["vlmrun"]["model"] == "vlm-3"
+        assert file_data["profile"]["vlmrun"]["api_key"] == "sk-vlm-test"
+
+    def test_update_api_key(self, two_profile_config):
+        update_profile("vlmrun", api_key="sk-new-key")
+        file_data = _read_config_file()
+        assert file_data["profile"]["vlmrun"]["api_key"] == "sk-new-key"
+
+    def test_update_all_fields(self, two_profile_config):
+        update_profile("default", base_url="http://x", api_key="k", model="m")
+        file_data = _read_config_file()
+        p = file_data["profile"]["default"]
+        assert p["base_url"] == "http://x"
+        assert p["api_key"] == "k"
+        assert p["model"] == "m"
+
+    def test_update_nonexistent_raises(self, two_profile_config):
+        with pytest.raises(ValueError, match="not found"):
+            update_profile("nope", model="x")
+
+    def test_update_no_fields_raises(self, two_profile_config):
+        with pytest.raises(ValueError, match="No fields to update"):
+            update_profile("vlmrun")
+
+    def test_update_preserves_other_profiles(self, two_profile_config):
+        update_profile("vlmrun", model="vlm-2")
+        file_data = _read_config_file()
+        # Default profile unchanged
+        assert file_data["profile"]["default"]["model"] == "qwen3.5:0.8b"
+
+    def test_update_reflects_in_provider(self, two_profile_config):
+        set_cli_overrides(profile="vlmrun")
+        update_profile("vlmrun", model="vlm-updated")
+        cfg = get_provider()
+        assert cfg.model == "vlm-updated"
+
+
 class TestRemoveProfile:
     def test_remove_non_active(self, two_profile_config):
         remove_profile("vlmrun")
@@ -271,7 +331,7 @@ class TestSetActiveProfile:
         assert cfg.base_url == "https://api.vlm.run/v1"
 
 
-# ── Write/update with profiles ──────────────────────────────────────
+# ── Write with profiles ────────────────────────────────────────────
 
 
 class TestWriteConfigWithProfiles:
@@ -316,9 +376,8 @@ class TestProfileCli:
 
     @pytest.fixture
     def runner(self):
-        from typer.testing import CliRunner
-
         from mm.cli import app
+        from typer.testing import CliRunner
 
         return CliRunner(), app
 
@@ -352,7 +411,16 @@ class TestProfileCli:
         cli_runner, app = runner
         result = cli_runner.invoke(
             app,
-            ["config", "profile", "add", "openai", "--base-url", "https://api.openai.com/v1", "--model", "gpt-4o"],
+            [
+                "config",
+                "profile",
+                "add",
+                "openai",
+                "--base-url",
+                "https://api.openai.com/v1",
+                "--model",
+                "gpt-4o",
+            ],
         )
         assert result.exit_code == 0
         assert "Added" in result.output
@@ -383,6 +451,57 @@ class TestProfileCli:
         result = cli_runner.invoke(app, ["config", "profile", "use", "nope"])
         assert result.exit_code == 1
 
+    def test_profile_update_single_field(self, runner, two_profile_config):
+        cli_runner, app = runner
+        result = cli_runner.invoke(
+            app, ["config", "profile", "update", "vlmrun", "--model", "vlm-2"]
+        )
+        assert result.exit_code == 0
+        assert "Updated" in result.output
+        assert "model=vlm-2" in result.output
+        # Verify change persisted
+        result2 = cli_runner.invoke(app, ["config", "profile", "list", "--format", "json"])
+        data = json.loads(result2.output)
+        assert data["profiles"]["vlmrun"]["model"] == "vlm-2"
+
+    def test_profile_update_multiple_fields(self, runner, two_profile_config):
+        cli_runner, app = runner
+        result = cli_runner.invoke(
+            app,
+            [
+                "config",
+                "profile",
+                "update",
+                "vlmrun",
+                "--model",
+                "vlm-3",
+                "--base-url",
+                "http://new:9000",
+            ],
+        )
+        assert result.exit_code == 0
+        assert "model=vlm-3" in result.output
+        assert "base_url=http://new:9000" in result.output
+
+    def test_profile_update_api_key_masked(self, runner, two_profile_config):
+        cli_runner, app = runner
+        result = cli_runner.invoke(
+            app, ["config", "profile", "update", "vlmrun", "--api-key", "sk-secret"]
+        )
+        assert result.exit_code == 0
+        assert "api_key=••••" in result.output
+        assert "sk-secret" not in result.output
+
+    def test_profile_update_nonexistent_fails(self, runner, two_profile_config):
+        cli_runner, app = runner
+        result = cli_runner.invoke(app, ["config", "profile", "update", "nope", "--model", "x"])
+        assert result.exit_code == 1
+
+    def test_profile_update_no_fields_fails(self, runner, two_profile_config):
+        cli_runner, app = runner
+        result = cli_runner.invoke(app, ["config", "profile", "update", "vlmrun"])
+        assert result.exit_code == 1
+
     def test_profile_remove(self, runner, two_profile_config):
         cli_runner, app = runner
         result = cli_runner.invoke(app, ["config", "profile", "remove", "vlmrun"])
@@ -399,27 +518,80 @@ class TestProfileCli:
 
     def test_profile_flag_override(self, runner, two_profile_config):
         cli_runner, app = runner
-        result = cli_runner.invoke(app, ["--profile", "vlmrun", "config", "show", "--format", "json"])
+        result = cli_runner.invoke(
+            app, ["--profile", "vlmrun", "config", "show", "--format", "json"]
+        )
         assert result.exit_code == 0
         data = json.loads(result.output)
         assert data["active_profile"] == "vlmrun"
         assert data["provider"]["base_url"]["source"] == "file (vlmrun)"
 
-    def test_profile_workflow_add_use_remove(self, runner, two_profile_config):
-        """Full lifecycle: add -> use -> remove (after switching away)."""
+    def test_no_top_level_base_url_flag(self, runner):
+        """--base-url is no longer a top-level flag."""
+        cli_runner, app = runner
+        result = cli_runner.invoke(app, ["--base-url", "http://x", "config", "show"])
+        assert result.exit_code != 0
+
+    def test_no_top_level_model_flag(self, runner):
+        """--model is no longer a top-level flag."""
+        cli_runner, app = runner
+        result = cli_runner.invoke(app, ["--model", "x", "config", "show"])
+        assert result.exit_code != 0
+
+    def test_config_set_rejects_provider_keys(self, runner, two_profile_config):
+        """config set should reject provider keys and point to profile update."""
+        cli_runner, app = runner
+        result = cli_runner.invoke(app, ["config", "set", "base_url", "http://x"])
+        assert result.exit_code == 1
+        assert "profile" in result.output.lower()
+
+    def test_config_set_accepts_mode_keys(self, runner, two_profile_config):
+        cli_runner, app = runner
+        result = cli_runner.invoke(app, ["config", "set", "mode.fast.whisper_model", "medium"])
+        assert result.exit_code == 0
+        assert "Set" in result.output
+
+    def test_profile_workflow_add_update_use_remove(self, runner, two_profile_config):
+        """Full lifecycle: add -> update -> use -> remove (after switching away)."""
         cli_runner, app = runner
         # Add
         r = cli_runner.invoke(
-            app, ["config", "profile", "add", "test-p", "--base-url", "http://test:9000", "--model", "test-m"]
+            app,
+            [
+                "config",
+                "profile",
+                "add",
+                "test-p",
+                "--base-url",
+                "http://test:9000",
+                "--model",
+                "test-m",
+            ],
+        )
+        assert r.exit_code == 0
+        # Update
+        r = cli_runner.invoke(
+            app,
+            [
+                "config",
+                "profile",
+                "update",
+                "test-p",
+                "--api-key",
+                "sk-test",
+                "--model",
+                "test-m-v2",
+            ],
         )
         assert r.exit_code == 0
         # Use
         r = cli_runner.invoke(app, ["config", "profile", "use", "test-p"])
         assert r.exit_code == 0
-        # Verify active
+        # Verify active + updated values
         r = cli_runner.invoke(app, ["config", "show", "--format", "json"])
         data = json.loads(r.output)
         assert data["active_profile"] == "test-p"
+        assert data["provider"]["model"]["value"] == "test-m-v2"
         # Switch back before removing
         r = cli_runner.invoke(app, ["config", "profile", "use", "default"])
         assert r.exit_code == 0
@@ -431,6 +603,13 @@ class TestProfileCli:
         data = json.loads(r.output)
         assert "test-p" not in data["profiles"]
 
+    def test_profile_help_shows_all_subcommands(self, runner):
+        cli_runner, app = runner
+        result = cli_runner.invoke(app, ["config", "profile", "--help"])
+        assert result.exit_code == 0
+        for cmd in ("list", "use", "add", "update", "remove"):
+            assert cmd in result.output
+
 
 # ── MM_PROFILE env var via CLI ──────────────────────────────────────
 
@@ -438,9 +617,8 @@ class TestProfileCli:
 class TestEnvProfileCli:
     @pytest.fixture
     def runner(self):
-        from typer.testing import CliRunner
-
         from mm.cli import app
+        from typer.testing import CliRunner
 
         return CliRunner(), app
 

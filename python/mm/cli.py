@@ -19,11 +19,8 @@ app = typer.Typer(
 
 @app.callback()
 def _main(
-    base_url: Annotated[Optional[str], typer.Option("--base-url", help="LLM API base URL")] = None,
-    api_key: Annotated[Optional[str], typer.Option("--api-key", help="LLM API key")] = None,
-    model: Annotated[Optional[str], typer.Option("--model", help="LLM model name")] = None,
     profile: Annotated[
-        Optional[str], typer.Option("--profile", "-p", help="Config profile name")
+        Optional[str], typer.Option("--profile", "-p", help="Config profile to use (see: mm config profile list)")
     ] = None,
     color: Annotated[
         str, typer.Option("--color", help="Color output: auto, always, never")
@@ -33,7 +30,7 @@ def _main(
     from mm.config import set_cli_overrides
     from mm.display import set_color_mode
 
-    set_cli_overrides(base_url=base_url, api_key=api_key, model=model, profile=profile)
+    set_cli_overrides(profile=profile)
     if color != "auto":
         set_color_mode(color)
 

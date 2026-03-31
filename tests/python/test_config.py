@@ -1,6 +1,6 @@
 """Tests for mm configuration resolution.
 
-Validates the priority chain: CLI flags > env vars > config file > defaults.
+Validates the priority chain: env vars > config file (active profile) > defaults.
 """
 
 from __future__ import annotations
@@ -14,7 +14,7 @@ from mm.config import (
     get_provider,
     get_provider_with_sources,
     set_cli_overrides,
-    update_config,
+    update_mode_config,
     write_config,
 )
 
@@ -29,7 +29,7 @@ def _isolate_config(tmp_path: Path, monkeypatch):
     monkeypatch.setattr("mm.config.CONFIG_DIR_LEGACY", tmp_path / "legacy")
     monkeypatch.setattr("mm.config.CONFIG_PATH_LEGACY", tmp_path / "legacy" / "config.toml")
 
-    set_cli_overrides(None, None, None, None)
+    set_cli_overrides(None)
 
     for var in ("MM_BASE_URL", "MM_API_KEY", "MM_MODEL", "MM_PROFILE"):
         monkeypatch.delenv(var, raising=False)
@@ -89,50 +89,36 @@ class TestEnvVars:
         assert cfg.api_key == "env-key"
         assert cfg.model == "env-model"
 
-
-class TestCliOverrides:
-    def test_cli_overrides_env(self, monkeypatch):
-        monkeypatch.setenv("MM_MODEL", "env-model")
-        set_cli_overrides(model="cli-model")
-        cfg = get_provider()
-        assert cfg.model == "cli-model"
-
-    def test_cli_partial_override(self, tmp_path: Path):
-        write_config(base_url="http://file:8000", api_key="file-key", model="file-model")
-        set_cli_overrides(base_url="http://cli:7000")
-        cfg = get_provider()
-        assert cfg.base_url == "http://cli:7000"
-        assert cfg.api_key == "file-key"
-        assert cfg.model == "file-model"
-
     def test_source_labels(self, tmp_path: Path, monkeypatch):
         write_config(base_url="http://f:1", api_key="k", model="m")
         monkeypatch.setenv("MM_API_KEY", "ek")
-        set_cli_overrides(model="cm")
         rows = get_provider_with_sources()
         sources = {r[0]: r[2] for r in rows}
         assert sources["base_url"].startswith("file")  # "file (default)" with profiles
         assert sources["api_key"] == "env"
-        assert sources["model"] == "cli"
+        assert sources["model"].startswith("file")
 
 
-class TestWriteAndUpdate:
+class TestWriteConfig:
     def test_write_creates_file(self, tmp_path: Path):
         p = write_config("http://a", "k", "m")
         assert p.exists()
         assert 'base_url = "http://a"' in p.read_text()
 
-    def test_update_preserves_others(self, tmp_path: Path):
-        write_config("http://a", "k", "model-old")
-        update_config("model", "model-new")
-        cfg = get_provider()
-        assert cfg.model == "model-new"
-        assert cfg.base_url == "http://a"
 
-    def test_update_nonexistent_creates_file(self, tmp_path: Path):
-        update_config("model", "brand-new")
-        cfg = get_provider()
-        assert cfg.model == "brand-new"
+class TestUpdateModeConfig:
+    def test_update_mode_key(self, tmp_path: Path):
+        write_config("http://a", "", "m")
+        update_mode_config("mode.fast.whisper_model", "medium")
+        from mm.config import get_mode_config
+
+        cfg = get_mode_config("fast")
+        assert cfg.whisper_model == "medium"
+
+    def test_invalid_key_raises(self, tmp_path: Path):
+        write_config("http://a", "", "m")
+        with pytest.raises(ValueError, match="Invalid mode key"):
+            update_mode_config("base_url", "http://x")
 
 
 class TestApiKeyMasking:

@@ -14,7 +14,19 @@ config_app = typer.Typer(
 
 profile_app = typer.Typer(
     name="profile",
-    help="Manage configuration profiles.",
+    help=(
+        "Manage configuration profiles.\n\n"
+        "Profiles store LLM provider settings (base_url, api_key, model) so\n"
+        "you can switch between providers without editing the config file.\n\n"
+        "Examples:\n\n"
+        "  mm config profile list\n"
+        "  mm config profile add vlmrun --base-url https://api.vlm.run/v1 --model vlm-1\n"
+        "  mm config profile update vlmrun --api-key sk-...\n"
+        "  mm config profile use vlmrun\n"
+        "  mm config profile remove vlmrun\n\n"
+        "Select a profile per-command with:  mm --profile vlmrun cat photo.png -l 2\n"
+        "Or via environment variable:        MM_PROFILE=vlmrun mm cat photo.png -l 2"
+    ),
     no_args_is_help=True,
 )
 config_app.add_typer(profile_app, name="profile")
@@ -178,86 +190,54 @@ def init(
 @config_app.command("set")
 def set_key(
     key: Annotated[
-        str, typer.Argument(help="Key to set (e.g. base_url, model, mode.fast.whisper_model)")
+        str, typer.Argument(help="Key to set (e.g. mode.fast.whisper_model)")
     ],
     value: Annotated[str, typer.Argument(help="Value to set")],
 ) -> None:
-    """Set a config value.
+    """Set a mode config value.
 
     \b
-    Provider keys:
-      mm config set base_url http://localhost:11434
-      mm config set model qwen3-vl:8b
-      mm config set api_key sk-...
+    Provider keys (base_url, api_key, model) are set per-profile:
+      mm config profile update <name> --base-url ... --model ...
 
     Mode keys:
       mm config set mode.fast.whisper_model tiny
       mm config set mode.fast.audio_speed 2.0
+      mm config set mode.fast.beam_size 1
       mm config set mode.accurate.whisper_model medium
       mm config set mode.accurate.audio_speed 1.0
+      mm config set mode.accurate.beam_size 5
     """
-    from mm.config import DEFAULTS
+    from mm.config import update_mode_config
     from mm.display import output_console
+    from mm.profile import PROFILE_KEYS
 
-    # Parse dotted keys for mode settings
-    if key.startswith("mode."):
-        parts = key.split(".")
-        if (
-            len(parts) != 3
-            or parts[1] not in ("fast", "accurate")
-            or parts[2] not in ("whisper_model", "audio_speed", "beam_size")
-        ):
-            output_console.print(f"[red]Unknown key:[/red] {key}")
-            output_console.print(
-                "[dim]Valid mode keys: mode.{fast,accurate}.{whisper_model,audio_speed,beam_size}[/dim]"
-            )
-            raise typer.Exit(1)
+    # Reject provider keys — redirect to profile update
+    if key in PROFILE_KEYS:
+        output_console.print(f"[red]Provider key '{key}' must be set per-profile.[/red]")
+        output_console.print("[dim]Use: mm config profile update <name> --{} <value>[/dim]".format(key.replace("_", "-")))
+        raise typer.Exit(1)
 
-        path = _update_mode_key(parts[1], parts[2], value)
-        display_val = value
-        output_console.print(f"[green]Set[/green] {key} = {display_val}  [dim]({path})[/dim]")
-        return
+    # Validate mode key format
+    if not key.startswith("mode."):
+        output_console.print(f"[red]Unknown key:[/red] {key}")
+        output_console.print("[dim]Valid keys: mode.{{fast,accurate}}.{{whisper_model,audio_speed,beam_size}}[/dim]")
+        raise typer.Exit(1)
 
-    # Provider keys
-    valid_keys = set(DEFAULTS.keys())
-    if key not in valid_keys:
+    parts = key.split(".")
+    if (
+        len(parts) != 3
+        or parts[1] not in ("fast", "accurate")
+        or parts[2] not in ("whisper_model", "audio_speed", "beam_size")
+    ):
         output_console.print(f"[red]Unknown key:[/red] {key}")
         output_console.print(
-            f"[dim]Valid keys: {', '.join(sorted(valid_keys))}, mode.fast.*, mode.accurate.*[/dim]"
+            "[dim]Valid keys: mode.{fast,accurate}.{whisper_model,audio_speed,beam_size}[/dim]"
         )
         raise typer.Exit(1)
 
-    from mm.config import update_config
-
-    cfg_path = update_config(key, value)
-    display_val = "••••" if key == "api_key" else value
-    output_console.print(f"[green]Set[/green] {key} = {display_val}  [dim]({cfg_path})[/dim]")
-
-
-def _update_mode_key(mode: str, key: str, value: str) -> str:
-    """Update a mode-specific key in the config file."""
-    from mm.config import _read_config_file
-    from mm.profile import migrate_to_profiles, write_full_config
-
-    file_data = _read_config_file()
-    migrate_to_profiles(file_data)
-
-    # Ensure nested structure
-    if "mode" not in file_data:
-        file_data["mode"] = {}
-    if mode not in file_data["mode"]:
-        file_data["mode"][mode] = {}
-
-    # Coerce types
-    if key == "audio_speed":
-        file_data["mode"][mode][key] = float(value)
-    elif key == "beam_size":
-        file_data["mode"][mode][key] = int(value)
-    else:
-        file_data["mode"][mode][key] = value
-
-    path = write_full_config(file_data)
-    return str(path)
+    path = update_mode_config(key, value)
+    output_console.print(f"[green]Set[/green] {key} = {value}  [dim]({path})[/dim]")
 
 
 # ── Profile subcommands ────────────────────────────────────────────
@@ -269,7 +249,13 @@ def profile_list(
         Optional[str], typer.Option("--format", help="Output format: json, tsv, csv")
     ] = None,
 ) -> None:
-    """List all configuration profiles."""
+    """List all configuration profiles.
+
+    \b
+    Examples:
+      mm config profile list
+      mm config profile list --format json
+    """
     from mm.config import _read_config_file
     from mm.display import resolve_format
     from mm.profile import get_active_profile_name, get_profile_names, get_profile_section
@@ -343,8 +329,9 @@ def profile_use(
     """Switch to a different profile.
 
     \b
-    Example:
+    Examples:
       mm config profile use vlmrun
+      mm config profile use default
     """
     from mm.display import output_console
     from mm.profile import set_active_profile
@@ -370,6 +357,7 @@ def profile_add(
     Examples:
       mm config profile add vlmrun --base-url https://api.vlm.run/v1 --model vlm-1
       mm config profile add ollama --base-url http://localhost:11434 --model qwen3-vl:8b
+      mm config profile add openai --base-url https://api.openai.com/v1 --api-key sk-... --model gpt-4o
     """
     from mm.display import output_console
     from mm.profile import add_profile
@@ -382,13 +370,55 @@ def profile_add(
         raise typer.Exit(1)
 
 
+@profile_app.command("update")
+def profile_update_cmd(
+    name: Annotated[str, typer.Argument(help="Profile name to update")],
+    base_url: Annotated[Optional[str], typer.Option("--base-url", "-b", help="LLM API base URL")] = None,
+    api_key: Annotated[Optional[str], typer.Option("--api-key", "-k", help="API key")] = None,
+    model: Annotated[Optional[str], typer.Option("--model", "-m", help="Model name")] = None,
+) -> None:
+    """Update one or more fields of an existing profile.
+
+    \b
+    Only the provided fields are updated; others are preserved.
+
+    Examples:
+      mm config profile update default --model qwen3-vl:8b
+      mm config profile update vlmrun --api-key sk-new-key
+      mm config profile update openai --base-url https://api.openai.com/v1 --model gpt-4o
+    """
+    from mm.display import output_console
+    from mm.profile import update_profile
+
+    try:
+        path = update_profile(name, base_url=base_url, api_key=api_key, model=model)
+        # Show what was updated
+        updated_fields = []
+        if base_url is not None:
+            updated_fields.append(f"base_url={base_url}")
+        if api_key is not None:
+            updated_fields.append("api_key=••••")
+        if model is not None:
+            updated_fields.append(f"model={model}")
+        output_console.print(
+            f"[green]Updated profile:[/green] [bold]{name}[/bold] ({', '.join(updated_fields)})  [dim]({path})[/dim]"
+        )
+    except ValueError as e:
+        output_console.print(f"[red]{e}[/red]")
+        raise typer.Exit(1)
+
+
 @profile_app.command("remove")
 def profile_remove(
     name: Annotated[str, typer.Argument(help="Profile name to remove")],
 ) -> None:
     """Remove a profile.
 
-    Cannot remove the currently active profile — switch first.
+    \b
+    Cannot remove the currently active profile — switch to another first.
+
+    Examples:
+      mm config profile remove vlmrun
     """
     from mm.display import output_console
     from mm.profile import remove_profile

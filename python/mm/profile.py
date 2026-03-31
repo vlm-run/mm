@@ -154,7 +154,7 @@ def add_profile(
     file_data.setdefault("profile", {})
 
     if name in file_data["profile"]:
-        raise ValueError(f"Profile '{name}' already exists. Use 'mm config set' to update it.")
+        raise ValueError(f"Profile '{name}' already exists. Use 'mm config profile update' to modify it.")
 
     defaults = _platform_defaults()
     file_data["profile"][name] = {
@@ -162,6 +162,42 @@ def add_profile(
         "api_key": api_key,
         "model": model or defaults["model"],
     }
+    return write_full_config(file_data)
+
+
+PROFILE_KEYS = frozenset({"base_url", "api_key", "model"})
+
+
+def update_profile(
+    name: str,
+    *,
+    base_url: str | None = None,
+    api_key: str | None = None,
+    model: str | None = None,
+) -> Path:
+    """Update one or more fields of an existing profile. Returns path.
+
+    Only the provided (non-None) fields are updated; others are preserved.
+    """
+    file_data = _read_config_file()
+    migrate_to_profiles(file_data)
+    file_data.setdefault("profile", {})
+
+    if name not in file_data.get("profile", {}):
+        raise ValueError(f"Profile '{name}' not found. Available: {', '.join(sorted(file_data['profile']))}")
+
+    updates: dict[str, str] = {}
+    if base_url is not None:
+        updates["base_url"] = base_url
+    if api_key is not None:
+        updates["api_key"] = api_key
+    if model is not None:
+        updates["model"] = model
+
+    if not updates:
+        raise ValueError("No fields to update. Provide at least one of: --base-url, --api-key, --model")
+
+    file_data["profile"][name].update(updates)
     return write_full_config(file_data)
 
 

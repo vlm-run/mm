@@ -5,12 +5,14 @@ Config file locations (checked in order, first found wins):
   2. ~/.mm/config.toml          (legacy, still supported)
 
 Resolution order for provider settings (highest priority first):
-  1. CLI flags (--base-url, --api-key, --model, --profile)
-  2. Environment variables (MM_BASE_URL, MM_PROFILE, etc.)
-  3. Config file [profile.<name>] section (active profile)
-  4. Built-in defaults (local Ollama)
+  1. Environment variables (MM_BASE_URL, MM_PROFILE, etc.)
+  2. Config file [profile.<name>] section (active profile)
+  3. Built-in defaults (local Ollama)
 
-Profiles allow multiple provider configurations in a single config file.
+Provider settings (base_url, api_key, model) are configured per-profile.
+Use ``mm config profile add/update`` to manage profiles, and
+``mm --profile <name>`` or ``MM_PROFILE=<name>`` to select one.
+
 See mm.profile for profile management (CRUD, migration, resolution).
 
 Legacy [provider] sections are treated as [profile.default] for backward
@@ -202,11 +204,8 @@ def _platform_defaults() -> dict[str, str]:
 
 @dataclass
 class _CliOverrides:
-    """Mutable store for CLI-level --base-url / --api-key / --model / --profile flags."""
+    """Mutable store for CLI-level --profile flag."""
 
-    base_url: str | None = None
-    api_key: str | None = None
-    model: str | None = None
     profile: str | None = None
 
 
@@ -214,14 +213,8 @@ _cli_overrides = _CliOverrides()
 
 
 def set_cli_overrides(
-    base_url: str | None = None,
-    api_key: str | None = None,
-    model: str | None = None,
     profile: str | None = None,
 ) -> None:
-    _cli_overrides.base_url = base_url
-    _cli_overrides.api_key = api_key
-    _cli_overrides.model = model
     _cli_overrides.profile = profile
 
 
@@ -239,8 +232,6 @@ def _read_config_file() -> dict[str, Any]:
 
 def _resolve(key: str, file_cfg: dict[str, Any]) -> tuple[str, str]:
     """Return (value, source) for a provider key."""
-    if val := getattr(_cli_overrides, key, None):
-        return val, "cli"
     if val := os.environ.get(ENV_VARS[key]):
         return val, "env"
     if val := file_cfg.get(key):
@@ -340,20 +331,28 @@ def write_platform_config() -> Path:
     return CONFIG_PATH_XDG
 
 
-def update_config(key: str, value: str) -> Path:
-    """Update a single key in the active profile and return path.
-
-    Creates the file with defaults if it doesn't exist.
-    """
-    from mm.profile import get_active_profile_name, migrate_to_profiles, write_full_config
+def update_mode_config(key: str, value: str) -> Path:
+    """Update a mode-specific key (e.g. mode.fast.whisper_model) and return path."""
+    from mm.profile import migrate_to_profiles, write_full_config
 
     file_data = _read_config_file()
     migrate_to_profiles(file_data)
-    file_data.setdefault("active_profile", "default")
-    file_data.setdefault("profile", {})
 
-    profile_name = get_active_profile_name()
-    profile = file_data["profile"].get(profile_name, dict(_platform_defaults()))
-    profile[key] = value
-    file_data["profile"][profile_name] = profile
+    parts = key.split(".")
+    if len(parts) != 3 or parts[0] != "mode":
+        raise ValueError(f"Invalid mode key: {key}")
+
+    mode_name, field = parts[1], parts[2]
+    if "mode" not in file_data:
+        file_data["mode"] = {}
+    if mode_name not in file_data["mode"]:
+        file_data["mode"][mode_name] = {}
+
+    if field == "audio_speed":
+        file_data["mode"][mode_name][field] = float(value)
+    elif field == "beam_size":
+        file_data["mode"][mode_name][field] = int(value)
+    else:
+        file_data["mode"][mode_name][field] = value
+
     return write_full_config(file_data)
