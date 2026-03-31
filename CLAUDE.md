@@ -140,15 +140,16 @@ mm <command> [args]
 uv run mm <command> [args]
 ```
 
-## CLI commands (6 total)
+## CLI commands (7 total)
 
-| Command | Purpose | Key flags |
-|---------|---------|-----------|
-| `find`  | Find/list files, tree view, schema | `--kind`, `--ext`, `--min-size`, `--max-size`, `--sort`, `--columns`, `--tree`, `--depth`, `--schema`, `--limit`, `--format` |
-| `cat`   | Content extraction (auto-detected by file type) | `--level 0/1/2`, `-n` (head/tail), `--detail`, `--mode`, `--mosaic-*`, `--audio-*`, `--format` |
-| `grep`  | Content search across files | `--kind`, `--ext`, `-C` (context), `--count`, `--level`, `--format` |
-| `sql`   | DuckDB SQL on the file index | `--dir`, `--format` |
-| `wc`    | Count files, bytes, lines, estimated tokens | `--kind`, `--by-kind`, `--format` |
+| Command   | Purpose | Key flags |
+|-----------|---------|-----------|
+| `find`    | Find/list files, tree view, schema | `--kind`, `--ext`, `--min-size`, `--max-size`, `--sort`, `--columns`, `--tree`, `--depth`, `--schema`, `--limit`, `--format` |
+| `cat`     | Content extraction (auto-detected by file type) | `--level 0/1/2`, `-n` (head/tail), `--detail`, `--mode`, `--mosaic-*`, `--audio-*`, `--format` |
+| `grep`    | Content search across files | `--kind`, `--ext`, `-C` (context), `--count`, `--level`, `--format` |
+| `sql`     | DuckDB SQL on the file index | `--dir`, `--format` |
+| `wc`      | Count files, bytes, lines, estimated tokens | `--kind`, `--by-kind`, `--format` |
+| `profile` | Manage LLM provider profiles | `list`, `add`, `update`, `use`, `remove`, `--format` |
 
 ### Consolidated commands
 
@@ -238,12 +239,10 @@ Provider settings (base_url, api_key, model) are configured per-profile. Active 
 
 ```bash
 # Profile management
-mm config init                                                    # create config with default profile
 mm profile add vlmrun --base-url https://api.vlm.run/v1 --model vlm-1
 mm profile update default --model qwen3-vl:8b              # update a field
 mm profile use vlmrun                                      # switch active profile
 mm profile list                                            # list all profiles
-mm config show                                                    # show resolved config with sources
 
 # Per-command profile selection
 mm --profile vlmrun cat photo.png -l 2

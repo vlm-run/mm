@@ -100,7 +100,8 @@ mm
 │   ├── [x] grep     — content search with context lines (like rg)
 │   ├── [x] sql      — DuckDB SQL on file index
 │   ├── [x] wc       — count files, bytes, lines, estimated tokens
-│   ├── [x] config   — LLM provider management (show, init, set, profile)
+│   ├── [x] config   — extraction mode settings (show, init, set)
+│   ├── [x] profile  — LLM provider management (list, add, update, use, remove)
 │   └── [ ] context  — LLM-ready context payload builder (token budgeting)
 │
 ├── Output Modes

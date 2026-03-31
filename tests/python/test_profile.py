@@ -497,10 +497,10 @@ class TestProfileCli:
         result = cli_runner.invoke(app, ["profile","use", "vlmrun"])
         assert result.exit_code == 0
         assert "Switched" in result.output
-        # Verify via config show
-        result2 = cli_runner.invoke(app, ["config", "show", "--format", "json"])
+        # Verify via profile list
+        result2 = cli_runner.invoke(app, ["profile", "list", "--format", "json"])
         data = json.loads(result2.output)
-        assert data["active_profile"] == "vlmrun"
+        assert data["active"] == "vlmrun"
 
     def test_profile_use_nonexistent_fails(self, runner, two_profile_config):
         cli_runner, app = runner
@@ -576,12 +576,12 @@ class TestProfileCli:
     def test_profile_flag_override(self, runner, two_profile_config):
         cli_runner, app = runner
         result = cli_runner.invoke(
-            app, ["--profile", "vlmrun", "config", "show", "--format", "json"]
+            app, ["--profile", "vlmrun", "profile", "list", "--format", "json"]
         )
         assert result.exit_code == 0
         data = json.loads(result.output)
-        assert data["active_profile"] == "vlmrun"
-        assert data["provider"]["base_url"] == "https://api.vlm.run/v1"
+        assert data["active"] == "vlmrun"
+        assert data["profiles"]["vlmrun"]["base_url"] == "https://api.vlm.run/v1"
 
     def test_no_top_level_base_url_flag(self, runner):
         """--base-url is no longer a top-level flag."""
@@ -643,10 +643,10 @@ class TestProfileCli:
         r = cli_runner.invoke(app, ["profile","use", "test-p"])
         assert r.exit_code == 0
         # Verify active + updated values
-        r = cli_runner.invoke(app, ["config", "show", "--format", "json"])
+        r = cli_runner.invoke(app, ["profile", "list", "--format", "json"])
         data = json.loads(r.output)
-        assert data["active_profile"] == "test-p"
-        assert data["provider"]["model"] == "test-m-v2"
+        assert data["active"] == "test-p"
+        assert data["profiles"]["test-p"]["model"] == "test-m-v2"
         # Switch back before removing
         r = cli_runner.invoke(app, ["profile","use", "default"])
         assert r.exit_code == 0
@@ -680,8 +680,8 @@ class TestEnvProfileCli:
     def test_env_profile_selects_provider(self, runner, two_profile_config, monkeypatch):
         monkeypatch.setenv("MM_PROFILE", "vlmrun")
         cli_runner, app = runner
-        result = cli_runner.invoke(app, ["config", "show", "--format", "json"])
+        result = cli_runner.invoke(app, ["profile", "list", "--format", "json"])
         assert result.exit_code == 0
         data = json.loads(result.output)
-        assert data["active_profile"] == "vlmrun"
-        assert data["provider"]["base_url"] == "https://api.vlm.run/v1"
+        assert data["active"] == "vlmrun"
+        assert data["profiles"]["vlmrun"]["base_url"] == "https://api.vlm.run/v1"

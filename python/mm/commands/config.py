@@ -23,24 +23,16 @@ def show(
     from mm.config import (
         _find_config_path,
         get_full_config,
-        get_provider_with_sources,
     )
     from mm.display import resolve_format
-    from mm.profile import get_active_profile_name, get_profile_names
 
     fmt = resolve_format(format)
     cfg = get_full_config()
-    active_profile = get_active_profile_name()
-    all_profiles = get_profile_names()
 
     if fmt == "json":
         from mm.display import json_dumps
 
-        rows = get_provider_with_sources()
         data = {
-            "active_profile": active_profile,
-            "profiles": all_profiles,
-            "provider": {r[0]: r[1] for r in rows},
             "mode": {
                 "fast": {
                     "whisper_model": cfg.mode_fast.whisper_model,
@@ -59,11 +51,7 @@ def show(
 
     if fmt in ("tsv", "csv"):
         sep = "\t" if fmt == "tsv" else ","
-        rows = get_provider_with_sources()
         print(f"key{sep}value")
-        print(f"active_profile{sep}{active_profile}")
-        for key, val, _src, _ in rows:
-            print(f"{key}{sep}{val}")
         print(f"mode.fast.whisper_model{sep}{cfg.mode_fast.whisper_model}")
         print(f"mode.fast.audio_speed{sep}{cfg.mode_fast.audio_speed}")
         print(f"mode.accurate.whisper_model{sep}{cfg.mode_accurate.whisper_model}")
@@ -72,43 +60,17 @@ def show(
 
     from rich import box
     from rich.table import Table
-    from rich.text import Text
 
     from mm.display import output_console
 
     config_path = _find_config_path()
 
-    # Profile info line
-    profiles_display = ", ".join(
-        f"[bold green]{p}[/bold green]" if p == active_profile else f"[dim]{p}[/dim]"
-        for p in all_profiles
-    )
-    output_console.print(f"[bold]Profile:[/bold] {active_profile}  [dim]({profiles_display})[/dim]")
-    output_console.print()
-
-    tbl = Table(
-        title=f"[bold]Provider[/bold] [dim](profile: {active_profile})[/dim]",
-        caption=str(config_path) if config_path else None,
-        caption_style="dim",
-        caption_justify="right",
-        show_lines=False,
-        padding=(0, 1),
-        border_style="dim",
-        header_style="bold white",
-        box=box.ROUNDED,
-    )
-    tbl.add_column("key", style="bold")
-    tbl.add_column("value")
-
-    rows = get_provider_with_sources()
-    for key, val, _src, _ in rows:
-        tbl.add_row(key, Text(val, style="cyan"))
-    output_console.print(tbl)
-    output_console.print()
-
     # Mode settings
     mode_tbl = Table(
         title="[bold]Extraction Modes",
+        caption=str(config_path) if config_path else None,
+        caption_style="dim",
+        caption_justify="right",
         show_lines=False,
         padding=(0, 1),
         border_style="dim",

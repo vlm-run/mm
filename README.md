@@ -43,6 +43,7 @@ mm cat photo.png -l 2 --detail        # LLM caption (~80 words)
 | `grep` | Content search across files | `--kind`, `--ext`, `-C`, `--count`, `--json` |
 | `sql` | DuckDB SQL on file index | `--dir`, `--json` |
 | `wc` | Count files, bytes, lines, tokens | `--kind`, `--by-kind`, `--json` |
+| `profile` | Manage LLM provider profiles | `list`, `add`, `update`, `use`, `remove` |
 
 ### find — locate files
 
