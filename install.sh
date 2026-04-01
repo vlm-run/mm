@@ -123,9 +123,9 @@ install_mm() {
     if [ "$FROM_GIT" != "1" ]; then
         err "mm is not yet published to PyPI. Install from GitHub with:
 
-  curl -LsSf <install-url> | MM_FROM_GIT=1 sh
+  curl -LsSf https://vlm-run.github.io/mm/install/install.sh | MM_FROM_GIT=1 sh
 
-This requires SSH access to github.com/vlm-run/mm."
+This requires SSH access to https://github.com/vlm-run/mm."
     fi
 
     ensure_rust
