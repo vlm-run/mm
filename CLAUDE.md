@@ -54,7 +54,7 @@ mm/
 ├── Makefile                    # Common dev targets (all via uv)
 ├── rust-toolchain.toml         # Pinned to stable + clippy/rustfmt
 ├── config/
-│   └── config.example.toml     # Sample LLM provider config
+│   └── profile.example.toml     # Sample LLM profile config
 ├── crates/
 │   ├── mm-core/            # Rust core library
 │   │   ├── src/
