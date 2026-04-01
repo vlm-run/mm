@@ -19,7 +19,7 @@ uv run maturin develop --release
 Six commands that mirror familiar Unix tools but operate on multi-modal semantics.
 Indexing is implicit — every command auto-builds a metadata index on first use.
 
-L0 commands (`find`, `ls`, `wc` with `--format json`) run in **~60ms** on 700 files via the Rust fast path.
+L0 commands (`find`, `wc` with `--format json`) run in **~60ms** on 700 files via the Rust fast path.
 
 ### Quick start
 
@@ -38,7 +38,6 @@ mm cat photo.png -l 2 --detail               # LLM caption (~80 words)
 | Command | Purpose | Key flags |
 |---------|---------|-----------|
 | `find` | Locate files by kind/ext/size | `--kind`, `--ext`, `--min-size`, `--max-size`, `--sort`, `--limit`, `--format` |
-| `ls` | Tabular listing, tree view, schema | `--sort`, `--columns`, `--kind`, `--tree`, `--depth`, `--schema`, `--format` |
 | `cat` | Content extraction (auto-detected by file type) | `--level 0/1/2`, `-n`, `--detail`, `--mosaic-*`, `--audio-*`, `--format` |
 | `grep` | Content search across files | `--kind`, `--ext`, `-C`, `--count`, `--format` |
 | `sql` | DuckDB SQL on file index | `--dir`, `--format` |
@@ -161,7 +160,7 @@ Benchmarked on Apple Silicon (M-series), 702 files (7.2GB):
 Rust (mm-core)                   Python (mm)
 ┌─────────────────────┐             ┌─────────────────────┐
 │ ignore (parallel     │  serde_json │ Typer CLI           │
-│   dir walk + stat)  │────────────>│   find/ls/wc        │
+│   dir walk + stat)  │────────────>│   find/wc        │
 │ rayon parallelism   │  (fast path)│   (60ms, no pyarrow)│
 │ Arrow RecordBatch   │             │                     │
 │ Parquet I/O         │  Arrow IPC  │ Context class       │

@@ -20,8 +20,7 @@ Always use `--format json` for machine-readable output when parsing results prog
 
 | Command   | Purpose                                                       |
 | --------- | ------------------------------------------------------------- |
-| `find`    | Locate files by kind/ext/size                                 |
-| `ls`      | Tabular listing, tree view, schema                            |
+| `find`    | Locate/list files by kind/ext/size                            |
 | `cat`     | Content extraction (auto-detected by file type × level)       |
 | `grep`    | Content search across files                                   |
 | `sql`     | DuckDB SQL on file index                                      |
@@ -33,7 +32,7 @@ Always use `--format json` for machine-readable output when parsing results prog
 1. Start with `mm find <dir> --tree --depth 1` to see the directory structure.
 2. Use `mm wc <dir> --by-kind` to estimate token counts for LLM context budgeting.
 3. Use `mm find <dir> --schema` to see available columns before writing SQL.
-4. Explore with `find`, `ls`, `sql`, `grep`, `cat` as needed.
+4. Explore with `find`, `sql`, `grep`, `cat` as needed.
 5. Use `mm cat -l 2` for LLM-powered descriptions (auto-generates mosaics for video).
 
 ## find — locate files, tabular listing, tree view, schema
@@ -144,7 +143,7 @@ mm grep "invoice" <dir> --count                        # match counts per file
 
 ## sql — DuckDB queries on file index
 
-The table name is `files`. Use `ls --schema` to see columns.
+The table name is `files`. Use `find --schema` to see columns.
 
 ```bash
 # Kind breakdown with sizes
@@ -174,7 +173,7 @@ mm sql "SELECT * FROM files WHERE kind='document'" --dir <dir> --format json
 ## Pipe composability
 
 ```bash
-mm find <dir> --kind image | mm find <dir>             # find images, pipe to ls
+mm find <dir> --kind image                             # find images
 mm find <dir> --kind document --min-size 10mb | wc -l  # count large PDFs
 ```
 
@@ -219,11 +218,11 @@ MM_PROFILE=openrouter mm cat photo.png -l 2      # env override
 
 ## Tips
 
-- All L0 commands (`find`, `ls`, `wc` with `--format json`) run in ~60ms via the Rust fast path.
+- All L0 commands (`find`, `wc` with `--format json`) run in ~60ms via the Rust fast path.
 - `sql` is slower (~300ms) because it uses DuckDB/pyarrow.
-- Start with `ls --tree --depth 1` then `wc --by-kind` for the fastest directory overview.
+- Start with `find --tree --depth 1` then `wc --by-kind` for the fastest directory overview.
 - Use `--format json` when you need to parse output programmatically.
-- `find` returns paths only when piped; `ls` returns full metadata rows.
+- `find` returns paths only when piped, else it returns full metadata rows.
 - `sql` is the most powerful command — any DuckDB-compatible SQL works against the `files` table.
 - For PDFs, `cat` extracts text at L1; if empty, the PDF is scanned for images.
 - For videos, `cat -l 2` auto-generates keyframe mosaics and sends to LLM for description.
