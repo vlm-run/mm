@@ -94,7 +94,6 @@ jobs:
 
       - name: Benchmark result
         uses: benchmark-action/github-action-benchmark@v1
-        continue-on-error: false
         with:
           tool: "customSmallerIsBetter"
           output-file-path: bench_output.json
@@ -116,9 +115,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - uses: dtolnay/rust-toolchain@stable
-
       - run: cargo bench --workspace
-
       - name: Extract benchmark results from Criterion JSON
         run: |
           python3 -c "
