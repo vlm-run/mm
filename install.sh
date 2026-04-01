@@ -1,7 +1,7 @@
 #!/bin/sh
 # Install mm — high-performance multi-modal context management CLI
 # Usage: curl -LsSf https://vlm-run.github.io/mm/install/install.sh | sh
-# Or:    curl -LsSf https://vlm.run/mm/install.sh | sh  (with redirect from vlm.run)\\
+# Or:    curl -LsSf https://vlm.run/mm/install.sh | sh  (with redirect from vlm.run)
 #
 # Options (via env vars):
 #   MM_FROM_GIT=1          Install from GitHub (requires SSH access to vlm-run/mm)
