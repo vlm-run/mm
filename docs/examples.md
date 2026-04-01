@@ -784,11 +784,11 @@ mm uses **profiles** to manage multiple LLM provider configurations. Each profil
 $ mm config init
 Created /Users/you/.config/mm/mm.toml
 
-$ mm profile add vlmrun --base-url https://api.vlm.run/v1 --api-key sk-... --model vlm-1
-Added profile: vlmrun  (/Users/you/.config/mm/mm.toml)
-
-$ mm profile add openrouter --base-url https://openrouter.ai/api/v1 --api-key sk-or-... --model qwen/qwen3.5-9b
+$ mm profile add openrouter --base-url https://openrouter.ai/api/v1 --api-key sk-... --model vlm-1
 Added profile: openrouter  (/Users/you/.config/mm/mm.toml)
+
+$ mm profile add openai --base-url https://api.openai.com/v1--api-key sk-or-... --model gpt-4o
+Added profile: openai  (/Users/you/.config/mm/mm.toml)
 ```
 
 ### Example 2: List profiles
@@ -803,9 +803,9 @@ $ mm profile list
 ╭────┬────────────┬──────────────────────────────┬─────────────────╮
 │    │ profile    │ base_url                     │ model           │
 ├────┼────────────┼──────────────────────────────┼─────────────────┤
-│ ●  │ default    │ http://localhost:11434        │ qwen3-vl:2b     │
+│ ●  │ default    │ https://api.vlm.run/v1       │ vlm-1           │
+│    │ ollama     │ http://localhost:11434       │ qwen3-vl:2b     │
 │    │ openrouter │ https://openrouter.ai/api/v1 │ qwen/qwen3.5-9b │
-│    │ vlmrun     │ https://api.vlm.run/v1       │ vlm-1           │
 ╰────┴────────────┴──────────────────────────────┴─────────────────╯
 ```
 
@@ -817,9 +817,9 @@ $ mm profile list --format json
 {
   "active": "default",
   "profiles": {
-    "default": {"base_url": "http://localhost:11434", "api_key": "", "model": "qwen3-vl:2b"},
+    "default": {"base_url": "https://api.vlm.run/v1 ", "api_key": "", "model": "vlm-1"},
+    "ollama": {"base_url": "http://localhost:11434", "api_key": "", "model": "qwen3-vl:2b"},
     "openrouter": {"base_url": "https://openrouter.ai/api/v1", "api_key": "••••", "model": "qwen/qwen3.5-9b"},
-    "vlmrun": {"base_url": "https://api.vlm.run/v1", "api_key": "••••", "model": "vlm-1"}
   }
 }
 ```
@@ -828,8 +828,8 @@ $ mm profile list --format json
 
 ```bash
 # Switch the active profile
-$ mm profile use vlmrun
-Switched to profile: vlmrun  (/Users/you/.config/mm/mm.toml)
+$ mm profile use openrouter
+Switched to profile: openrouter  (/Users/you/.config/mm/mm.toml)
 
 # Use a different profile for a single command (does not change active)
 $ mm --profile openrouter cat photo.png -l 2
@@ -853,8 +853,8 @@ $ mm --profile default cat photo.png -l 2
 
 ```bash
 # Update a single field
-$ mm profile update vlmrun --model vlm-2
-Updated profile: vlmrun (model=vlm-2)  (/Users/you/.config/mm/mm.toml)
+$ mm profile update openrouter --model qwen/qwen3.5-27b
+Updated profile: openrouter (model=vlm-2)  (/Users/you/.config/mm/mm.toml)
 
 # Update multiple fields at once
 $ mm profile update openrouter --api-key sk-new --model qwen/qwen-2.5-vl-7b-instruct
@@ -873,24 +873,21 @@ $ mm config show
 
 **TTY output:**
 ```
-Profile: vlmrun  (default, vlmrun)
-
-         Provider (profile: vlmrun)
-╭──────────┬──────────────────────────┬────────────────╮
-│ key      │ value                    │         source │
-├──────────┼──────────────────────────┼────────────────┤
-│ base_url │ https://api.vlm.run/v1   │ file (vlmrun)  │
-│ api_key  │ ••••                     │ file (vlmrun)  │
-│ model    │ vlm-1                    │ file (vlmrun)  │
-╰──────────┴──────────────────────────┴────────────────╯
+ Extraction Modes                   
+╭──────────┬───────────────┬─────────────┬───────────╮
+│ mode     │ whisper_model │ audio_speed │ beam_size │
+├──────────┼───────────────┼─────────────┼───────────┤
+│ fast     │ tiny          │         2.0 │         1 │
+│ accurate │ medium        │         1.0 │         5 │
+╰──────────┴───────────────┴─────────────┴───────────╯
 ```
 
 ### Environment variable
 
 ```bash
 # Override active profile for a session
-export MM_PROFILE=vlmrun
-mm cat photo.png -l 2          # uses vlmrun profile
+export MM_PROFILE=openrouter
+mm cat photo.png -l 2          # uses openrouter profile
 
 # Or 
 MM_PROFILE=openai mm cat photo.png -l 2

@@ -3,8 +3,8 @@
 Supports any OpenAI-compatible API (Ollama, vLLM, OpenAI, etc.)
 via the official openai Python SDK.
 
-Provider settings are resolved in order:
-  CLI flags > env vars > ~/.mm/config.toml [provider] > defaults
+Profile settings are resolved in order:
+    CLI flags > env vars > active profile in ~/.config/mm/mm.toml > built-in defaults
 """
 
 from __future__ import annotations
@@ -53,14 +53,15 @@ class LlmBackend:
         api_key: str | None = None,
         model: str | None = None,
     ):
-        from mm.config import get_provider
+        from mm.profile import get_profile
 
-        cfg = get_provider()
-        resolved_base = (base_url or cfg.base_url).rstrip("/")
+        profile = get_profile()
+        resolved_base = (base_url or profile.base_url).rstrip("/")
         if not resolved_base.endswith("/v1"):
             resolved_base = f"{resolved_base}/v1"
-        self.api_key = api_key or cfg.api_key or "no-key"
-        self.model = model or cfg.model
+
+        self.api_key = api_key or profile.api_key or "no-key"
+        self.model = model or profile.model
         self.client = OpenAI(
             base_url=resolved_base,
             api_key=self.api_key,

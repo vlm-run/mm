@@ -101,12 +101,7 @@ def show(
 def init(
     force: Annotated[bool, typer.Option("--force", "-f", help="Overwrite existing config")] = False,
 ) -> None:
-    """Create platform-aware config at ~/.config/mm/mm.toml.
-
-    \b
-    macOS:  Ollama + qwen3.5:0.8b
-    Linux:  vLLM + Qwen/Qwen3.5-0.8B (placeholder)
-    """
+    """Create the default config at ~/.config/mm/mm.toml."""
     from mm.config import _find_config_path, write_platform_config
     from mm.display import output_console
 
@@ -128,9 +123,6 @@ def set_key(
     """Set a mode config value.
 
     \b
-    Provider keys (base_url, api_key, model) are set per-profile:
-      mm profile update <name> --base-url ... --model ...
-
     Mode keys:
       mm config set mode.fast.whisper_model tiny
       mm config set mode.fast.audio_speed 2.0
@@ -141,17 +133,6 @@ def set_key(
     """
     from mm.config import update_mode_config
     from mm.display import output_console
-    from mm.profile import PROFILE_KEYS
-
-    # Reject provider keys — redirect to profile update
-    if key in PROFILE_KEYS:
-        output_console.print(f"[red]Provider key '{key}' must be set per-profile.[/red]")
-        output_console.print(
-            "[dim]Use: mm profile update <name> --{} <value>[/dim]".format(
-                key.replace("_", "-")
-            )
-        )
-        raise typer.Exit(1)
 
     # Validate mode key format
     if not key.startswith("mode."):

@@ -9,13 +9,17 @@ from pathlib import Path
 
 import pytest
 from mm.config import (
-    DEFAULTS,
-    ProviderConfig,
-    get_provider,
-    get_provider_with_sources,
     set_cli_overrides,
     update_mode_config,
     write_config,
+)
+from mm.profile import (
+    DEFAULT_PROFILE,
+    DEFAULTS,
+    OLLAMA_DEFAULTS,
+    OLLAMA_PROFILE,
+    Profile,
+    get_profile,
 )
 
 
@@ -33,53 +37,82 @@ def _isolate_config(tmp_path: Path, monkeypatch):
 
     monkeypatch.delenv("MM_PROFILE", raising=False)
 
-    # Patch platform defaults to DEFAULTS for any OS (Linux CI uses different defaults)
-    monkeypatch.setattr("mm.config._platform_defaults", lambda: dict(DEFAULTS))
-
 
 class TestDefaults:
     def test_defaults_used_when_nothing_set(self):
-        cfg = get_provider()
-        assert cfg.base_url == DEFAULTS["base_url"]
-        assert cfg.api_key == DEFAULTS["api_key"]
-        assert cfg.model == DEFAULTS["model"]
-
-    def test_source_is_default(self):
-        rows = get_provider_with_sources()
-        for _, _, source, _ in rows:
-            assert source == "default"
+        profile = get_profile()
+        assert profile.name == DEFAULT_PROFILE
+        assert profile.base_url == DEFAULTS["base_url"]
+        assert profile.api_key == DEFAULTS["api_key"]
+        assert profile.model == DEFAULTS["model"]
 
 
 class TestFileConfig:
     def test_file_overrides_defaults(self, tmp_path: Path):
+        set_cli_overrides(OLLAMA_PROFILE)
         write_config(base_url="http://remote:8000", api_key="sk-123", model="gpt-4o")
-        cfg = get_provider()
-        assert cfg.base_url == "http://remote:8000"
-        assert cfg.api_key == "sk-123"
-        assert cfg.model == "gpt-4o"
+        profile = get_profile()
+        assert profile.base_url == "http://remote:8000"
+        assert profile.api_key == "sk-123"
+        assert profile.model == "gpt-4o"
 
     def test_partial_file_keeps_defaults(self, tmp_path: Path):
+        toml = '[profile.default]\nmodel = "llama3"\n'
+        (tmp_path / "config.toml").write_text(toml)
+        profile = get_profile()
+        assert profile.model == DEFAULTS["model"]
+        assert profile.base_url == DEFAULTS["base_url"]
+        assert profile.api_key == DEFAULTS["api_key"]
+
+    def test_legacy_config_is_migrated_to_ollama_profile(self, tmp_path: Path):
         toml = '[provider]\nmodel = "llama3"\n'
         (tmp_path / "config.toml").write_text(toml)
-        cfg = get_provider()
-        assert cfg.model == "llama3"
-        assert cfg.base_url == DEFAULTS["base_url"]
+        profile = get_profile()
+        assert profile.name == OLLAMA_PROFILE
+        assert profile.model == "llama3"
+        assert profile.base_url == OLLAMA_DEFAULTS["base_url"]
+        contents = (tmp_path / "config.toml").read_text()
+        assert "[provider]" not in contents
+        assert "[profile.ollama]" in contents
 
     def test_malformed_file_falls_back(self, tmp_path: Path):
         (tmp_path / "config.toml").write_text("not valid toml {{{}}}}")
-        cfg = get_provider()
-        assert cfg == ProviderConfig()
+        profile = get_profile()
+        assert profile == Profile()
 
 
 class TestWriteConfig:
     def test_write_creates_file(self, tmp_path: Path):
+        set_cli_overrides(OLLAMA_PROFILE)
         p = write_config("http://a", "k", "m")
         assert p.exists()
-        assert 'base_url = "http://a"' in p.read_text()
+        contents = p.read_text()
+        assert "[profile.default]" in contents
+        assert "[profile.ollama]" in contents
+        assert 'base_url = "http://a"' in contents
+
+    def test_default_profile_is_rewritten_to_builtin_values(self, tmp_path: Path):
+        (tmp_path / "config.toml").write_text(
+            """\
+active_profile = "default"
+
+[profile.default]
+base_url = "http://localhost:11434"
+api_key = "secret"
+model = "qwen3-vl:2b"
+"""
+        )
+
+        profile = get_profile()
+        assert profile == Profile(name=DEFAULT_PROFILE, **DEFAULTS)
+        contents = (tmp_path / "config.toml").read_text()
+        assert 'base_url = "https://mm-ctx.ngrok.io/v1"' in contents
+        assert 'model = "Qwen/Qwen3.5-0.8B"' in contents
 
 
 class TestUpdateModeConfig:
     def test_update_mode_key(self, tmp_path: Path):
+        set_cli_overrides(OLLAMA_PROFILE)
         write_config("http://a", "", "m")
         update_mode_config("mode.fast.whisper_model", "medium")
         from mm.config import get_mode_config
@@ -88,19 +121,7 @@ class TestUpdateModeConfig:
         assert cfg.whisper_model == "medium"
 
     def test_invalid_key_raises(self, tmp_path: Path):
+        set_cli_overrides(OLLAMA_PROFILE)
         write_config("http://a", "", "m")
         with pytest.raises(ValueError, match="Invalid mode key"):
             update_mode_config("base_url", "http://x")
-
-
-class TestApiKeyMasking:
-    def test_api_key_masked_when_set(self, tmp_path: Path):
-        write_config("http://a", "secret-key", "m")
-        rows = get_provider_with_sources()
-        api_row = [r for r in rows if r[0] == "api_key"][0]
-        assert api_row[1] == "••••"
-
-    def test_api_key_not_masked_for_default(self):
-        rows = get_provider_with_sources()
-        api_row = [r for r in rows if r[0] == "api_key"][0]
-        assert api_row[1] == ""
