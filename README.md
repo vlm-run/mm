@@ -196,21 +196,21 @@ Each profile stores `base_url`, `api_key`, and `model`. You can have as many as 
 
 ```bash
 # Add profiles for different providers
-mm profile add vlmrun --base-url https://api.vlm.run/v1 --api-key sk-... --model vlm-1
 mm profile add openai --base-url https://api.openai.com/v1 --api-key sk-... --model gpt-4o
-mm profile add ollama --base-url http://localhost:11434 --model qwen3-vl:8b
+mm profile add openrouter --base-url  https://openrouter.ai/api/v1 --model qwen/qwen3.5-27b
+mm profile add ollama --base-url http://localhost:11434 --model qwen3.5:9B
 
 # List all profiles (● = active)
 mm profile list
 
 # Switch the active profile
-mm profile use vlmrun
+mm profile use openai
 
 # Update a field on an existing profile
-mm profile update vlmrun --model vlm-2 --api-key sk-new-key
+mm profile update openai --model gpt-4o-mini --api-key sk-new-key
 
 # Remove a profile (cannot remove the active one)
-mm profile remove ollama
+mm profile remove openai
 ```
 
 ### Selecting a profile per-command
@@ -220,7 +220,7 @@ mm profile remove ollama
 mm --profile openai cat photo.png -l 2
 
 # Environment variable
-MM_PROFILE=vlmrun mm cat photo.png -l 2
+MM_PROFILE=openai mm cat photo.png -l 2
 ```
 
 ### Resolution order
@@ -239,20 +239,16 @@ The active profile is resolved as:
 # ~/.config/mm/mm.toml
 active_profile = "default"
 
-[profile.default]
+[profile.ollama]
 base_url = "http://localhost:11434"
 api_key = ""
 model = "qwen3.5:0.8b"
 
-[profile.vlmrun]
-base_url = "https://api.vlm.run/v1"
-api_key = "sk-..."
-model = "vlm-1"
+[profile.openrouter]
+base_url = " https://openrouter.ai/api/v1"
+api_key = ""
+model = "qwen/qwen3.5-27b"
 ```
-
-### Backward compatibility
-
-Existing configs using the flat `[provider]` section continue to work — they are treated as `[profile.default]` automatically.
 
 ## License
 

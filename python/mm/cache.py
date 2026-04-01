@@ -1,8 +1,8 @@
 """L2 result cache for mm.
 
 Caches LLM-generated results (captions, descriptions, transcriptions) keyed by
-content hash + provider profile + model + extraction parameters.  This avoids
-redundant LLM calls when the file content and provider config haven't changed.
+content hash + profile name + model + extraction parameters. This avoids
+redundant LLM calls when the file content and active profile haven't changed.
 
 Cache location: ~/.cache/mm/l2/
 """

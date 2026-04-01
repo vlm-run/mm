@@ -276,10 +276,10 @@ class TestL2CacheError:
             patch("mm.cache.get_content_hash", return_value="fakehash123"),
             patch("mm.cache.get", return_value=None),
             patch("mm.cache.put") as mock_put,
-            patch("mm.config.get_provider") as mock_prov,
+            patch("mm.profile.get_profile") as mock_profile,
         ):
-            mock_prov.return_value.name = "default"
-            mock_prov.return_value.model = "test-model"
+            mock_profile.return_value.name = "default"
+            mock_profile.return_value.model = "test-model"
             result = _l2_cached(txt, "text", opts)
 
         assert result == "[LLM error: connection refused]"
@@ -316,10 +316,10 @@ class TestL2CacheError:
             patch("mm.cache.get_content_hash", return_value="fakehash123"),
             patch("mm.cache.get", return_value=None),
             patch("mm.cache.put") as mock_put,
-            patch("mm.config.get_provider") as mock_prov,
+            patch("mm.profile.get_profile") as mock_profile,
         ):
-            mock_prov.return_value.name = "default"
-            mock_prov.return_value.model = "test-model"
+            mock_profile.return_value.name = "default"
+            mock_profile.return_value.model = "test-model"
             result = _l2_cached(txt, "text", opts)
 
         assert result == "A beautiful sunset over the ocean."
@@ -372,10 +372,10 @@ class TestL2CacheError:
                 patch("mm.cache.get_content_hash", return_value="hash"),
                 patch("mm.cache.get", return_value=None),
                 patch("mm.cache.put") as mock_put,
-                patch("mm.config.get_provider") as mock_prov,
+                patch("mm.profile.get_profile") as mock_profile,
             ):
-                mock_prov.return_value.name = "default"
-                mock_prov.return_value.model = "m"
+                mock_profile.return_value.name = "default"
+                mock_profile.return_value.model = "m"
                 _l2_cached(txt, "text", opts)
 
             mock_put.assert_not_called()

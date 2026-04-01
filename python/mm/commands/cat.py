@@ -330,11 +330,9 @@ def _l2_cached(path: Path, kind: str, opts: _CatOpts) -> str:
         return _l2(path, kind, opts)
 
     from mm import cache
-    from mm.config import get_provider
+    from mm.profile import get_profile
 
-    provider = get_provider()
-    profile = provider.name
-    model = provider.model
+    profile = get_profile()
     content_hash = cache.get_content_hash(path)
 
     # Include video mosaic parameters in cache key for different mosaic configs.
@@ -349,8 +347,8 @@ def _l2_cached(path: Path, kind: str, opts: _CatOpts) -> str:
     if content_hash:
         cached = cache.get(
             content_hash,
-            profile,
-            model,
+            profile.name,
+            profile.model,
             opts.mode,
             opts.detail,
             extra=extra,
@@ -366,7 +364,15 @@ def _l2_cached(path: Path, kind: str, opts: _CatOpts) -> str:
 
     # Store in cache — skip error/empty results so transient failures aren't cached permanently
     if content_hash and result and not result.startswith("["):
-        cache.put(content_hash, profile, model, result, opts.mode, opts.detail, extra=extra)
+        cache.put(
+            content_hash,
+            profile.name,
+            profile.model,
+            result,
+            opts.mode,
+            opts.detail,
+            extra=extra,
+        )
 
     return result
 

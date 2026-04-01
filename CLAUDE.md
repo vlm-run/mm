@@ -54,7 +54,7 @@ mm/
 ├── Makefile                    # Common dev targets (all via uv)
 ├── rust-toolchain.toml         # Pinned to stable + clippy/rustfmt
 ├── config/
-│   └── config.example.toml     # Sample LLM provider config
+│   └── profile.example.toml     # Sample LLM profile config
 ├── crates/
 │   ├── mm-core/            # Rust core library
 │   │   ├── src/
@@ -239,14 +239,14 @@ Provider settings (base_url, api_key, model) are configured per-profile. Active 
 
 ```bash
 # Profile management
-mm profile add vlmrun --base-url https://api.vlm.run/v1 --model vlm-1
-mm profile update default --model qwen3-vl:8b              # update a field
-mm profile use vlmrun                                      # switch active profile
+mm profile add openrouter --base-url https://openrouter.ai/api/v1 --model vlm-1
+mm profile update openrouter --model qwen3-vl:8b              # update a field
+mm profile use openrouter                                      # switch active profile
 mm profile list                                            # list all profiles
 
 # Per-command profile selection
-mm --profile vlmrun cat photo.png -l 2
-MM_PROFILE=vlmrun mm cat photo.png -l 2
+mm --profile openrouter cat photo.png -l 2
+MM_PROFILE=openrouter mm cat photo.png -l 2
 ```
 
 ## Testing

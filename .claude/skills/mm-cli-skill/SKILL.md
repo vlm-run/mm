@@ -186,10 +186,10 @@ Provider settings are managed through **profiles** stored in `~/.config/mm/mm.to
 
 ```bash
 mm profile list                                            # list all profiles (● = active)
-mm profile add vlmrun --base-url https://api.vlm.run/v1 --model vlm-1  # add (--base-url and --model required)
-mm profile update default --model qwen3-vl:8b              # update fields on existing profile
-mm profile use vlmrun                                      # switch active profile
-mm profile remove vlmrun                                   # remove (cannot remove active or 'default')
+mm profile add openrouter --base-url https://openrouter.ai/api/v1 --model vlm-1  # add (--base-url and --model required)
+mm profile update openrouter --model qwen3-vl:8b              # update fields on existing profile
+mm profile use openrouter                                      # switch active profile
+mm profile remove openrouter                                   # remove (cannot remove active or 'default')
 ```
 
 ## config — extraction mode settings
@@ -207,8 +207,8 @@ Active profile resolved as: `--profile` flag > `MM_PROFILE` env > `active_profil
 Per-command profile selection:
 
 ```bash
-mm --profile vlmrun cat photo.png -l 2       # one-off override
-MM_PROFILE=vlmrun mm cat photo.png -l 2      # env override
+mm --profile openrouter cat photo.png -l 2       # one-off override
+MM_PROFILE=openrouter mm cat photo.png -l 2      # env override
 ```
 
 ## Tips

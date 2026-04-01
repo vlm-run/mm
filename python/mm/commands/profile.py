@@ -10,16 +10,18 @@ profile_app = typer.Typer(
     name="profile",
     help=(
         "Manage configuration profiles.\n\n"
-        "Profiles store LLM provider settings (base_url, api_key, model) so\n"
-        "you can switch between providers without editing the config file.\n\n"
+        "Profiles store LLM API settings (base_url, api_key, model) so\n"
+        "you can switch between endpoints/models without editing the config file.\n\n"
         "Examples:\n\n"
         "  mm profile list\n"
-        "  mm profile add vlmrun --base-url https://api.vlm.run/v1 --model vlm-1\n"
-        "  mm profile update vlmrun --api-key sk-...\n"
-        "  mm profile use vlmrun\n"
-        "  mm profile remove vlmrun\n\n"
-        "Select a profile per-command with:  mm --profile vlmrun cat photo.png -l 2\n"
-        "Or via environment variable:        MM_PROFILE=vlmrun mm cat photo.png -l 2"
+        "  mm profile use ollama\n"
+        "  mm profile use default\n"
+        "  mm profile update ollama --model qwen3.5:0.8\n"
+        "  mm profile add openai --base-url https://api.openai.com/v1 --model gpt-4o\n"
+        "  mm profile remove openai\n\n"
+        "Select a profile per-command with:  mm --profile openrouter cat photo.png -l 2\n"
+        "Or via environment variable:        MM_PROFILE=ollama mm cat photo.png -l 2\n"
+        "Resolution order: CLI --profile > MM_PROFILE env > active_profile > 'default'"
     ),
     no_args_is_help=True,
 )
@@ -38,14 +40,18 @@ def profile_list(
       mm profile list
       mm profile list --format json
     """
-    from mm.config import _read_config_file
     from mm.display import resolve_format
-    from mm.profile import get_active_profile_name, get_profile_names, get_profile_section
+    from mm.profile import (
+        get_active_profile_name,
+        get_profile_names,
+        get_profile_section,
+        load_profile_config,
+    )
 
     fmt = resolve_format(format)
     names = get_profile_names()
     active = get_active_profile_name()
-    file_data = _read_config_file()
+    file_data = load_profile_config()
 
     if fmt == "json":
         from mm.display import json_dumps
@@ -116,7 +122,8 @@ def profile_use(
 
     \b
     Examples:
-      mm profile use vlmrun
+      mm profile use openrouter
+      mm profile use ollama
       mm profile use default
     """
     from mm.display import output_console
@@ -143,7 +150,7 @@ def profile_add(
 
     \b
     Examples:
-      mm profile add vlmrun --base-url https://api.vlm.run/v1 --model vlm-1
+      mm profile add openrouter --base-url https://openrouter.ai/api/v1 --model Qwen/Qwen3.5-0.8B
       mm profile add ollama --base-url http://localhost:11434 --model qwen3-vl:8b
       mm profile add openai --base-url https://api.openai.com/v1 --api-key sk-... --model gpt-4o
     """
@@ -175,8 +182,8 @@ def profile_update(
     Only the provided fields are updated; others are preserved.
 
     Examples:
-      mm profile update default --model qwen3-vl:8b
-      mm profile update vlmrun --api-key sk-new-key
+      mm profile update ollama --model qwen3.5:0.8
+      mm profile update ollama --api-key sk-new-key
       mm profile update openai --base-url https://api.openai.com/v1 --model gpt-4o
     """
     from mm.display import output_console
@@ -210,7 +217,7 @@ def profile_remove(
     Cannot remove the currently active profile — switch to another first.
 
     Examples:
-      mm profile remove vlmrun
+      mm profile remove openai
     """
     from mm.display import output_console
     from mm.profile import remove_profile

@@ -6,31 +6,32 @@
 
 # ── Active profile ──────────────────────────────────────────────────
 # Switch with:  mm profile use <name>
-# Per-command:  mm --profile vlmrun cat photo.png -l 2
-# Env var:      MM_PROFILE=vlmrun mm cat photo.png -l 2
+# Per-command:  mm --profile openrouter cat photo.png -l 2
+# Env var:      MM_PROFILE=ollama mm cat photo.png -l 2
 active_profile = "default"
 
-# ── Profiles (LLM provider configs) ────────────────────────────────
+# ── Profiles (LLM API configs) ─────────────────────────────────────
 # Each profile has: base_url, api_key, model
 # List all:     mm profile list
 # Add new:      mm profile add <name> --base-url <url> --model <model>
 # Update:       mm profile update <name> --api-key <key>
 
 [profile.default]
-# Ollama (local, default)
+# Managed default profile (remote)
+base_url = "https://mm-ctx.ngrok.io/v1"
+api_key = ""
+model = "Qwen/Qwen3.5-0.8B"
+
+[profile.ollama]
+# Local Ollama profile (editable, but reserved)
 base_url = "http://localhost:11434"
 api_key = ""
-model = "qwen3.5:0.8b"
+model = "qwen3.5:0.8"
 
 # [profile.vllm]
 # base_url = "http://localhost:8000/v1"
 # api_key = ""
 # model = "Qwen/Qwen3.5-0.8B"
-
-# [profile.vlmrun]
-# base_url = "https://api.vlm.run/v1"
-# api_key = ""
-# model = "vlm-1"
 
 # [profile.openrouter]
 # base_url = "https://openrouter.ai/api/v1"
@@ -50,7 +51,7 @@ model = "qwen3.5:0.8b"
 
 # ── Environment variable ─────────────────────────────────────────────
 #
-#   MM_PROFILE     — override active_profile (e.g. MM_PROFILE=vlmrun mm cat ...)
+#   MM_PROFILE     — override active_profile (e.g. MM_PROFILE=example mm cat ...)
 #
 # Resolution order:
 #   active profile  >  built-in defaults
