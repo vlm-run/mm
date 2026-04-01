@@ -1,10 +1,11 @@
 #!/bin/sh
 # Install mm — high-performance multi-modal context management CLI
 # Usage: curl -LsSf https://vlm-run.github.io/mm/install/install.sh | sh
-# Or:    curl -LsSf https://vlm.run/mm/install.sh | sh  (with redirect from vlm.run)
+# Or:    curl -LsSf https://vlm.run/mm/install.sh | sh  (with redirect from vlm.run)\\
 #
 # Options (via env vars):
-#   MM_VERSION=0.1.2       Install a specific version (default: latest)
+#   MM_FROM_GIT=1          Install from GitHub (requires SSH access to vlm-run/mm)
+#   MM_VERSION=v0.2.0      Install a specific git tag (default: latest, requires MM_FROM_GIT=1)
 #   MM_NO_MODIFY_PATH=1    Skip PATH modification
 
 set -eu
@@ -91,24 +92,58 @@ ensure_uv() {
     info "installed uv: $(uv --version)"
 }
 
+# --- Ensure Rust toolchain (needed for building from source) ---
+
+ensure_rust() {
+    if command -v rustc > /dev/null 2>&1; then
+        info "found rust: $(rustc --version)"
+        return
+    fi
+
+    info "rust not found — installing via rustup..."
+    need_cmd curl
+    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+
+    . "$HOME/.cargo/env"
+
+    if ! command -v rustc > /dev/null 2>&1; then
+        err "rust installation succeeded but 'rustc' not found in PATH"
+    fi
+
+    info "installed rust: $(rustc --version)"
+}
+
 # --- Install mm ---
 
 install_mm() {
+    FROM_GIT="${MM_FROM_GIT:-0}"
+
+    if [ "$FROM_GIT" != "1" ]; then
+        err "mm is not yet published to PyPI. Install from GitHub with:
+
+  MM_FROM_GIT=1 curl -LsSf <install-url> | sh
+
+This requires SSH access to github.com/vlm-run/mm."
+    fi
+
+    ensure_rust
+
     VERSION="${MM_VERSION:-}"
+    REPO="git+ssh://git@github.com/vlm-run/mm.git"
 
     if [ -n "$VERSION" ]; then
-        PACKAGE="mm==${VERSION}"
-        info "installing mm ${VERSION}..."
+        SOURCE="${REPO}@${VERSION}"
+        info "installing mm from GitHub (${VERSION})..."
     else
-        PACKAGE="mm"
-        info "installing mm (latest)..."
+        SOURCE="${REPO}"
+        info "installing mm from GitHub (latest)..."
     fi
 
     # uv tool install puts the binary in ~/.local/bin
-    if uv tool install "$PACKAGE" --force 2>&1; then
+    if uv tool install mm --from "$SOURCE" --force 2>&1; then
         info "mm installed successfully"
     else
-        err "failed to install mm"
+        err "failed to install mm — do you have SSH access to github.com/vlm-run/mm?"
     fi
 }
 
