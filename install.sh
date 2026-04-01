@@ -104,7 +104,9 @@ ensure_rust() {
     need_cmd curl
     curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
 
-    . "$HOME/.cargo/env"
+    if [ -f "$HOME/.cargo/env" ]; then
+        . "$HOME/.cargo/env"
+    fi
 
     if ! command -v rustc > /dev/null 2>&1; then
         err "rust installation succeeded but 'rustc' not found in PATH"
