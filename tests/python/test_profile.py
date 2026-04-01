@@ -687,8 +687,8 @@ class TestProfileCli:
         result = cli_runner.invoke(app, ["--model", "x", "config", "show"])
         assert result.exit_code != 0
 
-    def test_config_set_rejects_provider_keys(self, runner, two_profile_config):
-        """config set should reject profile fields and point to profile update."""
+    def test_config_set_rejects_profile_keys(self, runner, two_profile_config):
+        """config set should reject profile fields as unknown keys."""
         cli_runner, app = runner
         result = cli_runner.invoke(app, ["config", "set", "base_url", "http://x"])
         assert result.exit_code == 1
@@ -769,7 +769,7 @@ class TestEnvProfileCli:
 
         return CliRunner(), app
 
-    def test_env_profile_selects_provider(self, runner, two_profile_config, monkeypatch):
+    def test_env_profile_selects_profile(self, runner, two_profile_config, monkeypatch):
         monkeypatch.setenv("MM_PROFILE", OLLAMA_PROFILE)
         cli_runner, app = runner
         result = cli_runner.invoke(app, ["profile", "list", "--format", "json"])
