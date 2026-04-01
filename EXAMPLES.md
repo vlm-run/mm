@@ -53,7 +53,7 @@ $ mm wc ~/data/domains --kind document --format json
 
 ---
 
-## ls — list files, tree view, schema
+## find — locate/list files, tree view, schema
 
 ### Tabular listing
 
@@ -136,8 +136,6 @@ height    uint32        Pixel height (images from header, videos via ffprobe)   
 ```
 
 ---
-
-## find — locate files
 
 ### Find images sorted by size
 

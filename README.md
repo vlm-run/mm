@@ -45,18 +45,14 @@ mm cat photo.png -l 2 --detail               # LLM caption (~80 words)
 | `wc` | Count files, bytes, lines, tokens | `--kind`, `--by-kind`, `--format` |
 | `profile` | Manage LLM provider profiles | `list`, `add`, `update`, `use`, `remove` |
 
-### find — locate files
+### find — locate/list, tree, and schema
 
 ```bash
 mm find ~/data --kind image                               # all images
 mm find ~/data --kind video --sort size --reverse         # videos by size
 mm find ~/data --ext .pdf --min-size 10mb                 # large PDFs
 mm find ~/data --kind image --limit 5 --format json       # JSON output
-```
 
-### ls — list, tree, and schema
-
-```bash
 mm find ~/data --sort size --reverse --limit 20        # tabular listing
 mm find ~/data --kind document --columns name,size,ext
 mm find ~/data --tree --depth 2                        # hierarchical tree view

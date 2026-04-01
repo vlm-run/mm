@@ -36,7 +36,7 @@ Always use `--format json` for machine-readable output when parsing results prog
 4. Explore with `find`, `ls`, `sql`, `grep`, `cat` as needed.
 5. Use `mm cat -l 2` for LLM-powered descriptions (auto-generates mosaics for video).
 
-## find — locate files
+## find — locate files, tabular listing, tree view, schema
 
 ```bash
 mm find <dir> --kind image                           # all images
@@ -50,8 +50,6 @@ mm find <dir> --sort size --reverse --limit 10       # largest files
 ```
 
 ~63ms via Rust fast path. Piped output is one path per line. `--format json` returns full metadata.
-
-## ls — tabular listing, tree view, schema
 
 ```bash
 # Tabular listing (default)
@@ -176,7 +174,7 @@ mm sql "SELECT * FROM files WHERE kind='document'" --dir <dir> --format json
 ## Pipe composability
 
 ```bash
-mm find <dir> --kind image | mm find <dir>        # find images, pipe to ls
+mm find <dir> --kind image | mm find <dir>             # find images, pipe to ls
 mm find <dir> --kind document --min-size 10mb | wc -l  # count large PDFs
 ```
 

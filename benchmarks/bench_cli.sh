@@ -12,7 +12,7 @@ echo "=== mm CLI Benchmarks ==="
 echo ""
 
 # L0 commands on real multi-modal data (249 files)
-echo "--- L0: find / ls / info on ${DEMO_DIR} ---"
+echo "--- L0: find on ${DEMO_DIR} ---"
 hyperfine --warmup 2 --min-runs 10 \
   "mm find ${DEMO_DIR}" \
   "mm find ${DEMO_DIR} --tree --depth 1" \
