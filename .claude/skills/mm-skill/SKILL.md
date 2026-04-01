@@ -18,14 +18,14 @@ Always use `--format json` for machine-readable output when parsing results prog
 
 ## Commands (6 total)
 
-| Command   | Purpose                                                       |
-| --------- | ------------------------------------------------------------- |
-| `find`    | Locate/list files by kind/ext/size                            |
-| `cat`     | Content extraction (auto-detected by file type × level)       |
-| `grep`    | Content search across files                                   |
-| `sql`     | DuckDB SQL on file index                                      |
-| `wc`      | Count files, bytes, lines, tokens                             |
-| `profile` | Manage LLM provider profiles (list, add, update, use, remove) |
+| Command   | Purpose                                                        |
+| --------- | -------------------------------------------------------------- |
+| `find`    | Locate/list files by kind/ext/size, listing, tree view, schema |
+| `cat`     | Content extraction (auto-detected by file type × level)        |
+| `grep`    | Content search across files                                    |
+| `sql`     | DuckDB SQL on file index                                       |
+| `wc`      | Count files, bytes, lines, tokens                              |
+| `profile` | Manage LLM provider profiles (list, add, update, use, remove)  |
 
 ## Workflow
 

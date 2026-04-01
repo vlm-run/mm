@@ -37,7 +37,7 @@ mm cat photo.png -l 2 --detail               # LLM caption (~80 words)
 
 | Command | Purpose | Key flags |
 |---------|---------|-----------|
-| `find` | Locate files by kind/ext/size | `--kind`, `--ext`, `--min-size`, `--max-size`, `--sort`, `--limit`, `--format` |
+| `find`  | Find/list files, tree view, schema | `--kind`, `--ext`, `--min-size`, `--max-size`, `--sort`, `--reverse`, `--columns`, `--tree`, `--depth`, `--schema`, `--limit`, `--format` |
 | `cat` | Content extraction (auto-detected by file type) | `--level 0/1/2`, `-n`, `--detail`, `--mosaic-*`, `--audio-*`, `--format` |
 | `grep` | Content search across files | `--kind`, `--ext`, `-C`, `--count`, `--format` |
 | `sql` | DuckDB SQL on file index | `--dir`, `--format` |
