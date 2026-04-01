@@ -1,5 +1,7 @@
 name: publish to pypi
 
+# TODO: set dependency on publish in `create-release` and `deploy-install-script` jobs once ready to publish to PyPI
+
 on:
   workflow_dispatch:
   push:
@@ -77,8 +79,9 @@ jobs:
           name: wheels-sdist
           path: dist/*.tar.gz
 
-  # Publish all wheels + sdist to PyPI
+  # Publish all wheels + sdist to PyPi. TODO: enable when ready to publish to PyPI
   publish:
+    if: false
     needs:
       - prepare
       - build
@@ -152,7 +155,8 @@ jobs:
   create-release:
     needs:
       - prepare
-      - publish
+      - build
+      - sdist
     runs-on: ubuntu-latest
     env:
       VERSION: ${{ needs.prepare.outputs.version }}
@@ -190,7 +194,9 @@ jobs:
 
   # Deploy install.sh to GitHub Pages (alongside benchmarks at /dev/bench)
   deploy-install-script:
-    needs: publish
+    needs:
+      - build
+      - sdist
     runs-on: ubuntu-latest
     permissions:
       contents: write
