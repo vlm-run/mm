@@ -70,13 +70,13 @@ mm roadmap
 │   │   local, deterministic, sub-second operations. No network calls,
 │   │   no GPU, no model weights. This is the "L1.5" layer.
 │   │
-│   ├── [DONE] PDF → visual snapshots (mm pages)
+│   ├── [DONE] PDF → visual snapshots (mm cat)
 │   │   ├── Render pages to thumbnails via pypdfium2 + Pillow
 │   │   ├── Tile into mosaic grids (4x4 default, configurable)
 │   │   ├── Captures tables, charts, diagrams that text extraction misses
 │   │   ├── 68-page PDF → 5 mosaics in 1.1s (~10ms/page)
 │   │   ├── Single-page invoice → 5ms
-│   │   └── mm pages <file/dir> --max-pages N --json
+│   │   └── mm cat <file/dir> --max-pages N --json
 │   │
 │   ├── Image perceptual fingerprint
 │   │   ├── pHash (perceptual hash) — 64-bit, invariant to resize/compression (DONE)

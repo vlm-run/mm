@@ -58,7 +58,7 @@ $ mm wc ~/data/domains --kind document --json
 ### Tabular listing
 
 ```bash
-$ mm ls ~/data/domains --kind video --columns name,kind,size,ext
+$ mm find ~/data/domains --kind video --columns name,kind,size,ext
 ```
 
 ```
@@ -75,7 +75,7 @@ google_next_2025_keynote.mp4        video  511043010   .mp4
 ### Tree view
 
 ```bash
-$ mm ls ~/data/domains --tree --depth 1
+$ mm find ~/data/domains --tree --depth 1
 ```
 
 ```
@@ -114,7 +114,7 @@ $ mm ls ~/data/domains --tree --depth 1
 ### Schema
 
 ```bash
-$ mm ls ~/data/domains --schema
+$ mm find ~/data/domains --schema
 ```
 
 ```
@@ -429,7 +429,7 @@ bucket     files
 mm find ~/data/domains --kind document --min-size 10mb | wc -l
 
 # Find images then list with metadata
-mm find ~/data/domains --kind image | mm ls ~/data/domains
+mm find ~/data/domains --kind image | mm find ~/data/domains
 
 # Get JSON metadata for videos, pipe to jq
 mm find ~/data/domains --kind video --json | jq '.[].name'

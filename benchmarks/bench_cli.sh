@@ -15,8 +15,8 @@ echo ""
 echo "--- L0: find / ls / info on ${DEMO_DIR} ---"
 hyperfine --warmup 2 --min-runs 10 \
   "mm find ${DEMO_DIR}" \
-  "mm ls ${DEMO_DIR}" \
-  "mm info ${DEMO_DIR}" \
+  "mm find ${DEMO_DIR}" \
+  "mm wc ${DEMO_DIR}" \
   "mm find ${DEMO_DIR} --kind image" \
   "mm find ${DEMO_DIR} --json"
 
@@ -37,19 +37,19 @@ echo ""
 echo "--- Keyframe mosaic extraction ---"
 if [ -f "${SMALL_VIDEO}" ]; then
   hyperfine --warmup 1 --min-runs 5 \
-    "mm keyframes '${SMALL_VIDEO}' --tile 8x8"
+    "mm cat '${SMALL_VIDEO}' -l 2 --tile 8x8"
 fi
 
 if [ -f "${LARGE_VIDEO}" ]; then
   hyperfine --warmup 1 --min-runs 3 \
-    "mm keyframes '${LARGE_VIDEO}' --tile 16x16"
+    "mm cat '${LARGE_VIDEO}' -l 2 --tile 16x16"
 fi
 
 echo ""
 echo "--- Audio extraction (2x speed) ---"
 if [ -f "${SMALL_VIDEO}" ]; then
   hyperfine --warmup 1 --min-runs 5 \
-    "mm audio '${SMALL_VIDEO}' --speed 2.0"
+    "mm cat '${SMALL_VIDEO}' --speed 2.0"
 fi
 
 echo ""

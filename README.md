@@ -24,7 +24,7 @@ L0 commands (`find`, `ls`, `wc` with `--json`) run in **~60ms** on 700 files via
 ### Quick start
 
 ```bash
-mm ls ~/data --tree --depth 1         # directory overview with sizes
+mm find ~/data --tree --depth 1         # directory overview with sizes
 mm wc ~/data --by-kind                # file/byte/token counts by kind
 mm find ~/data --kind image --json    # find all images (60ms)
 mm cat paper.pdf                      # extract text from PDF
@@ -57,12 +57,12 @@ mm find ~/data --kind image --limit 5 --json    # JSON output
 ### ls — list, tree, and schema
 
 ```bash
-mm ls ~/data --sort size --desc --limit 20     # tabular listing
-mm ls ~/data --kind document --columns name,size,ext
-mm ls ~/data --tree --depth 2                  # hierarchical tree view
-mm ls ~/data --tree --kind video               # tree filtered to videos
-mm ls ~/data --schema                          # column names, types, descriptions
-mm ls ~/data --json                            # full metadata JSON
+mm find ~/data --sort size --desc --limit 20     # tabular listing
+mm find ~/data --kind document --columns name,size,ext
+mm find ~/data --tree --depth 2                  # hierarchical tree view
+mm find ~/data --tree --kind video               # tree filtered to videos
+mm find ~/data --schema                          # column names, types, descriptions
+mm find ~/data --json                            # full metadata JSON
 ```
 
 ### cat — content extraction
@@ -96,7 +96,7 @@ mm grep "invoice" ~/data --count               # match counts per file
 ### sql — query the index
 
 ```bash
-mm ls ~/data --schema                          # see available columns
+mm find ~/data --schema                          # see available columns
 mm sql "SELECT kind, COUNT(*) as n, ROUND(SUM(size)/1e6,1) as mb \
   FROM files GROUP BY kind ORDER BY mb DESC" --dir ~/data
 ```

@@ -150,7 +150,14 @@ class Context:
 
     # --- Content access ---
 
-    def cat(self, path: str, *, level: int = 1, mode: str | None = None, no_cache: bool = False) -> str:
+    def cat(
+        self,
+        path: str,
+        *,
+        level: int = 1,
+        mode: str | None = None,
+        no_cache: bool = False,
+    ) -> str:
         """Read semantic content of a file.
 
         Level 0: raw content (for text files)

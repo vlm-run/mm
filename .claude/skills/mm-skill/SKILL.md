@@ -30,9 +30,9 @@ Always use `--json` for machine-readable output when parsing results programmati
 
 ## Workflow
 
-1. Start with `mm ls <dir> --tree --depth 1` to see the directory structure.
+1. Start with `mm find <dir> --tree --depth 1` to see the directory structure.
 2. Use `mm wc <dir> --by-kind` to estimate token counts for LLM context budgeting.
-3. Use `mm ls <dir> --schema` to see available columns before writing SQL.
+3. Use `mm find <dir> --schema` to see available columns before writing SQL.
 4. Explore with `find`, `ls`, `sql`, `grep`, `cat` as needed.
 5. Use `mm cat -l 2` for LLM-powered descriptions (auto-generates mosaics for video).
 
@@ -55,19 +55,19 @@ mm find <dir> --sort size --desc --limit 10        # largest files
 
 ```bash
 # Tabular listing (default)
-mm ls <dir>                                         # all files
-mm ls <dir> --columns name,kind,size --limit 10     # select columns
-mm ls <dir> --sort size --desc --json               # sorted JSON
+mm find <dir>                                         # all files
+mm find <dir> --columns name,kind,size --limit 10     # select columns
+mm find <dir> --sort size --desc --json               # sorted JSON
 
 # Tree view (replaces old `tree` command)
-mm ls <dir> --tree                                  # full tree with sizes
-mm ls <dir> --tree --depth 1                        # top-level dirs only
-mm ls <dir> --tree --kind image                     # only image files
-mm ls <dir> --tree --json                           # JSON tree structure
+mm find <dir> --tree                                  # full tree with sizes
+mm find <dir> --tree --depth 1                        # top-level dirs only
+mm find <dir> --tree --kind image                     # only image files
+mm find <dir> --tree --json                           # JSON tree structure
 
 # Schema (replaces old `describe` command)
-mm ls <dir> --schema                                # Rich table with column docs
-mm ls <dir> --schema --json                         # machine-readable
+mm find <dir> --schema                                # Rich table with column docs
+mm find <dir> --schema --json                         # machine-readable
 ```
 
 Columns in the `files` table:
@@ -176,7 +176,7 @@ mm sql "SELECT * FROM files WHERE kind='document'" --dir <dir> --format json
 ## Pipe composability
 
 ```bash
-mm find <dir> --kind image | mm ls <dir>        # find images, pipe to ls
+mm find <dir> --kind image | mm find <dir>        # find images, pipe to ls
 mm find <dir> --kind document --min-size 10mb | wc -l  # count large PDFs
 ```
 
@@ -213,11 +213,11 @@ MM_PROFILE=openrouter mm cat photo.png -l 2      # env override
 
 ## Processing Levels
 
-| Level | What | Speed | How |
-|-------|------|-------|-----|
-| L0 | File metadata (path, size, kind, ext, timestamps, dimensions) | ~60ms / 700 files | Rust `stat()` + extension classification + image headers |
-| L1 | Content extraction (text from PDF, image hash/EXIF, video metadata) | <100ms/file | pypdfium2 (PDF), Rust mmap (images), mp4parse/matroska (video) |
-| L2 | Semantic understanding (captions, descriptions) | Varies | LLM API via active profile |
+| Level | What                                                                | Speed             | How                                                            |
+| ----- | ------------------------------------------------------------------- | ----------------- | -------------------------------------------------------------- |
+| L0    | File metadata (path, size, kind, ext, timestamps, dimensions)       | ~60ms / 700 files | Rust `stat()` + extension classification + image headers       |
+| L1    | Content extraction (text from PDF, image hash/EXIF, video metadata) | <100ms/file       | pypdfium2 (PDF), Rust mmap (images), mp4parse/matroska (video) |
+| L2    | Semantic understanding (captions, descriptions)                     | Varies            | LLM API via active profile                                     |
 
 ## Tips
 
