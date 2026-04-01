@@ -44,15 +44,17 @@ detect_platform() {
     ARCH="$(uname -m)"
 
     case "$OS" in
-        Linux)  OS="linux" ;;
-        Darwin) OS="macos" ;;
-        *)      err "unsupported OS: $OS" ;;
+        Linux|Darwin) ;;
+        *)
+            warn "no pre-built wheels for ${OS} — installation may fail"
+            ;;
     esac
 
     case "$ARCH" in
-        x86_64|amd64)   ARCH="x86_64" ;;
-        aarch64|arm64)   ARCH="aarch64" ;;
-        *)               err "unsupported architecture: $ARCH" ;;
+        x86_64|amd64|aarch64|arm64) ;;
+        *)
+            warn "no pre-built wheels for ${ARCH} — installation may fail"
+            ;;
     esac
 
     info "detected platform: ${OS}-${ARCH}"
@@ -78,7 +80,9 @@ ensure_uv() {
     fi
 
     # Add to PATH as fallback
-    export PATH="$HOME/.local/bin:$PATH"
+    if [ "${MM_NO_MODIFY_PATH:-0}" = "0" ]; then
+        export PATH="$HOME/.local/bin:$PATH"
+    fi
 
     if ! command -v uv > /dev/null 2>&1; then
         err "uv installation succeeded but 'uv' not found in PATH"
@@ -112,7 +116,9 @@ install_mm() {
 
 verify() {
     # Ensure ~/.local/bin is in PATH for verification
-    export PATH="$HOME/.local/bin:$PATH"
+    if [ "${MM_NO_MODIFY_PATH:-0}" = "0" ]; then
+        export PATH="$HOME/.local/bin:$PATH"
+    fi
 
     if command -v mm > /dev/null 2>&1; then
         info "mm is ready: $(mm --version 2>/dev/null || echo 'installed')"
