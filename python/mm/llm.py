@@ -53,6 +53,7 @@ class LlmBackend:
         api_key: str | None = None,
         model: str | None = None,
     ):
+        from mm import __version__
         from mm.config import get_provider
 
         cfg = get_provider()
@@ -65,7 +66,7 @@ class LlmBackend:
             base_url=resolved_base,
             api_key=self.api_key,
             timeout=120.0,
-            default_headers={"User-Agent": "mm-ctx/0.1.2"},
+            default_headers={"User-Agent": f"mm-ctx/{__version__}"},
         )
         self.last_usage = LlmUsage()
 
