@@ -42,6 +42,8 @@ mm cat photo.png -l 2 --detail               # LLM caption (~80 words)
 | `grep` | Content search across files | `--kind`, `--ext`, `-C`, `--count`, `--format` |
 | `sql` | DuckDB SQL on file index | `--dir`, `--format` |
 | `wc` | Count files, bytes, lines, tokens | `--kind`, `--by-kind`, `--format` |
+| `bench` | Benchmark suite (L0/L1/L2) | `--format`, `--rounds` |
+| `config` | Extraction mode settings | `show`, `init`, `set` |
 | `profile` | Manage LLM provider profiles | `list`, `add`, `update`, `use`, `remove` |
 
 ### find — locate/list, tree, and schema

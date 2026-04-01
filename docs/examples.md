@@ -11,9 +11,11 @@ When stdout is piped, mm auto-selects `tsv`. Override with `--format json` etc.
 
 ---
 
-## 1. `find` — Multimodal-aware file discovery
+## 1. `find` — Structured listing with multimodal metadata | Multimodal-aware file discovery 
 
-Traditional `find` knows nothing about file semantics. mm `find` classifies files by **kind** (image, video, document, code, audio, data, config, text) and filters by size, extension, and kind — all in ~5ms.
+Traditional `find` knows nothing about file semantics. mm `find` classifies files by **kind** (image, video, document, code, audio, data, config, text) and filters by size, extension, and kind — all in ~5ms. 
+
+> mm `find` exposes a full Arrow schema: dimensions, kind, depth, MIME — queryable columns that LLMs can reason over.
 
 ### Example 1: Find all images
 
@@ -111,11 +113,7 @@ GPS:        37.7749,-122.4194
 
 ---
 
-## 2. `ls` — Structured listing with multimodal metadata
-
-Traditional `ls` shows names and permissions. mm `ls` exposes a full Arrow schema: dimensions, kind, depth, MIME — queryable columns that LLMs can reason over.
-
-### Example 1: Default tabular listing
+### Example 6: Default tabular listing
 
 ```bash
 $ mm find ~/project/assets
@@ -150,7 +148,7 @@ data.parquet	data	13002547	parquet
 recording.mp3	audio	9122816	mp3
 ```
 
-### Example 2: Extended columns with image dimensions
+### Example 7: Extended columns with image dimensions
 
 ```bash
 $ mm find ~/photos --columns name,kind,size,width,height --sort size
@@ -166,7 +164,7 @@ thumbnail.jpg	image	24576	320	240
 icon.png	image	4096	64	64
 ```
 
-### Example 3: Tree view
+### Example 8: Tree view
 
 ```bash
 $ mm find ~/project --tree --depth 2
@@ -212,7 +210,7 @@ project  (47 files, 82.3 MB)
 └── pyproject.toml
 ```
 
-### Example 4: Schema introspection
+### Example 9: Schema introspection
 
 ```bash
 $ mm find ~/data --schema
@@ -234,7 +232,7 @@ width	int32	Image/video width in px (e.g. 1920)
 height	int32	Image/video height in px (e.g. 1080)
 ```
 
-### Example 5: JSON tree (for programmatic consumption)
+### Example 10: JSON tree (for programmatic consumption)
 
 ```bash
 $ mm find ~/project --tree --depth 1 --format json
