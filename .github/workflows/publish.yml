@@ -3,8 +3,6 @@ name: publish to pypi
 on:
   workflow_dispatch:
   push:
-    branches:
-      - main
     tags:
       - "v*"
 
@@ -22,8 +20,73 @@ jobs:
         id: get_version
         run: echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
 
-  publish:
+  # Build wheels for each platform
+  build:
     needs: prepare
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Linux x86_64
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+          # Linux aarch64 (cross-compiled)
+          - os: ubuntu-latest
+            target: aarch64-unknown-linux-gnu
+          # macOS x86_64
+          - os: macos-13
+            target: x86_64-apple-darwin
+          # macOS Apple Silicon
+          - os: macos-latest
+            target: aarch64-apple-darwin
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Build wheels
+        uses: PyO3/maturin-action@v1
+        with:
+          target: ${{ matrix.target }}
+          args: --release --out dist
+          manylinux: auto
+
+      - name: Upload wheels
+        uses: actions/upload-artifact@v4
+        with:
+          name: wheels-${{ matrix.target }}
+          path: dist/*.whl
+
+  # Build source distribution
+  sdist:
+    needs: prepare
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Build sdist
+        uses: PyO3/maturin-action@v1
+        with:
+          command: sdist
+          args: --out dist
+
+      - name: Upload sdist
+        uses: actions/upload-artifact@v4
+        with:
+          name: wheels-sdist
+          path: dist/*.tar.gz
+
+  # Publish all wheels + sdist to PyPI
+  publish:
+    needs:
+      - prepare
+      - build
+      - sdist
     runs-on: ubuntu-latest
     timeout-minutes: 10
     env:
@@ -32,43 +95,21 @@ jobs:
       name: pypi
       url: https://pypi.org/p/mm-ctx
     permissions:
-      id-token: write # Required for PyPI trusted publishing
+      id-token: write
     steps:
-      - uses: actions/checkout@v6
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
         with:
-          fetch-depth: 0
-          token: ${{ secrets.GH_TOKEN }}
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.10"
+          pattern: wheels-*
+          path: dist
+          merge-multiple: true
 
-      - uses: actions/cache@v5
-        with:
-          path: |
-            ~/.cache/uv
-            ~/.cache/pip
-          key: uv-${{ hashFiles('pyproject.toml') }}-${{ env.VERSION }}
-          restore-keys: |
-            uv-
-
-      - name: Install & build dependencies
-        run: |
-          pip install uv
-          pip uninstall mm-ctx -y || true
-          pip install -e ".[dev]"
-          pip install build twine
-          uv pip install --system -e '.[dev,dataset]'
-
-      - name: Build package
-        run: python -m build
-
-      - name: Check package
-        run: twine check dist/*
+      - name: List dist contents
+        run: ls -lh dist/
 
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
-          verify-metadata: false
           verbose: true
           print-hash: true
           password: ${{ secrets.PYPI_TOKEN }}
@@ -86,7 +127,7 @@ jobs:
                   "type": "section",
                   "text": {
                     "type": "mrkdwn",
-                    "text": ":white_check_mark: :python: *mm-ctx v${{ env.VERSION }} Published to PyPI*\n\n*Version:* `v${{ env.VERSION }}`\n*Commit:* <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ github.sha }}>"
+                    "text": ":white_check_mark: :python: *mm-ctx v${{ env.VERSION }} Published to PyPI*\n\n*Version:* `v${{ env.VERSION }}`\n*Platforms:* linux (x86_64, aarch64), macOS (x86_64, arm64)\n*Commit:* <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ github.sha }}>"
                   }
                 }
               ]
@@ -111,6 +152,7 @@ jobs:
               ]
             }
 
+  # Create GitHub release with wheel assets
   create-release:
     needs:
       - prepare
@@ -122,21 +164,53 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: wheels-*
+          path: dist
+          merge-multiple: true
 
       - name: Generate changelog
         id: changelog
         run: |
           PREVIOUS_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
           if [ -z "$PREVIOUS_TAG" ]; then
-            git log --pretty=format:"* %s" > CHANGELOG.md
+            git log --pretty=format:"* %s" > RELEASE_NOTES.md
           else
-            git log --pretty=format:"* %s" $PREVIOUS_TAG..HEAD > CHANGELOG.md
+            git log --pretty=format:"* %s" $PREVIOUS_TAG..HEAD > RELEASE_NOTES.md
           fi
 
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
           name: Release v${{ env.VERSION }}
-          body_path: CHANGELOG.md
+          body_path: RELEASE_NOTES.md
           draft: false
           prerelease: false
+          files: dist/*
+
+  # Deploy install.sh to GitHub Pages (alongside benchmarks at /dev/bench)
+  deploy-install-script:
+    needs: publish
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Stage install script
+        run: |
+          mkdir -p _pages
+          cp install.sh _pages/install.sh
+
+      - name: Deploy install.sh to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./_pages
+          destination_dir: install
+          keep_files: true
