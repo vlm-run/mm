@@ -171,7 +171,9 @@ def bench_image(path: Path, runs: int = 3) -> list[BenchResult]:
     results = []
     for mode in ("fast", "accurate"):
         console.print(f"  [dim]Benchmarking image {mode}...[/dim]", end="\r")
-        t = _run_bench(["mm", "cat", str(path), "-l", "2", "--mode", mode, "--format json"], runs)
+        t = _run_bench(
+            ["mm", "cat", str(path), "-l", "2", "--mode", mode, "--format", "json"], runs
+        )
         results.append(
             BenchResult(
                 label=f"image/{mode}",
@@ -191,7 +193,9 @@ def bench_video(path: Path, runs: int = 2) -> list[BenchResult]:
     results = []
     for mode in ("fast", "accurate"):
         console.print(f"  [dim]Benchmarking video {mode}...[/dim]", end="\r")
-        t = _run_bench(["mm", "cat", str(path), "-l", "2", "--mode", mode, "--format json"], runs)
+        t = _run_bench(
+            ["mm", "cat", str(path), "-l", "2", "--mode", mode, "--format", "json"], runs
+        )
         results.append(
             BenchResult(
                 label=f"video/{mode}",
@@ -210,7 +214,7 @@ def bench_video(path: Path, runs: int = 2) -> list[BenchResult]:
 def bench_pdf(path: Path, runs: int = 5) -> list[BenchResult]:
     pages = _probe_pdf_pages(path)
     console.print("  [dim]Benchmarking PDF L1...[/dim]", end="\r")
-    t = _run_bench(["mm", "cat", str(path), "-l", "1", "--format json"], runs)
+    t = _run_bench(["mm", "cat", str(path), "-l", "1", "--format", "json"], runs)
     return [
         BenchResult(
             label="document/L1",

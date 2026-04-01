@@ -236,7 +236,7 @@ mm roadmap
     │
     ├── CLI cold start
     │   ├── Current: 66ms (in-process), 116ms (with uv startup)
-    │   ├── With Rust JSON: <30ms in-process for --formatt=json
+    │   ├── With Rust JSON: <30ms in-process for --format=json
     │   └── Target: <50ms wall-clock for any --format=json command
     │
     ├── L1 batch extraction
