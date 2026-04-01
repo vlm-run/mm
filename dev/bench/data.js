@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1775034526815,
+  "lastUpdate": 1775049844765,
   "repoUrl": "https://github.com/vlm-run/mm",
   "entries": {
     "mm Rust Benchmarks": [
@@ -867,6 +867,130 @@ window.BENCHMARK_DATA = {
           {
             "name": "l1_image_extract/50",
             "value": 14819436.125,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "20521315+nwaughachukwuma@users.noreply.github.com",
+            "name": "Chukwuma Nwaugha",
+            "username": "nwaughachukwuma"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "2087626738cf83947c9f2cb8cb15265cc842c7c6",
+          "message": "Make vlmrun qwen profile the default (#20)",
+          "timestamp": "2026-04-01T14:13:00+01:00",
+          "tree_id": "ca13d520dd614ccbd6ad9a80ef62ba7635189c13",
+          "url": "https://github.com/vlm-run/mm/commit/2087626738cf83947c9f2cb8cb15265cc842c7c6"
+        },
+        "date": 1775049843604,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "hash_strategies/fast_fingerprint/10MB",
+            "value": 24171.91513605442,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_strategies/fast_fingerprint/1KB",
+            "value": 13039.830515803038,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_strategies/fast_fingerprint/1MB",
+            "value": 22755.889482339695,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_strategies/fast_fingerprint/64KB",
+            "value": 17439.60066833751,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_strategies/full_hash_mmap/10MB",
+            "value": 472566.9399460189,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_strategies/full_hash_mmap/1KB",
+            "value": 12114.192165558019,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_strategies/full_hash_mmap/1MB",
+            "value": 84331.31086601307,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_strategies/full_hash_mmap/64KB",
+            "value": 17354.636064593302,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_strategies/full_hash_read/10MB",
+            "value": 916448.3674242424,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_strategies/full_hash_read/1KB",
+            "value": 5961.870664476086,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_strategies/full_hash_read/1MB",
+            "value": 96837.84929608207,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_strategies/full_hash_read/64KB",
+            "value": 11044.369999999999,
+            "unit": "ns"
+          },
+          {
+            "name": "l0_index/1000",
+            "value": 4555135.833333334,
+            "unit": "ns"
+          },
+          {
+            "name": "l0_index/10000",
+            "value": 35388634,
+            "unit": "ns"
+          },
+          {
+            "name": "l0_walk/1000",
+            "value": 4412866.916666666,
+            "unit": "ns"
+          },
+          {
+            "name": "l0_walk/10000",
+            "value": 33551824,
+            "unit": "ns"
+          },
+          {
+            "name": "l1_code_extract/10",
+            "value": 60549.45693691188,
+            "unit": "ns"
+          },
+          {
+            "name": "l1_code_extract/100",
+            "value": 631292.3347222223,
+            "unit": "ns"
+          },
+          {
+            "name": "l1_image_extract/10",
+            "value": 2243785.717391304,
+            "unit": "ns"
+          },
+          {
+            "name": "l1_image_extract/50",
+            "value": 14510716.625,
             "unit": "ns"
           }
         ]
