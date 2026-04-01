@@ -19,6 +19,7 @@ dependencies = [
     "Pillow>=10.0",
     "openai>=1.0",
     "tomli>=1.0; python_version < '3.11'",
+    "lancedb==0.25.3",
 ]
 
 [project.scripts]
