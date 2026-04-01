@@ -120,7 +120,7 @@ def ensure_builtin_profiles(file_data: ConfigData) -> bool:
 
 
 def load_profile_config() -> ConfigData:
-    """Read config, migrate any legacy [provider] data, and ensure built-ins exist."""
+    """Read config, migrate any legacy flat config, and ensure built-ins exist."""
     file_data = _read_config_file()
     did_migrate = migrate_to_profiles(file_data)
     did_normalize = ensure_builtin_profiles(file_data)
@@ -165,12 +165,30 @@ def get_profile_names() -> list[str]:
 
 
 def migrate_to_profiles(file_data: ConfigData) -> bool:
-    """If config has [provider] but no [profile.*], migrate in-place."""
-    if "provider" in file_data and "profile" not in file_data:
-        file_data["profile"] = {OLLAMA_PROFILE: cast(ProfileData, dict(file_data.pop("provider")))}
-        file_data.setdefault("active_profile", OLLAMA_PROFILE)
-        return True
-    return False
+    """Migrate a legacy flat config section into the ollama profile once."""
+    if "profile" in file_data:
+        return False
+
+    raw_data = cast(dict[str, object], file_data)
+    legacy_section = raw_data.get("provider")
+    if not isinstance(legacy_section, dict):
+        return False
+
+    legacy_values = cast(dict[str, object], legacy_section)
+    base_url = legacy_values.get("base_url")
+    api_key = legacy_values.get("api_key")
+    model = legacy_values.get("model")
+
+    file_data["profile"] = {
+        OLLAMA_PROFILE: {
+            "base_url": base_url if isinstance(base_url, str) else OLLAMA_DEFAULTS["base_url"],
+            "api_key": api_key if isinstance(api_key, str) else OLLAMA_DEFAULTS["api_key"],
+            "model": model if isinstance(model, str) else OLLAMA_DEFAULTS["model"],
+        }
+    }
+    raw_data.pop("provider", None)
+    file_data.setdefault("active_profile", OLLAMA_PROFILE)
+    return True
 
 
 # ── CRUD ───────────────────────────────────────────────────────────
@@ -187,7 +205,7 @@ def _validate_profile_name(name: str) -> None:
     if not name or not _PROFILE_NAME_RE.match(name):
         raise ValueError(
             f"Invalid profile name: '{name}'. "
-            "Use only letters, digits, hyphens, and underscores (e.g. 'ollama', 'my-provider', 'openai_v2')."
+            "Use only letters, digits, hyphens, and underscores (e.g. 'ollama', 'my-profile', 'openai_v2')."
         )
 
 

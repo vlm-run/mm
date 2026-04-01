@@ -13,7 +13,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field, replace
 from pathlib import Path
-from typing import Literal, NotRequired, TypedDict, cast
+from typing import Literal, TypedDict, cast
 
 try:
     import tomllib
@@ -56,10 +56,10 @@ class ModeData(TypedDict, total=False):
     beam_size: int
 
 
-class ConfigData(TypedDict):
-    active_profile: NotRequired[str]
-    profile: NotRequired[dict[str, ProfileData]]
-    mode: NotRequired[dict[str, ModeData]]
+class ConfigData(TypedDict, total=False):
+    active_profile: str
+    profile: dict[str, ProfileData]
+    mode: dict[str, ModeData]
 
 
 WhisperModel = Literal["tiny", "medium"]  # can extend with more sizes if needed
@@ -119,7 +119,7 @@ def _read_config_file() -> ConfigData:
             return cast(ConfigData, dict(tomllib.loads(path.read_text())))
     except Exception:
         pass
-    return ConfigData()
+    return cast(ConfigData, {})
 
 
 # ── Public API ──────────────────────────────────────────────────────
@@ -257,16 +257,23 @@ def update_mode_config(key: str, value: str) -> Path:
         raise ValueError(f"Invalid mode key: {key}")
 
     mode_name, field = parts[1], parts[2]
+    if mode_name not in ("fast", "accurate"):
+        raise ValueError(f"Invalid mode key: {key}")
+
     if "mode" not in file_data:
         file_data["mode"] = {}
     if mode_name not in file_data["mode"]:
         file_data["mode"][mode_name] = {}
 
+    mode_data = file_data["mode"][mode_name]
+
     if field == "audio_speed":
-        file_data["mode"][mode_name][field] = float(value)
+        mode_data["audio_speed"] = float(value)
     elif field == "beam_size":
-        file_data["mode"][mode_name][field] = int(value)
+        mode_data["beam_size"] = int(value)
+    elif field == "whisper_model":
+        mode_data["whisper_model"] = value
     else:
-        file_data["mode"][mode_name][field] = value
+        raise ValueError(f"Invalid mode key: {key}")
 
     return write_full_config(file_data)
