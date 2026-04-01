@@ -6,12 +6,15 @@ Validates the priority chain: active profile > defaults.
 from __future__ import annotations
 
 from pathlib import Path
+from typing import cast
 
 import pytest
 from mm.config import (
+    ConfigData,
+    ProfileData,
     set_cli_overrides,
     update_mode_config,
-    write_config,
+    write_full_config,
 )
 from mm.profile import (
     DEFAULT_PROFILE,
@@ -50,7 +53,16 @@ class TestDefaults:
 class TestFileConfig:
     def test_file_overrides_defaults(self, tmp_path: Path):
         set_cli_overrides(OLLAMA_PROFILE)
-        write_config(base_url="http://remote:8000", api_key="sk-123", model="gpt-4o")
+        profile_data = cast(
+            ProfileData,
+            {"base_url": "http://remote:8000", "api_key": "sk-123", "model": "gpt-4o"},
+        )
+        write_full_config(
+            cast(
+                ConfigData,
+                {"active_profile": OLLAMA_PROFILE, "profile": {OLLAMA_PROFILE: profile_data}},
+            )
+        )
         profile = get_profile()
         assert profile.base_url == "http://remote:8000"
         assert profile.api_key == "sk-123"
@@ -81,10 +93,21 @@ class TestFileConfig:
         assert profile == Profile()
 
 
-class TestWriteConfig:
+class TestWriteFullConfigSetup:
     def test_write_creates_file(self, tmp_path: Path):
-        set_cli_overrides(OLLAMA_PROFILE)
-        p = write_config("http://a", "k", "m")
+        p = write_full_config(
+            cast(
+                ConfigData,
+                {
+                    "active_profile": OLLAMA_PROFILE,
+                    "profile": {
+                        OLLAMA_PROFILE: cast(
+                            ProfileData, {"base_url": "http://a", "api_key": "k", "model": "m"}
+                        )
+                    },
+                },
+            )
+        )
         assert p.exists()
         contents = p.read_text()
         assert "[profile.default]" in contents
@@ -112,8 +135,19 @@ model = "qwen3-vl:2b"
 
 class TestUpdateModeConfig:
     def test_update_mode_key(self, tmp_path: Path):
-        set_cli_overrides(OLLAMA_PROFILE)
-        write_config("http://a", "", "m")
+        write_full_config(
+            cast(
+                ConfigData,
+                {
+                    "active_profile": OLLAMA_PROFILE,
+                    "profile": {
+                        OLLAMA_PROFILE: cast(
+                            ProfileData, {"base_url": "http://a", "api_key": "", "model": "m"}
+                        )
+                    },
+                },
+            )
+        )
         update_mode_config("mode.fast.whisper_model", "medium")
         from mm.config import get_mode_config
 
@@ -121,7 +155,18 @@ class TestUpdateModeConfig:
         assert cfg.whisper_model == "medium"
 
     def test_invalid_key_raises(self, tmp_path: Path):
-        set_cli_overrides(OLLAMA_PROFILE)
-        write_config("http://a", "", "m")
+        write_full_config(
+            cast(
+                ConfigData,
+                {
+                    "active_profile": OLLAMA_PROFILE,
+                    "profile": {
+                        OLLAMA_PROFILE: cast(
+                            ProfileData, {"base_url": "http://a", "api_key": "", "model": "m"}
+                        )
+                    },
+                },
+            )
+        )
         with pytest.raises(ValueError, match="Invalid mode key"):
             update_mode_config("base_url", "http://x")

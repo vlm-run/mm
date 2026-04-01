@@ -201,24 +201,6 @@ def write_full_config(file_data: ConfigData) -> Path:
     return path
 
 
-# ── Write / update ──────────────────────────────────────────────────
-
-
-def write_config(base_url: str, api_key: str, model: str) -> Path:
-    """Write config.toml to the active profile. Returns path."""
-    from mm.profile import get_active_profile_name, load_profile_config
-
-    file_data = load_profile_config()
-    profile_name = get_active_profile_name()
-    profiles = cast(dict[str, ProfileData], file_data.setdefault("profile", {}))
-    profiles[profile_name] = {
-        "base_url": base_url,
-        "api_key": api_key,
-        "model": model,
-    }
-    return write_full_config(file_data)
-
-
 def write_platform_config() -> Path:
     """Write the default config with built-in profiles and mode sections."""
     from mm.profile import DEFAULT_PROFILE, get_builtin_profile_defaults

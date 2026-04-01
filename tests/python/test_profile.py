@@ -16,7 +16,6 @@ from mm.config import (
     ProfileData,
     _read_config_file,
     set_cli_overrides,
-    write_config,
     write_full_config,
 )
 from mm.profile import (
@@ -401,7 +400,7 @@ class TestUpdateProfile:
         file_data = _read_config_file()
         assert _profiles(file_data)[DEFAULT_PROFILE]["model"] == DEFAULTS["model"]
 
-    def test_update_reflects_in_provider(self, two_profile_config):
+    def test_update_reflects_in_profile(self, two_profile_config):
         set_cli_overrides(profile=OLLAMA_PROFILE)
         update_profile(OLLAMA_PROFILE, model="qwen3.5:updated")
         profile = get_profile()
@@ -459,17 +458,45 @@ class TestSetActiveProfile:
 # ── Write with profiles ────────────────────────────────────────────
 
 
-class TestWriteConfigWithProfiles:
+class TestWriteFullConfigWithProfiles:
     def test_write_preserves_default_profile_when_ollama_is_active(self, two_profile_config):
-        set_cli_overrides(profile=OLLAMA_PROFILE)
-        write_config("http://new-ollama", "", "new-model")
+        write_full_config(
+            cast(
+                ConfigData,
+                {
+                    "active_profile": OLLAMA_PROFILE,
+                    "profile": {
+                        OLLAMA_PROFILE: cast(
+                            ProfileData,
+                            {"base_url": "http://new-ollama", "api_key": "", "model": "new-model"},
+                        )
+                    },
+                },
+            )
+        )
         file_data = _read_config_file()
         assert _profiles(file_data)[DEFAULT_PROFILE] == DEFAULTS
         assert _profiles(file_data)[OLLAMA_PROFILE]["base_url"] == "http://new-ollama"
 
     def test_write_to_active_profile(self, two_profile_config):
-        set_cli_overrides(profile=OLLAMA_PROFILE)
-        write_config("http://updated-ollama", "new-key", "new-ollama-model")
+        write_full_config(
+            cast(
+                ConfigData,
+                {
+                    "active_profile": OLLAMA_PROFILE,
+                    "profile": {
+                        OLLAMA_PROFILE: cast(
+                            ProfileData,
+                            {
+                                "base_url": "http://updated-ollama",
+                                "api_key": "new-key",
+                                "model": "new-ollama-model",
+                            },
+                        )
+                    },
+                },
+            )
+        )
         file_data = _read_config_file()
         assert _profiles(file_data)[OLLAMA_PROFILE]["base_url"] == "http://updated-ollama"
 
