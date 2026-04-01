@@ -24,8 +24,8 @@ mm roadmap
 │   ├── [DONE] JSON output in Rust (bypass pyarrow entirely)
 │   │   ├── Scanner.to_json_fast() — serde_json with filtering/sorting in Rust
 │   │   ├── Scanner.to_lines_fast() — newline-delimited paths, filtered in Rust
-│   │   ├── Eliminated 35ms pyarrow import for --json and piped paths
-│   │   ├── CLI find/ls with --json: ~60ms cold start (was 330ms, 5.5x speedup)
+│   │   ├── Eliminated 35ms pyarrow import for --format=json and piped paths
+│   │   ├── CLI find/ls with --format=json: ~60ms cold start (was 330ms, 5.5x speedup)
 │   │   └── Arrow path preserved for DataFrame/SQL/Rich display use cases
 │   │
 │   ├── Parallel L1 batch extraction
@@ -45,7 +45,7 @@ mm roadmap
 │   │   ├── Size-annotated tree (file counts + sizes per directory)
 │   │   ├── Kind-colored branches (ANSI: image yellow, video magenta, etc.)
 │   │   ├── --depth, --kind filters, --size toggle
-│   │   └── --json for programmatic consumption
+│   │   └── --format=json for programmatic consumption
 │   │
 │   ├── [DONE] Faster pipe composability
 │   │   ├── Plain-text path output for piped find (via to_lines_fast)
@@ -76,7 +76,7 @@ mm roadmap
 │   │   ├── Captures tables, charts, diagrams that text extraction misses
 │   │   ├── 68-page PDF → 5 mosaics in 1.1s (~10ms/page)
 │   │   ├── Single-page invoice → 5ms
-│   │   └── mm cat <file/dir> --max-pages N --json
+│   │   └── mm cat <file/dir> --max-pages N --format=json
 │   │
 │   ├── Image perceptual fingerprint
 │   │   ├── pHash (perceptual hash) — 64-bit, invariant to resize/compression (DONE)
@@ -130,7 +130,7 @@ mm roadmap
 │   │   ├── Feed mosaic grid(s) to qwen3-2b / llava for scene description
 │   │   ├── describe_video() already implemented, needs CLI integration
 │   │   ├── mm cat video.mp4 --level 2 → mosaic + VLM caption
-│   │   ├── Batch: mm find --kind video | mm cat --level 2 --json
+│   │   ├── Batch: mm find --kind video | mm cat --level 2 --format=json
 │   │   └── Output: {filename_suggestion, tags, summary, scenes}
 │   │
 │   ├── Audio transcription pipeline
@@ -236,8 +236,8 @@ mm roadmap
     │
     ├── CLI cold start
     │   ├── Current: 66ms (in-process), 116ms (with uv startup)
-    │   ├── With Rust JSON: <30ms in-process for --json
-    │   └── Target: <50ms wall-clock for any --json command
+    │   ├── With Rust JSON: <30ms in-process for --formatt=json
+    │   └── Target: <50ms wall-clock for any --format=json command
     │
     ├── L1 batch extraction
     │   ├── Current: 5.1s for 17 videos (sequential)

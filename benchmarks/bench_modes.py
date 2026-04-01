@@ -18,12 +18,9 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from rich import box
-from rich.columns import Columns
 from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
-from rich.text import Text
-
 
 console = Console()
 
@@ -114,9 +111,12 @@ def _probe_image(path: Path) -> tuple[str, int]:
     try:
         r = subprocess.run(
             ["mm", "cat", str(path), "-l", "1"],
-            capture_output=True, text=True, timeout=10,
+            capture_output=True,
+            text=True,
+            timeout=10,
         )
         import re
+
         m = re.search(r"(\d+)x(\d+)", r.stdout)
         if m:
             w, h = int(m.group(1)), int(m.group(2))
@@ -131,9 +131,12 @@ def _probe_video(path: Path) -> tuple[str, float, float]:
     try:
         r = subprocess.run(
             ["mm", "cat", str(path), "-l", "1"],
-            capture_output=True, text=True, timeout=10,
+            capture_output=True,
+            text=True,
+            timeout=10,
         )
         import re
+
         dims = ""
         m = re.search(r"(\d+)x(\d+)", r.stdout)
         if m:
@@ -154,6 +157,7 @@ def _probe_video(path: Path) -> tuple[str, float, float]:
 def _probe_pdf_pages(path: Path) -> int:
     try:
         import pypdfium2 as pdfium
+
         pdf = pdfium.PdfDocument(str(path))
         n = len(pdf)
         pdf.close()
@@ -167,11 +171,18 @@ def bench_image(path: Path, runs: int = 3) -> list[BenchResult]:
     results = []
     for mode in ("fast", "accurate"):
         console.print(f"  [dim]Benchmarking image {mode}...[/dim]", end="\r")
-        t = _run_bench(["mm", "cat", str(path), "-l", "2", "--mode", mode, "--json"], runs)
-        results.append(BenchResult(
-            label=f"image/{mode}", file=path.name, file_bytes=path.stat().st_size,
-            wall_s=t, mode=mode, resolution=dims, pixels=pixels,
-        ))
+        t = _run_bench(["mm", "cat", str(path), "-l", "2", "--mode", mode, "--format json"], runs)
+        results.append(
+            BenchResult(
+                label=f"image/{mode}",
+                file=path.name,
+                file_bytes=path.stat().st_size,
+                wall_s=t,
+                mode=mode,
+                resolution=dims,
+                pixels=pixels,
+            )
+        )
     return results
 
 
@@ -180,26 +191,41 @@ def bench_video(path: Path, runs: int = 2) -> list[BenchResult]:
     results = []
     for mode in ("fast", "accurate"):
         console.print(f"  [dim]Benchmarking video {mode}...[/dim]", end="\r")
-        t = _run_bench(["mm", "cat", str(path), "-l", "2", "--mode", mode, "--json"], runs)
-        results.append(BenchResult(
-            label=f"video/{mode}", file=path.name, file_bytes=path.stat().st_size,
-            wall_s=t, mode=mode, resolution=dims, duration_s=dur, fps=fps,
-        ))
+        t = _run_bench(["mm", "cat", str(path), "-l", "2", "--mode", mode, "--format json"], runs)
+        results.append(
+            BenchResult(
+                label=f"video/{mode}",
+                file=path.name,
+                file_bytes=path.stat().st_size,
+                wall_s=t,
+                mode=mode,
+                resolution=dims,
+                duration_s=dur,
+                fps=fps,
+            )
+        )
     return results
 
 
 def bench_pdf(path: Path, runs: int = 5) -> list[BenchResult]:
     pages = _probe_pdf_pages(path)
     console.print("  [dim]Benchmarking PDF L1...[/dim]", end="\r")
-    t = _run_bench(["mm", "cat", str(path), "-l", "1", "--json"], runs)
-    return [BenchResult(
-        label="document/L1", file=path.name, file_bytes=path.stat().st_size,
-        wall_s=t, mode="L1", pages=pages,
-    )]
+    t = _run_bench(["mm", "cat", str(path), "-l", "1", "--format json"], runs)
+    return [
+        BenchResult(
+            label="document/L1",
+            file=path.name,
+            file_bytes=path.stat().st_size,
+            wall_s=t,
+            mode="L1",
+            pages=pages,
+        )
+    ]
 
 
 def _sysinfo_panel() -> Panel:
     from mm.sysinfo import collect
+
     info = collect()
     lines = [
         f"[bold]ffmpeg[/bold]       {info.ffmpeg_version or '[red]not found[/red]'}",
@@ -266,11 +292,14 @@ def main():
         sys.exit(1)
 
     console.print()
-    console.print(Panel(
-        "[bold]mm multi-modal extraction benchmarks[/bold]\n"
-        "[dim]Information-theoretic: maximize bits/s, minimize latency[/dim]",
-        border_style="bright_blue", box=box.DOUBLE,
-    ))
+    console.print(
+        Panel(
+            "[bold]mm multi-modal extraction benchmarks[/bold]\n"
+            "[dim]Information-theoretic: maximize bits/s, minimize latency[/dim]",
+            border_style="bright_blue",
+            box=box.DOUBLE,
+        )
+    )
     console.print()
     console.print(_sysinfo_panel())
     console.print()
@@ -319,7 +348,8 @@ def main():
     if all_results:
         summary = Table(
             title="Summary — All Modalities",
-            box=box.ROUNDED, border_style="bright_blue",
+            box=box.ROUNDED,
+            border_style="bright_blue",
         )
         summary.add_column("Pipeline", style="bold")
         summary.add_column("File", style="dim")
@@ -330,8 +360,12 @@ def main():
 
         for r in all_results:
             summary.add_row(
-                r.label, r.file, _size_str(r.file_bytes),
-                r.latency_str, r.throughput_str, r.media_rate_str or "—",
+                r.label,
+                r.file,
+                _size_str(r.file_bytes),
+                r.latency_str,
+                r.throughput_str,
+                r.media_rate_str or "—",
             )
         console.print(summary)
         console.print()

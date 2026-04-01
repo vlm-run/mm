@@ -107,13 +107,13 @@ mm
 ├── Output Modes
 │   ├── [x] TTY stdout → Rich formatted tables/panels with color
 │   ├── [x] Piped stdout → plain TSV/text (machine-readable, no ANSI)
-│   ├── [x] --json flag → JSON on any command
+│   ├── [x] --format=json flag → JSON on any command
 │   ├── [x] Piped stdin → read newline-delimited paths (composability)
 │   └── [x] Pipe detection via select() (no blocking on empty stdin)
 │
 ├── Data Transfer (Rust → Python)
 │   ├── [x] Arrow IPC serialization (RecordBatch → bytes → pyarrow.ipc.open_stream)
-│   ├── [x] Rust-native JSON (serde_json, bypasses Arrow+pyarrow for --json paths)
+│   ├── [x] Rust-native JSON (serde_json, bypasses Arrow+pyarrow for --format=json paths)
 │   ├── [x] Rust-native filtered/sorted output (kind, ext, size, sort, limit — all in Rust)
 │   ├── [x] Zero-copy to Polars (polars.from_arrow)
 │   ├── [x] DuckDB in-process SQL on Arrow tables

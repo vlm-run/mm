@@ -39,7 +39,7 @@ video     7      1.6 GB     0      595
 ### Filter to a single kind (JSON)
 
 ```bash
-$ mm wc ~/data/domains --kind document --json
+$ mm wc ~/data/domains --kind document --format json
 ```
 
 ```json
@@ -142,7 +142,7 @@ height    uint32        Pixel height (images from header, videos via ffprobe)   
 ### Find images sorted by size
 
 ```bash
-$ mm find ~/data/domains --kind image --sort size --desc --limit 10
+$ mm find ~/data/domains --kind image --sort size --reverse --limit 10
 ```
 
 ```
@@ -161,7 +161,7 @@ construction/construction-plan-tables.jpg
 ### Find large documents (>10MB)
 
 ```bash
-$ mm find ~/data/domains --kind document --min-size 10mb --sort size --desc
+$ mm find ~/data/domains --kind document --min-size 10mb --sort size --reverse
 ```
 
 ```
@@ -178,7 +178,7 @@ healthcare-codegen-reports/longevity_intake_form_scanned.pdf
 ### Find PNGs (JSON output)
 
 ```bash
-$ mm find ~/data/domains --kind image --ext .png --limit 5 --json
+$ mm find ~/data/domains --kind image --ext .png --limit 5 --format json
 ```
 
 ```json
@@ -200,7 +200,7 @@ $ mm find ~/data/domains --kind image --ext .png --limit 5 --json
 ### Find videos sorted by size
 
 ```bash
-$ mm find ~/data/domains --kind video --sort size --desc --limit 5
+$ mm find ~/data/domains --kind video --sort size --reverse --limit 5
 ```
 
 ```
@@ -432,5 +432,5 @@ mm find ~/data/domains --kind document --min-size 10mb | wc -l
 mm find ~/data/domains --kind image | mm find ~/data/domains
 
 # Get JSON metadata for videos, pipe to jq
-mm find ~/data/domains --kind video --json | jq '.[].name'
+mm find ~/data/domains --kind video --format json | jq '.[].name'
 ```
