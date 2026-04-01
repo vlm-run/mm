@@ -1,5 +1,5 @@
 ---
-name: mm-cli-skill
+name: mm-skill
 description: >
   Use the mm CLI to index, explore, query, and extract content from multi-modal directories
   containing images, videos, PDFs, code, and other files. Triggers: exploring a directory's contents,
@@ -34,7 +34,7 @@ Always use `--json` for machine-readable output when parsing results programmati
 2. Use `mm wc <dir> --by-kind` to estimate token counts for LLM context budgeting.
 3. Use `mm ls <dir> --schema` to see available columns before writing SQL.
 4. Explore with `find`, `ls`, `sql`, `grep`, `cat` as needed.
-5. Use `cat -l 2` for LLM-powered descriptions (auto-generates mosaics for video).
+5. Use `mm cat -l 2` for LLM-powered descriptions (auto-generates mosaics for video).
 
 ## find — locate files
 
@@ -162,22 +162,32 @@ mm sql "SELECT CASE WHEN size<100*1024 THEN '<100KB' WHEN size<1e6 THEN '100KB-1
 mm sql "SELECT name, ROUND(size/1024.0,1) as kb FROM files WHERE name LIKE '%invoice%'" --dir <dir>
 
 # JSON output
-mm sql "SELECT * FROM files WHERE kind='document'" --dir <dir> --json
+mm sql "SELECT * FROM files WHERE kind='document'" --dir <dir> --format json
 ```
 
 ~270-500ms (DuckDB overhead).
 
-## Output modes
+## Output formats
 
 - **TTY**: Rich formatted tables/panels (human-friendly).
 - **Piped / non-TTY**: plain TSV/text or one-path-per-line (machine-readable, no ANSI codes).
-- **`--json`**: JSON output. Always use this when parsing results programmatically.
+- **`--format json`**: JSON output. Always use this when parsing results programmatically.
 
 ## Pipe composability
 
 ```bash
 mm find <dir> --kind image | mm ls <dir>        # find images, pipe to ls
 mm find <dir> --kind document --min-size 10mb | wc -l  # count large PDFs
+```
+
+## config — extraction mode settings
+
+```bash
+mm config show                                                    # show extraction mode settings
+mm config init                                                    # create config with default profile
+mm config init --force                                            # overwrite existing config
+mm config set mode.fast.whisper_model tiny
+mm config set mode.accurate.beam_size 5
 ```
 
 ## profile — LLM provider management
@@ -192,17 +202,7 @@ mm profile use openrouter                                      # switch active p
 mm profile remove openrouter                                   # remove (cannot remove active or 'default')
 ```
 
-## config — extraction mode settings
-
-```bash
-mm config show                                                    # show extraction mode settings
-mm config init                                                    # create config with default profile
-mm config init --force                                            # overwrite existing config
-mm config set mode.fast.whisper_model tiny
-mm config set mode.accurate.beam_size 5
-```
-
-Active profile resolved as: `--profile` flag > `MM_PROFILE` env > `active_profile` in config file > `"default"`.
+> Active profile resolved as: `--profile` flag > `MM_PROFILE` env > `active_profile` in config file > `"default"`.
 
 Per-command profile selection:
 
@@ -211,15 +211,23 @@ mm --profile openrouter cat photo.png -l 2       # one-off override
 MM_PROFILE=openrouter mm cat photo.png -l 2      # env override
 ```
 
+## Processing Levels
+
+| Level | What | Speed | How |
+|-------|------|-------|-----|
+| L0 | File metadata (path, size, kind, ext, timestamps, dimensions) | ~60ms / 700 files | Rust `stat()` + extension classification + image headers |
+| L1 | Content extraction (text from PDF, image hash/EXIF, video metadata) | <100ms/file | pypdfium2 (PDF), Rust mmap (images), mp4parse/matroska (video) |
+| L2 | Semantic understanding (captions, descriptions) | Varies | LLM API via active profile |
+
 ## Tips
 
 - All L0 commands (`find`, `ls`, `wc` with `--json`) run in ~60ms via the Rust fast path.
 - `sql` is slower (~300ms) because it uses DuckDB/pyarrow.
 - Start with `ls --tree --depth 1` then `wc --by-kind` for the fastest directory overview.
-- Use `--json` when you need to parse output programmatically.
+- Use `--format json` when you need to parse output programmatically.
 - `find` returns paths only when piped; `ls` returns full metadata rows.
 - `sql` is the most powerful command — any DuckDB-compatible SQL works against the `files` table.
-- For PDFs, `cat` extracts text at L1; if empty, the PDF is scanned images.
+- For PDFs, `cat` extracts text at L1; if empty, the PDF is scanned for images.
 - For videos, `cat -l 2` auto-generates keyframe mosaics and sends to LLM for description.
 - L2 uses the `openai` Python SDK via the active profile. Sends `think=false` and `reasoning_effort="none"` with temperature 0.1.
 - Size filters accept human units: `1kb`, `5mb`, `1gb`.
