@@ -311,15 +311,17 @@ def _file_kind(path: Path) -> str:
 
 def _extract(path: Path, opts: _CatOpts) -> str:
     """Dispatch extraction based on (file_kind, level)."""
-    if opts.level == 0:
-        return path.read_text(errors="replace")
-
     kind = _file_kind(path)
+
+    if opts.level == 0:
+        if kind in ("video", "audio", "image"):
+            return _l1(path, kind, no_cache=opts.no_cache)
+        return path.read_text(errors="replace")
 
     if opts.level >= 2:
         return _l2_cached(path, kind, opts)
 
-    return _l1(path, kind)
+    return _l1(path, kind, no_cache=opts.no_cache)
 
 
 def _l2_cached(path: Path, kind: str, opts: _CatOpts) -> str:
@@ -382,7 +384,24 @@ def _l2_cached(path: Path, kind: str, opts: _CatOpts) -> str:
 # ---------------------------------------------------------------------------
 
 
-def _l1(path: Path, kind: str) -> str:
+def _l1(path: Path, kind: str, *, no_cache: bool = False) -> str:
+    from mm import cache
+
+    # L1 results depend on exact file content, not visual similarity.
+    content_hash = cache.get_content_hash(path, use_phash=False)
+    if not no_cache and content_hash:
+        cached = cache.get_l1(content_hash)
+        if cached is not None:
+            return cached
+
+    result = _l1_uncached(path, kind)
+    if content_hash and result and not result.startswith("["):
+        cache.put_l1(content_hash, result)
+
+    return result
+
+
+def _l1_uncached(path: Path, kind: str) -> str:
     if kind == "image":
         return _l1_image(path)
     if kind == "video":
@@ -474,21 +493,26 @@ def _l1_audio(path: Path) -> str:
 
 
 def _l1_document(path: Path) -> str:
-    """Extract document content. Uses docling if available, falls back to pypdfium2 for PDFs."""
+    """Extract document content.
+
+    PDFs: uses pypdfium2 directly (fast, no heavy dependencies).
+    DOCX/PPTX: uses docling if available.
+    """
+    ext = path.suffix.lower()
+    if ext == ".pdf":
+        return _l1_pdf(path)
+
+    # Non-PDF documents: use docling if available
     from mm.docling_extract import convert_to_markdown, docling_available
 
     if docling_available():
         result = convert_to_markdown(path)
         return result.markdown
 
-    # Fallback: pypdfium2 for PDFs only
-    ext = path.suffix.lower()
-    if ext == ".pdf":
-        return _l1_pdf_fallback(path)
     return f"[docling not installed — pip install mm[extract] for {ext} support]"
 
 
-def _l1_pdf_fallback(path: Path) -> str:
+def _l1_pdf(path: Path) -> str:
     """Fallback PDF text extraction via pypdfium2."""
     try:
         import pypdfium2 as pdfium
@@ -1039,6 +1063,8 @@ def _display_rich(
             )
         )
     elif kind in ("video", "audio"):
+        content_width = max((len(line) for line in content.splitlines()), default=0)
+        min_width = max(content_width + 4, len(subtitle.plain) + 10)
         output_console.print(
             Panel(
                 safe_content,
@@ -1046,6 +1072,7 @@ def _display_rich(
                 title_align="left",
                 subtitle=subtitle,
                 expand=False,
+                width=min_width,
                 border_style="magenta",
                 box=box.ROUNDED,
             )
