@@ -25,7 +25,7 @@ File-type behaviour:
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING, Annotated, Optional
+from typing import TYPE_CHECKING, Annotated, Callable, Optional
 
 import typer
 
@@ -384,32 +384,32 @@ def _l2_cached(path: Path, kind: str, opts: _CatOpts) -> str:
 # ---------------------------------------------------------------------------
 
 
-def _l1(path: Path, kind: str, *, no_cache: bool = False) -> str:
+def _use_l1_cache(func: Callable[[Path], str], path: Path, no_cache=False) -> str:
     from mm import cache
 
     # L1 results depend on exact file content, not visual similarity.
     content_hash = cache.get_content_hash(path, use_phash=False)
     if not no_cache and content_hash:
-        cached = cache.get_l1(content_hash)
-        if cached is not None:
+        if (cached := cache.get_l1(content_hash)) and cached is not None:
             return cached
 
-    result = _l1_uncached(path, kind)
-    if content_hash and result and not result.startswith("["):
+    result = func(path)
+    # Cache successful extractions (skip error placeholders)
+    if content_hash and result:
         cache.put_l1(content_hash, result)
 
     return result
 
 
-def _l1_uncached(path: Path, kind: str) -> str:
+def _l1(path: Path, kind: str, *, no_cache: bool = False) -> str:
     if kind == "image":
         return _l1_image(path)
     if kind == "video":
-        return _l1_video(path)
+        return _use_l1_cache(_l1_video, path, no_cache)
     if kind == "audio":
         return _l1_audio(path)
     if kind == "document":
-        return _l1_document(path)
+        return _use_l1_cache(_l1_document, path, no_cache)
     return path.read_text(errors="replace")
 
 
