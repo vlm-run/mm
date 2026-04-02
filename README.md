@@ -19,50 +19,47 @@ uv run maturin develop --release
 Six commands that mirror familiar Unix tools but operate on multi-modal semantics.
 Indexing is implicit — every command auto-builds a metadata index on first use.
 
-L0 commands (`find`, `ls`, `wc` with `--json`) run in **~60ms** on 700 files via the Rust fast path.
+L0 commands (`find`, `wc` with `--format json`) run in **~60ms** on 700 files via the Rust fast path.
 
 ### Quick start
 
 ```bash
-mm ls ~/data --tree --depth 1         # directory overview with sizes
-mm wc ~/data --by-kind                # file/byte/token counts by kind
-mm find ~/data --kind image --json    # find all images (60ms)
-mm cat paper.pdf                      # extract text from PDF
-mm cat video.mp4                      # video metadata (<100ms)
-mm cat video.mp4 -l 2                 # keyframe mosaic → LLM description
-mm cat photo.png -l 2 --detail        # LLM caption (~80 words)
+mm find ~/data --tree --depth 1              # directory overview with sizes
+mm wc ~/data --by-kind                       # file/byte/token counts by kind
+mm find ~/data --kind image --format json    # find all images (60ms)
+mm cat paper.pdf                             # extract text from PDF
+mm cat video.mp4                             # video metadata (<100ms)
+mm cat video.mp4 -l 2                        # keyframe mosaic → LLM description
+mm cat photo.png -l 2 --detail               # LLM caption (~80 words)
 ```
 
 ### Command reference
 
 | Command | Purpose | Key flags |
 |---------|---------|-----------|
-| `find` | Locate files by kind/ext/size | `--kind`, `--ext`, `--min-size`, `--max-size`, `--sort`, `--limit`, `--json` |
-| `ls` | Tabular listing, tree view, schema | `--sort`, `--columns`, `--kind`, `--tree`, `--depth`, `--schema`, `--json` |
-| `cat` | Content extraction (auto-detected by file type) | `--level 0/1/2`, `-n`, `--detail`, `--mosaic-*`, `--audio-*`, `--json` |
-| `grep` | Content search across files | `--kind`, `--ext`, `-C`, `--count`, `--json` |
-| `sql` | DuckDB SQL on file index | `--dir`, `--json` |
-| `wc` | Count files, bytes, lines, tokens | `--kind`, `--by-kind`, `--json` |
+| `find`  | Find/list files, tree view, schema | `--kind`, `--ext`, `--min-size`, `--max-size`, `--sort`, `--reverse`, `--columns`, `--tree`, `--depth`, `--schema`, `--limit`, `--format` |
+| `cat` | Content extraction (auto-detected by file type) | `--level 0/1/2`, `-n`, `--detail`, `--mosaic-*`, `--audio-*`, `--format` |
+| `grep` | Content search across files | `--kind`, `--ext`, `-C`, `--count`, `--format` |
+| `sql` | DuckDB SQL on file index | `--dir`, `--format` |
+| `wc` | Count files, bytes, lines, tokens | `--kind`, `--by-kind`, `--format` |
+| `bench` | Benchmark suite (L0/L1/L2) | `--format`, `--rounds` |
+| `config` | Extraction mode settings | `show`, `init`, `set` |
 | `profile` | Manage LLM provider profiles | `list`, `add`, `update`, `use`, `remove` |
 
-### find — locate files
+### find — locate/list, tree, and schema
 
 ```bash
-mm find ~/data --kind image                    # all images
-mm find ~/data --kind video --sort size --desc  # videos by size
-mm find ~/data --ext .pdf --min-size 10mb       # large PDFs
-mm find ~/data --kind image --limit 5 --json    # JSON output
-```
+mm find ~/data --kind image                               # all images
+mm find ~/data --kind video --sort size --reverse         # videos by size
+mm find ~/data --ext .pdf --min-size 10mb                 # large PDFs
+mm find ~/data --kind image --limit 5 --format json       # JSON output
 
-### ls — list, tree, and schema
-
-```bash
-mm ls ~/data --sort size --desc --limit 20     # tabular listing
-mm ls ~/data --kind document --columns name,size,ext
-mm ls ~/data --tree --depth 2                  # hierarchical tree view
-mm ls ~/data --tree --kind video               # tree filtered to videos
-mm ls ~/data --schema                          # column names, types, descriptions
-mm ls ~/data --json                            # full metadata JSON
+mm find ~/data --sort size --reverse --limit 20        # tabular listing
+mm find ~/data --kind document --columns name,size,ext
+mm find ~/data --tree --depth 2                        # hierarchical tree view
+mm find ~/data --tree --kind video                     # tree filtered to videos
+mm find ~/data --schema                                # column names, types, descriptions
+mm find ~/data --format json                           # full metadata JSON
 ```
 
 ### cat — content extraction
@@ -82,7 +79,7 @@ mm cat photo.png -l 2 --detail                 # LLM description (~80 words)
 
 ```bash
 mm wc ~/data --by-kind
-mm wc ~/data --by-kind --json
+mm wc ~/data --by-kind --format json
 ```
 
 ### grep — content search
@@ -96,7 +93,7 @@ mm grep "invoice" ~/data --count               # match counts per file
 ### sql — query the index
 
 ```bash
-mm ls ~/data --schema                          # see available columns
+mm find ~/data --schema                          # see available columns
 mm sql "SELECT kind, COUNT(*) as n, ROUND(SUM(size)/1e6,1) as mb \
   FROM files GROUP BY kind ORDER BY mb DESC" --dir ~/data
 ```
@@ -105,7 +102,7 @@ mm sql "SELECT kind, COUNT(*) as n, ROUND(SUM(size)/1e6,1) as mb \
 
 - **TTY**: Rich formatted tables/panels
 - **Piped**: plain TSV/text (machine-readable, no ANSI)
-- **`--json`**: JSON output on any command that supports it
+- **`--format json`**: JSON output on any command that supports it
 
 ## Python API
 
@@ -149,8 +146,8 @@ Benchmarked on Apple Silicon (M-series), 702 files (7.2GB):
 | Operation | Latency |
 |-----------|---------|
 | L0 scan (702 files) | 8ms |
-| CLI cold start (`find --json`) | 60ms |
-| CLI cold start (`ls --schema --json`) | 109ms |
+| CLI cold start (`find --format json`) | 60ms |
+| CLI cold start (`find --schema --format json`) | 109ms |
 | CLI cold start (`sql`) | 300ms |
 | L1 code extraction | ~52ms |
 | L1 image extraction | ~61ms |
@@ -165,7 +162,7 @@ Benchmarked on Apple Silicon (M-series), 702 files (7.2GB):
 Rust (mm-core)                   Python (mm)
 ┌─────────────────────┐             ┌─────────────────────┐
 │ ignore (parallel     │  serde_json │ Typer CLI           │
-│   dir walk + stat)  │────────────>│   find/ls/wc        │
+│   dir walk + stat)  │────────────>│   find/wc        │
 │ rayon parallelism   │  (fast path)│   (60ms, no pyarrow)│
 │ Arrow RecordBatch   │             │                     │
 │ Parquet I/O         │  Arrow IPC  │ Context class       │

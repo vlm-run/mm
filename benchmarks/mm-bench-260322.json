@@ -1,1 +1,475 @@
-{"directory": "/Users/sudeep/data/mmbench-mini", "files": 47, "total_bytes": 1127349491, "rounds": 3, "warmup": 1, "results": [{"name": "vlmctx find .", "group": "L0", "mean_ms": 3.82, "std_ms": 0.77, "min_ms": 3.34, "max_ms": 4.71, "median_ms": 3.41, "files_per_sec": 12296, "mb_per_sec": 281274.3, "bits_per_sec": 2359500111973, "bits_per_sec_str": "2359.50 Gbps", "prompt_tokens": 0, "completion_tokens": 0, "timings_ms": [4.71, 3.34, 3.41]}, {"name": "vlmctx ls .", "group": "L0", "mean_ms": 3.37, "std_ms": 0.12, "min_ms": 3.25, "max_ms": 3.49, "median_ms": 3.36, "files_per_sec": 13961, "mb_per_sec": 319364.9, "bits_per_sec": 2679026932271, "bits_per_sec_str": "2679.03 Gbps", "prompt_tokens": 0, "completion_tokens": 0, "timings_ms": [3.49, 3.25, 3.36]}, {"name": "vlmctx wc .", "group": "L0", "mean_ms": 3.45, "std_ms": 1.26, "min_ms": 2.21, "max_ms": 4.73, "median_ms": 3.4, "files_per_sec": 13640, "mb_per_sec": 312024.6, "bits_per_sec": 2617452105550, "bits_per_sec_str": "2617.45 Gbps", "prompt_tokens": 0, "completion_tokens": 0, "timings_ms": [4.73, 3.4, 2.21]}, {"name": "vlmctx sql 'GROUP BY kind'", "group": "L0", "mean_ms": 11.1, "std_ms": 0.94, "min_ms": 10.4, "max_ms": 12.18, "median_ms": 10.73, "files_per_sec": 4233, "mb_per_sec": 96839.6, "bits_per_sec": 812349620466, "bits_per_sec_str": "812.35 Gbps", "prompt_tokens": 0, "completion_tokens": 0, "timings_ms": [10.73, 10.4, 12.18]}, {"name": "vlmctx sql 'SUM(size) BY kind'", "group": "L0", "mean_ms": 10.81, "std_ms": 0.34, "min_ms": 10.58, "max_ms": 11.2, "median_ms": 10.65, "files_per_sec": 4347, "mb_per_sec": 99448.1, "bits_per_sec": 834231509431, "bits_per_sec_str": "834.23 Gbps", "prompt_tokens": 0, "completion_tokens": 0, "timings_ms": [11.2, 10.58, 10.65]}, {"name": "vlmctx sql 'TOP 10 largest'", "group": "L0", "mean_ms": 10.42, "std_ms": 0.23, "min_ms": 10.2, "max_ms": 10.66, "median_ms": 10.39, "files_per_sec": 4512, "mb_per_sec": 103203.1, "bits_per_sec": 865730551883, "bits_per_sec_str": "865.73 Gbps", "prompt_tokens": 0, "completion_tokens": 0, "timings_ms": [10.66, 10.39, 10.2]}, {"name": "vlmctx sql 'GROUP BY ext'", "group": "L0", "mean_ms": 11.06, "std_ms": 0.43, "min_ms": 10.58, "max_ms": 11.39, "median_ms": 11.22, "files_per_sec": 4248, "mb_per_sec": 97174.3, "bits_per_sec": 815157070014, "bits_per_sec_str": "815.16 Gbps", "prompt_tokens": 0, "completion_tokens": 0, "timings_ms": [11.22, 11.39, 10.58]}, {"name": "vlmctx find --kind image", "group": "L0", "mean_ms": 3.56, "std_ms": 0.08, "min_ms": 3.48, "max_ms": 3.64, "median_ms": 3.56, "files_per_sec": 13191, "mb_per_sec": 301751.6, "bits_per_sec": 2531275888839, "bits_per_sec_str": "2531.28 Gbps", "prompt_tokens": 0, "completion_tokens": 0, "timings_ms": [3.48, 3.56, 3.64]}, {"name": "vlmctx find --kind audio", "group": "L0", "mean_ms": 4.35, "std_ms": 0.94, "min_ms": 3.26, "max_ms": 4.9, "median_ms": 4.87, "files_per_sec": 10817, "mb_per_sec": 247429.1, "bits_per_sec": 2075586106016, "bits_per_sec_str": "2075.59 Gbps", "prompt_tokens": 0, "completion_tokens": 0, "timings_ms": [4.87, 4.9, 3.26]}, {"name": "vlmctx find --kind document", "group": "L0", "mean_ms": 3.8, "std_ms": 0.73, "min_ms": 3.38, "max_ms": 4.65, "median_ms": 3.38, "files_per_sec": 12362, "mb_per_sec": 282780.7, "bits_per_sec": 2372136335565, "bits_per_sec_str": "2372.14 Gbps", "prompt_tokens": 0, "completion_tokens": 0, "timings_ms": [3.38, 3.38, 4.65]}, {"name": "vlmctx cat <code> (x20)", "group": "L1", "skipped": true, "skip_reason": "no code files"}, {"name": "vlmctx cat <image>", "group": "L1", "mean_ms": 0.1, "std_ms": 0.04, "min_ms": 0.07, "max_ms": 0.14, "median_ms": 0.08, "files_per_sec": 10049, "mb_per_sec": 1430.1, "bits_per_sec": 11996864763, "bits_per_sec_str": "12.00 Gbps", "prompt_tokens": 0, "completion_tokens": 0, "timings_ms": [0.14, 0.08, 0.07]}, {"name": "vlmctx cat <image> (x20)", "group": "L1", "mean_ms": 2.31, "std_ms": 0.15, "min_ms": 2.21, "max_ms": 2.48, "median_ms": 2.23, "files_per_sec": 8671, "mb_per_sec": 3979.4, "bits_per_sec": 33381777381, "bits_per_sec_str": "33.38 Gbps", "prompt_tokens": 0, "completion_tokens": 0, "timings_ms": [2.48, 2.21, 2.23]}, {"name": "vlmctx cat <audio>", "group": "L1", "mean_ms": 43.56, "std_ms": 2.32, "min_ms": 40.9, "max_ms": 45.21, "median_ms": 44.56, "files_per_sec": 23, "mb_per_sec": 9656.6, "bits_per_sec": 81005844225, "bits_per_sec_str": "81.01 Gbps", "prompt_tokens": 0, "completion_tokens": 0, "timings_ms": [40.9, 44.56, 45.21]}, {"name": "vlmctx cat <video>", "group": "L1", "mean_ms": 649.38, "std_ms": 2.62, "min_ms": 646.4, "max_ms": 651.31, "median_ms": 650.44, "files_per_sec": 2, "mb_per_sec": 750.5, "bits_per_sec": 6295739862, "bits_per_sec_str": "6.30 Gbps", "prompt_tokens": 0, "completion_tokens": 0, "timings_ms": [646.4, 650.44, 651.31]}, {"name": "vlmctx cat <pdf>", "group": "L1", "mean_ms": 62.34, "std_ms": 2.57, "min_ms": 59.71, "max_ms": 64.84, "median_ms": 62.47, "files_per_sec": 16, "mb_per_sec": 23.8, "bits_per_sec": 199553283, "bits_per_sec_str": "199.55 Mbps", "prompt_tokens": 0, "completion_tokens": 0, "timings_ms": [62.47, 59.71, 64.84]}, {"name": "vlmctx cat <pdf> (x10)", "group": "L1", "mean_ms": 694.95, "std_ms": 3.1, "min_ms": 691.77, "max_ms": 697.96, "median_ms": 695.11, "files_per_sec": 14, "mb_per_sec": 20.8, "bits_per_sec": 174369933, "bits_per_sec_str": "174.37 Mbps", "prompt_tokens": 0, "completion_tokens": 0, "timings_ms": [691.77, 695.11, 697.96]}, {"name": "vlmctx grep /pattern/", "group": "L1", "mean_ms": 256.9, "std_ms": 1.47, "min_ms": 255.68, "max_ms": 258.53, "median_ms": 256.47, "files_per_sec": 54, "mb_per_sec": 57.7, "bits_per_sec": 483606617, "bits_per_sec_str": "483.61 Mbps", "prompt_tokens": 0, "completion_tokens": 0, "timings_ms": [256.47, 255.68, 258.53]}, {"name": "vlmctx cat <image> -l2 --mode fast", "group": "L2", "mean_ms": 1095.13, "std_ms": 79.71, "min_ms": 1026.88, "max_ms": 1182.74, "median_ms": 1075.78, "files_per_sec": 1, "mb_per_sec": 0.1, "bits_per_sec": 1090146, "bits_per_sec_str": "1.09 Mbps", "prompt_tokens": 2032, "completion_tokens": 68, "timings_ms": [1075.78, 1182.74, 1026.88]}, {"name": "vlmctx cat <image> -l2 --mode accurate", "group": "L2", "mean_ms": 9628.16, "std_ms": 10363.19, "min_ms": 3274.66, "max_ms": 21586.73, "median_ms": 4023.09, "files_per_sec": 0, "mb_per_sec": 0.0, "bits_per_sec": 123996, "bits_per_sec_str": "124.00 kbps", "prompt_tokens": 2065, "completion_tokens": 359, "timings_ms": [3274.66, 21586.73, 4023.09]}, {"name": "vlmctx cat <video> -l2 --mode fast", "group": "L2", "mean_ms": 29952.56, "std_ms": 286.46, "min_ms": 29672.96, "max_ms": 30245.43, "median_ms": 29939.28, "files_per_sec": 0, "mb_per_sec": 16.3, "bits_per_sec": 136493989, "bits_per_sec_str": "136.49 Mbps", "prompt_tokens": 1329, "completion_tokens": 178, "timings_ms": [29939.28, 29672.96, 30245.43]}, {"name": "vlmctx cat <video> -l2 --mode accurate", "group": "L2", "mean_ms": 281840.17, "std_ms": 11022.11, "min_ms": 269820.63, "max_ms": 291474.14, "median_ms": 284225.74, "files_per_sec": 0, "mb_per_sec": 1.7, "bits_per_sec": 14505896, "bits_per_sec_str": "14.51 Mbps", "prompt_tokens": 9953, "completion_tokens": 2048, "timings_ms": [269820.63, 284225.74, 291474.14]}, {"name": "vlmctx cat <audio> -l2 --mode fast", "group": "L2", "mean_ms": 14545.54, "std_ms": 577.1, "min_ms": 14188.06, "max_ms": 15211.31, "median_ms": 14237.24, "files_per_sec": 0, "mb_per_sec": 28.9, "bits_per_sec": 242591401, "bits_per_sec_str": "242.59 Mbps", "prompt_tokens": 854, "completion_tokens": 109, "timings_ms": [15211.31, 14188.06, 14237.24]}, {"name": "vlmctx cat <audio> -l2 --mode accurate", "group": "L2", "mean_ms": 79001.05, "std_ms": 5691.79, "min_ms": 74238.37, "max_ms": 85304.66, "median_ms": 77460.14, "files_per_sec": 0, "mb_per_sec": 5.3, "bits_per_sec": 44665511, "bits_per_sec_str": "44.67 Mbps", "prompt_tokens": 3401, "completion_tokens": 231, "timings_ms": [85304.66, 77460.14, 74238.37]}]}
+{
+    "directory": "/Users/sudeep/data/mmbench-mini",
+    "files": 47,
+    "total_bytes": 1127349491,
+    "rounds": 3,
+    "warmup": 1,
+    "results": [
+        {
+            "name": "vlmctx find .",
+            "group": "L0",
+            "mean_ms": 3.82,
+            "std_ms": 0.77,
+            "min_ms": 3.34,
+            "max_ms": 4.71,
+            "median_ms": 3.41,
+            "files_per_sec": 12296,
+            "mb_per_sec": 281274.3,
+            "bits_per_sec": 2359500111973,
+            "bits_per_sec_str": "2359.50 Gbps",
+            "prompt_tokens": 0,
+            "completion_tokens": 0,
+            "timings_ms": [
+                4.71,
+                3.34,
+                3.41
+            ]
+        },
+        {
+            "name": "vlmctx find .",
+            "group": "L0",
+            "mean_ms": 3.37,
+            "std_ms": 0.12,
+            "min_ms": 3.25,
+            "max_ms": 3.49,
+            "median_ms": 3.36,
+            "files_per_sec": 13961,
+            "mb_per_sec": 319364.9,
+            "bits_per_sec": 2679026932271,
+            "bits_per_sec_str": "2679.03 Gbps",
+            "prompt_tokens": 0,
+            "completion_tokens": 0,
+            "timings_ms": [
+                3.49,
+                3.25,
+                3.36
+            ]
+        },
+        {
+            "name": "vlmctx wc .",
+            "group": "L0",
+            "mean_ms": 3.45,
+            "std_ms": 1.26,
+            "min_ms": 2.21,
+            "max_ms": 4.73,
+            "median_ms": 3.4,
+            "files_per_sec": 13640,
+            "mb_per_sec": 312024.6,
+            "bits_per_sec": 2617452105550,
+            "bits_per_sec_str": "2617.45 Gbps",
+            "prompt_tokens": 0,
+            "completion_tokens": 0,
+            "timings_ms": [
+                4.73,
+                3.4,
+                2.21
+            ]
+        },
+        {
+            "name": "vlmctx sql 'GROUP BY kind'",
+            "group": "L0",
+            "mean_ms": 11.1,
+            "std_ms": 0.94,
+            "min_ms": 10.4,
+            "max_ms": 12.18,
+            "median_ms": 10.73,
+            "files_per_sec": 4233,
+            "mb_per_sec": 96839.6,
+            "bits_per_sec": 812349620466,
+            "bits_per_sec_str": "812.35 Gbps",
+            "prompt_tokens": 0,
+            "completion_tokens": 0,
+            "timings_ms": [
+                10.73,
+                10.4,
+                12.18
+            ]
+        },
+        {
+            "name": "vlmctx sql 'SUM(size) BY kind'",
+            "group": "L0",
+            "mean_ms": 10.81,
+            "std_ms": 0.34,
+            "min_ms": 10.58,
+            "max_ms": 11.2,
+            "median_ms": 10.65,
+            "files_per_sec": 4347,
+            "mb_per_sec": 99448.1,
+            "bits_per_sec": 834231509431,
+            "bits_per_sec_str": "834.23 Gbps",
+            "prompt_tokens": 0,
+            "completion_tokens": 0,
+            "timings_ms": [
+                11.2,
+                10.58,
+                10.65
+            ]
+        },
+        {
+            "name": "vlmctx sql 'TOP 10 largest'",
+            "group": "L0",
+            "mean_ms": 10.42,
+            "std_ms": 0.23,
+            "min_ms": 10.2,
+            "max_ms": 10.66,
+            "median_ms": 10.39,
+            "files_per_sec": 4512,
+            "mb_per_sec": 103203.1,
+            "bits_per_sec": 865730551883,
+            "bits_per_sec_str": "865.73 Gbps",
+            "prompt_tokens": 0,
+            "completion_tokens": 0,
+            "timings_ms": [
+                10.66,
+                10.39,
+                10.2
+            ]
+        },
+        {
+            "name": "vlmctx sql 'GROUP BY ext'",
+            "group": "L0",
+            "mean_ms": 11.06,
+            "std_ms": 0.43,
+            "min_ms": 10.58,
+            "max_ms": 11.39,
+            "median_ms": 11.22,
+            "files_per_sec": 4248,
+            "mb_per_sec": 97174.3,
+            "bits_per_sec": 815157070014,
+            "bits_per_sec_str": "815.16 Gbps",
+            "prompt_tokens": 0,
+            "completion_tokens": 0,
+            "timings_ms": [
+                11.22,
+                11.39,
+                10.58
+            ]
+        },
+        {
+            "name": "vlmctx find --kind image",
+            "group": "L0",
+            "mean_ms": 3.56,
+            "std_ms": 0.08,
+            "min_ms": 3.48,
+            "max_ms": 3.64,
+            "median_ms": 3.56,
+            "files_per_sec": 13191,
+            "mb_per_sec": 301751.6,
+            "bits_per_sec": 2531275888839,
+            "bits_per_sec_str": "2531.28 Gbps",
+            "prompt_tokens": 0,
+            "completion_tokens": 0,
+            "timings_ms": [
+                3.48,
+                3.56,
+                3.64
+            ]
+        },
+        {
+            "name": "vlmctx find --kind audio",
+            "group": "L0",
+            "mean_ms": 4.35,
+            "std_ms": 0.94,
+            "min_ms": 3.26,
+            "max_ms": 4.9,
+            "median_ms": 4.87,
+            "files_per_sec": 10817,
+            "mb_per_sec": 247429.1,
+            "bits_per_sec": 2075586106016,
+            "bits_per_sec_str": "2075.59 Gbps",
+            "prompt_tokens": 0,
+            "completion_tokens": 0,
+            "timings_ms": [
+                4.87,
+                4.9,
+                3.26
+            ]
+        },
+        {
+            "name": "vlmctx find --kind document",
+            "group": "L0",
+            "mean_ms": 3.8,
+            "std_ms": 0.73,
+            "min_ms": 3.38,
+            "max_ms": 4.65,
+            "median_ms": 3.38,
+            "files_per_sec": 12362,
+            "mb_per_sec": 282780.7,
+            "bits_per_sec": 2372136335565,
+            "bits_per_sec_str": "2372.14 Gbps",
+            "prompt_tokens": 0,
+            "completion_tokens": 0,
+            "timings_ms": [
+                3.38,
+                3.38,
+                4.65
+            ]
+        },
+        {
+            "name": "vlmctx cat <code> (x20)",
+            "group": "L1",
+            "skipped": true,
+            "skip_reason": "no code files"
+        },
+        {
+            "name": "vlmctx cat <image>",
+            "group": "L1",
+            "mean_ms": 0.1,
+            "std_ms": 0.04,
+            "min_ms": 0.07,
+            "max_ms": 0.14,
+            "median_ms": 0.08,
+            "files_per_sec": 10049,
+            "mb_per_sec": 1430.1,
+            "bits_per_sec": 11996864763,
+            "bits_per_sec_str": "12.00 Gbps",
+            "prompt_tokens": 0,
+            "completion_tokens": 0,
+            "timings_ms": [
+                0.14,
+                0.08,
+                0.07
+            ]
+        },
+        {
+            "name": "vlmctx cat <image> (x20)",
+            "group": "L1",
+            "mean_ms": 2.31,
+            "std_ms": 0.15,
+            "min_ms": 2.21,
+            "max_ms": 2.48,
+            "median_ms": 2.23,
+            "files_per_sec": 8671,
+            "mb_per_sec": 3979.4,
+            "bits_per_sec": 33381777381,
+            "bits_per_sec_str": "33.38 Gbps",
+            "prompt_tokens": 0,
+            "completion_tokens": 0,
+            "timings_ms": [
+                2.48,
+                2.21,
+                2.23
+            ]
+        },
+        {
+            "name": "vlmctx cat <audio>",
+            "group": "L1",
+            "mean_ms": 43.56,
+            "std_ms": 2.32,
+            "min_ms": 40.9,
+            "max_ms": 45.21,
+            "median_ms": 44.56,
+            "files_per_sec": 23,
+            "mb_per_sec": 9656.6,
+            "bits_per_sec": 81005844225,
+            "bits_per_sec_str": "81.01 Gbps",
+            "prompt_tokens": 0,
+            "completion_tokens": 0,
+            "timings_ms": [
+                40.9,
+                44.56,
+                45.21
+            ]
+        },
+        {
+            "name": "vlmctx cat <video>",
+            "group": "L1",
+            "mean_ms": 649.38,
+            "std_ms": 2.62,
+            "min_ms": 646.4,
+            "max_ms": 651.31,
+            "median_ms": 650.44,
+            "files_per_sec": 2,
+            "mb_per_sec": 750.5,
+            "bits_per_sec": 6295739862,
+            "bits_per_sec_str": "6.30 Gbps",
+            "prompt_tokens": 0,
+            "completion_tokens": 0,
+            "timings_ms": [
+                646.4,
+                650.44,
+                651.31
+            ]
+        },
+        {
+            "name": "vlmctx cat <pdf>",
+            "group": "L1",
+            "mean_ms": 62.34,
+            "std_ms": 2.57,
+            "min_ms": 59.71,
+            "max_ms": 64.84,
+            "median_ms": 62.47,
+            "files_per_sec": 16,
+            "mb_per_sec": 23.8,
+            "bits_per_sec": 199553283,
+            "bits_per_sec_str": "199.55 Mbps",
+            "prompt_tokens": 0,
+            "completion_tokens": 0,
+            "timings_ms": [
+                62.47,
+                59.71,
+                64.84
+            ]
+        },
+        {
+            "name": "vlmctx cat <pdf> (x10)",
+            "group": "L1",
+            "mean_ms": 694.95,
+            "std_ms": 3.1,
+            "min_ms": 691.77,
+            "max_ms": 697.96,
+            "median_ms": 695.11,
+            "files_per_sec": 14,
+            "mb_per_sec": 20.8,
+            "bits_per_sec": 174369933,
+            "bits_per_sec_str": "174.37 Mbps",
+            "prompt_tokens": 0,
+            "completion_tokens": 0,
+            "timings_ms": [
+                691.77,
+                695.11,
+                697.96
+            ]
+        },
+        {
+            "name": "vlmctx grep /pattern/",
+            "group": "L1",
+            "mean_ms": 256.9,
+            "std_ms": 1.47,
+            "min_ms": 255.68,
+            "max_ms": 258.53,
+            "median_ms": 256.47,
+            "files_per_sec": 54,
+            "mb_per_sec": 57.7,
+            "bits_per_sec": 483606617,
+            "bits_per_sec_str": "483.61 Mbps",
+            "prompt_tokens": 0,
+            "completion_tokens": 0,
+            "timings_ms": [
+                256.47,
+                255.68,
+                258.53
+            ]
+        },
+        {
+            "name": "vlmctx cat <image> -l2 --mode fast",
+            "group": "L2",
+            "mean_ms": 1095.13,
+            "std_ms": 79.71,
+            "min_ms": 1026.88,
+            "max_ms": 1182.74,
+            "median_ms": 1075.78,
+            "files_per_sec": 1,
+            "mb_per_sec": 0.1,
+            "bits_per_sec": 1090146,
+            "bits_per_sec_str": "1.09 Mbps",
+            "prompt_tokens": 2032,
+            "completion_tokens": 68,
+            "timings_ms": [
+                1075.78,
+                1182.74,
+                1026.88
+            ]
+        },
+        {
+            "name": "vlmctx cat <image> -l2 --mode accurate",
+            "group": "L2",
+            "mean_ms": 9628.16,
+            "std_ms": 10363.19,
+            "min_ms": 3274.66,
+            "max_ms": 21586.73,
+            "median_ms": 4023.09,
+            "files_per_sec": 0,
+            "mb_per_sec": 0.0,
+            "bits_per_sec": 123996,
+            "bits_per_sec_str": "124.00 kbps",
+            "prompt_tokens": 2065,
+            "completion_tokens": 359,
+            "timings_ms": [
+                3274.66,
+                21586.73,
+                4023.09
+            ]
+        },
+        {
+            "name": "vlmctx cat <video> -l2 --mode fast",
+            "group": "L2",
+            "mean_ms": 29952.56,
+            "std_ms": 286.46,
+            "min_ms": 29672.96,
+            "max_ms": 30245.43,
+            "median_ms": 29939.28,
+            "files_per_sec": 0,
+            "mb_per_sec": 16.3,
+            "bits_per_sec": 136493989,
+            "bits_per_sec_str": "136.49 Mbps",
+            "prompt_tokens": 1329,
+            "completion_tokens": 178,
+            "timings_ms": [
+                29939.28,
+                29672.96,
+                30245.43
+            ]
+        },
+        {
+            "name": "vlmctx cat <video> -l2 --mode accurate",
+            "group": "L2",
+            "mean_ms": 281840.17,
+            "std_ms": 11022.11,
+            "min_ms": 269820.63,
+            "max_ms": 291474.14,
+            "median_ms": 284225.74,
+            "files_per_sec": 0,
+            "mb_per_sec": 1.7,
+            "bits_per_sec": 14505896,
+            "bits_per_sec_str": "14.51 Mbps",
+            "prompt_tokens": 9953,
+            "completion_tokens": 2048,
+            "timings_ms": [
+                269820.63,
+                284225.74,
+                291474.14
+            ]
+        },
+        {
+            "name": "vlmctx cat <audio> -l2 --mode fast",
+            "group": "L2",
+            "mean_ms": 14545.54,
+            "std_ms": 577.1,
+            "min_ms": 14188.06,
+            "max_ms": 15211.31,
+            "median_ms": 14237.24,
+            "files_per_sec": 0,
+            "mb_per_sec": 28.9,
+            "bits_per_sec": 242591401,
+            "bits_per_sec_str": "242.59 Mbps",
+            "prompt_tokens": 854,
+            "completion_tokens": 109,
+            "timings_ms": [
+                15211.31,
+                14188.06,
+                14237.24
+            ]
+        },
+        {
+            "name": "vlmctx cat <audio> -l2 --mode accurate",
+            "group": "L2",
+            "mean_ms": 79001.05,
+            "std_ms": 5691.79,
+            "min_ms": 74238.37,
+            "max_ms": 85304.66,
+            "median_ms": 77460.14,
+            "files_per_sec": 0,
+            "mb_per_sec": 5.3,
+            "bits_per_sec": 44665511,
+            "bits_per_sec_str": "44.67 Mbps",
+            "prompt_tokens": 3401,
+            "completion_tokens": 231,
+            "timings_ms": [
+                85304.66,
+                77460.14,
+                74238.37
+            ]
+        }
+    ]
+}
