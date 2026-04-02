@@ -407,7 +407,7 @@ def _l1(path: Path, kind: str, *, no_cache=False) -> str:
     if kind == "audio":
         return _l1_audio(path)
     if kind == "document":
-        if path.suffix.lower() in (".docx", ".pdf"):
+        if path.suffix.lower() in (".docx", ".pdf", ".pptx"):
             return _use_l1_cache(_l1_document, path, no_cache)
         return _l1_document(path)
     return path.read_text(errors="replace")
