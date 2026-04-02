@@ -85,33 +85,25 @@ def convert_to_markdown(doc_path: str | Path) -> DoclingResult:
 
     t0 = time.monotonic()
 
-    try:
-        with _suppress_stderr():
-            from docling.document_converter import DocumentConverter
+    with _suppress_stderr():
+        from docling.document_converter import DocumentConverter
 
-            converter = DocumentConverter()
-            result = converter.convert(str(doc_path))
-        markdown = result.document.export_to_markdown()
+        converter = DocumentConverter()
+        result = converter.convert(str(doc_path))
+    markdown = result.document.export_to_markdown()
 
-        # Estimate page count from the result
-        pages = 0
-        if hasattr(result.document, "pages") and result.document.pages:
-            pages = len(result.document.pages)
+    # Estimate page count from the result
+    pages = 0
+    if hasattr(result.document, "pages") and result.document.pages:
+        pages = len(result.document.pages)
 
-        elapsed = (time.monotonic() - t0) * 1000
+    elapsed = (time.monotonic() - t0) * 1000
 
-        return DoclingResult(
-            markdown=markdown,
-            pages=pages,
-            elapsed_ms=round(elapsed, 1),
-        )
-    except Exception:
-        # Docling conversion failed — fall back to pypdfium2 for PDFs.
-        if ext == ".pdf":
-            return _fallback_pdf(doc_path)
-        return DoclingResult(
-            markdown=f"[docling conversion failed for {ext} — try reinstalling: pip install mm[extract]]",
-        )
+    return DoclingResult(
+        markdown=markdown,
+        pages=pages,
+        elapsed_ms=round(elapsed, 1),
+    )
 
 
 def _fallback_pdf(path: Path) -> DoclingResult:

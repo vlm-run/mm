@@ -312,7 +312,6 @@ def _file_kind(path: Path) -> str:
 def _extract(path: Path, opts: _CatOpts) -> str:
     """Dispatch extraction based on (file_kind, level)."""
     kind = _file_kind(path)
-
     if opts.level == 0:
         if kind in ("video", "audio", "image"):
             return _l1(path, kind, no_cache=opts.no_cache)
