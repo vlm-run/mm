@@ -312,11 +312,6 @@ def _file_kind(path: Path) -> str:
 def _extract(path: Path, opts: _CatOpts) -> str:
     """Dispatch extraction based on (file_kind, level)."""
     kind = _file_kind(path)
-    if opts.level == 0:
-        if kind in ("video", "audio", "image"):
-            return _l1(path, kind, no_cache=opts.no_cache)
-        return path.read_text(errors="replace")
-
     if opts.level >= 2:
         return _l2_cached(path, kind, opts)
 
@@ -407,15 +402,28 @@ def _l1(path: Path, kind: str, *, no_cache=False) -> str:
     if kind == "audio":
         return _l1_audio(path)
     if kind == "document":
-        if path.suffix.lower() in (".docx", ".pdf", ".pptx"):
-            return _use_l1_cache(_l1_document, path, no_cache)
-        return _l1_document(path)
+        from mm.display import format_size
+
+        parts: list[str] = []
+        if path.suffix.lower() in DOCUMENT_EXTS:
+            content = _use_l1_cache(_l1_document, path, no_cache)
+        else:
+            content = _l1_document(path)
+
+        parts.append(f"Content:       {content}")
+        if size_str := format_size(path.stat().st_size):
+            parts.append("-----------------------")
+            parts.append(f"File Size:     {size_str}")
+
+        return "\n".join(parts)
+
     return path.read_text(errors="replace")
 
 
 def _l1_image(path: Path) -> str:
     try:
         from mm._mm import Scanner
+        from mm.display import format_size
 
         scanner = Scanner(str(path.parent))
         scanner.scan()
@@ -425,6 +433,8 @@ def _l1_image(path: Path) -> str:
             parts.append(f"Dimensions: {r.dimensions}")
         if r.magic_mime:
             parts.append(f"MIME:       {r.magic_mime}")
+        if size_str := format_size(path.stat().st_size):
+            parts.append(f"Size:       {size_str}")
         if r.content_hash:
             parts.append(f"Hash:       {r.content_hash}")
         if r.phash is not None:
@@ -446,6 +456,7 @@ def _l1_video(path: Path) -> str:
     """Metadata only — no ffmpeg, <100ms."""
     try:
         from mm._mm import Scanner
+        from mm.display import format_size
 
         scanner = Scanner(str(path.parent))
         scanner.scan()
@@ -456,6 +467,8 @@ def _l1_video(path: Path) -> str:
         if r.duration_s is not None:
             mins, secs = divmod(r.duration_s, 60)
             parts.append(f"Duration:   {int(mins)}m {secs:.1f}s ({r.duration_s:.2f}s)")
+        if size_str := format_size(path.stat().st_size):
+            parts.append(f"Size:       {size_str}")
         if r.fps:
             parts.append(f"FPS:        {r.fps}")
         if r.video_codec:
@@ -475,6 +488,7 @@ def _l1_audio(path: Path) -> str:
     """Metadata only — no ffmpeg, <100ms."""
     try:
         from mm._mm import Scanner
+        from mm.display import format_size
 
         scanner = Scanner(str(path.parent))
         scanner.scan()
@@ -483,6 +497,8 @@ def _l1_audio(path: Path) -> str:
         if r.duration_s is not None:
             mins, secs = divmod(r.duration_s, 60)
             parts.append(f"Duration: {int(mins)}m {secs:.1f}s ({r.duration_s:.2f}s)")
+        if size_str := format_size(path.stat().st_size):
+            parts.append(f"Size:     {size_str}")
         if r.audio_codec:
             parts.append(f"Codec:    {r.audio_codec}")
         if r.content_hash:
