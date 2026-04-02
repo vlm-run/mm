@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1775116548539,
+  "lastUpdate": 1775162762234,
   "repoUrl": "https://github.com/vlm-run/mm",
   "entries": {
     "mm Rust Benchmarks": [
@@ -1363,6 +1363,130 @@ window.BENCHMARK_DATA = {
           {
             "name": "l1_image_extract/50",
             "value": 13672802.875,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "20521315+nwaughachukwuma@users.noreply.github.com",
+            "name": "Chukwuma Nwaugha",
+            "username": "nwaughachukwuma"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "bf683393f841d208bc3a4721827127c25e6c76fe",
+          "message": "remove 3.12 and 3.14 versions (#27)\n\n\n<!-- devin-review-badge-begin -->\n\n---\n\n<a href=\"https://app.devin.ai/review/vlm-run/mm/pull/27\"\ntarget=\"_blank\">\n  <picture>\n<source media=\"(prefers-color-scheme: dark)\"\nsrcset=\"https://static.devin.ai/assets/gh-open-in-devin-review-dark.svg?v=1\">\n<img\nsrc=\"https://static.devin.ai/assets/gh-open-in-devin-review-light.svg?v=1\"\nalt=\"Open with Devin\">\n  </picture>\n</a>\n<!-- devin-review-badge-end -->",
+          "timestamp": "2026-04-02T21:35:02+01:00",
+          "tree_id": "5cf018bde92d84480c43b1fdf2b087ad95b5951e",
+          "url": "https://github.com/vlm-run/mm/commit/bf683393f841d208bc3a4721827127c25e6c76fe"
+        },
+        "date": 1775162761460,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "hash_strategies/fast_fingerprint/10MB",
+            "value": 24289.775837925554,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_strategies/fast_fingerprint/1KB",
+            "value": 12828.263990757527,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_strategies/fast_fingerprint/1MB",
+            "value": 22874.197952361756,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_strategies/fast_fingerprint/64KB",
+            "value": 17437.93006822612,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_strategies/full_hash_mmap/10MB",
+            "value": 476169.37853107345,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_strategies/full_hash_mmap/1KB",
+            "value": 12279.887431412895,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_strategies/full_hash_mmap/1MB",
+            "value": 84726.58975806451,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_strategies/full_hash_mmap/64KB",
+            "value": 17458.927462887987,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_strategies/full_hash_read/10MB",
+            "value": 910830.8628127696,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_strategies/full_hash_read/1KB",
+            "value": 6001.801404521404,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_strategies/full_hash_read/1MB",
+            "value": 96351.83941738056,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_strategies/full_hash_read/64KB",
+            "value": 11082.456596243112,
+            "unit": "ns"
+          },
+          {
+            "name": "l0_index/1000",
+            "value": 4585923.5,
+            "unit": "ns"
+          },
+          {
+            "name": "l0_index/10000",
+            "value": 35638496.75,
+            "unit": "ns"
+          },
+          {
+            "name": "l0_walk/1000",
+            "value": 4460338.333333333,
+            "unit": "ns"
+          },
+          {
+            "name": "l0_walk/10000",
+            "value": 34039132.5,
+            "unit": "ns"
+          },
+          {
+            "name": "l1_code_extract/10",
+            "value": 60210.2890625,
+            "unit": "ns"
+          },
+          {
+            "name": "l1_code_extract/100",
+            "value": 629476.9398550724,
+            "unit": "ns"
+          },
+          {
+            "name": "l1_image_extract/10",
+            "value": 2216334.5652173916,
+            "unit": "ns"
+          },
+          {
+            "name": "l1_image_extract/50",
+            "value": 14464026.125,
             "unit": "ns"
           }
         ]
