@@ -306,8 +306,7 @@ fn content_hash(path: String) -> PyResult<Option<String>> {
 #[pyfunction]
 fn perceptual_hash(path: String) -> PyResult<Option<u64>> {
     let p = std::path::Path::new(&path);
-    let data = std::fs::read(p)
-        .map_err(|e| pyo3::exceptions::PyIOError::new_err(e.to_string()))?;
+    let data = std::fs::read(p).map_err(|e| pyo3::exceptions::PyIOError::new_err(e.to_string()))?;
     Ok(mm_core::hash::phash(&data))
 }
 

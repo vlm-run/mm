@@ -39,7 +39,8 @@ def get_l1(content_hash: str) -> str | None:
     try:
         with path.open("r", encoding="utf-8") as f:
             data = json.load(f)
-        return data.get("content")
+        content: str | None = data.get("content")
+        return content
     except Exception:
         return None
 

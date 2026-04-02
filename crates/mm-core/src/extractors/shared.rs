@@ -44,13 +44,13 @@ pub fn extract_symphonia(path: &Path) -> Result<L1Record, ExtractError> {
         record.audio_codec = Some(symphonia_codec_name(params.codec));
 
         // Duration
-        if let Some(n_frames) = params.n_frames {
-            if let Some(tb) = params.time_base {
-                let time = tb.calc_time(n_frames);
-                let secs = time.seconds as f64 + time.frac;
-                if secs > 0.0 {
-                    record.duration_s = Some(secs);
-                }
+        if let Some(n_frames) = params.n_frames
+            && let Some(tb) = params.time_base
+        {
+            let time = tb.calc_time(n_frames);
+            let secs = time.seconds as f64 + time.frac;
+            if secs > 0.0 {
+                record.duration_s = Some(secs);
             }
         }
 
@@ -146,13 +146,12 @@ pub fn extract_mp4(path: &Path) -> Result<L1Record, ExtractError> {
                 }
 
                 // For audio-only files (no video track), get duration from audio track
-                if record.duration_s.is_none() {
-                    if let (Some(dur), Some(ts)) = (track.duration, track.timescale)
-                        && ts.0 > 0
-                    {
-                        let secs = dur.0 as f64 / ts.0 as f64;
-                        record.duration_s = Some(secs);
-                    }
+                if record.duration_s.is_none()
+                    && let (Some(dur), Some(ts)) = (track.duration, track.timescale)
+                    && ts.0 > 0
+                {
+                    let secs = dur.0 as f64 / ts.0 as f64;
+                    record.duration_s = Some(secs);
                 }
             }
             _ => {}

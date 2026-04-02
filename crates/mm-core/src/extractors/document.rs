@@ -13,9 +13,10 @@ impl ContentExtractor for DocumentExtractor {
     fn extract(&self, path: &Path) -> Result<L1Record, ExtractError> {
         let content_hash = hash::full_hash_mmap(path).map(|h| format!("{:016x}", h));
 
-        let mut record = L1Record::default();
-        record.content_hash = content_hash;
-        Ok(record)
+        Ok(L1Record {
+            content_hash,
+            ..Default::default()
+        })
     }
 }
 
