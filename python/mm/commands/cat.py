@@ -396,7 +396,6 @@ def _use_l1_cache(func: Callable[[Path], str], path: Path, no_cache=False) -> st
     # Cache successful extractions (skip error placeholders)
     if content_hash and result and not result.startswith("["):
         cache.put_l1(content_hash, result)
-
     return result
 
 

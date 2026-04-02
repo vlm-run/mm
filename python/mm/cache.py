@@ -1,10 +1,9 @@
 """Result cache for mm.
 
-L1 cache: expensive content extractions (PDF text, document conversion) keyed
-by content hash. Cache location: ~/.cache/mm/l1/
+L1 cache: expensive content extractions (PDF+DOCX text, document conversion) keyed
+by content hash.
 
-L2 cache: LLM-generated results (captions, descriptions, transcriptions) keyed
-by content hash + profile name + model + extraction parameters.
+L2 cache: keyed by content hash + profile name + model + extraction parameters.
 Cache location: ~/.cache/mm/l2/
 """
 
@@ -150,8 +149,7 @@ def get_content_hash(path: Path, *, use_phash: bool = True) -> str | None:
     Args:
         path: File to hash.
         use_phash: If True (default), images use perceptual hash so visually
-            identical files share cache entries. Set False for L1 caching
-            where results depend on exact file content.
+            identical files share cache entries.
     """
     try:
         from mm._mm import content_hash
