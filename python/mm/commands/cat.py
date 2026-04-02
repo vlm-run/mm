@@ -394,13 +394,13 @@ def _use_l1_cache(func: Callable[[Path], str], path: Path, no_cache=False) -> st
 
     result = func(path)
     # Cache successful extractions (skip error placeholders)
-    if content_hash and result:
+    if content_hash and result and not result.startswith("["):
         cache.put_l1(content_hash, result)
 
     return result
 
 
-def _l1(path: Path, kind: str, *, no_cache: bool = False) -> str:
+def _l1(path: Path, kind: str, *, no_cache=False) -> str:
     if kind == "image":
         return _l1_image(path)
     if kind == "video":
@@ -408,7 +408,9 @@ def _l1(path: Path, kind: str, *, no_cache: bool = False) -> str:
     if kind == "audio":
         return _l1_audio(path)
     if kind == "document":
-        return _use_l1_cache(_l1_document, path, no_cache)
+        if path.suffix.lower() in (".docx", ".pdf"):
+            return _use_l1_cache(_l1_document, path, no_cache)
+        return _l1_document(path)
     return path.read_text(errors="replace")
 
 
