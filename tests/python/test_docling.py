@@ -2,14 +2,11 @@
 
 from __future__ import annotations
 
-from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 from mm.docling_extract import (
-    DoclingResult,
     SUPPORTED_EXTS,
+    DoclingResult,
     convert_to_markdown,
 )
 
@@ -84,6 +81,7 @@ class TestConvertToMarkdown:
         ):
             # Need to patch at import time
             import mm.docling_extract as de
+
             original = de.convert_to_markdown
 
             # Directly test the mock path
