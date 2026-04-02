@@ -2,9 +2,26 @@
 
 from __future__ import annotations
 
+import signal
+import sys
 from typing import Annotated, Optional
 
 import typer
+
+# Restore default SIGPIPE handling so piping to head/tail/etc. doesn't
+# produce "BrokenPipeError: [Errno 32] Broken pipe" on stderr.
+if hasattr(signal, "SIGPIPE"):
+    signal.signal(signal.SIGPIPE, signal.SIG_DFL)
+else:
+    # Windows: no SIGPIPE, suppress BrokenPipeError at exit instead.
+    _orig_excepthook = sys.excepthook
+
+    def _quiet_broken_pipe(exc_type, exc_val, exc_tb):  # type: ignore[no-untyped-def]
+        if exc_type is BrokenPipeError:
+            sys.exit(141)
+        _orig_excepthook(exc_type, exc_val, exc_tb)
+
+    sys.excepthook = _quiet_broken_pipe
 
 from mm.commands import bench, cat, find, grep, sql, wc
 from mm.commands.config import config_app

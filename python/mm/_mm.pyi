@@ -64,3 +64,11 @@ class L1Result:
 def hamming_distance(a: int, b: int) -> int:
     """Hamming distance between two perceptual hashes (0 = identical, <8 = near-duplicate)."""
     ...
+
+def content_hash(path: str) -> str | None:
+    """Fast xxh3 content hash of a file via mmap. Returns 16-char hex string."""
+    ...
+
+def perceptual_hash(path: str) -> int | None:
+    """Perceptual hash (pHash) of an image file. Returns 64-bit hash."""
+    ...
