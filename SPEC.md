@@ -87,7 +87,7 @@ mm
 │   ├── [x] info() — Rich summary panel
 │   └── [x] save() — persist to .mm/index.parquet
 │
-├── CLI Commands (5 + config, Typer, Unix-philosophy composability)
+├── CLI Commands (6 + config+profile, Typer, Unix-philosophy composability)
 │   ├── [x] find     — find/list files, tree view (--tree), schema (--schema), columns (--columns)
 │   ├── [x] cat      — auto-detected content extraction at L0/L1/L2
 │   │   ├── [x] head/tail via -n (replaces old head/tail commands)
@@ -102,18 +102,19 @@ mm
 │   ├── [x] wc       — count files, bytes, lines, estimated tokens
 │   ├── [x] config   — extraction mode settings (show, init, set)
 │   ├── [x] profile  — LLM profile management (list, add, update, use, remove; default immutable, ollama reserved)
+│   ├── [x] bench    — 24-command benchmark suite (L0×10, L1×8, L2×6) with bits/s throughput
 │   └── [ ] context  — LLM-ready context payload builder (token budgeting)
 │
 ├── Output Modes
 │   ├── [x] TTY stdout → Rich formatted tables/panels with color
 │   ├── [x] Piped stdout → plain TSV/text (machine-readable, no ANSI)
-│   ├── [x] --json flag → JSON on any command
+│   ├── [x] --format=json flag → JSON on any command
 │   ├── [x] Piped stdin → read newline-delimited paths (composability)
 │   └── [x] Pipe detection via select() (no blocking on empty stdin)
 │
 ├── Data Transfer (Rust → Python)
 │   ├── [x] Arrow IPC serialization (RecordBatch → bytes → pyarrow.ipc.open_stream)
-│   ├── [x] Rust-native JSON (serde_json, bypasses Arrow+pyarrow for --json paths)
+│   ├── [x] Rust-native JSON (serde_json, bypasses Arrow+pyarrow for --format=json paths)
 │   ├── [x] Rust-native filtered/sorted output (kind, ext, size, sort, limit — all in Rust)
 │   ├── [x] Zero-copy to Polars (polars.from_arrow)
 │   ├── [x] DuckDB in-process SQL on Arrow tables

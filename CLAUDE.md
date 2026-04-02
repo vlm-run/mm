@@ -92,6 +92,7 @@ mm/
 │       ├── grep.py             # mm grep
 │       ├── sql.py              # mm sql (DuckDB)
 │       ├── wc.py               # mm wc (--by-kind)
+│       ├── bench.py            # mm bench (L0/L1/L2 benchmark suite)
 │       ├── config.py           # mm config (show, init, set)
 │       └── profile.py          # mm profile (list, add, update, use, remove)
 ├── tests/
@@ -140,7 +141,7 @@ mm <command> [args]
 uv run mm <command> [args]
 ```
 
-## CLI commands (7 total)
+## CLI commands (8 total)
 
 | Command   | Purpose | Key flags |
 |-----------|---------|-----------|
@@ -149,6 +150,8 @@ uv run mm <command> [args]
 | `grep`    | Content search across files | `--kind`, `--ext`, `-C` (context), `--count`, `--level`, `--format` |
 | `sql`     | DuckDB SQL on the file index | `--dir`, `--format` |
 | `wc`      | Count files, bytes, lines, estimated tokens | `--kind`, `--by-kind`, `--format` |
+| `bench`   | Benchmark suite (L0/L1/L2) | `--format`, `--rounds` |
+| `config`  | Extraction mode settings | `show`, `init`, `set` |
 | `profile` | Manage LLM provider profiles | `list`, `add`, `update`, `use`, `remove`, `--format` |
 
 ### Consolidated commands

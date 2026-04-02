@@ -9,7 +9,6 @@
 | Command | Latency | Throughput |
 |---|---|---|
 | find . | 3.8ms | 2.36 Tbps |
-| ls . | 3.4ms | 2.68 Tbps |
 | wc . | 3.5ms | 2.62 Tbps |
 | sql GROUP BY kind | 11.1ms | 812 Gbps |
 | sql SUM(size) BY kind | 10.8ms | 834 Gbps |

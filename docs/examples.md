@@ -11,9 +11,11 @@ When stdout is piped, mm auto-selects `tsv`. Override with `--format json` etc.
 
 ---
 
-## 1. `find` — Multimodal-aware file discovery
+## 1. `find` — Structured listing with multimodal metadata | Multimodal-aware file discovery 
 
-Traditional `find` knows nothing about file semantics. mm `find` classifies files by **kind** (image, video, document, code, audio, data, config, text) and filters by size, extension, and kind — all in ~5ms.
+Traditional `find` knows nothing about file semantics. mm `find` classifies files by **kind** (image, video, document, code, audio, data, config, text) and filters by size, extension, and kind — all in ~5ms. 
+
+> mm `find` exposes a full Arrow schema: dimensions, kind, depth, MIME — queryable columns that LLMs can reason over.
 
 ### Example 1: Find all images
 
@@ -111,14 +113,10 @@ GPS:        37.7749,-122.4194
 
 ---
 
-## 2. `ls` — Structured listing with multimodal metadata
-
-Traditional `ls` shows names and permissions. mm `ls` exposes a full Arrow schema: dimensions, kind, depth, MIME — queryable columns that LLMs can reason over.
-
-### Example 1: Default tabular listing
+### Example 6: Default tabular listing
 
 ```bash
-$ mm ls ~/project/assets
+$ mm find ~/project/assets
 ```
 
 **TTY output:**
@@ -150,10 +148,10 @@ data.parquet	data	13002547	parquet
 recording.mp3	audio	9122816	mp3
 ```
 
-### Example 2: Extended columns with image dimensions
+### Example 7: Extended columns with image dimensions
 
 ```bash
-$ mm ls ~/photos --columns name,kind,size,width,height --sort size
+$ mm find ~/photos --columns name,kind,size,width,height --sort size
 ```
 
 **Piped:**
@@ -166,10 +164,10 @@ thumbnail.jpg	image	24576	320	240
 icon.png	image	4096	64	64
 ```
 
-### Example 3: Tree view
+### Example 8: Tree view
 
 ```bash
-$ mm ls ~/project --tree --depth 2
+$ mm find ~/project --tree --depth 2
 ```
 
 **TTY output:**
@@ -212,10 +210,10 @@ project  (47 files, 82.3 MB)
 └── pyproject.toml
 ```
 
-### Example 4: Schema introspection
+### Example 9: Schema introspection
 
 ```bash
-$ mm ls ~/data --schema
+$ mm find ~/data --schema
 ```
 
 **Piped:**
@@ -234,10 +232,10 @@ width	int32	Image/video width in px (e.g. 1920)
 height	int32	Image/video height in px (e.g. 1080)
 ```
 
-### Example 5: JSON tree (for programmatic consumption)
+### Example 10: JSON tree (for programmatic consumption)
 
 ```bash
-$ mm ls ~/project --tree --depth 1 --format json
+$ mm find ~/project --tree --depth 1 --format json
 ```
 
 ```json
@@ -972,8 +970,8 @@ mm's TSV piped output is designed to be read directly by DuckDB via `/dev/stdin`
 ### Pipe the full index into DuckDB
 
 ```bash
-# mm ls pipes TSV; DuckDB reads it as a table instantly.
-mm ls ~/data --columns name,kind,size,ext \
+# mm find pipes TSV; DuckDB reads it as a table instantly.
+mm find ~/data --columns name,kind,size,ext \
   | duckdb -c "
       SELECT kind, COUNT(*) AS n, SUM(size) AS bytes
       FROM read_csv('/dev/stdin', delim='\t', header=true)
@@ -994,7 +992,7 @@ mm ls ~/data --columns name,kind,size,ext \
 ### Window functions: rank files within each kind
 
 ```bash
-mm ls ~/data --columns name,kind,size \
+mm find ~/data --columns name,kind,size \
   | duckdb -c "
       WITH ranked AS (
         SELECT *, ROW_NUMBER() OVER (PARTITION BY kind ORDER BY size DESC) AS rn
@@ -1009,7 +1007,7 @@ This gives you the 3 largest files per kind — a query that would be awkward in
 
 ```bash
 # Compare file counts against a budget CSV
-mm ls ~/data --columns kind,size \
+mm find ~/data --columns kind,size \
   | duckdb -c "
       WITH files AS (
         SELECT * FROM read_csv('/dev/stdin', delim='\t', header=true)
@@ -1026,7 +1024,7 @@ mm ls ~/data --columns kind,size \
 
 ```bash
 # One-liner: index → Parquet (DuckDB does the heavy lifting)
-mm ls ~/data \
+mm find ~/data \
   | duckdb -c "
       COPY (SELECT * FROM read_csv('/dev/stdin', delim='\t', header=true))
       TO 'index.parquet' (FORMAT PARQUET)"
@@ -1055,7 +1053,7 @@ The core pattern: **mm extracts context, `llm` reasons over it.**
 ### Describe what's in a directory
 
 ```bash
-mm ls ~/project --tree --depth 2 | llm -s "Describe this project structure"
+mm find ~/project --tree --depth 2 | llm -s "Describe this project structure"
 ```
 
 The tree output is compact enough to fit in a single prompt, and self-describing enough that the LLM can reason about the project layout without any extra context.
@@ -1126,7 +1124,7 @@ mm sql "SELECT kind, COUNT(*) as n, SUM(size) as bytes FROM files GROUP BY kind 
 llm -s 'You are a project analyst. Describe the structure, purpose, and notable files in this directory listing.' --save describe-dir
 
 # Use it anytime
-mm ls ~/any-project --tree | llm -t describe-dir
+mm find ~/any-project --tree | llm -t describe-dir
 ```
 
 ### Batch-caption images with llm + vision model
@@ -1205,7 +1203,7 @@ Currently, TSV output happens automatically when stdout is piped. But Simon's to
 
 ```bash
 # Explicit TSV even in a terminal (for copy-paste into spreadsheets)
-mm ls ~/data --tsv | pbcopy
+mm find ~/data --tsv | pbcopy
 
 # Pair with --format json for structured output
 mm find ~/data --kind image --tsv > manifest.tsv
@@ -1362,13 +1360,13 @@ mm's `--format json` output pairs naturally with the structured data toolkit:
 
 ```bash
 # jq: filter JSON output
-mm ls ~/data --format json | jq '[.[] | select(.kind=="image")] | length'
+mm find ~/data --format json | jq '[.[] | select(.kind=="image")] | length'
 
 # miller (mlr): column transforms on TSV
-mm ls ~/data | mlr --tsvlite --from - then sort-by -nr size then head -n 10
+mm find ~/data | mlr --tsvlite --from - then sort-by -nr size then head -n 10
 
 # xsv: fast CSV operations
-mm ls ~/data | xsv sort -s size -R -d '\t' | xsv slice -l 10 -d '\t'
+mm find ~/data | xsv sort -s size -R -d '\t' | xsv slice -l 10 -d '\t'
 ```
 
 ---
@@ -1472,7 +1470,7 @@ def extract_psd(path: Path) -> dict:
 Today, if you point an LLM at a design directory:
 
 ```
-$ mm ls ~/design
+$ mm find ~/design
 name              kind    size      ext
 mockup-v3.psd     other   48.2 MB   psd
 logo-final.ai     other   12.1 MB   ai
@@ -1483,7 +1481,7 @@ scene.blend       other   156 MB    blend
 The LLM sees `other` four times — zero signal. With binary format parsing:
 
 ```
-$ mm ls ~/design
+$ mm find ~/design
 name              kind    size      width   height  ext
 mockup-v3.psd     image   48.2 MB   4096    2160    psd
 logo-final.ai     image   12.1 MB   1024    1024    ai
