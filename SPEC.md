@@ -44,17 +44,19 @@ mm
 │   │   ├── [x] Audio extraction at Nx speed (atempo, chained for >2x)
 │   │   ├── [x] Mono 16kHz PCM downmix (Whisper-optimized)
 │   │   ├── [x] Configurable output format (wav, mp3, flac)
-│   │   └── [ ] Pure-Rust audio metadata via symphonia (mp3, flac, ogg)
+│   │   └── [x] Pure-Rust audio metadata via symphonia (mp3, wav, flac, aac, ogg, opus)
 │   ├── Documents (PDF)
 │   │   ├── [x] Text extraction via pypdfium2 (Python CLI side)
 │   │   ├── [x] Page-by-page extraction
 │   │   ├── [x] PDF page mosaic grids (pypdfium2 render → Pillow tile, ~10ms/page)
 │   │   ├── [x] Configurable tile grid, thumbnail width, max pages, JPEG quality
-│   │   └── [~] Rust-side PDF extraction (currently returns raw bytes, not text)
+│   │   └── [x] Rust-side content hash for documents (xxh3 via DocumentExtractor)
 │   └── Hashing
 │       ├── [x] fast_fingerprint — partial hash (first+last 64KB + size), ~33x faster on 10MB
 │       ├── [x] full_hash_mmap — full xxh3 via mmap, zero-copy
-│       └── [x] full_hash_read — streaming fallback for special files
+│       ├── [x] full_hash_read — streaming fallback for special files
+│       ├── [x] content_hash() — direct Python-callable xxh3 hash (no Scanner overhead)
+│       └── [x] perceptual_hash() — direct Python-callable pHash for images
 │
 ├── L2 — Semantic Understanding (LLM-powered)
 │   ├── [x] OpenAI Python SDK (openai>=1.0, any compatible API)
@@ -96,7 +98,8 @@ mm
 │   │   ├── [x] audio L2: ffmpeg 2x + whisper → LLM transcript summary
 │   │   ├── [x] image L2: fast (10w+5tags) / accurate (200w+10tags+objects)
 │   │   ├── [x] document L2: docling PDF/DOCX/PPTX → markdown → LLM
-│   │   └── [x] --mosaic-*, --audio-* namespaced flags
+│   │   ├── [x] --mosaic-*, --audio-* namespaced flags
+│   │   ├── [x] --no-cache flag bypasses L2 caches
 │   ├── [x] grep     — content search with context lines (like rg)
 │   ├── [x] sql      — DuckDB SQL on file index
 │   ├── [x] wc       — count files, bytes, lines, estimated tokens
@@ -110,7 +113,8 @@ mm
 │   ├── [x] Piped stdout → plain TSV/text (machine-readable, no ANSI)
 │   ├── [x] --format=json flag → JSON on any command
 │   ├── [x] Piped stdin → read newline-delimited paths (composability)
-│   └── [x] Pipe detection via select() (no blocking on empty stdin)
+│   ├── [x] Pipe detection via select() (no blocking on empty stdin)
+│   └── [x] SIGPIPE handling (no BrokenPipeError when piping to head/tail)
 │
 ├── Data Transfer (Rust → Python)
 │   ├── [x] Arrow IPC serialization (RecordBatch → bytes → pyarrow.ipc.open_stream)
@@ -142,7 +146,7 @@ mm
 │   └── L2 image (accurate): ~2.6s (qwen3.5:0.8b, Ollama local)
 │
 ├── Tests
-│   ├── Rust: 65 tests (meta, walk, detect, schema, table, code, image, video, hash)
+│   ├── Rust: 75 tests (meta, walk, detect, schema, table, code, image, video, audio, document, hash)
 │   ├── Python: 271 tests (CLI, Context API, pipe, L0/L1/L2, config, whisper, scenes, docling, bench)
 │   ├── Criterion benchmarks: l0_walk, l0_index, hash_strategies, l1_extract
 │   ├── mm bench: 24 commands (L0×10, L1×8, L2×6) with bits/s throughput

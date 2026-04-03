@@ -7,7 +7,9 @@ use pyo3::types::PyBytes;
 
 use mm_core::extract::ContentExtractor;
 use mm_core::extract::L1Record;
-use mm_core::extractors::{CodeExtractor, ImageExtractor, VideoExtractor};
+use mm_core::extractors::{
+    AudioExtractor, CodeExtractor, DocumentExtractor, ImageExtractor, VideoExtractor,
+};
 use mm_core::meta::FileKind;
 
 #[pyclass]
@@ -176,7 +178,9 @@ impl Scanner {
                 CodeExtractor.extract(&self.root.join(&p))
             }
             FileKind::Image => ImageExtractor.extract(&self.root.join(&p)),
-            FileKind::Video | FileKind::Audio => VideoExtractor.extract(&self.root.join(&p)),
+            FileKind::Video => VideoExtractor.extract(&self.root.join(&p)),
+            FileKind::Audio => AudioExtractor.extract(&self.root.join(&p)),
+            FileKind::Document => DocumentExtractor.extract(&self.root.join(&p)),
             _ => Ok(L1Record::default()),
         }
         .map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(e.to_string()))?;
@@ -291,11 +295,28 @@ fn hamming_distance(a: u64, b: u64) -> u32 {
     mm_core::hamming_distance(a, b)
 }
 
+/// Fast xxh3 content hash of a file via mmap. Returns 16-char hex string.
+#[pyfunction]
+fn content_hash(path: String) -> PyResult<Option<String>> {
+    let p = std::path::Path::new(&path);
+    Ok(mm_core::hash::full_hash_mmap(p).map(|h| format!("{:016x}", h)))
+}
+
+/// Perceptual hash of an image file. Returns 64-bit hash as integer.
+#[pyfunction]
+fn perceptual_hash(path: String) -> PyResult<Option<u64>> {
+    let p = std::path::Path::new(&path);
+    let data = std::fs::read(p).map_err(|e| pyo3::exceptions::PyIOError::new_err(e.to_string()))?;
+    Ok(mm_core::hash::phash(&data))
+}
+
 #[pymodule]
 #[pyo3(name = "_mm")]
 fn mm_module(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<Scanner>()?;
     m.add_class::<L1Result>()?;
     m.add_function(wrap_pyfunction!(hamming_distance, m)?)?;
+    m.add_function(wrap_pyfunction!(content_hash, m)?)?;
+    m.add_function(wrap_pyfunction!(perceptual_hash, m)?)?;
     Ok(())
 }

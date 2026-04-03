@@ -25,7 +25,7 @@ File-type behaviour:
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING, Annotated, Optional
+from typing import TYPE_CHECKING, Annotated, Callable, Literal, Optional
 
 import typer
 
@@ -295,8 +295,10 @@ class _CatOpts:
 # Dispatch
 # ---------------------------------------------------------------------------
 
+FileKind = Literal["text", "image", "video", "audio", "document"]
 
-def _file_kind(path: Path) -> str:
+
+def _file_kind(path: Path) -> FileKind:
     ext = path.suffix.lower()
     if ext in IMAGE_EXTS:
         return "image"
@@ -310,31 +312,24 @@ def _file_kind(path: Path) -> str:
 
 
 def _extract(path: Path, opts: _CatOpts) -> str:
-    """Dispatch extraction based on (file_kind, level)."""
-    if opts.level == 0:
-        return path.read_text(errors="replace")
+    """Dispatch extraction based on (file_kind, level).
 
+    Uses the path.read_text(errors="replace") fallback in _l1
+    """
     kind = _file_kind(path)
-
     if opts.level >= 2:
         return _l2_cached(path, kind, opts)
 
-    return _l1(path, kind)
+    return _l1(path, kind, no_cache=opts.no_cache)
 
 
 def _l2_cached(path: Path, kind: str, opts: _CatOpts) -> str:
     """Run L2 with cache lookup/store unless --no-cache."""
-    if opts.no_cache:
-        if opts.mode is not None:
-            return _l2_modal(path, kind, opts)
-        return _l2(path, kind, opts)
-
     from mm import cache
     from mm.profile import get_profile
 
     profile = get_profile()
     content_hash = cache.get_content_hash(path)
-
     # Include video mosaic parameters in cache key for different mosaic configs.
     extra_parts: list[str] = []
     if kind == "video":
@@ -344,7 +339,7 @@ def _l2_cached(path: Path, kind: str, opts: _CatOpts) -> str:
         extra_parts.append(opts.video_mosaic_strategy)
     extra = "|".join(extra_parts)
 
-    if content_hash:
+    if not opts.no_cache and content_hash:
         cached = cache.get(
             content_hash,
             profile.name,
@@ -373,7 +368,6 @@ def _l2_cached(path: Path, kind: str, opts: _CatOpts) -> str:
             opts.detail,
             extra=extra,
         )
-
     return result
 
 
@@ -382,21 +376,37 @@ def _l2_cached(path: Path, kind: str, opts: _CatOpts) -> str:
 # ---------------------------------------------------------------------------
 
 
-def _l1(path: Path, kind: str) -> str:
+def _use_l1_cache(func: Callable[[Path], str], path: Path, no_cache=False) -> str:
+    from mm import cache
+
+    # L1 results depend on exact file content, not visual similarity.
+    content_hash = cache.get_content_hash(path, use_phash=False)
+    if not no_cache and content_hash:
+        if (cached := cache.get_l1(content_hash)) and cached is not None:
+            return cached
+
+    result = func(path)
+    if content_hash and result and not result.startswith("["):
+        cache.put_l1(content_hash, result)
+    return result
+
+
+def _l1(path: Path, kind: str, *, no_cache=False) -> str:
     if kind == "image":
         return _l1_image(path)
     if kind == "video":
-        return _l1_video(path)
+        return _use_l1_cache(_l1_video, path, no_cache)
     if kind == "audio":
         return _l1_audio(path)
     if kind == "document":
-        return _l1_document(path)
+        return _l1_document(path, no_cache=no_cache)
     return path.read_text(errors="replace")
 
 
 def _l1_image(path: Path) -> str:
     try:
         from mm._mm import Scanner
+        from mm.display import format_size
 
         scanner = Scanner(str(path.parent))
         scanner.scan()
@@ -406,6 +416,8 @@ def _l1_image(path: Path) -> str:
             parts.append(f"Dimensions: {r.dimensions}")
         if r.magic_mime:
             parts.append(f"MIME:       {r.magic_mime}")
+        if size_str := format_size(path.stat().st_size):
+            parts.append(f"Size:       {size_str}")
         if r.content_hash:
             parts.append(f"Hash:       {r.content_hash}")
         if r.phash is not None:
@@ -427,6 +439,7 @@ def _l1_video(path: Path) -> str:
     """Metadata only — no ffmpeg, <100ms."""
     try:
         from mm._mm import Scanner
+        from mm.display import format_size
 
         scanner = Scanner(str(path.parent))
         scanner.scan()
@@ -437,6 +450,8 @@ def _l1_video(path: Path) -> str:
         if r.duration_s is not None:
             mins, secs = divmod(r.duration_s, 60)
             parts.append(f"Duration:   {int(mins)}m {secs:.1f}s ({r.duration_s:.2f}s)")
+        if size_str := format_size(path.stat().st_size):
+            parts.append(f"Size:       {size_str}")
         if r.fps:
             parts.append(f"FPS:        {r.fps}")
         if r.video_codec:
@@ -456,6 +471,7 @@ def _l1_audio(path: Path) -> str:
     """Metadata only — no ffmpeg, <100ms."""
     try:
         from mm._mm import Scanner
+        from mm.display import format_size
 
         scanner = Scanner(str(path.parent))
         scanner.scan()
@@ -464,6 +480,8 @@ def _l1_audio(path: Path) -> str:
         if r.duration_s is not None:
             mins, secs = divmod(r.duration_s, 60)
             parts.append(f"Duration: {int(mins)}m {secs:.1f}s ({r.duration_s:.2f}s)")
+        if size_str := format_size(path.stat().st_size):
+            parts.append(f"Size:     {size_str}")
         if r.audio_codec:
             parts.append(f"Codec:    {r.audio_codec}")
         if r.content_hash:
@@ -473,22 +491,27 @@ def _l1_audio(path: Path) -> str:
         return f"[Audio extraction failed: {e}]"
 
 
-def _l1_document(path: Path) -> str:
-    """Extract document content. Uses docling if available, falls back to pypdfium2 for PDFs."""
-    from mm.docling_extract import convert_to_markdown, docling_available
+def _l1_document(path: Path, *, no_cache=False) -> str:
+    """Extract document content"""
 
-    if docling_available():
-        result = convert_to_markdown(path)
-        return result.markdown
+    def _handler(path: Path) -> str:
+        ext = path.suffix.lower()
+        if ext == ".pdf":
+            return _l1_pdf(path)
 
-    # Fallback: pypdfium2 for PDFs only
-    ext = path.suffix.lower()
-    if ext == ".pdf":
-        return _l1_pdf_fallback(path)
-    return f"[docling not installed — pip install mm[extract] for {ext} support]"
+        try:
+            from mm.docs_extract import extract_docx, extract_pptx
+
+            if ext == ".pptx":
+                return extract_pptx(str(path))
+            return extract_docx(str(path))
+        except Exception as e:
+            return f"[Document extraction failed for {path.name}: {e}]"
+
+    return _use_l1_cache(_handler, path, no_cache)
 
 
-def _l1_pdf_fallback(path: Path) -> str:
+def _l1_pdf(path: Path) -> str:
     """Fallback PDF text extraction via pypdfium2."""
     try:
         import pypdfium2 as pdfium
@@ -620,7 +643,7 @@ def _l2_modal(path: Path, kind: str, opts: _CatOpts) -> str:
     if kind == "audio":
         return _l2_audio_modal(path, opts, mode)
     if kind == "document":
-        # Documents use docling at L1; at L2, summarize via LLM
+        # Documents use basic extraction at L1; at L2, summarize via LLM
         from mm.llm import LlmBackend
 
         content = _l1(path, kind)
@@ -633,7 +656,7 @@ def _l2_modal(path: Path, kind: str, opts: _CatOpts) -> str:
     return LlmBackend().describe(path, content, detail=(mode == "accurate"))
 
 
-def _l2_image_modal(path: Path, mode: str) -> str:
+def _l2_image_modal(path: Path, mode: Mode) -> str:
     """Image extraction with mode-specific LLM prompts.
 
     fast:     10-word description + 5 tags
@@ -1039,6 +1062,8 @@ def _display_rich(
             )
         )
     elif kind in ("video", "audio"):
+        content_width = max((len(line) for line in content.splitlines()), default=0)
+        min_width = max(content_width + 4, len(subtitle.plain) + 10)
         output_console.print(
             Panel(
                 safe_content,
@@ -1046,6 +1071,7 @@ def _display_rich(
                 title_align="left",
                 subtitle=subtitle,
                 expand=False,
+                width=min_width,
                 border_style="magenta",
                 box=box.ROUNDED,
             )

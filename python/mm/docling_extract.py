@@ -9,9 +9,30 @@ Install: pip install mm[extract]
 
 from __future__ import annotations
 
+import contextlib
+import io
+import os
+import sys
 import time
 from dataclasses import dataclass
 from pathlib import Path
+
+
+@contextlib.contextmanager
+def _suppress_stderr():
+    """Suppress both Python-level and C-level stderr output."""
+    real_stderr = sys.stderr
+    stderr_fd = os.dup(2)
+    devnull_fd = os.open(os.devnull, os.O_WRONLY)
+    os.dup2(devnull_fd, 2)
+    os.close(devnull_fd)
+    sys.stderr = io.StringIO()
+    try:
+        yield
+    finally:
+        os.dup2(stderr_fd, 2)
+        os.close(stderr_fd)
+        sys.stderr = real_stderr
 
 
 @dataclass
@@ -27,12 +48,13 @@ SUPPORTED_EXTS = frozenset((".pdf", ".docx", ".pptx"))
 
 
 def docling_available() -> bool:
-    """Check if docling is installed."""
+    """Check if docling is installed and its dependencies are functional."""
     try:
-        import docling  # noqa: F401
+        with _suppress_stderr():
+            from docling.document_converter import DocumentConverter  # noqa: F401
 
         return True
-    except ImportError:
+    except Exception:
         return False
 
 
@@ -63,10 +85,11 @@ def convert_to_markdown(doc_path: str | Path) -> DoclingResult:
 
     t0 = time.monotonic()
 
-    from docling.document_converter import DocumentConverter
+    with _suppress_stderr():
+        from docling.document_converter import DocumentConverter
 
-    converter = DocumentConverter()
-    result = converter.convert(str(doc_path))
+        converter = DocumentConverter()
+        result = converter.convert(str(doc_path))
     markdown = result.document.export_to_markdown()
 
     # Estimate page count from the result
