@@ -142,9 +142,7 @@ _IMAGE_EXTS = frozenset((".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp", ".tif
 
 
 def get_content_hash(path: Path, *, use_phash: bool = True) -> str | None:
-    """Get a cache-suitable hash for a file.
-
-    Uses the fast Rust xxh3 mmap hash directly (no Scanner overhead).
+    """Get a cache-suitable hash for a file (no Scanner overhead).
 
     Args:
         path: File to hash.
@@ -152,24 +150,11 @@ def get_content_hash(path: Path, *, use_phash: bool = True) -> str | None:
             identical files share cache entries.
     """
     try:
-        from mm._mm import content_hash
+        from mm._mm import content_hash, perceptual_hash
 
         if use_phash and path.suffix.lower() in _IMAGE_EXTS:
-            if phash := _phash_for_image(path):
-                return phash
+            if phash := perceptual_hash(str(path)):
+                return f"phash:{phash:016x}"
         return content_hash(str(path))
     except Exception:
         return None
-
-
-def _phash_for_image(path: Path) -> str | None:
-    """Get perceptual hash for an image directly via Rust."""
-    try:
-        from mm._mm import perceptual_hash
-
-        phash = perceptual_hash(str(path))
-        if phash is not None:
-            return f"phash:{phash:016x}"
-    except Exception:
-        pass
-    return None

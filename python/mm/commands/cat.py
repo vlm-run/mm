@@ -25,7 +25,7 @@ File-type behaviour:
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING, Annotated, Callable, Optional
+from typing import TYPE_CHECKING, Annotated, Callable, Literal, Optional
 
 import typer
 
@@ -295,8 +295,10 @@ class _CatOpts:
 # Dispatch
 # ---------------------------------------------------------------------------
 
+FileKind = Literal["text", "image", "video", "audio", "document"]
 
-def _file_kind(path: Path) -> str:
+
+def _file_kind(path: Path) -> FileKind:
     ext = path.suffix.lower()
     if ext in IMAGE_EXTS:
         return "image"
@@ -310,7 +312,10 @@ def _file_kind(path: Path) -> str:
 
 
 def _extract(path: Path, opts: _CatOpts) -> str:
-    """Dispatch extraction based on (file_kind, level)."""
+    """Dispatch extraction based on (file_kind, level).
+
+    Uses the path.read_text(errors="replace") fallback in _l1
+    """
     kind = _file_kind(path)
     if opts.level >= 2:
         return _l2_cached(path, kind, opts)
@@ -388,7 +393,6 @@ def _use_l1_cache(func: Callable[[Path], str], path: Path, no_cache=False) -> st
             return cached
 
     result = func(path)
-    # Cache successful extractions (skip error placeholders)
     if content_hash and result and not result.startswith("["):
         cache.put_l1(content_hash, result)
     return result
@@ -403,7 +407,6 @@ def _l1(path: Path, kind: str, *, no_cache=False) -> str:
         return _l1_audio(path)
     if kind == "document":
         return _use_l1_cache(_l1_document, path, no_cache)
-
     return path.read_text(errors="replace")
 
 
@@ -502,7 +505,7 @@ def _l1_document(path: Path) -> str:
         return _l1_pdf(path)
 
     try:
-        from mm.docs_processing import extract_docx, extract_pptx
+        from mm.docs_extract import extract_docx, extract_pptx
 
         if ext == ".pptx":
             return extract_pptx(str(path))

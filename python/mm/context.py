@@ -176,7 +176,7 @@ class Context:
             from mm.commands.cat import _file_kind
 
             kind = _file_kind(full_path)
-            if kind in ("video", "audio", "image"):
+            if kind != "text":
                 from mm.commands.cat import _l1
 
                 return _l1(full_path, kind, no_cache=no_cache)
