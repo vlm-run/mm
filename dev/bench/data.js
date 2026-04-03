@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1775162762234,
+  "lastUpdate": 1775225588542,
   "repoUrl": "https://github.com/vlm-run/mm",
   "entries": {
     "mm Rust Benchmarks": [
@@ -1487,6 +1487,130 @@ window.BENCHMARK_DATA = {
           {
             "name": "l1_image_extract/50",
             "value": 14464026.125,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "20521315+nwaughachukwuma@users.noreply.github.com",
+            "name": "Chukwuma Nwaugha",
+            "username": "nwaughachukwuma"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "3facaecf2ee7769520f42180157e24fcff3b0f7a",
+          "message": "Eliminate docling fallback for l1 extractions (#28)\n\n- this eliminates falling back to docling for basic extraction tasks\n<!-- devin-review-badge-begin -->\n\n---\n\n<a href=\"https://app.devin.ai/review/vlm-run/mm/pull/28\"\ntarget=\"_blank\">\n  <picture>\n<source media=\"(prefers-color-scheme: dark)\"\nsrcset=\"https://static.devin.ai/assets/gh-open-in-devin-review-dark.svg?v=1\">\n<img\nsrc=\"https://static.devin.ai/assets/gh-open-in-devin-review-light.svg?v=1\"\nalt=\"Open with Devin\">\n  </picture>\n</a>\n<!-- devin-review-badge-end -->",
+          "timestamp": "2026-04-03T15:01:37+01:00",
+          "tree_id": "807d504cee25fc089c16602367e7ffe5c9a5e170",
+          "url": "https://github.com/vlm-run/mm/commit/3facaecf2ee7769520f42180157e24fcff3b0f7a"
+        },
+        "date": 1775225587062,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "hash_strategies/fast_fingerprint/10MB",
+            "value": 22112.340703747228,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_strategies/fast_fingerprint/1KB",
+            "value": 11533.617978533095,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_strategies/fast_fingerprint/1MB",
+            "value": 20896.164353649066,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_strategies/fast_fingerprint/64KB",
+            "value": 15727.483166414713,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_strategies/full_hash_mmap/10MB",
+            "value": 452258.95695970696,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_strategies/full_hash_mmap/1KB",
+            "value": 10723.123324721915,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_strategies/full_hash_mmap/1MB",
+            "value": 77783.23097906588,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_strategies/full_hash_mmap/64KB",
+            "value": 15742.23197819395,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_strategies/full_hash_read/10MB",
+            "value": 830858.0960526315,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_strategies/full_hash_read/1KB",
+            "value": 5116.8697097912445,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_strategies/full_hash_read/1MB",
+            "value": 92015.71853146853,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_strategies/full_hash_read/64KB",
+            "value": 9720.053063725489,
+            "unit": "ns"
+          },
+          {
+            "name": "l0_index/1000",
+            "value": 4460024.333333334,
+            "unit": "ns"
+          },
+          {
+            "name": "l0_index/10000",
+            "value": 34169707.25,
+            "unit": "ns"
+          },
+          {
+            "name": "l0_walk/1000",
+            "value": 4321802.916666667,
+            "unit": "ns"
+          },
+          {
+            "name": "l0_walk/10000",
+            "value": 32653734.5,
+            "unit": "ns"
+          },
+          {
+            "name": "l1_code_extract/10",
+            "value": 51481.54841954023,
+            "unit": "ns"
+          },
+          {
+            "name": "l1_code_extract/100",
+            "value": 560655.5275467776,
+            "unit": "ns"
+          },
+          {
+            "name": "l1_image_extract/10",
+            "value": 2087166.3125,
+            "unit": "ns"
+          },
+          {
+            "name": "l1_image_extract/50",
+            "value": 13506955,
             "unit": "ns"
           }
         ]
