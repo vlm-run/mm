@@ -109,8 +109,9 @@ mm cat <file>                                       # L1 extracted content
 mm cat <file> --level 0                             # raw file content
 mm cat <file> --level 2                             # LLM caption (needs configured profile)
 mm cat <file> -l 2 --detail                         # ~80-word LLM description
-mm cat <file> -l 2 --mode fast                      # fast extraction (10 words + 5 tags)
-mm cat <file> -l 2 --mode accurate                  # detailed extraction (200 words + 10 tags)
+mm cat <file> -l 2                                  # basic LLM caption (default)
+mm cat <file> -l 2 --mode fast                       # fast extraction (10 words + 5 tags)
+mm cat <file> -l 2 --mode accurate                   # detailed extraction (200 words + 10 tags)
 mm cat <file> -l 2 --no-cache                       # bypass cache, force fresh LLM call
 
 # Head / tail
@@ -273,6 +274,7 @@ mm find <dir> --kind video --format json | jq '.[].name'  # extract video names
 - L2 uses the `openai` Python SDK via the active profile. Sends `think=false` and `reasoning_effort="none"` with temperature 0.1.
 - Check available profiles with `mm profile list` and set an active profile with `mm profile use <profile_name>`
 - If `cat -l 2` returns `[LLM error: Connection error.]`, immediately retry with per-command profile override (e.g., `mm --profile gemini cat <file> -l 2 --detail`). If L2 still fails after trying all the available profiles, fallback to L0+L1 output.
+- L2 modes: (default, simple LLM captions), `--mode fast` (10 words + tags), `--mode accurate` (200 words + tags).
 - Use `--mode fast` for quick L2 summaries (10 words), `--mode accurate` for detailed ones (200 words).
 - Use `--no-cache` with `cat -l 2` to force a fresh LLM call.
 - L2 uses the `openai` Python SDK via the active profile. Temperature defaults to 0.1.

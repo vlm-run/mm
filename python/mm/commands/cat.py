@@ -25,7 +25,7 @@ File-type behaviour:
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING, Annotated, Callable, Optional
+from typing import TYPE_CHECKING, Annotated, Callable, Literal, Optional
 
 import typer
 
@@ -295,8 +295,10 @@ class _CatOpts:
 # Dispatch
 # ---------------------------------------------------------------------------
 
+FileKind = Literal["text", "image", "video", "audio", "document"]
 
-def _file_kind(path: Path) -> str:
+
+def _file_kind(path: Path) -> FileKind:
     ext = path.suffix.lower()
     if ext in IMAGE_EXTS:
         return "image"
@@ -310,7 +312,10 @@ def _file_kind(path: Path) -> str:
 
 
 def _extract(path: Path, opts: _CatOpts) -> str:
-    """Dispatch extraction based on (file_kind, level)."""
+    """Dispatch extraction based on (file_kind, level).
+
+    Uses the path.read_text(errors="replace") fallback in _l1
+    """
     kind = _file_kind(path)
     if opts.level >= 2:
         return _l2_cached(path, kind, opts)
@@ -320,17 +325,11 @@ def _extract(path: Path, opts: _CatOpts) -> str:
 
 def _l2_cached(path: Path, kind: str, opts: _CatOpts) -> str:
     """Run L2 with cache lookup/store unless --no-cache."""
-    if opts.no_cache:
-        if opts.mode is not None:
-            return _l2_modal(path, kind, opts)
-        return _l2(path, kind, opts)
-
     from mm import cache
     from mm.profile import get_profile
 
     profile = get_profile()
     content_hash = cache.get_content_hash(path)
-
     # Include video mosaic parameters in cache key for different mosaic configs.
     extra_parts: list[str] = []
     if kind == "video":
@@ -340,7 +339,7 @@ def _l2_cached(path: Path, kind: str, opts: _CatOpts) -> str:
         extra_parts.append(opts.video_mosaic_strategy)
     extra = "|".join(extra_parts)
 
-    if content_hash:
+    if not opts.no_cache and content_hash:
         cached = cache.get(
             content_hash,
             profile.name,
@@ -369,7 +368,6 @@ def _l2_cached(path: Path, kind: str, opts: _CatOpts) -> str:
             opts.detail,
             extra=extra,
         )
-
     return result
 
 
@@ -388,7 +386,6 @@ def _use_l1_cache(func: Callable[[Path], str], path: Path, no_cache=False) -> st
             return cached
 
     result = func(path)
-    # Cache successful extractions (skip error placeholders)
     if content_hash and result and not result.startswith("["):
         cache.put_l1(content_hash, result)
     return result
@@ -402,21 +399,7 @@ def _l1(path: Path, kind: str, *, no_cache=False) -> str:
     if kind == "audio":
         return _l1_audio(path)
     if kind == "document":
-        from mm.display import format_size
-
-        parts: list[str] = []
-        if path.suffix.lower() in DOCUMENT_EXTS:
-            content = _use_l1_cache(_l1_document, path, no_cache)
-        else:
-            content = _l1_document(path)
-
-        parts.append(f"Content:       {content}")
-        if size_str := format_size(path.stat().st_size):
-            parts.append("-----------------------")
-            parts.append(f"File Size:     {size_str}")
-
-        return "\n".join(parts)
-
+        return _l1_document(path, no_cache=no_cache)
     return path.read_text(errors="replace")
 
 
@@ -508,24 +491,24 @@ def _l1_audio(path: Path) -> str:
         return f"[Audio extraction failed: {e}]"
 
 
-def _l1_document(path: Path) -> str:
-    """Extract document content.
+def _l1_document(path: Path, *, no_cache=False) -> str:
+    """Extract document content"""
 
-    PDFs: uses pypdfium2 directly (fast, no heavy dependencies).
-    DOCX/PPTX: uses docling if available.
-    """
-    ext = path.suffix.lower()
-    if ext == ".pdf":
-        return _l1_pdf(path)
+    def _handler(path: Path) -> str:
+        ext = path.suffix.lower()
+        if ext == ".pdf":
+            return _l1_pdf(path)
 
-    # Non-PDF documents: use docling if available
-    from mm.docling_extract import convert_to_markdown, docling_available
+        try:
+            from mm.docs_extract import extract_docx, extract_pptx
 
-    if docling_available():
-        result = convert_to_markdown(path)
-        return result.markdown
+            if ext == ".pptx":
+                return extract_pptx(str(path))
+            return extract_docx(str(path))
+        except Exception as e:
+            return f"[Document extraction failed for {path.name}: {e}]"
 
-    return f"[docling not installed — pip install mm[extract] for {ext} support]"
+    return _use_l1_cache(_handler, path, no_cache)
 
 
 def _l1_pdf(path: Path) -> str:
@@ -660,7 +643,7 @@ def _l2_modal(path: Path, kind: str, opts: _CatOpts) -> str:
     if kind == "audio":
         return _l2_audio_modal(path, opts, mode)
     if kind == "document":
-        # Documents use docling at L1; at L2, summarize via LLM
+        # Documents use basic extraction at L1; at L2, summarize via LLM
         from mm.llm import LlmBackend
 
         content = _l1(path, kind)
@@ -673,7 +656,7 @@ def _l2_modal(path: Path, kind: str, opts: _CatOpts) -> str:
     return LlmBackend().describe(path, content, detail=(mode == "accurate"))
 
 
-def _l2_image_modal(path: Path, mode: str) -> str:
+def _l2_image_modal(path: Path, mode: Mode) -> str:
     """Image extraction with mode-specific LLM prompts.
 
     fast:     10-word description + 5 tags

@@ -200,7 +200,7 @@ class LlmBackend:
         except Exception as e:
             return f"[LLM error: {e}]"
 
-    def caption_modal(self, image_path: Path, *, mode: str = "fast") -> str:
+    def caption_modal(self, image_path: Path, *, mode: Mode = "fast") -> str:
         """Generate a markdown image caption with mode-specific detail.
 
         Args:
@@ -311,7 +311,7 @@ class LlmBackend:
         self,
         transcript: str,
         *,
-        mode: str = "fast",
+        mode: Mode = "fast",
         filename: str = "",
     ) -> str:
         """Summarize an audio transcript via LLM.

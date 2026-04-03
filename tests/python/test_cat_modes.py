@@ -1,11 +1,9 @@
-"""Tests for --mode fast|accurate extraction in cat command."""
+"""Tests for --mode basic|fast|accurate extraction in cat command."""
 
 from __future__ import annotations
 
 from pathlib import Path
 from unittest.mock import MagicMock, patch
-
-import pytest
 
 from mm.commands.cat import (
     DOCUMENT_EXTS,
@@ -59,31 +57,55 @@ class TestCatOptsMode:
 
     def test_mode_none(self):
         opts = _CatOpts(
-            level=2, n=None, detail=False, output_dir=None,
-            max_pages=None, mosaic_tile="4x4", mosaic_image_width=160,
-            video_mosaic_count=1, video_mosaic_strategy="uniform",
-            audio_speed=2.0, audio_sample_rate=16000,
-            mode=None, format="rich",
+            level=2,
+            n=None,
+            detail=False,
+            output_dir=None,
+            max_pages=None,
+            mosaic_tile="4x4",
+            mosaic_image_width=160,
+            video_mosaic_count=1,
+            video_mosaic_strategy="uniform",
+            audio_speed=2.0,
+            audio_sample_rate=16000,
+            mode=None,
+            format="rich",
         )
         assert opts.mode is None
 
     def test_mode_fast(self):
         opts = _CatOpts(
-            level=2, n=None, detail=False, output_dir=None,
-            max_pages=None, mosaic_tile="4x4", mosaic_image_width=160,
-            video_mosaic_count=1, video_mosaic_strategy="uniform",
-            audio_speed=2.0, audio_sample_rate=16000,
-            mode="fast", format="rich",
+            level=2,
+            n=None,
+            detail=False,
+            output_dir=None,
+            max_pages=None,
+            mosaic_tile="4x4",
+            mosaic_image_width=160,
+            video_mosaic_count=1,
+            video_mosaic_strategy="uniform",
+            audio_speed=2.0,
+            audio_sample_rate=16000,
+            mode="fast",
+            format="rich",
         )
         assert opts.mode == "fast"
 
     def test_mode_accurate(self):
         opts = _CatOpts(
-            level=2, n=None, detail=False, output_dir=None,
-            max_pages=None, mosaic_tile="4x4", mosaic_image_width=160,
-            video_mosaic_count=1, video_mosaic_strategy="uniform",
-            audio_speed=2.0, audio_sample_rate=16000,
-            mode="accurate", format="rich",
+            level=2,
+            n=None,
+            detail=False,
+            output_dir=None,
+            max_pages=None,
+            mosaic_tile="4x4",
+            mosaic_image_width=160,
+            video_mosaic_count=1,
+            video_mosaic_strategy="uniform",
+            audio_speed=2.0,
+            audio_sample_rate=16000,
+            mode="accurate",
+            format="rich",
         )
         assert opts.mode == "accurate"
 
@@ -93,11 +115,19 @@ class TestL2ModalDispatch:
 
     def _make_opts(self, mode: str = "fast") -> _CatOpts:
         return _CatOpts(
-            level=2, n=None, detail=False, output_dir=None,
-            max_pages=None, mosaic_tile="4x4", mosaic_image_width=160,
-            video_mosaic_count=1, video_mosaic_strategy="uniform",
-            audio_speed=2.0, audio_sample_rate=16000,
-            mode=mode, format="rich",
+            level=2,
+            n=None,
+            detail=False,
+            output_dir=None,
+            max_pages=None,
+            mosaic_tile="4x4",
+            mosaic_image_width=160,
+            video_mosaic_count=1,
+            video_mosaic_strategy="uniform",
+            audio_speed=2.0,
+            audio_sample_rate=16000,
+            mode=mode,
+            format="rich",
         )
 
     def test_unknown_mode(self, tmp_path):
