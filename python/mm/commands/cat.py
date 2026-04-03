@@ -406,7 +406,7 @@ def _l1(path: Path, kind: str, *, no_cache=False) -> str:
     if kind == "audio":
         return _l1_audio(path)
     if kind == "document":
-        return _use_l1_cache(_l1_document, path, no_cache)
+        return _l1_document(path, no_cache=no_cache)
     return path.read_text(errors="replace")
 
 
@@ -498,20 +498,24 @@ def _l1_audio(path: Path) -> str:
         return f"[Audio extraction failed: {e}]"
 
 
-def _l1_document(path: Path) -> str:
+def _l1_document(path: Path, *, no_cache=False) -> str:
     """Extract document content"""
-    ext = path.suffix.lower()
-    if ext == ".pdf":
-        return _l1_pdf(path)
 
-    try:
-        from mm.docs_extract import extract_docx, extract_pptx
+    def _handler(path: Path) -> str:
+        ext = path.suffix.lower()
+        if ext == ".pdf":
+            return _l1_pdf(path)
 
-        if ext == ".pptx":
-            return extract_pptx(str(path))
-        return extract_docx(str(path))
-    except Exception as e:
-        return f"[Document extraction failed for {path.name}: {e}]"
+        try:
+            from mm.docs_extract import extract_docx, extract_pptx
+
+            if ext == ".pptx":
+                return extract_pptx(str(path))
+            return extract_docx(str(path))
+        except Exception as e:
+            return f"[Document extraction failed for {path.name}: {e}]"
+
+    return _use_l1_cache(_handler, path)
 
 
 def _l1_pdf(path: Path) -> str:
