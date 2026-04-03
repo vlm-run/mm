@@ -402,20 +402,7 @@ def _l1(path: Path, kind: str, *, no_cache=False) -> str:
     if kind == "audio":
         return _l1_audio(path)
     if kind == "document":
-        from mm.display import format_size
-
-        parts: list[str] = []
-        if path.suffix.lower() in DOCUMENT_EXTS:
-            content = _use_l1_cache(_l1_document, path, no_cache)
-        else:
-            content = _l1_document(path)
-
-        parts.append(f"Content:       {content}")
-        if size_str := format_size(path.stat().st_size):
-            parts.append("-----------------------")
-            parts.append(f"File Size:     {size_str}")
-
-        return "\n".join(parts)
+        return _use_l1_cache(_l1_document, path, no_cache)
 
     return path.read_text(errors="replace")
 
@@ -509,23 +496,19 @@ def _l1_audio(path: Path) -> str:
 
 
 def _l1_document(path: Path) -> str:
-    """Extract document content.
-
-    PDFs: uses pypdfium2 directly (fast, no heavy dependencies).
-    DOCX/PPTX: uses docling if available.
-    """
+    """Extract document content"""
     ext = path.suffix.lower()
     if ext == ".pdf":
         return _l1_pdf(path)
 
-    # Non-PDF documents: use docling if available
-    from mm.docling_extract import convert_to_markdown, docling_available
+    try:
+        from mm.docs_processing import extract_docx, extract_pptx
 
-    if docling_available():
-        result = convert_to_markdown(path)
-        return result.markdown
-
-    return f"[docling not installed — pip install mm[extract] for {ext} support]"
+        if ext == ".pptx":
+            return extract_pptx(str(path))
+        return extract_docx(str(path))
+    except Exception as e:
+        return f"[Document extraction failed for {path.name}: {e}]"
 
 
 def _l1_pdf(path: Path) -> str:
