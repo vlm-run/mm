@@ -5,13 +5,14 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from typer.testing import CliRunner
-
+import pytest
 from mm.cli import app
+from typer.testing import CliRunner
 
 runner = CliRunner()
 
 
+@pytest.mark.integration
 class TestBenchCommand:
     """Tests for mm bench."""
 
@@ -22,11 +23,19 @@ class TestBenchCommand:
 
     def test_json_output_structure(self, small_tree: Path):
         """JSON output has expected top-level keys and result structure."""
-        r = runner.invoke(app, [
-            "bench", str(small_tree),
-            "--rounds", "2", "--warmup", "0",
-            "--format", "json",
-        ])
+        r = runner.invoke(
+            app,
+            [
+                "bench",
+                str(small_tree),
+                "--rounds",
+                "2",
+                "--warmup",
+                "0",
+                "--format",
+                "json",
+            ],
+        )
         assert r.exit_code == 0, f"bench failed: {r.output}"
         data = json.loads(r.output)
 
@@ -54,11 +63,19 @@ class TestBenchCommand:
     def test_json_rounds_match(self, small_tree: Path):
         """Number of timings matches requested rounds."""
         rounds = 3
-        r = runner.invoke(app, [
-            "bench", str(small_tree),
-            "--rounds", str(rounds), "--warmup", "0",
-            "--format", "json",
-        ])
+        r = runner.invoke(
+            app,
+            [
+                "bench",
+                str(small_tree),
+                "--rounds",
+                str(rounds),
+                "--warmup",
+                "0",
+                "--format",
+                "json",
+            ],
+        )
         assert r.exit_code == 0
         data = json.loads(r.output)
         assert data["rounds"] == rounds
@@ -68,11 +85,19 @@ class TestBenchCommand:
 
     def test_mode_filter(self, small_tree: Path):
         """Mode filter runs without error."""
-        r = runner.invoke(app, [
-            "bench", str(small_tree),
-            "--rounds", "2", "--warmup", "0",
-            "--mode", "fast",
-        ])
+        r = runner.invoke(
+            app,
+            [
+                "bench",
+                str(small_tree),
+                "--rounds",
+                "2",
+                "--warmup",
+                "0",
+                "--mode",
+                "fast",
+            ],
+        )
         assert r.exit_code == 0, f"bench --mode fast failed: {r.output}"
 
     def test_skips_missing_file_types(self, tmp_path: Path):
@@ -81,41 +106,61 @@ class TestBenchCommand:
         (tmp_path / "main.py").write_text("print('hello')\n")
         (tmp_path / "lib.py").write_text("def add(a, b): return a + b\n")
 
-        r = runner.invoke(app, [
-            "bench", str(tmp_path),
-            "--rounds", "2", "--warmup", "0",
-            "--format", "json",
-        ])
+        r = runner.invoke(
+            app,
+            [
+                "bench",
+                str(tmp_path),
+                "--rounds",
+                "2",
+                "--warmup",
+                "0",
+                "--format",
+                "json",
+            ],
+        )
         assert r.exit_code == 0
         data = json.loads(r.output)
 
-        skipped_names = {
-            result["name"]
-            for result in data["results"]
-            if result.get("skipped")
-        }
+        skipped_names = {result["name"] for result in data["results"] if result.get("skipped")}
         assert "mm cat <image>" in skipped_names
         assert "mm cat <video>" in skipped_names
         assert "mm cat <pdf>" in skipped_names
 
     def test_empty_directory(self, tmp_path: Path):
         """Bench handles empty directory gracefully."""
-        r = runner.invoke(app, [
-            "bench", str(tmp_path),
-            "--rounds", "2", "--warmup", "0",
-            "--format", "json",
-        ])
+        r = runner.invoke(
+            app,
+            [
+                "bench",
+                str(tmp_path),
+                "--rounds",
+                "2",
+                "--warmup",
+                "0",
+                "--format",
+                "json",
+            ],
+        )
         assert r.exit_code == 0
         data = json.loads(r.output)
         assert data["files"] == 0
 
     def test_l0_benchmarks_always_present(self, small_tree: Path):
         """L0 benchmarks run regardless of file types present."""
-        r = runner.invoke(app, [
-            "bench", str(small_tree),
-            "--rounds", "2", "--warmup", "0",
-            "--format", "json",
-        ])
+        r = runner.invoke(
+            app,
+            [
+                "bench",
+                str(small_tree),
+                "--rounds",
+                "2",
+                "--warmup",
+                "0",
+                "--format",
+                "json",
+            ],
+        )
         assert r.exit_code == 0
         data = json.loads(r.output)
 
@@ -132,11 +177,19 @@ class TestBenchCommand:
 
     def test_timings_are_positive(self, small_tree: Path):
         """All timings should be positive numbers."""
-        r = runner.invoke(app, [
-            "bench", str(small_tree),
-            "--rounds", "2", "--warmup", "0",
-            "--format", "json",
-        ])
+        r = runner.invoke(
+            app,
+            [
+                "bench",
+                str(small_tree),
+                "--rounds",
+                "2",
+                "--warmup",
+                "0",
+                "--format",
+                "json",
+            ],
+        )
         assert r.exit_code == 0
         data = json.loads(r.output)
         for result in data["results"]:
@@ -147,11 +200,19 @@ class TestBenchCommand:
 
     def test_tsv_output(self, small_tree: Path):
         """TSV output produces tab-separated rows."""
-        r = runner.invoke(app, [
-            "bench", str(small_tree),
-            "--rounds", "2", "--warmup", "0",
-            "--format", "tsv",
-        ])
+        r = runner.invoke(
+            app,
+            [
+                "bench",
+                str(small_tree),
+                "--rounds",
+                "2",
+                "--warmup",
+                "0",
+                "--format",
+                "tsv",
+            ],
+        )
         assert r.exit_code == 0
         lines = r.output.strip().splitlines()
         assert len(lines) >= 2  # header + at least 1 data row

@@ -55,6 +55,25 @@ jobs:
       - run: make lint-python
       - run: make test-python
 
+  integration-test:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: test-python
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+      - uses: astral-sh/setup-uv@v4
+      - name: Install dependencies and build Rust extension
+        run: |
+          uv venv --python 3.10
+          uv pip install -e ".[dev,extract,datasets]"
+          uv run maturin develop --release
+      - name: Run integration tests
+        run: uv run pytest tests/python -m integration -v
+
   benchmark:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
