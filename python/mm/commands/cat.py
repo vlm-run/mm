@@ -325,17 +325,11 @@ def _extract(path: Path, opts: _CatOpts) -> str:
 
 def _l2_cached(path: Path, kind: str, opts: _CatOpts) -> str:
     """Run L2 with cache lookup/store unless --no-cache."""
-    if opts.no_cache:
-        if opts.mode is not None:
-            return _l2_modal(path, kind, opts)
-        return _l2(path, kind, opts)
-
     from mm import cache
     from mm.profile import get_profile
 
     profile = get_profile()
     content_hash = cache.get_content_hash(path)
-
     # Include video mosaic parameters in cache key for different mosaic configs.
     extra_parts: list[str] = []
     if kind == "video":
@@ -345,7 +339,7 @@ def _l2_cached(path: Path, kind: str, opts: _CatOpts) -> str:
         extra_parts.append(opts.video_mosaic_strategy)
     extra = "|".join(extra_parts)
 
-    if content_hash:
+    if not opts.no_cache and content_hash:
         cached = cache.get(
             content_hash,
             profile.name,
@@ -374,7 +368,6 @@ def _l2_cached(path: Path, kind: str, opts: _CatOpts) -> str:
             opts.detail,
             extra=extra,
         )
-
     return result
 
 
@@ -515,7 +508,7 @@ def _l1_document(path: Path, *, no_cache=False) -> str:
         except Exception as e:
             return f"[Document extraction failed for {path.name}: {e}]"
 
-    return _use_l1_cache(_handler, path)
+    return _use_l1_cache(_handler, path, no_cache)
 
 
 def _l1_pdf(path: Path) -> str:
@@ -650,7 +643,7 @@ def _l2_modal(path: Path, kind: str, opts: _CatOpts) -> str:
     if kind == "audio":
         return _l2_audio_modal(path, opts, mode)
     if kind == "document":
-        # Documents use docling at L1; at L2, summarize via LLM
+        # Documents use basic extraction at L1; at L2, summarize via LLM
         from mm.llm import LlmBackend
 
         content = _l1(path, kind)
@@ -663,7 +656,7 @@ def _l2_modal(path: Path, kind: str, opts: _CatOpts) -> str:
     return LlmBackend().describe(path, content, detail=(mode == "accurate"))
 
 
-def _l2_image_modal(path: Path, mode: str) -> str:
+def _l2_image_modal(path: Path, mode: Mode) -> str:
     """Image extraction with mode-specific LLM prompts.
 
     fast:     10-word description + 5 tags
