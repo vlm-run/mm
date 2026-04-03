@@ -1,8 +1,8 @@
 import re
+from typing import Any
 
 from docx import Document
 from pptx import Presentation
-from pptx.shapes.base import BaseShape
 
 
 def extract_docx(path: str) -> str:
@@ -49,7 +49,7 @@ def extract_pptx(path: str) -> str:
         text_chunks = []
         image_chunks = []
 
-        def get_shape_content(shape: BaseShape):
+        def get_shape_content(shape: Any):
             from pptx.enum.shapes import MSO_SHAPE_TYPE
 
             if shape.shape_type == MSO_SHAPE_TYPE.GROUP:
