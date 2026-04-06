@@ -17,8 +17,6 @@ import mimetypes
 from pathlib import Path
 from typing import Any
 
-from google.genai import types
-
 # Gemini embedding limits
 _VIDEO_MAX_SECONDS = 120
 _VIDEO_OVERLAP_SECONDS = 10
@@ -34,11 +32,15 @@ _EMBEDDINGS_PATH = "/embeddings"
 
 def text_part(text: str) -> dict[str, Any]:
     """Construct a text Part."""
+    from google.genai import types
+
     return types.Part(text=text).to_json_dict()
 
 
 def image_part(path: Path) -> dict[str, Any]:
     """Construct an image Part from a file path."""
+    from google.genai import types
+
     return types.Part.from_bytes(
         data=path.read_bytes(),
         mime_type=_mime_for(path, fallback="image/png"),
@@ -47,6 +49,8 @@ def image_part(path: Path) -> dict[str, Any]:
 
 def _audio_part(path: Path) -> dict[str, Any]:
     """Construct an audio Part from a file path (max 80s)."""
+    from google.genai import types
+
     return types.Part.from_bytes(
         data=path.read_bytes(),
         mime_type=_mime_for(path, fallback="audio/mpeg"),
@@ -79,6 +83,8 @@ def audio_parts(path: Path) -> list[dict[str, Any]]:
 
 def document_part(path: Path) -> dict[str, Any]:
     """Construct a document Part from a PDF (max 6 pages)."""
+    from google.genai import types
+
     return types.Part.from_bytes(
         data=path.read_bytes(),
         mime_type="application/pdf",
@@ -87,6 +93,8 @@ def document_part(path: Path) -> dict[str, Any]:
 
 def _video_part(path: Path) -> dict[str, Any]:
     """Construct a video Part from a file (max 120s)."""
+    from google.genai import types
+
     return types.Part.from_bytes(
         data=path.read_bytes(),
         mime_type=_mime_for(path, fallback="video/mp4"),
@@ -142,7 +150,8 @@ def embed_parts(parts: list[dict[str, Any]]) -> list[list[float]]:
         timeout=300,
     )
     response.raise_for_status()
-    return response.json()["embeddings"]
+    result: list[list[float]] = response.json()["embeddings"]
+    return result
 
 
 def embed_texts(texts: list[str]) -> list[list[float]]:
