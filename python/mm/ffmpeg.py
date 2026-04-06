@@ -394,6 +394,41 @@ def extract_audio(
     )
 
 
+def extract_segment(
+    video_path: str | Path,
+    out_path: str | Path,
+    start_s: float,
+    end_s: float,
+) -> Path:
+    """Extract a time segment from a video file (copy, no re-encode).
+
+    Args:
+        video_path: Source video.
+        out_path: Destination file.
+        start_s: Start time in seconds.
+        end_s: End time in seconds.
+
+    Returns:
+        Path to the extracted segment.
+    """
+    video_path = Path(video_path)
+    out_path = Path(out_path)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+
+    duration = end_s - start_s
+    cmd = [
+        "ffmpeg", "-y",
+        "-ss", f"{start_s:.3f}",
+        "-i", str(video_path),
+        "-t", f"{duration:.3f}",
+        "-c", "copy",
+        "-avoid_negative_ts", "make_zero",
+        str(out_path),
+    ]
+    subprocess.run(cmd, capture_output=True, check=True)
+    return out_path
+
+
 def extract_frames_at_timestamps(
     video_path: str | Path,
     timestamps: list[float],

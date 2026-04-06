@@ -357,8 +357,9 @@ def _l2_cached(path: Path, kind: str, opts: _CatOpts) -> str:
         result = _l2(path, kind, opts)
 
     if content_hash and result and not result.startswith("["):
+        uri = str(path.resolve())
         db.put_l2(
-            uri=str(path.resolve()),
+            uri=uri,
             content_hash=content_hash,
             profile=profile.name,
             model=profile.model,
@@ -367,6 +368,13 @@ def _l2_cached(path: Path, kind: str, opts: _CatOpts) -> str:
             detail=opts.detail,
             extra=extra,
         )
+        # Embed chunks (best-effort, non-blocking for the user)
+        try:
+            from mm.lancedb.embed import embed_file_chunks
+
+            embed_file_chunks(uri, content_hash, profile.name, profile.model)
+        except Exception:
+            pass
     return result
 
 

@@ -22,6 +22,7 @@ dependencies = [
     "python-docx==1.2.0",
     "python-pptx>=1.0.2",
     "lancedb==0.25.3",
+    "google-genai>=1.0",
 ]
 
 [project.scripts]
