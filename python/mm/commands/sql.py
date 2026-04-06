@@ -21,11 +21,13 @@ def sql_cmd(
     from mm.display import resolve_format
     from mm.duck import query_arrow_table
 
+    # def _handler():
+    #     return query_arrow_table(Context(directory).to_arrow(), query)
+    # result, elapsed_ms = get_elapsed_ms(_handler)
+    # print(f"Query executed in {elapsed_ms:.2f} ms", file=sys.stderr)
+
     fmt = resolve_format(format)
-
-    ctx = Context(directory)
-    result = query_arrow_table(ctx.to_arrow(), query)
-
+    result = query_arrow_table(Context(directory).to_arrow(), query)
     if fmt in ("json", "dataset-jsonl", "dataset-hf"):
         from mm.display import emit_rows
 
