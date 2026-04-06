@@ -24,6 +24,8 @@
 - pandas — DataFrame export
 - duckdb — in-process SQL on Arrow tables
 - pyarrow — Arrow IPC deserialization (Rust → Python data transfer)
+- lancedb — persistent columnar storage + vector search (global DB at ~/.local/share/mm/)
+- google-genai — Gemini embedding generation (text, image, audio, video, document)
 - pypdfium2 — PDF text extraction and page rendering
 - Pillow — image mosaic tiling
 - tomli — TOML config parsing (Python <3.11)
@@ -66,7 +68,7 @@ mm/
 │   │   │   ├── table.rs        # Arrow RecordBatch + Parquet I/O
 │   │   │   ├── extract.rs      # L1 extraction trait + dispatcher
 │   │   │   ├── extractors/     # Per-type extractors (code, image, video)
-│   │   │   ├── hash.rs         # xxh3 hashing strategies (full, partial, mmap)
+│   │   │   ├── hash.rs         # xxh3 hashing strategies (full, partial, mmap, directory_hash)
 │   │   │   ├── cache.rs        # Manifest-based incremental re-indexing
 │   │   │   └── format.rs       # Output formatting helpers
 │   │   └── benches/            # Criterion benchmarks (l0_walk, l0_index, l1_extract, hash)
@@ -84,16 +86,22 @@ mm/
 │   ├── display.py              # Rich formatting (tables, panels, format_size, format_number)
 │   ├── pipe.py                 # stdin/stdout pipe detection (uses select())
 │   ├── pdf.py                  # PDF page mosaic extraction (pypdfium2 + Pillow)
-│   ├── ffmpeg.py               # ffmpeg wrappers (keyframe mosaics, audio extraction)
+│   ├── ffmpeg.py               # ffmpeg wrappers (keyframe mosaics, audio/video segment extraction)
 │   ├── video.py                # Video metadata helpers
+│   ├── lancedb/                # LanceDB integration (storage + cache + embeddings)
+│   │   ├── __init__.py         # Lazy re-exports (no lancedb import on load)
+│   │   ├── schema.py           # SQL DDL docs + column enums + Arrow schemas (3 tables)
+│   │   ├── db.py               # MmDatabase class (dbm cache + LanceDB storage)
+│   │   ├── cache.py            # Content hashing (Rust) + shared DB instance
+│   │   └── embed.py            # Embedding generation via Gemini (text, image, audio, video, doc)
 │   └── commands/               # CLI subcommands (6 + config + profile)
 │       ├── find.py             # mm find (--tree, --schema, --columns)
-│       ├── cat.py              # mm cat (-n, --level, auto-detect by type)
+│       ├── cat.py              # mm cat (-n, --level, auto-detect by type, L2 → embed)
 │       ├── grep.py             # mm grep
-│       ├── sql.py              # mm sql (DuckDB)
+│       ├── sql.py              # mm sql (files via DuckDB, l2_results/chunks via LanceDB)
 │       ├── wc.py               # mm wc (--by-kind)
 │       ├── bench.py            # mm bench (L0/L1/L2 benchmark suite)
-│       ├── config.py           # mm config (show, init, set)
+│       ├── config.py           # mm config (show, init, set, reset-db)
 │       └── profile.py          # mm profile (list, add, update, use, remove)
 ├── tests/
 │   └── python/                 # pytest suite
@@ -148,10 +156,10 @@ uv run mm <command> [args]
 | `find`    | Find/list files, tree view, schema | `--kind`, `--ext`, `--min-size`, `--max-size`, `--sort`, `--columns`, `--tree`, `--depth`, `--schema`, `--limit`, `--format` |
 | `cat`     | Content extraction (auto-detected by file type) | `--level 0/1/2`, `-n` (head/tail), `--detail`, `--mode`, `--mosaic-*`, `--audio-*`, `--format` |
 | `grep`    | Content search across files | `--kind`, `--ext`, `-C` (context), `--count`, `--level`, `--format` |
-| `sql`     | DuckDB SQL on the file index | `--dir`, `--format` |
+| `sql`     | SQL on files, L2 results, and chunks | `--dir`, `--format`, `--no-cache`, `--list-tables` |
 | `wc`      | Count files, bytes, lines, estimated tokens | `--kind`, `--by-kind`, `--format` |
 | `bench`   | Benchmark suite (L0/L1/L2) | `--format`, `--rounds` |
-| `config`  | Extraction mode settings | `show`, `init`, `set` |
+| `config`  | Extraction mode settings | `show`, `init`, `set`, `reset-db` |
 | `profile` | Manage LLM provider profiles | `list`, `add`, `update`, `use`, `remove`, `--format` |
 
 ### Consolidated commands
@@ -186,7 +194,14 @@ The following commands were merged into the 5 core commands:
 
 Use `mm find <dir> --schema` to see all available columns, their Arrow types, descriptions of what they contain, and a sample value.
 
-Columns: `path`, `name`, `stem`, `ext`, `size`, `modified`, `created`, `mime`, `kind`, `is_binary`, `depth`, `parent`, `width`, `height`.
+`mm sql` auto-routes queries based on the table name in the `FROM` clause:
+- `files` → scan directory + DuckDB (with dbm cache for repeat queries)
+- `l2_results` → LanceDB direct (LLM-generated summaries)
+- `chunks` → LanceDB direct (chunked content + embeddings)
+
+Use `mm sql --list-tables` to see available tables and row counts.
+
+Columns (`files`): `path`, `name`, `stem`, `ext`, `size`, `modified`, `created`, `mime`, `kind`, `is_binary`, `depth`, `parent`, `width`, `height`.
 
 `kind` values: `image`, `video`, `document`, `code`, `audio`, `data`, `config`, `text`, `other`.
 
@@ -230,7 +245,11 @@ ctx.info()   # Rich summary panel
 - **Rust → Python data path**: Arrow RecordBatch serialized to IPC bytes in Rust, deserialized via `pyarrow.ipc.open_stream` in Python. Not PyCapsule FFI (had compatibility issues with pyarrow).
 - **Rust fast path**: `find --format json`, `wc --format json` bypass pyarrow entirely — serde_json in Rust, ~60ms cold start.
 - **Parallel scanning**: `ignore` crate for gitignore-aware walking + `rayon` for parallelism.
-- **Hashing**: xxh3 via `xxhash-rust` for fast content fingerprinting (full file via mmap).
+- **Hashing**: xxh3 via `xxhash-rust` for fast content fingerprinting (full file via mmap). `directory_hash` hashes sorted file listings for SQL cache keys.
+- **Storage**: Global LanceDB database at `~/.local/share/mm/mm.lance/` with three tables: `files` (L0+L1), `l2_results` (LLM summaries), `chunks` (content chunks + embedding vectors). Schema defined in `python/mm/lancedb/schema.py` with SQL DDL documentation.
+- **Cache**: dbm sidecar at `~/.local/share/mm/cache.db` for sub-millisecond L1/L2 cache reads. No lancedb import needed for cache hits. Writes go to both dbm and LanceDB.
+- **Embeddings**: Generated via Gemini embedding API through the mm inference server (`/v1/embeddings`). Supports text, image, audio (chunked at 80s), video (chunked at 120s), and PDF. Stored as vectors on the `chunks` table. Triggered automatically after L2 extraction.
+- **SQL routing**: `mm sql` auto-detects table from `FROM` clause. `files` → scan + DuckDB (with directory_hash cache). `l2_results`/`chunks` → LanceDB direct.
 - **Video metadata (L1)**: Native MP4 parsing (mp4parse) and MKV/WebM parsing (matroska) in Rust. No ffmpeg at L1 — metadata only, <100ms.
 - **PDF text extraction**: `pypdfium2` on the Python CLI side (in `commands/cat.py`). Scanned/image-only PDFs return empty text.
 - **Pipe detection**: `pipe.py` uses `select.select()` with zero timeout to avoid blocking when stdin is not a TTY but has no data.
@@ -314,3 +333,6 @@ Every commit that changes performance numbers or adds/modifies benchmarks should
 
 - Python `Context.cat(level=1)` for PDFs uses Rust L1 extractor (raw bytes) instead of pypdfium2. The CLI `cat --level 1` correctly uses pypdfium2.
 - L2 requires an external LLM server; no built-in model. Default: local Ollama with `qwen3.5:0.8b`.
+- Audio embedding fails for files >80s if sent as a single Part (Gemini limit). Use `audio_parts()` to auto-chunk.
+- `upsert_files()` reads the full `files` table to preserve L1 columns — will need optimization at >100K files.
+- LanceDB Python import takes ~2.5s cold. Cache reads use dbm to avoid this. Writes pay the cost (acceptable since writes follow expensive LLM/extraction calls).

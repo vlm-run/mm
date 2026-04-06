@@ -22,6 +22,9 @@ Always use `--format json` for machine-readable output when parsing results prog
 # Install via uv (recommended)
 uv tool install mm --from "git+https://github.com/vlm-run/mm.git@v0.2.0"
 
+# using curl
+curl -LsSf https://vlm-run.github.io/mm/install/install.sh | MM_FROM_GIT=1 sh
+
 # Or from source
 git clone https://github.com/vlm-run/mm.git && cd mm
 uv pip install -e ".[dev]" && uv run maturin develop --release
@@ -34,10 +37,10 @@ uv pip install -e ".[dev]" && uv run maturin develop --release
 | `find`    | Locate/list files by kind/ext/size, tabular listing, tree view, schema |
 | `cat`     | Content extraction (auto-detected by file type × level)                |
 | `grep`    | Content search across files                                            |
-| `sql`     | DuckDB SQL on file index                                               |
+| `sql`     | SQL on files, L2 results, and chunks (auto-routed)                     |
 | `wc`      | Count files, bytes, lines, tokens                                      |
 | `bench`   | Benchmark suite (L0/L1/L2) with statistical analysis                   |
-| `config`  | Extraction mode settings (show, init, set)                             |
+| `config`  | Extraction mode settings (show, init, set, reset-db)                   |
 | `profile` | Manage LLM provider profiles (list, add, update, use, remove)          |
 
 ## Workflow
@@ -165,28 +168,32 @@ mm grep "def " <dir> --kind code --level 0             # search raw content (L0)
 
 **Warning**: grep runs L1 extraction on every matching file. On large document directories (500+ PDFs), this can take minutes. Prefer `--kind code` or `--kind text` for fast searches.
 
-## sql — DuckDB queries on file index
+## sql — SQL queries on files, L2 results, and chunks
 
-The table name is `files`. Use `mm find <dir> --schema` to see columns.
+Three tables available. Table is auto-detected from the `FROM` clause:
+
+- `files` — scanned file metadata (via `--dir`, uses DuckDB)
+- `l2_results` — LLM-generated summaries (stored in LanceDB)
+- `chunks` — chunked L2 content + embedding vectors (stored in LanceDB)
 
 ```bash
-# Kind breakdown with sizes
+# File metadata (scan + DuckDB)
 mm sql "SELECT kind, COUNT(*) as n, ROUND(SUM(size)/1e6,1) as mb FROM files GROUP BY kind ORDER BY mb DESC" --dir <dir>
-
-# Extension analytics
-mm sql "SELECT ext, COUNT(*) as n, ROUND(AVG(size)/1024.0,1) as avg_kb FROM files GROUP BY ext ORDER BY n DESC" --dir <dir>
-
-# Size distribution
-mm sql "SELECT CASE WHEN size<100*1024 THEN '<100KB' WHEN size<1e6 THEN '100KB-1MB' WHEN size<10*1e6 THEN '1-10MB' ELSE '>10MB' END as bucket, COUNT(*) as n FROM files GROUP BY bucket" --dir <dir>
-
-# Name search
-mm sql "SELECT name, ROUND(size/1024.0,1) as kb FROM files WHERE name LIKE '%invoice%'" --dir <dir>
-
-# JSON output
 mm sql "SELECT * FROM files WHERE kind='document'" --dir <dir> --format json
+
+# L2 results (LanceDB direct)
+mm sql "SELECT uri, profile, model, summary FROM l2_results LIMIT 10"
+mm sql "SELECT COUNT(*) as n FROM l2_results"
+
+# Chunks and embeddings (LanceDB direct)
+mm sql "SELECT uri, chunk_idx, LENGTH(chunk_text) as len FROM chunks"
+mm sql "SELECT COUNT(*) FROM chunks WHERE embed_model IS NOT NULL"
+
+# List available tables
+mm sql --list-tables
 ```
 
-~270-500ms (DuckDB overhead).
+Files queries: ~72ms cached, ~850ms cold. LanceDB queries: ~3s (lancedb import cost).
 
 ## bench — benchmark suite
 
@@ -208,6 +215,8 @@ mm config init                                  # create config with default pro
 mm config init --force                          # overwrite existing config
 mm config set mode.fast.whisper_model tiny       # set a config value
 mm config set mode.accurate.beam_size 5          # set a config value
+mm config reset-db                              # delete all databases and caches (with confirmation)
+mm config reset-db --yes                        # skip confirmation
 ```
 
 ## profile — LLM provider management
@@ -268,7 +277,7 @@ mm find <dir> --kind video --format json | jq '.[].name'  # extract video names
 - Start with `mm find <dir> --tree --depth 1` then `mm wc <dir> --by-kind` for the fastest directory overview.
 - Use `--format json` when you need to parse output programmatically.
 - `find` returns paths only when piped, full metadata rows in TTY.
-- `sql` is the most powerful command — any DuckDB-compatible SQL works against the `files` table.
+- `sql` is the most powerful command — queries auto-route to DuckDB (`files`) or LanceDB (`l2_results`, `chunks`). Use `--list-tables` to see available tables.
 - For PDFs, `cat` extracts text at L1; if empty, the PDF contains scanned images only.
 - For videos, `cat -l 2` auto-generates keyframe mosaics and sends to LLM for description.
 - L2 uses the `openai` Python SDK via the active profile. Sends `think=false` and `reasoning_effort="none"` with temperature 0.1.

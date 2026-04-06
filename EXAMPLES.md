@@ -420,6 +420,44 @@ bucket     files
 
 ---
 
+## sql — querying LanceDB tables
+
+```bash
+# List available tables
+$ mm sql --list-tables
+table        source         stored
+files        scan + DuckDB  ephemeral
+l2_results   LanceDB        2 rows
+chunks       LanceDB        2 rows
+
+# Query L2 results (auto-routes to LanceDB)
+$ mm sql "SELECT uri, profile, model, summary FROM l2_results"
+
+# Query chunks and embeddings
+$ mm sql "SELECT uri, chunk_idx, embed_model, LENGTH(chunk_text) as len FROM chunks"
+
+# Check embedding coverage
+$ mm sql "SELECT COUNT(*) as total, COUNT(embed_model) as embedded FROM chunks"
+```
+
+---
+
+## config reset-db — clear all databases
+
+```bash
+$ mm config reset-db
+The following will be deleted:
+  /Users/you/.local/share/mm/mm.lance
+  /Users/you/.local/share/mm/cache.db
+This leads to irreversible data loss. Continue? [y/N]: y
+All databases and caches have been reset.
+
+# Skip confirmation
+$ mm config reset-db --yes
+```
+
+---
+
 ## Pipe composability
 
 ```bash
