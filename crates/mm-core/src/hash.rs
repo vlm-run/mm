@@ -45,6 +45,45 @@ pub fn full_hash_read(path: &Path) -> Option<u64> {
     Some(xxhash_rust::xxh3::xxh3_64(&buf))
 }
 
+/// Hash a directory listing: sorted(name:mtime_ns:size) for each entry.
+/// Deterministic — same files with same mtimes produce the same hash.
+/// Uses gitignore-aware walking (same as scan_directory).
+pub fn directory_hash(path: &Path) -> Option<u64> {
+    use ignore::WalkBuilder;
+
+    let mut entries: Vec<String> = Vec::new();
+    let walker = WalkBuilder::new(path)
+        .hidden(true)
+        .git_ignore(true)
+        .git_global(true)
+        .git_exclude(true)
+        .build();
+
+    for entry in walker.flatten() {
+        if !entry.file_type().is_some_and(|ft| ft.is_file()) {
+            continue;
+        }
+        let Ok(meta) = entry.metadata() else {
+            continue;
+        };
+        let name = entry.path().to_string_lossy();
+        let size = meta.len();
+        let mtime = meta
+            .modified()
+            .ok()
+            .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
+            .map_or(0, |d| d.as_nanos());
+        entries.push(format!("{name}:{mtime}:{size}"));
+    }
+
+    entries.sort();
+    let mut hasher = xxhash_rust::xxh3::Xxh3::new();
+    for e in &entries {
+        hasher.update(e.as_bytes());
+    }
+    Some(hasher.digest())
+}
+
 /// Perceptual hash (pHash) of an image file.
 /// Produces a 64-bit hash invariant to resize and mild compression.
 /// Algorithm: resize to 32x32 grayscale → 2D DCT (via rustdct) → top-left 8x8 → median threshold.

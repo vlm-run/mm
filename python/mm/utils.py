@@ -1,3 +1,4 @@
+import sys
 import time as _time
 from typing import Callable, ParamSpec, TypeVar
 
@@ -18,3 +19,14 @@ def get_elapsed_ms(
     return result, elapsed_ms
 
 
+def benchmark_func(
+    callback: Callable[P, T],
+    *args: P.args,
+    **kwargs: P.kwargs,
+) -> T:
+    """Run callback and return (result, elapsed_ms)."""
+    print(f"Benchmarking function: {callback.__name__}", file=sys.stderr)
+    result, elapsed_ms = get_elapsed_ms(callback, *args, **kwargs)
+    print(f"Execution time: {elapsed_ms:.2f} ms", file=sys.stderr)
+
+    return result

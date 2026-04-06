@@ -331,7 +331,7 @@ def arrow_table_to_rich(
     elif total > 0:
         parts.append(f"{total:,} file{'s' if total != 1 else ''}")
     if "size" in table.column_names and total > 0:
-        total_bytes = sum(r.as_py() for r in table.column("size") if r.as_py() is not None)
+        total_bytes = sum(int(r.as_py()) for r in table.column("size") if r.as_py() is not None)
         if total_bytes > 0:
             parts.append(format_size(total_bytes))
     subtitle = "  ".join(parts) if parts else None
