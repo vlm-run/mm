@@ -325,11 +325,12 @@ def _extract(path: Path, opts: _CatOpts) -> str:
 
 def _l2_cached(path: Path, kind: str, opts: _CatOpts) -> str:
     """Run L2 with cache lookup/store unless --no-cache."""
-    from mm import cache
+    from mm.lancedb.util import get_content_hash, get_db
     from mm.profile import get_profile
 
+    db = get_db()
     profile = get_profile()
-    content_hash = cache.get_content_hash(path)
+    content_hash = get_content_hash(path)
     # Include video mosaic parameters in cache key for different mosaic configs.
     extra_parts: list[str] = []
     if kind == "video":
@@ -340,7 +341,7 @@ def _l2_cached(path: Path, kind: str, opts: _CatOpts) -> str:
     extra = "|".join(extra_parts)
 
     if not opts.no_cache and content_hash:
-        cached = cache.get(
+        cached = db.get_l2(
             content_hash,
             profile.name,
             profile.model,
@@ -357,15 +358,15 @@ def _l2_cached(path: Path, kind: str, opts: _CatOpts) -> str:
     else:
         result = _l2(path, kind, opts)
 
-    # Store in cache — skip error/empty results so transient failures aren't cached permanently
     if content_hash and result and not result.startswith("["):
-        cache.put(
-            content_hash,
-            profile.name,
-            profile.model,
-            result,
-            opts.mode,
-            opts.detail,
+        db.put_l2(
+            uri=str(path.resolve()),
+            content_hash=content_hash,
+            profile=profile.name,
+            model=profile.model,
+            content=result,
+            mode=opts.mode,
+            detail=opts.detail,
             extra=extra,
         )
     return result
@@ -377,17 +378,18 @@ def _l2_cached(path: Path, kind: str, opts: _CatOpts) -> str:
 
 
 def _use_l1_cache(func: Callable[[Path], str], path: Path, no_cache=False) -> str:
-    from mm import cache
+    from mm.lancedb.util import get_content_hash, get_db
 
-    # L1 results depend on exact file content, not visual similarity.
-    content_hash = cache.get_content_hash(path, use_phash=False)
+    db = get_db()
+    content_hash = get_content_hash(path, use_phash=False)
     if not no_cache and content_hash:
-        if (cached := cache.get_l1(content_hash)) and cached is not None:
+        cached = db.get_l1(content_hash)
+        if cached is not None:
             return cached
 
     result = func(path)
     if content_hash and result and not result.startswith("["):
-        cache.put_l1(content_hash, result)
+        db.put_l1(str(path.resolve()), content_hash, result)
     return result
 
 

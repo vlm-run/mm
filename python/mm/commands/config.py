@@ -115,6 +115,55 @@ def init(
     output_console.print(f"[green]Created[/green] {path}")
 
 
+@config_app.command("reset-db")
+def reset_db(
+    yes: Annotated[bool, typer.Option("--yes", "-y", help="Skip confirmation")] = False,
+) -> None:
+    """Delete all mm databases and caches.
+
+    Removes the LanceDB database, dbm cache, and any legacy cache files
+    under ~/.local/share/mm/. This action is irreversible.
+    """
+    import shutil
+
+    from mm.lancedb.db import MmDatabase
+    from mm.display import output_console
+
+    targets = [MmDatabase.DB_PATH, MmDatabase.CACHE_PATH]
+    # dbm may create .db, .dir, .bak, .dat suffixed files
+    cache_base = MmDatabase.CACHE_PATH
+    for suffix in ("", ".db", ".dir", ".bak", ".dat"):
+        p = cache_base.parent / (cache_base.name + suffix)
+        if p not in targets:
+            targets.append(p)
+
+    existing = [p for p in targets if p.exists()]
+    if not existing:
+        output_console.print("[dim]Nothing to reset — no databases or caches found.[/dim]")
+        return
+
+    output_console.print("[bold]The following will be deleted:[/bold]")
+    for p in existing:
+        output_console.print(f"  {p}")
+
+    if not yes:
+        confirm = typer.confirm(
+            "\nThis leads to irreversible data loss. Continue?",
+            default=False,
+        )
+        if not confirm:
+            output_console.print("[dim]Aborted.[/dim]")
+            raise typer.Exit(1)
+
+    for p in existing:
+        if p.is_dir():
+            shutil.rmtree(p)
+        else:
+            p.unlink()
+
+    output_console.print("[green]All databases and caches have been reset.[/green]")
+
+
 @config_app.command("set")
 def set_key(
     key: Annotated[str, typer.Argument(help="Key to set (e.g. mode.fast.whisper_model)")],

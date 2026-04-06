@@ -29,3 +29,14 @@ def query_parquet(parquet_path: str, sql: str) -> pa.Table:
     result = con.execute(full_sql).fetch_arrow_table()
     con.close()
     return result
+
+
+def query_lance(sql: str, table_name: str = "files") -> pa.Table:
+    """Run a SQL query against the global LanceDB database via DuckDB.
+
+    Loads the specified table from LanceDB as an Arrow table, then
+    executes the SQL query using DuckDB for full SQL support.
+    """
+    from mm.lancedb import MmDatabase
+
+    return MmDatabase().sql(sql, table_name=table_name)

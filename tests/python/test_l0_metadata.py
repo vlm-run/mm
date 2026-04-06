@@ -333,15 +333,14 @@ class TestExtensionMime:
 # ── Parquet Roundtrip ─────────────────────────────────────────────────
 
 
-class TestParquetRoundtrip:
+class TestLanceDBRoundtrip:
 
     def test_roundtrip_preserves_dimensions(self, media_tree: Path):
         ctx = Context(media_tree)
-        saved = ctx.save()
-        assert saved.exists()
+        ctx.save()
 
-        import pyarrow.parquet as pq
-        table = pq.read_table(saved)
+        root_str = str(media_tree.resolve()).replace("'", "''")
+        table = ctx.db.get_files(where=f"uri LIKE '{root_str}%'")
         assert "width" in table.column_names
         assert "height" in table.column_names
 
@@ -352,10 +351,12 @@ class TestParquetRoundtrip:
 
     def test_roundtrip_column_count(self, media_tree: Path):
         ctx = Context(media_tree)
-        saved = ctx.save()
-        import pyarrow.parquet as pq
-        table = pq.read_table(saved)
-        assert table.num_columns == 14
+        ctx.save()
+
+        root_str = str(media_tree.resolve()).replace("'", "''")
+        table = ctx.db.get_files(where=f"uri LIKE '{root_str}%'")
+        # 14 L0 + 18 L1 + 2 tracking = 34 columns in LanceDB
+        assert table.num_columns == 34
 
 
 # ── CLI Integration ───────────────────────────────────────────────────
