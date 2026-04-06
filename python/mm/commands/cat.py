@@ -206,9 +206,7 @@ def cat_cmd(
             typer.echo(f"Error: {file_path} not found.", err=True)
             continue
 
-        from mm.utils import get_elapsed_ms
-
-        content, elapsed_ms = get_elapsed_ms(_extract, p, opts)
+        content = _extract(p, opts)
 
         if n is not None:
             all_lines = content.splitlines()
@@ -230,7 +228,7 @@ def cat_cmd(
                 entry["mode"] = mode
             results.append(entry)
         elif fmt == "rich":
-            _display_rich(p, content, level, n, elapsed_ms=elapsed_ms)
+            _display_rich(p, content, level, n)
         else:
             # When piping multiple files, emit a compact header so LLMs can
             # distinguish which content belongs to which file.
@@ -950,8 +948,6 @@ def _display_rich(
     content: str,
     level: int,
     n: int | None,
-    *,
-    elapsed_ms: float = 0.0,
 ) -> None:
     from rich import box
     from rich.panel import Panel
@@ -959,7 +955,6 @@ def _display_rich(
     from rich.text import Text
 
     from mm.display import format_size, output_console
-    from mm.utils import inject_elapsed
 
     ext = path.suffix.lstrip(".")
     size_str = format_size(path.stat().st_size)
@@ -968,7 +963,6 @@ def _display_rich(
     subtitle = Text()
     subtitle.append(f"{size_str}", style="bright_blue")
     subtitle.append(f"  L{level} {level_label}", style="dim")
-    subtitle = inject_elapsed(subtitle, elapsed_ms)
 
     if level >= 2:
         from mm.profile import get_active_profile_name
