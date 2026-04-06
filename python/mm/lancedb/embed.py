@@ -54,10 +54,7 @@ def _audio_part(path: Path) -> dict[str, Any]:
 
 
 def audio_parts(path: Path) -> list[dict[str, Any]]:
-    """Chunk audio into overlapping segments and return Parts.
-
-    Each segment is extracted via ffmpeg. For audio <=80s, returns a single Part.
-    """
+    """Chunk audio into overlapping segments and return Parts."""
     from mm.ffmpeg import extract_segment, probe_duration
 
     duration_s = probe_duration(path)
@@ -97,11 +94,7 @@ def _video_part(path: Path) -> dict[str, Any]:
 
 
 def video_parts(path: Path) -> list[dict[str, Any]]:
-    """Chunk a video into overlapping segments and return Parts.
-
-    Each segment is extracted via ffmpeg and returned as a separate Part.
-    For videos <=120s, returns a single Part.
-    """
+    """Chunk a video into overlapping segments and return Parts."""
     from mm.ffmpeg import probe_duration
 
     duration_s = probe_duration(path)

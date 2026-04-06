@@ -89,6 +89,7 @@ def inspect_db():
     print("\n--- DB state ---")
     print(f"  l2_results: {db._l2_table().count_rows()} rows")
     print(f"  chunks:     {db._chunks_table().count_rows()} rows")
+
     ct = db._chunks_table()
     t = ct.to_arrow()
     has_vec = "vector" in t.column_names
@@ -97,6 +98,7 @@ def inspect_db():
         for i in range(t.num_rows):
             if t.column("vector")[i].as_py() is not None:
                 embedded += 1
+
     print(f"  with vectors: {embedded}/{t.num_rows}")
 
 
