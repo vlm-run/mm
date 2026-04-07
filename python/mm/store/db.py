@@ -3,8 +3,24 @@
 Single global database at ~/.local/share/mm/mm.db with tables:
   - files:      L0 + L1 metadata (one row per file, uri = absolute path)
   - l2_results: LLM-generated summaries (many per file)
-  - chunks:     Chunked L2 content + embeddings (many per L2 result)
+  - chunks:     Chunked L2 content (many per L2 result)
+  - chunks_vec: Embedding vectors (sqlite-vec virtual table, linked via chunk_id)
   - cache:      Key-value cache for L1/L2 results
+
+Vector search (ANN/KNN):
+  sqlite-vec provides exact KNN via brute-force scan over the vec0 virtual table.
+  Queries use the MATCH operator with a query vector packed as raw float bytes:
+
+    SELECT c.*, v.distance
+    FROM chunks c
+    JOIN chunks_vec v ON v.chunk_id = c.id
+    WHERE v.embedding MATCH <query_vec_bytes> AND k = <limit>
+    ORDER BY v.distance
+
+  The `k = <limit>` clause is required by sqlite-vec to bound the search.
+  Distance metric is L2 (Euclidean) by default. For small-to-medium datasets
+  (<1M vectors) this is fast enough (sub-ms for 10K vectors). For larger
+  datasets, sqlite-vec supports partitioned ANN indices.
 """
 
 from __future__ import annotations
@@ -318,6 +334,8 @@ class MmDatabase:
         if not vectors:
             return
 
+        import struct
+
         db = self._connect
         dim = len(vectors[0])
         self._ensure_vec_table(dim)
@@ -325,20 +343,17 @@ class MmDatabase:
         chunks = self.get_chunks(uri, content_hash, profile, model)
         n = min(len(vectors), len(chunks))
 
+        chunk_updates = []
+        vec_inserts = []
         for i in range(n):
             chunk_id = chunks[i]["id"]
-            db.execute(
-                "UPDATE chunks SET embed_model = ? WHERE id = ?",
-                (embed_model, chunk_id),
-            )
-            # Upsert into vec table
-            import struct
+            chunk_updates.append((embed_model, chunk_id))
+            vec_inserts.append((chunk_id, struct.pack(f"{dim}f", *vectors[i])))
 
-            vec_bytes = struct.pack(f"{dim}f", *vectors[i])
-            db.execute(
-                "INSERT OR REPLACE INTO chunks_vec (chunk_id, embedding) VALUES (?, ?)",
-                (chunk_id, vec_bytes),
-            )
+        db.executemany("UPDATE chunks SET embed_model = ? WHERE id = ?", chunk_updates)
+        db.executemany(
+            "INSERT OR REPLACE INTO chunks_vec (chunk_id, embedding) VALUES (?, ?)", vec_inserts
+        )
         db.commit()
 
     def search_similar(
