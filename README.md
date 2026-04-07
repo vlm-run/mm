@@ -40,10 +40,10 @@ mm cat photo.png -l 2 --detail               # LLM caption (~80 words)
 | `find`  | Find/list files, tree view, schema | `--kind`, `--ext`, `--min-size`, `--max-size`, `--sort`, `--reverse`, `--columns`, `--tree`, `--depth`, `--schema`, `--limit`, `--format` |
 | `cat` | Content extraction (auto-detected by file type) | `--level 0/1/2`, `-n`, `--detail`, `--mosaic-*`, `--audio-*`, `--format` |
 | `grep` | Content search across files | `--kind`, `--ext`, `-C`, `--count`, `--format` |
-| `sql` | DuckDB SQL on file index | `--dir`, `--format` |
+| `sql` | SQL queries on file index, L2 results, and chunks | `--dir`, `--format`, `--no-cache`, `--list-tables` |
 | `wc` | Count files, bytes, lines, tokens | `--kind`, `--by-kind`, `--format` |
 | `bench` | Benchmark suite (L0/L1/L2) | `--format`, `--rounds` |
-| `config` | Extraction mode settings | `show`, `init`, `set` |
+| `config` | Extraction mode settings | `show`, `init`, `set`, `reset-db` |
 | `profile` | Manage LLM provider profiles | `list`, `add`, `update`, `use`, `remove` |
 
 ### find — locate/list, tree, and schema
@@ -92,10 +92,18 @@ mm grep "invoice" ~/data --count               # match counts per file
 
 ### sql — query the index
 
+Queries file metadata via scan + SQLite, or L2 results and chunks from the persistent SQLite store.
+
 ```bash
 mm find ~/data --schema                          # see available columns
 mm sql "SELECT kind, COUNT(*) as n, ROUND(SUM(size)/1e6,1) as mb \
   FROM files GROUP BY kind ORDER BY mb DESC" --dir ~/data
+
+# Query stored tables directly (auto-detected from table name)
+mm sql "SELECT uri, summary FROM l2_results LIMIT 10"
+mm sql "SELECT uri, chunk_idx, LENGTH(chunk_text) FROM chunks"
+mm sql "SELECT COUNT(*) FROM chunks WHERE embed_model IS NOT NULL"
+mm sql --list-tables                              # show available tables
 ```
 
 ### Output modes
@@ -116,7 +124,7 @@ print(ctx)  # Context(root='/Users/.../domains', files=702)
 df = ctx.to_polars()         # polars.DataFrame (zero-copy)
 df = ctx.to_pandas()         # pandas.DataFrame
 
-# SQL via DuckDB
+# SQL via SQLite
 result = ctx.sql("SELECT kind, COUNT(*) as n FROM files GROUP BY kind ORDER BY n DESC")
 
 # Chainable filtering
@@ -156,6 +164,20 @@ Benchmarked on Apple Silicon (M-series), 702 files (7.2GB):
 | PDF page mosaic (per page) | ~10ms |
 | Video keyframe mosaic (48 frames) | ~1s |
 
+## Storage
+
+mm uses a global SQLite database at `~/.local/share/mm/mm.db` with sqlite-vec for vector search:
+
+| Table | Contents | Relationship |
+|-------|----------|-------------|
+| `files` | L0 + L1 file metadata (one row per file, `uri` = absolute path) | — |
+| `l2_results` | LLM-generated summaries (many per file) | FK → `files.uri` |
+| `chunks` | ~1024-char content chunks | FK → `l2_results` |
+| `chunks_vec` | Embedding vectors (sqlite-vec) | FK → `chunks.id` |
+| `cache` | Key-value L1/L2 result cache | — |
+
+Use `mm config reset-db` to clear all databases and caches.
+
 ## Architecture
 
 ```
@@ -165,14 +187,13 @@ Rust (mm-core)                   Python (mm)
 │   dir walk + stat)  │────────────>│   find/wc        │
 │ rayon parallelism   │  (fast path)│   (60ms, no pyarrow)│
 │ Arrow RecordBatch   │             │                     │
-│ Parquet I/O         │  Arrow IPC  │ Context class       │
-│ serde_json (direct) │────────────>│ .to_polars/pandas() │
-│ L1 extractors       │  PyO3       │ .sql() via DuckDB   │
-│   code, image,      │<───────────>│ Rich display        │
-│   video (mp4parse,  │             │ pypdfium2 (PDF)     │
-│    matroska)        │             │ Pillow (mosaics)    │
-│ xxh3 hashing (mmap) │             │ ffmpeg (video L2)   │
-│ EXIF extraction     │             │ openai SDK (L2 LLM) │
+│ xxh3 hashing (mmap) │  Arrow IPC  │ Context class       │
+│ directory_hash      │────────────>│ .to_polars/pandas() │
+│ L1 extractors       │  PyO3       │ .sql() via SQLite    │
+│   code, image,      │<───────────>│ SQLite + sqlite-vec  │
+│   video (mp4parse,  │             │   (storage + vector  │
+│    matroska)        │             │    search, ~130ms)   │
+│ EXIF extraction     │             │ Embeddings (Gemini)  │
 └─────────────────────┘             └─────────────────────┘
 ```
 

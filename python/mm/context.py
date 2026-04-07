@@ -3,7 +3,10 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from mm.store import MmDatabase
 
 
 class FileEntry:
@@ -58,7 +61,16 @@ class Context:
         self._scanner.scan()
 
         self._table = self._scanner.to_arrow()  # pa.Table
-        self._mm_dir = self.root / ".mm"
+        self._db: MmDatabase | None = None
+
+    @property
+    def db(self) -> MmDatabase:
+        """Lazy-initialized global database connection."""
+        if self._db is None:
+            from mm.store import MmDatabase
+
+            self._db = MmDatabase()
+        return self._db
 
     @property
     def num_files(self) -> int:
@@ -95,11 +107,11 @@ class Context:
     # --- SQL ---
 
     def sql(self, query: str):
-        """Run a SQL query against the file index via DuckDB.
+        """Run a SQL query against the file index.
 
         The table is available as 'files' in the query.
         """
-        from mm.duck import query_arrow_table
+        from mm.query import query_arrow_table
 
         return query_arrow_table(self._table, query)
 
@@ -134,7 +146,7 @@ class Context:
         if not conditions:
             return self
 
-        from mm.duck import query_arrow_table
+        from mm.query import query_arrow_table
 
         where_clause = " AND ".join(conditions)
         filtered = query_arrow_table(self._table, f"SELECT * FROM files WHERE {where_clause}")
@@ -145,7 +157,7 @@ class Context:
         new_ctx._llm_api_key = self._llm_api_key
         new_ctx._scanner = self._scanner
         new_ctx._table = filtered
-        new_ctx._mm_dir = self._mm_dir
+        new_ctx._db = self._db
         return new_ctx
 
     # --- Content access ---
@@ -291,12 +303,9 @@ class Context:
 
     # --- Persistence ---
 
-    def save(self) -> Path:
-        """Write the index to .mm/index.parquet."""
-        self._mm_dir.mkdir(parents=True, exist_ok=True)
-        parquet_path = self._mm_dir / "index.parquet"
-        self._scanner.write_parquet(str(parquet_path))
-        return parquet_path
+    def save(self) -> None:
+        """Write the index to the database."""
+        self.db.upsert_files(self._table, self.root)
 
     def __repr__(self) -> str:
         return f"Context(root='{self.root}', files={self.num_files})"

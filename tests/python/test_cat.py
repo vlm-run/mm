@@ -247,7 +247,7 @@ class TestL2CacheError:
 
     def test_error_result_not_cached(self, tmp_path: Path):
         """An error string like '[Video L2 failed: ...]' must not be stored."""
-        from unittest.mock import patch
+        from unittest.mock import MagicMock, patch
 
         from mm.commands.cat import _CatOpts, _l2_cached
 
@@ -271,11 +271,13 @@ class TestL2CacheError:
             format="rich",
         )
 
+        mock_db = MagicMock()
+        mock_db.get_l2.return_value = None
+
         with (
             patch("mm.commands.cat._l2", return_value="[LLM error: connection refused]"),
-            patch("mm.cache.get_content_hash", return_value="fakehash123"),
-            patch("mm.cache.get", return_value=None),
-            patch("mm.cache.put") as mock_put,
+            patch("mm.store.util.get_content_hash", return_value="fakehash123"),
+            patch("mm.store.util.get_db", return_value=mock_db),
             patch("mm.profile.get_profile") as mock_profile,
         ):
             mock_profile.return_value.name = "default"
@@ -283,11 +285,11 @@ class TestL2CacheError:
             result = _l2_cached(txt, "text", opts)
 
         assert result == "[LLM error: connection refused]"
-        mock_put.assert_not_called()
+        mock_db.put_l2.assert_not_called()
 
     def test_success_result_is_cached(self, tmp_path: Path):
         """A normal result should be stored in the cache."""
-        from unittest.mock import patch
+        from unittest.mock import MagicMock, patch
 
         from mm.commands.cat import _CatOpts, _l2_cached
 
@@ -311,11 +313,13 @@ class TestL2CacheError:
             format="rich",
         )
 
+        mock_db = MagicMock()
+        mock_db.get_l2.return_value = None
+
         with (
             patch("mm.commands.cat._l2", return_value="A beautiful sunset over the ocean."),
-            patch("mm.cache.get_content_hash", return_value="fakehash123"),
-            patch("mm.cache.get", return_value=None),
-            patch("mm.cache.put") as mock_put,
+            patch("mm.store.util.get_content_hash", return_value="fakehash123"),
+            patch("mm.store.util.get_db", return_value=mock_db),
             patch("mm.profile.get_profile") as mock_profile,
         ):
             mock_profile.return_value.name = "default"
@@ -323,19 +327,20 @@ class TestL2CacheError:
             result = _l2_cached(txt, "text", opts)
 
         assert result == "A beautiful sunset over the ocean."
-        mock_put.assert_called_once_with(
-            "fakehash123",
-            "default",
-            "test-model",
-            "A beautiful sunset over the ocean.",
-            None,
-            False,
+        mock_db.put_l2.assert_called_once_with(
+            uri=str(txt.resolve()),
+            content_hash="fakehash123",
+            profile="default",
+            model="test-model",
+            content="A beautiful sunset over the ocean.",
+            mode=None,
+            detail=False,
             extra="",
         )
 
     def test_various_error_prefixes_not_cached(self, tmp_path: Path):
         """All bracket-prefixed error strings should be skipped."""
-        from unittest.mock import patch
+        from unittest.mock import MagicMock, patch
 
         from mm.commands.cat import _CatOpts, _l2_cached
 
@@ -367,15 +372,17 @@ class TestL2CacheError:
         ]
 
         for error_msg in error_messages:
+            mock_db = MagicMock()
+            mock_db.get_l2.return_value = None
+
             with (
                 patch("mm.commands.cat._l2", return_value=error_msg),
-                patch("mm.cache.get_content_hash", return_value="hash"),
-                patch("mm.cache.get", return_value=None),
-                patch("mm.cache.put") as mock_put,
+                patch("mm.store.util.get_content_hash", return_value="hash"),
+                patch("mm.store.util.get_db", return_value=mock_db),
                 patch("mm.profile.get_profile") as mock_profile,
             ):
                 mock_profile.return_value.name = "default"
                 mock_profile.return_value.model = "m"
                 _l2_cached(txt, "text", opts)
 
-            mock_put.assert_not_called()
+            mock_db.put_l2.assert_not_called()

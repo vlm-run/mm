@@ -206,9 +206,7 @@ def cat_cmd(
             typer.echo(f"Error: {file_path} not found.", err=True)
             continue
 
-        from mm.utils import get_elapsed_ms
-
-        content, elapsed_ms = get_elapsed_ms(_extract, p, opts)
+        content = _extract(p, opts)
 
         if n is not None:
             all_lines = content.splitlines()
@@ -230,7 +228,7 @@ def cat_cmd(
                 entry["mode"] = mode
             results.append(entry)
         elif fmt == "rich":
-            _display_rich(p, content, level, n, elapsed_ms=elapsed_ms)
+            _display_rich(p, content, level, n)
         else:
             # When piping multiple files, emit a compact header so LLMs can
             # distinguish which content belongs to which file.
@@ -325,11 +323,12 @@ def _extract(path: Path, opts: _CatOpts) -> str:
 
 def _l2_cached(path: Path, kind: str, opts: _CatOpts) -> str:
     """Run L2 with cache lookup/store unless --no-cache."""
-    from mm import cache
+    from mm.store.util import get_content_hash, get_db
     from mm.profile import get_profile
 
+    db = get_db()
     profile = get_profile()
-    content_hash = cache.get_content_hash(path)
+    content_hash = get_content_hash(path)
     # Include video mosaic parameters in cache key for different mosaic configs.
     extra_parts: list[str] = []
     if kind == "video":
@@ -340,7 +339,7 @@ def _l2_cached(path: Path, kind: str, opts: _CatOpts) -> str:
     extra = "|".join(extra_parts)
 
     if not opts.no_cache and content_hash:
-        cached = cache.get(
+        cached = db.get_l2(
             content_hash,
             profile.name,
             profile.model,
@@ -357,17 +356,25 @@ def _l2_cached(path: Path, kind: str, opts: _CatOpts) -> str:
     else:
         result = _l2(path, kind, opts)
 
-    # Store in cache — skip error/empty results so transient failures aren't cached permanently
     if content_hash and result and not result.startswith("["):
-        cache.put(
-            content_hash,
-            profile.name,
-            profile.model,
-            result,
-            opts.mode,
-            opts.detail,
+        uri = str(path.resolve())
+        db.put_l2(
+            uri=uri,
+            content_hash=content_hash,
+            profile=profile.name,
+            model=profile.model,
+            content=result,
+            mode=opts.mode,
+            detail=opts.detail,
             extra=extra,
         )
+        # Embed chunks (best-effort, non-blocking for the user)
+        try:
+            from mm.store.embed import embed_file_chunks
+
+            embed_file_chunks(uri, content_hash, profile.name, profile.model)
+        except Exception:
+            pass
     return result
 
 
@@ -377,17 +384,18 @@ def _l2_cached(path: Path, kind: str, opts: _CatOpts) -> str:
 
 
 def _use_l1_cache(func: Callable[[Path], str], path: Path, no_cache=False) -> str:
-    from mm import cache
+    from mm.store.util import get_content_hash, get_db
 
-    # L1 results depend on exact file content, not visual similarity.
-    content_hash = cache.get_content_hash(path, use_phash=False)
+    db = get_db()
+    content_hash = get_content_hash(path, use_phash=False)
     if not no_cache and content_hash:
-        if (cached := cache.get_l1(content_hash)) and cached is not None:
+        cached = db.get_l1(content_hash)
+        if cached is not None:
             return cached
 
     result = func(path)
     if content_hash and result and not result.startswith("["):
-        cache.put_l1(content_hash, result)
+        db.put_l1(str(path.resolve()), content_hash, result)
     return result
 
 
@@ -948,8 +956,6 @@ def _display_rich(
     content: str,
     level: int,
     n: int | None,
-    *,
-    elapsed_ms: float = 0.0,
 ) -> None:
     from rich import box
     from rich.panel import Panel
@@ -957,7 +963,6 @@ def _display_rich(
     from rich.text import Text
 
     from mm.display import format_size, output_console
-    from mm.utils import inject_elapsed
 
     ext = path.suffix.lstrip(".")
     size_str = format_size(path.stat().st_size)
@@ -966,7 +971,6 @@ def _display_rich(
     subtitle = Text()
     subtitle.append(f"{size_str}", style="bright_blue")
     subtitle.append(f"  L{level} {level_label}", style="dim")
-    subtitle = inject_elapsed(subtitle, elapsed_ms)
 
     if level >= 2:
         from mm.profile import get_active_profile_name

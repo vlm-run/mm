@@ -13,14 +13,15 @@ dependencies = [
     "rich>=13.0",
     "polars>=1.0",
     "pandas>=2.0",
-    "duckdb>=1.0",
     "pyarrow>=15.0",
+    "sqlite-vec>=0.1.9",
     "pypdfium2>=4.0",
     "Pillow>=10.0",
     "openai>=1.0",
     "tomli>=1.0; python_version < '3.11'",
     "python-docx==1.2.0",
-    "python-pptx>=1.0.2"
+    "python-pptx>=1.0.2",
+    "google-genai>=1.0",
 ]
 
 [project.scripts]

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import functools
+from time import perf_counter
 from typing import TYPE_CHECKING, Any, Literal
 
 if TYPE_CHECKING:
@@ -268,6 +269,47 @@ def _style_cell(col: str, val: Any):
     return Text(str(val))
 
 
+def autoselect_cols(table: pa.Table):
+    """auto select a subset of columns to display based on terminal width, prioritizing the most useful ones."""
+    import shutil
+
+    cols_set: list[str] = []
+    term_width = shutil.get_terminal_size((120, 40)).columns
+    all_cols = table.column_names
+    # ~12 chars minimum per column, cap at 10 for readability
+    max_cols = min(max(term_width // 12, 4), 10)
+
+    if len(all_cols) > max_cols:
+        # In order of display relevance/significance
+        _PREFERRED = [
+            "uri",
+            "name",
+            "ext",
+            "size",
+            "kind",
+            "mime",
+            "depth",
+            "modified",
+            "content_hash",
+            "dimensions",
+            "language",
+            "duration_s",
+            "pages",
+            "line_count",
+            "parent",
+        ]
+
+        for c in _PREFERRED:
+            if c in all_cols and len(cols_set) < max_cols:
+                cols_set.append(c)
+        # Fill remaining with any columns not yet included
+        for c in all_cols:
+            if c not in cols_set and len(cols_set) < max_cols:
+                cols_set.append(c)
+
+    return cols_set
+
+
 def arrow_table_to_rich(
     table: pa.Table,
     columns: list[str] | None = None,
@@ -279,6 +321,8 @@ def arrow_table_to_rich(
 
     total = table.num_rows
     num_rows = total if limit is None else min(limit, total)
+    if columns is None:
+        columns = autoselect_cols(table)
 
     # Build caption with row count + total size if available
     parts = []
@@ -287,7 +331,7 @@ def arrow_table_to_rich(
     elif total > 0:
         parts.append(f"{total:,} file{'s' if total != 1 else ''}")
     if "size" in table.column_names and total > 0:
-        total_bytes = sum(r.as_py() for r in table.column("size") if r.as_py() is not None)
+        total_bytes = sum(int(r.as_py()) for r in table.column("size") if r.as_py() is not None)
         if total_bytes > 0:
             parts.append(format_size(total_bytes))
     subtitle = "  ".join(parts) if parts else None
@@ -394,3 +438,16 @@ def info_panel(stats: dict[str, Any], title: str = "mm"):
         padding=(1, 2),
         box=box.ROUNDED,
     )
+
+
+def display_elapsed(start_time: float) -> None:
+    """display elapsed time since start_time in a human-friendly format.
+    Args:
+        start_time: start time in seconds (from time.perf_counter())
+    """
+    assert start_time > 0
+    elapsed_ms = (perf_counter() - start_time) * 1000
+    from mm.display import output_console
+
+    elapsed_value = f"{elapsed_ms:.0f}ms" if elapsed_ms < 1000 else f"{elapsed_ms / 1000:.1f}s"
+    output_console.print(f"[dim]completed in {elapsed_value} [/dim]")

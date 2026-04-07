@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import atexit
 import signal
 import sys
+from time import perf_counter
 from typing import Annotated, Optional
 
 import typer
@@ -34,6 +36,8 @@ app = typer.Typer(
     pretty_exceptions_enable=False,
 )
 
+_TIMED_COMMANDS = {"find", "cat", "grep", "sql", "wc"}
+
 
 @app.callback()
 def _main(
@@ -46,12 +50,18 @@ def _main(
     ] = "auto",
 ) -> None:
     """High-performance multi-modal context management."""
+    start_time = perf_counter()
+
     from mm.config import set_cli_overrides
-    from mm.display import set_color_mode
+    from mm.display import display_elapsed, set_color_mode
 
     set_cli_overrides(profile=profile)
     if color != "auto":
         set_color_mode(color)
+
+    cmd = sys.argv[1] if len(sys.argv) > 1 else ""
+    if cmd in _TIMED_COMMANDS:
+        atexit.register(display_elapsed, start_time)
 
 
 app.command(name="bench")(bench.bench_cmd)

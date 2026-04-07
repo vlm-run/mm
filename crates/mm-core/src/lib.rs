@@ -10,7 +10,7 @@ pub mod table;
 pub mod walk;
 
 pub use format::{entries_to_json, entries_to_json_filtered};
-pub use hash::{fast_fingerprint, full_hash_mmap, hamming_distance, phash};
+pub use hash::{directory_hash, fast_fingerprint, full_hash_mmap, hamming_distance, phash};
 pub use meta::{FileEntry, FileKind, enrich_image_dimensions};
 pub use schema::{l0_schema, l1_schema};
 pub use table::build_l0_record_batch;

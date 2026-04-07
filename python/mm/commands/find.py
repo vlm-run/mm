@@ -179,18 +179,18 @@ def _find_table(
     table = ctx.to_arrow()
 
     if stdin_paths:
-        from mm.duck import query_arrow_table
+        from mm.query import query_arrow_table
 
         path_list = ", ".join(f"'{p}'" for p in stdin_paths)
         table = query_arrow_table(table, f"SELECT * FROM files WHERE path IN ({path_list})")
 
     if depth is not None:
-        from mm.duck import query_arrow_table
+        from mm.query import query_arrow_table
 
         table = query_arrow_table(table, f"SELECT * FROM files WHERE depth <= {depth}")
 
     if sort:
-        from mm.duck import query_arrow_table
+        from mm.query import query_arrow_table
 
         order = "DESC" if reverse else "ASC"
         table = query_arrow_table(table, f"SELECT * FROM files ORDER BY {sort} {order}")

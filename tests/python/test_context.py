@@ -109,12 +109,14 @@ def test_grep_pattern(small_tree: Path):
     assert all("hello" in m["line"] for m in matches)
 
 
-def test_save_parquet(small_tree: Path):
+def test_save_db(small_tree: Path):
     from mm.context import Context
     ctx = Context(small_tree)
-    parquet_path = ctx.save()
-    assert parquet_path.exists()
-    assert parquet_path.suffix == ".parquet"
+    ctx.save()
+    # Verify data is in SQLite (filter to this test's root)
+    root_str = str(small_tree.resolve()).replace("'", "''")
+    f = ctx.db.get_files(where=f"uri LIKE '{root_str}%'")
+    assert len(f) == ctx.num_files
 
 
 def test_context_repr(small_tree: Path):

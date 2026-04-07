@@ -69,6 +69,10 @@ def content_hash(path: str) -> str | None:
     """Fast xxh3 content hash of a file via mmap. Returns 16-char hex string."""
     ...
 
+def directory_hash(path: str) -> str | None:
+    """Hash a directory listing (sorted name:mtime:size). Returns 16-char hex string."""
+    ...
+
 def perceptual_hash(path: str) -> int | None:
     """Perceptual hash (pHash) of an image file. Returns 64-bit hash."""
     ...

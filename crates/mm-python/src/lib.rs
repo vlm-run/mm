@@ -302,6 +302,14 @@ fn content_hash(path: String) -> PyResult<Option<String>> {
     Ok(mm_core::hash::full_hash_mmap(p).map(|h| format!("{:016x}", h)))
 }
 
+/// Hash a directory listing (sorted name:mtime:size). Returns 16-char hex string.
+/// Deterministic — same files with same mtimes produce the same hash.
+#[pyfunction]
+fn directory_hash(path: String) -> PyResult<Option<String>> {
+    let p = std::path::Path::new(&path);
+    Ok(mm_core::directory_hash(p).map(|h| format!("{:016x}", h)))
+}
+
 /// Perceptual hash of an image file. Returns 64-bit hash as integer.
 #[pyfunction]
 fn perceptual_hash(path: String) -> PyResult<Option<u64>> {
@@ -317,6 +325,7 @@ fn mm_module(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<L1Result>()?;
     m.add_function(wrap_pyfunction!(hamming_distance, m)?)?;
     m.add_function(wrap_pyfunction!(content_hash, m)?)?;
+    m.add_function(wrap_pyfunction!(directory_hash, m)?)?;
     m.add_function(wrap_pyfunction!(perceptual_hash, m)?)?;
     Ok(())
 }

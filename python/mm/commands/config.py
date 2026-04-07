@@ -115,6 +115,63 @@ def init(
     output_console.print(f"[green]Created[/green] {path}")
 
 
+@config_app.command("reset-db")
+def reset_db(
+    yes: Annotated[bool, typer.Option("--yes", "-y", help="Skip confirmation")] = False,
+) -> None:
+    """Delete all mm databases and caches.
+
+    Removes the SQLite database under ~/.local/share/mm/.
+    This action is irreversible.
+    """
+    import shutil
+
+    from mm.display import output_console
+    from mm.store.db import MmDatabase
+
+    targets = [MmDatabase.DB_PATH]
+    # Also clean up legacy files if they exist
+    legacy = MmDatabase.DB_DIR
+    for name in (
+        "cache.db",
+        "cache.db.db",
+        "cache.db.dir",
+        "cache.db.bak",
+        "cache.db.dat",
+        "db.sock",
+        "db.pid",
+    ):
+        p = legacy / name
+        if p not in targets:
+            targets.append(p)
+
+    existing = [p for p in targets if p.exists()]
+    if not existing:
+        output_console.print("[dim]Nothing to reset — no databases or caches found.[/dim]")
+        return
+
+    output_console.print("[bold]The following will be deleted:[/bold]")
+    for p in existing:
+        output_console.print(f"  {p}")
+
+    if not yes:
+        confirm = typer.confirm(
+            "\nThis leads to irreversible data loss. Continue?",
+            default=False,
+        )
+        if not confirm:
+            output_console.print("[dim]Aborted.[/dim]")
+            raise typer.Exit(1)
+
+    for p in existing:
+        if p.is_dir():
+            shutil.rmtree(p)
+        else:
+            p.unlink()
+
+    output_console.print("[green]All databases and caches have been reset.[/green]")
+
+
 @config_app.command("set")
 def set_key(
     key: Annotated[str, typer.Argument(help="Key to set (e.g. mode.fast.whisper_model)")],

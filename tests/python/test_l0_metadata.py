@@ -333,29 +333,30 @@ class TestExtensionMime:
 # ── Parquet Roundtrip ─────────────────────────────────────────────────
 
 
-class TestParquetRoundtrip:
+class TestDBRoundtrip:
 
     def test_roundtrip_preserves_dimensions(self, media_tree: Path):
         ctx = Context(media_tree)
-        saved = ctx.save()
-        assert saved.exists()
+        ctx.save()
 
-        import pyarrow.parquet as pq
-        table = pq.read_table(saved)
-        assert "width" in table.column_names
-        assert "height" in table.column_names
+        root_str = str(media_tree.resolve()).replace("'", "''")
+        rows = ctx.db.get_files(where=f"uri LIKE '{root_str}%'")
+        assert len(rows) > 0
+        assert "width" in rows[0]
+        assert "height" in rows[0]
 
-        df = table.to_pandas()
-        pngs = df[df["name"].str.endswith(".png")]
-        assert pngs["width"].notna().all()
-        assert pngs["height"].notna().all()
+        pngs = [r for r in rows if r["name"].endswith(".png")]
+        assert all(r["width"] is not None for r in pngs)
+        assert all(r["height"] is not None for r in pngs)
 
     def test_roundtrip_column_count(self, media_tree: Path):
         ctx = Context(media_tree)
-        saved = ctx.save()
-        import pyarrow.parquet as pq
-        table = pq.read_table(saved)
-        assert table.num_columns == 14
+        ctx.save()
+
+        root_str = str(media_tree.resolve()).replace("'", "''")
+        rows = ctx.db.get_files(where=f"uri LIKE '{root_str}%'")
+        # 14 L0 + 18 L1 + 2 tracking = 34 columns in DB
+        assert len(rows[0].keys()) == 34
 
 
 # ── CLI Integration ───────────────────────────────────────────────────

@@ -81,7 +81,7 @@ mm
 │   ├── [x] to_polars() — zero-copy Arrow → Polars
 │   ├── [x] to_pandas() — Arrow → Pandas
 │   ├── [x] to_arrow() — raw PyArrow Table
-│   ├── [x] sql(query) — DuckDB SQL against 'files' table
+│   ├── [x] sql(query) — SQLite SQL against 'files' table
 │   ├── [x] filter(kind, ext, min_size, max_size) — chainable, returns new Context
 │   ├── [x] cat(path, level) / head(path, n) / tail(path, n)
 │   ├── [x] grep(pattern, kind) — regex search across file contents
@@ -101,7 +101,7 @@ mm
 │   │   ├── [x] --mosaic-*, --audio-* namespaced flags
 │   │   ├── [x] --no-cache flag bypasses L2 caches
 │   ├── [x] grep     — content search with context lines (like rg)
-│   ├── [x] sql      — DuckDB SQL on file index
+│   ├── [x] sql      — SQLite SQL on file index
 │   ├── [x] wc       — count files, bytes, lines, estimated tokens
 │   ├── [x] config   — extraction mode settings (show, init, set)
 │   ├── [x] profile  — LLM profile management (list, add, update, use, remove; default immutable, ollama reserved)
@@ -121,7 +121,7 @@ mm
 │   ├── [x] Rust-native JSON (serde_json, bypasses Arrow+pyarrow for --format=json paths)
 │   ├── [x] Rust-native filtered/sorted output (kind, ext, size, sort, limit — all in Rust)
 │   ├── [x] Zero-copy to Polars (polars.from_arrow)
-│   ├── [x] DuckDB in-process SQL on Arrow tables
+│   ├── [x] SQLite + sqlite-vec for storage and vector search
 │   └── [~] PyCapsule FFI (abandoned — compatibility issues with pyarrow)
 │
 ├── Performance
