@@ -25,13 +25,20 @@ def grep_cmd(
     level: Annotated[int, typer.Option("--level", "-l", help="Processing level")] = 1,
     format: Annotated[
         Optional[str],
-        typer.Option("--format", help="Output format: json, tsv, csv, dataset-jsonl, dataset-hf"),
+        typer.Option(
+            "--format", "-f", help="Output format: json, tsv, csv, dataset-jsonl, dataset-hf"
+        ),
     ] = None,
 ) -> None:
     """Search file contents -- text and semantic (like rg/grep)."""
     from mm.display import resolve_format
 
     fmt = resolve_format(format)
+
+    # L2 semantic search — vector similarity via embeddings
+    if level >= 2:
+        _grep_l2(pattern, directory, kind, ext, count, fmt)
+        return
 
     from mm.context import Context
 
@@ -179,3 +186,150 @@ def grep_cmd(
 
     if not has_matches:
         raise typer.Exit(1)
+
+
+# ---------------------------------------------------------------------------
+# L2 — semantic grep via embeddings
+# ---------------------------------------------------------------------------
+
+
+def _grep_l2(
+    pattern: str,
+    directory: Path,
+    kind: str | None,
+    ext: str | None,
+    count: bool,
+    fmt: str,
+) -> None:
+    """Semantic search: ensure files are indexed, embed query, KNN search."""
+    from mm.context import Context
+    from mm.semantic import ensure_indexed, search
+
+    path = directory.resolve()
+    is_file = path.is_file()
+
+    # Collect URIs to ensure they're indexed
+    if is_file:
+        uris = [str(path)]
+    else:
+        ctx = Context(directory)
+        if kind:
+            ctx = ctx.filter(kind=kind)
+        if ext:
+            ctx = ctx.filter(ext=ext)
+        uris = [str(path / f.path) for f in ctx.files]
+
+    ensure_indexed(uris)
+
+    # Search
+    results = search(
+        pattern,
+        uri=str(path) if is_file else None,
+        uri_prefix=str(path) if not is_file else None,
+        limit=20,
+    )
+
+    if not results:
+        raise typer.Exit(1)
+
+    if fmt in ("json", "dataset-jsonl", "dataset-hf"):
+        from mm.display import emit_rows
+
+        if count:
+            from mm.display import json_dumps
+
+            counts: dict[str, int] = {}
+            for r in results:
+                counts[r["path"]] = counts.get(r["path"], 0) + 1
+            if fmt == "json":
+                print(json_dumps(counts))
+            else:
+                emit_rows(fmt, [{"path": p, "count": c} for p, c in counts.items()])
+        else:
+            emit_rows(fmt, results)
+        return
+
+    if count:
+        counts = {}
+        for r in results:
+            counts[r["path"]] = counts.get(r["path"], 0) + 1
+        if fmt == "rich":
+            from rich import box
+            from rich.table import Table as RichTable
+
+            from mm.display import output_console
+
+            t = RichTable(
+                caption=f"{sum(counts.values())} matches in {len(counts)} files",
+                caption_style="dim",
+                caption_justify="right",
+                show_lines=False,
+                padding=(0, 1),
+                border_style="dim",
+                header_style="bold white",
+                box=box.ROUNDED,
+            )
+            t.add_column("file", style="white")
+            t.add_column("matches", justify="right", style="bright_blue")
+            for p, c in sorted(counts.items(), key=lambda x: -x[1]):
+                t.add_row(p, str(c))
+            output_console.print(t)
+        elif fmt == "tsv":
+            from mm.display import emit_tsv
+
+            emit_tsv(
+                [{"path": p, "count": c} for p, c in sorted(counts.items(), key=lambda x: -x[1])],
+                columns=["path", "count"],
+            )
+        elif fmt == "csv":
+            from mm.display import emit_csv
+
+            emit_csv(
+                [{"path": p, "count": c} for p, c in sorted(counts.items(), key=lambda x: -x[1])],
+                columns=["path", "count"],
+            )
+        else:
+            for p, c in sorted(counts.items()):
+                print(f"{p}:{c}")
+        return
+
+    if fmt == "rich":
+        from rich import box
+        from rich.table import Table as RichTable
+
+        from mm.display import output_console
+
+        t = RichTable(
+            caption=f"{len(results)} semantic match{'es' if len(results) != 1 else ''}",
+            caption_style="dim",
+            caption_justify="right",
+            show_lines=False,
+            padding=(0, 1),
+            border_style="dim",
+            header_style="bold white",
+            box=box.ROUNDED,
+        )
+        t.add_column("path", style="magenta")
+        t.add_column("index", justify="right", style="green")
+        t.add_column("distance", justify="right", style="yellow")
+        t.add_column("match", style="white")
+        for r in results:
+            text = r["match"]
+            preview = text[:200] + "..." if len(text) > 200 else text
+            preview = preview.replace("\n", " ")
+            t.add_row(r["path"], str(r["index"]), f"{r['distance']:.4f}", preview)
+        output_console.print(t)
+    elif fmt == "tsv":
+        from mm.display import emit_tsv
+
+        rows = [{**r, "match": r["match"][:200].replace("\n", " ")} for r in results]
+        emit_tsv(rows, columns=["path", "index", "distance", "match"])
+    elif fmt == "csv":
+        from mm.display import emit_csv
+
+        rows = [{**r, "match": r["match"][:200].replace("\n", " ")} for r in results]
+        emit_csv(rows, columns=["path", "index", "distance", "match"])
+    else:
+        for r in results:
+            preview = r["match"][:200].replace("\n", " ")
+            print(f"{r['path']}:index{r['index']}:{r['distance']}:{preview}")
