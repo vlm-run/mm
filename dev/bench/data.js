@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1775577749363,
+  "lastUpdate": 1775579999014,
   "repoUrl": "https://github.com/vlm-run/mm",
   "entries": {
     "mm Rust Benchmarks": [
@@ -1859,6 +1859,130 @@ window.BENCHMARK_DATA = {
           {
             "name": "l1_image_extract/50",
             "value": 13577928.125,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "20521315+nwaughachukwuma@users.noreply.github.com",
+            "name": "Chukwuma Nwaugha",
+            "username": "nwaughachukwuma"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "e1ddb58ae2c81687e64688f7ba4590289c2da210",
+          "message": "use sqlite vec as unified db+storage (#29)\n\n## Summary\n\nReplaces LanceDB + DuckDB + dbm with **SQLite + sqlite-vec** as the\nunified storage and query backend. This eliminates the ~2.4s cold-start\npenalty from LanceDB imports, removes the work-arounds, and consolidates\nthree separate storage systems (LanceDB for persistence, DuckDB for SQL,\ndbm for caching) into a single SQLite database at\n`~/.local/share/mm/mm.db`.\n\n> **Before:** ~960ms for a simple `SELECT` on 3 rows, 3.3s cold start\nfor `--list-tables`\n> **After:** ~180ms for the same query, 104ms cold start for\n`--list-tables`\n\n## Major changes\n\n- **Storage backend**: LanceDB replaced with SQLite + sqlite-vec\n(`mm.store` package, formerly `mm.lancedb`)\n- **SQL engine**: DuckDB replaced with SQLite for all query paths -\nephemeral file queries use in-memory SQLite, stored table queries hit\nthe persistent DB directly\n- **Cache**: dbm sidecar (`cache.db`) replaced with a `cache` table in\nthe same SQLite database\n- **Vector search**: Embeddings stored in a `chunks_vec` virtual table\n(sqlite-vec `vec0`), queried via `MATCH` operator with L2 distance\n- **Integration tests**: New `test_integration.py` - server health,\nembedding generation, end-to-end L2 + chunk embedding (generates test\nfixtures from bytes, no external files needed)\n\n## How to test\n\n```bash\n# Rebuild after Rust changes\nmake develop\n\n# Unit tests (402 tests, excludes integration by default)\nmake test-python\n\n# Integration tests (requires running inference server)\nuv run pytest tests/python/test_integration.py -m integration -v\n\n# Smoke test the storage migration\nmm sql --list-tables\n\nmm cat sample_files/image.png -l 2    # triggers L2 → chunks → embeddings\n\nmm sql \"SELECT COUNT(*) FROM l2_results\"\nmm sql \"SELECT COUNT(*) FROM chunks WHERE embed_model IS NOT NULL\"\n\nmm sql \"SELECT COUNT(*) FROM chunks_vec\"\n\n# Verify file queries still work\nmm find sample_files --tree\nmm sql \"SELECT kind, COUNT(*) as n FROM files GROUP BY kind\" --dir sample_files\n```\n\n**Note:** Existing LanceDB data at `~/.local/share/mm/mm.lance/` is not\nmigrated — run `mm config reset-db` to clean up legacy files. The new\nSQLite DB is created automatically on first use.\n\ncc @spillai",
+          "timestamp": "2026-04-07T17:28:31+01:00",
+          "tree_id": "5224afca84a6be1ec6140f09386e1711f28de96b",
+          "url": "https://github.com/vlm-run/mm/commit/e1ddb58ae2c81687e64688f7ba4590289c2da210"
+        },
+        "date": 1775579998238,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "hash_strategies/fast_fingerprint/10MB",
+            "value": 22347.63266863187,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_strategies/fast_fingerprint/1KB",
+            "value": 11747.987262652096,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_strategies/fast_fingerprint/1MB",
+            "value": 20386.334035900945,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_strategies/fast_fingerprint/64KB",
+            "value": 15799.295717592593,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_strategies/full_hash_mmap/10MB",
+            "value": 454083.40634565137,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_strategies/full_hash_mmap/1KB",
+            "value": 10598.388100866825,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_strategies/full_hash_mmap/1MB",
+            "value": 79213.18163567202,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_strategies/full_hash_mmap/64KB",
+            "value": 15791.81313131313,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_strategies/full_hash_read/10MB",
+            "value": 871123.9629629629,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_strategies/full_hash_read/1KB",
+            "value": 5129.505785837651,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_strategies/full_hash_read/1MB",
+            "value": 92972.94011544011,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_strategies/full_hash_read/64KB",
+            "value": 9815.872725381152,
+            "unit": "ns"
+          },
+          {
+            "name": "l0_index/1000",
+            "value": 4420926.25,
+            "unit": "ns"
+          },
+          {
+            "name": "l0_index/10000",
+            "value": 33838457.25,
+            "unit": "ns"
+          },
+          {
+            "name": "l0_walk/1000",
+            "value": 4306496.666666667,
+            "unit": "ns"
+          },
+          {
+            "name": "l0_walk/10000",
+            "value": 32785973.25,
+            "unit": "ns"
+          },
+          {
+            "name": "l1_code_extract/10",
+            "value": 51035.59378787879,
+            "unit": "ns"
+          },
+          {
+            "name": "l1_code_extract/100",
+            "value": 542264.1822916667,
+            "unit": "ns"
+          },
+          {
+            "name": "l1_image_extract/10",
+            "value": 2086582.6041666667,
+            "unit": "ns"
+          },
+          {
+            "name": "l1_image_extract/50",
+            "value": 13525260,
             "unit": "ns"
           }
         ]
