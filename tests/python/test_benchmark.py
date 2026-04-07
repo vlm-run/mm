@@ -49,7 +49,7 @@ def test_bench_to_pandas(benchmark, large_tree: Path):
 
 
 def test_bench_sql_query(benchmark, large_tree: Path):
-    """Benchmark SQL query via DuckDB."""
+    """Benchmark SQL query via SQLite."""
     from mm.context import Context
 
     ctx = Context(large_tree)

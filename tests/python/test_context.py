@@ -109,14 +109,14 @@ def test_grep_pattern(small_tree: Path):
     assert all("hello" in m["line"] for m in matches)
 
 
-def test_save_lancedb(small_tree: Path):
+def test_save_db(small_tree: Path):
     from mm.context import Context
     ctx = Context(small_tree)
     ctx.save()
-    # Verify data is in LanceDB (filter to this test's root)
+    # Verify data is in SQLite (filter to this test's root)
     root_str = str(small_tree.resolve()).replace("'", "''")
     f = ctx.db.get_files(where=f"uri LIKE '{root_str}%'")
-    assert f.num_rows == ctx.num_files
+    assert len(f) == ctx.num_files
 
 
 def test_context_repr(small_tree: Path):

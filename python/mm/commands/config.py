@@ -121,19 +121,19 @@ def reset_db(
 ) -> None:
     """Delete all mm databases and caches.
 
-    Removes the LanceDB database, dbm cache, and any legacy cache files
-    under ~/.local/share/mm/. This action is irreversible.
+    Removes the SQLite database under ~/.local/share/mm/.
+    This action is irreversible.
     """
     import shutil
 
-    from mm.lancedb.db import MmDatabase
+    from mm.store.db import MmDatabase
     from mm.display import output_console
 
-    targets = [MmDatabase.DB_PATH, MmDatabase.CACHE_PATH]
-    # dbm may create .db, .dir, .bak, .dat suffixed files
-    cache_base = MmDatabase.CACHE_PATH
-    for suffix in ("", ".db", ".dir", ".bak", ".dat"):
-        p = cache_base.parent / (cache_base.name + suffix)
+    targets = [MmDatabase.DB_PATH]
+    # Also clean up legacy files if they exist
+    legacy = MmDatabase.DB_DIR
+    for name in ("mm.lance", "cache.db", "cache.db.db", "cache.db.dir", "cache.db.bak", "cache.db.dat", "db.sock", "db.pid"):
+        p = legacy / name
         if p not in targets:
             targets.append(p)
 

@@ -276,8 +276,8 @@ class TestL2CacheError:
 
         with (
             patch("mm.commands.cat._l2", return_value="[LLM error: connection refused]"),
-            patch("mm.lancedb.util.get_content_hash", return_value="fakehash123"),
-            patch("mm.lancedb.util.get_db", return_value=mock_db),
+            patch("mm.store.util.get_content_hash", return_value="fakehash123"),
+            patch("mm.store.util.get_db", return_value=mock_db),
             patch("mm.profile.get_profile") as mock_profile,
         ):
             mock_profile.return_value.name = "default"
@@ -318,8 +318,8 @@ class TestL2CacheError:
 
         with (
             patch("mm.commands.cat._l2", return_value="A beautiful sunset over the ocean."),
-            patch("mm.lancedb.util.get_content_hash", return_value="fakehash123"),
-            patch("mm.lancedb.util.get_db", return_value=mock_db),
+            patch("mm.store.util.get_content_hash", return_value="fakehash123"),
+            patch("mm.store.util.get_db", return_value=mock_db),
             patch("mm.profile.get_profile") as mock_profile,
         ):
             mock_profile.return_value.name = "default"
@@ -377,8 +377,8 @@ class TestL2CacheError:
 
             with (
                 patch("mm.commands.cat._l2", return_value=error_msg),
-                patch("mm.lancedb.util.get_content_hash", return_value="hash"),
-                patch("mm.lancedb.util.get_db", return_value=mock_db),
+                patch("mm.store.util.get_content_hash", return_value="hash"),
+                patch("mm.store.util.get_db", return_value=mock_db),
                 patch("mm.profile.get_profile") as mock_profile,
             ):
                 mock_profile.return_value.name = "default"

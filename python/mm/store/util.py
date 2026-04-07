@@ -1,14 +1,10 @@
-"""This module provides the content hashing function (Rust, no DB dependency) and a shared
-MmDatabase instance for callers that don't have one.
-"""
-
 from __future__ import annotations
 
 from pathlib import Path
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from mm.lancedb.db import MmDatabase
+    from mm.store.db import MmDatabase
 
 
 _db: MmDatabase | None = None
@@ -21,7 +17,7 @@ def get_db() -> MmDatabase:
     """Lazy-load a shared MmDatabase instance."""
     global _db
     if _db is None:
-        from mm.lancedb.db import MmDatabase
+        from mm.store.db import MmDatabase
 
         _db = MmDatabase()
     return _db

@@ -173,30 +173,14 @@ def embed_file_chunks(
     embed_model: str = "gemini-embedding-2-preview",
 ) -> int:
     """Embed all chunks for a file's L2 result. Returns number of chunks embedded."""
-    from mm.lancedb.db import MmDatabase, _esc
-    from mm.lancedb.schema import ChunkCol
+    from mm.store.db import MmDatabase
 
     db = MmDatabase()
-    ct = db._chunks_table()
-    where = (
-        f"{ChunkCol.URI} = '{_esc(uri)}' "
-        f"AND {ChunkCol.CONTENT_HASH} = '{_esc(content_hash)}' "
-        f"AND {ChunkCol.PROFILE} = '{_esc(profile)}' "
-        f"AND {ChunkCol.MODEL} = '{_esc(model)}'"
-    )
-    results = ct.search().where(where).to_arrow()
-    if results.num_rows == 0:
+    chunks = db.get_chunks(uri, content_hash, profile, model)
+    if not chunks:
         return 0
 
-    import pyarrow.compute as pc
-
-    indices = pc.sort_indices(results.column(ChunkCol.CHUNK_IDX))
-    sorted_results = results.take(indices)
-    texts: list[str] = [
-        sorted_results.column(ChunkCol.CHUNK_TEXT)[i].as_py()
-        for i in range(sorted_results.num_rows)
-    ]
-
+    texts = [c["chunk_text"] for c in chunks]
     vectors = embed_texts(texts)
     db.upsert_embeddings(uri, content_hash, profile, model, embed_model, vectors)
     return len(vectors)

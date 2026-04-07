@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    from mm.lancedb import MmDatabase
+    from mm.store import MmDatabase
 
 
 class FileEntry:
@@ -65,9 +65,9 @@ class Context:
 
     @property
     def db(self) -> MmDatabase:
-        """Lazy-initialized global LanceDB connection."""
+        """Lazy-initialized global database connection."""
         if self._db is None:
-            from mm.lancedb import MmDatabase
+            from mm.store import MmDatabase
 
             self._db = MmDatabase()
         return self._db
@@ -107,11 +107,11 @@ class Context:
     # --- SQL ---
 
     def sql(self, query: str):
-        """Run a SQL query against the file index via DuckDB.
+        """Run a SQL query against the file index.
 
         The table is available as 'files' in the query.
         """
-        from mm.duck import query_arrow_table
+        from mm.query import query_arrow_table
 
         return query_arrow_table(self._table, query)
 
@@ -146,7 +146,7 @@ class Context:
         if not conditions:
             return self
 
-        from mm.duck import query_arrow_table
+        from mm.query import query_arrow_table
 
         where_clause = " AND ".join(conditions)
         filtered = query_arrow_table(self._table, f"SELECT * FROM files WHERE {where_clause}")
@@ -304,7 +304,7 @@ class Context:
     # --- Persistence ---
 
     def save(self) -> None:
-        """Write the index to LanceDB."""
+        """Write the index to the database."""
         self.db.upsert_files(self._table, self.root)
 
     def __repr__(self) -> str:

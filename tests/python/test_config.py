@@ -180,17 +180,17 @@ class TestResetDb:
         """Point MmDatabase storage at a temp dir and create fake data."""
         db_dir = tmp_path / "mm-storage"
         db_dir.mkdir()
-        monkeypatch.setattr("mm.lancedb.db.MmDatabase.DB_DIR", db_dir)
-        monkeypatch.setattr("mm.lancedb.db.MmDatabase.DB_PATH", db_dir / "mm.lance")
-        monkeypatch.setattr("mm.lancedb.db.MmDatabase.CACHE_PATH", db_dir / "cache.db")
+        monkeypatch.setattr("mm.store.db.MmDatabase.DB_DIR", db_dir)
+        monkeypatch.setattr("mm.store.db.MmDatabase.DB_PATH", db_dir / "mm.db")
         return db_dir
 
     def _create_storage(self, storage_dir: Path):
         """Create fake db and cache files."""
+        (storage_dir / "mm.db").write_text("fake")
+        # Legacy files that reset-db should also clean
         lance_dir = storage_dir / "mm.lance"
         lance_dir.mkdir()
         (lance_dir / "data.lance").write_text("fake")
-        (storage_dir / "cache.db").write_text("fake")
 
     def test_reset_deletes_db_and_cache(self, storage_dir: Path):
         from typer.testing import CliRunner
@@ -198,15 +198,15 @@ class TestResetDb:
         from mm.cli import app
 
         self._create_storage(storage_dir)
+        assert (storage_dir / "mm.db").exists()
         assert (storage_dir / "mm.lance").exists()
-        assert (storage_dir / "cache.db").exists()
 
         runner = CliRunner()
         result = runner.invoke(app, ["config", "reset-db", "--yes"])
         assert result.exit_code == 0
         assert "reset" in result.output.lower()
+        assert not (storage_dir / "mm.db").exists()
         assert not (storage_dir / "mm.lance").exists()
-        assert not (storage_dir / "cache.db").exists()
 
     def test_reset_aborts_without_yes(self, storage_dir: Path):
         from typer.testing import CliRunner
@@ -219,7 +219,7 @@ class TestResetDb:
         result = runner.invoke(app, ["config", "reset-db"], input="n\n")
         assert result.exit_code == 1
         # Files should still exist
-        assert (storage_dir / "mm.lance").exists()
+        assert (storage_dir / "mm.db").exists()
 
     def test_reset_confirms_with_y(self, storage_dir: Path):
         from typer.testing import CliRunner

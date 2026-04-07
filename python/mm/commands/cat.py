@@ -323,7 +323,7 @@ def _extract(path: Path, opts: _CatOpts) -> str:
 
 def _l2_cached(path: Path, kind: str, opts: _CatOpts) -> str:
     """Run L2 with cache lookup/store unless --no-cache."""
-    from mm.lancedb.util import get_content_hash, get_db
+    from mm.store.util import get_content_hash, get_db
     from mm.profile import get_profile
 
     db = get_db()
@@ -370,7 +370,7 @@ def _l2_cached(path: Path, kind: str, opts: _CatOpts) -> str:
         )
         # Embed chunks (best-effort, non-blocking for the user)
         try:
-            from mm.lancedb.embed import embed_file_chunks
+            from mm.store.embed import embed_file_chunks
 
             embed_file_chunks(uri, content_hash, profile.name, profile.model)
         except Exception:
@@ -384,7 +384,7 @@ def _l2_cached(path: Path, kind: str, opts: _CatOpts) -> str:
 
 
 def _use_l1_cache(func: Callable[[Path], str], path: Path, no_cache=False) -> str:
-    from mm.lancedb.util import get_content_hash, get_db
+    from mm.store.util import get_content_hash, get_db
 
     db = get_db()
     content_hash = get_content_hash(path, use_phash=False)

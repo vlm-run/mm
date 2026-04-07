@@ -1,4 +1,4 @@
-"""Tests for mm.lancedb.embed — embedding generation workflow."""
+"""Tests for mm.store.embed — embedding generation workflow."""
 
 from __future__ import annotations
 
@@ -8,8 +8,8 @@ from unittest.mock import MagicMock, patch
 
 import pyarrow as pa
 import pytest
-from mm.lancedb import MmDatabase
-from mm.lancedb.embed import (
+from mm.store import MmDatabase
+from mm.store.embed import (
     _EMBEDDINGS_PATH,
     audio_part,
     document_part,
@@ -173,13 +173,13 @@ class TestEmbedFileChunks:
         content = "Test content for embedding. " * 50
         db.put_l2("/test/data/doc.txt", "hash1", "default", "qwen", content)
 
-        with patch("mm.lancedb.db.MmDatabase", return_value=db):
+        with patch("mm.store.db.MmDatabase", return_value=db):
             n = embed_file_chunks("/test/data/doc.txt", "hash1", "default", "qwen")
         assert n > 0
         mock_server.assert_called()
 
     def test_returns_zero_for_missing_chunks(self, db: MmDatabase, mock_server: MagicMock):
-        with patch("mm.lancedb.db.MmDatabase", return_value=db):
+        with patch("mm.store.db.MmDatabase", return_value=db):
             n = embed_file_chunks("/nonexistent", "hash1", "default", "qwen")
         assert n == 0
         mock_server.assert_not_called()
@@ -188,7 +188,7 @@ class TestEmbedFileChunks:
         db.upsert_files(_scanner_table(["doc.txt"]), ROOT)
         db.put_l2("/test/data/doc.txt", "h1", "default", "qwen", "Short text")
 
-        with patch("mm.lancedb.db.MmDatabase", return_value=db):
+        with patch("mm.store.db.MmDatabase", return_value=db):
             embed_file_chunks("/test/data/doc.txt", "h1", "default", "qwen")
 
         results = db.search_similar([1.0] * FAKE_DIM, limit=1)
@@ -200,7 +200,7 @@ class TestEmbedFileChunks:
         content = "Preserved content. " * 100
         db.put_l2("/test/data/doc.txt", "h1", "default", "qwen", content)
 
-        with patch("mm.lancedb.db.MmDatabase", return_value=db):
+        with patch("mm.store.db.MmDatabase", return_value=db):
             embed_file_chunks("/test/data/doc.txt", "h1", "default", "qwen")
 
         full = db.get_full_content("/test/data/doc.txt", "h1", "default", "qwen")
@@ -242,10 +242,10 @@ class TestCatEmbedIntegration:
 
         with (
             patch("mm.commands.cat._l2", return_value="LLM generated text."),
-            patch("mm.lancedb.util.get_content_hash", return_value="fakehash"),
-            patch("mm.lancedb.util.get_db", return_value=mock_db),
+            patch("mm.store.util.get_content_hash", return_value="fakehash"),
+            patch("mm.store.util.get_db", return_value=mock_db),
             patch("mm.profile.get_profile") as mock_profile,
-            patch("mm.lancedb.embed.embed_file_chunks") as mock_embed,
+            patch("mm.store.embed.embed_file_chunks") as mock_embed,
         ):
             mock_profile.return_value.name = "default"
             mock_profile.return_value.model = "test-model"

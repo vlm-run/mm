@@ -2,8 +2,8 @@
 
 from pathlib import Path
 
-from mm.lancedb import MmDatabase
-from mm.lancedb.embed import (
+from mm.store import MmDatabase
+from mm.store.embed import (
     audio_parts,
     document_part,
     embed_file_chunks,

@@ -3,18 +3,14 @@
 from __future__ import annotations
 
 import csv
-import hashlib
 import io
 import re
 from pathlib import Path
-from typing import TYPE_CHECKING, Annotated, Any, Optional
+from typing import Annotated, Any, Optional
 
 import typer
 
-if TYPE_CHECKING:
-    from pyarrow import Table
-
-_LANCE_TABLES = {"l2_results", "chunks"}
+_STORED_TABLES = {"l2_results", "chunks", "files", "cache"}
 
 
 def sql_cmd(
@@ -29,20 +25,17 @@ def sql_cmd(
             "--format", "-f", help="Output format: json, tsv, csv, dataset-jsonl, dataset-hf"
         ),
     ] = None,
-    no_cache: Annotated[
-        bool, typer.Option("--no-cache", help="Skip cache, force fresh scan")
-    ] = False,
     list_tables: Annotated[
         bool, typer.Option("--list-tables", help="List available tables")
     ] = False,
 ) -> None:
-    """Query file metadata, L2 results, and chunks with SQL via DuckDB.
+    """Query file metadata, L2 results, and chunks with SQL.
 
     \b
     Tables:
-      files       — L0/L1 file metadata (scanned from --dir)
-      l2_results  — LLM-generated summaries (stored in LanceDB)
-      chunks      — Chunked L2 content + embeddings (stored in LanceDB)
+      files       — L0/L1 file metadata (scanned from --dir, or persistent store)
+      l2_results  — LLM-generated summaries (stored in SQLite)
+      chunks      — Chunked L2 content + embeddings (stored in SQLite)
 
     \b
     Examples:
@@ -50,7 +43,6 @@ def sql_cmd(
       mm sql "SELECT * FROM files WHERE kind='image'" --dir ~/photos
       mm sql "SELECT uri, summary FROM l2_results LIMIT 10"
       mm sql "SELECT uri, chunk_idx, LENGTH(chunk_text) FROM chunks"
-      mm sql "SELECT COUNT(*) FROM chunks WHERE embed_model IS NOT NULL"
       mm sql --list-tables
     """
     from mm.display import resolve_format
@@ -63,73 +55,62 @@ def sql_cmd(
     if query is None:
         raise typer.BadParameter("Provide a SQL query or use --list-tables")
 
-    # Route: if query references l2_results or chunks, use LanceDB
     table_name = _detect_table(query)
-    if table_name in _LANCE_TABLES:
-        _query_lance(query, table_name, fmt)
+    if table_name in ("l2_results", "chunks"):
+        _query_stored(query, fmt)
     else:
-        _query_files(query, directory, fmt, no_cache)
+        _query_files(query, directory, fmt)
 
 
 def _detect_table(query: str) -> str:
-    """Detect which table the query targets from the FROM clause."""
     match = re.search(r"\bFROM\s+(\w+)", query, re.IGNORECASE)
     if match:
         name = match.group(1).lower()
-        if name in _LANCE_TABLES:
+        if name in _STORED_TABLES:
             return name
     return "files"
 
 
-def _query_lance(query: str, table_name: str, fmt: str) -> None:
-    from mm.lancedb.db import MmDatabase
+def _query_stored(query: str, fmt: str) -> None:
+    """Query persistent SQLite tables (l2_results, chunks)."""
+    from mm.store.db import MmDatabase
 
-    db = MmDatabase()
-    result = db.sql(query, table_name=table_name)
-    _emit_tsv(_arrow_to_tsv(result), fmt)
+    columns, rows = MmDatabase().sql(query)
+    _emit(columns, rows, fmt)
 
 
-def _query_files(query: str, directory: Path, fmt: str, no_cache: bool) -> None:
-    cached_tsv: str | None = None
-    cache_key: str | None = None
-    if not no_cache:
-        cache_key = _make_cache_key(directory, query)
-        if cache_key:
-            from mm.lancedb.db import MmDatabase
-
-            cached_tsv = MmDatabase._cache_get(cache_key)
-
-    if cached_tsv is not None:
-        _emit_tsv(cached_tsv, fmt)
-        return
-
+def _query_files(query: str, directory: Path, fmt: str) -> None:
+    """Scan directory → temp SQLite table → query."""
     from mm.context import Context
-    from mm.duck import query_arrow_table
+    from mm.query import query_arrow_table
 
     result = query_arrow_table(Context(directory).to_arrow(), query)
-    tsv = _arrow_to_tsv(result)
-    if cache_key and tsv:
-        from mm.lancedb.db import MmDatabase
-
-        MmDatabase()._cache_put(cache_key, tsv)
-    _emit_tsv(tsv, fmt)
+    columns = result.column_names
+    rows = [tuple(result.column(c)[i].as_py() for c in columns) for i in range(result.num_rows)]
+    _emit(columns, rows, fmt)
 
 
 def _list_tables(fmt: str) -> None:
-    from mm.lancedb.db import MmDatabase
+    from mm.store.db import MmDatabase
 
     db = MmDatabase()
-    lance_tables = db._connect().table_names() if db._db_path.exists() else []
+    counts = {}
+    for name in ("l2_results", "chunks"):
+        row = db._connect.execute(f"SELECT COUNT(*) FROM {name}").fetchone()
+        counts[name] = row[0] if row else 0
 
     rows = [
-        {"table": "files", "source": "scan + DuckDB", "stored": "ephemeral"},
+        {"table": "files", "source": "scan + SQLite", "stored": "ephemeral"},
     ]
     for name in ("l2_results", "chunks"):
-        if name in lance_tables:
-            count = db._connect().open_table(name).count_rows()
-            rows.append({"table": name, "source": "LanceDB", "stored": f"{count} rows"})
-        else:
-            rows.append({"table": name, "source": "LanceDB", "stored": "empty"})
+        n = counts.get(name, 0)
+        rows.append(
+            {
+                "table": name,
+                "source": "SQLite",
+                "stored": f"{n} rows" if n else "empty",
+            }
+        )
 
     if fmt in ("json", "dataset-jsonl", "dataset-hf"):
         from mm.display import emit_rows
@@ -161,29 +142,16 @@ def _list_tables(fmt: str) -> None:
 
 
 # ---------------------------------------------------------------------------
-# Helpers
+# Output helpers
 # ---------------------------------------------------------------------------
 
 
-def _make_cache_key(directory: Path, query: str) -> str | None:
-    try:
-        from mm._mm import directory_hash
-
-        dir_hash = directory_hash(str(Path(directory).resolve()))
-        if dir_hash is None:
-            return None
-        query_hash = hashlib.md5(query.encode()).hexdigest()[:12]
-        return f"sql:{dir_hash}:{query_hash}"
-    except Exception:
-        return None
-
-
-def _arrow_to_tsv(table: Table) -> str:
+def _to_tsv(columns: list[str], rows: list[tuple]) -> str:
     buf = io.StringIO()
     writer = csv.writer(buf, delimiter="\t")
-    writer.writerow(table.column_names)
-    for i in range(table.num_rows):
-        writer.writerow(str(table.column(c)[i].as_py()) for c in table.column_names)
+    writer.writerow(columns)
+    for row in rows:
+        writer.writerow(str(v) for v in row)
     return buf.getvalue()
 
 
@@ -194,31 +162,33 @@ def _parse_tsv(tsv: str) -> tuple[list[str], list[list[str]]]:
     return headers, rows
 
 
-def _emit_tsv(tsv: str, fmt: str) -> None:
+def _emit(columns: list[str], rows: list[tuple], fmt: str) -> None:
+    if fmt in ("json", "dataset-jsonl", "dataset-hf"):
+        from mm.display import emit_rows
+
+        emit_rows(fmt, [{h: row[i] for i, h in enumerate(columns)} for row in rows])
+        return
+
+    tsv = _to_tsv(columns, rows)
     if fmt in ("tsv", "csv"):
         if fmt == "csv":
-            headers, rows = _parse_tsv(tsv)
+            headers, parsed = _parse_tsv(tsv)
             buf = io.StringIO()
             writer = csv.writer(buf)
             writer.writerow(headers)
-            writer.writerows(rows)
+            writer.writerows(parsed)
             print(buf.getvalue(), end="")
         else:
             print(tsv, end="")
-    elif fmt in ("json", "dataset-jsonl", "dataset-hf"):
-        from mm.display import emit_rows
-
-        headers, rows = _parse_tsv(tsv)
-        emit_rows(fmt, [{h: row[i] for i, h in enumerate(headers)} for row in rows])
     else:
         from rich import box
         from rich.table import Table
 
         from mm.display import _style_cell, output_console
 
-        headers, rows = _parse_tsv(tsv)
+        headers, parsed = _parse_tsv(tsv)
         rich_table = Table(
-            caption=f"{len(rows):,} row{'s' if len(rows) != 1 else ''}",
+            caption=f"{len(parsed):,} row{'s' if len(parsed) != 1 else ''}",
             caption_style="dim",
             caption_justify="right",
             show_lines=False,
@@ -229,7 +199,7 @@ def _emit_tsv(tsv: str, fmt: str) -> None:
         )
         for h in headers:
             rich_table.add_column(h)
-        for row in rows:
+        for row in parsed:
             styled = []
             for h, v in zip(headers, row):
                 val: Any = v

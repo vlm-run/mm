@@ -1,4 +1,4 @@
-"""Tests for mm.lancedb — MmDatabase, schema, and end-to-end operations."""
+"""Tests for mm.store — MmDatabase, schema, and end-to-end operations."""
 
 from __future__ import annotations
 
@@ -6,14 +6,11 @@ from pathlib import Path
 
 import pyarrow as pa
 import pytest
-from mm.lancedb import MmDatabase
-from mm.lancedb.schema import (
+from mm.store import MmDatabase
+from mm.store.schema import (
     ChunkCol,
     FileCol,
     L2Col,
-    chunks_schema,
-    files_schema,
-    l2_results_schema,
 )
 
 # ---------------------------------------------------------------------------
@@ -24,7 +21,7 @@ from mm.lancedb.schema import (
 @pytest.fixture()
 def db(tmp_path: Path) -> MmDatabase:
     """Create an isolated MmDatabase in a temp directory."""
-    return MmDatabase(db_path=tmp_path / "test.lance")
+    return MmDatabase(db_path=tmp_path / "test.db")
 
 
 def _scanner_table(
@@ -64,27 +61,10 @@ ROOT = Path("/test/data")
 
 
 class TestSchema:
-    def test_files_schema_field_count(self):
-        schema = files_schema()
-        # 14 L0 + 18 L1 + 2 tracking = 34
-        assert len(schema) == 34
-
-    def test_l2_results_schema_field_count(self):
-        assert len(l2_results_schema()) == 9
-
-    def test_chunks_schema_field_count(self):
-        # No vector column in base schema
-        assert len(chunks_schema()) == 8
-
     def test_column_enums_are_strings(self):
         assert FileCol.URI == "uri"
         assert L2Col.SUMMARY == "summary"
         assert ChunkCol.CHUNK_TEXT == "chunk_text"
-
-    def test_uri_is_primary_key(self):
-        schema = files_schema()
-        uri_field = schema.field(FileCol.URI)
-        assert not uri_field.nullable
 
 
 # ---------------------------------------------------------------------------
@@ -143,10 +123,10 @@ class TestUpsertFiles:
         db.upsert_files(table, ROOT)
 
         result = db.get_files(where="kind = 'code'")
-        assert result.num_rows == 2
+        assert len(result) == 2
 
         result = db.get_files(where="kind = 'image'")
-        assert result.num_rows == 1
+        assert len(result) == 1
 
 
 class TestUpdateL1:
@@ -241,7 +221,6 @@ class TestL2Results:
         long_content = "x" * 2000
         db.put_l2("/test/data/doc.txt", "hash1", "default", "qwen", long_content)
 
-        # dbm cache returns full content; lancedb stores truncated summary
         result = db.get_l2("hash1", "default", "qwen")
         assert len(result) == 2000
 
@@ -296,8 +275,8 @@ class TestEmbeddings:
         db.upsert_embeddings("/test/data/doc.txt", "h1", "default", "qwen", "embed-v1", vectors)
 
         results = db.search_similar([0.1, 0.2, 0.3, 0.4], limit=2)
-        assert results.num_rows > 0
-        assert "chunk_text" in results.column_names
+        assert len(results) > 0
+        assert "chunk_text" in results[0]
 
     def test_content_preserved_after_embedding(self, db: MmDatabase):
         db.upsert_files(_scanner_table(["doc.txt"]), ROOT)
@@ -318,7 +297,7 @@ class TestEmbeddings:
 
     def test_search_returns_empty_without_embeddings(self, db: MmDatabase):
         results = db.search_similar([0.1, 0.2])
-        assert results.num_rows == 0
+        assert len(results) == 0
 
 
 # ---------------------------------------------------------------------------
@@ -331,21 +310,21 @@ class TestSQL:
         table = _scanner_table(["a.py", "b.png", "c.py"], kinds=["code", "image", "code"])
         db.upsert_files(table, ROOT)
 
-        result = db.sql("SELECT kind, COUNT(*) as n FROM files GROUP BY kind ORDER BY n DESC")
-        rows = result.to_pydict()
-        assert rows["kind"][0] == "code"
-        assert rows["n"][0] == 2
+        columns, rows = db.sql("SELECT kind, COUNT(*) as n FROM files GROUP BY kind ORDER BY n DESC")
+        assert columns == ["kind", "n"]
+        assert rows[0][0] == "code"
+        assert rows[0][1] == 2
 
     def test_sql_where(self, db: MmDatabase):
         table = _scanner_table(["a.py", "b.png"], kinds=["code", "image"])
         db.upsert_files(table, ROOT)
 
-        result = db.sql("SELECT uri FROM files WHERE kind = 'image'")
-        assert result.num_rows == 1
+        columns, rows = db.sql("SELECT uri FROM files WHERE kind = 'image'")
+        assert len(rows) == 1
 
     def test_sql_on_l2_table(self, db: MmDatabase):
         db.upsert_files(_scanner_table(["a.txt"]), ROOT)
         db.put_l2("/test/data/a.txt", "h1", "default", "qwen", "hello")
 
-        result = db.sql("SELECT COUNT(*) as n FROM l2_results", table_name="l2_results")
-        assert result.to_pydict()["n"][0] == 1
+        columns, rows = db.sql("SELECT COUNT(*) as n FROM l2_results", table_name="l2_results")
+        assert rows[0][0] == 1
