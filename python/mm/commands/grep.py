@@ -34,10 +34,20 @@ def grep_cmd(
     from mm.display import resolve_format
 
     fmt = resolve_format(format)
+    stdin_paths = read_paths_from_stdin()
 
     # L2 semantic search — vector similarity via embeddings
     if level >= 2:
-        _grep_l2(pattern, directory, kind, ext, count, fmt)
+        _grep_l2(
+            pattern,
+            directory,
+            kind,
+            ext,
+            count,
+            fmt,
+            limit=5,
+            stdin_paths=stdin_paths,
+        )
         return
 
     from mm.context import Context
@@ -47,8 +57,6 @@ def grep_cmd(
         ctx = ctx.filter(kind=kind)
     if ext:
         ctx = ctx.filter(ext=ext)
-
-    stdin_paths = read_paths_from_stdin()
 
     try:
         regex = re.compile(pattern)
@@ -200,7 +208,8 @@ def _grep_l2(
     ext: str | None,
     count: bool,
     fmt: str,
-    limit=5,
+    limit: int,
+    stdin_paths: list[str] | None = None,
 ) -> None:
     """Semantic search: ensure files are indexed, embed query, KNN search."""
     from mm.context import Context
@@ -212,6 +221,8 @@ def _grep_l2(
     # Collect URIs to ensure they're indexed
     if is_file:
         uris = [str(path)]
+    elif stdin_paths:
+        uris = [str(Path(p).absolute()) for p in stdin_paths if Path(p).is_file()]
     else:
         ctx = Context(directory)
         if kind:
@@ -222,13 +233,21 @@ def _grep_l2(
 
     ensure_indexed(uris)
 
-    # Search
-    results = search(
-        pattern,
-        uri=str(path) if is_file else None,
-        uri_prefix=str(path) if not is_file else None,
-        limit=limit,
-    )
+    # Search — scope to the directories of/in piped URIs
+    if stdin_paths:
+        results: list[dict] = []
+        uris = [str(Path(p).absolute()) for p in stdin_paths if not Path(p).is_file()]
+        for uri in uris:
+            results.extend(search(pattern, uri_prefix=uri, limit=limit))
+        results.sort(key=lambda r: r["distance"])
+        results = results[:limit]
+    else:
+        results = search(
+            pattern,
+            uri=str(path) if is_file else None,
+            uri_prefix=str(path) if not is_file else None,
+            limit=limit,
+        )
 
     if not results:
         raise typer.Exit(1)
