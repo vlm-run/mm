@@ -129,7 +129,7 @@ class MmDatabase:
 
         n = scanner_table.num_rows
         if n == 0:
-            return self._connect.execute("SELECT COUNT(*) FROM files").fetchone()[0]
+            return int(self._connect.execute("SELECT COUNT(*) FROM files").fetchone()[0])
 
         db = self._connect
         now = _now_us()
@@ -186,7 +186,7 @@ class MmDatabase:
 
         db.executemany(sql, rows)
         db.commit()
-        return db.execute("SELECT COUNT(*) FROM files").fetchone()[0]
+        return int(db.execute("SELECT COUNT(*) FROM files").fetchone()[0])
 
     def update_l1(self, uri: str, data: dict[str, Any]) -> None:
         """Fill L1 columns for a specific file."""
@@ -225,7 +225,7 @@ class MmDatabase:
         ).fetchone()
         if row is None:
             return True
-        return row[0] != mtime_us or row[1] != size
+        return bool(row[0] != mtime_us or row[1] != size)
 
     # -- L1 (cache) --
 
