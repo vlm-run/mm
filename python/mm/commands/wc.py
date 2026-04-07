@@ -33,10 +33,13 @@ def wc_cmd(
 
     fmt = resolve_format(format)
 
-    scanner = Scanner(str(Path(directory).resolve()))
+    root = Path(directory).resolve()
+    scanner = Scanner(str(root))
     scanner.scan()
 
     import json as json_mod
+
+    from mm.commands.cat import _l1_document
 
     raw = json_mod.loads(scanner.to_json_fast(kind=kind))
 
@@ -59,11 +62,21 @@ def wc_cmd(
             tokens = 85
             lines = 0
         elif fk in ("code", "text", "config", "data"):
-            tokens = size // TOKEN_CHARS_RATIO
-            lines = max(1, size // 40)
+            lines = 0
+            with (root / entry["path"]).open("r", encoding="utf-8", errors="replace") as f:
+                char_len = 0
+                for line in f:
+                    lines += 1
+                    char_len += len(line)
+            tokens = char_len // TOKEN_CHARS_RATIO
         elif fk == "document":
-            tokens = size // TOKEN_CHARS_RATIO
-            lines = max(1, size // 60)
+            content = _l1_document(root / entry["path"])
+            char_len = len(content)
+            lines = content.count("\n")
+            if content and not content.endswith("\n"):
+                lines += 1
+            lines = max(1, lines)
+            tokens = char_len // TOKEN_CHARS_RATIO
         else:
             tokens = size // TOKEN_CHARS_RATIO
             lines = 0
