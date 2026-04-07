@@ -126,13 +126,21 @@ def reset_db(
     """
     import shutil
 
-    from mm.store.db import MmDatabase
     from mm.display import output_console
+    from mm.store.db import MmDatabase
 
     targets = [MmDatabase.DB_PATH]
     # Also clean up legacy files if they exist
     legacy = MmDatabase.DB_DIR
-    for name in ("mm.lance", "cache.db", "cache.db.db", "cache.db.dir", "cache.db.bak", "cache.db.dat", "db.sock", "db.pid"):
+    for name in (
+        "cache.db",
+        "cache.db.db",
+        "cache.db.dir",
+        "cache.db.bak",
+        "cache.db.dat",
+        "db.sock",
+        "db.pid",
+    ):
         p = legacy / name
         if p not in targets:
             targets.append(p)

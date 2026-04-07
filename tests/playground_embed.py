@@ -71,35 +71,28 @@ def test_mixed_batch():
 
 def test_embed_file_chunks():
     db = MmDatabase()
-    lt = db._l2_table()
-    if lt.count_rows() == 0:
+    conn = db._connect
+    row = conn.execute("SELECT COUNT(*) FROM l2_results").fetchone()
+    if row[0] == 0:
         print("[chunks] skipped — no L2 results in DB. Run: mm cat sample_files/document.txt -l 2")
         return
-    t = lt.to_arrow()
-    uri = t.column("uri")[0].as_py()
-    content_hash = t.column("content_hash")[0].as_py()
-    profile = t.column("profile")[0].as_py()
-    model = t.column("model")[0].as_py()
+    r = conn.execute("SELECT uri, content_hash, profile, model FROM l2_results LIMIT 1").fetchone()
+    uri, content_hash, profile, model = r
     n = embed_file_chunks(uri, content_hash, profile, model)
     print(f"[chunks] embedded {n} chunks for {Path(uri).name}")
 
 
 def inspect_db():
     db = MmDatabase()
+    conn = db._connect
     print("\n--- DB state ---")
-    print(f"  l2_results: {db._l2_table().count_rows()} rows")
-    print(f"  chunks:     {db._chunks_table().count_rows()} rows")
+    l2_count = conn.execute("SELECT COUNT(*) FROM l2_results").fetchone()[0]
+    chunk_count = conn.execute("SELECT COUNT(*) FROM chunks").fetchone()[0]
+    print(f"  l2_results: {l2_count} rows")
+    print(f"  chunks:     {chunk_count} rows")
 
-    ct = db._chunks_table()
-    t = ct.to_arrow()
-    has_vec = "vector" in t.column_names
-    embedded = 0
-    if has_vec:
-        for i in range(t.num_rows):
-            if t.column("vector")[i].as_py() is not None:
-                embedded += 1
-
-    print(f"  with vectors: {embedded}/{t.num_rows}")
+    embedded = conn.execute("SELECT COUNT(*) FROM chunks WHERE embed_model IS NOT NULL").fetchone()[0]
+    print(f"  with vectors: {embedded}/{chunk_count}")
 
 
 if __name__ == "__main__":

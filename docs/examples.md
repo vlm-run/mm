@@ -528,9 +528,9 @@ $ mm grep "attention" --kind document --format json
 
 ---
 
-## 5. `sql` — DuckDB analytics on the file index
+## 5. `sql` — SQL analytics on the file index
 
-No traditional Unix equivalent. mm exposes the full Arrow table as a DuckDB virtual table called `files`, enabling arbitrary SQL analytics on your multimodal directory.
+No traditional Unix equivalent. mm exposes the scanned file index as a SQLite table called `files`, enabling arbitrary SQL analytics on your multimodal directory.
 
 ### Example 1: Storage breakdown by kind
 

@@ -11,14 +11,14 @@ import pytest
 from mm.store import MmDatabase
 from mm.store.embed import (
     _EMBEDDINGS_PATH,
-    audio_part,
+    _audio_part,
+    _video_part,
     document_part,
     embed_file_chunks,
     embed_parts,
     embed_texts,
     image_part,
     text_part,
-    video_part,
 )
 
 FAKE_DIM = 4
@@ -52,7 +52,7 @@ def mock_server():
 
 @pytest.fixture()
 def db(tmp_path: Path) -> MmDatabase:
-    return MmDatabase(db_path=tmp_path / "test.lance")
+    return MmDatabase(db_path=tmp_path / "test.db")
 
 
 ROOT = Path("/test/data")
@@ -108,7 +108,7 @@ class TestPartConstructors:
 
         audio = tmp_path / "test.mp3"
         audio.write_bytes(b"\xff\xfb" + b"\x00" * 100)
-        p = audio_part(audio)
+        p = _audio_part(audio)
         assert p["inline_data"]["mime_type"] == "audio/mpeg"
         types.Part.model_validate(p)
 
@@ -126,7 +126,7 @@ class TestPartConstructors:
 
         vid = tmp_path / "test.mp4"
         vid.write_bytes(b"\x00\x00\x00\x1cftyp" + b"\x00" * 100)
-        p = video_part(vid)
+        p = _video_part(vid)
         assert p["inline_data"]["mime_type"] == "video/mp4"
         types.Part.model_validate(p)
 
@@ -192,8 +192,8 @@ class TestEmbedFileChunks:
             embed_file_chunks("/test/data/doc.txt", "h1", "default", "qwen")
 
         results = db.search_similar([1.0] * FAKE_DIM, limit=1)
-        assert results.num_rows > 0
-        assert "chunk_text" in results.column_names
+        assert len(results) > 0
+        assert "chunk_text" in results[0]
 
     def test_content_preserved_after_embedding(self, db: MmDatabase, mock_server: MagicMock):
         db.upsert_files(_scanner_table(["doc.txt"]), ROOT)

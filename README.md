@@ -92,14 +92,14 @@ mm grep "invoice" ~/data --count               # match counts per file
 
 ### sql — query the index
 
-Queries file metadata via scan + DuckDB, or L2 results and chunks directly from LanceDB.
+Queries file metadata via scan + SQLite, or L2 results and chunks from the persistent SQLite store.
 
 ```bash
 mm find ~/data --schema                          # see available columns
 mm sql "SELECT kind, COUNT(*) as n, ROUND(SUM(size)/1e6,1) as mb \
   FROM files GROUP BY kind ORDER BY mb DESC" --dir ~/data
 
-# Query LanceDB tables directly (auto-detected from table name)
+# Query stored tables directly (auto-detected from table name)
 mm sql "SELECT uri, summary FROM l2_results LIMIT 10"
 mm sql "SELECT uri, chunk_idx, LENGTH(chunk_text) FROM chunks"
 mm sql "SELECT COUNT(*) FROM chunks WHERE embed_model IS NOT NULL"
@@ -124,7 +124,7 @@ print(ctx)  # Context(root='/Users/.../domains', files=702)
 df = ctx.to_polars()         # polars.DataFrame (zero-copy)
 df = ctx.to_pandas()         # pandas.DataFrame
 
-# SQL via DuckDB
+# SQL via SQLite
 result = ctx.sql("SELECT kind, COUNT(*) as n FROM files GROUP BY kind ORDER BY n DESC")
 
 # Chainable filtering
@@ -166,15 +166,17 @@ Benchmarked on Apple Silicon (M-series), 702 files (7.2GB):
 
 ## Storage
 
-mm uses a global LanceDB database at `~/.local/share/mm/mm.lance/` with three tables:
+mm uses a global SQLite database at `~/.local/share/mm/mm.db` with sqlite-vec for vector search:
 
 | Table | Contents | Relationship |
 |-------|----------|-------------|
 | `files` | L0 + L1 file metadata (one row per file, `uri` = absolute path) | — |
 | `l2_results` | LLM-generated summaries (many per file) | FK → `files.uri` |
-| `chunks` | ~1024-char content chunks + embedding vectors | FK → `l2_results` |
+| `chunks` | ~1024-char content chunks | FK → `l2_results` |
+| `chunks_vec` | Embedding vectors (sqlite-vec) | FK → `chunks.id` |
+| `cache` | Key-value L1/L2 result cache | — |
 
-A dbm sidecar cache (`~/.local/share/mm/cache.db`) provides sub-millisecond cache reads for L1/L2 results without importing LanceDB. Use `mm config reset-db` to clear all databases and caches.
+Use `mm config reset-db` to clear all databases and caches.
 
 ## Architecture
 
@@ -187,10 +189,10 @@ Rust (mm-core)                   Python (mm)
 │ Arrow RecordBatch   │             │                     │
 │ xxh3 hashing (mmap) │  Arrow IPC  │ Context class       │
 │ directory_hash      │────────────>│ .to_polars/pandas() │
-│ L1 extractors       │  PyO3       │ .sql() via DuckDB   │
-│   code, image,      │<───────────>│ LanceDB (storage)   │
-│   video (mp4parse,  │             │ dbm cache (fast L1/  │
-│    matroska)        │             │   L2 reads, ~0.2ms) │
+│ L1 extractors       │  PyO3       │ .sql() via SQLite    │
+│   code, image,      │<───────────>│ SQLite + sqlite-vec  │
+│   video (mp4parse,  │             │   (storage + vector  │
+│    matroska)        │             │    search, ~130ms)   │
 │ EXIF extraction     │             │ Embeddings (Gemini)  │
 └─────────────────────┘             └─────────────────────┘
 ```

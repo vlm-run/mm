@@ -335,7 +335,7 @@ healthcare-codegen-reports/create_longevity_report.py
 
 ---
 
-## sql — DuckDB queries on the file index
+## sql — SQL queries on the file index
 
 ### Kind breakdown with sizes
 
@@ -420,17 +420,17 @@ bucket     files
 
 ---
 
-## sql — querying LanceDB tables
+## sql — querying stored tables
 
 ```bash
 # List available tables
 $ mm sql --list-tables
 table        source         stored
-files        scan + DuckDB  ephemeral
-l2_results   LanceDB        2 rows
-chunks       LanceDB        2 rows
+files        scan + SQLite  ephemeral
+l2_results   SQLite         2 rows
+chunks       SQLite         2 rows
 
-# Query L2 results (auto-routes to LanceDB)
+# Query L2 results (auto-routes to persistent SQLite)
 $ mm sql "SELECT uri, profile, model, summary FROM l2_results"
 
 # Query chunks and embeddings
@@ -447,8 +447,7 @@ $ mm sql "SELECT COUNT(*) as total, COUNT(embed_model) as embedded FROM chunks"
 ```bash
 $ mm config reset-db
 The following will be deleted:
-  /Users/you/.local/share/mm/mm.lance
-  /Users/you/.local/share/mm/cache.db
+  /Users/you/.local/share/mm/mm.db
 This leads to irreversible data loss. Continue? [y/N]: y
 All databases and caches have been reset.
 

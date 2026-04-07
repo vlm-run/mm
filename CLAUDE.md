@@ -22,9 +22,8 @@
 - rich — terminal formatting (tables, panels, trees, syntax highlighting)
 - polars — zero-copy DataFrame from Arrow
 - pandas — DataFrame export
-- duckdb — in-process SQL on Arrow tables
+- sqlite-vec — SQLite + vector search (global DB at ~/.local/share/mm/mm.db)
 - pyarrow — Arrow IPC deserialization (Rust → Python data transfer)
-- lancedb — persistent columnar storage + vector search (global DB at ~/.local/share/mm/)
 - google-genai — Gemini embedding generation (text, image, audio, video, document)
 - pypdfium2 — PDF text extraction and page rendering
 - Pillow — image mosaic tiling
@@ -82,23 +81,23 @@ mm/
 │   ├── config.py               # LLM provider config (~/.mm/config.toml)
 │   ├── llm.py                  # LLM backend (OpenAI SDK, L2)
 │   ├── df.py                   # arrow_to_polars / arrow_to_pandas
-│   ├── duck.py                 # DuckDB query helper
+│   ├── query.py                # SQLite-based SQL queries against Arrow tables
 │   ├── display.py              # Rich formatting (tables, panels, format_size, format_number)
 │   ├── pipe.py                 # stdin/stdout pipe detection (uses select())
 │   ├── pdf.py                  # PDF page mosaic extraction (pypdfium2 + Pillow)
 │   ├── ffmpeg.py               # ffmpeg wrappers (keyframe mosaics, audio/video segment extraction)
 │   ├── video.py                # Video metadata helpers
-│   ├── lancedb/                # LanceDB integration (storage + cache + embeddings)
-│   │   ├── __init__.py         # Lazy re-exports (no lancedb import on load)
-│   │   ├── schema.py           # SQL DDL docs + column enums + Arrow schemas (3 tables)
-│   │   ├── db.py               # MmDatabase class (dbm cache + LanceDB storage)
-│   │   ├── cache.py            # Content hashing (Rust) + shared DB instance
+│   ├── store/                  # SQLite + sqlite-vec storage (metadata + embeddings)
+│   │   ├── __init__.py         # Lazy re-exports
+│   │   ├── schema.py           # SQL DDL + column enums (3 tables)
+│   │   ├── db.py               # MmDatabase class (SQLite + sqlite-vec)
+│   │   ├── util.py             # Content hashing (Rust) + shared DB instance
 │   │   └── embed.py            # Embedding generation via Gemini (text, image, audio, video, doc)
 │   └── commands/               # CLI subcommands (6 + config + profile)
 │       ├── find.py             # mm find (--tree, --schema, --columns)
 │       ├── cat.py              # mm cat (-n, --level, auto-detect by type, L2 → embed)
 │       ├── grep.py             # mm grep
-│       ├── sql.py              # mm sql (files via DuckDB, l2_results/chunks via LanceDB)
+│       ├── sql.py              # mm sql (all tables via SQLite)
 │       ├── wc.py               # mm wc (--by-kind)
 │       ├── bench.py            # mm bench (L0/L1/L2 benchmark suite)
 │       ├── config.py           # mm config (show, init, set, reset-db)
@@ -195,9 +194,9 @@ The following commands were merged into the 5 core commands:
 Use `mm find <dir> --schema` to see all available columns, their Arrow types, descriptions of what they contain, and a sample value.
 
 `mm sql` auto-routes queries based on the table name in the `FROM` clause:
-- `files` → scan directory + DuckDB (with dbm cache for repeat queries)
-- `l2_results` → LanceDB direct (LLM-generated summaries)
-- `chunks` → LanceDB direct (chunked content + embeddings)
+- `files` → scan directory + SQLite (ephemeral in-memory table)
+- `l2_results` → SQLite direct (LLM-generated summaries)
+- `chunks` → SQLite direct (chunked content + embeddings)
 
 Use `mm sql --list-tables` to see available tables and row counts.
 
@@ -246,10 +245,9 @@ ctx.info()   # Rich summary panel
 - **Rust fast path**: `find --format json`, `wc --format json` bypass pyarrow entirely — serde_json in Rust, ~60ms cold start.
 - **Parallel scanning**: `ignore` crate for gitignore-aware walking + `rayon` for parallelism.
 - **Hashing**: xxh3 via `xxhash-rust` for fast content fingerprinting (full file via mmap). `directory_hash` hashes sorted file listings for SQL cache keys.
-- **Storage**: Global LanceDB database at `~/.local/share/mm/mm.lance/` with three tables: `files` (L0+L1), `l2_results` (LLM summaries), `chunks` (content chunks + embedding vectors). Schema defined in `python/mm/lancedb/schema.py` with SQL DDL documentation.
-- **Cache**: dbm sidecar at `~/.local/share/mm/cache.db` for sub-millisecond L1/L2 cache reads. No lancedb import needed for cache hits. Writes go to both dbm and LanceDB.
-- **Embeddings**: Generated via Gemini embedding API through the mm inference server (`/v1/embeddings`). Supports text, image, audio (chunked at 80s), video (chunked at 120s), and PDF. Stored as vectors on the `chunks` table. Triggered automatically after L2 extraction.
-- **SQL routing**: `mm sql` auto-detects table from `FROM` clause. `files` → scan + DuckDB (with directory_hash cache). `l2_results`/`chunks` → LanceDB direct.
+- **Storage**: Global SQLite database at `~/.local/share/mm/mm.db` with tables: `files` (L0+L1), `l2_results` (LLM summaries), `chunks` (content chunks), `chunks_vec` (sqlite-vec embeddings), `cache` (key-value L1/L2 cache). Schema defined in `python/mm/store/schema.py`.
+- **Embeddings**: Generated via Gemini embedding API through the mm inference server (`/v1/embeddings`). Supports text, image, audio (chunked at 80s), video (chunked at 120s), and PDF. Stored in `chunks_vec` virtual table (sqlite-vec). Triggered automatically after L2 extraction.
+- **SQL routing**: `mm sql` auto-detects table from `FROM` clause. `files` → scan + in-memory SQLite. `l2_results`/`chunks` → persistent SQLite direct.
 - **Video metadata (L1)**: Native MP4 parsing (mp4parse) and MKV/WebM parsing (matroska) in Rust. No ffmpeg at L1 — metadata only, <100ms.
 - **PDF text extraction**: `pypdfium2` on the Python CLI side (in `commands/cat.py`). Scanned/image-only PDFs return empty text.
 - **Pipe detection**: `pipe.py` uses `select.select()` with zero timeout to avoid blocking when stdin is not a TTY but has no data.
@@ -335,4 +333,4 @@ Every commit that changes performance numbers or adds/modifies benchmarks should
 - L2 requires an external LLM server; no built-in model. Default: local Ollama with `qwen3.5:0.8b`.
 - Audio embedding fails for files >80s if sent as a single Part (Gemini limit). Use `audio_parts()` to auto-chunk.
 - `upsert_files()` reads the full `files` table to preserve L1 columns — will need optimization at >100K files.
-- LanceDB Python import takes ~2.5s cold. Cache reads use dbm to avoid this. Writes pay the cost (acceptable since writes follow expensive LLM/extraction calls).
+- sqlite-vec cold import is ~130ms. No daemon or sidecar cache needed.

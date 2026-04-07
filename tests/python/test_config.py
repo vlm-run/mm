@@ -185,28 +185,22 @@ class TestResetDb:
         return db_dir
 
     def _create_storage(self, storage_dir: Path):
-        """Create fake db and cache files."""
+        """Create fake db file."""
         (storage_dir / "mm.db").write_text("fake")
-        # Legacy files that reset-db should also clean
-        lance_dir = storage_dir / "mm.lance"
-        lance_dir.mkdir()
-        (lance_dir / "data.lance").write_text("fake")
 
-    def test_reset_deletes_db_and_cache(self, storage_dir: Path):
+    def test_reset_deletes_db(self, storage_dir: Path):
         from typer.testing import CliRunner
 
         from mm.cli import app
 
         self._create_storage(storage_dir)
         assert (storage_dir / "mm.db").exists()
-        assert (storage_dir / "mm.lance").exists()
 
         runner = CliRunner()
         result = runner.invoke(app, ["config", "reset-db", "--yes"])
         assert result.exit_code == 0
         assert "reset" in result.output.lower()
         assert not (storage_dir / "mm.db").exists()
-        assert not (storage_dir / "mm.lance").exists()
 
     def test_reset_aborts_without_yes(self, storage_dir: Path):
         from typer.testing import CliRunner
@@ -231,7 +225,7 @@ class TestResetDb:
         runner = CliRunner()
         result = runner.invoke(app, ["config", "reset-db"], input="y\n")
         assert result.exit_code == 0
-        assert not (storage_dir / "mm.lance").exists()
+        assert not (storage_dir / "mm.db").exists()
 
     def test_reset_noop_when_empty(self, storage_dir: Path):
         from typer.testing import CliRunner

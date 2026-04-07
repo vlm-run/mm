@@ -172,20 +172,20 @@ mm grep "def " <dir> --kind code --level 0             # search raw content (L0)
 
 Three tables available. Table is auto-detected from the `FROM` clause:
 
-- `files` — scanned file metadata (via `--dir`, uses DuckDB)
-- `l2_results` — LLM-generated summaries (stored in LanceDB)
-- `chunks` — chunked L2 content + embedding vectors (stored in LanceDB)
+- `files` — scanned file metadata (via `--dir`, in-memory SQLite)
+- `l2_results` — LLM-generated summaries (persistent SQLite)
+- `chunks` — chunked L2 content + embedding vectors (persistent SQLite)
 
 ```bash
-# File metadata (scan + DuckDB)
+# File metadata (scan + SQLite)
 mm sql "SELECT kind, COUNT(*) as n, ROUND(SUM(size)/1e6,1) as mb FROM files GROUP BY kind ORDER BY mb DESC" --dir <dir>
 mm sql "SELECT * FROM files WHERE kind='document'" --dir <dir> --format json
 
-# L2 results (LanceDB direct)
+# L2 results (SQLite direct)
 mm sql "SELECT uri, profile, model, summary FROM l2_results LIMIT 10"
 mm sql "SELECT COUNT(*) as n FROM l2_results"
 
-# Chunks and embeddings (LanceDB direct)
+# Chunks and embeddings (SQLite direct)
 mm sql "SELECT uri, chunk_idx, LENGTH(chunk_text) as len FROM chunks"
 mm sql "SELECT COUNT(*) FROM chunks WHERE embed_model IS NOT NULL"
 
@@ -193,7 +193,7 @@ mm sql "SELECT COUNT(*) FROM chunks WHERE embed_model IS NOT NULL"
 mm sql --list-tables
 ```
 
-Files queries: ~72ms cached, ~850ms cold. LanceDB queries: ~3s (lancedb import cost).
+Stored table queries: ~100-180ms. Files queries: ~1.2s (includes directory scan).
 
 ## bench — benchmark suite
 
@@ -268,7 +268,7 @@ mm find <dir> --kind video --format json | jq '.[].name'  # extract video names
 ## Tips
 
 - All L0 commands (`find`, `wc` with `--format json`) run in ~60ms via the Rust fast path.
-- `sql` is slower (~300ms) because it uses DuckDB/pyarrow.
+- `sql` on stored tables runs in ~100-180ms; `files` queries are ~1.2s (includes scan).
 - Start with `find --tree --depth 1` then `wc --by-kind` for the fastest directory overview.
 - Use `mm find . --tree` to explore project structure.
 - Use `--format json` when you need to parse output programmatically.
@@ -277,7 +277,7 @@ mm find <dir> --kind video --format json | jq '.[].name'  # extract video names
 - Start with `mm find <dir> --tree --depth 1` then `mm wc <dir> --by-kind` for the fastest directory overview.
 - Use `--format json` when you need to parse output programmatically.
 - `find` returns paths only when piped, full metadata rows in TTY.
-- `sql` is the most powerful command — queries auto-route to DuckDB (`files`) or LanceDB (`l2_results`, `chunks`). Use `--list-tables` to see available tables.
+- `sql` is the most powerful command — queries auto-route to in-memory SQLite (`files`) or persistent SQLite (`l2_results`, `chunks`). Use `--list-tables` to see available tables.
 - For PDFs, `cat` extracts text at L1; if empty, the PDF contains scanned images only.
 - For videos, `cat -l 2` auto-generates keyframe mosaics and sends to LLM for description.
 - L2 uses the `openai` Python SDK via the active profile. Sends `think=false` and `reasoning_effort="none"` with temperature 0.1.
