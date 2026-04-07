@@ -60,16 +60,22 @@ def wc_cmd(
             tokens = 85
             lines = 0
         elif fk in ("code", "text", "config", "data"):
-            content = (root / entry["path"]).read_text(errors="replace")
-            char_len = len(content)
-            lines = max(1, content.count("\n") + 1)
+            lines = 0
+            with (root / entry["path"]).open("r", encoding="utf-8", errors="replace") as f:
+                char_len = 0
+                for line in f:
+                    lines += 1
+                    char_len += len(line)
             tokens = char_len // TOKEN_CHARS_RATIO
         elif fk == "document":
             from mm.commands.cat import _l1_document
 
             content = _l1_document(root / entry["path"])
             char_len = len(content)
-            lines = max(1, content.count("\n") + 1)
+            lines = content.count("\n")
+            if content and not content.endswith("\n"):
+                lines += 1
+            lines = max(1, lines)
             tokens = char_len // TOKEN_CHARS_RATIO
         else:
             tokens = size // TOKEN_CHARS_RATIO
