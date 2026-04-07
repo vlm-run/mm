@@ -119,7 +119,7 @@ def cat_cmd(
     ] = 16000,
     mode: Annotated[
         Optional[str],
-        typer.Option("--mode", "-m", help="Extraction mode: fast or accurate (L2 only)"),
+        typer.Option("--mode", "-m", help="Extraction mode: 'fast' or 'accurate' (L2 only)"),
     ] = None,
     no_cache: Annotated[
         bool, typer.Option("--no-cache", help="Bypass L2 cache and force a fresh LLM run")
