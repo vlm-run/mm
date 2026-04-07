@@ -292,8 +292,8 @@ class TestBenchCommands:
             assert cmd.cmd_template
             assert "mm" in cmd.cmd_template
 
-@pytest.mark.integration
 
+@pytest.mark.integration
 class TestFmtMs:
     """Tests for _fmt_ms formatting."""
 

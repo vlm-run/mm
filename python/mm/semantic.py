@@ -101,12 +101,5 @@ def search(
         for r in raw
         if r.get("distance", float("inf")) <= max_distance
     ]
-
-    seen: dict[str, dict[str, Any]] = {}
-    for r in results:
-        f = r["path"]
-        if f not in seen or r["distance"] < seen[f]["distance"]:
-            seen[f] = r
-    results = sorted(seen.values(), key=lambda r: r["distance"])
-
+    results = sorted(results, key=lambda r: r["distance"])
     return results[:limit]

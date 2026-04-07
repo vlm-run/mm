@@ -200,6 +200,7 @@ def _grep_l2(
     ext: str | None,
     count: bool,
     fmt: str,
+    limit=5,
 ) -> None:
     """Semantic search: ensure files are indexed, embed query, KNN search."""
     from mm.context import Context
@@ -226,7 +227,7 @@ def _grep_l2(
         pattern,
         uri=str(path) if is_file else None,
         uri_prefix=str(path) if not is_file else None,
-        limit=20,
+        limit=limit,
     )
 
     if not results:
