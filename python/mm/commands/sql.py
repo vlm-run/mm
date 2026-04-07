@@ -10,7 +10,7 @@ from typing import Annotated, Any, Optional
 
 import typer
 
-_STORED_TABLES = {"l2_results", "chunks", "files", "cache"}
+_STORED_TABLES = {"l2_results", "chunks", "chunks_vec"}
 
 
 def sql_cmd(
@@ -56,15 +56,19 @@ def sql_cmd(
         raise typer.BadParameter("Provide a SQL query or use --list-tables")
 
     table_name = _detect_table(query)
-    if table_name in ("l2_results", "chunks"):
+    if table_name != "files":
         _query_stored(query, fmt)
     else:
         _query_files(query, directory, fmt)
 
 
 def _detect_table(query: str) -> str:
-    match = re.search(r"\bFROM\s+(\w+)", query, re.IGNORECASE)
-    if match:
+    for match in re.finditer(r"\bFROM\s+(\w+)", query, re.IGNORECASE):
+        name = match.group(1).lower()
+        if name in _STORED_TABLES:
+            return name
+    # Also check JOIN clauses
+    for match in re.finditer(r"\bJOIN\s+(\w+)", query, re.IGNORECASE):
         name = match.group(1).lower()
         if name in _STORED_TABLES:
             return name
