@@ -39,6 +39,8 @@ def wc_cmd(
 
     import json as json_mod
 
+    from mm.commands.cat import _l1_document
+
     raw = json_mod.loads(scanner.to_json_fast(kind=kind))
 
     kind_stats: dict[str, dict[str, int | float]] = {}
@@ -68,8 +70,6 @@ def wc_cmd(
                     char_len += len(line)
             tokens = char_len // TOKEN_CHARS_RATIO
         elif fk == "document":
-            from mm.commands.cat import _l1_document
-
             content = _l1_document(root / entry["path"])
             char_len = len(content)
             lines = content.count("\n")
