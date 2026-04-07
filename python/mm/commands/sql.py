@@ -86,7 +86,7 @@ def _query_files(query: str, directory: Path, fmt: str) -> None:
 
     result = query_arrow_table(Context(directory).to_arrow(), query)
     columns = result.column_names
-    rows = [tuple(result.column(c)[i].as_py() for c in columns) for i in range(result.num_rows)]
+    rows = list(zip(*(result.column(c).to_pylist() for c in columns)))
     _emit(columns, rows, fmt)
 
 

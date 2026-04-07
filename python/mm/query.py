@@ -1,4 +1,4 @@
-"""SQLite-based SQL queries against Arrow tables ()."""
+"""SQLite-based SQL queries against Arrow tables"""
 
 from __future__ import annotations
 
