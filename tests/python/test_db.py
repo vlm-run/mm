@@ -81,6 +81,53 @@ class TestUpsertFiles:
         assert f is not None
         assert f[FileCol.URI] == "/test/data/hello.py"
 
+    def test_upsert_column_mapping(self, db: MmDatabase):
+        """Verify every column maps correctly through to_pydict bulk conversion."""
+        table = pa.table({
+            "path": ["img.png", "doc.pdf"],
+            "name": ["img.png", "doc.pdf"],
+            "stem": ["img", "doc"],
+            "ext": [".png", ".pdf"],
+            "size": pa.array([1234, 5678], type=pa.uint64()),
+            "modified": pa.array([1700000000000000, 1700000001000000], type=pa.timestamp("us")),
+            "created": pa.array([1600000000000000, 1600000001000000], type=pa.timestamp("us")),
+            "mime": ["image/png", "application/pdf"],
+            "kind": ["image", "document"],
+            "is_binary": [True, False],
+            "depth": pa.array([0, 1], type=pa.uint16()),
+            "parent": ["", "subdir"],
+            "width": pa.array([800, None], type=pa.uint32()),
+            "height": pa.array([600, None], type=pa.uint32()),
+            "phash": pa.array([0x00FF00FF00FF00FF, None], type=pa.uint64()),
+        })
+        db.upsert_files(table, ROOT)
+
+        f1 = db.get_file("/test/data/img.png")
+        assert f1["name"] == "img.png"
+        assert f1["stem"] == "img"
+        assert f1["ext"] == ".png"
+        assert f1["size"] == 1234
+        assert f1["modified"] == 1700000000000000
+        assert f1["created"] == 1600000000000000
+        assert f1["mime"] == "image/png"
+        assert f1["kind"] == "image"
+        assert f1["is_binary"] == 1
+        assert f1["depth"] == 0
+        assert f1["parent"] == str(ROOT)
+        assert f1["width"] == 800
+        assert f1["height"] == 600
+        assert f1["phash"] == "00ff00ff00ff00ff"
+
+        f2 = db.get_file("/test/data/doc.pdf")
+        assert f2["kind"] == "document"
+        assert f2["is_binary"] == 0
+        assert f2["depth"] == 1
+        assert f2["parent"] == f"{ROOT}/subdir"
+        assert f2["modified"] == 1700000001000000
+        assert f2["width"] is None
+        assert f2["height"] is None
+        assert f2["phash"] is None
+
     def test_upsert_returns_row_count(self, db: MmDatabase):
         table = _scanner_table(["a.py", "b.py", "c.py"])
         n = db.upsert_files(table, ROOT)

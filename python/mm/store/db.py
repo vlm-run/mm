@@ -127,50 +127,64 @@ class MmDatabase:
         """Write L0 scan results. Preserves existing L1 columns on re-upsert."""
         from mm.store.schema import L0_COLUMNS
 
+        n = scanner_table.num_rows
+        if n == 0:
+            return self._connect.execute("SELECT COUNT(*) FROM files").fetchone()[0]
+
         db = self._connect
         now = _now_us()
-        col_names = scanner_table.column_names
 
-        for i in range(scanner_table.num_rows):
-            row = {c: scanner_table.column(c)[i].as_py() for c in col_names}
-            uri = str(root / row.pop("path"))
-            parent = str(root / row["parent"]) if row.get("parent") else str(root)
-            phash = f"{row['phash']:016x}" if row.get("phash") is not None else None
+        # Build SQL once
+        columns = "uri, name, stem, ext, size, modified, created, mime, kind, is_binary, depth, parent, width, height, phash, indexed_at"
+        placeholders = ", ".join("?" * 16)
+        l0_updates = ", ".join(f"{c} = excluded.{c}" for c in L0_COLUMNS if c != "uri")
+        sql = (
+            f"INSERT INTO files ({columns}) VALUES ({placeholders}) "
+            f"ON CONFLICT(uri) DO UPDATE SET {l0_updates}"
+        )
 
-            # Convert timestamps: Arrow gives datetime objects, we store μs integers
-            modified = _to_us(row.get("modified"))
-            created = _to_us(row.get("created"))
+        # Columnar conversion — one Arrow call, no per-row dict allocation
+        d = scanner_table.to_pydict()
+        root_s = str(root)
+        paths = d["path"]
+        names = d.get("name", [""] * n)
+        stems = d.get("stem", [""] * n)
+        exts = d.get("ext", [""] * n)
+        sizes = d.get("size", [0] * n)
+        modifieds = d.get("modified", [None] * n)
+        createds = d.get("created", [None] * n)
+        mimes = d.get("mime", [""] * n)
+        kinds = d.get("kind", ["other"] * n)
+        is_binarys = d.get("is_binary", [False] * n)
+        depths = d.get("depth", [0] * n)
+        parents = d.get("parent", [""] * n)
+        widths = d.get("width", [None] * n)
+        heights = d.get("height", [None] * n)
+        phashes = d.get("phash", [None] * n)
 
-            vals = {
-                "uri": uri,
-                "name": row.get("name", ""),
-                "stem": row.get("stem", ""),
-                "ext": row.get("ext", ""),
-                "size": row.get("size", 0),
-                "modified": modified,
-                "created": created,
-                "mime": row.get("mime", ""),
-                "kind": row.get("kind", "other"),
-                "is_binary": int(bool(row.get("is_binary", False))),
-                "depth": row.get("depth", 0),
-                "parent": parent,
-                "width": row.get("width"),
-                "height": row.get("height"),
-                "indexed_at": now,
-            }
-
-            if phash is not None:
-                vals["phash"] = phash
-
-            # ON CONFLICT: update L0 columns, preserve L1 columns
-            l0_updates = ", ".join(f"{c} = excluded.{c}" for c in L0_COLUMNS if c != "uri")
-            columns = ", ".join(vals.keys())
-            placeholders = ", ".join("?" * len(vals))
-            db.execute(
-                f"INSERT INTO files ({columns}) VALUES ({placeholders}) "
-                f"ON CONFLICT(uri) DO UPDATE SET {l0_updates}",
-                tuple(vals.values()),
+        rows = [
+            (
+                f"{root_s}/{paths[i]}",
+                names[i] or "",
+                stems[i] or "",
+                exts[i] or "",
+                sizes[i] or 0,
+                _to_us(modifieds[i]),
+                _to_us(createds[i]),
+                mimes[i] or "",
+                kinds[i] or "other",
+                int(bool(is_binarys[i])),
+                depths[i] or 0,
+                f"{root_s}/{parents[i]}" if parents[i] else root_s,
+                widths[i],
+                heights[i],
+                f"{phashes[i]:016x}" if phashes[i] is not None else None,
+                now,
             )
+            for i in range(n)
+        ]
+
+        db.executemany(sql, rows)
         db.commit()
         return db.execute("SELECT COUNT(*) FROM files").fetchone()[0]
 
