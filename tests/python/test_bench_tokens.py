@@ -9,12 +9,7 @@ Measures estimated token counts for:
 
 from __future__ import annotations
 
-import json
-import subprocess
-from pathlib import Path
-
 import pytest
-
 
 # ---------------------------------------------------------------------------
 # Token estimation helpers
@@ -165,16 +160,23 @@ def test_token_summary_table():
     rows.append({"type": "audio", "variant": "1min", "tokens": estimate_audio_tokens(60)})
 
     # Video 1min at 1 kf/s
-    rows.append({"type": "video", "variant": "1min@1kf/s", "tokens": estimate_video_tokens(60, 1.0)})
+    rows.append(
+        {"type": "video", "variant": "1min@1kf/s", "tokens": estimate_video_tokens(60, 1.0)}
+    )
 
     # PDF 10 pages
     rows.append({"type": "pdf", "variant": "10pages", "tokens": estimate_pdf_tokens("x" * 30000)})
 
     cost_rates = [1.0, 3.0, 15.0]  # $/Mtok: Haiku, Sonnet, Opus range
     print("\n  Token Count Summary")
-    print(f"  {'Type':<10} {'Variant':<20} {'Tokens':>10}  " + "  ".join(f"${'@'+str(r)+'/Mt':>8}" for r in cost_rates))
+    print(
+        f"  {'Type':<10} {'Variant':<20} {'Tokens':>10}  "
+        + "  ".join(f"${'@' + str(r) + '/Mt':>8}" for r in cost_rates)
+    )
     print("  " + "-" * 80)
 
     for row in rows:
         costs = [f"${row['tokens'] * r / 1_000_000:.6f}" for r in cost_rates]
-        print(f"  {row['type']:<10} {row['variant']:<20} {row['tokens']:>10,}  {'  '.join(f'{c:>10}' for c in costs)}")
+        print(
+            f"  {row['type']:<10} {row['variant']:<20} {row['tokens']:>10,}  {'  '.join(f'{c:>10}' for c in costs)}"
+        )
