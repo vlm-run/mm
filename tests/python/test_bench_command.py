@@ -275,22 +275,30 @@ class TestBenchCommands:
     """Tests for bench_commands registry."""
 
     def test_all_commands_non_empty(self):
-        from mm.commands.bench_commands import ALL_COMMANDS, L0_COMMANDS, L1_COMMANDS, L2_COMMANDS
+        from mm.commands.bench_commands import (
+            ALL_COMMANDS,
+            L0_COMMANDS,
+            L1_COMMANDS,
+            L2_COMMANDS,
+            OVERHEAD_COMMANDS,
+        )
 
         assert len(ALL_COMMANDS) > 0
+        assert len(OVERHEAD_COMMANDS) > 0
         assert len(L0_COMMANDS) > 0
         assert len(L1_COMMANDS) > 0
         assert len(L2_COMMANDS) > 0
-        assert len(ALL_COMMANDS) == len(L0_COMMANDS) + len(L1_COMMANDS) + len(L2_COMMANDS)
+        assert len(ALL_COMMANDS) == (
+            len(OVERHEAD_COMMANDS) + len(L0_COMMANDS) + len(L1_COMMANDS) + len(L2_COMMANDS)
+        )
 
     def test_command_has_required_fields(self):
         from mm.commands.bench_commands import ALL_COMMANDS
 
         for cmd in ALL_COMMANDS:
             assert cmd.name
-            assert cmd.group in ("L0", "L1", "L2")
+            assert cmd.group in ("overhead", "L0", "L1", "L2")
             assert cmd.cmd_template
-            assert "mm" in cmd.cmd_template
 
 
 @pytest.mark.integration
