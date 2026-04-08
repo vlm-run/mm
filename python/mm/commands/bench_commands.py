@@ -181,6 +181,12 @@ def resolve_command(
 
 # ── Command registries ──────────────────────────────────────────────
 
+OVERHEAD_COMMANDS: list[BenchCommand] = [
+    BenchCommand("python -c 'import mm'", "overhead", "python -c 'import mm'"),
+    BenchCommand("mm --help", "overhead", "mm --help"),
+    BenchCommand("mm --version", "overhead", "mm --version"),
+]
+
 L0_COMMANDS: list[BenchCommand] = [
     BenchCommand("mm find .", "L0", "mm find {dir} --format json"),
     BenchCommand("mm find . (table)", "L0", "mm find {dir} --format tsv"),
@@ -325,4 +331,4 @@ L2_COMMANDS: list[BenchCommand] = [
     ),
 ]
 
-ALL_COMMANDS: list[BenchCommand] = L0_COMMANDS + L1_COMMANDS + L2_COMMANDS
+ALL_COMMANDS: list[BenchCommand] = OVERHEAD_COMMANDS + L0_COMMANDS + L1_COMMANDS + L2_COMMANDS

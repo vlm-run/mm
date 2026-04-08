@@ -264,6 +264,7 @@ def _fmt_ms(ms: float) -> str:
 
 # Latency thresholds (ms) per group: (green_cutoff, yellow_cutoff).
 _LATENCY_THRESHOLDS: dict[str, tuple[float, float]] = {
+    "overhead": (80.0, 200.0),  # import/startup overhead
     "L0": (100.0, 500.0),  # metadata: includes CLI startup (~60ms)
     "L1": (200.0, 1000.0),  # extraction: includes CLI startup
     "L2": (2000.0, 10000.0),  # semantic/LLM
@@ -374,7 +375,7 @@ def bench_cmd(
     By default, only L2 --mode fast benchmarks run. Use --mode accurate
     or --mode all to include accurate-mode benchmarks.
     """
-    from mm.commands.bench_commands import L0_COMMANDS, L1_COMMANDS, L2_COMMANDS
+    from mm.commands.bench_commands import L0_COMMANDS, L1_COMMANDS, L2_COMMANDS, OVERHEAD_COMMANDS
     from mm.display import resolve_format
 
     fmt = resolve_format(format)
@@ -388,7 +389,7 @@ def bench_cmd(
     else:
         l2 = [c for c in L2_COMMANDS if "accurate" not in c.cmd_template]
 
-    commands = L0_COMMANDS + L1_COMMANDS + l2
+    commands = OVERHEAD_COMMANDS + L0_COMMANDS + L1_COMMANDS + l2
 
     # Progress callback for rich output
     if fmt == "rich":

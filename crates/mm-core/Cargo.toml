@@ -45,3 +45,7 @@ harness = false
 [[bench]]
 name = "l1_extract"
 harness = false
+
+[[bench]]
+name = "hash_extended"
+harness = false
