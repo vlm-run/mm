@@ -25,7 +25,7 @@ File-type behaviour:
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING, Annotated, Callable, Literal, Optional
+from typing import TYPE_CHECKING, Annotated, Literal, Optional
 
 import typer
 
@@ -316,17 +316,18 @@ def _extract(path: Path, opts: _CatOpts) -> str:
     """
     kind = _file_kind(path)
     if opts.level >= 2:
-        return _l2_cached(path, kind, opts)
+        return _run_l2(path, kind, opts)
 
-    return _l1(path, kind, no_cache=opts.no_cache)
+    return _run_l1(path, kind, no_cache=opts.no_cache)
 
 
-def _l2_cached(path: Path, kind: str, opts: _CatOpts) -> str:
+def _run_l2(path: Path, kind: str, opts: _CatOpts) -> str:
     """Run L2 with cache lookup/store unless --no-cache."""
-    from mm.store.util import get_content_hash, get_db
     from mm.profile import get_profile
+    from mm.store.db import MmDatabase
+    from mm.store.util import get_content_hash
 
-    db = get_db()
+    db = MmDatabase()
     profile = get_profile()
     content_hash = get_content_hash(path)
     # Include video mosaic parameters in cache key for different mosaic configs.
@@ -350,6 +351,8 @@ def _l2_cached(path: Path, kind: str, opts: _CatOpts) -> str:
         if cached is not None:
             return cached
 
+    _run_l1(path, kind)  # Ensure L1 exist
+
     # Run the actual L2 extraction
     if opts.mode is not None:
         result = _l2_modal(path, kind, opts)
@@ -368,7 +371,6 @@ def _l2_cached(path: Path, kind: str, opts: _CatOpts) -> str:
             detail=opts.detail,
             extra=extra,
         )
-        # Embed chunks (best-effort, non-blocking for the user)
         try:
             from mm.store.embed import embed_file_chunks
 
@@ -383,32 +385,31 @@ def _l2_cached(path: Path, kind: str, opts: _CatOpts) -> str:
 # ---------------------------------------------------------------------------
 
 
-def _use_l1_cache(func: Callable[[Path], str], path: Path, no_cache=False) -> str:
-    from mm.store.util import get_content_hash, get_db
+def _run_l1(path: Path, kind: str, *, no_cache=False) -> str:
+    from mm.store.db import MmDatabase
+    from mm.store.util import get_content_hash
 
-    db = get_db()
-    content_hash = get_content_hash(path, use_phash=False)
+    content_hash = get_content_hash(path)
     if not no_cache and content_hash:
-        cached = db.get_l1(content_hash)
+        cached = MmDatabase().get_l1(content_hash)
         if cached is not None:
             return cached
 
-    result = func(path)
+    def _handler() -> str:
+        if kind == "image":
+            return _l1_image(path)
+        if kind == "video":
+            return _l1_video(path)
+        if kind == "audio":
+            return _l1_audio(path)
+        if kind == "document":
+            return _l1_document(path)
+        return path.read_text(errors="replace")
+
+    result = _handler()
     if content_hash and result and not result.startswith("["):
-        db.put_l1(str(path.resolve()), content_hash, result)
+        MmDatabase().put_l1(str(path), content_hash, result)
     return result
-
-
-def _l1(path: Path, kind: str, *, no_cache=False) -> str:
-    if kind == "image":
-        return _l1_image(path)
-    if kind == "video":
-        return _use_l1_cache(_l1_video, path, no_cache)
-    if kind == "audio":
-        return _l1_audio(path)
-    if kind == "document":
-        return _l1_document(path, no_cache=no_cache)
-    return path.read_text(errors="replace")
 
 
 def _l1_image(path: Path) -> str:
@@ -499,24 +500,20 @@ def _l1_audio(path: Path) -> str:
         return f"[Audio extraction failed: {e}]"
 
 
-def _l1_document(path: Path, *, no_cache=False) -> str:
-    """Extract document content"""
+def _l1_document(path: Path) -> str:
+    """Extract document content."""
+    ext = path.suffix.lower()
+    if ext == ".pdf":
+        return _l1_pdf(path)
 
-    def _handler(path: Path) -> str:
-        ext = path.suffix.lower()
-        if ext == ".pdf":
-            return _l1_pdf(path)
+    try:
+        from mm.docs_extract import extract_docx, extract_pptx
 
-        try:
-            from mm.docs_extract import extract_docx, extract_pptx
-
-            if ext == ".pptx":
-                return extract_pptx(str(path))
-            return extract_docx(str(path))
-        except Exception as e:
-            return f"[Document extraction failed for {path.name}: {e}]"
-
-    return _use_l1_cache(_handler, path, no_cache)
+        if ext == ".pptx":
+            return extract_pptx(str(path))
+        return extract_docx(str(path))
+    except Exception as e:
+        return f"[Document extraction failed for {path.name}: {e}]"
 
 
 def _l1_pdf(path: Path) -> str:
@@ -557,7 +554,7 @@ def _l2(path: Path, kind: str, opts: _CatOpts) -> str:
     # document / text: extract L1 text then summarise
     from mm.llm import LlmBackend
 
-    content = _l1(path, kind)
+    content = _run_l1(path, kind)
     return LlmBackend().describe(path, content, detail=opts.detail)
 
 
@@ -629,7 +626,7 @@ def _l2_audio(path: Path, opts: _CatOpts) -> str:
     """Describe audio from metadata via LLM."""
     from mm.llm import LlmBackend
 
-    metadata = _l1(path, "audio")
+    metadata = _run_l1(path, "audio")
     return LlmBackend().describe(path, metadata, detail=opts.detail)
 
 
@@ -654,13 +651,13 @@ def _l2_modal(path: Path, kind: str, opts: _CatOpts) -> str:
         # Documents use basic extraction at L1; at L2, summarize via LLM
         from mm.llm import LlmBackend
 
-        content = _l1(path, kind)
+        content = _run_l1(path, kind)
         return LlmBackend().describe(path, content, detail=(mode == "accurate"))
 
     # text/code: summarize
     from mm.llm import LlmBackend
 
-    content = _l1(path, kind)
+    content = _run_l1(path, kind)
     return LlmBackend().describe(path, content, detail=(mode == "accurate"))
 
 
