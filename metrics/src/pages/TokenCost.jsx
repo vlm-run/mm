@@ -203,9 +203,14 @@ function OverviewSection() {
               <th>Scenario</th>
               <th className="text-right">Tokens</th>
               {PROVIDERS.map((p) => (
-                <th key={p.id} className="text-right" style={{ color: p.accent }}>
-                  {p.name.split(" ").slice(-1)[0]}
-                </th>
+                <>
+                  <th key={p.id} className="text-right max-sm:hidden text-[10px]" style={{ color: p.accent }}>
+                    {p.name}
+                  </th>
+                  <th key={p.id} className="text-right sm:hidden text-[10px]" style={{ color: p.accent }}>
+                    {p.name .split(" ").slice(-1)[0]}
+                  </th>
+                </>
               ))}
             </tr>
           </thead>
@@ -264,11 +269,11 @@ export default function TokenCost() {
         <ChipGroup options={TABS} value={tab} onChange={setTab} />
       </div>
 
+      {tab === "overview" && <OverviewSection />}
       {tab === "video" && <VideoSection />}
       {tab === "audio" && <AudioSection />}
       {tab === "pdf" && <PdfSection />}
       {tab === "image" && <ImageSection />}
-      {tab === "overview" && <OverviewSection />}
     </div>
   );
 }

@@ -9,7 +9,8 @@ fn bench_directory_hash(c: &mut Criterion) {
     // 1000-file directory_hash takes ~18ms/iter; need headroom for 100 samples
     group.measurement_time(std::time::Duration::from_secs(10));
 
-    let sizes: Vec<(&str, usize)> = vec![("100_files", 100), ("500_files", 500), ("1000_files", 1000)];
+    let sizes: Vec<(&str, usize)> =
+        vec![("100_files", 100), ("500_files", 500), ("1000_files", 1000)];
 
     for (label, count) in &sizes {
         let dir = TempDir::new().unwrap();
@@ -117,5 +118,10 @@ fn bench_hash_large_files(c: &mut Criterion) {
     group.finish();
 }
 
-criterion_group!(benches, bench_directory_hash, bench_phash, bench_hash_large_files);
+criterion_group!(
+    benches,
+    bench_directory_hash,
+    bench_phash,
+    bench_hash_large_files
+);
 criterion_main!(benches);
