@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1775655447058,
+  "lastUpdate": 1775681206242,
   "repoUrl": "https://github.com/vlm-run/mm",
   "entries": {
     "mm Rust Benchmarks": [
@@ -2107,6 +2107,200 @@ window.BENCHMARK_DATA = {
           {
             "name": "l1_image_extract/50",
             "value": 13487406.375,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "nwaughac@gmail.com",
+            "name": "Chukwuma Nwaugha",
+            "username": "nwaughachukwuma"
+          },
+          "committer": {
+            "email": "nwaughac@gmail.com",
+            "name": "Chukwuma Nwaugha",
+            "username": "nwaughachukwuma"
+          },
+          "distinct": true,
+          "id": "848ce2fb5635290e3d3f548772d3dcd2e2d359b7",
+          "message": "fix: improve table header rendering in OverviewSection and adjust tab rendering logic",
+          "timestamp": "2026-04-08T21:27:48+01:00",
+          "tree_id": "d88b33b68125f772c6baef9c9592aa227d59b03b",
+          "url": "https://github.com/vlm-run/mm/commit/848ce2fb5635290e3d3f548772d3dcd2e2d359b7"
+        },
+        "date": 1775681205024,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "directory_hash/directory_hash/1000_files",
+            "value": 3069179.061461794,
+            "unit": "ns"
+          },
+          {
+            "name": "directory_hash/directory_hash/100_files",
+            "value": 467905.9568325792,
+            "unit": "ns"
+          },
+          {
+            "name": "directory_hash/directory_hash/500_files",
+            "value": 1616064.663530466,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_large_files/fast_fingerprint/100MB",
+            "value": 22523.935613100402,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_large_files/fast_fingerprint/200MB",
+            "value": 23533.988908814787,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_large_files/fast_fingerprint/50MB",
+            "value": 22766.98409113091,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_large_files/full_hash_mmap/100MB",
+            "value": 5725360.103084415,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_large_files/full_hash_mmap/200MB",
+            "value": 11348576.713725489,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_large_files/full_hash_mmap/50MB",
+            "value": 2821544.8333333335,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_strategies/fast_fingerprint/10MB",
+            "value": 22465.071955680767,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_strategies/fast_fingerprint/1KB",
+            "value": 11687.161881902186,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_strategies/fast_fingerprint/1MB",
+            "value": 21069.256508389553,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_strategies/fast_fingerprint/64KB",
+            "value": 15975.952396953406,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_strategies/full_hash_mmap/10MB",
+            "value": 455149.7056603774,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_strategies/full_hash_mmap/1KB",
+            "value": 10666.158528383105,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_strategies/full_hash_mmap/1MB",
+            "value": 79398.27568940492,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_strategies/full_hash_mmap/64KB",
+            "value": 15938.210899315738,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_strategies/full_hash_read/10MB",
+            "value": 761209.8553571429,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_strategies/full_hash_read/1KB",
+            "value": 5220.250361410774,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_strategies/full_hash_read/1MB",
+            "value": 84991.39147458629,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_strategies/full_hash_read/64KB",
+            "value": 10005.094306250001,
+            "unit": "ns"
+          },
+          {
+            "name": "l0_index/1000",
+            "value": 4505917.545454546,
+            "unit": "ns"
+          },
+          {
+            "name": "l0_index/10000",
+            "value": 33241399.75,
+            "unit": "ns"
+          },
+          {
+            "name": "l0_walk/1000",
+            "value": 4368142.541666667,
+            "unit": "ns"
+          },
+          {
+            "name": "l0_walk/10000",
+            "value": 31700282.5,
+            "unit": "ns"
+          },
+          {
+            "name": "l1_code_extract/10",
+            "value": 54391.757987072946,
+            "unit": "ns"
+          },
+          {
+            "name": "l1_code_extract/100",
+            "value": 559176.0357954545,
+            "unit": "ns"
+          },
+          {
+            "name": "l1_image_extract/10",
+            "value": 2094429.25,
+            "unit": "ns"
+          },
+          {
+            "name": "l1_image_extract/50",
+            "value": 13476069.375,
+            "unit": "ns"
+          },
+          {
+            "name": "phash/hamming_distance",
+            "value": 0.31137256437579874,
+            "unit": "ns"
+          },
+          {
+            "name": "phash/phash/1024x1024",
+            "value": 22785330.67857143,
+            "unit": "ns"
+          },
+          {
+            "name": "phash/phash/2048x2048",
+            "value": 89674824.875,
+            "unit": "ns"
+          },
+          {
+            "name": "phash/phash/256x256",
+            "value": 1433140.0569155447,
+            "unit": "ns"
+          },
+          {
+            "name": "phash/phash/64x64",
+            "value": 145059.98402531334,
             "unit": "ns"
           }
         ]
