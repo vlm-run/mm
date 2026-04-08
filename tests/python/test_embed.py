@@ -6,7 +6,6 @@ from pathlib import Path
 from typing import Any
 from unittest.mock import MagicMock, patch
 
-import pyarrow as pa
 import pytest
 from mm.store import MmDatabase
 from mm.store.embed import (
@@ -20,6 +19,8 @@ from mm.store.embed import (
     image_part,
     text_part,
 )
+
+from .test_utils import ensure_l1, get_hash
 
 FAKE_DIM = 4
 
@@ -53,31 +54,6 @@ def mock_server():
 @pytest.fixture()
 def db(tmp_path: Path) -> MmDatabase:
     return MmDatabase(db_path=tmp_path / "test.db")
-
-
-ROOT = Path("/test/data")
-
-
-def _scanner_table(paths: list[str]) -> pa.Table:
-    n = len(paths)
-    return pa.table(
-        {
-            "path": paths,
-            "name": [p.split("/")[-1] for p in paths],
-            "stem": [p.split("/")[-1].rsplit(".", 1)[0] for p in paths],
-            "ext": ["." + p.split(".")[-1] if "." in p else "" for p in paths],
-            "size": pa.array([100] * n, type=pa.uint64()),
-            "modified": pa.array([1712000000000000] * n, type=pa.timestamp("us")),
-            "created": pa.array([1712000000000000] * n, type=pa.timestamp("us")),
-            "mime": ["text/plain"] * n,
-            "kind": ["text"] * n,
-            "is_binary": [False] * n,
-            "depth": pa.array([0] * n, type=pa.uint16()),
-            "parent": [""] * n,
-            "width": pa.array([None] * n, type=pa.uint32()),
-            "height": pa.array([None] * n, type=pa.uint32()),
-        }
-    )
 
 
 # ---------------------------------------------------------------------------
@@ -169,12 +145,13 @@ class TestEmbedParts:
 
 class TestEmbedFileChunks:
     def test_embeds_chunks_after_l2(self, db: MmDatabase, mock_server: MagicMock):
-        db.upsert_files(_scanner_table(["doc.txt"]), ROOT)
-        content = "Test content for embedding. " * 50
-        db.put_l2("/test/data/doc.txt", "hash1", "default", "qwen", content)
+        uri = "/test/data/doc.txt"
+        ensure_l1(db, uri)
 
+        content = "Test content for embedding. " * 50
+        db.put_l2(uri, "hash1", "default", "qwen", content)
         with patch("mm.store.db.MmDatabase", return_value=db):
-            n = embed_file_chunks("/test/data/doc.txt", "hash1", "default", "qwen")
+            n = embed_file_chunks(uri, "hash1", "default", "qwen")
         assert n > 0
         mock_server.assert_called()
 
@@ -185,25 +162,28 @@ class TestEmbedFileChunks:
         mock_server.assert_not_called()
 
     def test_vectors_stored_in_db(self, db: MmDatabase, mock_server: MagicMock):
-        db.upsert_files(_scanner_table(["doc.txt"]), ROOT)
-        db.put_l2("/test/data/doc.txt", "h1", "default", "qwen", "Short text")
+        uri = "/test/data/doc.txt"
+        ensure_l1(db, uri)
+        content_hash = get_hash(uri)
 
+        db.put_l2(uri, content_hash, "default", "qwen", "Short text")
         with patch("mm.store.db.MmDatabase", return_value=db):
-            embed_file_chunks("/test/data/doc.txt", "h1", "default", "qwen")
+            embed_file_chunks(uri, content_hash, "default", "qwen")
 
         results = db.search_similar([1.0] * FAKE_DIM, limit=1)
         assert len(results) > 0
         assert "chunk_text" in results[0]
 
     def test_content_preserved_after_embedding(self, db: MmDatabase, mock_server: MagicMock):
-        db.upsert_files(_scanner_table(["doc.txt"]), ROOT)
+        uri = "/test/data/doc.txt"
+        ensure_l1(db, uri)
+        content_hash = get_hash(uri)
+
         content = "Preserved content. " * 100
-        db.put_l2("/test/data/doc.txt", "h1", "default", "qwen", content)
-
+        db.put_l2(uri, content_hash, "default", "qwen", content)
         with patch("mm.store.db.MmDatabase", return_value=db):
-            embed_file_chunks("/test/data/doc.txt", "h1", "default", "qwen")
-
-        full = db.get_full_content("/test/data/doc.txt", "h1", "default", "qwen")
+            embed_file_chunks(uri, content_hash, "default", "qwen")
+        full = db.get_full_content(uri, content_hash, "default", "qwen")
         assert full == content
 
 
@@ -213,9 +193,9 @@ class TestEmbedFileChunks:
 
 
 class TestCatEmbedIntegration:
-    def test_l2_cached_triggers_embedding(self, tmp_path: Path, mock_server: MagicMock):
+    def test_run_l2_triggers_embedding(self, tmp_path: Path, mock_server: MagicMock):
         """After L2 extraction, embed_file_chunks should be called."""
-        from mm.commands.cat import _CatOpts, _l2_cached
+        from mm.commands.cat import _CatOpts, _run_l2
 
         txt = tmp_path / "test.txt"
         txt.write_text("hello")
@@ -243,13 +223,13 @@ class TestCatEmbedIntegration:
         with (
             patch("mm.commands.cat._l2", return_value="LLM generated text."),
             patch("mm.store.util.get_content_hash", return_value="fakehash"),
-            patch("mm.store.util.get_db", return_value=mock_db),
+            patch("mm.store.db.MmDatabase", return_value=mock_db),
             patch("mm.profile.get_profile") as mock_profile,
             patch("mm.store.embed.embed_file_chunks") as mock_embed,
         ):
             mock_profile.return_value.name = "default"
             mock_profile.return_value.model = "test-model"
-            result = _l2_cached(txt, "text", opts)
+            result = _run_l2(txt, "text", opts)
 
         assert result == "LLM generated text."
         mock_db.put_l2.assert_called_once()

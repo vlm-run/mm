@@ -249,7 +249,7 @@ class TestL2CacheError:
         """An error string like '[Video L2 failed: ...]' must not be stored."""
         from unittest.mock import MagicMock, patch
 
-        from mm.commands.cat import _CatOpts, _l2_cached
+        from mm.commands.cat import _CatOpts, _run_l2
 
         txt = tmp_path / "test.txt"
         txt.write_text("hello")
@@ -277,12 +277,12 @@ class TestL2CacheError:
         with (
             patch("mm.commands.cat._l2", return_value="[LLM error: connection refused]"),
             patch("mm.store.util.get_content_hash", return_value="fakehash123"),
-            patch("mm.store.util.get_db", return_value=mock_db),
+            patch("mm.store.db.MmDatabase", return_value=mock_db),
             patch("mm.profile.get_profile") as mock_profile,
         ):
             mock_profile.return_value.name = "default"
             mock_profile.return_value.model = "test-model"
-            result = _l2_cached(txt, "text", opts)
+            result = _run_l2(txt, "text", opts)
 
         assert result == "[LLM error: connection refused]"
         mock_db.put_l2.assert_not_called()
@@ -291,7 +291,7 @@ class TestL2CacheError:
         """A normal result should be stored in the cache."""
         from unittest.mock import MagicMock, patch
 
-        from mm.commands.cat import _CatOpts, _l2_cached
+        from mm.commands.cat import _CatOpts, _run_l2
 
         txt = tmp_path / "test.txt"
         txt.write_text("hello")
@@ -319,12 +319,12 @@ class TestL2CacheError:
         with (
             patch("mm.commands.cat._l2", return_value="A beautiful sunset over the ocean."),
             patch("mm.store.util.get_content_hash", return_value="fakehash123"),
-            patch("mm.store.util.get_db", return_value=mock_db),
+            patch("mm.store.db.MmDatabase", return_value=mock_db),
             patch("mm.profile.get_profile") as mock_profile,
         ):
             mock_profile.return_value.name = "default"
             mock_profile.return_value.model = "test-model"
-            result = _l2_cached(txt, "text", opts)
+            result = _run_l2(txt, "text", opts)
 
         assert result == "A beautiful sunset over the ocean."
         mock_db.put_l2.assert_called_once_with(
@@ -342,7 +342,7 @@ class TestL2CacheError:
         """All bracket-prefixed error strings should be skipped."""
         from unittest.mock import MagicMock, patch
 
-        from mm.commands.cat import _CatOpts, _l2_cached
+        from mm.commands.cat import _CatOpts, _run_l2
 
         txt = tmp_path / "test.txt"
         txt.write_text("hello")
@@ -378,11 +378,11 @@ class TestL2CacheError:
             with (
                 patch("mm.commands.cat._l2", return_value=error_msg),
                 patch("mm.store.util.get_content_hash", return_value="hash"),
-                patch("mm.store.util.get_db", return_value=mock_db),
+                patch("mm.store.db.MmDatabase", return_value=mock_db),
                 patch("mm.profile.get_profile") as mock_profile,
             ):
                 mock_profile.return_value.name = "default"
                 mock_profile.return_value.model = "m"
-                _l2_cached(txt, "text", opts)
+                _run_l2(txt, "text", opts)
 
             mock_db.put_l2.assert_not_called()

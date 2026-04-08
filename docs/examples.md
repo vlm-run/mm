@@ -526,6 +526,43 @@ $ mm grep "attention" --kind document --format json
 ]
 ```
 
+### Example 6: Semantic search (L2 — vector similarity)
+
+```bash
+$ mm grep "neural network architecture" --kind document --level 2
+```
+
+**TTY output:**
+```
+╭──────────────────────────────────────────────────────────────────────────────────────╮
+│ path                        index  distance  match                                   │
+├──────────────────────────────────────────────────────────────────────────────────────┤
+│ papers/attention.pdf        0      0.1823    The Transformer follows this overall...  │
+│ papers/scaling.pdf          1      0.2456    We study empirical scaling laws for...    │
+│ notes/experiment-log.pdf    0      0.3891    ResNet-50 baseline training results...    │
+╰───────────────────────────── 3 semantic matches ─────────────────────────────────────╯
+```
+
+**Piped:**
+```
+papers/attention.pdf:index0:0.1823:The Transformer follows this overall...
+papers/scaling.pdf:index1:0.2456:We study empirical scaling laws for...
+notes/experiment-log.pdf:index0:0.3891:ResNet-50 baseline training results...
+```
+
+### Example 7: Semantic search with pipe composition
+
+```bash
+$ find <dir> -name *  | mm grep "revenue forecast" -l 2 --format json
+```
+
+```json
+[
+  {"path": "reports/annual-2024.pdf", "index": 0, "distance": 0.1245, "match": "Revenue projections for Q4 indicate..."},
+  {"path": "slides/q4-review.pptx", "index": 2, "distance": 0.2103, "match": "Year-over-year revenue growth of 23%..."}
+]
+```
+
 ---
 
 ## 5. `sql` — SQL analytics on the file index

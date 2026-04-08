@@ -20,7 +20,7 @@ Always use `--format json` for machine-readable output when parsing results prog
 
 ```bash
 # Install via uv (recommended)
-uv tool install mm --from "git+https://github.com/vlm-run/mm.git@v0.2.0"
+uv tool install mm --from "git+https://github.com/vlm-run/mm.git@v0.3.0"
 
 # using curl
 curl -LsSf https://vlm-run.github.io/mm/install/install.sh | MM_FROM_GIT=1 sh
@@ -36,7 +36,7 @@ uv pip install -e ".[dev]" && uv run maturin develop --release
 | --------- | ---------------------------------------------------------------------- |
 | `find`    | Locate/list files by kind/ext/size, tabular listing, tree view, schema |
 | `cat`     | Content extraction (auto-detected by file type × level)                |
-| `grep`    | Content search across files                                            |
+| `grep`    | Content search — text (L0/L1) and semantic (L2 via embeddings)         |
 | `sql`     | SQL on files, L2 results, and chunks (auto-routed)                     |
 | `wc`      | Count files, bytes, lines, tokens                                      |
 | `bench`   | Benchmark suite (L0/L1/L2) with statistical analysis                   |
@@ -154,9 +154,10 @@ mm wc <dir> --format json        # machine-readable
 
 Estimates LLM tokens (~chars/4 for text, tile-based for images). ~65ms.
 
-## grep — content search
+## grep — content search (text + semantic)
 
 ```bash
+# Text search (L0/L1 — regex matching)
 mm grep "pattern" <dir>                                # search all files
 mm grep "attention" <dir> --kind document              # search only documents
 mm grep "TODO" <dir> --kind code                       # search code files
@@ -164,17 +165,26 @@ mm grep "invoice" <dir> --kind document --format json  # JSON output
 mm grep "error" <dir> -C 2                             # 2 context lines
 mm grep "invoice" <dir> --count                        # match counts per file
 mm grep "def " <dir> --kind code --level 0             # search raw content (L0)
+
+# Semantic search (L2 — vector similarity via embeddings)
+mm grep "financial projections" <dir> -l 2             # semantic search across all files
+mm grep "patient diagnosis" <dir> -l 2 --kind document # semantic search in documents only
+mm grep "architecture overview" <dir> -l 2 --format json  # JSON output with distances
+find <dir> -name * | mm grep "revenue forecast" -l 2  # semantic search piped files
 ```
 
-**Warning**: grep runs L1 extraction on every matching file. On large document directories (500+ PDFs), this can take minutes. Prefer `--kind code` or `--kind text` for fast searches.
+**Warning**: L0/L1 grep runs extraction on every matching file. On large document directories (500+ PDFs), this can take minutes. Prefer `--kind code` or `--kind text` for fast text searches.
+
+**L2 semantic search** uses embeddings stored in sqlite-vec. Files must be indexed first (`mm cat <file> -l 2`). Returns top-k results ranked by vector distance.
 
 ## sql — SQL queries on files, L2 results, and chunks
 
-Three tables available. Table is auto-detected from the `FROM` clause:
+Four tables available. Table is auto-detected from the `FROM` clause:
 
-- `files` — scanned file metadata (via `--dir`, in-memory SQLite)
+- `files` — L0+L1 file metadata (via `--dir`, or persistent SQLite)
 - `l2_results` — LLM-generated summaries (persistent SQLite)
-- `chunks` — chunked L2 content + embedding vectors (persistent SQLite)
+- `chunks` — chunked L2 content (persistent SQLite)
+- `chunks_vec` — embedding vectors for semantic search (sqlite-vec virtual table)
 
 ```bash
 # File metadata (scan + SQLite)
@@ -182,11 +192,11 @@ mm sql "SELECT kind, COUNT(*) as n, ROUND(SUM(size)/1e6,1) as mb FROM files GROU
 mm sql "SELECT * FROM files WHERE kind='document'" --dir <dir> --format json
 
 # L2 results (SQLite direct)
-mm sql "SELECT uri, profile, model, summary FROM l2_results LIMIT 10"
+mm sql "SELECT file_uri, profile, model, summary FROM l2_results LIMIT 10"
 mm sql "SELECT COUNT(*) as n FROM l2_results"
 
 # Chunks and embeddings (SQLite direct)
-mm sql "SELECT uri, chunk_idx, LENGTH(chunk_text) as len FROM chunks"
+mm sql "SELECT file_uri, chunk_idx, LENGTH(chunk_text) as len FROM chunks"
 mm sql "SELECT COUNT(*) FROM chunks WHERE embed_model IS NOT NULL"
 
 # List available tables
@@ -248,6 +258,8 @@ MM_PROFILE=openrouter mm cat photo.png -l 2      # env override
 - **`--format json`**: JSON output. Always use this when parsing results programmatically.
 - **`--format tsv`**: Tab-separated values. Maximum token efficiency.
 - **`--format csv`**: Comma-separated values.
+- **`--format dataset-jsonl`**: JSONL for dataset export.
+- **`--format dataset-hf`**: HuggingFace Datasets format.
 
 ## Pipe composability
 
@@ -280,12 +292,12 @@ mm find <dir> --kind video --format json | jq '.[].name'  # extract video names
 - `sql` is the most powerful command — queries auto-route to in-memory SQLite (`files`) or persistent SQLite (`l2_results`, `chunks`). Use `--list-tables` to see available tables.
 - For PDFs, `cat` extracts text at L1; if empty, the PDF contains scanned images only.
 - For videos, `cat -l 2` auto-generates keyframe mosaics and sends to LLM for description.
-- L2 uses the `openai` Python SDK via the active profile. Sends `think=false` and `reasoning_effort="none"` with temperature 0.1.
-- Check available profiles with `mm profile list` and set an active profile with `mm profile use <profile_name>`
+- L2 uses the `openai` Python SDK via the active profile. Temperature defaults to 0.1.
+- Check available profiles with `mm profile list` and set an active profile with `mm profile use <profile_name>`.
 - If `cat -l 2` returns `[LLM error: Connection error.]`, immediately retry with per-command profile override (e.g., `mm --profile gemini cat <file> -l 2 --detail`). If L2 still fails after trying all the available profiles, fallback to L0+L1 output.
 - L2 modes: (default, simple LLM captions), `--mode fast` (10 words + tags), `--mode accurate` (200 words + tags).
 - Use `--mode fast` for quick L2 summaries (10 words), `--mode accurate` for detailed ones (200 words).
 - Use `--no-cache` with `cat -l 2` to force a fresh LLM call.
-- L2 uses the `openai` Python SDK via the active profile. Temperature defaults to 0.1.
+- L2 semantic grep (`mm grep "query" <file_path> -l 2`) uses embeddings via sqlite-vec for vector similarity search.
 - Size filters accept human units: `1kb`, `5mb`, `1gb`.
 - Extension matching is case-sensitive: `.pdf` ≠ `.PDF`.

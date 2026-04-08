@@ -169,7 +169,7 @@ class TestL2ModalDispatch:
         f = tmp_path / "test.pdf"
         f.write_bytes(b"%PDF-1.4 fake")
         with (
-            patch("mm.commands.cat._l1") as mock_l1,
+            patch("mm.commands.cat._run_l1") as mock_l1,
             patch("mm.llm.LlmBackend") as mock_llm_cls,
         ):
             mock_l1.return_value = "extracted text"

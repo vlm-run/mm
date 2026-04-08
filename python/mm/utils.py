@@ -30,3 +30,9 @@ def benchmark_func(
     print(f"Execution time for {callback.__name__}: {elapsed_ms:.2f} ms", file=sys.stderr)
 
     return result
+
+
+def batch_array(arr: list[T], x: int) -> list[list[T]]:
+    if x <= 0:
+        raise ValueError("x must be greater than 0")
+    return [arr[i : i + x] for i in range(0, len(arr), x)]

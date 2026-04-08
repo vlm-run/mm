@@ -16,7 +16,7 @@ uv run maturin develop --release
 
 ## CLI
 
-Six commands that mirror familiar Unix tools but operate on multi-modal semantics.
+Commands that mirror familiar Unix tools but operate on multi-modal semantics.
 Indexing is implicit — every command auto-builds a metadata index on first use.
 
 L0 commands (`find`, `wc` with `--format json`) run in **~60ms** on 700 files via the Rust fast path.
@@ -39,8 +39,8 @@ mm cat photo.png -l 2 --detail               # LLM caption (~80 words)
 |---------|---------|-----------|
 | `find`  | Find/list files, tree view, schema | `--kind`, `--ext`, `--min-size`, `--max-size`, `--sort`, `--reverse`, `--columns`, `--tree`, `--depth`, `--schema`, `--limit`, `--format` |
 | `cat` | Content extraction (auto-detected by file type) | `--level 0/1/2`, `-n`, `--detail`, `--mosaic-*`, `--audio-*`, `--format` |
-| `grep` | Content search across files | `--kind`, `--ext`, `-C`, `--count`, `--format` |
-| `sql` | SQL queries on file index, L2 results, and chunks | `--dir`, `--format`, `--no-cache`, `--list-tables` |
+| `grep` | Content search — text (L0/L1) and semantic (L2) | `--kind`, `--ext`, `-C`, `--count`, `--level`, `--format` |
+| `sql` | SQL queries on file index, L2 results, chunks, and embeddings | `--dir`, `--format`, `--list-tables` |
 | `wc` | Count files, bytes, lines, tokens | `--kind`, `--by-kind`, `--format` |
 | `bench` | Benchmark suite (L0/L1/L2) | `--format`, `--rounds` |
 | `config` | Extraction mode settings | `show`, `init`, `set`, `reset-db` |
@@ -82,12 +82,16 @@ mm wc ~/data --by-kind
 mm wc ~/data --by-kind --format json
 ```
 
-### grep — content search
+### grep — content search (text + semantic)
 
 ```bash
 mm grep "attention" ~/data --kind document
 mm grep "TODO" ~/data --kind code
 mm grep "invoice" ~/data --count               # match counts per file
+
+# Semantic search (L2 — vector similarity via embeddings)
+mm grep "financial projections" ~/data -l 2    # semantic search
+mm grep "patient diagnosis" ~/data -l 2 --kind document --format json
 ```
 
 ### sql — query the index
@@ -100,8 +104,8 @@ mm sql "SELECT kind, COUNT(*) as n, ROUND(SUM(size)/1e6,1) as mb \
   FROM files GROUP BY kind ORDER BY mb DESC" --dir ~/data
 
 # Query stored tables directly (auto-detected from table name)
-mm sql "SELECT uri, summary FROM l2_results LIMIT 10"
-mm sql "SELECT uri, chunk_idx, LENGTH(chunk_text) FROM chunks"
+mm sql "SELECT file_uri, summary FROM l2_results LIMIT 10"
+mm sql "SELECT file_uri, chunk_idx, LENGTH(chunk_text) FROM chunks"
 mm sql "SELECT COUNT(*) FROM chunks WHERE embed_model IS NOT NULL"
 mm sql --list-tables                              # show available tables
 ```
@@ -111,6 +115,8 @@ mm sql --list-tables                              # show available tables
 - **TTY**: Rich formatted tables/panels
 - **Piped**: plain TSV/text (machine-readable, no ANSI)
 - **`--format json`**: JSON output on any command that supports it
+- **`--format dataset-jsonl`**: JSONL for dataset export
+- **`--format dataset-hf`**: HuggingFace Datasets format
 
 ## Python API
 
@@ -171,10 +177,12 @@ mm uses a global SQLite database at `~/.local/share/mm/mm.db` with sqlite-vec fo
 | Table | Contents | Relationship |
 |-------|----------|-------------|
 | `files` | L0 + L1 file metadata (one row per file, `uri` = absolute path) | — |
-| `l2_results` | LLM-generated summaries (many per file) | FK → `files.uri` |
-| `chunks` | ~1024-char content chunks | FK → `l2_results` |
-| `chunks_vec` | Embedding vectors (sqlite-vec) | FK → `chunks.id` |
+| `l2_results` | LLM-generated summaries (many per file, `file_uri` = FK) | FK → `files.uri` |
+| `chunks` | ~1024-char content chunks (`file_uri` = FK) | FK → `l2_results.id` |
+| `chunks_vec` | Embedding vectors (sqlite-vec virtual table) | FK → `chunks.id` |
 | `cache` | Key-value L1/L2 result cache | — |
+
+The `files` table includes both L0 columns (path, size, kind, etc.) and L1 columns (content_hash, text_preview, line_count, duration_s, exif_*, video_codec, etc.).
 
 Use `mm config reset-db` to clear all databases and caches.
 

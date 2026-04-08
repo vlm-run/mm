@@ -72,7 +72,8 @@ class FileCol(StrEnum):
 class L2Col(StrEnum):
     """Column names for the ``l2_results`` table."""
 
-    URI = "uri"
+    ID = "id"
+    FILE_URI = "file_uri"
     CONTENT_HASH = "content_hash"
     PROFILE = "profile"
     MODEL = "model"
@@ -86,10 +87,13 @@ class L2Col(StrEnum):
 class ChunkCol(StrEnum):
     """Column names for the ``chunks`` table."""
 
-    URI = "uri"
+    ID = "id"
+    L2_RESULT_ID = "l2_result_id"
+    FILE_URI = "file_uri"
     CONTENT_HASH = "content_hash"
     PROFILE = "profile"
     MODEL = "model"
+    LEVEL = "level"
     CHUNK_IDX = "chunk_idx"
     CHUNK_TEXT = "chunk_text"
     EMBED_MODEL = "embed_model"
@@ -190,12 +194,13 @@ CREATE TABLE IF NOT EXISTS files (
 CREATE INDEX IF NOT EXISTS idx_files_kind ON files (kind);
 CREATE INDEX IF NOT EXISTS idx_files_ext ON files (ext);
 CREATE INDEX IF NOT EXISTS idx_files_content_hash ON files (content_hash);
+CREATE INDEX IF NOT EXISTS idx_files_l1_lookup ON files (content_hash, l1_indexed_at DESC);
 """
 
 L2_RESULTS_DDL = """\
 CREATE TABLE IF NOT EXISTS l2_results (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
-    uri             TEXT NOT NULL,
+    file_uri        TEXT NOT NULL REFERENCES files(uri),
     content_hash    TEXT NOT NULL,
     profile         TEXT NOT NULL,
     model           TEXT NOT NULL,
@@ -205,27 +210,30 @@ CREATE TABLE IF NOT EXISTS l2_results (
     summary         TEXT NOT NULL,
     created_at      INTEGER NOT NULL
 );
+CREATE INDEX IF NOT EXISTS idx_l2_file_uri ON l2_results (file_uri);
+CREATE INDEX IF NOT EXISTS idx_l2_lookup
+ON l2_results (content_hash, profile, model, mode, detail, extra, created_at DESC);
 """
 
 CHUNKS_DDL = """\
 CREATE TABLE IF NOT EXISTS chunks (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
-    uri             TEXT NOT NULL,
+    l2_result_id    INTEGER NOT NULL REFERENCES l2_results(id),
+    file_uri        TEXT NOT NULL,
     content_hash    TEXT NOT NULL,
     profile         TEXT NOT NULL,
     model           TEXT NOT NULL,
+    level           INTEGER NOT NULL DEFAULT 2,
     chunk_idx       INTEGER NOT NULL,
     chunk_text      TEXT NOT NULL,
     embed_model     TEXT,
     created_at      INTEGER NOT NULL
 );
-"""
-
-CACHE_DDL = """\
-CREATE TABLE IF NOT EXISTS cache (
-    key   TEXT PRIMARY KEY,
-    value TEXT NOT NULL
-);
+CREATE INDEX IF NOT EXISTS idx_chunks_l2_result_id ON chunks (l2_result_id);
+CREATE INDEX IF NOT EXISTS idx_chunks_l2_reassembly
+ON chunks (l2_result_id, level, chunk_idx);
+CREATE INDEX IF NOT EXISTS idx_chunks_file_lookup
+ON chunks (file_uri, content_hash, profile, model, level, chunk_idx);
 """
 
 # ---------------------------------------------------------------------------

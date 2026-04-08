@@ -313,6 +313,29 @@ healthcare-codegen-reports/create_radiology_report.py:8
 healthcare-codegen-reports/create_realistic_intake.py:21
 ```
 
+### Semantic search (L2 — vector similarity)
+
+```bash
+$ mm grep "financial projections" ~/data/domains -l 2
+```
+
+```
+path                                                     index  distance  match
+construction/5001 Eisenhower Avenue/Bid Documents/...    0      0.2341    The projected cost breakdown includes...
+document.invoice/sample-invoice.pdf                      0      0.3012    Invoice total: 130,00 EUR...
+```
+
+```bash
+$ mm grep "patient diagnosis" ~/data/domains -l 2 --kind document --format json
+```
+
+```json
+[
+  {"path": "healthcare/medical-report.pdf", "index": 0, "distance": 0.1823, "match": "Patient presents with..."},
+  {"path": "healthcare/lab-results.pdf", "index": 1, "distance": 0.2156, "match": "Complete blood count analysis..."}
+]
+```
+
 ### Search with context lines
 
 ```bash
@@ -429,12 +452,13 @@ table        source         stored
 files        scan + SQLite  ephemeral
 l2_results   SQLite         2 rows
 chunks       SQLite         2 rows
+chunks_vec   sqlite-vec     2 rows
 
 # Query L2 results (auto-routes to persistent SQLite)
-$ mm sql "SELECT uri, profile, model, summary FROM l2_results"
+$ mm sql "SELECT file_uri, profile, model, summary FROM l2_results"
 
 # Query chunks and embeddings
-$ mm sql "SELECT uri, chunk_idx, embed_model, LENGTH(chunk_text) as len FROM chunks"
+$ mm sql "SELECT file_uri, chunk_idx, embed_model, LENGTH(chunk_text) as len FROM chunks"
 
 # Check embedding coverage
 $ mm sql "SELECT COUNT(*) as total, COUNT(embed_model) as embedded FROM chunks"
