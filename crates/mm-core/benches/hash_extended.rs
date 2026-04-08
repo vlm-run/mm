@@ -6,6 +6,8 @@ use tempfile::TempDir;
 /// Benchmark directory_hash on directories of varying sizes.
 fn bench_directory_hash(c: &mut Criterion) {
     let mut group = c.benchmark_group("directory_hash");
+    // 1000-file directory_hash takes ~18ms/iter; need headroom for 100 samples
+    group.measurement_time(std::time::Duration::from_secs(10));
 
     let sizes: Vec<(&str, usize)> = vec![("100_files", 100), ("500_files", 500), ("1000_files", 1000)];
 
@@ -36,6 +38,8 @@ fn bench_directory_hash(c: &mut Criterion) {
 /// Benchmark phash on synthetic images of varying sizes.
 fn bench_phash(c: &mut Criterion) {
     let mut group = c.benchmark_group("phash");
+    // 2048x2048 takes ~300ms/iter; need enough time for 100 samples
+    group.measurement_time(std::time::Duration::from_secs(30));
 
     let sizes: Vec<(&str, u32)> = vec![
         ("64x64", 64),
@@ -75,7 +79,9 @@ fn bench_phash(c: &mut Criterion) {
 /// Benchmark content hashing on large files (100MB+).
 fn bench_hash_large_files(c: &mut Criterion) {
     let mut group = c.benchmark_group("hash_large_files");
-    group.sample_size(10); // Fewer samples for large files
+    group.sample_size(10);
+    // full_hash_mmap on 200MB takes ~160ms; need enough time for 10 samples
+    group.measurement_time(std::time::Duration::from_secs(10));
 
     let dir = TempDir::new().unwrap();
 
