@@ -214,6 +214,35 @@ jobs:
           prerelease: false
           files: dist/*
 
+  # Deploy metrics dashboard to GitHub Pages at /dev/metrics
+  deploy-metrics:
+    needs:
+      - build
+      - sdist
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install dependencies
+        working-directory: metrics
+        run: npm ci
+      - name: Build metrics dashboard
+        working-directory: metrics
+        env:
+          VITE_BASE_PATH: /mm/dev/metrics/
+        run: npm run build
+      - name: Deploy metrics to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./metrics/dist
+          destination_dir: dev/metrics
+          keep_files: true
+
   # Deploy install.sh to GitHub Pages (alongside benchmarks at /dev/bench)
   deploy-install-script:
     needs:
