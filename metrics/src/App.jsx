@@ -41,7 +41,7 @@ export default function App() {
             <h1 className="text-[16px] font-semibold text-[var(--text-primary)]">
               mm <span style={{ color: "var(--accent)" }}>metrics</span>
             </h1>
-            <span className="font-mono text-[10px] text-[var(--text-muted)] border border-[var(--border)] rounded px-1.5 py-0.5">v0.3.0</span>
+            <span className="font-mono text-[10px] text-[var(--text-muted)] border border-[var(--border)] rounded px-1.5 py-0.5">v{__MM_VERSION__}</span>
           </div>
 
           <nav className="flex gap-1">
