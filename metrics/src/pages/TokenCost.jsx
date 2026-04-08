@@ -1,218 +1,110 @@
 import { useState } from "react";
-
-// ── Provider pricing ($/Mtok input) ──────────────────────────────
-const PROVIDERS = [
-  { id: "claude-haiku", name: "Claude 4.5 Haiku", input: 0.8, accent: "#8b5cf6" },
-  { id: "gpt-4o-mini", name: "GPT-4o Mini", input: 0.15, accent: "#10b981" },
-  { id: "gemini-flash", name: "Gemini 2.5 Flash", input: 0.15, accent: "#3b82f6" },
-  { id: "qwen-vl-72b", name: "Qwen3-VL 72B", input: 0.4, accent: "#f59e0b" },
-];
-
-// ── Token estimation constants ───────────────────────────────────
-const TOKENS_PER_IMAGE_BASE = 85;
-const TOKENS_PER_TILE = 170;
-const TILE_PX = 512;
-const TOKENS_PER_AUDIO_SECOND = 25;
-const CHARS_PER_PAGE = 3000;
-const TOKENS_PER_CHAR = 0.75;
-
-function imageTokens(w, h) {
-  const tw = Math.max(1, Math.ceil(w / TILE_PX));
-  const th = Math.max(1, Math.ceil(h / TILE_PX));
-  return TOKENS_PER_IMAGE_BASE + tw * th * TOKENS_PER_TILE;
-}
+import StatCard from "../components/StatCard";
+import CostTable from "../components/CostTable";
+import { Slider, ChipGroup } from "../components/Controls";
+import { fmt, fmtCost } from "../lib/format";
+import PROVIDERS, { cost } from "../lib/providers";
+import {
+  imageTokens,
+  TOKENS_PER_IMAGE_BASE,
+  TOKENS_PER_TILE,
+  TILE_PX,
+  TOKENS_PER_AUDIO_SECOND,
+  CHARS_PER_PAGE,
+  TOKENS_PER_CHAR,
+} from "../lib/tokens";
 
 // ── Tabs ─────────────────────────────────────────────────────────
+
 const TABS = [
-  { id: "video", label: "Video" },
-  { id: "audio", label: "Audio" },
-  { id: "pdf", label: "PDF" },
-  { id: "image", label: "Image" },
-  { id: "overview", label: "Overview" },
+  { value: "video", label: "Video" },
+  { value: "audio", label: "Audio" },
+  { value: "pdf", label: "PDF" },
+  { value: "image", label: "Image" },
+  { value: "overview", label: "Overview" },
 ];
 
 // ── Helpers ──────────────────────────────────────────────────────
-function fmt(n) {
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
-  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
-  return n.toLocaleString();
+
+const RESOLUTIONS = {
+  "720p": [1280, 720],
+  "1080p": [1920, 1080],
+  "4K": [3840, 2160],
+};
+
+function providerRows(tokens, perUnit) {
+  return PROVIDERS.map((p) => ({
+    provider: p.name,
+    accent: p.accent,
+    tokens,
+    total: cost(tokens, p),
+    rate: cost(tokens, p) / perUnit,
+  }));
 }
 
-function fmtCost(c) {
-  if (c === 0) return "$0";
-  if (c < 0.0001) return `$${c.toFixed(6)}`;
-  if (c < 0.01) return `$${c.toFixed(4)}`;
-  if (c < 1) return `$${c.toFixed(3)}`;
-  return `$${c.toFixed(2)}`;
-}
-
-// ── Shared components ────────────────────────────────────────────
-
-function StatCard({ label, value, sub }) {
-  return (
-    <div className="stat-card">
-      <div className="label">{label}</div>
-      <div className="value">{value}</div>
-      {sub && <div className="sub">{sub}</div>}
-    </div>
-  );
-}
-
-function CostTable({ rows, columns, caption }) {
-  return (
-    <div className="panel overflow-x-auto animate-slide-up">
-      {caption && (
-        <div className="px-4 py-2 border-b border-[var(--border)]">
-          <span className="font-mono text-[11px] font-medium text-[var(--text-muted)] uppercase tracking-wider">{caption}</span>
-        </div>
-      )}
-      <table>
-        <thead>
-          <tr>
-            {columns.map((col) => (
-              <th key={col.key} className={col.align === "right" ? "text-right" : ""}>
-                {col.label}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row, i) => (
-            <tr key={i}>
-              {columns.map((col) => (
-                <td key={col.key} className={col.align === "right" ? "text-right" : ""}>
-                  {col.render ? col.render(row) : row[col.key]}
-                </td>
-              ))}
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-}
-
-// ── Video ────────────────────────────────────────────────────────
+// ── Sections ─────────────────────────────────────────────────────
 
 function VideoSection() {
-  const [duration, setDuration] = useState(3600);
+  const [minutes, setMinutes] = useState(60);
   const [resolution, setResolution] = useState("1080p");
   const [kfFps, setKfFps] = useState(1.0);
 
-  const resolutions = { "720p": [1280, 720], "1080p": [1920, 1080], "4K": [3840, 2160] };
-  const [w, h] = resolutions[resolution];
+  const [w, h] = RESOLUTIONS[resolution];
   const tokPerFrame = imageTokens(w, h);
-  const numKeyframes = Math.round(duration * kfFps);
+  const numKeyframes = Math.round(minutes * 60 * kfFps);
   const totalTokens = numKeyframes * tokPerFrame;
-
-  const rows = PROVIDERS.map((p) => ({
-    provider: p.name,
-    accent: p.accent,
-    tokens: totalTokens,
-    costPerHr: (totalTokens * p.input) / 1_000_000,
-    costPerMin: (totalTokens * p.input) / 1_000_000 / (duration / 60),
-  }));
 
   return (
     <div className="space-y-6 animate-slide-up">
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <StatCard label="Duration" value={`${(duration / 60).toFixed(0)} min`} />
+        <StatCard label="Duration" value={`${minutes} min`} />
         <StatCard label="Keyframes" value={fmt(numKeyframes)} sub={`@ ${kfFps} kf/s`} />
         <StatCard label="Tok/frame" value={fmt(tokPerFrame)} sub={`${resolution} — ${Math.ceil(w / TILE_PX)}x${Math.ceil(h / TILE_PX)} tiles`} />
         <StatCard label="Total tokens" value={fmt(totalTokens)} />
       </div>
 
       <div className="panel p-4 flex flex-wrap gap-4 items-center">
-        <label className="text-[13px] text-[var(--text-secondary)] font-medium flex items-center gap-2">
-          Duration
-          <input type="range" min={1} max={120} value={duration / 60} onChange={(e) => setDuration(Number(e.target.value) * 60)} className="w-32" />
-          <span className="font-mono text-[var(--text-primary)] font-semibold">{(duration / 60).toFixed(0)}m</span>
-        </label>
-        <div className="flex gap-1">
-          {Object.keys(resolutions).map((r) => (
-            <button key={r} onClick={() => setResolution(r)} className={`chip ${resolution === r ? "active" : ""}`}>{r}</button>
-          ))}
-        </div>
-        <div className="flex gap-1">
-          {[0.5, 1.0, 2.0].map((f) => (
-            <button key={f} onClick={() => setKfFps(f)} className={`chip ${kfFps === f ? "active" : ""}`}>{f} kf/s</button>
-          ))}
-        </div>
+        <Slider label="Duration" min={1} max={120} value={minutes} onChange={setMinutes} suffix="m" />
+        <ChipGroup options={Object.keys(RESOLUTIONS)} value={resolution} onChange={setResolution} />
+        <ChipGroup
+          options={[0.5, 1.0, 2.0].map((f) => ({ value: f, label: `${f} kf/s` }))}
+          value={kfFps}
+          onChange={setKfFps}
+        />
       </div>
 
-      <CostTable
-        caption="Cost per provider"
-        rows={rows}
-        columns={[
-          { key: "provider", label: "Provider", render: (r) => <span style={{ color: r.accent }} className="font-medium">{r.provider}</span> },
-          { key: "tokens", label: "Tokens", align: "right", render: (r) => <span className="font-mono">{fmt(r.tokens)}</span> },
-          { key: "costPerHr", label: `$/${duration >= 3600 ? "hr" : (duration / 60).toFixed(0) + "min"}`, align: "right", render: (r) => <span className="font-mono font-semibold" style={{ color: "var(--accent)" }}>{fmtCost(r.costPerHr)}</span> },
-          { key: "costPerMin", label: "$/min", align: "right", render: (r) => <span className="font-mono text-[var(--text-muted)]">{fmtCost(r.costPerMin)}</span> },
-        ]}
-      />
+      <CostTable rows={providerRows(totalTokens, minutes)} unitLabel="$/min" />
     </div>
   );
 }
 
-// ── Audio ────────────────────────────────────────────────────────
-
 function AudioSection() {
-  const [duration, setDuration] = useState(3600);
-  const totalTokens = Math.round(duration * TOKENS_PER_AUDIO_SECOND);
-
-  const rows = PROVIDERS.map((p) => ({
-    provider: p.name,
-    accent: p.accent,
-    tokens: totalTokens,
-    costPerHr: (totalTokens * p.input) / 1_000_000,
-    costPerMin: (totalTokens * p.input) / 1_000_000 / (duration / 60),
-  }));
+  const [minutes, setMinutes] = useState(60);
+  const totalTokens = Math.round(minutes * 60 * TOKENS_PER_AUDIO_SECOND);
+  const rows = providerRows(totalTokens, minutes);
 
   return (
     <div className="space-y-6 animate-slide-up">
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <StatCard label="Duration" value={`${(duration / 60).toFixed(0)} min`} />
+        <StatCard label="Duration" value={`${minutes} min`} />
         <StatCard label="Tok/second" value={TOKENS_PER_AUDIO_SECOND} />
         <StatCard label="Total tokens" value={fmt(totalTokens)} />
-        <StatCard label="Cheapest $/hr" value={fmtCost(Math.min(...rows.map((r) => r.costPerHr)))} />
+        <StatCard label="Cheapest $/min" value={fmtCost(Math.min(...rows.map((r) => r.rate)))} />
       </div>
 
       <div className="panel p-4">
-        <label className="text-[13px] text-[var(--text-secondary)] font-medium flex items-center gap-2">
-          Duration
-          <input type="range" min={1} max={120} value={duration / 60} onChange={(e) => setDuration(Number(e.target.value) * 60)} className="w-40" />
-          <span className="font-mono text-[var(--text-primary)] font-semibold">{(duration / 60).toFixed(0)}m</span>
-        </label>
+        <Slider label="Duration" min={1} max={120} value={minutes} onChange={setMinutes} suffix="m" />
       </div>
 
-      <CostTable
-        rows={rows}
-        columns={[
-          { key: "provider", label: "Provider", render: (r) => <span style={{ color: r.accent }} className="font-medium">{r.provider}</span> },
-          { key: "tokens", label: "Tokens", align: "right", render: (r) => <span className="font-mono">{fmt(r.tokens)}</span> },
-          { key: "costPerHr", label: "$/hr", align: "right", render: (r) => <span className="font-mono font-semibold" style={{ color: "var(--accent)" }}>{fmtCost(r.costPerHr)}</span> },
-          { key: "costPerMin", label: "$/min", align: "right", render: (r) => <span className="font-mono text-[var(--text-muted)]">{fmtCost(r.costPerMin)}</span> },
-        ]}
-      />
+      <CostTable rows={rows} unitLabel="$/min" />
     </div>
   );
 }
 
-// ── PDF ──────────────────────────────────────────────────────────
-
 function PdfSection() {
   const [pages, setPages] = useState(100);
   const [charsPerPage, setCharsPerPage] = useState(CHARS_PER_PAGE);
-  const totalChars = pages * charsPerPage;
-  const totalTokens = Math.round(totalChars * TOKENS_PER_CHAR);
-
-  const rows = PROVIDERS.map((p) => ({
-    provider: p.name,
-    accent: p.accent,
-    tokens: totalTokens,
-    costTotal: (totalTokens * p.input) / 1_000_000,
-    costPerPage: (totalTokens * p.input) / 1_000_000 / pages,
-  }));
+  const totalTokens = Math.round(pages * charsPerPage * TOKENS_PER_CHAR);
 
   return (
     <div className="space-y-6 animate-slide-up">
@@ -224,32 +116,18 @@ function PdfSection() {
       </div>
 
       <div className="panel p-4 flex flex-wrap gap-4 items-center">
-        <label className="text-[13px] text-[var(--text-secondary)] font-medium flex items-center gap-2">
-          Pages
-          <input type="range" min={1} max={500} value={pages} onChange={(e) => setPages(Number(e.target.value))} className="w-40" />
-          <span className="font-mono text-[var(--text-primary)] font-semibold">{pages}</span>
-        </label>
-        <div className="flex gap-1">
-          {[1500, 3000, 5000].map((c) => (
-            <button key={c} onClick={() => setCharsPerPage(c)} className={`chip ${charsPerPage === c ? "active" : ""}`}>{fmt(c)} ch/pg</button>
-          ))}
-        </div>
+        <Slider label="Pages" min={1} max={500} value={pages} onChange={setPages} />
+        <ChipGroup
+          options={[1500, 3000, 5000].map((c) => ({ value: c, label: `${fmt(c)} ch/pg` }))}
+          value={charsPerPage}
+          onChange={setCharsPerPage}
+        />
       </div>
 
-      <CostTable
-        rows={rows}
-        columns={[
-          { key: "provider", label: "Provider", render: (r) => <span style={{ color: r.accent }} className="font-medium">{r.provider}</span> },
-          { key: "tokens", label: "Tokens", align: "right", render: (r) => <span className="font-mono">{fmt(r.tokens)}</span> },
-          { key: "costTotal", label: `$/${pages}pg`, align: "right", render: (r) => <span className="font-mono font-semibold" style={{ color: "var(--accent)" }}>{fmtCost(r.costTotal)}</span> },
-          { key: "costPerPage", label: "$/page", align: "right", render: (r) => <span className="font-mono text-[var(--text-muted)]">{fmtCost(r.costPerPage)}</span> },
-        ]}
-      />
+      <CostTable rows={providerRows(totalTokens, pages)} unitLabel="$/page" />
     </div>
   );
 }
-
-// ── Image ────────────────────────────────────────────────────────
 
 function ImageSection() {
   const presets = [
@@ -260,16 +138,14 @@ function ImageSection() {
     { name: "8K", w: 7680, h: 4320 },
   ];
 
-  const grouped = presets.map((preset) => {
-    const tokens = imageTokens(preset.w, preset.h);
-    const tilesW = Math.ceil(preset.w / TILE_PX);
-    const tilesH = Math.ceil(preset.h / TILE_PX);
+  const grouped = presets.map((p) => {
+    const tokens = imageTokens(p.w, p.h);
     return {
-      name: preset.name,
-      dims: `${preset.w}x${preset.h}`,
-      tiles: `${tilesW}x${tilesH}`,
+      name: p.name,
+      dims: `${p.w}x${p.h}`,
+      tiles: `${Math.ceil(p.w / TILE_PX)}x${Math.ceil(p.h / TILE_PX)}`,
       tokens,
-      costs: PROVIDERS.map((p) => ({ name: p.name, accent: p.accent, cost: (tokens * p.input) / 1_000_000 })),
+      costs: PROVIDERS.map((prov) => ({ accent: prov.accent, cost: cost(tokens, prov) })),
     };
   });
 
@@ -282,14 +158,18 @@ function ImageSection() {
             <th className="text-right">Tiles</th>
             <th className="text-right">Tokens</th>
             {PROVIDERS.map((p) => (
-              <th key={p.id} className="text-right" style={{ color: p.accent }}>{p.name.split(" ").slice(-1)[0]}</th>
+              <th key={p.id} className="text-right" style={{ color: p.accent }}>
+                {p.name.split(" ").slice(-1)[0]}
+              </th>
             ))}
           </tr>
         </thead>
         <tbody>
           {grouped.map((g) => (
             <tr key={g.name}>
-              <td className="font-medium">{g.name} <span className="text-[var(--text-muted)] text-[11px] font-mono">{g.dims}</span></td>
+              <td className="font-medium">
+                {g.name} <span className="text-[var(--text-muted)] text-[11px] font-mono">{g.dims}</span>
+              </td>
               <td className="text-right font-mono text-[var(--text-muted)]">{g.tiles}</td>
               <td className="text-right font-mono font-semibold" style={{ color: "var(--accent)" }}>{fmt(g.tokens)}</td>
               {g.costs.map((c, i) => (
@@ -302,8 +182,6 @@ function ImageSection() {
     </div>
   );
 }
-
-// ── Overview ─────────────────────────────────────────────────────
 
 function OverviewSection() {
   const scenarios = [
@@ -325,7 +203,9 @@ function OverviewSection() {
               <th>Scenario</th>
               <th className="text-right">Tokens</th>
               {PROVIDERS.map((p) => (
-                <th key={p.id} className="text-right" style={{ color: p.accent }}>{p.name.split(" ").slice(-1)[0]}</th>
+                <th key={p.id} className="text-right" style={{ color: p.accent }}>
+                  {p.name.split(" ").slice(-1)[0]}
+                </th>
               ))}
             </tr>
           </thead>
@@ -335,7 +215,9 @@ function OverviewSection() {
                 <td>{s.label}</td>
                 <td className="text-right font-mono font-semibold" style={{ color: "var(--accent)" }}>{fmt(s.tokens)}</td>
                 {PROVIDERS.map((p) => (
-                  <td key={p.id} className="text-right font-mono text-[var(--text-secondary)]">{fmtCost((s.tokens * p.input) / 1_000_000)}</td>
+                  <td key={p.id} className="text-right font-mono text-[var(--text-secondary)]">
+                    {fmtCost(cost(s.tokens, p))}
+                  </td>
                 ))}
               </tr>
             ))}
@@ -344,11 +226,21 @@ function OverviewSection() {
       </div>
 
       <div className="panel p-4 space-y-1">
-        <div className="font-mono text-[11px] font-medium text-[var(--text-muted)] uppercase tracking-wider mb-2">Token estimation rules</div>
-        <div className="text-[12px] text-[var(--text-secondary)] font-mono">Image: {TOKENS_PER_IMAGE_BASE} base + {TOKENS_PER_TILE} per {TILE_PX}x{TILE_PX} tile</div>
-        <div className="text-[12px] text-[var(--text-secondary)] font-mono">Audio: {TOKENS_PER_AUDIO_SECOND} tokens/second</div>
-        <div className="text-[12px] text-[var(--text-secondary)] font-mono">Video: keyframe extraction at configurable rate, each frame = image</div>
-        <div className="text-[12px] text-[var(--text-secondary)] font-mono">PDF: ~{TOKENS_PER_CHAR} tokens/char, ~{CHARS_PER_PAGE} chars/page avg</div>
+        <div className="font-mono text-[11px] font-medium text-[var(--text-muted)] uppercase tracking-wider mb-2">
+          Token estimation rules
+        </div>
+        <div className="text-[12px] text-[var(--text-secondary)] font-mono">
+          Image: {TOKENS_PER_IMAGE_BASE} base + {TOKENS_PER_TILE} per {TILE_PX}x{TILE_PX} tile
+        </div>
+        <div className="text-[12px] text-[var(--text-secondary)] font-mono">
+          Audio: {TOKENS_PER_AUDIO_SECOND} tokens/second
+        </div>
+        <div className="text-[12px] text-[var(--text-secondary)] font-mono">
+          Video: keyframe extraction at configurable rate, each frame = image
+        </div>
+        <div className="text-[12px] text-[var(--text-secondary)] font-mono">
+          PDF: ~{TOKENS_PER_CHAR} tokens/char, ~{CHARS_PER_PAGE} chars/page avg
+        </div>
       </div>
     </div>
   );
@@ -363,13 +255,13 @@ export default function TokenCost() {
     <div>
       <div className="mb-6">
         <h2 className="text-[18px] font-semibold text-[var(--text-primary)]">Token Cost Calculator</h2>
-        <p className="text-[12px] font-mono text-[var(--text-muted)] mt-1">Multi-modal context cost estimates by provider and modality</p>
+        <p className="text-[12px] font-mono text-[var(--text-muted)] mt-1">
+          Multi-modal context cost estimates by provider and modality
+        </p>
       </div>
 
       <div className="flex gap-1 mb-6">
-        {TABS.map((t) => (
-          <button key={t.id} onClick={() => setTab(t.id)} className={`chip ${tab === t.id ? "active" : ""}`}>{t.label}</button>
-        ))}
+        <ChipGroup options={TABS} value={tab} onChange={setTab} />
       </div>
 
       {tab === "video" && <VideoSection />}
