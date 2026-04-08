@@ -60,19 +60,6 @@ def _to_us(val) -> int | None:
     return int(val.timestamp() * 1_000_000)
 
 
-def make_key(
-    content_hash: str,
-    profile: str = "",
-    model: str = "",
-    mode: str | None = None,
-    detail: bool = False,
-    extra: str = "",
-) -> str:
-    return "cache:" + ":".join(
-        filter(None, [content_hash, profile, model, mode, f"{detail}", extra])
-    )
-
-
 # ---------------------------------------------------------------------------
 # MmDatabase
 # ---------------------------------------------------------------------------
@@ -105,21 +92,9 @@ class MmDatabase:
         return self._conn
 
     def _ensure_tables(self) -> None:
-        from mm.store.schema import CACHE_DDL, CHUNKS_DDL, FILES_DDL, L2_RESULTS_DDL
+        from mm.store.schema import CHUNKS_DDL, FILES_DDL, L2_RESULTS_DDL
 
-        self._connect.executescript(FILES_DDL + L2_RESULTS_DDL + CHUNKS_DDL + CACHE_DDL)
-
-    # -- Cache (replaces dbm) --
-
-    def cache_get(self, key: str) -> str | None:
-        row = self._connect.execute("SELECT value FROM cache WHERE key = ?", (key,)).fetchone()
-        return row[0] if row else None
-
-    def cache_put(self, key: str, value: str) -> None:
-        self._connect.execute(
-            "INSERT OR REPLACE INTO cache (key, value) VALUES (?, ?)", (key, value)
-        )
-        self._connect.commit()
+        self._connect.executescript(FILES_DDL + L2_RESULTS_DDL + CHUNKS_DDL)
 
     # -- Files (L0 + L1) --
 
@@ -133,7 +108,6 @@ class MmDatabase:
 
         db = self._connect
         now = _now_us()
-
         # Build SQL once
         columns = "uri, name, stem, ext, size, modified, created, mime, kind, is_binary, depth, parent, width, height, phash, indexed_at"
         placeholders = ", ".join("?" * 16)
@@ -188,27 +162,6 @@ class MmDatabase:
         db.commit()
         return int(db.execute("SELECT COUNT(*) FROM files").fetchone()[0])
 
-    def update_l1(self, uri: str, data: dict[str, Any]) -> None:
-        """Fill L1 columns for a specific file."""
-        from mm.store.schema import FileCol
-
-        db = self._connect
-        existing = self.get_file(uri)
-        if existing is None:
-            row = _l0_from_path(uri)
-            if row is None:
-                return
-            cols = ", ".join(row.keys())
-            placeholders = ", ".join("?" * len(row))
-            db.execute(
-                f"INSERT OR IGNORE INTO files ({cols}) VALUES ({placeholders})", tuple(row.values())
-            )
-
-        data[FileCol.L1_INDEXED_AT] = _now_us()
-        sets = ", ".join(f"{k} = ?" for k in data)
-        db.execute(f"UPDATE files SET {sets} WHERE uri = ?", (*data.values(), uri))
-        db.commit()
-
     def get_file(self, uri: str) -> dict[str, Any] | None:
         row = self._connect.execute("SELECT * FROM files WHERE uri = ?", (uri,)).fetchone()
         return dict(row) if row else None
@@ -219,6 +172,20 @@ class MmDatabase:
             q += f" WHERE {where}"
         return [dict(r) for r in self._connect.execute(q).fetchall()]
 
+    def ensure_l0(self, uri: str) -> None:
+        """Ensure a ``files`` row exists for *uri* over L0, scanning via Rust if needed."""
+        if self.get_file(uri) is not None:
+            return
+
+        if not Path(uri).exists():
+            return
+
+        from mm._mm import Scanner
+
+        scanner = Scanner(str(Path(uri).parent))
+        scanner.scan()
+        self.upsert_files(scanner.to_arrow(), Path(uri).parent)
+
     def is_stale(self, uri: str, mtime_us: int, size: int) -> bool:
         row = self._connect.execute(
             "SELECT modified, size FROM files WHERE uri = ?", (uri,)
@@ -227,18 +194,36 @@ class MmDatabase:
             return True
         return bool(row[0] != mtime_us or row[1] != size)
 
-    # -- L1 (cache) --
-
     def get_l1(self, content_hash: str) -> str | None:
-        return self.cache_get(make_key(content_hash))
+        row = self._connect.execute(
+            "SELECT text_preview FROM files "
+            "WHERE content_hash = ? AND text_preview IS NOT NULL "
+            "ORDER BY l1_indexed_at DESC LIMIT 1",
+            (content_hash,),
+        ).fetchone()
+        if row is None:
+            return None
+        return str(row[0]) if row[0] is not None else None
+
+    def update_l1(self, uri: str, data: dict[str, Any]) -> None:
+        """Fill L1 columns for a specific file."""
+        from mm.store.schema import FileCol
+
+        self.ensure_l0(uri)
+        if self.get_file(uri) is None:
+            return
+
+        data[FileCol.L1_INDEXED_AT] = _now_us()
+        sets = ", ".join(f"{k} = ?" for k in data)
+        self._connect.execute(f"UPDATE files SET {sets} WHERE uri = ?", (*data.values(), uri))
+        self._connect.commit()
 
     def put_l1(self, uri: str, content_hash: str, content: str) -> None:
         from mm.store.schema import FileCol
 
-        self.cache_put(make_key(content_hash), content)
         self.update_l1(uri, {FileCol.CONTENT_HASH: content_hash, FileCol.TEXT_PREVIEW: content})
 
-    # -- L2 (cache + l2_results + chunks) --
+    # -- L2 --
 
     def get_l2(
         self,
@@ -249,7 +234,27 @@ class MmDatabase:
         detail: bool = False,
         extra: str = "",
     ) -> str | None:
-        return self.cache_get(make_key(content_hash, profile, model, mode, detail, extra))
+        """Look up a cached L2 result. Returns full content reassembled from chunks."""
+        row = self._connect.execute(
+            "SELECT id FROM l2_results "
+            "WHERE content_hash = ? AND profile = ? AND model = ? "
+            "AND mode IS ? AND detail = ? AND extra = ? "
+            "ORDER BY created_at DESC LIMIT 1",
+            (content_hash, profile, model, mode, int(detail), extra),
+        ).fetchone()
+        if row is None:
+            return None
+        l2_id = row[0]
+        chunks = self._connect.execute(
+            "SELECT chunk_text FROM chunks WHERE l2_result_id = ? AND level = 2 ORDER BY chunk_idx",
+            (l2_id,),
+        ).fetchall()
+        if not chunks:
+            return None
+        parts = [chunks[0][0]]
+        for c in chunks[1:]:
+            parts.append(c[0][CHUNK_OVERLAP:])
+        return "".join(parts)
 
     def put_l2(
         self,
@@ -259,25 +264,45 @@ class MmDatabase:
         model: str,
         content: str,
         mode: str | None = None,
-        detail: bool = False,
+        detail=False,
         *,
-        extra: str = "",
-    ) -> None:
-        self.cache_put(make_key(content_hash, profile, model, mode, detail, extra), content)
+        extra="",
+    ) -> int:
+        """Insert L2 result, chunk L1+L2 content. Returns l2_results.id."""
+        self.ensure_l0(uri)
+
+        # Get L1 content
+        l1_content = self.get_l1(content_hash)
+        if not l1_content:
+            raise RuntimeError("L1 content not found")
+
         now = _now_us()
         summary = content[:500] if len(content) > 500 else content
-        self._connect.execute(
-            "INSERT INTO l2_results (uri, content_hash, profile, model, mode, detail, extra, summary, created_at) "
+        cursor = self._connect.execute(
+            "INSERT INTO l2_results (file_uri, content_hash, profile, model, mode, detail, extra, summary, created_at) "
             "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (uri, content_hash, profile, model, mode, int(detail), extra, summary, now),
         )
+        assert cursor.lastrowid is not None
+        l2_id: int = cursor.lastrowid
         self._connect.commit()
-        self.put_chunks(uri, content_hash, profile, model, content)
+
+        # Chunk L1 (the raw extracted content the LLM saw) and L2 (the LLM-generated summary/description)
+        self._put_chunks(l2_id, uri, content_hash, profile, model, l1_content, level=1)
+        self._put_chunks(l2_id, uri, content_hash, profile, model, content, level=2)
+        return l2_id
 
     # -- Chunks --
 
-    def put_chunks(
-        self, uri: str, content_hash: str, profile: str, model: str, content: str
+    def _put_chunks(
+        self,
+        l2_result_id: int,
+        uri: str,
+        content_hash: str,
+        profile: str,
+        model: str,
+        content: str,
+        level: int,
     ) -> None:
         now = _now_us()
         step = CHUNK_SIZE - CHUNK_OVERLAP
@@ -290,29 +315,39 @@ class MmDatabase:
             return
         db = self._connect
         db.executemany(
-            "INSERT INTO chunks (uri, content_hash, profile, model, chunk_idx, chunk_text, created_at) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?)",
-            [(uri, content_hash, profile, model, idx, text, now) for idx, text in enumerate(texts)],
+            "INSERT INTO chunks (l2_result_id, uri, content_hash, profile, model, level, chunk_idx, chunk_text, created_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            [
+                (l2_result_id, uri, content_hash, profile, model, level, idx, text, now)
+                for idx, text in enumerate(texts)
+            ],
         )
         db.commit()
 
     def get_chunks(
-        self, uri: str, content_hash: str, profile: str, model: str
+        self, uri: str, content_hash: str, profile: str, model: str, *, level: int | None = None
     ) -> list[dict[str, Any]]:
-        return [
-            dict(r)
-            for r in self._connect.execute(
-                "SELECT * FROM chunks WHERE uri = ? AND content_hash = ? "
-                "AND profile = ? AND model = ? ORDER BY chunk_idx",
-                (uri, content_hash, profile, model),
-            ).fetchall()
-        ]
+        q = "SELECT * FROM chunks WHERE uri = ? AND content_hash = ? AND profile = ? AND model = ?"
+        params: list = [uri, content_hash, profile, model]
+        if level is not None:
+            q += " AND level = ?"
+            params.append(level)
+        q += " ORDER BY level, chunk_idx"
+        return [dict(r) for r in self._connect.execute(q, params).fetchall()]
 
-    def get_full_content(self, uri: str, content_hash: str, profile: str, model: str) -> str | None:
+    def get_full_content(
+        self, uri: str, content_hash: str, profile: str, model: str, *, level: int = 2
+    ) -> str | None:
+        """
+        Reassemble full content for a given file/profile/model/level from chunks.
+
+        Returns:
+            str | None - The full reassembled content, or None if no chunks found.
+        """
         rows = self._connect.execute(
             "SELECT chunk_text FROM chunks WHERE uri = ? AND content_hash = ? "
-            "AND profile = ? AND model = ? ORDER BY chunk_idx",
-            (uri, content_hash, profile, model),
+            "AND profile = ? AND model = ? AND level = ? ORDER BY chunk_idx",
+            (uri, content_hash, profile, model, level),
         ).fetchall()
         if not rows:
             return None
@@ -371,7 +406,10 @@ class MmDatabase:
         db.commit()
 
     def search_similar(
-        self, vector: list[float], limit: int = 10, where: str | None = None
+        self,
+        vector: list[float],
+        limit: int = 10,
+        where: str | None = None,
     ) -> list[dict[str, Any]]:
         db = self._connect
         exists = db.execute(
@@ -384,7 +422,6 @@ class MmDatabase:
 
         dim = len(vector)
         vec_bytes = struct.pack(f"{dim}f", *vector)
-
         if where:
             rows = db.execute(
                 "SELECT c.*, v.distance FROM chunks c "
@@ -425,39 +462,3 @@ class MmDatabase:
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
-
-
-def _l0_from_path(uri: str) -> dict[str, Any] | None:
-    p = Path(uri)
-    if not p.exists():
-        return None
-    try:
-        stat = p.stat()
-    except OSError:
-        return None
-
-    mime = "application/octet-stream"
-    try:
-        import mimetypes
-
-        mime = mimetypes.guess_type(p.name)[0] or mime
-    except Exception:
-        pass
-
-    return {
-        "uri": uri,
-        "name": p.name,
-        "stem": p.stem,
-        "ext": p.suffix,
-        "size": stat.st_size,
-        "modified": int(stat.st_mtime * 1_000_000),
-        "created": int(getattr(stat, "st_birthtime", stat.st_ctime) * 1_000_000),
-        "mime": mime,
-        "kind": "other",
-        "is_binary": 0,
-        "depth": 0,
-        "parent": str(p.parent),
-        "width": None,
-        "height": None,
-        "indexed_at": _now_us(),
-    }
