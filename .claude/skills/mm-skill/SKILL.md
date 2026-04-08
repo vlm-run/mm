@@ -170,7 +170,7 @@ mm grep "def " <dir> --kind code --level 0             # search raw content (L0)
 mm grep "financial projections" <dir> -l 2             # semantic search across all files
 mm grep "patient diagnosis" <dir> -l 2 --kind document # semantic search in documents only
 mm grep "architecture overview" <dir> -l 2 --format json  # JSON output with distances
-mm find <dir> --kind document | mm grep "revenue forecast" -l 2  # semantic search piped files
+find <dir> -name * | mm grep "revenue forecast" -l 2  # semantic search piped files
 ```
 
 **Warning**: L0/L1 grep runs extraction on every matching file. On large document directories (500+ PDFs), this can take minutes. Prefer `--kind code` or `--kind text` for fast text searches.

@@ -219,10 +219,10 @@ def _grep_l2(
     is_file = path.is_file()
 
     # Collect URIs to ensure they're indexed
-    if is_file:
-        uris = [str(path)]
-    elif stdin_paths:
+    if stdin_paths:
         uris = [str(Path(p).resolve()) for p in stdin_paths if Path(p).is_file()]
+    elif is_file:
+        uris = [str(path)]
     else:
         ctx = Context(directory)
         if kind:
@@ -236,9 +236,9 @@ def _grep_l2(
     # Search — scope to the directories of/in piped URIs
     if stdin_paths:
         results: list[dict] = []
-        uris = [str(Path(p).resolve()) for p in stdin_paths if not Path(p).is_file()]
-        for uri in uris:
-            results.extend(search(pattern, uri_prefix=uri, limit=limit))
+        uri_prefixes = [str(Path(p).resolve()) for p in stdin_paths if not Path(p).is_file()]
+        for uri_prefix in uri_prefixes:
+            results.extend(search(pattern, uri_prefix=uri_prefix, limit=limit))
 
         results.sort(key=lambda r: r["distance"])
         results = results[:limit]

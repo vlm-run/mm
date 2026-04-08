@@ -25,13 +25,14 @@ else:
 
     sys.excepthook = _quiet_broken_pipe
 
+from mm import __version__
 from mm.commands import bench, cat, find, grep, sql, wc
 from mm.commands.config import config_app
 from mm.commands.profile import profile_app
 
 app = typer.Typer(
     name="mm",
-    help="High-performance multi-modal context management.",
+    help=f"High-performance multi-modal context management - v{__version__}.",
     no_args_is_help=True,
     pretty_exceptions_enable=False,
 )

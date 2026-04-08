@@ -553,7 +553,7 @@ notes/experiment-log.pdf:index0:0.3891:ResNet-50 baseline training results...
 ### Example 7: Semantic search with pipe composition
 
 ```bash
-$ mm find ~/data --kind document | mm grep "revenue forecast" -l 2 --format json
+$ find <dir> -name *  | mm grep "revenue forecast" -l 2 --format json
 ```
 
 ```json
