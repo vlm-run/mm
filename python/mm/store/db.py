@@ -315,7 +315,7 @@ class MmDatabase:
             return
         db = self._connect
         db.executemany(
-            "INSERT INTO chunks (l2_result_id, uri, content_hash, profile, model, level, chunk_idx, chunk_text, created_at) "
+            "INSERT INTO chunks (l2_result_id, file_uri, content_hash, profile, model, level, chunk_idx, chunk_text, created_at) "
             "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
             [
                 (l2_result_id, uri, content_hash, profile, model, level, idx, text, now)
@@ -327,7 +327,7 @@ class MmDatabase:
     def get_chunks(
         self, uri: str, content_hash: str, profile: str, model: str, *, level: int | None = None
     ) -> list[dict[str, Any]]:
-        q = "SELECT * FROM chunks WHERE uri = ? AND content_hash = ? AND profile = ? AND model = ?"
+        q = "SELECT * FROM chunks WHERE file_uri = ? AND content_hash = ? AND profile = ? AND model = ?"
         params: list = [uri, content_hash, profile, model]
         if level is not None:
             q += " AND level = ?"
@@ -345,7 +345,7 @@ class MmDatabase:
             str | None - The full reassembled content, or None if no chunks found.
         """
         rows = self._connect.execute(
-            "SELECT chunk_text FROM chunks WHERE uri = ? AND content_hash = ? "
+            "SELECT chunk_text FROM chunks WHERE file_uri = ? AND content_hash = ? "
             "AND profile = ? AND model = ? AND level = ? ORDER BY chunk_idx",
             (uri, content_hash, profile, model, level),
         ).fetchall()

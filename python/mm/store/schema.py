@@ -89,7 +89,7 @@ class ChunkCol(StrEnum):
 
     ID = "id"
     L2_RESULT_ID = "l2_result_id"
-    URI = "uri"
+    FILE_URI = "file_uri"
     CONTENT_HASH = "content_hash"
     PROFILE = "profile"
     MODEL = "model"
@@ -219,7 +219,7 @@ CHUNKS_DDL = """\
 CREATE TABLE IF NOT EXISTS chunks (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
     l2_result_id    INTEGER NOT NULL REFERENCES l2_results(id),
-    uri             TEXT NOT NULL,
+    file_uri        TEXT NOT NULL,
     content_hash    TEXT NOT NULL,
     profile         TEXT NOT NULL,
     model           TEXT NOT NULL,
@@ -230,6 +230,10 @@ CREATE TABLE IF NOT EXISTS chunks (
     created_at      INTEGER NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_chunks_l2_result_id ON chunks (l2_result_id);
+CREATE INDEX IF NOT EXISTS idx_chunks_l2_reassembly
+ON chunks (l2_result_id, level, chunk_idx);
+CREATE INDEX IF NOT EXISTS idx_chunks_file_lookup
+ON chunks (file_uri, content_hash, profile, model, level, chunk_idx);
 """
 
 # ---------------------------------------------------------------------------

@@ -42,7 +42,7 @@ def sql_cmd(
       mm sql "SELECT kind, COUNT(*) as n FROM files GROUP BY kind"
       mm sql "SELECT * FROM files WHERE kind='image'" --dir ~/photos
       mm sql "SELECT file_uri, summary FROM l2_results LIMIT 10"
-      mm sql "SELECT uri, level, chunk_idx, LENGTH(chunk_text) FROM chunks"
+            mm sql "SELECT file_uri, level, chunk_idx, LENGTH(chunk_text) FROM chunks"
       mm sql --list-tables
     """
     from mm.display import resolve_format

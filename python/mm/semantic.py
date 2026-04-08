@@ -32,9 +32,9 @@ def ensure_indexed(uris: list[str]) -> None:
         for batch in batch_array(uris, 500):
             placeholders = ", ".join("?" * len(batch))
             rows = db._connect.execute(
-                f"SELECT DISTINCT c.uri FROM chunks c "
+                f"SELECT DISTINCT c.file_uri FROM chunks c "
                 f"JOIN chunks_vec v ON v.chunk_id = c.id "
-                f"WHERE c.uri IN ({placeholders})",
+                f"WHERE c.file_uri IN ({placeholders})",
                 batch,
             ).fetchall()
 
@@ -101,14 +101,14 @@ def search(
 
     where = None
     if uri:
-        where = f"c.uri = '{uri.replace(chr(39), chr(39) * 2)}'"
+        where = f"c.file_uri = '{uri.replace(chr(39), chr(39) * 2)}'"
     elif uri_prefix:
-        where = f"c.uri LIKE '{uri_prefix.replace(chr(39), chr(39) * 2)}%'"
+        where = f"c.file_uri LIKE '{uri_prefix.replace(chr(39), chr(39) * 2)}%'"
 
     raw = MmDatabase().search_similar(vectors[0], limit=limit * 2, where=where)
     results = [
         {
-            "path": r["uri"],
+            "path": r["file_uri"],
             "index": r["chunk_idx"],
             "distance": round(r["distance"], 4),
             "match": r["chunk_text"],

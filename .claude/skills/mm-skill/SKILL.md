@@ -182,11 +182,11 @@ mm sql "SELECT kind, COUNT(*) as n, ROUND(SUM(size)/1e6,1) as mb FROM files GROU
 mm sql "SELECT * FROM files WHERE kind='document'" --dir <dir> --format json
 
 # L2 results (SQLite direct)
-mm sql "SELECT uri, profile, model, summary FROM l2_results LIMIT 10"
+mm sql "SELECT file_uri, profile, model, summary FROM l2_results LIMIT 10"
 mm sql "SELECT COUNT(*) as n FROM l2_results"
 
 # Chunks and embeddings (SQLite direct)
-mm sql "SELECT uri, chunk_idx, LENGTH(chunk_text) as len FROM chunks"
+mm sql "SELECT file_uri, chunk_idx, LENGTH(chunk_text) as len FROM chunks"
 mm sql "SELECT COUNT(*) FROM chunks WHERE embed_model IS NOT NULL"
 
 # List available tables

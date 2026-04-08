@@ -431,10 +431,10 @@ l2_results   SQLite         2 rows
 chunks       SQLite         2 rows
 
 # Query L2 results (auto-routes to persistent SQLite)
-$ mm sql "SELECT uri, profile, model, summary FROM l2_results"
+$ mm sql "SELECT file_uri, profile, model, summary FROM l2_results"
 
 # Query chunks and embeddings
-$ mm sql "SELECT uri, chunk_idx, embed_model, LENGTH(chunk_text) as len FROM chunks"
+$ mm sql "SELECT file_uri, chunk_idx, embed_model, LENGTH(chunk_text) as len FROM chunks"
 
 # Check embedding coverage
 $ mm sql "SELECT COUNT(*) as total, COUNT(embed_model) as embedded FROM chunks"
