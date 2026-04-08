@@ -6,6 +6,7 @@ Run with: uv run pytest tests/python/test_integration.py -m integration -v
 from __future__ import annotations
 
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 
@@ -173,14 +174,15 @@ class TestChunkEmbedding:
         )
         root = Path("/test/integ")
         db.upsert_files(table, root)
+
+        uri = "/test/integ/doc.txt"
+        db.put_l1(uri, "h1", "L1 content")
+
         content = "Machine learning is transforming software engineering. " * 40
-        db.put_l2("/test/integ/doc.txt", "h1", "default", "test-model", content)
-
-        from unittest.mock import patch
-
+        db.put_l2(uri, "h1", "default", "test-model", content)
         with patch("mm.store.db.MmDatabase", return_value=db):
-            n = embed_file_chunks("/test/integ/doc.txt", "h1", "default", "test-model")
+            n = embed_file_chunks(uri, "h1", "default", "test-model")
         assert n > 0
 
-        full = db.get_full_content("/test/integ/doc.txt", "h1", "default", "test-model")
+        full = db.get_full_content(uri, "h1", "default", "test-model")
         assert full == content
