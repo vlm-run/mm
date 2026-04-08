@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1775579999014,
+  "lastUpdate": 1775655447058,
   "repoUrl": "https://github.com/vlm-run/mm",
   "entries": {
     "mm Rust Benchmarks": [
@@ -1983,6 +1983,130 @@ window.BENCHMARK_DATA = {
           {
             "name": "l1_image_extract/50",
             "value": 13525260,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "20521315+nwaughachukwuma@users.noreply.github.com",
+            "name": "Chukwuma Nwaugha",
+            "username": "nwaughachukwuma"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "b78951dd62fb7e5733885c391773cc679d530eff",
+          "message": "Implement semantic search for l2 operations (#31)\n\n## Summary\n\nThis PR introduces **L2 semantic search** via vector embeddings using\n[sqlite-vec](https://github.com/asg017/sqlite-vec), enabling `mm grep\n\"query\" -l 2` for natural-language search across indexed files.\n\n## Major changes\n\n**Semantic search (`mm grep -l 2`)**\n- New `mm grep \"query\" <dir> --level 2` command for vector similarity\nsearch via embeddings\n- Supports stdin piping (`mm find <dir> --kind document | mm grep\n\"query\" -l 2`)\n- Results ranked by distance with configurable limit\n- Auto-indexes files that haven't been embedded yet\n\n**Others/Unmentioned changes**\n- L1 extraction efficiency improvements. \n- The logic now ensures L0 columns exist for every L1 operations and\nL0+L1 columns exist for every L2 operations\n- `mm config reset-db` to clear all databases\n- Elapsed time display on timed commands\n- Version bump: 0.2.2 → 0.3.0 (pyproject.toml + Cargo.toml)\n- Updated SKILL.md, EXAMPLES.md, README.md, docs/examples.md\n\n## How to test\n\n```bash\n# Rebuild from branch\nuv pip install -e \".[dev]\" && uv run maturin develop --release\n\n# Verify semantic search end-to-end (requires a configured profile + Gemini API key)\nmm config init\nmm profile use default\nmm cat tests/fixtures/sample.pdf -l 2        # index a file (triggers embedding)\nmm grep \"your query\" tests/fixtures -l 2     # semantic search\n\n# Verify SQL routing\nmm sql --list-tables                         # should show files, l2_results, chunks, chunks_vec\nmm sql \"SELECT COUNT(*) FROM chunks\"\n\n# Run unit tests (no external deps)\nmake test\n\n---\n\ncc @spillai",
+          "timestamp": "2026-04-08T14:26:00+01:00",
+          "tree_id": "7d78194ef9c720193ebb4889c84c288a7f196736",
+          "url": "https://github.com/vlm-run/mm/commit/b78951dd62fb7e5733885c391773cc679d530eff"
+        },
+        "date": 1775655445537,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "hash_strategies/fast_fingerprint/10MB",
+            "value": 22181.483637213652,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_strategies/fast_fingerprint/1KB",
+            "value": 11689.488817204301,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_strategies/fast_fingerprint/1MB",
+            "value": 20819.940104166664,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_strategies/fast_fingerprint/64KB",
+            "value": 15760.919767293184,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_strategies/full_hash_mmap/10MB",
+            "value": 453301.19024547806,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_strategies/full_hash_mmap/1KB",
+            "value": 10535.719590743043,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_strategies/full_hash_mmap/1MB",
+            "value": 77750.62254873716,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_strategies/full_hash_mmap/64KB",
+            "value": 15722.231909924201,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_strategies/full_hash_read/10MB",
+            "value": 803952.6024096386,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_strategies/full_hash_read/1KB",
+            "value": 5108.895090564147,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_strategies/full_hash_read/1MB",
+            "value": 87236.67074074074,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_strategies/full_hash_read/64KB",
+            "value": 9737.26803603753,
+            "unit": "ns"
+          },
+          {
+            "name": "l0_index/1000",
+            "value": 4437793.208333334,
+            "unit": "ns"
+          },
+          {
+            "name": "l0_index/10000",
+            "value": 33313528,
+            "unit": "ns"
+          },
+          {
+            "name": "l0_walk/1000",
+            "value": 4329848.708333334,
+            "unit": "ns"
+          },
+          {
+            "name": "l0_walk/10000",
+            "value": 32899185.5,
+            "unit": "ns"
+          },
+          {
+            "name": "l1_code_extract/10",
+            "value": 51555.08459749553,
+            "unit": "ns"
+          },
+          {
+            "name": "l1_code_extract/100",
+            "value": 545558.5345849802,
+            "unit": "ns"
+          },
+          {
+            "name": "l1_image_extract/10",
+            "value": 2084068.7916666665,
+            "unit": "ns"
+          },
+          {
+            "name": "l1_image_extract/50",
+            "value": 13487406.375,
             "unit": "ns"
           }
         ]
