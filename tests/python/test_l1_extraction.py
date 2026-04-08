@@ -14,10 +14,9 @@ import zlib
 from pathlib import Path
 
 import pytest
-from typer.testing import CliRunner
-
 from mm.cli import app
 from mm.context import Context
+from typer.testing import CliRunner
 
 runner = CliRunner()
 
@@ -46,6 +45,7 @@ def _write_png(path: Path, width: int, height: int):
 def _write_jpeg(path: Path, width: int = 10, height: int = 10):
     try:
         from PIL import Image
+
         img = Image.new("RGB", (width, height), color=(64, 128, 0))
         img.save(str(path), format="JPEG")
     except ImportError:
@@ -68,17 +68,30 @@ def _ffmpeg_available() -> bool:
         return False
 
 
-def _make_test_video(path: Path, width: int = 320, height: int = 240, duration: float = 1.0, fps: int = 10):
+def _make_test_video(
+    path: Path, width: int = 320, height: int = 240, duration: float = 1.0, fps: int = 10
+):
     """Generate a real video via ffmpeg."""
     subprocess.run(
         [
-            "ffmpeg", "-y",
-            "-f", "lavfi",
-            "-i", f"color=c=blue:s={width}x{height}:d={duration}:r={fps}",
-            "-f", "lavfi",
-            "-i", f"sine=frequency=440:duration={duration}",
-            "-c:v", "libx264", "-pix_fmt", "yuv420p",
-            "-c:a", "aac", "-b:a", "64k",
+            "ffmpeg",
+            "-y",
+            "-f",
+            "lavfi",
+            "-i",
+            f"color=c=blue:s={width}x{height}:d={duration}:r={fps}",
+            "-f",
+            "lavfi",
+            "-i",
+            f"sine=frequency=440:duration={duration}",
+            "-c:v",
+            "libx264",
+            "-pix_fmt",
+            "yuv420p",
+            "-c:a",
+            "aac",
+            "-b:a",
+            "64k",
             str(path),
         ],
         capture_output=True,
@@ -100,11 +113,7 @@ def code_tree(tmp_path: Path) -> Path:
         "if __name__ == '__main__':\n"
         "    print(greet('world'))\n"
     )
-    (tmp_path / "main.rs").write_text(
-        "fn main() {\n"
-        "    println!(\"Hello, world!\");\n"
-        "}\n"
-    )
+    (tmp_path / "main.rs").write_text('fn main() {\n    println!("Hello, world!");\n}\n')
     (tmp_path / "app.js").write_text(
         "const express = require('express');\n"
         "const app = express();\n"
@@ -186,6 +195,7 @@ class TestCodeL1:
     def test_text_preview_length_capped(self, code_tree: Path):
         ctx = Context(code_tree)
         result = ctx._scanner.extract_l1("hello.py")
+        assert result.text_preview is not None
         assert len(result.text_preview) <= 500
 
     def test_content_hash_populated(self, code_tree: Path):
@@ -246,6 +256,7 @@ class TestImageL1:
         result = ctx._scanner.extract_l1("photo.jpg")
         try:
             import PIL  # noqa
+
             assert result.dimensions is not None
             assert "x" in result.dimensions
         except ImportError:
@@ -294,16 +305,25 @@ class TestImageL1:
         assert hasattr(result, "exif_orientation")
 
     def test_cat_level1_image(self, image_tree: Path):
-        result = runner.invoke(app, [
-            "cat", str(image_tree / "small.png"), "--level", "1",
-        ])
+        result = runner.invoke(
+            app, ["cat", str(image_tree / "small.png"), "--level", "1", "--no-cache"]
+        )
         assert result.exit_code == 0
         assert "16x16" in result.output
 
     def test_cat_image_json(self, image_tree: Path):
-        result = runner.invoke(app, [
-            "cat", str(image_tree / "small.png"), "--level", "1", "--format", "json",
-        ])
+        result = runner.invoke(
+            app,
+            [
+                "cat",
+                str(image_tree / "small.png"),
+                "--level",
+                "1",
+                "--format",
+                "json",
+                "--no-cache",
+            ],
+        )
         assert result.exit_code == 0
         data = json.loads(result.output)
         assert len(data) == 1
@@ -311,9 +331,15 @@ class TestImageL1:
 
     def test_cat_level0_image_no_crash(self, image_tree: Path):
         """L0 cat of binary image must not crash Rich with MarkupError."""
-        result = runner.invoke(app, [
-            "cat", str(image_tree / "small.png"), "--level", "0",
-        ])
+        result = runner.invoke(
+            app,
+            [
+                "cat",
+                str(image_tree / "small.png"),
+                "--level",
+                "0",
+            ],
+        )
         assert result.exit_code == 0
 
     def test_cat_level0_pdf_no_crash(self, tmp_path: Path):
@@ -329,9 +355,15 @@ class TestImageL1:
             # Add bytes that look like ANSI escapes and Rich markup
             b"\x1b[?1;2c \x1b[0m [bold]not markup[/bold]"
         )
-        result = runner.invoke(app, [
-            "cat", str(pdf), "--level", "0",
-        ])
+        result = runner.invoke(
+            app,
+            [
+                "cat",
+                str(pdf),
+                "--level",
+                "0",
+            ],
+        )
         assert result.exit_code == 0
 
 
@@ -344,56 +376,77 @@ class TestVideoL1:
 
     def test_video_resolution(self, video_tree: Path):
         from mm.video import extract_video_metadata
+
         meta = extract_video_metadata(video_tree / "test_clip.mp4")
         assert meta.width == 320
         assert meta.height == 240
 
     def test_video_duration(self, video_tree: Path):
         from mm.video import extract_video_metadata
+
         meta = extract_video_metadata(video_tree / "test_clip.mp4")
         assert meta.duration_s is not None
         assert 1.5 < meta.duration_s < 3.0  # approx 2s
 
     def test_video_fps(self, video_tree: Path):
         from mm.video import extract_video_metadata
+
         meta = extract_video_metadata(video_tree / "test_clip.mp4")
         assert meta.fps is not None
         assert meta.fps > 0
 
     def test_video_codec(self, video_tree: Path):
         from mm.video import extract_video_metadata
+
         meta = extract_video_metadata(video_tree / "test_clip.mp4")
         assert meta.video_codec is not None
         assert meta.video_codec == "h264"
 
     def test_video_has_audio(self, video_tree: Path):
         from mm.video import extract_video_metadata
+
         meta = extract_video_metadata(video_tree / "test_clip.mp4")
         assert meta.has_audio is True
         assert meta.audio_codec is not None
 
     def test_video_bitrate(self, video_tree: Path):
         from mm.video import extract_video_metadata
+
         meta = extract_video_metadata(video_tree / "test_clip.mp4")
         assert meta.bitrate is not None and meta.bitrate > 0
 
     def test_video_pixel_format(self, video_tree: Path):
         from mm.video import extract_video_metadata
+
         meta = extract_video_metadata(video_tree / "test_clip.mp4")
         assert meta.pixel_format == "yuv420p"
 
     def test_cat_level1_video(self, video_tree: Path):
-        result = runner.invoke(app, [
-            "cat", str(video_tree / "test_clip.mp4"), "--level", "1",
-        ])
+        result = runner.invoke(
+            app,
+            [
+                "cat",
+                str(video_tree / "test_clip.mp4"),
+                "--level",
+                "1",
+            ],
+        )
         assert result.exit_code == 0
         assert "320x240" in result.output
         assert "h264" in result.output
 
     def test_cat_level1_video_json(self, video_tree: Path):
-        result = runner.invoke(app, [
-            "cat", str(video_tree / "test_clip.mp4"), "--level", "1", "--format", "json",
-        ])
+        result = runner.invoke(
+            app,
+            [
+                "cat",
+                str(video_tree / "test_clip.mp4"),
+                "--level",
+                "1",
+                "--format",
+                "json",
+            ],
+        )
         assert result.exit_code == 0
         data = json.loads(result.output)
         content = data[0]["content"]
@@ -409,6 +462,7 @@ class TestVideoModule:
 
     def test_nonexistent_file(self):
         from mm.video import extract_video_metadata
+
         meta = extract_video_metadata("/nonexistent/file.mp4")
         assert meta.width is None
         assert meta.duration_s is None
@@ -416,17 +470,20 @@ class TestVideoModule:
     def test_invalid_file(self, tmp_path: Path):
         (tmp_path / "garbage.mp4").write_bytes(b"\x00" * 100)
         from mm.video import extract_video_metadata
+
         meta = extract_video_metadata(tmp_path / "garbage.mp4")
         # ffprobe might partially parse or fail; either way no crash
         assert isinstance(meta.has_audio, bool)
 
     def test_ffprobe_available_check(self):
         from mm.video import ffprobe_available
+
         result = ffprobe_available()
         assert isinstance(result, bool)
 
     def test_parse_fraction(self):
         from mm.video import _parse_fraction
+
         assert _parse_fraction("30000/1001") == pytest.approx(29.97, abs=0.01)
         assert _parse_fraction("24/1") == 24.0
         assert _parse_fraction("0/0") is None
@@ -475,22 +532,38 @@ class TestCrossLevelConsistency:
 
 
 class TestHeadTailL1:
-
     def test_head_code_file(self, code_tree: Path):
-        result = runner.invoke(app, [
-            "cat", str(code_tree / "hello.py"), "-n", "2",
-        ])
+        result = runner.invoke(
+            app,
+            [
+                "cat",
+                str(code_tree / "hello.py"),
+                "-n",
+                "2",
+            ],
+        )
         assert result.exit_code == 0
 
     def test_tail_code_file(self, code_tree: Path):
-        result = runner.invoke(app, [
-            "cat", str(code_tree / "hello.py"), "-n", "-2",
-        ])
+        result = runner.invoke(
+            app,
+            [
+                "cat",
+                str(code_tree / "hello.py"),
+                "-n",
+                "-2",
+            ],
+        )
         assert result.exit_code == 0
 
     def test_grep_finds_pattern_in_code(self, code_tree: Path):
-        result = runner.invoke(app, [
-            "grep", "greet", str(code_tree),
-        ])
+        result = runner.invoke(
+            app,
+            [
+                "grep",
+                "greet",
+                str(code_tree),
+            ],
+        )
         assert result.exit_code == 0
         assert "greet" in result.output

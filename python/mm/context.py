@@ -189,9 +189,9 @@ class Context:
 
             kind = _file_kind(full_path)
             if kind != "text":
-                from mm.commands.cat import _l1
+                from mm.commands.cat import _run_l1
 
-                return _l1(full_path, kind, no_cache=no_cache)
+                return _run_l1(full_path, kind, no_cache=no_cache)
             return full_path.read_text(errors="replace")
 
         if level >= 2 and mode is not None:
