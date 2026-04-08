@@ -408,7 +408,7 @@ def _run_l1(path: Path, kind: str, *, no_cache=False) -> str:
 
     result = _handler()
     if content_hash and result and not result.startswith("["):
-        MmDatabase().put_l1(str(path), content_hash, result)
+        MmDatabase().put_l1(str(path.resolve()), content_hash, result)
     return result
 
 
