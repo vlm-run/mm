@@ -8,6 +8,10 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
+from mm.utils import batch_array
+
+MAX_MISSING = 5
+
 
 def ensure_indexed(uris: list[str]) -> None:
     """Ensure all URIs have embeddings in chunks_vec. Index missing ones via L2 pipeline."""
@@ -24,21 +28,26 @@ def ensure_indexed(uris: list[str]) -> None:
 
     indexed: set[str] = set()
     if vec_exists:
-        placeholders = ", ".join("?" * len(uris))
-        rows = db._connect.execute(
-            f"SELECT DISTINCT c.uri FROM chunks c "
-            f"JOIN chunks_vec v ON v.chunk_id = c.id "
-            f"WHERE c.uri IN ({placeholders})",
-            uris,
-        ).fetchall()
-        indexed = {r[0] for r in rows}
+        rows_items = []
+        for batch in batch_array(uris, 500):
+            placeholders = ", ".join("?" * len(batch))
+            rows = db._connect.execute(
+                f"SELECT DISTINCT c.uri FROM chunks c "
+                f"JOIN chunks_vec v ON v.chunk_id = c.id "
+                f"WHERE c.uri IN ({placeholders})",
+                batch,
+            ).fetchall()
+
+            rows_items.extend(rows)
+
+        indexed = {r[0] for r in rows_items}
 
     missing = [u for u in uris if u not in indexed]
     if not missing:
         return
 
     # Run L2 extraction + embedding on each missing file
-    from mm.commands.cat import _CatOpts, _file_kind, _l2_cached
+    from mm.commands.cat import _CatOpts, _file_kind, _run_l2
 
     opts = _CatOpts(
         level=2,
@@ -57,13 +66,19 @@ def ensure_indexed(uris: list[str]) -> None:
         format="rich",
     )
 
-    for uri in missing:
+    if len(missing) > MAX_MISSING:
+        from mm.display import console
+
+        console.print(
+            f"[yellow]Warning:[/yellow] {len(missing)} files missing embeddings, but only processing {MAX_MISSING} to avoid overload."
+        )
+
+    for uri in missing[:MAX_MISSING]:
         path = Path(uri)
         if not path.exists():
             continue
-        kind = _file_kind(path)
         try:
-            _l2_cached(path, kind, opts)
+            _run_l2(path, _file_kind(path), opts)
         except Exception:
             continue
 
