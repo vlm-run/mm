@@ -17,11 +17,11 @@ import {
 // ── Tabs ─────────────────────────────────────────────────────────
 
 const TABS = [
+  { value: "overview", label: "Overview" },
   { value: "video", label: "Video" },
   { value: "audio", label: "Audio" },
   { value: "pdf", label: "PDF" },
   { value: "image", label: "Image" },
-  { value: "overview", label: "Overview" },
 ];
 
 // ── Helpers ──────────────────────────────────────────────────────
@@ -249,7 +249,7 @@ function OverviewSection() {
 // ── Page ─────────────────────────────────────────────────────────
 
 export default function TokenCost() {
-  const [tab, setTab] = useState("video");
+  const [tab, setTab] = useState("overview");
 
   return (
     <div>

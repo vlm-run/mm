@@ -308,7 +308,7 @@ def _render_table(results: list[BenchResult], target_info: dict[str, Any]) -> No
         border_style="dim",
         box=box.ROUNDED,
     )
-    table.add_column("Group", style="dim", width=5)
+    table.add_column("Group", style="dim", width=10)
     table.add_column("Command", no_wrap=True)
     table.add_column("Mean", justify="right")
     table.add_column("\u00b1Std", justify="right", style="dim")

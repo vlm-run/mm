@@ -167,12 +167,16 @@ def resolve_command(
                 if (directory.resolve() / f.path).exists()
             )
     else:
-        count = len(files)
-        total = sum(
-            (directory.resolve() / f.path).stat().st_size
-            for f in files
-            if (directory.resolve() / f.path).exists()
-        )
+        if "{dir}" in template:
+            count = len(files)
+            total = sum(
+                (directory.resolve() / f.path).stat().st_size
+                for f in files
+                if (directory.resolve() / f.path).exists()
+            )
+        else:
+            count = 0
+            total = 0
 
     template = template.replace("{dir}", shlex.quote(resolved_dir))
     argv = shlex.split(template)
