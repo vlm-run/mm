@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1775761134637,
+  "lastUpdate": 1775771579745,
   "repoUrl": "https://github.com/vlm-run/mm",
   "entries": {
     "mm Rust Benchmarks": [
@@ -2535,6 +2535,240 @@ window.BENCHMARK_DATA = {
           {
             "name": "phash/phash/64x64",
             "value": 145902.02447444497,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "20521315+nwaughachukwuma@users.noreply.github.com",
+            "name": "Chukwuma Nwaugha",
+            "username": "nwaughachukwuma"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "d2e7d6e5b4c46d1a72a18becbd73d0c5b1d7516d",
+          "message": "Improve mm commands with indexing (#34)\n\n## Summary\n\nAdds `--index` flag to `mm grep -l 2` for on-demand L2 indexing and\n`--pre-index` to `mm sql` for on-demand L0 indexing before queries.\n\n## How to test\n\n```bash\n# Semantic indexing pipeline (requires embedding server)\nmm grep \"some query\" unindexed/dir -l 2               # should show unindexed warning + command hint\nmm grep \"some query\" unindexed/dir -l 2 --index       # should index then search\nmm grep \"some query\" unindexed/dir -l 2               # should find results without re-indexing\n\n# SQL pre-indexing\nmm sql \"SELECT kind, COUNT(*) as n FROM files\" --dir ~/data              # returns only indexed files\nmm sql \"SELECT kind, COUNT(*) as n FROM files\" --dir ~/data --pre-index  # reindex and returns the matching files\n```\n\ncc @spillai",
+          "timestamp": "2026-04-09T22:33:20+01:00",
+          "tree_id": "dd8974fa61903d6bb9ee396533cad9c210019aac",
+          "url": "https://github.com/vlm-run/mm/commit/d2e7d6e5b4c46d1a72a18becbd73d0c5b1d7516d"
+        },
+        "date": 1775771578218,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "directory_hash/directory_hash/1000_files",
+            "value": 2984459.5,
+            "unit": "ns"
+          },
+          {
+            "name": "directory_hash/directory_hash/100_files",
+            "value": 453377.66522887326,
+            "unit": "ns"
+          },
+          {
+            "name": "directory_hash/directory_hash/500_files",
+            "value": 1563213.30503792,
+            "unit": "ns"
+          },
+          {
+            "name": "find_filter/kind_and_name/1000",
+            "value": 447933.93244047614,
+            "unit": "ns"
+          },
+          {
+            "name": "find_filter/kind_and_name/5000",
+            "value": 2219137.7173913047,
+            "unit": "ns"
+          },
+          {
+            "name": "find_filter/name_regex/1000",
+            "value": 500725.38929824566,
+            "unit": "ns"
+          },
+          {
+            "name": "find_filter/name_regex/5000",
+            "value": 2198298.9782608696,
+            "unit": "ns"
+          },
+          {
+            "name": "find_filter/name_substring/1000",
+            "value": 433746.5607762018,
+            "unit": "ns"
+          },
+          {
+            "name": "find_filter/name_substring/5000",
+            "value": 2114561.0625,
+            "unit": "ns"
+          },
+          {
+            "name": "find_filter/no_filter/1000",
+            "value": 3218849.3125,
+            "unit": "ns"
+          },
+          {
+            "name": "find_filter/no_filter/5000",
+            "value": 18018840.666666664,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_large_files/fast_fingerprint/100MB",
+            "value": 21223.413723481193,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_large_files/fast_fingerprint/200MB",
+            "value": 22135.869172380022,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_large_files/fast_fingerprint/50MB",
+            "value": 21477.781526629376,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_large_files/full_hash_mmap/100MB",
+            "value": 6009113.411290323,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_large_files/full_hash_mmap/200MB",
+            "value": 11978016.355357144,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_large_files/full_hash_mmap/50MB",
+            "value": 2959110.5609318996,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_strategies/fast_fingerprint/10MB",
+            "value": 21740.971550576753,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_strategies/fast_fingerprint/1KB",
+            "value": 11455.823197897174,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_strategies/fast_fingerprint/1MB",
+            "value": 20311.99287265582,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_strategies/fast_fingerprint/64KB",
+            "value": 15299.630411003855,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_strategies/full_hash_mmap/10MB",
+            "value": 450898.2794022092,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_strategies/full_hash_mmap/1KB",
+            "value": 9821.818266057375,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_strategies/full_hash_mmap/1MB",
+            "value": 76948.42967799642,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_strategies/full_hash_mmap/64KB",
+            "value": 15285.998814123239,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_strategies/full_hash_read/10MB",
+            "value": 848071.5170940171,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_strategies/full_hash_read/1KB",
+            "value": 4940.755528561402,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_strategies/full_hash_read/1MB",
+            "value": 83389.5822368421,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_strategies/full_hash_read/64KB",
+            "value": 9695.350549345258,
+            "unit": "ns"
+          },
+          {
+            "name": "l0_index/1000",
+            "value": 4439917.863636363,
+            "unit": "ns"
+          },
+          {
+            "name": "l0_index/10000",
+            "value": 34088632.75,
+            "unit": "ns"
+          },
+          {
+            "name": "l0_walk/1000",
+            "value": 4363374.541666666,
+            "unit": "ns"
+          },
+          {
+            "name": "l0_walk/10000",
+            "value": 31732983,
+            "unit": "ns"
+          },
+          {
+            "name": "l1_code_extract/10",
+            "value": 49764.93862876254,
+            "unit": "ns"
+          },
+          {
+            "name": "l1_code_extract/100",
+            "value": 528682.1772916666,
+            "unit": "ns"
+          },
+          {
+            "name": "l1_image_extract/10",
+            "value": 2101219.125,
+            "unit": "ns"
+          },
+          {
+            "name": "l1_image_extract/50",
+            "value": 13766421.625,
+            "unit": "ns"
+          },
+          {
+            "name": "phash/hamming_distance",
+            "value": 0.31137879201736174,
+            "unit": "ns"
+          },
+          {
+            "name": "phash/phash/1024x1024",
+            "value": 23579398.96153846,
+            "unit": "ns"
+          },
+          {
+            "name": "phash/phash/2048x2048",
+            "value": 91830618.875,
+            "unit": "ns"
+          },
+          {
+            "name": "phash/phash/256x256",
+            "value": 1433204.9028175313,
+            "unit": "ns"
+          },
+          {
+            "name": "phash/phash/64x64",
+            "value": 145386.84740051348,
             "unit": "ns"
           }
         ]
