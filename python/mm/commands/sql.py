@@ -115,7 +115,8 @@ def _query_files(query: str, directory: Path, fmt: str, *, pre_index: bool = Fal
 
     # Query indexed files scoped to this directory from the persistent store
     db = MmDatabase()
-    indexed_rows = db.get_files(where=f"uri LIKE '{prefix}/%'")
+    safe_prefix = prefix.replace("'", "''")
+    indexed_rows = db.get_files(where=f"uri LIKE '{safe_prefix}/%'")
 
     if indexed_rows:
         # Load indexed rows into an in-memory SQLite table and run the user's query

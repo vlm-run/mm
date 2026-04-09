@@ -348,6 +348,15 @@ healthcare-codegen-reports/create_realistic_intake.py:21
 ### Semantic search (L2 — vector similarity)
 
 ```bash
+# Auto-index unindexed files before search
+$ mm grep "financial projections" ~/data/domains -l 2 --index
+Indexing 2 files...
+Indexed 2 files.
+
+[Search Result]
+```
+
+```bash
 $ mm grep "financial projections" ~/data/domains -l 2
 ```
 
@@ -494,6 +503,9 @@ $ mm sql "SELECT file_uri, chunk_idx, LENGTH(chunk_text) as len FROM chunks"
 
 # Count chunks
 $ mm sql "SELECT COUNT(*) as total FROM chunks"
+
+# Pre-index unindexed files before query
+$ mm sql "SELECT kind, COUNT(*) as n FROM files GROUP BY kind" --dir ~/data/domains --pre-index
 ```
 
 ---

@@ -74,7 +74,7 @@ mm
 │   ├── [x] Video: mosaic (4x4 @ 1500px) + transcript → LLM markdown
 │   ├── [x] Image: fast (10 words + 5 tags) / accurate (200 words + 10 tags + objects)
 │   ├── [x] Document extraction via docling (PDF/DOCX/PPTX → markdown)
-│   └── [ ] Embedding generation (SemanticAnalyzer trait defined, not implemented)
+│   └── [x] Embedding generation via Gemini API (text, image, audio, video, document → chunks_vec)
 │
 ├── Python API (Context class)
 │   ├── [x] L0 scan on construction (~5ms for 249 real files)
@@ -101,8 +101,8 @@ mm
 │   │   ├── [x] document L2: docling PDF/DOCX/PPTX → markdown → LLM
 │   │   ├── [x] --mosaic-*, --audio-* namespaced flags
 │   │   ├── [x] --no-cache flag bypasses L2 caches
-│   ├── [x] grep     — content search with context lines (like rg)
-│   ├── [x] sql      — SQLite SQL on file index
+│   ├── [x] grep     — content search with context lines (like rg), --index for on-demand L2 indexing
+│   ├── [x] sql      — SQLite SQL on file index, --pre-index for on-demand L0 indexing before query
 │   ├── [x] wc       — count files, bytes, lines, estimated tokens
 │   ├── [x] config   — extraction mode settings (show, init, set)
 │   ├── [x] profile  — LLM profile management (list, add, update, use, remove; default immutable, ollama reserved)
@@ -149,7 +149,7 @@ mm
 ├── Tests
 │   ├── Rust: 75 tests (meta, walk, detect, schema, table, code, image, video, audio, document, hash)
 │   ├── Python: 271 tests (CLI, Context API, pipe, L0/L1/L2, config, whisper, scenes, docling, bench)
-│   ├── Criterion benchmarks: l0_walk, l0_index, hash_strategies, l1_extract
+│   ├── Criterion benchmarks: l0_walk, l0_index, hash_strategies, l1_extract, find_filter
 │   ├── mm bench: 24 commands (L0×10, L1×8, L2×6) with bits/s throughput
 │   └── pytest-benchmark: 11 benchmarks (L0, L1, ffmpeg, e2e)
 │

@@ -78,7 +78,7 @@ def _index_one(uri: str) -> str | None:
     except Exception as e:
         from mm.display import console
 
-        console.print(f"[red]Error indexing {uri}: {e}[/red]", err=True)
+        console.print(f"[red]Error indexing {uri}: {e}[/red]")
         return None
 
 
