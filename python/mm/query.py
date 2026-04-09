@@ -26,10 +26,14 @@ def query_arrow_table(table: pa.Table, sql: str, table_name: str = "files") -> p
     n = table.num_rows
     if n > 0:
         col_lists = [table.column(c).to_pylist() for c in col_names]
-        # Convert booleans to int for SQLite
+        # Convert booleans and timestamps to SQLite-compatible types
         for ci, field in enumerate(table.schema):
             if pa.types.is_boolean(field.type):
                 col_lists[ci] = [int(v) if v is not None else None for v in col_lists[ci]]
+            elif pa.types.is_timestamp(field.type):
+                col_lists[ci] = [
+                    int(v.timestamp() * 1_000_000) if v is not None else None for v in col_lists[ci]
+                ]
         rows = [tuple(col_lists[ci][i] for ci in range(len(col_names))) for i in range(n)]
         placeholders = ", ".join("?" * len(col_names))
         db.executemany(f"INSERT INTO {table_name} VALUES ({placeholders})", rows)
