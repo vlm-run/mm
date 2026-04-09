@@ -30,7 +30,17 @@ def grep_cmd(
         ),
     ] = None,
 ) -> None:
-    """Search file contents -- text and semantic (like rg/grep)."""
+    """Search file contents -- text and semantic (like rg/grep).
+
+    \b
+    Examples:
+      mm grep "TODO" ~/project                          # search all files
+      mm grep "import.*torch" ~/project --kind code     # code files only
+      mm grep "attention" ~/papers --ext .pdf --level 1 # search PDF text
+      mm grep "error|warn" ~/logs -C 2                  # context lines
+      mm grep "neural network" ~/data --level 2         # semantic search
+      mm grep "def main" ~/src --count                  # match counts only
+    """
     from mm.display import resolve_format
 
     fmt = resolve_format(format)

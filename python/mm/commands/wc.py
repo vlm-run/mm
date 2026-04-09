@@ -27,7 +27,15 @@ def wc_cmd(
         typer.Option("--format", help="Output format: json, tsv, csv, dataset-jsonl, dataset-hf"),
     ] = None,
 ) -> None:
-    """Count files, bytes, lines, and estimated tokens (like wc for LLM context)."""
+    """Count files, bytes, lines, and estimated tokens (like wc for LLM context).
+
+    \b
+    Examples:
+      mm wc ~/project                        # summary panel
+      mm wc ~/project --by-kind              # breakdown by file kind
+      mm wc ~/project --kind code            # code files only
+      mm wc ~/project --format json          # JSON output
+    """
     from mm._mm import Scanner
     from mm.display import resolve_format
 
