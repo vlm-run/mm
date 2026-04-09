@@ -19,29 +19,23 @@ Always use `--format json` for machine-readable output when parsing results prog
 ## Installation
 
 ```bash
-# Install via uv (recommended)
-uv tool install mm --from "git+https://github.com/vlm-run/mm.git@v0.4.0"
+# First run `mm --help` or `mm --version` to confirm mm isn't already installed
 
-# using curl
 curl -LsSf https://vlm-run.github.io/mm/install/install.sh | MM_FROM_GIT=1 sh
-
-# Or from source
-git clone https://github.com/vlm-run/mm.git && cd mm
-uv pip install -e ".[dev]" && uv run maturin develop --release
 ```
 
 ## Commands
 
-| Command   | Purpose                                                                |
-| --------- | ---------------------------------------------------------------------- |
+| Command   | Purpose                                                                     |
+| --------- | --------------------------------------------------------------------------- |
 | `find`    | Locate/list files by name/kind/ext/size, tabular listing, tree view, schema |
-| `cat`     | Content extraction (auto-detected by file type × level)                |
-| `grep`    | Content search — text (L0/L1) and semantic (L2 via embeddings)         |
-| `sql`     | SQL on files, L2 results, and chunks (auto-routed)                     |
-| `wc`      | Count files, bytes, lines, tokens                                      |
-| `bench`   | Benchmark suite (L0/L1/L2) with statistical analysis                   |
-| `config`  | Extraction mode settings (show, init, set, reset-db)                   |
-| `profile` | Manage LLM provider profiles (list, add, update, use, remove)          |
+| `cat`     | Content extraction (auto-detected by file type × level)                     |
+| `grep`    | Content search — text (L0/L1) and semantic (L2 via embeddings)              |
+| `sql`     | SQL on files, L2 results, and chunks (auto-routed)                          |
+| `wc`      | Count files, bytes, lines, tokens                                           |
+| `bench`   | Benchmark suite (L0/L1/L2) with statistical analysis                        |
+| `config`  | Extraction mode settings (show, init, set, reset-db)                        |
+| `profile` | Manage LLM provider profiles (list, add, update, use, remove)               |
 
 ## Workflow
 
@@ -172,12 +166,13 @@ mm grep "def " <dir> --kind code --level 0             # search raw content (L0)
 mm grep "financial projections" <dir> -l 2             # semantic search across all files
 mm grep "patient diagnosis" <dir> -l 2 --kind document # semantic search in documents only
 mm grep "architecture overview" <dir> -l 2 --format json  # JSON output with distances
+mm grep "revenue forecast" <dir> -l 2 --index          # auto-index unindexed files before search
 find <dir> -name * | mm grep "revenue forecast" -l 2  # semantic search piped files
 ```
 
 **Warning**: L0/L1 grep runs extraction on every matching file. On large document directories (500+ PDFs), this can take minutes. Prefer `--kind code` or `--kind text` for fast text searches.
 
-**L2 semantic search** uses embeddings stored in sqlite-vec. Files must be indexed first (`mm cat <file> -l 2`). Returns top-k results ranked by vector distance.
+**L2 semantic search** uses embeddings stored in sqlite-vec. Files must be indexed first — use `--index` to auto-index on demand, or manually via `mm cat <file> -l 2`. Returns top-k results ranked by vector distance.
 
 ## sql — SQL queries on files, L2 results, and chunks
 
@@ -199,6 +194,9 @@ mm sql "SELECT COUNT(*) as n FROM l2_results"
 
 # Chunks and embeddings (SQLite direct)
 mm sql "SELECT file_uri, chunk_idx, LENGTH(chunk_text) as len FROM chunks"
+
+# Pre-index unindexed files before query
+mm sql "SELECT kind, COUNT(*) as n FROM files GROUP BY kind" --dir <dir> --pre-index
 
 # List available tables
 mm sql --list-tables

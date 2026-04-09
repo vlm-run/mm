@@ -11,6 +11,18 @@ from typing import Annotated, Any, Optional
 import typer
 
 _STORED_TABLES = {"l2_results", "chunks", "chunks_vec"}
+_RICH_COLUMNS = {
+    "name",
+    "kind",
+    "ext",
+    "size",
+    "parent",
+    "mime",
+    "width",
+    "height",
+    "modified",
+    "depth",
+}
 
 
 def sql_cmd(
@@ -27,6 +39,12 @@ def sql_cmd(
     ] = None,
     list_tables: Annotated[
         bool, typer.Option("--list-tables", help="List available tables")
+    ] = False,
+    pre_index: Annotated[
+        bool,
+        typer.Option(
+            "--pre-index", help="Index unindexed files (L0) before querying the files table"
+        ),
     ] = False,
 ) -> None:
     """Query file metadata, L2 results, and chunks with SQL.
@@ -59,7 +77,7 @@ def sql_cmd(
     if table_name != "files":
         _query_stored(query, fmt)
     else:
-        _query_files(query, directory, fmt)
+        _query_files(query, directory, fmt, pre_index=pre_index)
 
 
 def _detect_table(query: str) -> str:
@@ -83,15 +101,132 @@ def _query_stored(query: str, fmt: str) -> None:
     _emit(columns, rows, fmt)
 
 
-def _query_files(query: str, directory: Path, fmt: str) -> None:
-    """Scan directory → temp SQLite table → query."""
+def _query_files(query: str, directory: Path, fmt: str, *, pre_index: bool = False) -> None:
+    """Query the files table from the persistent DB. Show diff of unindexed files."""
     from mm.context import Context
-    from mm.query import query_arrow_table
+    from mm.store.db import MmDatabase
 
-    result = query_arrow_table(Context(directory).to_arrow(), query)
-    columns = result.column_names
-    rows = list(zip(*(result.column(c).to_pylist() for c in columns)))
-    _emit(columns, rows, fmt)
+    resolved = directory.resolve()
+    prefix = str(resolved)
+    if pre_index:
+        # DO an L0 before querying
+        ctx = Context(directory)
+        ctx.save()
+
+    # Query indexed files scoped to this directory from the persistent store
+    db = MmDatabase()
+    safe_prefix = prefix.replace("'", "''")
+    indexed_rows = db.get_files(where=f"uri LIKE '{safe_prefix}/%'")
+
+    if indexed_rows:
+        # Load indexed rows into an in-memory SQLite table and run the user's query
+        columns, rows = _query_dicts_as_files(indexed_rows, query)
+        if fmt == "rich" and len(columns) > len(_RICH_COLUMNS):
+            columns, rows = _trim_columns(columns, rows)
+        _emit(columns, rows, fmt)
+    else:
+        _emit([], [], fmt)
+
+    # Compute diff: files on disk but not in DB (only in rich mode, and not when pre-indexing)
+    if not pre_index and fmt == "rich":
+        ctx = Context(directory)
+        disk_uris = {str(resolved / f.path) for f in ctx.files}
+        db_uris_rows = db._connect.execute(
+            "SELECT uri FROM files WHERE uri LIKE ?", (f"{prefix}/%",)
+        ).fetchall()
+
+        db_uris = {r[0] for r in db_uris_rows}
+        unindexed = sorted(disk_uris - db_uris)
+        if unindexed:
+            _show_unindexed_diff(unindexed, prefix, query, directory)
+
+
+def _trim_columns(columns: list[str], rows: list[tuple]) -> tuple[list[str], list[tuple]]:
+    keep = [i for i, c in enumerate(columns) if c in _RICH_COLUMNS]
+    new_columns = [columns[i] for i in keep]
+    new_rows = [tuple(row[i] for i in keep) for row in rows]
+    return new_columns, new_rows
+
+
+def _show_unindexed_diff(unindexed: list[str], prefix: str, query: str, directory: Path) -> None:
+    """Print the diff of unindexed files as a Rich table to stderr."""
+    from rich import box
+    from rich.console import Console
+    from rich.table import Table
+
+    from mm.display import output_console
+
+    err = Console(stderr=True, force_terminal=False)
+
+    diff_table = Table(
+        title=f"{len(unindexed)} unindexed file{'s' if len(unindexed) != 1 else ''}",
+        box=box.ROUNDED,
+        border_style="yellow",
+        header_style="bold yellow",
+        title_style="yellow",
+    )
+    diff_table.add_column("path", style="white", overflow="fold")
+    for uri in unindexed[:5]:
+        rel = uri[len(prefix) + 1 :] if uri.startswith(prefix) else uri
+        diff_table.add_row(rel)
+    if len(unindexed) > 5:
+        diff_table.add_row(f"[dim]... and {len(unindexed) - 5} more[/dim]")
+    err.print()
+    err.print(diff_table)
+
+    cmd = f'mm sql "{query}" --dir {directory} --pre-index'
+    output_console.print(f"\n[dim]To include these files, run:[/dim]\n  [bold]{cmd}[/bold]")
+
+
+def _query_dicts_as_files(rows: list[dict[str, Any]], query: str) -> tuple[list[str], list[tuple]]:
+    """Load dict rows into an in-memory SQLite 'files' table and execute query."""
+    import sqlite3
+
+    db = sqlite3.connect(":memory:")
+    if not rows:
+        return [], []
+
+    # Infer columns from first row; use INTEGER affinity for numeric columns
+    _INT_COLS = {
+        "size",
+        "width",
+        "height",
+        "depth",
+        "is_binary",
+        "line_count",
+        "word_count",
+        "pages",
+        "has_audio",
+        "indexed_at",
+        "l1_indexed_at",
+    }
+    _REAL_COLS = {"modified", "created", "duration_s", "fps"}
+    all_cols = list(rows[0].keys())
+
+    def _col_type(c: str) -> str:
+        if c in _INT_COLS:
+            return "INTEGER"
+        if c in _REAL_COLS:
+            return "REAL"
+        return "TEXT"
+
+    col_defs = ", ".join(f'"{c}" {_col_type(c)}' for c in all_cols)
+    db.execute(f"CREATE TABLE files ({col_defs})")
+
+    placeholders = ", ".join("?" * len(all_cols))
+    db.executemany(
+        f"INSERT INTO files VALUES ({placeholders})",
+        [
+            tuple(str(r.get(c, "")) if r.get(c) is not None else None for c in all_cols)
+            for r in rows
+        ],
+    )
+
+    cursor = db.execute(query)
+    columns = [desc[0] for desc in cursor.description] if cursor.description else []
+    result_rows = cursor.fetchall()
+    db.close()
+    return columns, result_rows
 
 
 def _list_tables(fmt: str) -> None:

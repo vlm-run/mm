@@ -40,8 +40,8 @@ mm cat photo.png -l 2 --detail               # LLM caption (~80 words)
 |---------|---------|-----------|
 | `find`  | Find/list files, tree view, schema | `--name`, `--kind`, `--ext`, `--min-size`, `--max-size`, `--sort`, `--reverse`, `--columns`, `--tree`, `--depth`, `--schema`, `--limit`, `--format` |
 | `cat` | Content extraction (auto-detected by file type) | `--level 0/1/2`, `-n`, `--detail`, `--mosaic-*`, `--audio-*`, `--format` |
-| `grep` | Content search — text (L0/L1) and semantic (L2) | `--kind`, `--ext`, `-C`, `--count`, `--level`, `--format` |
-| `sql` | SQL queries on file index, L2 results, chunks, and embeddings | `--dir`, `--format`, `--list-tables` |
+| `grep` | Content search — text (L0/L1) and semantic (L2) | `--kind`, `--ext`, `-C`, `--count`, `--level`, `--index`, `--format` |
+| `sql` | SQL queries on file index, L2 results, chunks, and embeddings | `--dir`, `--pre-index`, `--format`, `--list-tables` |
 | `wc` | Count files, bytes, lines, tokens | `--kind`, `--by-kind`, `--format` |
 | `bench` | Benchmark suite (L0/L1/L2) | `--format`, `--rounds` |
 | `config` | Extraction mode settings | `show`, `init`, `set`, `reset-db` |
@@ -94,6 +94,7 @@ mm grep "invoice" ~/data --count               # match counts per file
 
 # Semantic search (L2 — vector similarity via embeddings)
 mm grep "financial projections" ~/data -l 2    # semantic search
+mm grep "financial projections" ~/data -l 2 --index  # auto-index before search
 mm grep "patient diagnosis" ~/data -l 2 --kind document --format json
 ```
 
@@ -109,6 +110,7 @@ mm sql "SELECT kind, COUNT(*) as n, ROUND(SUM(size)/1e6,1) as mb \
 # Query stored tables directly (auto-detected from table name)
 mm sql "SELECT file_uri, summary FROM l2_results LIMIT 10"
 mm sql "SELECT file_uri, chunk_idx, LENGTH(chunk_text) FROM chunks"
+mm sql "SELECT * FROM files WHERE kind='image'" --dir ~/data --pre-index  # index before query
 mm sql --list-tables                              # show available tables
 ```
 

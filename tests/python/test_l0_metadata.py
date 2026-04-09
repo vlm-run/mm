@@ -384,6 +384,7 @@ class TestL0Cli:
             "SELECT name, width, height FROM files WHERE width IS NOT NULL",
             "--dir", str(media_tree),
             "--format", "json",
+            "--pre-index",
         ])
         assert result.exit_code == 0
         data = json.loads(result.output)

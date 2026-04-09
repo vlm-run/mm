@@ -1,27 +1,29 @@
-"""Semantic search — ensure embeddings exist, then KNN query.
+"""Semantic search — check indexing status, index on demand, then KNN query.
 
 Used by `mm grep -l 2` to search inside files using vector similarity.
 """
 
 from __future__ import annotations
 
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from typing import Any
 
+import typer
+
 from mm.utils import batch_array
 
-MAX_MISSING = 5
+MAX_INDEX = 50
 
 
-def ensure_indexed(uris: list[str]) -> None:
-    """Ensure all URIs have embeddings in chunks_vec. Index missing ones via L2 pipeline."""
+def check_indexed(uris: list[str]) -> tuple[set[str], list[str]]:
+    """Return (indexed_set, missing_list) for the given URIs."""
     if not uris:
-        return
+        return set(), []
 
     from mm.store.db import MmDatabase
 
     db = MmDatabase()
-    # Find which URIs already have embeddings
     vec_exists = db._connect.execute(
         "SELECT 1 FROM sqlite_master WHERE type='table' AND name='chunks_vec'"
     ).fetchone()
@@ -37,16 +39,15 @@ def ensure_indexed(uris: list[str]) -> None:
                 f"WHERE c.file_uri IN ({placeholders})",
                 batch,
             ).fetchall()
-
             rows_items.extend(rows)
-
         indexed = {r[0] for r in rows_items}
 
     missing = [u for u in uris if u not in indexed]
-    if not missing:
-        return
+    return indexed, missing
 
-    # Run L2 extraction + embedding on each missing file
+
+def _index_one(uri: str) -> str | None:
+    """Index a single file via L2 pipeline. Returns URI on success, None on failure."""
     from mm.commands.cat import _CatOpts, _file_kind, _run_l2
 
     opts = _CatOpts(
@@ -66,21 +67,45 @@ def ensure_indexed(uris: list[str]) -> None:
         format="rich",
     )
 
-    if len(missing) > MAX_MISSING:
+    path = Path(uri)
+    if not path.exists():
+        return None
+    try:
+        result = _run_l2(path, _file_kind(path), opts)
+        if not result.startswith("["):
+            return uri
+        raise ValueError(f"Failed to extract L2 for {uri}: {result}")
+    except Exception as e:
         from mm.display import console
 
+        console.print(f"[red]Error indexing {uri}: {e}[/red]")
+        return None
+
+
+def index_missing(missing: list[str], *, max_files: int = MAX_INDEX) -> int:
+    """Index up to *max_files* URIs in parallel. Returns count of successfully indexed files."""
+    from mm.display import console
+
+    to_index = missing[:max_files]
+    if len(missing) > max_files:
         console.print(
-            f"[yellow]Warning:[/yellow] {len(missing)} files missing embeddings, but only processing {MAX_MISSING} to avoid overload."
+            f"[yellow]Note:[/yellow] Indexing {max_files} of {len(missing)} unindexed files."
+        )
+    else:
+        console.print(
+            f"[dim]Indexing {len(to_index)} file{'s' if len(to_index) != 1 else ''}...[/dim]"
         )
 
-    for uri in missing[:MAX_MISSING]:
-        path = Path(uri)
-        if not path.exists():
-            continue
-        try:
-            _run_l2(path, _file_kind(path), opts)
-        except Exception:
-            continue
+    workers = min(4, len(to_index))
+    indexed = 0
+    with ThreadPoolExecutor(max_workers=workers) as pool:
+        futures = {pool.submit(_index_one, uri): uri for uri in to_index}
+        for fut in as_completed(futures):
+            if fut.result() is not None:
+                indexed += 1
+
+    console.print(f"[green]Indexed {indexed} file{'s' if indexed != 1 else ''}.[/green]")
+    return indexed
 
 
 def search(
@@ -118,3 +143,44 @@ def search(
     ]
     results = sorted(results, key=lambda r: r["distance"])
     return results[:limit]
+
+
+def handle_missing(
+    uris: list[str],
+    pattern: str,
+    directory: Path,
+    kind: str | None,
+    ext: str | None,
+    do_index=False,
+):
+    """Handle missing indexed files: optionally index, or show instructions to the user."""
+    from mm.semantic import check_indexed, index_missing
+
+    indexed, missing = check_indexed(uris)
+    if not missing:
+        return
+
+    if missing and do_index:
+        index_missing(missing, max_files=50)
+        return
+
+    from mm.display import console
+
+    # Build the equivalent command for the user to copy
+    cmd_parts = ["mm grep"]
+    cmd_parts.append(f'"{pattern}"')
+    cmd_parts.append(str(directory))
+    if kind:
+        cmd_parts.append(f"--kind {kind}")
+    if ext:
+        cmd_parts.append(f"--ext {ext}")
+    cmd_parts.append("-l 2 --index")
+
+    console.print(f"[yellow]Warning:[/yellow] {len(missing)} of {len(uris)} files are not indexed.")
+    if not indexed:
+        console.print(
+            f"[dim]No indexed files found. Index them first:[/dim]\n"
+            f"  [bold]{' '.join(cmd_parts)}[/bold]"
+        )
+        raise typer.Exit(1)
+    console.print(f"[dim]To index missing files, run:[/dim]\n  [bold]{' '.join(cmd_parts)}[/bold]")

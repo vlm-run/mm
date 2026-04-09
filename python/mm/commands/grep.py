@@ -23,6 +23,9 @@ def grep_cmd(
         bool, typer.Option("--count", "-c", help="Show only match counts per file")
     ] = False,
     level: Annotated[int, typer.Option("--level", "-l", help="Processing level")] = 1,
+    index: Annotated[
+        bool, typer.Option("--index", help="Index unindexed files before L2 search (max 50)")
+    ] = False,
     format: Annotated[
         Optional[str],
         typer.Option(
@@ -57,6 +60,7 @@ def grep_cmd(
             fmt,
             limit=5,
             stdin_paths=stdin_paths,
+            do_index=index,
         )
         return
 
@@ -220,15 +224,16 @@ def _grep_l2(
     fmt: str,
     limit: int,
     stdin_paths: list[str] | None = None,
+    do_index=False,
 ) -> None:
-    """Semantic search: ensure files are indexed, embed query, KNN search."""
+    """Semantic search: check indexing status, optionally index, then KNN search."""
     from mm.context import Context
-    from mm.semantic import ensure_indexed, search
+    from mm.semantic import handle_missing, search
 
     path = directory.resolve()
     is_file = path.is_file()
 
-    # Collect URIs to ensure they're indexed
+    # Collect URIs
     if stdin_paths:
         uris = [str(Path(p).resolve()) for p in stdin_paths if Path(p).is_file()]
     elif is_file:
@@ -241,7 +246,8 @@ def _grep_l2(
             ctx = ctx.filter(ext=ext)
         uris = [str(path / f.path) for f in ctx.files]
 
-    ensure_indexed(uris)
+    # Check which URIs are already indexed
+    handle_missing(uris, pattern, directory, kind, ext, do_index)
 
     # Search — scope to the directories of/in piped URIs
     if stdin_paths:
