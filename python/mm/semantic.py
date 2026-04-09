@@ -71,8 +71,10 @@ def _index_one(uri: str) -> str | None:
     if not path.exists():
         return None
     try:
-        _run_l2(path, _file_kind(path), opts)
-        return uri
+        result = _run_l2(path, _file_kind(path), opts)
+        if not result.startswith("["):
+            return uri
+        raise ValueError(f"Failed to extract L2 for {uri}: {result}")
     except Exception as e:
         from mm.display import console
 
