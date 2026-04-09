@@ -1216,6 +1216,7 @@ dependencies = [
  "mp4parse",
  "parquet",
  "rayon",
+ "regex",
  "rustdct",
  "serde",
  "serde_json",

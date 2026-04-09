@@ -1,7 +1,30 @@
 use arrow::array::{AsArray, RecordBatch};
 use arrow::datatypes::DataType;
+use regex::Regex;
 
 use crate::meta::FileEntry;
+
+/// Name matcher: regex if the pattern compiles, otherwise case-insensitive substring.
+enum NameMatcher {
+    Regex(Regex),
+    Substring(String),
+}
+
+impl NameMatcher {
+    fn new(pattern: &str) -> Self {
+        match Regex::new(pattern) {
+            Ok(re) => NameMatcher::Regex(re),
+            Err(_) => NameMatcher::Substring(pattern.to_lowercase()),
+        }
+    }
+
+    fn is_match(&self, name: &str) -> bool {
+        match self {
+            NameMatcher::Regex(re) => re.is_match(name),
+            NameMatcher::Substring(pat) => name.to_lowercase().contains(pat),
+        }
+    }
+}
 
 pub enum OutputFormat {
     Markdown,
@@ -94,24 +117,28 @@ pub fn entries_to_json(entries: &[FileEntry]) -> String {
     serde_json::to_string_pretty(&rows).unwrap_or_else(|_| "[]".to_string())
 }
 
-/// Serialize entries to JSON with filtering/sorting applied in Rust.
+/// Filter + sort entries, returning references. Shared by JSON and lines output.
 #[allow(clippy::too_many_arguments)]
-pub fn entries_to_json_filtered(
-    entries: &[FileEntry],
+fn filter_entries<'a>(
+    entries: &'a [FileEntry],
     kind: Option<&str>,
     ext: Option<&str>,
     min_size: Option<u64>,
     max_size: Option<u64>,
+    name: Option<&str>,
     limit: Option<usize>,
     sort_by: Option<&str>,
     descending: bool,
-) -> String {
+) -> Vec<&'a FileEntry> {
+    let matcher = name.map(NameMatcher::new);
+
     let mut filtered: Vec<&FileEntry> = entries
         .iter()
         .filter(|e| kind.is_none() || e.kind.to_string() == kind.unwrap())
         .filter(|e| ext.is_none() || e.ext.as_str() == ext.unwrap())
         .filter(|e| min_size.is_none() || e.size >= min_size.unwrap())
         .filter(|e| max_size.is_none() || e.size <= max_size.unwrap())
+        .filter(|e| matcher.as_ref().is_none_or(|m| m.is_match(e.name.as_str())))
         .collect();
 
     if let Some(field) = sort_by {
@@ -135,6 +162,25 @@ pub fn entries_to_json_filtered(
         filtered.truncate(n);
     }
 
+    filtered
+}
+
+/// Serialize entries to JSON with filtering/sorting applied in Rust.
+#[allow(clippy::too_many_arguments)]
+pub fn entries_to_json_filtered(
+    entries: &[FileEntry],
+    kind: Option<&str>,
+    ext: Option<&str>,
+    min_size: Option<u64>,
+    max_size: Option<u64>,
+    name: Option<&str>,
+    limit: Option<usize>,
+    sort_by: Option<&str>,
+    descending: bool,
+) -> String {
+    let filtered = filter_entries(
+        entries, kind, ext, min_size, max_size, name, limit, sort_by, descending,
+    );
     let rows: Vec<serde_json::Value> = filtered.iter().map(|e| entry_to_json_value(e)).collect();
     serde_json::to_string_pretty(&rows).unwrap_or_else(|_| "[]".to_string())
 }
@@ -147,38 +193,14 @@ pub fn entries_to_lines_filtered(
     ext: Option<&str>,
     min_size: Option<u64>,
     max_size: Option<u64>,
+    name: Option<&str>,
     limit: Option<usize>,
     sort_by: Option<&str>,
     descending: bool,
 ) -> String {
-    let mut filtered: Vec<&FileEntry> = entries
-        .iter()
-        .filter(|e| kind.is_none() || e.kind.to_string() == kind.unwrap())
-        .filter(|e| ext.is_none() || e.ext.as_str() == ext.unwrap())
-        .filter(|e| min_size.is_none() || e.size >= min_size.unwrap())
-        .filter(|e| max_size.is_none() || e.size <= max_size.unwrap())
-        .collect();
-
-    if let Some(field) = sort_by {
-        filtered.sort_by(|a, b| {
-            let cmp = match field {
-                "size" => a.size.cmp(&b.size),
-                "name" => a.name.cmp(&b.name),
-                "path" => a.path.cmp(&b.path),
-                "ext" => a.ext.cmp(&b.ext),
-                "modified" => a.modified_epoch_us.cmp(&b.modified_epoch_us),
-                "created" => a.created_epoch_us.cmp(&b.created_epoch_us),
-                "depth" => a.depth.cmp(&b.depth),
-                _ => std::cmp::Ordering::Equal,
-            };
-            if descending { cmp.reverse() } else { cmp }
-        });
-    }
-
-    if let Some(n) = limit {
-        filtered.truncate(n);
-    }
-
+    let filtered = filter_entries(
+        entries, kind, ext, min_size, max_size, name, limit, sort_by, descending,
+    );
     filtered
         .iter()
         .map(|e| e.path.as_str())

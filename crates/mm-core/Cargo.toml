@@ -25,6 +25,7 @@ mp4parse = { workspace = true }
 matroska = { workspace = true }
 rustdct = { workspace = true }
 symphonia = { workspace = true }
+regex = { workspace = true }
 
 [dev-dependencies]
 criterion = { version = "0.5", features = ["html_reports"] }
