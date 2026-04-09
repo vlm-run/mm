@@ -50,3 +50,7 @@ harness = false
 [[bench]]
 name = "hash_extended"
 harness = false
+
+[[bench]]
+name = "find_filter"
+harness = false
