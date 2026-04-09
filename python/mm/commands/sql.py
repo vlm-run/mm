@@ -11,6 +11,18 @@ from typing import Annotated, Any, Optional
 import typer
 
 _STORED_TABLES = {"l2_results", "chunks", "chunks_vec"}
+_RICH_COLUMNS = {
+    "name",
+    "kind",
+    "ext",
+    "size",
+    "parent",
+    "mime",
+    "width",
+    "height",
+    "modified",
+    "depth",
+}
 
 
 def sql_cmd(
@@ -108,6 +120,8 @@ def _query_files(query: str, directory: Path, fmt: str, *, pre_index: bool = Fal
     if indexed_rows:
         # Load indexed rows into an in-memory SQLite table and run the user's query
         columns, rows = _query_dicts_as_files(indexed_rows, query)
+        if fmt == "rich" and len(columns) > len(_RICH_COLUMNS):
+            columns, rows = _trim_columns(columns, rows)
         _emit(columns, rows, fmt)
     else:
         _emit([], [], fmt)
@@ -124,6 +138,13 @@ def _query_files(query: str, directory: Path, fmt: str, *, pre_index: bool = Fal
         unindexed = sorted(disk_uris - db_uris)
         if unindexed:
             _show_unindexed_diff(unindexed, prefix, query, directory)
+
+
+def _trim_columns(columns: list[str], rows: list[tuple]) -> tuple[list[str], list[tuple]]:
+    keep = [i for i, c in enumerate(columns) if c in _RICH_COLUMNS]
+    new_columns = [columns[i] for i in keep]
+    new_rows = [tuple(row[i] for i in keep) for row in rows]
+    return new_columns, new_rows
 
 
 def _show_unindexed_diff(unindexed: list[str], prefix: str, query: str, directory: Path) -> None:
