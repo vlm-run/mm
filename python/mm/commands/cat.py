@@ -339,8 +339,10 @@ def _run_l2(path: Path, kind: str, opts: _CatOpts) -> str:
         extra_parts.append(opts.video_mosaic_strategy)
     extra = "|".join(extra_parts)
 
-    if not opts.no_cache and content_hash:
-        cached = db.get_l2(
+    if content_hash:
+        from mm.store.util import get_l2_id
+
+        l2_id = get_l2_id(
             content_hash,
             profile.name,
             profile.model,
@@ -348,8 +350,13 @@ def _run_l2(path: Path, kind: str, opts: _CatOpts) -> str:
             opts.detail,
             extra=extra,
         )
-        if cached is not None:
-            return cached
+
+        if not opts.no_cache:
+            value = db.get_l2(l2_id)
+            if value is not None:
+                return value
+        else:
+            db.evict_l2(l2_id)
 
     _run_l1(path, kind)  # Ensure L1 exist
 
@@ -361,7 +368,7 @@ def _run_l2(path: Path, kind: str, opts: _CatOpts) -> str:
 
     if content_hash and result and not result.startswith("["):
         uri = str(path.resolve())
-        db.put_l2(
+        l2_id = db.put_l2(
             uri=uri,
             content_hash=content_hash,
             profile=profile.name,
@@ -374,7 +381,7 @@ def _run_l2(path: Path, kind: str, opts: _CatOpts) -> str:
         try:
             from mm.store.embed import embed_file_chunks
 
-            embed_file_chunks(uri, content_hash, profile.name, profile.model)
+            embed_file_chunks(l2_id)
         except Exception:
             pass
     return result

@@ -1200,7 +1200,7 @@ dependencies = [
 
 [[package]]
 name = "mm-core"
-version = "0.3.1"
+version = "0.4.0"
 dependencies = [
  "arrow",
  "chrono",
@@ -1216,6 +1216,7 @@ dependencies = [
  "mp4parse",
  "parquet",
  "rayon",
+ "regex",
  "rustdct",
  "serde",
  "serde_json",
@@ -1228,7 +1229,7 @@ dependencies = [
 
 [[package]]
 name = "mm-python"
-version = "0.3.1"
+version = "0.4.0"
 dependencies = [
  "arrow",
  "mm-core",

@@ -149,15 +149,15 @@ class TestEmbedFileChunks:
         ensure_l1(db, uri)
 
         content = "Test content for embedding. " * 50
-        db.put_l2(uri, "hash1", "default", "qwen", content)
+        l2_id = db.put_l2(uri, "hash1", "default", "qwen", content)
         with patch("mm.store.db.MmDatabase", return_value=db):
-            n = embed_file_chunks(uri, "hash1", "default", "qwen")
+            n = embed_file_chunks(l2_id)
         assert n > 0
         mock_server.assert_called()
 
     def test_returns_zero_for_missing_chunks(self, db: MmDatabase, mock_server: MagicMock):
         with patch("mm.store.db.MmDatabase", return_value=db):
-            n = embed_file_chunks("/nonexistent", "hash1", "default", "qwen")
+            n = embed_file_chunks("nonexistent_id")
         assert n == 0
         mock_server.assert_not_called()
 
@@ -166,9 +166,9 @@ class TestEmbedFileChunks:
         ensure_l1(db, uri)
         content_hash = get_hash(uri)
 
-        db.put_l2(uri, content_hash, "default", "qwen", "Short text")
+        l2_id = db.put_l2(uri, content_hash, "default", "qwen", "Short text")
         with patch("mm.store.db.MmDatabase", return_value=db):
-            embed_file_chunks(uri, content_hash, "default", "qwen")
+            embed_file_chunks(l2_id)
 
         results = db.search_similar([1.0] * FAKE_DIM, limit=1)
         assert len(results) > 0
@@ -180,9 +180,9 @@ class TestEmbedFileChunks:
         content_hash = get_hash(uri)
 
         content = "Preserved content. " * 100
-        db.put_l2(uri, content_hash, "default", "qwen", content)
+        l2_id = db.put_l2(uri, content_hash, "default", "qwen", content)
         with patch("mm.store.db.MmDatabase", return_value=db):
-            embed_file_chunks(uri, content_hash, "default", "qwen")
+            embed_file_chunks(l2_id)
         full = db.get_full_content(uri, content_hash, "default", "qwen")
         assert full == content
 
@@ -219,6 +219,8 @@ class TestCatEmbedIntegration:
 
         mock_db = MagicMock()
         mock_db.get_l2.return_value = None  # cache miss
+        l2_id = "fake_l2_id"
+        mock_db.put_l2.return_value = l2_id
 
         with (
             patch("mm.commands.cat._l2", return_value="LLM generated text."),
@@ -233,4 +235,4 @@ class TestCatEmbedIntegration:
 
         assert result == "LLM generated text."
         mock_db.put_l2.assert_called_once()
-        mock_embed.assert_called_once_with(str(txt.resolve()), "fakehash", "default", "test-model")
+        mock_embed.assert_called_once_with(l2_id)

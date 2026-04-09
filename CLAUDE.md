@@ -152,7 +152,7 @@ uv run mm <command> [args]
 
 | Command   | Purpose | Key flags |
 |-----------|---------|-----------|
-| `find`    | Find/list files, tree view, schema | `--kind`, `--ext`, `--min-size`, `--max-size`, `--sort`, `--columns`, `--tree`, `--depth`, `--schema`, `--limit`, `--format` |
+| `find`    | Find/list files, tree view, schema | `--name`, `--kind`, `--ext`, `--min-size`, `--max-size`, `--sort`, `--columns`, `--tree`, `--depth`, `--schema`, `--limit`, `--format` |
 | `cat`     | Content extraction (auto-detected by file type) | `--level 0/1/2`, `-n` (head/tail), `--detail`, `--mode`, `--mosaic-*`, `--audio-*`, `--format` |
 | `grep`    | Content search across files | `--kind`, `--ext`, `-C` (context), `--count`, `--level`, `--format` |
 | `sql`     | SQL on files, L2 results, and chunks | `--dir`, `--format`, `--list-tables` |
@@ -175,6 +175,7 @@ The following commands were merged into the 5 core commands:
 ### find modes
 
 - `mm find ~/data` — tabular listing (default)
+- `mm find ~/data --name "test_.*\.py"` — filter by file name (string or regex)
 - `mm find ~/data --tree --depth 2` — hierarchical tree view with sizes
 - `mm find ~/data --schema` — column names, Arrow types, descriptions, sample values
 - `mm find ~/data --columns name,size,kind` — custom column selection

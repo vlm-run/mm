@@ -20,7 +20,7 @@ Always use `--format json` for machine-readable output when parsing results prog
 
 ```bash
 # Install via uv (recommended)
-uv tool install mm --from "git+https://github.com/vlm-run/mm.git@v0.3.0"
+uv tool install mm --from "git+https://github.com/vlm-run/mm.git@v0.4.0"
 
 # using curl
 curl -LsSf https://vlm-run.github.io/mm/install/install.sh | MM_FROM_GIT=1 sh
@@ -34,7 +34,7 @@ uv pip install -e ".[dev]" && uv run maturin develop --release
 
 | Command   | Purpose                                                                |
 | --------- | ---------------------------------------------------------------------- |
-| `find`    | Locate/list files by kind/ext/size, tabular listing, tree view, schema |
+| `find`    | Locate/list files by name/kind/ext/size, tabular listing, tree view, schema |
 | `cat`     | Content extraction (auto-detected by file type × level)                |
 | `grep`    | Content search — text (L0/L1) and semantic (L2 via embeddings)         |
 | `sql`     | SQL on files, L2 results, and chunks (auto-routed)                     |
@@ -58,6 +58,8 @@ mm find <dir> --kind image                           # all images
 mm find <dir> --kind video                           # all videos
 mm find <dir> --kind document                        # all PDFs/docs
 mm find <dir> --kind audio                           # audio files
+mm find <dir> --name "test_.*\.py"                   # filter by name (regex)
+mm find <dir> -n config                              # filter by name (substring)
 mm find <dir> --ext .png,.webp                       # by extension
 mm find <dir> --min-size 1mb --max-size 10mb         # by size range
 mm find <dir> --kind image --limit 5 --format json   # JSON output, capped
@@ -197,7 +199,6 @@ mm sql "SELECT COUNT(*) as n FROM l2_results"
 
 # Chunks and embeddings (SQLite direct)
 mm sql "SELECT file_uri, chunk_idx, LENGTH(chunk_text) as len FROM chunks"
-mm sql "SELECT COUNT(*) FROM chunks WHERE embed_model IS NOT NULL"
 
 # List available tables
 mm sql --list-tables

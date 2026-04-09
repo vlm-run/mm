@@ -19,7 +19,13 @@ def show(
         Optional[str], typer.Option("--format", help="Output format: json, tsv, csv")
     ] = None,
 ) -> None:
-    """Show resolved configuration with source annotations."""
+    """Show resolved configuration with source annotations.
+
+    \b
+    Examples:
+      mm config show
+      mm config show --format json
+    """
     from mm.config import (
         _find_config_path,
         get_full_config,
@@ -101,7 +107,13 @@ def show(
 def init(
     force: Annotated[bool, typer.Option("--force", "-f", help="Overwrite existing config")] = False,
 ) -> None:
-    """Create the default config at ~/.config/mm/mm.toml."""
+    """Create the default config at ~/.config/mm/mm.toml.
+
+    \b
+    Examples:
+      mm config init
+      mm config init --force               # overwrite existing
+    """
     from mm.config import _find_config_path, write_platform_config
     from mm.display import output_console
 
@@ -121,8 +133,14 @@ def reset_db(
 ) -> None:
     """Delete all mm databases and caches.
 
+    \b
     Removes the SQLite database under ~/.local/share/mm/.
     This action is irreversible.
+
+    \b
+    Examples:
+      mm config reset-db
+      mm config reset-db --yes             # skip confirmation
     """
     import shutil
 

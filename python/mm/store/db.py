@@ -26,9 +26,10 @@ Vector search (ANN/KNN):
 from __future__ import annotations
 
 import sqlite3
-import time
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
+
+from mm.store.util import get_l2_id, now_us
 
 if TYPE_CHECKING:
     import pyarrow as pa
@@ -40,10 +41,6 @@ CHUNK_OVERLAP = 100
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
-
-
-def _now_us() -> int:
-    return int(time.time() * 1_000_000)
 
 
 def _to_us(val) -> int | None:
@@ -107,7 +104,7 @@ class MmDatabase:
             return int(self._connect.execute("SELECT COUNT(*) FROM files").fetchone()[0])
 
         db = self._connect
-        now = _now_us()
+        now = now_us()
         # Build SQL once
         columns = "uri, name, stem, ext, size, modified, created, mime, kind, is_binary, depth, parent, width, height, phash, indexed_at"
         placeholders = ", ".join("?" * 16)
@@ -213,7 +210,7 @@ class MmDatabase:
         if self.get_file(uri) is None:
             return
 
-        data[FileCol.L1_INDEXED_AT] = _now_us()
+        data[FileCol.L1_INDEXED_AT] = now_us()
         sets = ", ".join(f"{k} = ?" for k in data)
         self._connect.execute(f"UPDATE files SET {sets} WHERE uri = ?", (*data.values(), uri))
         self._connect.commit()
@@ -225,26 +222,11 @@ class MmDatabase:
 
     # -- L2 --
 
-    def get_l2(
-        self,
-        content_hash: str,
-        profile: str,
-        model: str,
-        mode: str | None = None,
-        detail: bool = False,
-        extra: str = "",
-    ) -> str | None:
+    def get_l2(self, l2_id: str) -> str | None:
         """Look up a cached L2 result. Returns full content reassembled from chunks."""
-        row = self._connect.execute(
-            "SELECT id FROM l2_results "
-            "WHERE content_hash = ? AND profile = ? AND model = ? "
-            "AND mode IS ? AND detail = ? AND extra = ? "
-            "ORDER BY created_at DESC LIMIT 1",
-            (content_hash, profile, model, mode, int(detail), extra),
-        ).fetchone()
+        row = self._connect.execute("SELECT id FROM l2_results WHERE id = ?", (l2_id,)).fetchone()
         if row is None:
             return None
-        l2_id = row[0]
         chunks = self._connect.execute(
             "SELECT chunk_text FROM chunks WHERE l2_result_id = ? AND level = 2 ORDER BY chunk_idx",
             (l2_id,),
@@ -255,6 +237,35 @@ class MmDatabase:
         for c in chunks[1:]:
             parts.append(c[0][CHUNK_OVERLAP:])
         return "".join(parts)
+
+    def evict_l2(self, l2_id: str) -> int:
+        """Delete an L2 result + its chunks/embeddings for the given key.
+
+        chunks are cascade-deleted via FK ON DELETE CASCADE.
+        chunks_vec (sqlite-vec virtual table) doesn't support FK cascades,
+        so embeddings are cleaned up manually before the cascade fires.
+
+        Returns 1 if a row was deleted, 0 otherwise.
+        """
+        db = self._connect
+        # Clean up chunks_vec (virtual table, no FK cascade support).
+        chunk_ids = [
+            r[0]
+            for r in db.execute("SELECT id FROM chunks WHERE l2_result_id = ?", (l2_id,)).fetchall()
+        ]
+        if chunk_ids:
+            cp = ",".join("?" * len(chunk_ids))
+            has_vec = db.execute(
+                "SELECT 1 FROM sqlite_master WHERE type='table' AND name='chunks_vec'"
+            ).fetchone()
+            if has_vec:
+                db.execute(f"DELETE FROM chunks_vec WHERE chunk_id IN ({cp})", chunk_ids)
+
+        # Delete l2_results — chunks cascade-deleted via FK.
+        cursor = db.execute("DELETE FROM l2_results WHERE id = ?", (l2_id,))
+        db.commit()
+
+        return cursor.rowcount
 
     def put_l2(
         self,
@@ -267,8 +278,8 @@ class MmDatabase:
         detail=False,
         *,
         extra="",
-    ) -> int:
-        """Insert L2 result, chunk L1+L2 content. Returns l2_results.id."""
+    ) -> str:
+        """Insert or replace L2 result, chunk L1+L2 content. Returns l2_results.id."""
         self.ensure_l0(uri)
 
         # Get L1 content
@@ -276,15 +287,14 @@ class MmDatabase:
         if not l1_content:
             raise RuntimeError("L1 content not found")
 
-        now = _now_us()
+        l2_id = get_l2_id(content_hash, profile, model, mode, detail, extra=extra)
+        now = now_us()
         summary = content[:500] if len(content) > 500 else content
-        cursor = self._connect.execute(
-            "INSERT INTO l2_results (file_uri, content_hash, profile, model, mode, detail, extra, summary, created_at) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            (uri, content_hash, profile, model, mode, int(detail), extra, summary, now),
+        self._connect.execute(
+            "INSERT OR REPLACE INTO l2_results (id, file_uri, content_hash, profile, model, mode, detail, extra, summary, created_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (l2_id, uri, content_hash, profile, model, mode, int(detail), extra, summary, now),
         )
-        assert cursor.lastrowid is not None
-        l2_id: int = cursor.lastrowid
         self._connect.commit()
 
         # Chunk L1 (the raw extracted content the LLM saw) and L2 (the LLM-generated summary/description)
@@ -296,7 +306,7 @@ class MmDatabase:
 
     def _put_chunks(
         self,
-        l2_result_id: int,
+        l2_result_id: str,
         uri: str,
         content_hash: str,
         profile: str,
@@ -304,7 +314,7 @@ class MmDatabase:
         content: str,
         level: int,
     ) -> None:
-        now = _now_us()
+        now = now_us()
         step = CHUNK_SIZE - CHUNK_OVERLAP
         texts: list[str] = []
         for i in range(0, len(content), step):
@@ -324,11 +334,9 @@ class MmDatabase:
         )
         db.commit()
 
-    def get_chunks(
-        self, uri: str, content_hash: str, profile: str, model: str, *, level: int | None = None
-    ) -> list[dict[str, Any]]:
-        q = "SELECT * FROM chunks WHERE file_uri = ? AND content_hash = ? AND profile = ? AND model = ?"
-        params: list = [uri, content_hash, profile, model]
+    def get_chunks(self, l2_result_id: str, *, level: int | None = None) -> list[dict[str, Any]]:
+        q = "SELECT * FROM chunks WHERE l2_result_id = ?"
+        params: list[str | int] = [l2_result_id]
         if level is not None:
             q += " AND level = ?"
             params.append(level)
@@ -373,11 +381,8 @@ class MmDatabase:
 
     def upsert_embeddings(
         self,
-        uri: str,
-        content_hash: str,
-        profile: str,
-        model: str,
-        embed_model: str,
+        *,
+        l2_id: str,
         vectors: list[list[float]],
     ) -> None:
         if not vectors:
@@ -389,17 +394,14 @@ class MmDatabase:
         dim = len(vectors[0])
         self._ensure_vec_table(dim)
 
-        chunks = self.get_chunks(uri, content_hash, profile, model)
+        chunks = self.get_chunks(l2_id)
         n = min(len(vectors), len(chunks))
 
-        chunk_updates = []
         vec_inserts = []
         for i in range(n):
             chunk_id = chunks[i]["id"]
-            chunk_updates.append((embed_model, chunk_id))
             vec_inserts.append((chunk_id, struct.pack(f"{dim}f", *vectors[i])))
 
-        db.executemany("UPDATE chunks SET embed_model = ? WHERE id = ?", chunk_updates)
         db.executemany(
             "INSERT OR REPLACE INTO chunks_vec (chunk_id, embedding) VALUES (?, ?)", vec_inserts
         )

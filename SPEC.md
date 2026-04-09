@@ -90,7 +90,8 @@ mm
 │   └── [x] save() — persist to .mm/index.parquet
 │
 ├── CLI Commands (6 + config+profile, Typer, Unix-philosophy composability)
-│   ├── [x] find     — find/list files, tree view (--tree), schema (--schema), columns (--columns)
+│   ├── [x] --version/-v global flag
+│   ├── [x] find     — find/list files, tree view (--tree), schema (--schema), columns (--columns), name filter (--name, string/regex via Rust)
 │   ├── [x] cat      — auto-detected content extraction at L0/L1/L2
 │   │   ├── [x] head/tail via -n (replaces old head/tail commands)
 │   │   ├── [x] --mode fast|accurate (L2 modal extraction)

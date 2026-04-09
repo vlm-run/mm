@@ -372,8 +372,17 @@ def bench_cmd(
 ) -> None:
     """Benchmark all subcommands with statistical analysis.
 
+    \b
     By default, only L2 --mode fast benchmarks run. Use --mode accurate
     or --mode all to include accurate-mode benchmarks.
+
+    \b
+    Examples:
+      mm bench ~/data                              # full benchmark (L0+L1+L2)
+      mm bench ~/data --rounds 5                   # more rounds for stability
+      mm bench ~/data --format json                # JSON output for archival
+      mm bench ~/data --mode all                   # include accurate-mode L2
+      mm bench ~/data --mode accurate              # accurate-mode L2 only
     """
     from mm.commands.bench_commands import L0_COMMANDS, L1_COMMANDS, L2_COMMANDS, OVERHEAD_COMMANDS
     from mm.display import resolve_format

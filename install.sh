@@ -184,7 +184,9 @@ main() {
     verify
 
     printf "\n"
-    info "get started: mm find . --tree"
+    info "> get started:"
+    info "> mm --help"
+    info "> mm find . --tree"
     printf "\n"
 }
 

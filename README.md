@@ -24,6 +24,7 @@ L0 commands (`find`, `wc` with `--format json`) run in **~60ms** on 700 files vi
 ### Quick start
 
 ```bash
+mm --version                                 # print version
 mm find ~/data --tree --depth 1              # directory overview with sizes
 mm wc ~/data --by-kind                       # file/byte/token counts by kind
 mm find ~/data --kind image --format json    # find all images (60ms)
@@ -37,7 +38,7 @@ mm cat photo.png -l 2 --detail               # LLM caption (~80 words)
 
 | Command | Purpose | Key flags |
 |---------|---------|-----------|
-| `find`  | Find/list files, tree view, schema | `--kind`, `--ext`, `--min-size`, `--max-size`, `--sort`, `--reverse`, `--columns`, `--tree`, `--depth`, `--schema`, `--limit`, `--format` |
+| `find`  | Find/list files, tree view, schema | `--name`, `--kind`, `--ext`, `--min-size`, `--max-size`, `--sort`, `--reverse`, `--columns`, `--tree`, `--depth`, `--schema`, `--limit`, `--format` |
 | `cat` | Content extraction (auto-detected by file type) | `--level 0/1/2`, `-n`, `--detail`, `--mosaic-*`, `--audio-*`, `--format` |
 | `grep` | Content search — text (L0/L1) and semantic (L2) | `--kind`, `--ext`, `-C`, `--count`, `--level`, `--format` |
 | `sql` | SQL queries on file index, L2 results, chunks, and embeddings | `--dir`, `--format`, `--list-tables` |
@@ -53,6 +54,8 @@ mm find ~/data --kind image                               # all images
 mm find ~/data --kind video --sort size --reverse         # videos by size
 mm find ~/data --ext .pdf --min-size 10mb                 # large PDFs
 mm find ~/data --kind image --limit 5 --format json       # JSON output
+mm find ~/data --name "test_.*\.py"                       # regex name match
+mm find ~/data -n config                                  # substring name match
 
 mm find ~/data --sort size --reverse --limit 20        # tabular listing
 mm find ~/data --kind document --columns name,size,ext
@@ -106,7 +109,6 @@ mm sql "SELECT kind, COUNT(*) as n, ROUND(SUM(size)/1e6,1) as mb \
 # Query stored tables directly (auto-detected from table name)
 mm sql "SELECT file_uri, summary FROM l2_results LIMIT 10"
 mm sql "SELECT file_uri, chunk_idx, LENGTH(chunk_text) FROM chunks"
-mm sql "SELECT COUNT(*) FROM chunks WHERE embed_model IS NOT NULL"
 mm sql --list-tables                              # show available tables
 ```
 

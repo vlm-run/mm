@@ -25,6 +25,7 @@ mp4parse = { workspace = true }
 matroska = { workspace = true }
 rustdct = { workspace = true }
 symphonia = { workspace = true }
+regex = { workspace = true }
 
 [dev-dependencies]
 criterion = { version = "0.5", features = ["html_reports"] }
@@ -48,4 +49,8 @@ harness = false
 
 [[bench]]
 name = "hash_extended"
+harness = false
+
+[[bench]]
+name = "find_filter"
 harness = false

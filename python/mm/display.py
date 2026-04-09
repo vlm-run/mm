@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import functools
+import sys
 from time import perf_counter
 from typing import TYPE_CHECKING, Any, Literal
 
@@ -352,6 +353,7 @@ def arrow_table_to_rich(
 
     cols = columns or table.column_names
     nowrap_cols = {"ext", "mime", "kind", "size", "depth", "parent", "is_binary"}
+    wrap_cols = {"path", "uri", "file_uri", "name"}
     min_widths = {"size": 8, "kind": 8, "ext": 5}
     for col in cols:
         justify: Literal["left", "right"] = (
@@ -377,6 +379,7 @@ def arrow_table_to_rich(
             justify=justify,
             style=style,
             no_wrap=col in nowrap_cols,
+            overflow="fold" if col in wrap_cols else "ellipsis",
             min_width=min_widths.get(col),
         )
 
@@ -442,6 +445,9 @@ def info_panel(stats: dict[str, Any], title: str = "mm"):
 
 def display_elapsed(start_time: float) -> None:
     """display elapsed time since start_time in a human-friendly format.
+
+    Only prints when the command completed successfully.
+
     Args:
         start_time: start time in seconds (from time.perf_counter())
     """
@@ -451,3 +457,19 @@ def display_elapsed(start_time: float) -> None:
 
     elapsed_value = f"{elapsed_ms:.0f}ms" if elapsed_ms < 1000 else f"{elapsed_ms / 1000:.1f}s"
     output_console.print(f"[dim]completed in {elapsed_value} [/dim]")
+
+
+def display_elapsed_wrapper(start_time: float):
+    successful = [True]
+    original_exit = sys.exit
+
+    def check_exit(code: int | None = 0):
+        if code not in (None, 0):
+            successful[0] = False
+        original_exit(code)
+
+    def display_if_successful():
+        if successful[0]:
+            display_elapsed(start_time)
+
+    return check_exit, display_if_successful

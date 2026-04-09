@@ -51,6 +51,9 @@ def _parse_size(size_str: str) -> int:
 
 def find_cmd(
     directory: Annotated[Path, typer.Argument(help="Directory to search")] = Path("."),
+    name: Annotated[
+        Optional[str], typer.Option("--name", "-n", help="Filter by file name (string or regex)")
+    ] = None,
     kind: Annotated[Optional[str], typer.Option("--kind", "-k", help="Filter by kind")] = None,
     ext: Annotated[
         Optional[str], typer.Option("--ext", "-e", help="Filter by extension(s), comma-separated")
@@ -74,7 +77,9 @@ def find_cmd(
     ] = False,
     format: Annotated[
         Optional[str],
-        typer.Option("--format", help="Output format: json, tsv, csv, dataset-jsonl, dataset-hf"),
+        typer.Option(
+            "--format", "-f", help="Output format: json, tsv, csv, dataset-jsonl, dataset-hf"
+        ),
     ] = None,
     limit: Annotated[Optional[int], typer.Option("--limit", help="Max results")] = None,
 ) -> None:
@@ -93,20 +98,24 @@ def find_cmd(
       mm find ~/data --columns name,kind,size --limit 20    # custom columns
       mm find ~/data --tree --kind video                    # video tree
       mm find ~/data --min-size 1mb --sort size -r          # large files
+      mm find ~/data --name "test_.*\\.py"                  # regex name match
+      mm find ~/data -n config                              # substring name match
     """
     from mm.display import resolve_format
 
     fmt = resolve_format(format)
 
     if tree:
-        _find_tree(directory, kind, depth, size, fmt)
+        _find_tree(directory, kind, name, depth, size, fmt)
         return
 
     if schema:
         _find_schema(directory, fmt)
         return
 
-    _find_table(directory, kind, ext, min_size, max_size, depth, sort, reverse, columns, limit, fmt)
+    _find_table(
+        directory, kind, ext, min_size, max_size, name, depth, sort, reverse, columns, limit, fmt
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -128,6 +137,7 @@ def _find_table(
     ext: str | None,
     min_size: str | None,
     max_size: str | None,
+    name: str | None,
     depth: int | None,
     sort: str | None,
     reverse: bool,
@@ -153,6 +163,7 @@ def _find_table(
             ext=ext,
             min_size=min_bytes,
             max_size=max_bytes,
+            name=name,
             limit=limit,
             sort_by=sort,
             descending=reverse,
@@ -177,6 +188,17 @@ def _find_table(
         ctx = ctx.filter(kind=kind, ext=ext, min_size=min_size, max_size=max_size)
 
     table = ctx.to_arrow()
+
+    if name:
+        import re as re_mod
+
+        try:
+            pattern = re_mod.compile(name)
+            mask = [bool(pattern.search(str(n))) for n in table.column("name").to_pylist()]
+        except re_mod.error:
+            lower = name.lower()
+            mask = [lower in str(n).lower() for n in table.column("name").to_pylist()]
+        table = table.filter(mask)
 
     if stdin_paths:
         from mm.query import query_arrow_table
@@ -326,14 +348,19 @@ def _tree_to_json(node: dict, name: str = ".") -> dict:
 
 
 def _find_tree(
-    directory: Path, kind: str | None, depth: int | None, show_size: bool, fmt: str
+    directory: Path,
+    kind: str | None,
+    name: str | None,
+    depth: int | None,
+    show_size: bool,
+    fmt: str,
 ) -> None:
     from mm._mm import Scanner
 
     scanner = Scanner(str(Path(directory).resolve()))
     scanner.scan()
 
-    raw = json_mod.loads(scanner.to_json_fast(kind=kind))
+    raw = json_mod.loads(scanner.to_json_fast(kind=kind, name=name))
     tree_data = _build_tree(raw)
     total_files, total_bytes = _count_subtree(tree_data)
 

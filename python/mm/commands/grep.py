@@ -30,7 +30,17 @@ def grep_cmd(
         ),
     ] = None,
 ) -> None:
-    """Search file contents -- text and semantic (like rg/grep)."""
+    """Search file contents -- text and semantic (like rg/grep).
+
+    \b
+    Examples:
+      mm grep "TODO" ~/project                          # search all files
+      mm grep "import.*torch" ~/project --kind code     # code files only
+      mm grep "attention" ~/papers --ext .pdf --level 1 # search PDF text
+      mm grep "error|warn" ~/logs -C 2                  # context lines
+      mm grep "neural network" ~/data --level 2         # semantic search
+      mm grep "def main" ~/src --count                  # match counts only
+    """
     from mm.display import resolve_format
 
     fmt = resolve_format(format)
@@ -330,10 +340,10 @@ def _grep_l2(
             header_style="bold white",
             box=box.ROUNDED,
         )
-        t.add_column("path", style="magenta")
+        t.add_column("path", style="magenta", overflow="fold")
         t.add_column("index", justify="right", style="green")
         t.add_column("distance", justify="right", style="yellow")
-        t.add_column("match", style="white")
+        t.add_column("match", style="white", overflow="ellipsis")
         for r in results:
             text = r["match"]
             preview = text[:200] + "..." if len(text) > 200 else text

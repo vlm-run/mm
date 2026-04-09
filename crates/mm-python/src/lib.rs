@@ -76,7 +76,7 @@ impl Scanner {
     }
 
     /// Fast JSON: serialize entries directly, bypassing Arrow entirely.
-    #[pyo3(signature = (kind=None, ext=None, min_size=None, max_size=None, limit=None, sort_by=None, descending=false))]
+    #[pyo3(signature = (kind=None, ext=None, min_size=None, max_size=None, name=None, limit=None, sort_by=None, descending=false))]
     #[allow(clippy::too_many_arguments)]
     fn to_json_fast(
         &self,
@@ -84,6 +84,7 @@ impl Scanner {
         ext: Option<&str>,
         min_size: Option<u64>,
         max_size: Option<u64>,
+        name: Option<&str>,
         limit: Option<usize>,
         sort_by: Option<&str>,
         descending: bool,
@@ -99,6 +100,7 @@ impl Scanner {
             ext,
             min_size,
             max_size,
+            name,
             limit,
             sort_by,
             descending,
@@ -138,7 +140,7 @@ impl Scanner {
     }
 
     /// Newline-delimited paths, bypassing Arrow.
-    #[pyo3(signature = (kind=None, ext=None, min_size=None, max_size=None, limit=None, sort_by=None, descending=false))]
+    #[pyo3(signature = (kind=None, ext=None, min_size=None, max_size=None, name=None, limit=None, sort_by=None, descending=false))]
     #[allow(clippy::too_many_arguments)]
     fn to_lines_fast(
         &self,
@@ -146,6 +148,7 @@ impl Scanner {
         ext: Option<&str>,
         min_size: Option<u64>,
         max_size: Option<u64>,
+        name: Option<&str>,
         limit: Option<usize>,
         sort_by: Option<&str>,
         descending: bool,
@@ -161,6 +164,7 @@ impl Scanner {
             ext,
             min_size,
             max_size,
+            name,
             limit,
             sort_by,
             descending,
