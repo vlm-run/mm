@@ -443,15 +443,6 @@ def info_panel(stats: dict[str, Any], title: str = "mm"):
     )
 
 
-_command_failed = False
-
-
-def mark_command_failed() -> None:
-    """Mark the current command as failed so display_elapsed is suppressed."""
-    global _command_failed
-    _command_failed = True
-
-
 def display_elapsed(start_time: float) -> None:
     """display elapsed time since start_time in a human-friendly format.
 
@@ -460,9 +451,6 @@ def display_elapsed(start_time: float) -> None:
     Args:
         start_time: start time in seconds (from time.perf_counter())
     """
-    if _command_failed:
-        return
-
     assert start_time > 0
     elapsed_ms = (perf_counter() - start_time) * 1000
     from mm.display import output_console
@@ -475,8 +463,8 @@ def display_elapsed_wrapper(start_time: float):
     successful = [True]
     original_exit = sys.exit
 
-    def check_exit(code: int = 0):
-        if code != 0:
+    def check_exit(code: int | None = 0):
+        if code not in (None, 0):
             successful[0] = False
         original_exit(code)
 
