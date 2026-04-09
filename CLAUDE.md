@@ -201,7 +201,7 @@ Use `mm find <dir> --schema` to see all available columns, their Arrow types, de
 
 Use `mm sql --list-tables` to see available tables and row counts.
 
-Columns (`files`): `path`, `name`, `stem`, `ext`, `size`, `modified`, `created`, `mime`, `kind`, `is_binary`, `depth`, `parent`, `width`, `height`.
+Columns (`files`): `uri`, `name`, `stem`, `ext`, `size`, `modified`, `created`, `mime`, `kind`, `is_binary`, `depth`, `parent`, `width`, `height`.
 
 `kind` values: `image`, `video`, `document`, `code`, `audio`, `data`, `config`, `text`, `other`.
 

@@ -187,8 +187,20 @@ def _query_dicts_as_files(rows: list[dict[str, Any]], query: str) -> tuple[list[
         return [], []
 
     # Infer columns from first row; use INTEGER affinity for numeric columns
-    _INT_COLS = {"size", "width", "height", "depth", "is_binary"}
-    _REAL_COLS = {"modified", "created"}
+    _INT_COLS = {
+        "size",
+        "width",
+        "height",
+        "depth",
+        "is_binary",
+        "line_count",
+        "word_count",
+        "pages",
+        "has_audio",
+        "indexed_at",
+        "l1_indexed_at",
+    }
+    _REAL_COLS = {"modified", "created", "duration_s", "fps"}
     all_cols = list(rows[0].keys())
 
     def _col_type(c: str) -> str:
