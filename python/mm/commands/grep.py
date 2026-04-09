@@ -340,10 +340,10 @@ def _grep_l2(
             header_style="bold white",
             box=box.ROUNDED,
         )
-        t.add_column("path", style="magenta")
+        t.add_column("path", style="magenta", overflow="fold")
         t.add_column("index", justify="right", style="green")
         t.add_column("distance", justify="right", style="yellow")
-        t.add_column("match", style="white")
+        t.add_column("match", style="white", overflow="ellipsis")
         for r in results:
             text = r["match"]
             preview = text[:200] + "..." if len(text) > 200 else text

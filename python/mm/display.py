@@ -352,6 +352,7 @@ def arrow_table_to_rich(
 
     cols = columns or table.column_names
     nowrap_cols = {"ext", "mime", "kind", "size", "depth", "parent", "is_binary"}
+    wrap_cols = {"path", "uri", "file_uri", "name"}
     min_widths = {"size": 8, "kind": 8, "ext": 5}
     for col in cols:
         justify: Literal["left", "right"] = (
@@ -377,6 +378,7 @@ def arrow_table_to_rich(
             justify=justify,
             style=style,
             no_wrap=col in nowrap_cols,
+            overflow="fold" if col in wrap_cols else "ellipsis",
             min_width=min_widths.get(col),
         )
 
@@ -440,11 +442,26 @@ def info_panel(stats: dict[str, Any], title: str = "mm"):
     )
 
 
+_command_failed = False
+
+
+def mark_command_failed() -> None:
+    """Mark the current command as failed so display_elapsed is suppressed."""
+    global _command_failed
+    _command_failed = True
+
+
 def display_elapsed(start_time: float) -> None:
     """display elapsed time since start_time in a human-friendly format.
+
+    Only prints when the command completed successfully.
+
     Args:
         start_time: start time in seconds (from time.perf_counter())
     """
+    if _command_failed:
+        return
+
     assert start_time > 0
     elapsed_ms = (perf_counter() - start_time) * 1000
     from mm.display import output_console

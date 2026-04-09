@@ -202,7 +202,7 @@ def _emit(columns: list[str], rows: list[tuple], fmt: str) -> None:
             box=box.ROUNDED,
         )
         for h in headers:
-            rich_table.add_column(h)
+            rich_table.add_column(h, overflow="ellipsis" if h == "summary" else "fold")
         for row in parsed:
             styled = []
             for h, v in zip(headers, row):
