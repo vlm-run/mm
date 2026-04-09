@@ -137,6 +137,38 @@ height    uint32        Pixel height (images from header, videos via ffprobe)   
 
 ---
 
+### Filter by file name (regex or substring)
+
+```bash
+$ mm find ~/data/domains --name "invoice" --format tsv
+```
+
+```
+kind      size       path
+document  1131508    document.invoice/sample-invoice.pdf
+document  192580     document.invoice/hub_examples_document.invoice_google_invoice.pdf
+document  47568      document.invoice/hub_examples_document.invoice_receipt.pdf
+```
+
+```bash
+$ mm find ~/data/domains --name "\.mp4$" --tree
+```
+
+```
+/Users/sudeep/data/domains  (7 files, 1.6 GB)
+├── healthcare/  (1 files, 53.6 MB)
+│   └── video-walkthrough-healthcare.mp4  [53.6 MB]
+├── video.transcription/  (5 files, 1.0 GB)
+│   ├── bakery.mp4  [28.0 MB]
+│   ├── google_io_keynote_2024.mp4  [511.4 MB]
+│   ├── google_next_2025_keynote.mp4  [487.4 MB]
+│   ├── gooogle_gemini_intro video.mp4  [10.5 MB]
+│   └── how_to_build_an_mvp.mp4  [35.6 MB]
+└── google_next_2025_keynote.mp4  [487.4 MB]
+```
+
+---
+
 ### Find images sorted by size
 
 ```bash
