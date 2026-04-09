@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1775681206242,
+  "lastUpdate": 1775761134637,
   "repoUrl": "https://github.com/vlm-run/mm",
   "entries": {
     "mm Rust Benchmarks": [
@@ -2301,6 +2301,240 @@ window.BENCHMARK_DATA = {
           {
             "name": "phash/phash/64x64",
             "value": 145059.98402531334,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "20521315+nwaughachukwuma@users.noreply.github.com",
+            "name": "Chukwuma Nwaugha",
+            "username": "nwaughachukwuma"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "00ffb8fdda3aee94bcebc85d4e3fa1b34840efac",
+          "message": "Improve mm commands and messaging (#33)\n\n## Summary\n\nThis release introduces Rust-powered filtering for `find --name/-n`, CLI\nquality-of-life improvements, and a schema redesign for `l2_results` and\n`chunks` tables that eliminates duplicate entries and adds proper\ncascade deletes.\n\n### Rust-powered `find --name/-n`\n- New `--name`/`-n` flag on `mm find` — filters files by name using\nstring or regex, executed in Rust via the `regex` crate\n- Criterion benchmark suite (`find_filter.rs`) covering no-filter\nbaseline, substring, regex, and combined kind+name at 1K/10K files\n\n### L2 storage schema redesign (breaking)\n- `l2_results.id` changed from `INTEGER PRIMARY KEY AUTOINCREMENT` to\n`TEXT PRIMARY KEY` using a deterministic SHA256-based cache key\n(`content_hash:profile:model:mode:detail:extra`)\n- `l2_results.file_uri` now has `ON DELETE CASCADE` — deleting a file\ncascades to its L2 results\n- `chunks.l2_result_id` cascades on delete from `l2_results`\n- `put_l2` uses `INSERT OR REPLACE`, naturally preventing duplicate\nentries\n- New `evict_l2()` method for explicit cache eviction (`--no-cache`\npath), with manual `chunks_vec` cleanup (sqlite-vec virtual tables don't\nsupport FK cascades)\n\n### CLI improvements\n- `mm --version` / `mm -v` global flag\n- Help examples added to all commands and subcommands: `grep`, `wc`,\n`bench`, `config show`, `config init`, `config reset-db` (previously\nonly `find`, `cat`, `sql`, and `profile` had them)\n- Long path/URI cells in Rich tables now wrap (`overflow=\"fold\"`)\ninstead of truncating with ellipsis\n\n### Fixes\n- `--no-cache` on `cat -l 2` now evicts existing L2 records before\nreprocessing, preventing duplicate rows\n\n## How to test\n\n> **Breaking change**: The L2 schema has changed (`l2_results.id` is now\n`TEXT`, cascade deletes added). You must reset the database before\ntesting:\n> ```bash\n> mm config reset-db --yes\n> ```\n\n```bash\n# Build\nmake develop\n\n# Tests\nmake test\n\n# Benchmarks (Rust)\ncargo bench --bench find_filter\n\n# Manual smoke tests\nmm --version\nmm find . --name \"test_.*\\.py\"\nmm find . -n config --tree\nmm find . -n \"\\.toml$\" --format json\nmm grep \"TODO\" . --kind code\nmm wc --help\nmm cat sample_files/document.pptx -l 2\nmm cat sample_files/document.pptx -l 2 --no-cache   # should evict + reprocess, no duplicates\nmm sql \"SELECT COUNT(*) FROM l2_results\"              # verify no duplicates after --no-cache\n```\n\ncc @spillai",
+          "timestamp": "2026-04-09T19:39:09+01:00",
+          "tree_id": "16ce82f114ac4141878baec1211a126620868e5b",
+          "url": "https://github.com/vlm-run/mm/commit/00ffb8fdda3aee94bcebc85d4e3fa1b34840efac"
+        },
+        "date": 1775761133921,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "directory_hash/directory_hash/1000_files",
+            "value": 3025776.876657825,
+            "unit": "ns"
+          },
+          {
+            "name": "directory_hash/directory_hash/100_files",
+            "value": 449224.6649382716,
+            "unit": "ns"
+          },
+          {
+            "name": "directory_hash/directory_hash/500_files",
+            "value": 1567236.0833333335,
+            "unit": "ns"
+          },
+          {
+            "name": "find_filter/kind_and_name/1000",
+            "value": 444487.02771917486,
+            "unit": "ns"
+          },
+          {
+            "name": "find_filter/kind_and_name/5000",
+            "value": 2239440.4130434785,
+            "unit": "ns"
+          },
+          {
+            "name": "find_filter/name_regex/1000",
+            "value": 495357.4557057057,
+            "unit": "ns"
+          },
+          {
+            "name": "find_filter/name_regex/5000",
+            "value": 2178196,
+            "unit": "ns"
+          },
+          {
+            "name": "find_filter/name_substring/1000",
+            "value": 429463.2916666666,
+            "unit": "ns"
+          },
+          {
+            "name": "find_filter/name_substring/5000",
+            "value": 2108872.625,
+            "unit": "ns"
+          },
+          {
+            "name": "find_filter/no_filter/1000",
+            "value": 3184191.90625,
+            "unit": "ns"
+          },
+          {
+            "name": "find_filter/no_filter/5000",
+            "value": 18122261.833333332,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_large_files/fast_fingerprint/100MB",
+            "value": 22102.865795579433,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_large_files/fast_fingerprint/200MB",
+            "value": 23061.354332605344,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_large_files/fast_fingerprint/50MB",
+            "value": 23110.787022911547,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_large_files/full_hash_mmap/100MB",
+            "value": 5862503.713709677,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_large_files/full_hash_mmap/200MB",
+            "value": 11613679.347916666,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_large_files/full_hash_mmap/50MB",
+            "value": 2916350.741935484,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_strategies/fast_fingerprint/10MB",
+            "value": 22497.570026536552,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_strategies/fast_fingerprint/1KB",
+            "value": 11514.273659544993,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_strategies/fast_fingerprint/1MB",
+            "value": 20706.599170585163,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_strategies/fast_fingerprint/64KB",
+            "value": 15965.31467904855,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_strategies/full_hash_mmap/10MB",
+            "value": 456839.08027210884,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_strategies/full_hash_mmap/1KB",
+            "value": 10356.512466931217,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_strategies/full_hash_mmap/1MB",
+            "value": 79286.74743589744,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_strategies/full_hash_mmap/64KB",
+            "value": 15868.263228636108,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_strategies/full_hash_read/10MB",
+            "value": 867923.571557971,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_strategies/full_hash_read/1KB",
+            "value": 5127.195879637828,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_strategies/full_hash_read/1MB",
+            "value": 86830.49643384639,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_strategies/full_hash_read/64KB",
+            "value": 9752.864548954896,
+            "unit": "ns"
+          },
+          {
+            "name": "l0_index/1000",
+            "value": 4442398.863636363,
+            "unit": "ns"
+          },
+          {
+            "name": "l0_index/10000",
+            "value": 33979629.75,
+            "unit": "ns"
+          },
+          {
+            "name": "l0_walk/1000",
+            "value": 4298497.958333334,
+            "unit": "ns"
+          },
+          {
+            "name": "l0_walk/10000",
+            "value": 32161110.5,
+            "unit": "ns"
+          },
+          {
+            "name": "l1_code_extract/10",
+            "value": 53047.37346580947,
+            "unit": "ns"
+          },
+          {
+            "name": "l1_code_extract/100",
+            "value": 546849.1423294221,
+            "unit": "ns"
+          },
+          {
+            "name": "l1_image_extract/10",
+            "value": 2098471.4375,
+            "unit": "ns"
+          },
+          {
+            "name": "l1_image_extract/50",
+            "value": 13570500.75,
+            "unit": "ns"
+          },
+          {
+            "name": "phash/hamming_distance",
+            "value": 0.31143239571642767,
+            "unit": "ns"
+          },
+          {
+            "name": "phash/phash/1024x1024",
+            "value": 23619063.192307692,
+            "unit": "ns"
+          },
+          {
+            "name": "phash/phash/2048x2048",
+            "value": 94893653,
+            "unit": "ns"
+          },
+          {
+            "name": "phash/phash/256x256",
+            "value": 1436482.04002079,
+            "unit": "ns"
+          },
+          {
+            "name": "phash/phash/64x64",
+            "value": 145902.02447444497,
             "unit": "ns"
           }
         ]
