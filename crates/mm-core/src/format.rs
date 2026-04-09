@@ -138,7 +138,7 @@ fn filter_entries<'a>(
         .filter(|e| ext.is_none() || e.ext.as_str() == ext.unwrap())
         .filter(|e| min_size.is_none() || e.size >= min_size.unwrap())
         .filter(|e| max_size.is_none() || e.size <= max_size.unwrap())
-        .filter(|e| matcher.as_ref().map_or(true, |m| m.is_match(e.name.as_str())))
+        .filter(|e| matcher.as_ref().is_none_or(|m| m.is_match(e.name.as_str())))
         .collect();
 
     if let Some(field) = sort_by {
