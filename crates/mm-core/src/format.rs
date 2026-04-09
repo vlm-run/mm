@@ -134,11 +134,13 @@ fn filter_entries<'a>(
 
     let mut filtered: Vec<&FileEntry> = entries
         .iter()
-        .filter(|e| kind.is_none() || e.kind.to_string() == kind.unwrap())
-        .filter(|e| ext.is_none() || e.ext.as_str() == ext.unwrap())
-        .filter(|e| min_size.is_none() || e.size >= min_size.unwrap())
-        .filter(|e| max_size.is_none() || e.size <= max_size.unwrap())
-        .filter(|e| matcher.as_ref().is_none_or(|m| m.is_match(e.name.as_str())))
+        .filter(|e| {
+            kind.is_none_or(|k| e.kind.to_string() == k)
+                && ext.is_none_or(|x| e.ext.as_str() == x)
+                && min_size.is_none_or(|m| e.size >= m)
+                && max_size.is_none_or(|m| e.size <= m)
+                && matcher.as_ref().is_none_or(|m| m.is_match(e.name.as_str()))
+        })
         .collect();
 
     if let Some(field) = sort_by {
