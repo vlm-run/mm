@@ -12,6 +12,7 @@ from mm.store.schema import (
     FileCol,
     L2Col,
 )
+from mm.store.util import get_l2_id
 
 from .test_utils import ROOT, ensure_l0, ensure_l1, get_hash, scanner_table
 
@@ -228,8 +229,8 @@ class TestL2Results:
         ensure_l1(db, uri, "L1 content x", l0_kinds=["image"])
 
         content_hash = get_hash(uri)
-        db.put_l2(uri, content_hash, "default", "qwen", "A cat on a mat.")
-        result = db.get_l2("hash1", "default", "qwen")
+        l2_id = db.put_l2(uri, content_hash, "default", "qwen", "A cat on a mat.")
+        result = db.get_l2(l2_id)
 
         assert result == "A cat on a mat."
         assert db.get_l1("hash1") == "L1 content x"
@@ -239,16 +240,21 @@ class TestL2Results:
         ensure_l1(db, uri, l0_kinds=["image"])
 
         content_hash = get_hash(uri)
-        db.put_l2("/test/data/img.png", content_hash, "default", "qwen", "A cat.")
-        assert db.get_l2(content_hash, "other_profile", "qwen") is None
+        l2_id = db.put_l2(uri, content_hash, "default", "qwen", "A cat.")
+        incorrect_l2_id = get_l2_id(content_hash, "other_profile", "qwen", None, False)
+
+        assert db.get_l2(l2_id) == "A cat."
+        assert db.get_l2(incorrect_l2_id) is None
 
     def test_l2_miss_wrong_model(self, db: MmDatabase):
         uri = "/test/data/img.png"
         ensure_l1(db, uri, l0_kinds=["image"])
 
         content_hash = get_hash(uri)
-        db.put_l2(uri, content_hash, "default", "qwen", "A cat.")
-        assert db.get_l2("hash1", "default", "gpt-4") is None
+        l2_id = db.put_l2(uri, content_hash, "default", "qwen", "A cat.")
+        incorrect_l2_id = get_l2_id(content_hash, "default", "gpt-4", None, False)
+        assert db.get_l2(l2_id) == "A cat."
+        assert db.get_l2(incorrect_l2_id) is None
 
     def test_l2_returns_full_content(self, db: MmDatabase):
         uri = "/test/data/doc.txt"
@@ -256,22 +262,147 @@ class TestL2Results:
 
         long_content = "x" * 2000
         content_hash = get_hash(uri)
-        db.put_l2(uri, content_hash, "default", "qwen", long_content)
+        l2_id = db.put_l2(uri, content_hash, "default", "qwen", long_content)
 
-        result = db.get_l2("hash1", "default", "qwen")
-        assert len(result) == 2000
+        assert len(db.get_l2(l2_id)) == 2000
 
     def test_l2_with_mode_and_detail(self, db: MmDatabase):
         uri = "/test/data/img.png"
         ensure_l1(db, uri)
 
         content_hash = get_hash(uri)
-        db.put_l2(uri, content_hash, "default", "qwen", "fast result", mode="fast")
-        db.put_l2(uri, content_hash, "default", "qwen", "detailed", detail=True)
 
-        assert db.get_l2(content_hash, "default", "qwen", mode="fast") == "fast result"
-        assert db.get_l2(content_hash, "default", "qwen", detail=True) == "detailed"
-        assert db.get_l2(content_hash, "default", "qwen", mode="accurate") is None
+        id_fast = get_l2_id(content_hash, "default", "qwen", "fast", False)
+        _id_fast = db.put_l2(uri, content_hash, "default", "qwen", "fast result", mode="fast")
+        assert _id_fast == id_fast
+        assert db.get_l2(id_fast) == "fast result"
+
+        id_detail = get_l2_id(content_hash, "default", "qwen", None, True)
+        _id_detail = db.put_l2(uri, content_hash, "default", "qwen", "detailed", detail=True)
+        assert _id_detail == id_detail
+        assert db.get_l2(_id_detail) == "detailed"
+
+        id_accurate = get_l2_id(content_hash, "default", "qwen", "accurate", False)
+        assert db.get_l2(id_accurate) is None
+
+
+# ---------------------------------------------------------------------------
+# Eviction (--no-cache)
+# ---------------------------------------------------------------------------
+
+
+class TestEvictL2:
+    def test_evict_removes_l2_and_chunks(self, db: MmDatabase):
+        uri = "/test/data/img.png"
+        ensure_l1(db, uri, l0_kinds=["image"])
+        content_hash = get_hash(uri)
+
+        l2_id = db.put_l2(uri, content_hash, "default", "qwen", "A cat on a mat.")
+        assert db.get_l2(l2_id) is not None
+
+        # Verify chunks exist
+        chunks = db.get_chunks(l2_id)
+        assert len(chunks) > 0
+
+        evicted = db.evict_l2(l2_id)
+        assert evicted == 1
+        assert db.get_l2(l2_id) is None
+
+        # Chunks should be cascade-deleted
+        chunks_after = db.get_chunks(l2_id)
+        assert len(chunks_after) == 0
+
+    def test_evict_returns_zero_when_nothing_to_evict(self, db: MmDatabase):
+        assert db.evict_l2("nonexistent_id") == 0
+
+    def test_evict_only_matching_key(self, db: MmDatabase):
+        """Evicting one (profile, model, mode) should not affect others."""
+        uri = "/test/data/img.png"
+        ensure_l1(db, uri, l0_kinds=["image"])
+        content_hash = get_hash(uri)
+
+        id_fast = db.put_l2(uri, content_hash, "default", "qwen", "fast result", mode="fast")
+        id_accurate = db.put_l2(
+            uri, content_hash, "default", "qwen", "accurate result", mode="accurate"
+        )
+
+        db.evict_l2(id_fast)
+        assert db.get_l2(id_fast) is None
+        assert db.get_l2(id_accurate) == "accurate result"
+
+    def test_put_overwrites_no_duplicates(self, db: MmDatabase):
+        """Repeated put_l2 with same key overwrites via deterministic PK — no duplicates."""
+        uri = "/test/data/img.png"
+        ensure_l1(db, uri, l0_kinds=["image"])
+        content_hash = get_hash(uri)
+
+        id_v1 = db.put_l2(uri, content_hash, "default", "qwen", "version 1")
+        db.put_l2(uri, content_hash, "default", "qwen", "version 2")
+        db.put_l2(uri, content_hash, "default", "qwen", "version 3")
+
+        # Only the latest content should be retrievable
+        assert db.get_l2(id_v1) == "version 3"
+
+        # Exactly one l2_results row for this key
+        row = db._connect.execute(
+            "SELECT COUNT(*) FROM l2_results WHERE content_hash = ? AND profile = ? AND model = ?",
+            (content_hash, "default", "qwen"),
+        ).fetchone()
+        assert row[0] == 1
+
+    def test_deterministic_id(self, db: MmDatabase):
+        """put_l2 returns a deterministic sha256-based ID for the same parameters."""
+        uri = "/test/data/img.png"
+        ensure_l1(db, uri, l0_kinds=["image"])
+        content_hash = get_hash(uri)
+
+        id1 = db.put_l2(uri, content_hash, "default", "qwen", "content A")
+        # Overwrite with different content but same key
+        id2 = db.put_l2(uri, content_hash, "default", "qwen", "content B")
+        assert id1 == id2
+        assert isinstance(id1, str)
+        assert len(id1) == 24
+
+        # Different mode → different ID
+        id3 = db.put_l2(uri, content_hash, "default", "qwen", "fast", mode="fast")
+        assert id3 != id1
+
+    def test_files_cascade_deletes_l2(self, db: MmDatabase):
+        """Deleting a files row should cascade-delete its l2_results and chunks."""
+        uri = "/test/data/img.png"
+        ensure_l1(db, uri, l0_kinds=["image"])
+        content_hash = get_hash(uri)
+
+        l2_id = db.put_l2(uri, content_hash, "default", "qwen", "A cat on a mat.")
+        assert db.get_l2(l2_id) is not None
+
+        # Delete the files row
+        db._connect.execute("DELETE FROM files WHERE uri = ?", (uri,))
+        db._connect.commit()
+
+        # l2_results and chunks should be cascade-deleted
+        assert db.get_l2(l2_id) is None
+        chunks = db.get_chunks(l2_id)
+        assert len(chunks) == 0
+
+    def test_evict_then_reinsert(self, db: MmDatabase):
+        """Simulates --no-cache: evict then put fresh result."""
+        uri = "/test/data/img.png"
+        ensure_l1(db, uri, l0_kinds=["image"])
+        content_hash = get_hash(uri)
+
+        l2_id = db.put_l2(uri, content_hash, "default", "qwen", "stale result")
+        db.evict_l2(l2_id)
+        db.put_l2(uri, content_hash, "default", "qwen", "fresh result")
+
+        assert db.get_l2(l2_id) == "fresh result"
+
+        # Exactly one l2_results row should exist
+        row = db._connect.execute(
+            "SELECT COUNT(*) FROM l2_results WHERE content_hash = ? AND profile = ? AND model = ?",
+            (content_hash, "default", "qwen"),
+        ).fetchone()
+        assert row[0] == 1
 
 
 # ---------------------------------------------------------------------------
@@ -316,11 +447,11 @@ class TestEmbeddings:
 
         content_hash = get_hash(uri)
         content = "Machine learning is great. " * 50
-        db.put_l2(uri, content_hash, "default", "qwen", content)
+        l2_id = db.put_l2(uri, content_hash, "default", "qwen", content)
 
         # Embed with fake 4-dim vectors
         vectors = [[0.1, 0.2, 0.3, 0.4], [0.5, 0.6, 0.7, 0.8]]
-        db.upsert_embeddings(uri, content_hash, "default", "qwen", "embed-v1", vectors)
+        db.upsert_embeddings(l2_id=l2_id, vectors=vectors)
 
         results = db.search_similar([0.1, 0.2, 0.3, 0.4], limit=2)
         assert len(results) > 0
@@ -332,16 +463,9 @@ class TestEmbeddings:
 
         content_hash = get_hash(uri)
         content = "Test content for embedding. " * 50
-        db.put_l2(uri, content_hash, "default", "qwen", content)
+        l2_id = db.put_l2(uri, content_hash, "default", "qwen", content)
 
-        db.upsert_embeddings(
-            uri,
-            content_hash,
-            "default",
-            "qwen",
-            "embed-v1",
-            [[1.0, 2.0], [3.0, 4.0]],
-        )
+        db.upsert_embeddings(l2_id=l2_id, vectors=[[1.0, 2.0], [3.0, 4.0]])
 
         full = db.get_full_content(uri, content_hash, "default", "qwen")
         assert full == content

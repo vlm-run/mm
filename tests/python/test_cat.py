@@ -111,7 +111,7 @@ class TestL0:
 
 class TestL1Image:
     def test_image_l1_shows_dimensions(self, mixed_dir: Path):
-        r = runner.invoke(app, ["cat", str(mixed_dir / "photo.png"), "-l", "1"])
+        r = runner.invoke(app, ["cat", str(mixed_dir / "photo.png"), "-l", "1", "--no-cache"])
         assert r.exit_code == 0
         assert "64x48" in r.output
 

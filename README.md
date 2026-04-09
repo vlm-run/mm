@@ -106,7 +106,6 @@ mm sql "SELECT kind, COUNT(*) as n, ROUND(SUM(size)/1e6,1) as mb \
 # Query stored tables directly (auto-detected from table name)
 mm sql "SELECT file_uri, summary FROM l2_results LIMIT 10"
 mm sql "SELECT file_uri, chunk_idx, LENGTH(chunk_text) FROM chunks"
-mm sql "SELECT COUNT(*) FROM chunks WHERE embed_model IS NOT NULL"
 mm sql --list-tables                              # show available tables
 ```
 

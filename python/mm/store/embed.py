@@ -164,25 +164,18 @@ def embed_texts(texts: list[str]) -> list[list[float]]:
 # ---------------------------------------------------------------------------
 
 
-def embed_file_chunks(
-    uri: str,
-    content_hash: str,
-    profile: str,
-    model: str,
-    *,
-    embed_model: str = "gemini-embedding-2-preview",
-) -> int:
+def embed_file_chunks(l2_id: str) -> int:
     """Embed all chunks for a file's L2 result. Returns number of chunks embedded."""
     from mm.store.db import MmDatabase
 
     db = MmDatabase()
-    chunks = db.get_chunks(uri, content_hash, profile, model)
+    chunks = db.get_chunks(l2_id)
     if not chunks:
         return 0
 
     texts = [c["chunk_text"] for c in chunks]
     vectors = embed_texts(texts)
-    db.upsert_embeddings(uri, content_hash, profile, model, embed_model, vectors)
+    db.upsert_embeddings(l2_id=l2_id, vectors=vectors)
     return len(vectors)
 
 

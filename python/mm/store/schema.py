@@ -96,7 +96,6 @@ class ChunkCol(StrEnum):
     LEVEL = "level"
     CHUNK_IDX = "chunk_idx"
     CHUNK_TEXT = "chunk_text"
-    EMBED_MODEL = "embed_model"
     CREATED_AT = "created_at"
 
 
@@ -199,8 +198,8 @@ CREATE INDEX IF NOT EXISTS idx_files_l1_lookup ON files (content_hash, l1_indexe
 
 L2_RESULTS_DDL = """\
 CREATE TABLE IF NOT EXISTS l2_results (
-    id              INTEGER PRIMARY KEY AUTOINCREMENT,
-    file_uri        TEXT NOT NULL REFERENCES files(uri),
+    id              TEXT PRIMARY KEY,
+    file_uri        TEXT NOT NULL REFERENCES files(uri) ON DELETE CASCADE,
     content_hash    TEXT NOT NULL,
     profile         TEXT NOT NULL,
     model           TEXT NOT NULL,
@@ -211,14 +210,12 @@ CREATE TABLE IF NOT EXISTS l2_results (
     created_at      INTEGER NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_l2_file_uri ON l2_results (file_uri);
-CREATE INDEX IF NOT EXISTS idx_l2_lookup
-ON l2_results (content_hash, profile, model, mode, detail, extra, created_at DESC);
 """
 
 CHUNKS_DDL = """\
 CREATE TABLE IF NOT EXISTS chunks (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
-    l2_result_id    INTEGER NOT NULL REFERENCES l2_results(id),
+    l2_result_id    TEXT NOT NULL REFERENCES l2_results(id) ON DELETE CASCADE,
     file_uri        TEXT NOT NULL,
     content_hash    TEXT NOT NULL,
     profile         TEXT NOT NULL,
@@ -226,7 +223,6 @@ CREATE TABLE IF NOT EXISTS chunks (
     level           INTEGER NOT NULL DEFAULT 2,
     chunk_idx       INTEGER NOT NULL,
     chunk_text      TEXT NOT NULL,
-    embed_model     TEXT,
     created_at      INTEGER NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_chunks_l2_result_id ON chunks (l2_result_id);

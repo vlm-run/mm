@@ -197,7 +197,6 @@ mm sql "SELECT COUNT(*) as n FROM l2_results"
 
 # Chunks and embeddings (SQLite direct)
 mm sql "SELECT file_uri, chunk_idx, LENGTH(chunk_text) as len FROM chunks"
-mm sql "SELECT COUNT(*) FROM chunks WHERE embed_model IS NOT NULL"
 
 # List available tables
 mm sql --list-tables
