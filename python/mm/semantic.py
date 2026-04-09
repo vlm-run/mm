@@ -73,7 +73,10 @@ def _index_one(uri: str) -> str | None:
     try:
         _run_l2(path, _file_kind(path), opts)
         return uri
-    except Exception:
+    except Exception as e:
+        from mm.display import console
+
+        console.print(f"[red]Error indexing {uri}: {e}[/red]", err=True)
         return None
 
 
@@ -177,5 +180,5 @@ def handle_missing(
             f"[dim]No indexed files found. Index them first:[/dim]\n"
             f"  [bold]{' '.join(cmd_parts)}[/bold]"
         )
-        raise typer.Exit(0)
+        raise typer.Exit(1)
     console.print(f"[dim]To index missing files, run:[/dim]\n  [bold]{' '.join(cmd_parts)}[/bold]")

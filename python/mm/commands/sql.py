@@ -185,9 +185,19 @@ def _query_dicts_as_files(rows: list[dict[str, Any]], query: str) -> tuple[list[
     if not rows:
         return [], []
 
-    # Infer columns from first row
+    # Infer columns from first row; use INTEGER affinity for numeric columns
+    _INT_COLS = {"size", "width", "height", "depth", "is_binary"}
+    _REAL_COLS = {"modified", "created"}
     all_cols = list(rows[0].keys())
-    col_defs = ", ".join(f'"{c}" TEXT' for c in all_cols)
+
+    def _col_type(c: str) -> str:
+        if c in _INT_COLS:
+            return "INTEGER"
+        if c in _REAL_COLS:
+            return "REAL"
+        return "TEXT"
+
+    col_defs = ", ".join(f'"{c}" {_col_type(c)}' for c in all_cols)
     db.execute(f"CREATE TABLE files ({col_defs})")
 
     placeholders = ", ".join("?" * len(all_cols))
