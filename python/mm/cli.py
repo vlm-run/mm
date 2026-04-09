@@ -59,7 +59,7 @@ def _main(
     start_time = perf_counter()
 
     from mm.config import set_cli_overrides
-    from mm.display import display_elapsed, set_color_mode
+    from mm.display import display_elapsed_wrapper, set_color_mode
 
     set_cli_overrides(profile=profile)
     if color != "auto":
@@ -67,7 +67,9 @@ def _main(
 
     cmd = sys.argv[1] if len(sys.argv) > 1 else ""
     if cmd in _TIMED_COMMANDS:
-        atexit.register(display_elapsed, start_time)
+        _check_exit, _display_elapsed = display_elapsed_wrapper(start_time)
+        sys.exit = _check_exit
+        atexit.register(_display_elapsed)
 
 
 app.command(name="bench")(bench.bench_cmd)

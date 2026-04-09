@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import functools
+import sys
 from time import perf_counter
 from typing import TYPE_CHECKING, Any, Literal
 
@@ -468,3 +469,19 @@ def display_elapsed(start_time: float) -> None:
 
     elapsed_value = f"{elapsed_ms:.0f}ms" if elapsed_ms < 1000 else f"{elapsed_ms / 1000:.1f}s"
     output_console.print(f"[dim]completed in {elapsed_value} [/dim]")
+
+
+def display_elapsed_wrapper(start_time: float):
+    successful = [True]
+    original_exit = sys.exit
+
+    def check_exit(code: int = 0):
+        if code != 0:
+            successful[0] = False
+        original_exit(code)
+
+    def display_if_successful():
+        if successful[0]:
+            display_elapsed(start_time)
+
+    return check_exit, display_if_successful
