@@ -6,7 +6,9 @@ fn create_test_tree(dir: &std::path::Path, count: usize) {
     let extensions = [
         ".py", ".rs", ".js", ".md", ".toml", ".json", ".txt", ".yaml",
     ];
-    let prefixes = ["test_", "main_", "config_", "util_", "README", "setup_", "lib_", "mod_"];
+    let prefixes = [
+        "test_", "main_", "config_", "util_", "README", "setup_", "lib_", "mod_",
+    ];
     for i in 0..count {
         let depth = i % 5;
         let mut path = dir.to_path_buf();
@@ -24,7 +26,7 @@ fn create_test_tree(dir: &std::path::Path, count: usize) {
 fn bench_find_filter(c: &mut Criterion) {
     let mut group = c.benchmark_group("find_filter");
 
-    for size in [1_000, 10_000] {
+    for size in [1_000, 5_000] {
         let dir = TempDir::new().unwrap();
         create_test_tree(dir.path(), size);
         let entries = mm_core::scan_directory(dir.path(), None);
