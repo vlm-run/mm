@@ -262,6 +262,7 @@ class TestSql:
                 "SELECT kind, COUNT(*) as n FROM files GROUP BY kind",
                 "--dir",
                 str(small_tree),
+                "--pre-index",
             ],
         )
         assert r.exit_code == 0
@@ -276,6 +277,7 @@ class TestSql:
                 str(small_tree),
                 "--format",
                 "json",
+                "--pre-index",
             ],
         )
         assert r.exit_code == 0
@@ -292,6 +294,7 @@ class TestSql:
                 str(small_tree),
                 "--format",
                 "json",
+                "--pre-index",
             ],
         )
         assert r.exit_code == 0
@@ -308,6 +311,7 @@ class TestSql:
                 str(small_tree),
                 "--format",
                 "dataset-jsonl",
+                "--pre-index",
             ],
         )
         assert r.exit_code == 0
