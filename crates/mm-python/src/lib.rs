@@ -211,6 +211,24 @@ impl Scanner {
         })
     }
 
+    /// Count files, bytes, lines, tokens. Returns JSON.
+    #[pyo3(signature = (kind=None))]
+    fn wc(&self, kind: Option<&str>) -> PyResult<String> {
+        let filtered = mm_core::filter_entries(
+            &self.entries,
+            kind,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            false,
+        );
+        let result = mm_core::wc::count_entries(&filtered, &self.root);
+        Ok(mm_core::wc::wc_to_json(&result))
+    }
+
     fn __repr__(&self) -> String {
         format!(
             "Scanner(root='{}', files={})",

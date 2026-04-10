@@ -119,7 +119,7 @@ pub fn entries_to_json(entries: &[FileEntry]) -> String {
 
 /// Filter + sort entries, returning references. Shared by JSON and lines output.
 #[allow(clippy::too_many_arguments)]
-fn filter_entries<'a>(
+pub fn filter_entries<'a>(
     entries: &'a [FileEntry],
     kind: Option<&str>,
     ext: Option<&str>,

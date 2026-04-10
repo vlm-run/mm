@@ -54,3 +54,7 @@ harness = false
 [[bench]]
 name = "find_filter"
 harness = false
+
+[[bench]]
+name = "wc"
+harness = false

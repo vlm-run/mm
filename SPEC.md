@@ -103,7 +103,7 @@ mm
 │   │   ├── [x] --no-cache flag bypasses L2 caches
 │   ├── [x] grep     — content search with context lines (like rg), --index for on-demand L2 indexing
 │   ├── [x] sql      — SQLite SQL on file index, --pre-index for on-demand L0 indexing before query
-│   ├── [x] wc       — count files, bytes, lines, estimated tokens
+│   ├── [x] wc       — count files, size, lines (est.), tokens (est.)
 │   ├── [x] config   — extraction mode settings (show, init, set)
 │   ├── [x] profile  — LLM profile management (list, add, update, use, remove; default immutable, ollama reserved)
 │   ├── [x] bench    — 24-command benchmark suite (L0×10, L1×8, L2×6) with bits/s throughput
