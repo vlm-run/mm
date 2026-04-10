@@ -91,12 +91,8 @@ def wc_cmd(
 
             if "document" not in kind_stats:
                 kind_stats["document"] = {F_FILES: 0, F_SIZE: 0, F_TOKENS: 0, F_LINES: 0}
-            kind_stats["document"][F_TOKENS] = (
-                int(kind_stats["document"].get(F_TOKENS, 0)) + tokens
-            )
-            kind_stats["document"][F_LINES] = (
-                int(kind_stats["document"].get(F_LINES, 0)) + lines
-            )
+            kind_stats["document"][F_TOKENS] = int(kind_stats["document"].get(F_TOKENS, 0)) + tokens
+            kind_stats["document"][F_LINES] = int(kind_stats["document"].get(F_LINES, 0)) + lines
 
     # Information-theoretic density metrics
     total_mb = total_size / (1024 * 1024) if total_size else 0
@@ -225,13 +221,13 @@ def wc_cmd(
         from rich import box
         from rich.table import Table as RichTable
 
-        caption = (
+        _caption = (
             f"{total_files:,} file{'s' if total_files > 1 else ''}  {format_size(total_size)}"
             if total_files > 1
             else None
         )
         tbl = RichTable(
-            caption=caption,
+            caption=_caption,
             caption_style="dim",
             caption_justify="right",
             show_header=True,
