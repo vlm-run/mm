@@ -1,7 +1,7 @@
 """Tests for mm profile management.
 
 Covers: profile CRUD (including update), active profile resolution,
-migration, CLI subcommands (list/use/add/update/remove), --profile flag, MM_PROFILE env.
+builtin normalization, CLI subcommands (list/use/add/update/remove), --profile flag, MM_PROFILE env.
 """
 
 from __future__ import annotations
@@ -20,21 +20,32 @@ from mm.config import (
 )
 from mm.profile import (
     DEFAULT_PROFILE,
-    DEFAULTS,
+    GEMINI_DEFAULTS,
     OLLAMA_DEFAULTS,
-    OLLAMA_PROFILE,
     PROFILE_KEYS,
+    RESERVED_PROFILES,
+    VLMRUN_DEFAULTS,
     Profile,
     add_profile,
     get_active_profile_name,
     get_profile,
     get_profile_names,
     get_profile_section,
-    migrate_to_profiles,
     remove_profile,
     set_active_profile,
     update_profile,
 )
+
+# Convenience: a non-default reserved profile for "switch-to" tests
+OTHER_PROFILE = "gemini"
+OTHER_DEFAULTS = GEMINI_DEFAULTS
+
+# Profile data as stored on disk (write_full_config only writes base_url, api_key, model).
+# RESERVED_DEFAULTS include "name" but TOML serialization drops it, so _read_config_file
+# returns dicts without "name".
+_OLLAMA_DATA = {k: v for k, v in OLLAMA_DEFAULTS.items() if k != "name"}
+_GEMINI_DATA = {k: v for k, v in GEMINI_DEFAULTS.items() if k != "name"}
+_VLMRUN_DATA = {k: v for k, v in VLMRUN_DEFAULTS.items() if k != "name"}
 
 
 def _profiles(file_data: ConfigData) -> dict[str, ProfileData]:
@@ -70,33 +81,19 @@ def _isolate_config(tmp_path: Path, monkeypatch):
 
 @pytest.fixture
 def two_profile_config(tmp_path: Path) -> Path:
-    """Write a config file with two profiles and return the path."""
+    """Write a config file with ollama + gemini profiles and return the path."""
     toml = """\
-active_profile = "default"
-
-[profile.default]
-base_url = "https://mm-ctx.ngrok.io/v1"
-api_key = "sk-vlm-test"
-model = "Qwen/Qwen3.5-0.8B"
+active_profile = "ollama"
 
 [profile.ollama]
 base_url = "http://localhost:11434"
 api_key = ""
 model = "qwen3.5:0.8"
-"""
-    cfg_path = tmp_path / "config.toml"
-    cfg_path.write_text(toml)
-    return cfg_path
 
-
-@pytest.fixture
-def legacy_config(tmp_path: Path) -> Path:
-    """Write a legacy [provider]-style config and return the path."""
-    toml = """\
-[provider]
-base_url = "http://legacy:8000"
-api_key = "legacy-key"
-model = "legacy-model"
+[profile.gemini]
+base_url = "https://openrouter.ai/api/v1"
+api_key = ""
+model = "google/gemini-2.5-flash-lite"
 """
     cfg_path = tmp_path / "config.toml"
     cfg_path.write_text(toml)
@@ -114,11 +111,11 @@ class TestActiveProfileResolution:
         assert get_active_profile_name() == DEFAULT_PROFILE
 
     def test_env_overrides_file(self, two_profile_config, monkeypatch):
-        monkeypatch.setenv("MM_PROFILE", OLLAMA_PROFILE)
-        assert get_active_profile_name() == OLLAMA_PROFILE
+        monkeypatch.setenv("MM_PROFILE", OTHER_PROFILE)
+        assert get_active_profile_name() == OTHER_PROFILE
 
     def test_cli_overrides_env(self, two_profile_config, monkeypatch):
-        monkeypatch.setenv("MM_PROFILE", OLLAMA_PROFILE)
+        monkeypatch.setenv("MM_PROFILE", OTHER_PROFILE)
         set_cli_overrides(profile=DEFAULT_PROFILE)
         assert get_active_profile_name() == DEFAULT_PROFILE
 
@@ -133,23 +130,20 @@ class TestActiveProfileResolution:
 class TestGetProfileSection:
     def test_reads_named_profile(self, two_profile_config):
         file_data = _read_config_file()
-        section = get_profile_section(file_data, "default")
-        assert section["base_url"] == DEFAULTS["base_url"]
-        assert section["model"] == DEFAULTS["model"]
-        assert section["api_key"] == DEFAULTS["api_key"]
+        section = get_profile_section(file_data, "ollama")
+        assert section["base_url"] == OLLAMA_DEFAULTS["base_url"]
+        assert section["model"] == OLLAMA_DEFAULTS["model"]
+        assert section["api_key"] == OLLAMA_DEFAULTS["api_key"]
 
     def test_returns_empty_for_missing(self, two_profile_config):
         file_data = _read_config_file()
         assert get_profile_section(file_data, "nonexistent") == {}
 
-    def test_legacy_config_is_migrated_before_section_reads(self, legacy_config):
-        profile = get_profile()
-        assert profile.name == OLLAMA_PROFILE
+    def test_reads_gemini_profile(self, two_profile_config):
         file_data = _read_config_file()
-        section = get_profile_section(file_data, OLLAMA_PROFILE)
-        assert section["base_url"] == "http://legacy:8000"
-        assert section["model"] == "legacy-model"
-        assert "provider" not in file_data
+        section = get_profile_section(file_data, "gemini")
+        assert section["base_url"] == GEMINI_DEFAULTS["base_url"]
+        assert section["model"] == GEMINI_DEFAULTS["model"]
 
 
 # ── Profile names listing ───────────────────────────────────────────
@@ -158,83 +152,51 @@ class TestGetProfileSection:
 class TestGetProfileNames:
     def test_lists_all_profiles(self, two_profile_config):
         names = get_profile_names()
-        assert names == ["default", "ollama"]
+        assert "ollama" in names
+        assert "gemini" in names
+        assert "vlmrun" in names
 
-    def test_legacy_shows_default(self, legacy_config):
+    def test_empty_config_shows_all_reserved(self):
         names = get_profile_names()
-        assert names == ["default", "ollama"]
-
-    def test_empty_config_shows_default(self):
-        names = get_profile_names()
-        assert names == ["default", "ollama"]
+        for name in RESERVED_PROFILES:
+            assert name in names
 
 
 class TestBuiltinNormalization:
     def test_default_profile_is_forced_to_builtin_values(self, two_profile_config):
         profile = get_profile()
-        assert profile == Profile(name=DEFAULT_PROFILE, **DEFAULTS)
+        assert profile == Profile(
+            name=DEFAULT_PROFILE,
+            base_url=OLLAMA_DEFAULTS["base_url"],
+            api_key=OLLAMA_DEFAULTS["api_key"],
+            model=OLLAMA_DEFAULTS["model"],
+        )
 
-        file_data = _read_config_file()
-        assert _profiles(file_data)[DEFAULT_PROFILE] == DEFAULTS
-
-    def test_missing_ollama_profile_is_added_with_defaults(self, tmp_path: Path):
+    def test_missing_vlmrun_profile_is_added_with_defaults(self, tmp_path: Path):
         (tmp_path / "config.toml").write_text(
             """\
-active_profile = \"default\"
+active_profile = "ollama"
 
-[profile.default]
-base_url = \"http://wrong\"
-api_key = \"bad\"
-model = \"wrong-model\"
+[profile.ollama]
+base_url = "http://localhost:11434"
+api_key = ""
+model = "qwen3.5:0.8"
 """
         )
 
         profile_names = get_profile_names()
-        assert profile_names == ["default", "ollama"]
+        assert "vlmrun" in profile_names
+        assert "gemini" in profile_names
 
         file_data = _read_config_file()
-        assert _profiles(file_data)[DEFAULT_PROFILE] == DEFAULTS
-        assert _profiles(file_data)[OLLAMA_PROFILE] == OLLAMA_DEFAULTS
+        assert _profiles(file_data)["vlmrun"]["base_url"] == VLMRUN_DEFAULTS["base_url"]
+        assert _profiles(file_data)["vlmrun"]["model"] == VLMRUN_DEFAULTS["model"]
 
-
-# ── Migration ───────────────────────────────────────────────────────
-
-
-class TestMigrateToProfiles:
-    def test_migrates_provider_to_profile(self):
-        data: ConfigData = cast(
-            ConfigData,
-            {"provider": {"base_url": "http://old", "api_key": "", "model": "old-m"}},
-        )
-        migrated = migrate_to_profiles(data)
-        assert migrated is True
-        assert "provider" not in data
-        assert _profiles(data)[OLLAMA_PROFILE]["base_url"] == "http://old"
-        assert _active_profile(data) == OLLAMA_PROFILE
-
-    def test_noop_when_profiles_exist(self):
-        data: ConfigData = cast(
-            ConfigData,
-            {
-                "profile": {
-                    DEFAULT_PROFILE: {
-                        "base_url": "http://new",
-                        "api_key": "",
-                        "model": "Qwen/Qwen3.5-0.8B",
-                    }
-                },
-                "active_profile": DEFAULT_PROFILE,
-            },
-        )
-        migrated = migrate_to_profiles(data)
-        assert migrated is False
-        assert _profiles(data)[DEFAULT_PROFILE]["base_url"] == "http://new"
-
-    def test_noop_when_neither(self):
-        data: ConfigData = cast(ConfigData, {})
-        migrated = migrate_to_profiles(data)
-        assert migrated is False
-        assert "profile" not in data
+    def test_all_reserved_profiles_present_after_normalization(self):
+        """No config file at all — all reserved profiles are created."""
+        names = get_profile_names()
+        for name in RESERVED_PROFILES:
+            assert name in names
 
 
 # ── Profile keys constant ──────────────────────────────────────────
@@ -251,17 +213,32 @@ class TestProfileKeys:
 class TestProfileResolutionWithProfiles:
     def test_default_profile_matches_actual_profile(self, two_profile_config):
         profile = get_profile()
-        assert profile == Profile(name=DEFAULT_PROFILE, **DEFAULTS)
+        assert profile == Profile(
+            name=DEFAULT_PROFILE,
+            base_url=OLLAMA_DEFAULTS["base_url"],
+            api_key=OLLAMA_DEFAULTS["api_key"],
+            model=OLLAMA_DEFAULTS["model"],
+        )
 
     def test_switched_profile_matches_actual_profile(self, two_profile_config):
-        set_cli_overrides(profile=OLLAMA_PROFILE)
+        set_cli_overrides(profile=OTHER_PROFILE)
         profile = get_profile()
-        assert profile == Profile(name=OLLAMA_PROFILE, **OLLAMA_DEFAULTS)
+        assert profile == Profile(
+            name=OTHER_PROFILE,
+            base_url=GEMINI_DEFAULTS["base_url"],
+            api_key=GEMINI_DEFAULTS["api_key"],
+            model=GEMINI_DEFAULTS["model"],
+        )
 
     def test_env_profile_matches_actual_profile(self, two_profile_config, monkeypatch):
-        monkeypatch.setenv("MM_PROFILE", OLLAMA_PROFILE)
+        monkeypatch.setenv("MM_PROFILE", OTHER_PROFILE)
         profile = get_profile()
-        assert profile == Profile(name=OLLAMA_PROFILE, **OLLAMA_DEFAULTS)
+        assert profile == Profile(
+            name=OTHER_PROFILE,
+            base_url=GEMINI_DEFAULTS["base_url"],
+            api_key=GEMINI_DEFAULTS["api_key"],
+            model=GEMINI_DEFAULTS["model"],
+        )
 
     def test_nonexistent_profile_raises(self, two_profile_config):
         """--profile with a typo should fail, not silently use defaults."""
@@ -277,20 +254,12 @@ class TestProfileResolutionWithProfiles:
     def test_default_without_config_file_uses_builtins(self):
         """No config file at all — default profile resolves to built-in defaults."""
         profile = get_profile()
-        assert profile == Profile(name=DEFAULT_PROFILE, **DEFAULTS)
-
-    def test_legacy_config_uses_migrated_profile(self, legacy_config):
-        profile = get_profile()
         assert profile == Profile(
-            name=OLLAMA_PROFILE,
-            base_url="http://legacy:8000",
-            api_key="legacy-key",
-            model="legacy-model",
+            name=DEFAULT_PROFILE,
+            base_url=OLLAMA_DEFAULTS["base_url"],
+            api_key=OLLAMA_DEFAULTS["api_key"],
+            model=OLLAMA_DEFAULTS["model"],
         )
-
-        file_data = _read_config_file()
-        assert _profiles(file_data)[OLLAMA_PROFILE]["base_url"] == "http://legacy:8000"
-        assert _profiles(file_data)[DEFAULT_PROFILE] == DEFAULTS
 
 
 # ── Profile CRUD ────────────────────────────────────────────────────
@@ -306,7 +275,7 @@ class TestAddProfile:
 
     def test_add_duplicate_raises(self, two_profile_config):
         with pytest.raises(ValueError, match="already exists"):
-            add_profile(OLLAMA_PROFILE, base_url="http://dup", model="dup-m")
+            add_profile("gemini", base_url="http://dup", model="dup-m")
 
     def test_add_requires_base_url(self, two_profile_config):
         with pytest.raises(ValueError, match="base_url is required"):
@@ -332,60 +301,66 @@ class TestAddProfile:
         add_profile("profile-name_v2", base_url="http://x", model="m")
         assert "profile-name_v2" in get_profile_names()
 
-    def test_add_to_legacy_config(self, legacy_config):
+    def test_add_to_empty_config(self, tmp_path: Path):
         add_profile("newone", base_url="http://new:9000", model="new-m")
         names = get_profile_names()
-        assert DEFAULT_PROFILE in names
-        assert OLLAMA_PROFILE in names
+        for name in RESERVED_PROFILES:
+            assert name in names
         assert "newone" in names
 
 
 class TestUpdateProfile:
     def test_update_single_field(self, two_profile_config):
-        update_profile(OLLAMA_PROFILE, model="qwen3.5:latest")
+        update_profile("gemini", model="gemini-2.0-flash")
         file_data = _read_config_file()
-        assert _profiles(file_data)[OLLAMA_PROFILE]["model"] == "qwen3.5:latest"
+        assert _profiles(file_data)["gemini"]["model"] == "gemini-2.0-flash"
         # Other fields preserved
-        assert _profiles(file_data)[OLLAMA_PROFILE]["base_url"] == OLLAMA_DEFAULTS["base_url"]
-        assert _profiles(file_data)[OLLAMA_PROFILE]["api_key"] == ""
+        assert _profiles(file_data)["gemini"]["base_url"] == GEMINI_DEFAULTS["base_url"]
+        assert _profiles(file_data)["gemini"]["api_key"] == ""
 
     def test_update_multiple_fields(self, two_profile_config):
-        update_profile(OLLAMA_PROFILE, base_url="http://new-ollama:11434", model="qwen3.5:1.7b")
+        update_profile("gemini", base_url="http://new-gemini:8000", model="gemini-2.0")
         file_data = _read_config_file()
-        assert _profiles(file_data)[OLLAMA_PROFILE]["base_url"] == "http://new-ollama:11434"
-        assert _profiles(file_data)[OLLAMA_PROFILE]["model"] == "qwen3.5:1.7b"
-        assert _profiles(file_data)[OLLAMA_PROFILE]["api_key"] == ""
+        assert _profiles(file_data)["gemini"]["base_url"] == "http://new-gemini:8000"
+        assert _profiles(file_data)["gemini"]["model"] == "gemini-2.0"
+        assert _profiles(file_data)["gemini"]["api_key"] == ""
 
     def test_update_api_key(self, two_profile_config):
-        update_profile(OLLAMA_PROFILE, api_key="sk-new-key")
+        update_profile("gemini", api_key="sk-new-key")
         file_data = _read_config_file()
-        assert _profiles(file_data)[OLLAMA_PROFILE]["api_key"] == "sk-new-key"
+        assert _profiles(file_data)["gemini"]["api_key"] == "sk-new-key"
 
-    def test_update_default_rejected(self, two_profile_config):
-        with pytest.raises(ValueError, match="cannot be updated"):
-            update_profile(DEFAULT_PROFILE, model="other-model")
+    def test_update_immutable_rejected(self, two_profile_config):
+        with pytest.raises(ValueError, match="cannot be modified"):
+            update_profile("vlmrun", model="other-model")
+
+    def test_update_ollama_allowed(self, two_profile_config):
+        """ollama is reserved but mutable — update should succeed."""
+        update_profile("ollama", model="qwen3.5:1.7b")
+        file_data = _read_config_file()
+        assert _profiles(file_data)["ollama"]["model"] == "qwen3.5:1.7b"
 
     def test_update_all_fields(self, two_profile_config):
-        update_profile(OLLAMA_PROFILE, base_url="http://x", api_key="k", model="m")
+        update_profile("gemini", base_url="http://x", api_key="k", model="m")
         file_data = _read_config_file()
-        p = _profiles(file_data)[OLLAMA_PROFILE]
+        p = _profiles(file_data)["gemini"]
         assert p["base_url"] == "http://x"
         assert p["api_key"] == "k"
         assert p["model"] == "m"
 
     def test_update_rejects_empty_base_url(self, two_profile_config):
         with pytest.raises(ValueError, match="base_url cannot be empty"):
-            update_profile(OLLAMA_PROFILE, base_url="")
+            update_profile("gemini", base_url="")
 
     def test_update_rejects_empty_model(self, two_profile_config):
         with pytest.raises(ValueError, match="model cannot be empty"):
-            update_profile(OLLAMA_PROFILE, model="")
+            update_profile("gemini", model="")
 
     def test_update_allows_empty_api_key(self, two_profile_config):
         """api_key can be set to empty (e.g. local Ollama needs no key)."""
-        update_profile(OLLAMA_PROFILE, api_key="")
+        update_profile("gemini", api_key="")
         file_data = _read_config_file()
-        assert _profiles(file_data)[OLLAMA_PROFILE]["api_key"] == ""
+        assert _profiles(file_data)["gemini"]["api_key"] == ""
 
     def test_update_nonexistent_raises(self, two_profile_config):
         with pytest.raises(ValueError, match="not found"):
@@ -393,42 +368,41 @@ class TestUpdateProfile:
 
     def test_update_no_fields_raises(self, two_profile_config):
         with pytest.raises(ValueError, match="No fields to update"):
-            update_profile(OLLAMA_PROFILE)
+            update_profile("gemini")
 
     def test_update_preserves_other_profiles(self, two_profile_config):
-        update_profile(OLLAMA_PROFILE, model="qwen3.5:1.7b")
+        update_profile("gemini", model="gemini-2.0")
         file_data = _read_config_file()
-        assert _profiles(file_data)[DEFAULT_PROFILE]["model"] == DEFAULTS["model"]
+        assert _profiles(file_data)["ollama"]["model"] == OLLAMA_DEFAULTS["model"]
 
     def test_update_reflects_in_profile(self, two_profile_config):
-        set_cli_overrides(profile=OLLAMA_PROFILE)
-        update_profile(OLLAMA_PROFILE, model="qwen3.5:updated")
+        set_cli_overrides(profile="gemini")
+        update_profile("gemini", model="gemini-updated")
         profile = get_profile()
-        assert profile.model == "qwen3.5:updated"
+        assert profile.model == "gemini-updated"
 
 
 class TestRemoveProfile:
-    def test_remove_non_active(self, two_profile_config):
+    def test_remove_non_reserved(self, two_profile_config):
         add_profile("scratch", base_url="http://scratch", model="scratch-model")
         remove_profile("scratch")
         names = get_profile_names()
         assert "scratch" not in names
 
-    def test_remove_default_always_fails(self, two_profile_config):
-        """'default' cannot be removed even when it's not the active profile."""
-        set_active_profile(OLLAMA_PROFILE)
+    def test_remove_ollama_fails(self, two_profile_config):
+        """Reserved profiles cannot be removed."""
         with pytest.raises(ValueError, match="cannot be removed"):
-            remove_profile(DEFAULT_PROFILE)
+            remove_profile("ollama")
 
-    def test_remove_default_shows_alternatives(self, two_profile_config):
-        with pytest.raises(ValueError, match="mm profile update ollama"):
-            remove_profile(DEFAULT_PROFILE)
-
-    def test_remove_ollama_always_fails(self, two_profile_config):
+    def test_remove_gemini_fails(self, two_profile_config):
         with pytest.raises(ValueError, match="cannot be removed"):
-            remove_profile(OLLAMA_PROFILE)
+            remove_profile("gemini")
 
-    def test_remove_active_non_default_raises(self, two_profile_config):
+    def test_remove_vlmrun_fails(self, two_profile_config):
+        with pytest.raises(ValueError, match="cannot be removed"):
+            remove_profile("vlmrun")
+
+    def test_remove_active_non_reserved_raises(self, two_profile_config):
         add_profile("scratch", base_url="http://scratch", model="scratch-model")
         set_active_profile("scratch")
         with pytest.raises(ValueError, match="Cannot remove the active profile"):
@@ -441,56 +415,56 @@ class TestRemoveProfile:
 
 class TestSetActiveProfile:
     def test_switch_profile(self, two_profile_config):
-        set_active_profile(OLLAMA_PROFILE)
+        set_active_profile("gemini")
         file_data = _read_config_file()
-        assert _active_profile(file_data) == OLLAMA_PROFILE
+        assert _active_profile(file_data) == "gemini"
 
     def test_switch_nonexistent_raises(self, two_profile_config):
         with pytest.raises(ValueError, match="not found"):
             set_active_profile("nope")
 
     def test_switch_then_get_profile(self, two_profile_config):
-        set_active_profile(OLLAMA_PROFILE)
+        set_active_profile("gemini")
         profile = get_profile()
-        assert profile.base_url == OLLAMA_DEFAULTS["base_url"]
+        assert profile.base_url == GEMINI_DEFAULTS["base_url"]
 
 
 # ── Write with profiles ────────────────────────────────────────────
 
 
 class TestWriteFullConfigWithProfiles:
-    def test_write_preserves_default_profile_when_ollama_is_active(self, two_profile_config):
+    def test_write_preserves_default_profile_when_gemini_is_active(self, two_profile_config):
         write_full_config(
             cast(
                 ConfigData,
                 {
-                    "active_profile": OLLAMA_PROFILE,
+                    "active_profile": "gemini",
                     "profile": {
-                        OLLAMA_PROFILE: cast(
+                        "gemini": cast(
                             ProfileData,
-                            {"base_url": "http://new-ollama", "api_key": "", "model": "new-model"},
+                            {"base_url": "http://new-gemini", "api_key": "", "model": "new-model"},
                         )
                     },
                 },
             )
         )
         file_data = _read_config_file()
-        assert _profiles(file_data)[DEFAULT_PROFILE] == DEFAULTS
-        assert _profiles(file_data)[OLLAMA_PROFILE]["base_url"] == "http://new-ollama"
+        assert _profiles(file_data)["ollama"]["base_url"] == OLLAMA_DEFAULTS["base_url"]
+        assert _profiles(file_data)["gemini"]["base_url"] == "http://new-gemini"
 
     def test_write_to_active_profile(self, two_profile_config):
         write_full_config(
             cast(
                 ConfigData,
                 {
-                    "active_profile": OLLAMA_PROFILE,
+                    "active_profile": "gemini",
                     "profile": {
-                        OLLAMA_PROFILE: cast(
+                        "gemini": cast(
                             ProfileData,
                             {
-                                "base_url": "http://updated-ollama",
+                                "base_url": "http://updated-gemini",
                                 "api_key": "new-key",
-                                "model": "new-ollama-model",
+                                "model": "new-gemini-model",
                             },
                         )
                     },
@@ -498,7 +472,7 @@ class TestWriteFullConfigWithProfiles:
             )
         )
         file_data = _read_config_file()
-        assert _profiles(file_data)[OLLAMA_PROFILE]["base_url"] == "http://updated-ollama"
+        assert _profiles(file_data)["gemini"]["base_url"] == "http://updated-gemini"
 
 
 class TestWriteFullConfig:
@@ -508,7 +482,7 @@ class TestWriteFullConfig:
             {
                 "active_profile": DEFAULT_PROFILE,
                 "profile": {
-                    DEFAULT_PROFILE: {"base_url": "http://a", "api_key": "", "model": "m1"},
+                    "ollama": {"base_url": "http://a", "api_key": "", "model": "m1"},
                     "other": {"base_url": "http://b", "api_key": "k", "model": "m2"},
                 },
                 "mode": {
@@ -519,8 +493,9 @@ class TestWriteFullConfig:
         write_full_config(data)
         reread = _read_config_file()
         assert _active_profile(reread) == DEFAULT_PROFILE
-        assert _profiles(reread)[DEFAULT_PROFILE] == DEFAULTS
-        assert _profiles(reread)[OLLAMA_PROFILE]["model"] == OLLAMA_DEFAULTS["model"]
+        # ollama is mutable — user values preserved after roundtrip
+        assert _profiles(reread)["ollama"]["model"] == "m1"
+        assert _profiles(reread)["vlmrun"]["model"] == VLMRUN_DEFAULTS["model"]
         assert _profiles(reread)["other"]["model"] == "m2"
         assert _mode_whisper_model(reread, "fast") == "tiny"
 
@@ -543,8 +518,8 @@ class TestProfileCli:
         result = cli_runner.invoke(app, ["profile", "list", "--format", "tsv"])
         assert result.exit_code == 0
         assert DEFAULT_PROFILE in result.output
-        assert OLLAMA_PROFILE in result.output
-        assert "default" in result.output
+        assert "gemini" in result.output
+        assert "ollama" in result.output
 
     def test_profile_list_json(self, runner, two_profile_config):
         cli_runner, app = runner
@@ -552,9 +527,8 @@ class TestProfileCli:
         assert result.exit_code == 0
         data = json.loads(result.output)
         assert data["active"] == DEFAULT_PROFILE
-        assert DEFAULT_PROFILE in data["profiles"]
-        assert OLLAMA_PROFILE in data["profiles"]
-        assert data["profiles"]["default"]["api_key"] == DEFAULTS["api_key"]
+        assert "ollama" in data["profiles"]
+        assert "gemini" in data["profiles"]
 
     def test_profile_list_csv(self, runner, two_profile_config):
         cli_runner, app = runner
@@ -562,7 +536,8 @@ class TestProfileCli:
         assert result.exit_code == 0
         lines = result.output.strip().split("\n")
         assert lines[0] == "profile,active,base_url,model"
-        assert len(lines) == 3  # header + 2 profiles
+        # header + 3 reserved profiles (ollama, gemini, vlmrun)
+        assert len(lines) >= 4
 
     def test_profile_add_and_list(self, runner, two_profile_config):
         cli_runner, app = runner
@@ -594,13 +569,13 @@ class TestProfileCli:
 
     def test_profile_use(self, runner, two_profile_config):
         cli_runner, app = runner
-        result = cli_runner.invoke(app, ["profile", "use", OLLAMA_PROFILE])
+        result = cli_runner.invoke(app, ["profile", "use", "gemini"])
         assert result.exit_code == 0
         assert "Switched" in result.output
         # Verify via profile list
         result2 = cli_runner.invoke(app, ["profile", "list", "--format", "json"])
         data = json.loads(result2.output)
-        assert data["active"] == OLLAMA_PROFILE
+        assert data["active"] == "gemini"
 
     def test_profile_use_nonexistent_fails(self, runner, two_profile_config):
         cli_runner, app = runner
@@ -610,15 +585,15 @@ class TestProfileCli:
     def test_profile_update_single_field(self, runner, two_profile_config):
         cli_runner, app = runner
         result = cli_runner.invoke(
-            app, ["profile", "update", OLLAMA_PROFILE, "--model", "qwen3.5:latest"]
+            app, ["profile", "update", "gemini", "--model", "gemini-2.0-flash"]
         )
         assert result.exit_code == 0
         assert "Updated" in result.output
-        assert "model=qwen3.5:latest" in result.output
+        assert "model=gemini-2.0-flash" in result.output
         # Verify change persisted
         result2 = cli_runner.invoke(app, ["profile", "list", "--format", "json"])
         data = json.loads(result2.output)
-        assert data["profiles"][OLLAMA_PROFILE]["model"] == "qwen3.5:latest"
+        assert data["profiles"]["gemini"]["model"] == "gemini-2.0-flash"
 
     def test_profile_update_multiple_fields(self, runner, two_profile_config):
         cli_runner, app = runner
@@ -627,31 +602,29 @@ class TestProfileCli:
             [
                 "profile",
                 "update",
-                OLLAMA_PROFILE,
+                "gemini",
                 "--model",
-                "qwen3.5:1.7b",
+                "gemini-2.0",
                 "--base-url",
-                "http://new:11434",
+                "http://new:8000",
             ],
         )
         assert result.exit_code == 0
-        assert "model=qwen3.5:1.7b" in result.output
-        assert "base_url=http://new:11434" in result.output
+        assert "model=gemini-2.0" in result.output
+        assert "base_url=http://new:8000" in result.output
 
     def test_profile_update_api_key_masked(self, runner, two_profile_config):
         cli_runner, app = runner
-        result = cli_runner.invoke(
-            app, ["profile", "update", OLLAMA_PROFILE, "--api-key", "sk-secret"]
-        )
+        result = cli_runner.invoke(app, ["profile", "update", "gemini", "--api-key", "sk-secret"])
         assert result.exit_code == 0
-        assert "api_key=••••" in result.output
+        assert "api_key=\u2022\u2022\u2022\u2022" in result.output
         assert "sk-secret" not in result.output
 
-    def test_profile_update_default_fails(self, runner, two_profile_config):
+    def test_profile_update_immutable_fails(self, runner, two_profile_config):
         cli_runner, app = runner
-        result = cli_runner.invoke(app, ["profile", "update", DEFAULT_PROFILE, "--model", "other"])
+        result = cli_runner.invoke(app, ["profile", "update", "vlmrun", "--model", "other"])
         assert result.exit_code == 1
-        assert "cannot be updated" in result.output
+        assert "cannot be modified" in result.output
 
     def test_profile_update_nonexistent_fails(self, runner, two_profile_config):
         cli_runner, app = runner
@@ -660,7 +633,7 @@ class TestProfileCli:
 
     def test_profile_update_no_fields_fails(self, runner, two_profile_config):
         cli_runner, app = runner
-        result = cli_runner.invoke(app, ["profile", "update", "default"])
+        result = cli_runner.invoke(app, ["profile", "update", "gemini"])
         assert result.exit_code == 1
 
     def test_profile_remove(self, runner, two_profile_config):
@@ -685,22 +658,22 @@ class TestProfileCli:
         data = json.loads(result2.output)
         assert "scratch" not in data["profiles"]
 
-    def test_profile_remove_default_fails_with_guidance(self, runner, two_profile_config):
+    def test_profile_remove_reserved_fails_with_guidance(self, runner, two_profile_config):
         cli_runner, app = runner
-        result = cli_runner.invoke(app, ["profile", "remove", DEFAULT_PROFILE])
+        result = cli_runner.invoke(app, ["profile", "remove", "ollama"])
         assert result.exit_code == 1
         assert "cannot be removed" in result.output
-        assert "mm profile update ollama" in result.output
+        assert "mm profile update" in result.output
 
     def test_profile_flag_override(self, runner, two_profile_config):
         cli_runner, app = runner
         result = cli_runner.invoke(
-            app, ["--profile", OLLAMA_PROFILE, "profile", "list", "--format", "json"]
+            app, ["--profile", "gemini", "profile", "list", "--format", "json"]
         )
         assert result.exit_code == 0
         data = json.loads(result.output)
-        assert data["active"] == OLLAMA_PROFILE
-        assert data["profiles"][OLLAMA_PROFILE]["base_url"] == OLLAMA_DEFAULTS["base_url"]
+        assert data["active"] == "gemini"
+        assert data["profiles"]["gemini"]["base_url"] == GEMINI_DEFAULTS["base_url"]
 
     def test_no_top_level_base_url_flag(self, runner):
         """--base-url is no longer a top-level flag."""
@@ -797,10 +770,10 @@ class TestEnvProfileCli:
         return CliRunner(), app
 
     def test_env_profile_selects_profile(self, runner, two_profile_config, monkeypatch):
-        monkeypatch.setenv("MM_PROFILE", OLLAMA_PROFILE)
+        monkeypatch.setenv("MM_PROFILE", "gemini")
         cli_runner, app = runner
         result = cli_runner.invoke(app, ["profile", "list", "--format", "json"])
         assert result.exit_code == 0
         data = json.loads(result.output)
-        assert data["active"] == OLLAMA_PROFILE
-        assert data["profiles"][OLLAMA_PROFILE]["base_url"] == OLLAMA_DEFAULTS["base_url"]
+        assert data["active"] == "gemini"
+        assert data["profiles"]["gemini"]["base_url"] == GEMINI_DEFAULTS["base_url"]

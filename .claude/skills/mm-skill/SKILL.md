@@ -21,7 +21,7 @@ Always use `--format json` for machine-readable output when parsing results prog
 ```bash
 # First run `mm --help` or `mm --version` to confirm mm isn't already installed
 
-curl -LsSf https://vlm-run.github.io/mm/install/install.sh | MM_FROM_GIT=1 sh
+curl -LsSf https://vlm-run.github.io/mm/install/install.sh | sh
 ```
 
 ## Commands

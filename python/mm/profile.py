@@ -1,7 +1,7 @@
 """Profile management for mm.
 
 Profile resolution order:
-    --profile CLI flag > MM_PROFILE env > active_profile in file > "default"
+    --profile CLI flag > MM_PROFILE env > active_profile in file > <default>"
 
 Profiles allow multiple model/API configurations in a single config file.
 Each profile stores name, base_url, api_key, and model.
@@ -10,19 +10,26 @@ Use ``mm profile add|update|remove`` to manage profiles, and
 
 Profiles allow multiple LLM provider configurations in a single config file.
 Each profile stores base_url, api_key, and model. One profile is active at a
-time, resolved via: CLI --profile > MM_PROFILE env > active_profile in file > "default".
+time, resolved via: CLI --profile > MM_PROFILE env > active_profile in file > <default>".
 
 TOML layout:
 
-    active_profile = "default"
-
-    [profile.default]
-    base_url = "https://mm-ctx.ngrok.io/v1"
-    model = "Qwen/Qwen3.5-0.8B"
+    active_profile = "ollama"
 
     [profile.ollama]
     base_url = "http://localhost:11434"
     model = "qwen3.5:0.8"
+    api_key = ""
+
+    [profile.gemini]
+    base_url = "https://openrouter.ai/api/v1"
+    model = "google/gemini-2.5-flash-lite"
+    api_key = ""
+
+    [profile.vlmrun]
+    base_url = "https://mm-ctx.ngrok.io/v1"
+    model = "Qwen/Qwen3.5-0.8B"
+    api_key = ""
 """
 
 from __future__ import annotations
@@ -43,21 +50,36 @@ from mm.config import (
 # ── Defaults ────────────────────────────────────────────────────────
 
 ENV_PROFILE = "MM_PROFILE"
-DEFAULT_PROFILE = "default"
-OLLAMA_PROFILE = "ollama"
-RESERVED_PROFILES = (DEFAULT_PROFILE, OLLAMA_PROFILE)
-IMMUTABLE_PROFILES = frozenset({DEFAULT_PROFILE})
+RESERVED_PROFILES = ("ollama", "gemini", "vlmrun")
+IMMUTABLE_PROFILES = frozenset({"vlmrun"})
+DEFAULT_PROFILE = "ollama"
 
-DEFAULTS = {
+
+OLLAMA_DEFAULTS = {
+    "name": "ollama",
+    "base_url": "http://localhost:11434",
+    "api_key": "",
+    "model": "qwen3.5:0.8",
+}
+
+GEMINI_DEFAULTS = {
+    "name": "gemini",
+    "base_url": "https://openrouter.ai/api/v1",
+    "api_key": "",
+    "model": "google/gemini-2.5-flash-lite",
+}
+
+VLMRUN_DEFAULTS = {
+    "name": "vlmrun",
     "base_url": "https://mm-ctx.ngrok.io/v1",
     "api_key": "",
     "model": "Qwen/Qwen3.5-0.8B",
 }
 
-OLLAMA_DEFAULTS = {
-    "base_url": "http://localhost:11434",
-    "api_key": "",
-    "model": "qwen3.5:0.8",
+RESERVED_DEFAULTS = {
+    "ollama": OLLAMA_DEFAULTS,
+    "gemini": GEMINI_DEFAULTS,
+    "vlmrun": VLMRUN_DEFAULTS,
 }
 
 
@@ -69,10 +91,10 @@ class ProfileUpdateData(TypedDict, total=False):
 
 @dataclass
 class Profile:
-    name: str = "default"
-    base_url: str = DEFAULTS["base_url"]
-    api_key: str = DEFAULTS["api_key"]
-    model: str = DEFAULTS["model"]
+    name: str = RESERVED_DEFAULTS[DEFAULT_PROFILE]["name"]
+    base_url: str = RESERVED_DEFAULTS[DEFAULT_PROFILE]["base_url"]
+    api_key: str = RESERVED_DEFAULTS[DEFAULT_PROFILE]["api_key"]
+    model: str = RESERVED_DEFAULTS[DEFAULT_PROFILE]["model"]
 
 
 # ── Resolution ─────────────────────────────────────────────────────
@@ -83,19 +105,16 @@ def _profiles(file_data: ConfigData) -> dict[str, ProfileData]:
     return cast(dict[str, ProfileData], file_data.setdefault("profile", {}))
 
 
-def get_profile_defaults(profile_name: str = DEFAULT_PROFILE) -> dict[str, str]:
+def get_profile_defaults(profile_name: str) -> dict[str, str]:
     """Return built-in defaults for a profile."""
-    if profile_name == OLLAMA_PROFILE:
-        return dict(OLLAMA_DEFAULTS)
-    return dict(DEFAULTS)
+    if profile_name in RESERVED_PROFILES:
+        return dict(RESERVED_DEFAULTS[profile_name])
+    return dict(RESERVED_DEFAULTS[DEFAULT_PROFILE])
 
 
-def get_builtin_profile_defaults() -> dict[str, dict[str, str]]:
-    """Return built-in profile definitions written into new configs."""
-    return {
-        DEFAULT_PROFILE: get_profile_defaults(DEFAULT_PROFILE),
-        OLLAMA_PROFILE: get_profile_defaults(OLLAMA_PROFILE),
-    }
+def get_default_profiles() -> dict[str, dict[str, str]]:
+    """Return built-in/default profiles written into new configs."""
+    return dict(RESERVED_DEFAULTS)
 
 
 def ensure_builtin_profiles(file_data: ConfigData) -> bool:
@@ -103,14 +122,16 @@ def ensure_builtin_profiles(file_data: ConfigData) -> bool:
     profiles = _profiles(file_data)
     changed = False
 
-    default_profile = cast(ProfileData, dict(DEFAULTS))
-    if profiles.get(DEFAULT_PROFILE) != default_profile:
-        profiles[DEFAULT_PROFILE] = default_profile
-        changed = True
+    for name in RESERVED_PROFILES:
+        expected = {k: v for k, v in RESERVED_DEFAULTS[name].items() if k != "name"}
 
-    if OLLAMA_PROFILE not in profiles:
-        profiles[OLLAMA_PROFILE] = cast(ProfileData, dict(OLLAMA_DEFAULTS))
-        changed = True
+        if name in IMMUTABLE_PROFILES:
+            if profiles.get(name) != expected:
+                profiles[name] = cast(ProfileData, expected)
+                changed = True
+        elif name not in profiles:
+            profiles[name] = cast(ProfileData, expected)
+            changed = True
 
     if "active_profile" not in file_data:
         file_data["active_profile"] = DEFAULT_PROFILE
@@ -122,9 +143,8 @@ def ensure_builtin_profiles(file_data: ConfigData) -> bool:
 def load_profile_config() -> ConfigData:
     """Read config, migrate any legacy flat config, and ensure built-ins exist."""
     file_data = _read_config_file()
-    did_migrate = migrate_to_profiles(file_data)
     did_normalize = ensure_builtin_profiles(file_data)
-    if did_migrate or did_normalize:
+    if did_normalize:
         write_full_config(file_data)
     return file_data
 
@@ -159,36 +179,6 @@ def get_profile_names() -> list[str]:
     if not names:
         names.add(DEFAULT_PROFILE)
     return sorted(names)
-
-
-# ── Migration ──────────────────────────────────────────────────────
-
-
-def migrate_to_profiles(file_data: ConfigData) -> bool:
-    """Migrate a legacy flat config section into the ollama profile once."""
-    if "profile" in file_data:
-        return False
-
-    raw_data = cast(dict[str, object], file_data)
-    legacy_section = raw_data.get("provider")
-    if not isinstance(legacy_section, dict):
-        return False
-
-    legacy_values = cast(dict[str, object], legacy_section)
-    base_url = legacy_values.get("base_url")
-    api_key = legacy_values.get("api_key")
-    model = legacy_values.get("model")
-
-    file_data["profile"] = {
-        OLLAMA_PROFILE: {
-            "base_url": base_url if isinstance(base_url, str) else OLLAMA_DEFAULTS["base_url"],
-            "api_key": api_key if isinstance(api_key, str) else OLLAMA_DEFAULTS["api_key"],
-            "model": model if isinstance(model, str) else OLLAMA_DEFAULTS["model"],
-        }
-    }
-    raw_data.pop("provider", None)
-    file_data.setdefault("active_profile", OLLAMA_PROFILE)
-    return True
 
 
 # ── CRUD ───────────────────────────────────────────────────────────
@@ -267,8 +257,8 @@ def update_profile(
 
     if name in IMMUTABLE_PROFILES:
         raise ValueError(
-            f"The '{name}' profile is managed by mm and cannot be updated. "
-            f"Use '{OLLAMA_PROFILE}' or add a new profile instead."
+            f"The '{name}' profile is managed by mm and cannot be modified. "
+            f"You can modify other profiles or add a new one."
         )
 
     if name not in profiles:
@@ -288,30 +278,47 @@ def update_profile(
 
     if not updates:
         raise ValueError(
-            "No fields to update. Provide at least one of: --base-url, --api-key, --model"
+            "No fields to update. Provide at least one of --base-url, --model, and --api-key."
         )
 
     profiles[name].update(updates)
     return write_full_config(file_data)
 
 
+def reset_profiles() -> Path:
+    """Reset all profiles to built-in defaults.
+
+    Removes custom profiles, restores reserved profiles to default values,
+    and sets the active profile back to DEFAULT_PROFILE. Mode settings are preserved.
+    Returns the config file path.
+    """
+    file_data = load_profile_config()
+    # Replace profile section with only reserved defaults
+    file_data["profile"] = {
+        name: cast(ProfileData, dict(RESERVED_DEFAULTS[name])) for name in RESERVED_PROFILES
+    }
+    file_data["active_profile"] = DEFAULT_PROFILE
+    return write_full_config(file_data)
+
+
 def remove_profile(name: str) -> Path:
     """Remove a profile from the config file. Returns path."""
     if name in RESERVED_PROFILES:
+        removable = [p for p in RESERVED_PROFILES if p not in IMMUTABLE_PROFILES]
+        useable = [p for p in RESERVED_PROFILES if p != name]
         raise ValueError(
             f"The '{name}' profile cannot be removed.\n\n"
             "You can:\n"
-            f"  mm profile use {DEFAULT_PROFILE}                                  # switch back to the default profile\n"
-            f"  mm profile update {OLLAMA_PROFILE} --base-url <url> --model <model>   # change the local ollama profile\n"
+            f"  mm profile use {'|'.join(useable)}                                  # switch back to the default profile\n"
+            f"  mm profile update {'|'.join(removable)} --base-url <url> --model <model>   # update a reserved profile\n"
             "  mm profile add <name> --base-url <url>                           # create a removable profile"
         )
 
     file_data = load_profile_config()
     profiles = _profiles(file_data)
-
     if name not in profiles:
         raise ValueError(f"Profile '{name}' not found.")
-    if name == file_data.get("active_profile", "default"):
+    if name == file_data.get("active_profile", DEFAULT_PROFILE):
         raise ValueError(
             f"Cannot remove the active profile '{name}'. Switch to another profile first."
         )
@@ -327,7 +334,7 @@ def _resolve(key: str, file_data: ConfigData, profile_name: str) -> str:
     if key in file_cfg and file_cfg[key] is not None:
         return str(file_cfg[key])
     defaults = get_profile_defaults(profile_name)
-    return defaults.get(key, DEFAULTS[key])
+    return defaults.get(key, RESERVED_DEFAULTS[DEFAULT_PROFILE][key])
 
 
 def get_profile() -> Profile:

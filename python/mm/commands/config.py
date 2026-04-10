@@ -127,6 +127,40 @@ def init(
     output_console.print(f"[green]Created[/green] {path}")
 
 
+def _find_db_files() -> list:
+    """Return existing database and cache file paths."""
+    from pathlib import Path
+
+    from mm.store.db import MmDatabase
+
+    targets: list[Path] = [MmDatabase.DB_PATH]
+    legacy = MmDatabase.DB_DIR
+    for name in (
+        "cache.db",
+        "cache.db.db",
+        "cache.db.dir",
+        "cache.db.bak",
+        "cache.db.dat",
+        "db.sock",
+        "db.pid",
+    ):
+        p = legacy / name
+        if p not in targets:
+            targets.append(p)
+    return [p for p in targets if p.exists()]
+
+
+def _delete_paths(paths: list) -> None:
+    """Delete a list of file/directory paths."""
+    import shutil
+
+    for p in paths:
+        if p.is_dir():
+            shutil.rmtree(p)
+        else:
+            p.unlink()
+
+
 @config_app.command("reset-db")
 def reset_db(
     yes: Annotated[bool, typer.Option("--yes", "-y", help="Skip confirmation")] = False,
@@ -142,28 +176,9 @@ def reset_db(
       mm config reset-db
       mm config reset-db --yes             # skip confirmation
     """
-    import shutil
-
     from mm.display import output_console
-    from mm.store.db import MmDatabase
 
-    targets = [MmDatabase.DB_PATH]
-    # Also clean up legacy files if they exist
-    legacy = MmDatabase.DB_DIR
-    for name in (
-        "cache.db",
-        "cache.db.db",
-        "cache.db.dir",
-        "cache.db.bak",
-        "cache.db.dat",
-        "db.sock",
-        "db.pid",
-    ):
-        p = legacy / name
-        if p not in targets:
-            targets.append(p)
-
-    existing = [p for p in targets if p.exists()]
+    existing = _find_db_files()
     if not existing:
         output_console.print("[dim]Nothing to reset — no databases or caches found.[/dim]")
         return
@@ -181,13 +196,100 @@ def reset_db(
             output_console.print("[dim]Aborted.[/dim]")
             raise typer.Exit(1)
 
-    for p in existing:
-        if p.is_dir():
-            shutil.rmtree(p)
-        else:
-            p.unlink()
+    _delete_paths(existing)
 
     output_console.print("[green]All databases and caches have been reset.[/green]")
+
+
+@config_app.command("reset-profiles")
+def reset_profiles(
+    yes: Annotated[bool, typer.Option("--yes", "-y", help="Skip confirmation")] = False,
+) -> None:
+    """Reset all profiles to built-in defaults.
+
+    \b
+    Removes custom profiles, restores reserved profiles to their default
+    values, and sets the active profile back to the default.
+    Mode settings are preserved.
+
+    \b
+    Examples:
+      mm config reset-profiles
+      mm config reset-profiles --yes         # skip confirmation
+    """
+    from mm.display import output_console
+    from mm.profile import RESERVED_PROFILES, get_profile_names, reset_profiles
+
+    names = get_profile_names()
+    custom = [n for n in names if n not in RESERVED_PROFILES]
+
+    output_console.print("[bold]This will:[/bold]")
+    output_console.print("  • Restore all reserved profiles to their default values")
+    output_console.print("  • Set active profile back to default")
+    if custom:
+        output_console.print(f"  • Remove custom profiles: {', '.join(custom)}")
+
+    if not yes:
+        confirm = typer.confirm("\nContinue?", default=False)
+        if not confirm:
+            output_console.print("[dim]Aborted.[/dim]")
+            raise typer.Exit(1)
+
+    path = reset_profiles()
+    output_console.print(
+        f"[green]All profiles have been reset to defaults.[/green]  [dim]({path})[/dim]"
+    )
+
+
+@config_app.command("reset")
+def reset_all(
+    yes: Annotated[bool, typer.Option("--yes", "-y", help="Skip confirmation")] = False,
+) -> None:
+    """Reset everything: clear databases and restore profiles to defaults.
+
+    \b
+    Combines reset-db and reset-profiles into a single operation.
+    This action is irreversible.
+
+    \b
+    Examples:
+      mm config reset
+      mm config reset --yes                  # skip confirmation
+    """
+    from mm.display import output_console
+    from mm.profile import RESERVED_PROFILES, get_profile_names, reset_profiles
+
+    existing_db = _find_db_files()
+    names = get_profile_names()
+    custom = [n for n in names if n not in RESERVED_PROFILES]
+
+    output_console.print("[bold]This will:[/bold]")
+    if existing_db:
+        output_console.print("  • Delete databases and caches:")
+        for p in existing_db:
+            output_console.print(f"    {p}")
+    output_console.print("  • Restore all reserved profiles to their default values")
+    output_console.print("  • Set active profile back to default")
+    if custom:
+        output_console.print(f"  • Remove custom profiles: {', '.join(custom)}")
+
+    if not yes:
+        confirm = typer.confirm(
+            "\nThis leads to irreversible data loss. Continue?",
+            default=False,
+        )
+        if not confirm:
+            output_console.print("[dim]Aborted.[/dim]")
+            raise typer.Exit(1)
+
+    _delete_paths(existing_db)
+    path = reset_profiles()
+
+    if existing_db:
+        output_console.print("[green]All databases and caches have been reset.[/green]")
+    output_console.print(
+        f"[green]All profiles have been reset to defaults.[/green]  [dim]({path})[/dim]"
+    )
 
 
 @config_app.command("set")

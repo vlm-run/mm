@@ -2,7 +2,7 @@
 # Install mm — high-performance multi-modal context management CLI
 #
 # Usage:
-#   curl -LsSf https://vlm-run.github.io/mm/dev/installer/install.sh | sh
+#   curl -LsSf https://vlm-run.github.io/mm/install/install.sh | sh
 #
 # Options (via env vars):
 #   MM_VERSION=0.4.0       Install a specific version (default: latest published)
@@ -20,7 +20,7 @@ RED="\033[0;31m"
 CYAN="\033[0;36m"
 RESET="\033[0m"
 
-BASE_URL="https://vlm-run.github.io/mm/dev/installer"
+BASE_URL="https://vlm-run.github.io/mm/install"
 
 info()  { printf "${BOLD}${GREEN}info${RESET}: %s\n" "$1"; }
 warn()  { printf "${BOLD}${YELLOW}warn${RESET}: %s\n" "$1"; }

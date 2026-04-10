@@ -203,14 +203,14 @@ def write_full_config(file_data: ConfigData) -> Path:
 
 def write_platform_config() -> Path:
     """Write the default config with built-in profiles and mode sections."""
-    from mm.profile import DEFAULT_PROFILE, get_builtin_profile_defaults
+    from mm.profile import DEFAULT_PROFILE, get_default_profiles
 
     return write_full_config(
         cast(
             ConfigData,
             {
                 "active_profile": DEFAULT_PROFILE,
-                "profile": get_builtin_profile_defaults(),
+                "profile": get_default_profiles(),
                 "mode": {
                     "fast": {
                         "whisper_model": _MODE_DEFAULTS["fast"].whisper_model,

@@ -243,7 +243,7 @@ jobs:
           destination_dir: dev/metrics
           keep_files: true
 
-  # Deploy installer + wheels + checksums to GitHub Pages at /dev/installer
+  # Deploy installer + wheels + checksums to GitHub Pages at /install
   deploy-installer:
     needs:
       - prepare
@@ -265,36 +265,37 @@ jobs:
 
       - name: Stage installer directory
         run: |
-          mkdir -p _installer/${VERSION}
-          mkdir -p _installer/latest
+          mkdir -p _pages/${VERSION}
+          mkdir -p _pages/latest
+          mkdir -p _pages/simple/mm
 
           # Copy wheels into versioned directory
-          cp dist/*.whl _installer/${VERSION}/
+          cp dist/*.whl _pages/${VERSION}/
 
           # Generate SHA256 checksums manifest
-          cd _installer/${VERSION}
+          cd _pages/${VERSION}
           sha256sum *.whl > SHA256SUMS
           echo "── SHA256SUMS (v${VERSION}) ──"
           cat SHA256SUMS
           cd ../..
 
           # Copy versioned artifacts to latest/ as well
-          cp _installer/${VERSION}/*.whl _installer/latest/
-          cp _installer/${VERSION}/SHA256SUMS _installer/latest/
+          cp _pages/${VERSION}/*.whl _pages/latest/
+          cp _pages/${VERSION}/SHA256SUMS _pages/latest/
 
-          # Place install.sh at the root of the installer path
-          cp install.sh _installer/install.sh
+          # Place install.sh at the root
+          cp install.sh _pages/install.sh
 
       - name: Deploy installer to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./_installer
-          destination_dir: dev/installer
+          publish_dir: ./_pages
+          destination_dir: install
           keep_files: true
 
   # Deploy PEP 503 simple repository index for `uv tool install mm`
-  # Usage: uv tool install mm --index-url https://vlm-run.github.io/mm/dev/installer/simple/
+  # Usage: uv tool install mm --index-url https://vlm-run.github.io/mm/install/simple/
   deploy-simple-index:
     needs:
       - prepare
@@ -315,13 +316,11 @@ jobs:
 
       - name: Generate PEP 503 simple index
         run: |
-          BASE="https://vlm-run.github.io/mm/dev/installer"
+          BASE="https://vlm-run.github.io/mm/install"
           mkdir -p _simple/mm
 
-          # Root index: lists the package name
           echo '<!DOCTYPE html><html><body><a href="mm/">mm</a></body></html>' > _simple/index.html
 
-          # Package index: lists all wheels with sha256 hash fragments
           {
             echo '<!DOCTYPE html>'
             echo '<html><body>'
@@ -341,5 +340,5 @@ jobs:
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./_simple
-          destination_dir: dev/installer/simple
+          destination_dir: install/simple
           keep_files: true
