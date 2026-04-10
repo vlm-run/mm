@@ -243,25 +243,52 @@ jobs:
           destination_dir: dev/metrics
           keep_files: true
 
-  # Deploy install.sh to GitHub Pages (alongside benchmarks at /dev/bench)
-  deploy-install-script:
+  # Deploy installer + wheels + checksums to GitHub Pages at /dev/installer
+  deploy-installer:
     needs:
+      - prepare
       - build
       - sdist
     runs-on: ubuntu-latest
+    env:
+      VERSION: ${{ needs.prepare.outputs.version }}
     permissions:
       contents: write
     steps:
       - uses: actions/checkout@v6
-      - name: Stage install script
-        run: |
-          mkdir -p _pages
-          cp install.sh _pages/install.sh
+      - name: Download all wheel artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: wheels-*
+          path: dist
+          merge-multiple: true
 
-      - name: Deploy install.sh to GitHub Pages
+      - name: Stage installer directory
+        run: |
+          mkdir -p _installer/${VERSION}
+          mkdir -p _installer/latest
+
+          # Copy wheels into versioned directory
+          cp dist/*.whl _installer/${VERSION}/
+
+          # Generate SHA256 checksums manifest
+          cd _installer/${VERSION}
+          sha256sum *.whl > SHA256SUMS
+          echo "── SHA256SUMS (v${VERSION}) ──"
+          cat SHA256SUMS
+          cd ../..
+
+          # Copy versioned artifacts to latest/ as well
+          cp _installer/${VERSION}/*.whl _installer/latest/
+          cp _installer/${VERSION}/SHA256SUMS _installer/latest/
+
+          # Place install.sh at the root of the installer path
+          cp install.sh _installer/install.sh
+
+      - name: Deploy installer to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./_pages
-          destination_dir: install
+          publish_dir: ./_installer
+          destination_dir: dev/installer
           keep_files: true
