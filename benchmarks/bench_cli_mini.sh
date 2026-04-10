@@ -15,6 +15,13 @@ if ! command -v hyperfine &>/dev/null; then
   exit 1
 fi
 
+# Portable stat format: macOS uses -f, Linux uses -c
+if stat -f '%z %N' /dev/null &>/dev/null; then
+  STAT_FMT="-f '%z %N'"
+else
+  STAT_FMT="-c '%s %n'"
+fi
+
 # ---------------------------------------------------------------------------
 # Download benchmark data if missing
 # ---------------------------------------------------------------------------
@@ -55,7 +62,7 @@ hyperfine --warmup 2 --min-runs 10 \
   --command-name "find" \
     "find ${DIR} -type f" \
   --command-name "find + stat (size)" \
-    "find ${DIR} -type f -exec stat -f '%z %N' {} +" \
+    "find ${DIR} -type f -exec stat ${STAT_FMT} {} +" \
   --command-name "find + file (mime)" \
     "find ${DIR} -type f -exec file --brief --mime-type {} +"
 
@@ -197,13 +204,21 @@ fi
 if [ -n "${IMG}" ]; then
   echo ""
   echo "--- L1: mm cat image vs file/mdls ---"
-  hyperfine --warmup 1 --min-runs 10 \
-    --command-name "mm cat image (L1)" \
-      "mm cat '${IMG}' --level 1" \
-    --command-name "file image" \
-      "file '${IMG}'" \
-    --command-name "mdls image (dimensions)" \
-      "mdls -name kMDItemPixelWidth -name kMDItemPixelHeight '${IMG}'"
+  if command -v mdls &>/dev/null; then
+    hyperfine --warmup 1 --min-runs 10 \
+      --command-name "mm cat image (L1)" \
+        "mm cat '${IMG}' --level 1" \
+      --command-name "file image" \
+        "file '${IMG}'" \
+      --command-name "mdls image (dimensions)" \
+        "mdls -name kMDItemPixelWidth -name kMDItemPixelHeight '${IMG}'"
+  else
+    hyperfine --warmup 1 --min-runs 10 \
+      --command-name "mm cat image (L1)" \
+        "mm cat '${IMG}' --level 1" \
+      --command-name "file image" \
+        "file '${IMG}'"
+  fi
 fi
 
 # ===========================================================================
