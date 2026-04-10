@@ -73,12 +73,12 @@ class TestFileConfig:
         assert profile.api_key == "sk-123"
         assert profile.model == "gpt-4o"
 
-    def test_partial_file_keeps_defaults(self, tmp_path: Path):
-        toml = '[profile.ollama]\nmodel = "llama3"\n'
+    def test_partial_file_keeps_user_values(self, tmp_path: Path):
+        toml = '[profile.ollama]\nbase_url = "http://localhost:11434"\napi_key = ""\nmodel = "llama3"\n'
         (tmp_path / "config.toml").write_text(toml)
         profile = get_profile()
-        # Builtin normalization overwrites the ollama profile to defaults
-        assert profile.model == OLLAMA_DEFAULTS["model"]
+        # ollama is mutable — user values are preserved
+        assert profile.model == "llama3"
         assert profile.base_url == OLLAMA_DEFAULTS["base_url"]
         assert profile.api_key == OLLAMA_DEFAULTS["api_key"]
 
@@ -110,28 +110,29 @@ class TestWriteFullConfigSetup:
         assert "[profile.vlmrun]" in contents
         assert 'base_url = "http://a"' in contents
 
-    def test_ollama_profile_is_rewritten_to_builtin_values(self, tmp_path: Path):
+    def test_vlmrun_profile_is_rewritten_to_builtin_values(self, tmp_path: Path):
         (tmp_path / "config.toml").write_text(
             """\
-active_profile = "ollama"
+active_profile = "vlmrun"
 
-[profile.ollama]
+[profile.vlmrun]
 base_url = "http://custom:9999"
 api_key = "secret"
 model = "custom-model"
 """
         )
 
+        set_cli_overrides("vlmrun")
         profile = get_profile()
         assert profile == Profile(
-            name=DEFAULT_PROFILE,
-            base_url=OLLAMA_DEFAULTS["base_url"],
-            api_key=OLLAMA_DEFAULTS["api_key"],
-            model=OLLAMA_DEFAULTS["model"],
+            name=VLMRUN_DEFAULTS["name"],
+            base_url=VLMRUN_DEFAULTS["base_url"],
+            api_key=VLMRUN_DEFAULTS["api_key"],
+            model=VLMRUN_DEFAULTS["model"],
         )
         contents = (tmp_path / "config.toml").read_text()
-        assert f'base_url = "{OLLAMA_DEFAULTS["base_url"]}"' in contents
-        assert f'model = "{OLLAMA_DEFAULTS["model"]}"' in contents
+        assert f'base_url = "{VLMRUN_DEFAULTS["base_url"]}"' in contents
+        assert f'model = "{VLMRUN_DEFAULTS["model"]}"' in contents
 
 
 class TestUpdateModeConfig:
@@ -190,9 +191,8 @@ class TestResetDb:
         (storage_dir / "mm.db").write_text("fake")
 
     def test_reset_deletes_db(self, storage_dir: Path):
-        from typer.testing import CliRunner
-
         from mm.cli import app
+        from typer.testing import CliRunner
 
         self._create_storage(storage_dir)
         assert (storage_dir / "mm.db").exists()
@@ -204,9 +204,8 @@ class TestResetDb:
         assert not (storage_dir / "mm.db").exists()
 
     def test_reset_aborts_without_yes(self, storage_dir: Path):
-        from typer.testing import CliRunner
-
         from mm.cli import app
+        from typer.testing import CliRunner
 
         self._create_storage(storage_dir)
 
@@ -217,9 +216,8 @@ class TestResetDb:
         assert (storage_dir / "mm.db").exists()
 
     def test_reset_confirms_with_y(self, storage_dir: Path):
-        from typer.testing import CliRunner
-
         from mm.cli import app
+        from typer.testing import CliRunner
 
         self._create_storage(storage_dir)
 
@@ -229,9 +227,8 @@ class TestResetDb:
         assert not (storage_dir / "mm.db").exists()
 
     def test_reset_noop_when_empty(self, storage_dir: Path):
-        from typer.testing import CliRunner
-
         from mm.cli import app
+        from typer.testing import CliRunner
 
         runner = CliRunner()
         result = runner.invoke(app, ["config", "reset-db", "--yes"])
@@ -251,9 +248,8 @@ class TestResetProfiles:
         set_active_profile("openai")
 
     def test_reset_profiles_with_yes(self):
-        from typer.testing import CliRunner
-
         from mm.cli import app
+        from typer.testing import CliRunner
 
         self._setup_custom_profiles()
         assert "openai" in get_profile_names()
@@ -278,9 +274,8 @@ class TestResetProfiles:
         assert profile.name == DEFAULT_PROFILE
 
     def test_reset_profiles_aborts_without_yes(self):
-        from typer.testing import CliRunner
-
         from mm.cli import app
+        from typer.testing import CliRunner
 
         self._setup_custom_profiles()
 
@@ -290,9 +285,8 @@ class TestResetProfiles:
         assert "openai" in get_profile_names()
 
     def test_reset_profiles_confirms_with_y(self):
-        from typer.testing import CliRunner
-
         from mm.cli import app
+        from typer.testing import CliRunner
 
         self._setup_custom_profiles()
 
@@ -302,14 +296,14 @@ class TestResetProfiles:
         assert "openai" not in get_profile_names()
 
     def test_reset_profiles_restores_reserved_defaults(self):
-        from typer.testing import CliRunner
-
         from mm.cli import app
         from mm.profile import update_profile
+        from typer.testing import CliRunner
 
         # Modify a mutable reserved profile
         update_profile("gemini", base_url="http://modified:9000", model="modified-model")
         file_data = _read_config_file()
+        assert "profile" in file_data
         assert file_data["profile"]["gemini"]["base_url"] == "http://modified:9000"
 
         runner = CliRunner()
@@ -318,13 +312,13 @@ class TestResetProfiles:
 
         # Gemini should be back to defaults
         file_data = _read_config_file()
+        assert "profile" in file_data
         assert file_data["profile"]["gemini"]["base_url"] == GEMINI_DEFAULTS["base_url"]
         assert file_data["profile"]["gemini"]["model"] == GEMINI_DEFAULTS["model"]
 
     def test_reset_profiles_preserves_mode_settings(self):
-        from typer.testing import CliRunner
-
         from mm.cli import app
+        from typer.testing import CliRunner
 
         update_mode_config("mode.fast.whisper_model", "medium")
         from mm.config import get_mode_config
@@ -339,9 +333,8 @@ class TestResetProfiles:
         assert cfg.whisper_model == "medium"
 
     def test_reset_profiles_shows_custom_in_output(self):
-        from typer.testing import CliRunner
-
         from mm.cli import app
+        from typer.testing import CliRunner
 
         self._setup_custom_profiles()
 
@@ -367,9 +360,8 @@ class TestResetAll:
         (storage_dir / "mm.db").write_text("fake")
 
     def test_reset_all_with_yes(self, storage_dir: Path):
-        from typer.testing import CliRunner
-
         from mm.cli import app
+        from typer.testing import CliRunner
 
         self._create_storage(storage_dir)
         add_profile("openai", base_url="https://api.openai.com/v1", model="gpt-4o")
@@ -392,9 +384,8 @@ class TestResetAll:
         assert profile.name == DEFAULT_PROFILE
 
     def test_reset_all_aborts_without_yes(self, storage_dir: Path):
-        from typer.testing import CliRunner
-
         from mm.cli import app
+        from typer.testing import CliRunner
 
         self._create_storage(storage_dir)
         add_profile("openai", base_url="https://api.openai.com/v1", model="gpt-4o")
@@ -406,9 +397,8 @@ class TestResetAll:
         assert "openai" in get_profile_names()
 
     def test_reset_all_confirms_with_y(self, storage_dir: Path):
-        from typer.testing import CliRunner
-
         from mm.cli import app
+        from typer.testing import CliRunner
 
         self._create_storage(storage_dir)
 
@@ -419,9 +409,8 @@ class TestResetAll:
         assert "reset" in result.output.lower()
 
     def test_reset_all_no_db_still_resets_profiles(self):
-        from typer.testing import CliRunner
-
         from mm.cli import app
+        from typer.testing import CliRunner
 
         add_profile("scratch", base_url="http://scratch", model="scratch-m")
 
@@ -432,9 +421,8 @@ class TestResetAll:
         assert "reset to defaults" in result.output.lower()
 
     def test_reset_all_preserves_mode_settings(self, storage_dir: Path):
-        from typer.testing import CliRunner
-
         from mm.cli import app
+        from typer.testing import CliRunner
 
         self._create_storage(storage_dir)
         update_mode_config("mode.fast.whisper_model", "medium")

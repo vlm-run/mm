@@ -493,8 +493,8 @@ class TestWriteFullConfig:
         write_full_config(data)
         reread = _read_config_file()
         assert _active_profile(reread) == DEFAULT_PROFILE
-        # Builtin profiles are normalized to their defaults
-        assert _profiles(reread)["ollama"]["model"] == OLLAMA_DEFAULTS["model"]
+        # ollama is mutable — user values preserved after roundtrip
+        assert _profiles(reread)["ollama"]["model"] == "m1"
         assert _profiles(reread)["vlmrun"]["model"] == VLMRUN_DEFAULTS["model"]
         assert _profiles(reread)["other"]["model"] == "m2"
         assert _mode_whisper_model(reread, "fast") == "tiny"
