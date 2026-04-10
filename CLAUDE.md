@@ -156,9 +156,9 @@ uv run mm <command> [args]
 | `cat`     | Content extraction (auto-detected by file type) | `--level 0/1/2`, `-n` (head/tail), `--detail`, `--mode`, `--mosaic-*`, `--audio-*`, `--format` |
 | `grep`    | Content search across files | `--kind`, `--ext`, `-C` (context), `--count`, `--level`, `--format` |
 | `sql`     | SQL on files, L2 results, and chunks | `--dir`, `--format`, `--list-tables` |
-| `wc`      | Count files, bytes, lines, estimated tokens | `--kind`, `--by-kind`, `--format` |
+| `wc`      | Count files, size, lines (est.), tokens (est.) | `--kind`, `--by-kind`, `--format` |
 | `bench`   | Benchmark suite (L0/L1/L2) | `--format`, `--rounds` |
-| `config`  | Extraction mode settings | `show`, `init`, `set`, `reset-db` |
+| `config`  | Extraction mode settings | `show`, `init`, `set`, `reset-db`, `reset-profiles`, `reset` |
 | `profile` | Manage LLM provider profiles | `list`, `add`, `update`, `use`, `remove`, `--format` |
 
 ### Consolidated commands

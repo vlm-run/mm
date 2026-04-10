@@ -42,9 +42,9 @@ mm cat photo.png -l 2 --detail               # LLM caption (~80 words)
 | `cat` | Content extraction (auto-detected by file type) | `--level 0/1/2`, `-n`, `--detail`, `--mosaic-*`, `--audio-*`, `--format` |
 | `grep` | Content search — text (L0/L1) and semantic (L2) | `--kind`, `--ext`, `-C`, `--count`, `--level`, `--index`, `--format` |
 | `sql` | SQL queries on file index, L2 results, chunks, and embeddings | `--dir`, `--pre-index`, `--format`, `--list-tables` |
-| `wc` | Count files, bytes, lines, tokens | `--kind`, `--by-kind`, `--format` |
+| `wc` | Count files, size, lines (est.), tokens (est.) | `--kind`, `--by-kind`, `--format` |
 | `bench` | Benchmark suite (L0/L1/L2) | `--format`, `--rounds` |
-| `config` | Extraction mode settings | `show`, `init`, `set`, `reset-db` |
+| `config` | Extraction mode settings | `show`, `init`, `set`, `reset-db`, `reset-profiles`, `reset` |
 | `profile` | Manage LLM provider profiles | `list`, `add`, `update`, `use`, `remove` |
 
 ### find — locate/list, tree, and schema
@@ -78,7 +78,7 @@ mm cat photo.png -l 2                          # LLM caption (~20 words)
 mm cat photo.png -l 2 --detail                 # LLM description (~80 words)
 ```
 
-### wc — count files, bytes, tokens
+### wc — count files, size, tokens
 
 ```bash
 mm wc ~/data --by-kind
