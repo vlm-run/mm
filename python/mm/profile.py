@@ -1,7 +1,7 @@
 """Profile management for mm.
 
 Profile resolution order:
-    --profile CLI flag > MM_PROFILE env > active_profile in file > "default"
+    --profile CLI flag > MM_PROFILE env > active_profile in file > <default>"
 
 Profiles allow multiple model/API configurations in a single config file.
 Each profile stores name, base_url, api_key, and model.
@@ -10,7 +10,7 @@ Use ``mm profile add|update|remove`` to manage profiles, and
 
 Profiles allow multiple LLM provider configurations in a single config file.
 Each profile stores base_url, api_key, and model. One profile is active at a
-time, resolved via: CLI --profile > MM_PROFILE env > active_profile in file > "default".
+time, resolved via: CLI --profile > MM_PROFILE env > active_profile in file > <default>".
 
 TOML layout:
 
@@ -114,7 +114,7 @@ def get_profile_defaults(profile_name: str) -> dict[str, str]:
 
 def get_default_profiles() -> dict[str, dict[str, str]]:
     """Return built-in/default profiles written into new configs."""
-    return RESERVED_DEFAULTS
+    return dict(RESERVED_DEFAULTS)
 
 
 def ensure_builtin_profiles(file_data: ConfigData) -> bool:
@@ -318,7 +318,7 @@ def remove_profile(name: str) -> Path:
     profiles = _profiles(file_data)
     if name not in profiles:
         raise ValueError(f"Profile '{name}' not found.")
-    if name == file_data.get("active_profile", "default"):
+    if name == file_data.get("active_profile", DEFAULT_PROFILE):
         raise ValueError(
             f"Cannot remove the active profile '{name}'. Switch to another profile first."
         )
