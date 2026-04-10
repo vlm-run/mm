@@ -1,6 +1,7 @@
 """Tests for mm configuration resolution.
 
 Validates the priority chain: active profile > defaults.
+Also covers config CLI subcommands: reset-db, reset-profiles, reset.
 """
 
 from __future__ import annotations
@@ -12,17 +13,21 @@ import pytest
 from mm.config import (
     ConfigData,
     ProfileData,
+    _read_config_file,
     set_cli_overrides,
     update_mode_config,
     write_full_config,
 )
 from mm.profile import (
     DEFAULT_PROFILE,
-    DEFAULTS,
+    GEMINI_DEFAULTS,
     OLLAMA_DEFAULTS,
-    OLLAMA_PROFILE,
+    RESERVED_PROFILES,
+    VLMRUN_DEFAULTS,
     Profile,
+    add_profile,
     get_profile,
+    get_profile_names,
 )
 
 
@@ -45,14 +50,14 @@ class TestDefaults:
     def test_defaults_used_when_nothing_set(self):
         profile = get_profile()
         assert profile.name == DEFAULT_PROFILE
-        assert profile.base_url == DEFAULTS["base_url"]
-        assert profile.api_key == DEFAULTS["api_key"]
-        assert profile.model == DEFAULTS["model"]
+        assert profile.base_url == OLLAMA_DEFAULTS["base_url"]
+        assert profile.api_key == OLLAMA_DEFAULTS["api_key"]
+        assert profile.model == OLLAMA_DEFAULTS["model"]
 
 
 class TestFileConfig:
     def test_file_overrides_defaults(self, tmp_path: Path):
-        set_cli_overrides(OLLAMA_PROFILE)
+        set_cli_overrides("gemini")
         profile_data = cast(
             ProfileData,
             {"base_url": "http://remote:8000", "api_key": "sk-123", "model": "gpt-4o"},
@@ -60,7 +65,7 @@ class TestFileConfig:
         write_full_config(
             cast(
                 ConfigData,
-                {"active_profile": OLLAMA_PROFILE, "profile": {OLLAMA_PROFILE: profile_data}},
+                {"active_profile": "gemini", "profile": {"gemini": profile_data}},
             )
         )
         profile = get_profile()
@@ -69,23 +74,13 @@ class TestFileConfig:
         assert profile.model == "gpt-4o"
 
     def test_partial_file_keeps_defaults(self, tmp_path: Path):
-        toml = '[profile.default]\nmodel = "llama3"\n'
+        toml = '[profile.ollama]\nmodel = "llama3"\n'
         (tmp_path / "config.toml").write_text(toml)
         profile = get_profile()
-        assert profile.model == DEFAULTS["model"]
-        assert profile.base_url == DEFAULTS["base_url"]
-        assert profile.api_key == DEFAULTS["api_key"]
-
-    def test_legacy_config_is_migrated_to_ollama_profile(self, tmp_path: Path):
-        toml = '[provider]\nmodel = "llama3"\n'
-        (tmp_path / "config.toml").write_text(toml)
-        profile = get_profile()
-        assert profile.name == OLLAMA_PROFILE
-        assert profile.model == "llama3"
+        # Builtin normalization overwrites the ollama profile to defaults
+        assert profile.model == OLLAMA_DEFAULTS["model"]
         assert profile.base_url == OLLAMA_DEFAULTS["base_url"]
-        contents = (tmp_path / "config.toml").read_text()
-        assert "[provider]" not in contents
-        assert "[profile.ollama]" in contents
+        assert profile.api_key == OLLAMA_DEFAULTS["api_key"]
 
     def test_malformed_file_falls_back(self, tmp_path: Path):
         (tmp_path / "config.toml").write_text("not valid toml {{{}}}}")
@@ -99,9 +94,9 @@ class TestWriteFullConfigSetup:
             cast(
                 ConfigData,
                 {
-                    "active_profile": OLLAMA_PROFILE,
+                    "active_profile": "gemini",
                     "profile": {
-                        OLLAMA_PROFILE: cast(
+                        "gemini": cast(
                             ProfileData, {"base_url": "http://a", "api_key": "k", "model": "m"}
                         )
                     },
@@ -110,27 +105,33 @@ class TestWriteFullConfigSetup:
         )
         assert p.exists()
         contents = p.read_text()
-        assert "[profile.default]" in contents
         assert "[profile.ollama]" in contents
+        assert "[profile.gemini]" in contents
+        assert "[profile.vlmrun]" in contents
         assert 'base_url = "http://a"' in contents
 
-    def test_default_profile_is_rewritten_to_builtin_values(self, tmp_path: Path):
+    def test_ollama_profile_is_rewritten_to_builtin_values(self, tmp_path: Path):
         (tmp_path / "config.toml").write_text(
             """\
-active_profile = "default"
+active_profile = "ollama"
 
-[profile.default]
-base_url = "http://localhost:11434"
+[profile.ollama]
+base_url = "http://custom:9999"
 api_key = "secret"
-model = "qwen3-vl:2b"
+model = "custom-model"
 """
         )
 
         profile = get_profile()
-        assert profile == Profile(name=DEFAULT_PROFILE, **DEFAULTS)
+        assert profile == Profile(
+            name=DEFAULT_PROFILE,
+            base_url=OLLAMA_DEFAULTS["base_url"],
+            api_key=OLLAMA_DEFAULTS["api_key"],
+            model=OLLAMA_DEFAULTS["model"],
+        )
         contents = (tmp_path / "config.toml").read_text()
-        assert 'base_url = "https://mm-ctx.ngrok.io/v1"' in contents
-        assert 'model = "Qwen/Qwen3.5-0.8B"' in contents
+        assert f'base_url = "{OLLAMA_DEFAULTS["base_url"]}"' in contents
+        assert f'model = "{OLLAMA_DEFAULTS["model"]}"' in contents
 
 
 class TestUpdateModeConfig:
@@ -139,9 +140,9 @@ class TestUpdateModeConfig:
             cast(
                 ConfigData,
                 {
-                    "active_profile": OLLAMA_PROFILE,
+                    "active_profile": "ollama",
                     "profile": {
-                        OLLAMA_PROFILE: cast(
+                        "ollama": cast(
                             ProfileData, {"base_url": "http://a", "api_key": "", "model": "m"}
                         )
                     },
@@ -159,9 +160,9 @@ class TestUpdateModeConfig:
             cast(
                 ConfigData,
                 {
-                    "active_profile": OLLAMA_PROFILE,
+                    "active_profile": "ollama",
                     "profile": {
-                        OLLAMA_PROFILE: cast(
+                        "ollama": cast(
                             ProfileData, {"base_url": "http://a", "api_key": "", "model": "m"}
                         )
                     },
@@ -236,3 +237,213 @@ class TestResetDb:
         result = runner.invoke(app, ["config", "reset-db", "--yes"])
         assert result.exit_code == 0
         assert "nothing to reset" in result.output.lower()
+
+
+class TestResetProfiles:
+    """Tests for mm config reset-profiles."""
+
+    def _setup_custom_profiles(self):
+        """Add custom profiles and switch active to a non-default."""
+        add_profile("openai", base_url="https://api.openai.com/v1", model="gpt-4o", api_key="sk-x")
+        add_profile("custom", base_url="http://custom:8000", model="custom-m")
+        from mm.profile import set_active_profile
+
+        set_active_profile("openai")
+
+    def test_reset_profiles_with_yes(self):
+        from typer.testing import CliRunner
+
+        from mm.cli import app
+
+        self._setup_custom_profiles()
+        assert "openai" in get_profile_names()
+        assert "custom" in get_profile_names()
+
+        runner = CliRunner()
+        result = runner.invoke(app, ["config", "reset-profiles", "--yes"])
+        assert result.exit_code == 0
+        assert "reset to defaults" in result.output.lower()
+
+        # Custom profiles removed
+        names = get_profile_names()
+        assert "openai" not in names
+        assert "custom" not in names
+
+        # Reserved profiles present
+        for name in RESERVED_PROFILES:
+            assert name in names
+
+        # Active profile reset to default
+        profile = get_profile()
+        assert profile.name == DEFAULT_PROFILE
+
+    def test_reset_profiles_aborts_without_yes(self):
+        from typer.testing import CliRunner
+
+        from mm.cli import app
+
+        self._setup_custom_profiles()
+
+        runner = CliRunner()
+        result = runner.invoke(app, ["config", "reset-profiles"], input="n\n")
+        assert result.exit_code == 1
+        assert "openai" in get_profile_names()
+
+    def test_reset_profiles_confirms_with_y(self):
+        from typer.testing import CliRunner
+
+        from mm.cli import app
+
+        self._setup_custom_profiles()
+
+        runner = CliRunner()
+        result = runner.invoke(app, ["config", "reset-profiles"], input="y\n")
+        assert result.exit_code == 0
+        assert "openai" not in get_profile_names()
+
+    def test_reset_profiles_restores_reserved_defaults(self):
+        from typer.testing import CliRunner
+
+        from mm.cli import app
+        from mm.profile import update_profile
+
+        # Modify a mutable reserved profile
+        update_profile("gemini", base_url="http://modified:9000", model="modified-model")
+        file_data = _read_config_file()
+        assert file_data["profile"]["gemini"]["base_url"] == "http://modified:9000"
+
+        runner = CliRunner()
+        result = runner.invoke(app, ["config", "reset-profiles", "--yes"])
+        assert result.exit_code == 0
+
+        # Gemini should be back to defaults
+        file_data = _read_config_file()
+        assert file_data["profile"]["gemini"]["base_url"] == GEMINI_DEFAULTS["base_url"]
+        assert file_data["profile"]["gemini"]["model"] == GEMINI_DEFAULTS["model"]
+
+    def test_reset_profiles_preserves_mode_settings(self):
+        from typer.testing import CliRunner
+
+        from mm.cli import app
+
+        update_mode_config("mode.fast.whisper_model", "medium")
+        from mm.config import get_mode_config
+
+        assert get_mode_config("fast").whisper_model == "medium"
+
+        runner = CliRunner()
+        result = runner.invoke(app, ["config", "reset-profiles", "--yes"])
+        assert result.exit_code == 0
+
+        cfg = get_mode_config("fast")
+        assert cfg.whisper_model == "medium"
+
+    def test_reset_profiles_shows_custom_in_output(self):
+        from typer.testing import CliRunner
+
+        from mm.cli import app
+
+        self._setup_custom_profiles()
+
+        runner = CliRunner()
+        result = runner.invoke(app, ["config", "reset-profiles", "--yes"])
+        assert result.exit_code == 0
+        assert "openai" in result.output
+        assert "custom" in result.output
+
+
+class TestResetAll:
+    """Tests for mm config reset (db + profiles)."""
+
+    @pytest.fixture()
+    def storage_dir(self, tmp_path: Path, monkeypatch):
+        db_dir = tmp_path / "mm-storage"
+        db_dir.mkdir()
+        monkeypatch.setattr("mm.store.db.MmDatabase.DB_DIR", db_dir)
+        monkeypatch.setattr("mm.store.db.MmDatabase.DB_PATH", db_dir / "mm.db")
+        return db_dir
+
+    def _create_storage(self, storage_dir: Path):
+        (storage_dir / "mm.db").write_text("fake")
+
+    def test_reset_all_with_yes(self, storage_dir: Path):
+        from typer.testing import CliRunner
+
+        from mm.cli import app
+
+        self._create_storage(storage_dir)
+        add_profile("openai", base_url="https://api.openai.com/v1", model="gpt-4o")
+
+        runner = CliRunner()
+        result = runner.invoke(app, ["config", "reset", "--yes"])
+        assert result.exit_code == 0
+
+        # DB deleted
+        assert not (storage_dir / "mm.db").exists()
+
+        # Profiles reset
+        names = get_profile_names()
+        assert "openai" not in names
+        for name in RESERVED_PROFILES:
+            assert name in names
+
+        # Active profile is default
+        profile = get_profile()
+        assert profile.name == DEFAULT_PROFILE
+
+    def test_reset_all_aborts_without_yes(self, storage_dir: Path):
+        from typer.testing import CliRunner
+
+        from mm.cli import app
+
+        self._create_storage(storage_dir)
+        add_profile("openai", base_url="https://api.openai.com/v1", model="gpt-4o")
+
+        runner = CliRunner()
+        result = runner.invoke(app, ["config", "reset"], input="n\n")
+        assert result.exit_code == 1
+        assert (storage_dir / "mm.db").exists()
+        assert "openai" in get_profile_names()
+
+    def test_reset_all_confirms_with_y(self, storage_dir: Path):
+        from typer.testing import CliRunner
+
+        from mm.cli import app
+
+        self._create_storage(storage_dir)
+
+        runner = CliRunner()
+        result = runner.invoke(app, ["config", "reset"], input="y\n")
+        assert result.exit_code == 0
+        assert not (storage_dir / "mm.db").exists()
+        assert "reset" in result.output.lower()
+
+    def test_reset_all_no_db_still_resets_profiles(self):
+        from typer.testing import CliRunner
+
+        from mm.cli import app
+
+        add_profile("scratch", base_url="http://scratch", model="scratch-m")
+
+        runner = CliRunner()
+        result = runner.invoke(app, ["config", "reset", "--yes"])
+        assert result.exit_code == 0
+        assert "scratch" not in get_profile_names()
+        assert "reset to defaults" in result.output.lower()
+
+    def test_reset_all_preserves_mode_settings(self, storage_dir: Path):
+        from typer.testing import CliRunner
+
+        from mm.cli import app
+
+        self._create_storage(storage_dir)
+        update_mode_config("mode.fast.whisper_model", "medium")
+
+        runner = CliRunner()
+        result = runner.invoke(app, ["config", "reset", "--yes"])
+        assert result.exit_code == 0
+
+        from mm.config import get_mode_config
+
+        cfg = get_mode_config("fast")
+        assert cfg.whisper_model == "medium"

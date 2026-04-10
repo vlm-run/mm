@@ -125,10 +125,13 @@ def _query_files(query: str, directory: Path, fmt: str, *, pre_index: bool = Fal
             columns, rows = _trim_columns(columns, rows)
         _emit(columns, rows, fmt)
     else:
+        from mm.display import output_console
+
+        output_console.print("\n[bold]No indexed files[/bold]\n[dim]---[/dim]")
         _emit([], [], fmt)
 
-    # Compute diff: files on disk but not in DB (only in rich mode, and not when pre-indexing)
-    if not pre_index and fmt == "rich":
+    # Compute diff: files on disk but not in DB (only when pre-indexing)
+    if not pre_index:
         ctx = Context(directory)
         disk_uris = {str(resolved / f.path) for f in ctx.files}
         db_uris_rows = db._connect.execute(
@@ -136,8 +139,7 @@ def _query_files(query: str, directory: Path, fmt: str, *, pre_index: bool = Fal
         ).fetchall()
 
         db_uris = {r[0] for r in db_uris_rows}
-        unindexed = sorted(disk_uris - db_uris)
-        if unindexed:
+        if unindexed := sorted(disk_uris - db_uris):
             _show_unindexed_diff(unindexed, prefix, query, directory)
 
 
@@ -164,6 +166,7 @@ def _show_unindexed_diff(unindexed: list[str], prefix: str, query: str, director
         border_style="yellow",
         header_style="bold yellow",
         title_style="yellow",
+        title_justify="left",
     )
     diff_table.add_column("path", style="white", overflow="fold")
     for uri in unindexed[:5]:
@@ -302,6 +305,9 @@ def _parse_tsv(tsv: str) -> tuple[list[str], list[list[str]]]:
 
 
 def _emit(columns: list[str], rows: list[tuple], fmt: str) -> None:
+    if not columns:
+        return
+
     if fmt in ("json", "dataset-jsonl", "dataset-hf"):
         from mm.display import emit_rows
 

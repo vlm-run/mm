@@ -284,6 +284,22 @@ def update_profile(
     return write_full_config(file_data)
 
 
+def reset_profiles() -> Path:
+    """Reset all profiles to built-in defaults.
+
+    Removes custom profiles, restores reserved profiles to default values,
+    and sets the active profile back to DEFAULT_PROFILE. Mode settings are preserved.
+    Returns the config file path.
+    """
+    file_data = load_profile_config()
+    # Replace profile section with only reserved defaults
+    file_data["profile"] = {
+        name: cast(ProfileData, dict(RESERVED_DEFAULTS[name])) for name in RESERVED_PROFILES
+    }
+    file_data["active_profile"] = DEFAULT_PROFILE
+    return write_full_config(file_data)
+
+
 def remove_profile(name: str) -> Path:
     """Remove a profile from the config file. Returns path."""
     if name in RESERVED_PROFILES:
