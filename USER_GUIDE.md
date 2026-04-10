@@ -15,12 +15,6 @@ Install mm via the pre-built wheels published to GitHub Pages:
 curl -LsSf https://vlm-run.github.io/mm/install/install.sh | sh
 ```
 
-Or via the PEP 503 index:
-
-```bash
-uv tool install mm --index-url https://vlm-run.github.io/mm/install/simple/
-```
-
 ### VLM access
 
 mm requires access to a VLM on a live server for L2 (semantic) operations. Recommended models:
