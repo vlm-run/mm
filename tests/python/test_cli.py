@@ -339,7 +339,9 @@ class TestWc:
         assert r.exit_code == 0
         data = json.loads(r.output)
         assert "files" in data
-        assert "bytes" in data
+        assert "size" in data
+        assert "tokens (est.)" in data
+        assert "tok_per_mb" in data
 
     def test_by_kind_json(self, small_tree: Path):
         r = runner.invoke(app, ["wc", str(small_tree), "--by-kind", "--format", "json"])
@@ -366,7 +368,7 @@ class TestWc:
         row = json.loads(lines[0])
         assert "kind" in row
         assert "files" in row
-        assert "tokens" in row
+        assert "tokens (est.)" in row
 
 
 # ── dataset-hf ──────────────────────────────────────────────────────
