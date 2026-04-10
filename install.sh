@@ -156,6 +156,7 @@ download_wheel() {
     VERSION="${MM_VERSION:-latest}"
     MANIFEST_URL="${BASE_URL}/${VERSION}/SHA256SUMS"
     TMPDIR="$(mktemp -d)"
+    trap 'rm -rf "$TMPDIR"' EXIT
 
     info "fetching manifest for version: ${VERSION}..."
     if ! curl -fsSL "$MANIFEST_URL" -o "${TMPDIR}/SHA256SUMS" 2>/dev/null; then
@@ -227,9 +228,6 @@ install_mm() {
         else
             err "failed to install mm from wheel"
         fi
-
-        # Clean up temp dir
-        rm -rf "$(dirname "$WHEEL_PATH")"
     fi
 }
 
