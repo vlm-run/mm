@@ -1,143 +1,143 @@
 # mm — Use Cases
 
-Practical, realistic scenarios that mm solves today. Each use case maps to existing CLI commands and composable pipelines.
+Scenarios that leverage mm's multimodal awareness, Rust-speed metadata extraction, token estimation, and semantic search. Each maps to existing CLI commands.
 
 ---
 
-## Video
+## Video (20)
 
 ### Surveillance and security
 
-1. **Inventory security footage by camera and date** — Index a NVR export directory. Use `mm find --kind video --sort modified` to list recordings chronologically, `mm cat -l 1` to extract duration/resolution/codec per file without playback.
+1. **Inventory NVR exports by camera and timestamp** — `mm find ~/nvr-export --kind video --sort modified` lists recordings chronologically. `mm cat -l 1` on each extracts resolution, duration, codec, and frame rate — all from native MP4/MKV parsing in Rust, no ffmpeg, <100ms per file.
 
-2. **Estimate cloud storage cost for a video archive** — `mm wc ~/security-cams --kind video` gives total bytes and token estimates. Pipe to a cost model: `mm wc --format json | jq '.size'` to get raw bytes for S3 pricing calculations.
+2. **Verify footage integrity after evidence transfer** — `mm cat evidence.mp4 -l 1` returns the xxh3 content hash. Hash both sides of a transfer to confirm bit-for-bit integrity without re-watching hours of footage.
 
-3. **Find the longest recording in a dashcam folder** — `mm sql "SELECT name, size FROM files WHERE kind='video' ORDER BY size DESC LIMIT 1" --dir ~/dashcam` — size correlates with duration for same-codec footage.
+3. **Identify which recordings are HD vs SD** — `mm find ~/footage --kind video | mm cat -l 1 --format json` extracts resolution per file. Filter in jq or SQL: `mm sql "SELECT name, width, height FROM files WHERE kind='video'" --dir ~/footage` (after L1 populates dimensions).
 
-### Content creation
+4. **Estimate storage cost before archiving to S3** — `mm wc ~/security-cams --kind video --format json` gives total bytes across all video files. One number, directly usable for cost calculations.
 
-4. **Catalog a YouTube download folder** — `mm find ~/youtube --kind video --columns name,size,ext` lists all videos with format info. `mm cat -l 1` on each gives resolution, duration, codec — no ffprobe needed.
+### Content creation and media
 
-5. **Generate keyframe mosaics for video thumbnails** — `mm cat video.mp4 -l 2` extracts keyframes into a grid mosaic image. Use this for quick visual previews of long recordings without watching them.
+5. **Catalog a YouTube download folder without playback** — `mm find ~/youtube --kind video | mm cat -l 1` extracts resolution, duration, codec, and audio track info for every file. No ffprobe installation needed — mm's Rust L1 parses MP4 and MKV natively.
 
-6. **Describe a product demo video for alt-text** — `mm cat demo.mp4 -l 2` produces an LLM-generated scene-by-scene description. Pipe to clipboard: `mm cat demo.mp4 -l 2 | pbcopy`.
+6. **Generate keyframe mosaic thumbnails** — `mm cat lecture.mp4 -l 2` extracts keyframes into a tiled grid image. Useful for creating visual previews of long recordings — one glance shows the content arc without watching.
 
-7. **Find all videos above a resolution threshold** — `mm sql "SELECT name, width, height, size FROM files WHERE kind='video' AND width >= 1920" --dir ~/media` — filter for HD+ content.
+7. **Produce alt-text for a product demo** — `mm cat demo.mp4 -l 2` generates an LLM scene-by-scene description from keyframes. Pipe to clipboard: `mm cat demo.mp4 -l 2 | pbcopy`.
 
-8. **Compare codec usage across a video library** — `mm find ~/videos --kind video | mm cat -l 1 --format json | jq '.[].video_codec'` — check how many files use h264 vs h265 vs av1.
+8. **Compare codec and container usage across a library** — `mm find ~/videos --kind video | mm cat -l 1 --format json` gives per-file codec info. Aggregate to see h264 vs h265 vs av1 distribution — useful before batch transcoding decisions.
 
-### Education and training
+### Education
 
-9. **Index lecture recordings by duration for a syllabus** — `mm find ~/lectures --kind video | mm cat -l 1 --format json | jq '{name: .path, duration: .duration_s}'` — generate a table of lectures with runtimes for scheduling.
+9. **Build a lecture schedule from recording durations** — `mm find ~/lectures --kind video | mm cat -l 1 --format json` returns duration in seconds per file. Sum by folder to estimate total course hours, plan viewing schedules, or allocate transcription budgets.
 
-10. **Estimate transcription cost for a training video library** — `mm wc ~/training-videos --kind video` gives total size. Duration from L1 metadata feeds into Whisper/transcription pricing models.
+10. **Estimate transcription cost for a video library** — `mm find ~/training --kind video | mm cat -l 1 --format json` gives total duration. At known $/minute rates (Whisper, Rev, etc.), calculate the total transcription budget in one pipeline.
 
-11. **Caption a set of instructional videos for accessibility** — `mm find ~/course --kind video | mm cat -l 2` — LLM-generated descriptions for each video, usable as captions or metadata.
+11. **Generate accessibility descriptions for course videos** — `mm find ~/course --kind video | mm cat -l 2` produces LLM-generated scene descriptions. These can serve as content summaries for students who can't watch the videos.
 
 ### Media management
 
-12. **Find duplicate videos across drives** — `mm find /Volumes/Drive1 --kind video --format json` and compare hashes with `mm cat -l 1` output across volumes. The xxh3 hash identifies identical content.
+12. **Detect duplicate videos across volumes** — Run `mm find /Volumes/Drive1 --kind video | mm cat -l 1 --format json` on each volume. Compare xxh3 hashes to find exact duplicates without byte-by-byte comparison. Hash computation uses mmap — fast even on large files.
 
-13. **Split a video archive by year** — `mm sql "SELECT name, strftime('%Y', modified) as year FROM files WHERE kind='video'" --dir ~/archive` — shows the year breakdown for manual or scripted reorganization.
+13. **Assess a GoPro/drone SD card before import** — `mm find /Volumes/GOPRO --tree --depth 1` shows file/size breakdown instantly. `mm wc /Volumes/GOPRO --by-kind` gives the storage split between video, photos, and thumbnails.
 
-14. **Identify videos without audio tracks** — `mm find ~/videos --kind video | mm cat -l 1 --format json | jq 'select(.audio_codec == null) | .path'` — finds silent/muted recordings.
+14. **Find the longest and shortest recordings** — `mm find ~/recordings --kind video | mm cat -l 1 --format json` gives actual duration per file. Sort client-side or via SQL after L1 extraction populates the metadata.
 
-15. **Assess a GoPro SD card before import** — `mm find /Volumes/GOPRO --tree --depth 1` gives the file/size breakdown instantly. `mm wc /Volumes/GOPRO` shows total storage consumed.
+### Compliance
 
-### Compliance and legal
+15. **Create a chain-of-custody file list for body camera footage** — `mm find ~/evidence --kind video --columns name,size,modified --sort modified --format csv > evidence_manifest.csv` — timestamped, sized, sortable. Attach to case files.
 
-16. **Inventory body camera footage for a case** — `mm find ~/evidence --kind video --columns name,size,modified --sort modified` produces a chronological evidence list with file sizes for chain-of-custody documentation.
+16. **Estimate LLM token cost before processing video evidence** — `mm cat bodycam.mp4 -l 1 --format json` gives duration and resolution. Combined with keyframe rate and tile-based token estimates from `metrics/`, calculate the exact API cost before committing.
 
-17. **Verify video integrity after transfer** — `mm cat video.mp4 -l 1` returns the xxh3 hash. Compare before/after transfer to confirm no corruption.
+### Pipelines
 
-18. **Estimate token cost for sending video to an LLM** — `mm cat video.mp4 -l 1 --format json | jq '.duration_s'` gives duration. Multiply by keyframe rate and per-frame token estimate to get total cost.
+17. **Build a video metadata table for a media asset manager** — `mm find ~/dam --kind video | mm cat -l 1 --format json > video_l1.json` — structured metadata (resolution, duration, codec, fps, hash) for every video, ready for database import.
 
-### Video pipelines
+18. **Pre-screen videos by size before expensive L2 processing** — `mm find ~/inbox --kind video --max-size 100mb` filters to small files first. Run `mm cat -l 2` only on the filtered set to control LLM costs.
 
-19. **Build a video metadata CSV for a media asset manager** — `mm find ~/media --kind video | mm cat -l 1 --format json > video_metadata.json` — structured metadata for every video file, ready for database import.
+19. **Generate a searchable video index with scene descriptions** — `mm find ~/archive --kind video | mm cat -l 2 --format json > scenes.json` — each entry has keyframe-based scene descriptions. Load into a search index for text-based video retrieval.
 
-20. **Pre-screen videos before expensive LLM processing** — `mm wc ~/inbox --kind video` shows total size. `mm find ~/inbox --kind video --max-size 100mb` filters to processable files. Run L2 only on the filtered set.
-
----
-
-## Documents (PDF, DOCX, PPTX)
-
-21. **Search across hundreds of PDFs for a legal term** — `mm grep "force majeure" ~/contracts --kind document` searches extracted text across all document types.
-
-22. **Estimate LLM cost to process a document archive** — `mm wc ~/legal --kind document --format json` gives total token estimate. Multiply by provider price per Mtok.
-
-23. **Find all scanned (image-only) PDFs** — `mm find ~/docs --ext pdf | mm cat -l 1 --format json | jq 'select(.text == "" or .text == null) | .path'` — identifies PDFs that need OCR.
-
-24. **Extract text from a 500-page PDF for RAG chunking** — `mm cat large_report.pdf -l 1` extracts full text via pypdfium2. Pipe to a chunker or directly to an embedding pipeline.
-
-25. **Create a document inventory with page counts** — `mm find ~/archive --kind document | mm cat -l 1 --format json | jq '{path: .path, pages: .pages}'` — quick audit of document sizes.
-
-26. **Compare document storage across departments** — `mm sql "SELECT parent, COUNT(*) as docs, ROUND(SUM(size)/1e6,1) as mb FROM files WHERE kind='document' GROUP BY parent ORDER BY mb DESC" --dir ~/shared`.
+20. **Audit a video archive for codec migration planning** — `mm find ~/archive --kind video | mm cat -l 1 --format json` reveals which files use legacy codecs (h264 baseline) vs modern (h265, av1). Prioritize transcoding by file size × codec age.
 
 ---
 
-## Images
+## Documents (8)
 
-27. **Organize photos by EXIF date** — `mm find ~/photos --kind image | mm cat -l 1 --format json | jq '{path: .path, date: .exif_date}'` — extract dates for sorting into year/month folders.
+21. **Full-text search across a PDF collection** — `mm grep "force majeure" ~/contracts --kind document` searches extracted text from all PDFs/DOCX/PPTX. Returns file paths and matching lines — no manual opening of each file.
 
-28. **Find all high-resolution images for print** — `mm sql "SELECT name, width, height, size FROM files WHERE kind='image' AND width >= 3000" --dir ~/assets` — filter for print-quality images.
+22. **Estimate LLM ingestion cost for a document archive** — `mm wc ~/legal --kind document` gives total file count, bytes, and estimated tokens. Multiply tokens by provider $/Mtok for a budget estimate.
 
-29. **Caption images for a dataset** — `mm find ~/unlabeled --kind image | mm cat -l 2 --format json` — LLM-generated descriptions for each image. Output as JSONL for fine-tuning.
+23. **Identify scanned (image-only) PDFs that need OCR** — `mm cat scanned.pdf -l 1` returns `[No extractable text — this PDF may contain scanned images only]` for image-only PDFs. Batch-check: run across all PDFs and flag empty text responses.
 
-30. **Find near-duplicate images via perceptual hash** — mm computes pHash for every image at L1. Images with hamming distance < 8 are near-duplicates — useful for deduplication before training.
+24. **Extract text from a large PDF for RAG chunking** — `mm cat report.pdf -l 1` extracts full text via pypdfium2. Pipe directly to a chunker or embedding pipeline. Works on 500+ page documents.
 
-31. **Audit image formats in a web project** — `mm sql "SELECT ext, COUNT(*) as n, ROUND(SUM(size)/1e6,1) as mb FROM files WHERE kind='image' GROUP BY ext ORDER BY n DESC" --dir ~/site/assets` — check PNG vs WebP vs AVIF adoption.
+25. **Compare document volume across directory groups** — `mm sql "SELECT parent, COUNT(*) as docs, ROUND(SUM(size)/1e6,1) as mb FROM files WHERE kind='document' GROUP BY parent ORDER BY mb DESC" --dir ~/shared` — shows which teams or projects have the most document mass.
 
-32. **Estimate token cost for a batch of product photos** — `mm wc ~/products --kind image` gives file count. Each image's token cost depends on resolution: `mm find ~/products --kind image | mm cat -l 1 --format json | jq '.width, .height'` feeds into the tile-based token estimator.
+26. **Search for specific clauses across contract PDFs** — `mm grep "indemnification" ~/contracts --kind document -C 2` — returns matching lines with 2 lines of context, across all extractable documents in the directory.
 
----
+27. **Semantic search across documents** — `mm grep "revenue forecast" ~/reports -l 2 --kind document` — vector similarity search across embedded document chunks. Finds conceptually related content, not just keyword matches.
 
-## Audio
-
-33. **Catalog a podcast archive** — `mm find ~/podcasts --kind audio --columns name,size,ext --sort size --reverse` lists episodes by size. `mm cat -l 1` on each gives duration and codec.
-
-34. **Estimate transcription cost for an audio library** — `mm wc ~/audio --kind audio` gives total bytes. `mm find ~/audio --kind audio | mm cat -l 1 --format json | jq '.duration_s'` gives total duration for Whisper pricing.
-
-35. **Find audio files over 1 hour** — `mm find ~/recordings --kind audio | mm cat -l 1 --format json | jq 'select(.duration_s > 3600) | .path'`.
-
-36. **Transcribe and summarize a meeting recording** — `mm cat meeting.mp3 -l 2` sends audio through the LLM pipeline (extraction + transcription + summarization).
+28. **Audit file formats in a document archive** — `mm sql "SELECT ext, COUNT(*) as n, ROUND(SUM(size)/1e6,1) as mb FROM files WHERE kind='document' GROUP BY ext ORDER BY n DESC" --dir ~/archive` — see PDF vs DOCX vs PPTX distribution.
 
 ---
 
-## Code and development
+## Images (8)
 
-37. **Token budget check before sending a codebase to an LLM** — `mm wc ~/project --kind code` — instant answer: does this fit in a 200K context window?
+29. **Extract EXIF metadata for photo organization** — `mm find ~/photos --kind image | mm cat -l 1 --format json` returns dimensions, MIME, hash, and EXIF fields (camera, date, GPS) per file. Use for sorting into date/location folders.
 
-38. **Find the largest source files** — `mm find ~/project --kind code --sort size --reverse --limit 10` — identify refactoring candidates.
+30. **Find print-quality images by resolution** — `mm sql "SELECT name, width, height FROM files WHERE kind='image' AND width >= 3000 ORDER BY width DESC" --dir ~/assets` — filter for images that meet minimum print DPI requirements.
 
-39. **Search for TODO/FIXME across all code** — `mm grep "TODO\|FIXME" ~/project --kind code --count` — summary of technical debt per file.
+31. **Caption images for fine-tuning datasets** — `mm find ~/unlabeled --kind image | mm cat -l 2 --format json` — LLM-generated descriptions for each image. Each entry is an image-caption pair, directly usable as JSONL training data.
 
-40. **Generate a project structure description** — `mm find ~/project --tree --depth 3 | llm -s "Describe this project"` — automatic README material.
+32. **Detect near-duplicate images** — mm computes perceptual hashes (pHash) via DCT in Rust. Two images with hamming distance < 8 are near-duplicates regardless of resize or mild compression — useful for deduplicating training sets or photo libraries.
 
-41. **Compare code volume across languages** — `mm sql "SELECT ext, COUNT(*) as files, ROUND(SUM(size)/1e3,1) as kb FROM files WHERE kind='code' GROUP BY ext ORDER BY files DESC" --dir ~/project`.
+33. **Audit image format adoption in a web project** — `mm sql "SELECT ext, COUNT(*) as n, ROUND(SUM(size)/1e6,1) as mb FROM files WHERE kind='image' GROUP BY ext ORDER BY mb DESC" --dir ~/site/public` — see how much bandwidth is wasted on PNG vs WebP vs AVIF.
+
+34. **Estimate token cost for batch image processing** — Image token cost depends on resolution (tile-based). `mm find ~/products --kind image | mm cat -l 1 --format json` gives per-image dimensions. The `metrics/` dashboard calculates exact tile counts and provider costs per resolution tier.
+
+35. **Find images without EXIF data** — `mm find ~/photos --kind image | mm cat -l 1 --format json` — images without camera/date/GPS fields are likely screenshots, downloads, or synthetic. Useful for separating photos from non-photo images.
+
+36. **Semantic search across images** — `mm grep "sunset over ocean" ~/photos -l 2` — vector similarity search over image embeddings. Returns images whose LLM-generated captions are semantically close to the query.
 
 ---
 
-## Cross-modal and agentic
+## Audio (5)
 
-42. **Triage a Downloads folder** — `mm wc ~/Downloads --by-kind` shows the breakdown. `mm find ~/Downloads --tree --depth 1` gives visual structure. An agent can then organize by kind and date.
+37. **Catalog a podcast archive by duration** — `mm find ~/podcasts --kind audio | mm cat -l 1 --format json` extracts duration, codec, and sample rate per file. Sort by duration to find the longest episodes or estimate total listening time.
 
-43. **Build a multimodal project digest** — Combine `mm find --tree`, `mm wc --by-kind`, and `mm grep "TODO"` into a single prompt for an LLM to generate a standup summary.
+38. **Estimate transcription cost** — `mm find ~/audio --kind audio | mm cat -l 1 --format json` gives per-file duration. Sum durations and multiply by $/minute for Whisper, Rev, or Deepgram pricing.
 
-44. **Audit storage across file types** — `mm sql "SELECT kind, COUNT(*) as n, ROUND(SUM(size)/1e9,2) as gb FROM files GROUP BY kind ORDER BY gb DESC" --dir ~/` — whole-disk breakdown by semantic kind.
+39. **Find long recordings that need chunking** — Audio files over 80 seconds exceed Gemini's single-part embedding limit. `mm find ~/recordings --kind audio | mm cat -l 1 --format json` identifies files that need `audio_parts()` chunking before embedding.
 
-45. **Find all files modified today** — `mm sql "SELECT name, kind, size FROM files WHERE date(modified) = date('now') ORDER BY modified DESC" --dir ~/project`.
+40. **Summarize a meeting recording** — `mm cat meeting.mp3 -l 2` runs the full pipeline: audio extraction, transcription, and LLM summarization. Returns a structured summary without manual transcription.
 
-46. **Semantic search across all media types** — `mm grep "quarterly revenue" ~/shared -l 2` — searches PDFs, images (via captions), and video (via keyframe descriptions) with vector similarity.
+41. **Assess a field recording SD card** — `mm find /Volumes/RECORDER --tree --depth 1` shows the directory structure. `mm wc /Volumes/RECORDER --kind audio` gives total duration and storage. Decide what to import before copying gigabytes.
 
-47. **Export a file inventory to Parquet** — `mm find ~/data --format json | duckdb -c "COPY (SELECT * FROM read_json('/dev/stdin')) TO 'inventory.parquet' (FORMAT PARQUET)"`.
+---
 
-48. **Generate dataset labels from a media directory** — `mm find ~/unlabeled --kind image | mm cat -l 2 --format json` produces image-caption pairs. Redirect to JSONL for fine-tuning workflows.
+## Code and development (5)
 
-49. **Pre-flight check before uploading to a cloud service** — `mm wc ~/upload` gives total size, file count, and token estimate. `mm find ~/upload --min-size 100mb` flags oversized files before the upload starts.
+42. **Check if a codebase fits in an LLM context window** — `mm wc ~/project --kind code` gives file count, total bytes, and estimated tokens in one line. Instant answer: does this fit in 200K tokens?
 
-50. **Create an invoice summary from scanned documents** — `mm find ~/invoices --kind document | mm cat -l 2 --format json` — LLM extracts amounts and dates from each document. Pipe to `jq` to build a markdown table.
+43. **Find refactoring candidates by file size** — `mm find ~/project --kind code --sort size --reverse --limit 10` — the largest source files are often the ones most in need of splitting.
 
-51. **Monitor a recording directory for new files** — `mm find ~/recordings --sort modified --reverse --limit 5` — quick check of the most recent additions without navigating the filesystem.
+44. **Audit technical debt** — `mm grep "TODO\|FIXME\|HACK" ~/project --kind code --count` — per-file counts of debt markers. Pipe to an LLM for triage: `mm grep "TODO" --kind code | llm -s "Prioritize these by severity"`.
 
-52. **Batch-extract metadata for a digital asset manager** — `mm find ~/dam --format json > manifest.json` — L0 metadata for every file. `mm find ~/dam | mm cat -l 1 --format json > l1.json` — L1 content metadata. Both are database-ready.
+45. **Compare code volume across languages** — `mm sql "SELECT ext, COUNT(*) as files, ROUND(SUM(size)/1e3,1) as kb FROM files WHERE kind='code' GROUP BY ext ORDER BY files DESC" --dir ~/project` — understand the language mix in a polyglot repo.
+
+46. **Generate a project overview for onboarding** — `mm find ~/project --tree --depth 3` produces a complete directory structure. Combined with `mm wc --by-kind`, a new team member immediately sees what types of content exist and how they're organized.
+
+---
+
+## Cross-modal (6)
+
+47. **Triage a Downloads folder by media type** — `mm wc ~/Downloads --by-kind` shows the breakdown: how much is video, documents, images, etc. `mm find ~/Downloads --tree --depth 1` gives the visual layout. An agent uses this to propose an organization plan.
+
+48. **Semantic search across all media types simultaneously** — `mm grep "quarterly revenue" ~/shared -l 2` searches PDFs (extracted text), images (via LLM captions), and video (via keyframe descriptions) in a single query using vector similarity.
+
+49. **Build a multimodal evidence package** — For a construction project with permits (PDF), site photos (JPEG), and walkthrough video (MP4): `mm find ~/project --tree` shows everything, `mm wc --by-kind` quantifies it, and `mm cat -l 1` on each file gives structured metadata. One directory becomes a queryable index across all media types.
+
+50. **Create an invoice summary from mixed document formats** — `mm find ~/invoices --kind document | mm cat -l 2 --format json` — the LLM extracts amounts, dates, and vendor names from PDFs, DOCX, and scanned documents. Output is structured JSON ready for aggregation.
+
+51. **Estimate total LLM cost for a mixed-media directory** — `mm wc ~/data --by-kind --format json` gives token estimates broken down by kind. Feed each kind's token count into the provider-specific pricing from `metrics/` to get a per-kind and total cost estimate.
+
+52. **Batch-extract metadata for a digital asset manager** — `mm find ~/dam --format json > l0.json` for file-level metadata. `mm find ~/dam | mm cat -l 1 --format json > l1.json` for content metadata (text, dimensions, duration, hash, EXIF). Both are database-ready — one L0 scan at ~0.02ms/file, one L1 pass for richer extraction.
