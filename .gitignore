@@ -17,6 +17,7 @@ venv/
 # Testing / benchmarks
 .pytest_cache/
 .benchmarks/
+benchmarks/data/
 htmlcov/
 .coverage
 
