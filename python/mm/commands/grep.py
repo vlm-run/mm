@@ -8,7 +8,7 @@ from typing import Annotated, Optional
 
 import typer
 
-from mm.pipe import read_paths_from_stdin
+from mm.pipe import read_paths_from_stdin, resolve_piped_paths
 
 
 def grep_cmd(
@@ -83,8 +83,12 @@ def grep_cmd(
 
     files_to_search = ctx.files
     if stdin_paths:
-        stdin_set = set(stdin_paths)
+        stdin_set = resolve_piped_paths(stdin_paths, ctx.root)
         files_to_search = [f for f in files_to_search if f.path in stdin_set]
+
+    # Prefix paths so they're resolvable from CWD when piped.
+    dir_prefix = str(directory)
+    _pfx = (lambda p: f"{dir_prefix}/{p}") if dir_prefix != "." else (lambda p: p)
 
     for f in files_to_search:
         try:
@@ -108,7 +112,7 @@ def grep_cmd(
                     file_match_count += 1
                     if not count:
                         match_entry: dict = {
-                            "path": f.path,
+                            "path": _pfx(f.path),
                             "line_number": i + 1,
                             "line": line,
                         }
@@ -119,7 +123,7 @@ def grep_cmd(
                         all_matches.append(match_entry)
 
             if file_match_count > 0:
-                file_counts[f.path] = file_match_count
+                file_counts[_pfx(f.path)] = file_match_count
         except Exception:
             continue
 

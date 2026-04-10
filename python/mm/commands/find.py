@@ -8,7 +8,7 @@ from typing import Annotated, Optional
 
 import typer
 
-from mm.pipe import read_paths_from_stdin
+from mm.pipe import read_paths_from_stdin, resolve_piped_paths
 
 COLUMN_DOCS: dict[str, str] = {
     "path": "Relative path from the scanned root directory",
@@ -172,13 +172,22 @@ def _find_table(
         if fmt in ("json", "dataset-jsonl", "dataset-hf"):
             from mm.display import emit_rows
 
-            emit_rows(fmt, json_mod.loads(scanner.to_json_fast(**filter_args)))
+            rows = json_mod.loads(scanner.to_json_fast(**filter_args))
+            # Prefix relative paths with the directory argument so they're
+            # resolvable from CWD when piped to other commands.
+            dir_prefix = str(directory)
+            if dir_prefix != ".":
+                for row in rows:
+                    row["path"] = f"{dir_prefix}/{row['path']}"
+            emit_rows(fmt, rows)
         else:
             entries = json_mod.loads(scanner.to_json_fast(**filter_args))
+            dir_prefix = str(directory)
             sep = "," if fmt == "csv" else "\t"
             print(f"kind{sep}size{sep}path")
             for entry in entries:
-                print(f"{entry['kind']}{sep}{entry['size']}{sep}{entry['path']}")
+                p = f"{dir_prefix}/{entry['path']}" if dir_prefix != "." else entry["path"]
+                print(f"{entry['kind']}{sep}{entry['size']}{sep}{p}")
         return
 
     from mm.context import Context
@@ -188,6 +197,17 @@ def _find_table(
         ctx = ctx.filter(kind=kind, ext=ext, min_size=min_size, max_size=max_size)
 
     table = ctx.to_arrow()
+
+    # Prefix relative paths with the directory argument so they're
+    # resolvable from CWD when piped to other commands.
+    dir_prefix = str(directory)
+    if dir_prefix != "." and "path" in table.column_names:
+        import pyarrow as pa
+
+        old_paths = table.column("path").to_pylist()
+        new_paths = [f"{dir_prefix}/{p}" for p in old_paths]
+        idx = table.column_names.index("path")
+        table = table.set_column(idx, "path", pa.array(new_paths, type=pa.utf8()))
 
     if name:
         import re as re_mod
@@ -203,7 +223,8 @@ def _find_table(
     if stdin_paths:
         from mm.query import query_arrow_table
 
-        path_list = ", ".join(f"'{p}'" for p in stdin_paths)
+        resolved = resolve_piped_paths(stdin_paths, directory)
+        path_list = ", ".join(f"'{p}'" for p in resolved)
         table = query_arrow_table(table, f"SELECT * FROM files WHERE path IN ({path_list})")
 
     if depth is not None:
