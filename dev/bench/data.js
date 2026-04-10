@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1775826897274,
+  "lastUpdate": 1775831680963,
   "repoUrl": "https://github.com/vlm-run/mm",
   "entries": {
     "mm Rust Benchmarks": [
@@ -3023,6 +3023,260 @@ window.BENCHMARK_DATA = {
           {
             "name": "wc/count_entries/500",
             "value": 1593379.8449074072,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "20521315+nwaughachukwuma@users.noreply.github.com",
+            "name": "Chukwuma Nwaugha",
+            "username": "nwaughachukwuma"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "fcdc52c5f8d381ca5f6d7414644962b7e72efb56",
+          "message": "Refine profile setup and management (#37)\n\n## Summary\n\nRestructures profiles around three reserved defaults (`ollama`,\n`gemini`, `vlmrun`), adds `config reset` commands, and makes `wc` output\nidentical across all formats. Plus a fix for an OOM risk in Rust line\ncounting.\n\n## Changes\n\n- **Profile system**: three reserved profiles (ollama, gemini, vlmrun)\nreplace the old default/ollama pair. vlmrun is immutable; ollama/gemini\nare updatable but not removable. Custom profiles remain fully\nmanageable.\n- **Config reset commands**: \n- `mm config reset-profiles` resets profiles to defaults (preserves mode\nsettings).\n   - `mm config reset` does the same plus clears the DB. \n   - both support `--yes/-y`.\n- **Tests and docs**: test suite aligned with new profile structure; all\ndocs updated with new field names and config subcommands.\n\n## How to test\n\n```bash\nmake develop\n\n# profile + reset workflow\nmm profile list\nmm profile add scratch --base-url http://x --model m\nmm config reset-profiles --yes\nmm profile list   # scratch gone, reserved profiles restored\nmm config reset --yes   # clears DB + resets profiles\n\n# run tests - rust + python\nmake test\n```\n\ncc @spillai",
+          "timestamp": "2026-04-10T15:14:17+01:00",
+          "tree_id": "c6ae2fd61468f65e8cb9bf1edbd8b41c83150cb7",
+          "url": "https://github.com/vlm-run/mm/commit/fcdc52c5f8d381ca5f6d7414644962b7e72efb56"
+        },
+        "date": 1775831679894,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "directory_hash/directory_hash/1000_files",
+            "value": 2927821.0694444445,
+            "unit": "ns"
+          },
+          {
+            "name": "directory_hash/directory_hash/100_files",
+            "value": 444031.41485714284,
+            "unit": "ns"
+          },
+          {
+            "name": "directory_hash/directory_hash/500_files",
+            "value": 1542954.710897436,
+            "unit": "ns"
+          },
+          {
+            "name": "find_filter/kind_and_name/1000",
+            "value": 458889.32541925757,
+            "unit": "ns"
+          },
+          {
+            "name": "find_filter/kind_and_name/5000",
+            "value": 2278136.021739131,
+            "unit": "ns"
+          },
+          {
+            "name": "find_filter/name_regex/1000",
+            "value": 508713.32946428575,
+            "unit": "ns"
+          },
+          {
+            "name": "find_filter/name_regex/5000",
+            "value": 2259818.4347826084,
+            "unit": "ns"
+          },
+          {
+            "name": "find_filter/name_substring/1000",
+            "value": 446262.71975554514,
+            "unit": "ns"
+          },
+          {
+            "name": "find_filter/name_substring/5000",
+            "value": 2203577.7608695654,
+            "unit": "ns"
+          },
+          {
+            "name": "find_filter/no_filter/1000",
+            "value": 3287971.5625,
+            "unit": "ns"
+          },
+          {
+            "name": "find_filter/no_filter/5000",
+            "value": 16521425.75,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_large_files/fast_fingerprint/100MB",
+            "value": 21747.77715651135,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_large_files/fast_fingerprint/200MB",
+            "value": 22730.345182682686,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_large_files/fast_fingerprint/50MB",
+            "value": 22348.739578156063,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_large_files/full_hash_mmap/100MB",
+            "value": 6168915.577956989,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_large_files/full_hash_mmap/200MB",
+            "value": 12634057.197023809,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_large_files/full_hash_mmap/50MB",
+            "value": 3032618.2735655736,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_strategies/fast_fingerprint/10MB",
+            "value": 21504.104203283998,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_strategies/fast_fingerprint/1KB",
+            "value": 11545.57473796266,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_strategies/fast_fingerprint/1MB",
+            "value": 20328.131578947367,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_strategies/fast_fingerprint/64KB",
+            "value": 15693.044403744403,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_strategies/full_hash_mmap/10MB",
+            "value": 452079.4203301127,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_strategies/full_hash_mmap/1KB",
+            "value": 10694.240693772952,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_strategies/full_hash_mmap/1MB",
+            "value": 76713.52849002849,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_strategies/full_hash_mmap/64KB",
+            "value": 15720.795414462082,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_strategies/full_hash_read/10MB",
+            "value": 777601.5416666667,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_strategies/full_hash_read/1KB",
+            "value": 5122.281918812035,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_strategies/full_hash_read/1MB",
+            "value": 82700.41589026916,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_strategies/full_hash_read/64KB",
+            "value": 9831.936512426753,
+            "unit": "ns"
+          },
+          {
+            "name": "l0_index/1000",
+            "value": 4376956.375,
+            "unit": "ns"
+          },
+          {
+            "name": "l0_index/10000",
+            "value": 32384972.25,
+            "unit": "ns"
+          },
+          {
+            "name": "l0_walk/1000",
+            "value": 4279645.208333334,
+            "unit": "ns"
+          },
+          {
+            "name": "l0_walk/10000",
+            "value": 30626159.25,
+            "unit": "ns"
+          },
+          {
+            "name": "l1_code_extract/10",
+            "value": 51750.97640708556,
+            "unit": "ns"
+          },
+          {
+            "name": "l1_code_extract/100",
+            "value": 545981.52,
+            "unit": "ns"
+          },
+          {
+            "name": "l1_image_extract/10",
+            "value": 2092388.3333333333,
+            "unit": "ns"
+          },
+          {
+            "name": "l1_image_extract/50",
+            "value": 13453344.25,
+            "unit": "ns"
+          },
+          {
+            "name": "phash/hamming_distance",
+            "value": 0.3113850410305006,
+            "unit": "ns"
+          },
+          {
+            "name": "phash/phash/1024x1024",
+            "value": 23288400.769230768,
+            "unit": "ns"
+          },
+          {
+            "name": "phash/phash/2048x2048",
+            "value": 90259144,
+            "unit": "ns"
+          },
+          {
+            "name": "phash/phash/256x256",
+            "value": 1420498.0538441145,
+            "unit": "ns"
+          },
+          {
+            "name": "phash/phash/64x64",
+            "value": 144675.6679526011,
+            "unit": "ns"
+          },
+          {
+            "name": "wc/count_and_serialize/100",
+            "value": 462011.0832518736,
+            "unit": "ns"
+          },
+          {
+            "name": "wc/count_and_serialize/500",
+            "value": 2201117.9130434785,
+            "unit": "ns"
+          },
+          {
+            "name": "wc/count_entries/100",
+            "value": 454464.66894257703,
+            "unit": "ns"
+          },
+          {
+            "name": "wc/count_entries/500",
+            "value": 2197397.5652173916,
             "unit": "ns"
           }
         ]
