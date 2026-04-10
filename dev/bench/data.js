@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1775771579745,
+  "lastUpdate": 1775826897274,
   "repoUrl": "https://github.com/vlm-run/mm",
   "entries": {
     "mm Rust Benchmarks": [
@@ -2769,6 +2769,260 @@ window.BENCHMARK_DATA = {
           {
             "name": "phash/phash/64x64",
             "value": 145386.84740051348,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "20521315+nwaughachukwuma@users.noreply.github.com",
+            "name": "Chukwuma Nwaugha",
+            "username": "nwaughachukwuma"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "7c76b3f3a476b4efdc8bf5eef3273df3c4fe1565",
+          "message": "move logic for computing wc metrics values to rust (#36)\n\n* move logic for computing wc metrics values to rust\n\n* Refactor wc command output fields to use canonical names and update tests accordingly\n\n* Update `wc` command documentation to reflect changes in output fields and metrics\n\n* Optimize document token and line counting in wc command",
+          "timestamp": "2026-04-10T13:54:41+01:00",
+          "tree_id": "9499af78c17b5e6cd53ca772c46b351adc72df13",
+          "url": "https://github.com/vlm-run/mm/commit/7c76b3f3a476b4efdc8bf5eef3273df3c4fe1565"
+        },
+        "date": 1775826896281,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "directory_hash/directory_hash/1000_files",
+            "value": 1762040.2093973444,
+            "unit": "ns"
+          },
+          {
+            "name": "directory_hash/directory_hash/100_files",
+            "value": 249489.52602247606,
+            "unit": "ns"
+          },
+          {
+            "name": "directory_hash/directory_hash/500_files",
+            "value": 901762.2224233283,
+            "unit": "ns"
+          },
+          {
+            "name": "find_filter/kind_and_name/1000",
+            "value": 410210.8484126984,
+            "unit": "ns"
+          },
+          {
+            "name": "find_filter/kind_and_name/5000",
+            "value": 2235989.347826087,
+            "unit": "ns"
+          },
+          {
+            "name": "find_filter/name_regex/1000",
+            "value": 463250.1697681288,
+            "unit": "ns"
+          },
+          {
+            "name": "find_filter/name_regex/5000",
+            "value": 2163334.0625,
+            "unit": "ns"
+          },
+          {
+            "name": "find_filter/name_substring/1000",
+            "value": 398865.4845238095,
+            "unit": "ns"
+          },
+          {
+            "name": "find_filter/name_substring/5000",
+            "value": 2126483.875,
+            "unit": "ns"
+          },
+          {
+            "name": "find_filter/no_filter/1000",
+            "value": 3206753.3125,
+            "unit": "ns"
+          },
+          {
+            "name": "find_filter/no_filter/5000",
+            "value": 19085212.333333336,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_large_files/fast_fingerprint/100MB",
+            "value": 16416.497203710373,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_large_files/fast_fingerprint/200MB",
+            "value": 15174.940475592397,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_large_files/fast_fingerprint/50MB",
+            "value": 15988.67759854381,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_large_files/full_hash_mmap/100MB",
+            "value": 11151860.252287582,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_large_files/full_hash_mmap/200MB",
+            "value": 21948206.92037037,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_large_files/full_hash_mmap/50MB",
+            "value": 5462832.816017316,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_strategies/fast_fingerprint/10MB",
+            "value": 16028.919045546187,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_strategies/fast_fingerprint/1KB",
+            "value": 6844.495426111731,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_strategies/fast_fingerprint/1MB",
+            "value": 15255.492179634373,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_strategies/fast_fingerprint/64KB",
+            "value": 13386.579760795277,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_strategies/full_hash_mmap/10MB",
+            "value": 569836.2572748435,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_strategies/full_hash_mmap/1KB",
+            "value": 6490.713812229437,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_strategies/full_hash_mmap/1MB",
+            "value": 76785.7990019804,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_strategies/full_hash_mmap/64KB",
+            "value": 13274.19380952381,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_strategies/full_hash_read/10MB",
+            "value": 1290153.5111111111,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_strategies/full_hash_read/1KB",
+            "value": 2353.732556410542,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_strategies/full_hash_read/1MB",
+            "value": 118742.20858585858,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_strategies/full_hash_read/64KB",
+            "value": 6676.418391599536,
+            "unit": "ns"
+          },
+          {
+            "name": "l0_index/1000",
+            "value": 3706634.3571428573,
+            "unit": "ns"
+          },
+          {
+            "name": "l0_index/10000",
+            "value": 27460641,
+            "unit": "ns"
+          },
+          {
+            "name": "l0_walk/1000",
+            "value": 3579562.5714285714,
+            "unit": "ns"
+          },
+          {
+            "name": "l0_walk/10000",
+            "value": 26323231.75,
+            "unit": "ns"
+          },
+          {
+            "name": "l1_code_extract/10",
+            "value": 24958.632118226604,
+            "unit": "ns"
+          },
+          {
+            "name": "l1_code_extract/100",
+            "value": 265256.8865967366,
+            "unit": "ns"
+          },
+          {
+            "name": "l1_image_extract/10",
+            "value": 2243585.152173913,
+            "unit": "ns"
+          },
+          {
+            "name": "l1_image_extract/50",
+            "value": 14795351.625,
+            "unit": "ns"
+          },
+          {
+            "name": "phash/hamming_distance",
+            "value": 0.15760977668049236,
+            "unit": "ns"
+          },
+          {
+            "name": "phash/phash/1024x1024",
+            "value": 28359392.81818182,
+            "unit": "ns"
+          },
+          {
+            "name": "phash/phash/2048x2048",
+            "value": 109700335.83333333,
+            "unit": "ns"
+          },
+          {
+            "name": "phash/phash/256x256",
+            "value": 1691764.0078443878,
+            "unit": "ns"
+          },
+          {
+            "name": "phash/phash/64x64",
+            "value": 160898.5574844075,
+            "unit": "ns"
+          },
+          {
+            "name": "wc/count_and_serialize/100",
+            "value": 348388.2119949495,
+            "unit": "ns"
+          },
+          {
+            "name": "wc/count_and_serialize/500",
+            "value": 1598961.6591880342,
+            "unit": "ns"
+          },
+          {
+            "name": "wc/count_entries/100",
+            "value": 337854.69881244877,
+            "unit": "ns"
+          },
+          {
+            "name": "wc/count_entries/500",
+            "value": 1593379.8449074072,
             "unit": "ns"
           }
         ]
