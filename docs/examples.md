@@ -693,7 +693,7 @@ $ mm wc ~/project
 
 **Piped:**
 ```
-files	size	lines	tokens
+files	size	lines (est.)	tokens (est.)
 355	3221225472	142000	1200000
 ```
 
@@ -705,28 +705,28 @@ $ mm wc ~/project --by-kind
 
 **TTY output:**
 ```
-╭──────────────────────────────────────────────────────────╮
-│ kind       files    size      lines     tokens           │
-├──────────────────────────────────────────────────────────┤
-│ video         12    2.4 GB        0          0           │
-│ image         89    347 MB        0          0           │
-│ data          15    128 MB     245K       820K           │
-│ document      23    45 MB       12K        89K           │
-│ audio          8    38 MB        0          0            │
-│ code         156    1.2 MB     38K       285K            │
-│ config        34    48 KB       1.2K       4.8K          │
-│ text          18    32 KB       980       3.2K           │
-│──────────────────────────────────────────────────────────│
-│ total        355    3.0 GB    297K       1.2M            │
-╰──────────── ~1.2M tokens  355 files  3.0 GB ────────────╯
+╭──────────────────────────────────────────────────────────────────╮
+│ kind       files    size      lines (est.)  tokens (est.)       │
+├──────────────────────────────────────────────────────────────────┤
+│ video         12    2.4 GB           0              0           │
+│ image         89    347 MB           0              0           │
+│ data          15    128 MB        245K           820K           │
+│ document      23    45 MB          12K            89K           │
+│ audio          8    38 MB           0              0            │
+│ code         156    1.2 MB        38K           285K            │
+│ config        34    48 KB        1.2K           4.8K            │
+│ text          18    32 KB         980           3.2K            │
+│──────────────────────────────────────────────────────────────────│
+│ total        355    3.0 GB       297K           1.2M            │
+╰──────────────────────── 355 files  3.0 GB ──────────────────────╯
 ```
 
 **Piped:**
 ```
-files	size	lines	tokens
+files	size	lines (est.)	tokens (est.)
 355	3221225472	297000	1200000
 
-kind	files	size	lines	tokens
+kind	files	size	lines (est.)	tokens (est.)
 video	12	2.4 GB	0	0
 image	89	347 MB	0	0
 data	15	128 MB	245K	820K
@@ -746,17 +746,18 @@ $ mm wc ~/project --by-kind --format json
 ```json
 {
   "files": 355,
-  "bytes": 3221225472,
-  "lines": 297000,
-  "estimated_tokens": 1200000,
+  "size": 3221225472,
+  "lines (est.)": 297000,
+  "tokens (est.)": 1200000,
+  "tok_per_mb": 400,
   "by_kind": {
-    "video": {"files": 12, "bytes": 2576980378, "lines": 0, "tokens": 0},
-    "image": {"files": 89, "bytes": 363855462, "lines": 0, "tokens": 0},
-    "data": {"files": 15, "bytes": 134217728, "lines": 245000, "tokens": 820000},
-    "document": {"files": 23, "bytes": 47185920, "lines": 12000, "tokens": 89000},
-    "code": {"files": 156, "bytes": 1258291, "lines": 38000, "tokens": 285000},
-    "config": {"files": 34, "bytes": 49152, "lines": 1200, "tokens": 4800},
-    "text": {"files": 18, "bytes": 32768, "lines": 980, "tokens": 3200}
+    "video": {"files": 12, "size": 2576980378, "lines (est.)": 0, "tokens (est.)": 0},
+    "image": {"files": 89, "size": 363855462, "lines (est.)": 0, "tokens (est.)": 0, "tok_per_img": 85},
+    "data": {"files": 15, "size": 134217728, "lines (est.)": 245000, "tokens (est.)": 820000, "tok_per_mb": 6144},
+    "document": {"files": 23, "size": 47185920, "lines (est.)": 12000, "tokens (est.)": 89000, "tok_per_mb": 1896},
+    "code": {"files": 156, "size": 1258291, "lines (est.)": 38000, "tokens (est.)": 285000, "tok_per_mb": 237568},
+    "config": {"files": 34, "size": 49152, "lines (est.)": 1200, "tokens (est.)": 4800, "tok_per_mb": 100000},
+    "text": {"files": 18, "size": 32768, "lines (est.)": 980, "tokens (est.)": 3200, "tok_per_mb": 100000}
   }
 }
 ```
@@ -769,7 +770,7 @@ $ mm wc ~/project --kind code
 
 **Piped:**
 ```
-files	size	lines	tokens
+files	size	lines (est.)	tokens (est.)
 156	1258291	38000	285000
 ```
 
@@ -783,7 +784,7 @@ $ mm find ~/project --kind document | mm wc
 
 **Piped:**
 ```
-files	size	lines	tokens
+files	size	lines (est.)	tokens (est.)
 23	47185920	12000	89000
 ```
 
@@ -951,8 +952,8 @@ The killer self-pipe: discover files by kind, extract structured content, then c
 ```bash
 # How many tokens would it cost to send all my PDFs to an LLM?
 $ mm find ~/research --kind document | mm wc
-files  size      lines   tokens  tok/MB
-23     45.0 MB   12K     89K     2.0K
+files  size      lines (est.)  tokens (est.)  tok_per_mb
+23     45.0 MB   12K           89K            2.0K
 
 # Too many tokens — which PDFs are the biggest?
 $ mm find ~/research --kind document | mm cat -l 1 -n 5
@@ -1139,8 +1140,8 @@ mm grep "TODO" --kind code | llm -s "Triage these TODOs by priority (P0/P1/P2). 
 ```bash
 # Check if a directory fits in a context window before sending it
 mm wc ~/project --kind code
-# → files  size     lines   tokens  tok/MB
-# → 156    1.2 MB   38K     285K    243.1K
+# → files  size     lines (est.)  tokens (est.)  tok_per_mb
+# → 156    1.2 MB   38K           285K           243.1K
 
 # It fits — send all code to llm
 mm find ~/project --kind code | mm cat -l 0 \
@@ -1281,7 +1282,7 @@ The cache would be a SQLite database (naturally), keyed by `(content_hash, level
 
 ### 6. Token budget awareness in `wc`
 
-The `tok/MB` metric already tells you information density per kind. The next step is making `wc` context-window-aware:
+The `tok_per_mb` metric already tells you information density per kind. The next step is making `wc` context-window-aware:
 
 ```bash
 $ mm wc ~/project --budget 200k

@@ -4,7 +4,7 @@ Real outputs from running mm against `~/data/domains` (702 files, 7.2 GB).
 
 ---
 
-## wc — count files, bytes, lines, tokens
+## wc — count files, size, lines, tokens
 
 ### Summary
 
@@ -13,8 +13,8 @@ $ mm wc ~/data/domains
 ```
 
 ```
-files  size     lines  tokens
-702    7.2 GB   52.9M  1.50B
+files  size     lines (est.)  tokens (est.)
+702    7.2 GB   52.9M         1.50B
 ```
 
 ### Breakdown by kind
@@ -24,16 +24,16 @@ $ mm wc ~/data/domains --by-kind
 ```
 
 ```
-files  size     lines  tokens
-702    7.2 GB   52.9M  1.50B
+files  size     lines (est.)  tokens (est.)
+702    7.2 GB   52.9M         1.50B
 
-kind      files  size       lines  tokens
-audio     2      570.5 MB   0      149.6M
-code      4      205.5 KB   5.3K   52.6K
-document  545    3.9 GB     52.9M  792.9M
-image     134    65.4 MB    0      231.0K
-other     10     2.2 GB     0      585.0M
-video     7      1.6 GB     0      595
+kind      files  size       lines (est.)  tokens (est.)
+audio     2      570.5 MB   0             149.6M
+code      4      205.5 KB   5.3K          52.6K
+document  545    3.9 GB     52.9M         792.9M
+image     134    65.4 MB    0             231.0K
+other     10     2.2 GB     0             585.0M
+video     7      1.6 GB     0             595
 ```
 
 ### Filter to a single kind (JSON)
@@ -45,9 +45,9 @@ $ mm wc ~/data/domains --kind document --format json
 ```json
 {
   "files": 545,
-  "bytes": 3171525381,
-  "lines": 52858497,
-  "estimated_tokens": 792881131
+  "size": 3171525381,
+  "lines (est.)": 52858497,
+  "tokens (est.)": 792881131
 }
 ```
 

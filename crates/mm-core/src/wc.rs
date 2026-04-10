@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::io::{BufRead, BufReader};
 use std::path::Path;
 
 use rayon::prelude::*;
@@ -41,11 +42,17 @@ pub fn count_entries(entries: &[&FileEntry], root: &Path) -> WcResult {
                     } else {
                         root.join(entry.path.as_str())
                     };
-                    match std::fs::read(&path) {
-                        Ok(bytes) => {
-                            let content = String::from_utf8_lossy(&bytes);
-                            let lines = content.lines().count() as u64;
-                            let tokens = (bytes.len() as u64) / 4;
+                    match std::fs::File::open(&path) {
+                        Ok(file) => {
+                            let reader = BufReader::new(file);
+                            let mut lines = 0u64;
+                            for line in reader.split(b'\n') {
+                                match line {
+                                    Ok(_) => lines += 1,
+                                    Err(_) => break,
+                                }
+                            }
+                            let tokens = entry.size / 4;
                             (lines, tokens)
                         }
                         Err(_) => (0, 0),
