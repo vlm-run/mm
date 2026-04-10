@@ -10,14 +10,6 @@ import typer
 TOKEN_CHARS_RATIO = 4
 
 
-def _estimate_tokens_for_image(width: int | None, height: int | None) -> int:
-    """Rough token estimate for images (OpenAI-style tiling)."""
-    if not width or not height:
-        return 85
-    tiles = ((width + 511) // 512) * ((height + 511) // 512)
-    return 85 + tiles * 170
-
-
 def wc_cmd(
     directory: Annotated[Path, typer.Argument(help="Directory to count")] = Path("."),
     kind: Annotated[Optional[str], typer.Option("--kind", "-k", help="Filter by kind")] = None,
@@ -37,47 +29,35 @@ def wc_cmd(
       mm wc ~/project --format json          # JSON output
     """
     from mm._mm import Scanner
-    from mm.display import resolve_format
+    from mm.display import console, resolve_format
+
+    if not Path(directory).exists():
+        console.print(f"[red]Directory not found: {directory}[/red]")
+        raise typer.Exit(1)
 
     fmt = resolve_format(format)
-
     root = Path(directory).resolve()
     scanner = Scanner(str(root))
     scanner.scan()
 
     import json as json_mod
 
-    from mm.commands.cat import _l1_document
+    # Rust handles all kinds except documents (which need pypdfium2)
+    base = json_mod.loads(scanner.wc(kind=kind))
+    kind_stats: dict[str, dict[str, int | float]] = base.get("by_kind", {})
+    total_files = base["files"]
+    total_bytes = base["bytes"]
+    total_tokens = base["estimated_tokens"]
+    total_lines = base["lines"]
 
-    raw = json_mod.loads(scanner.to_json_fast(kind=kind))
+    doc_entries = []
+    # Overlay document counts from Python (pypdfium2 extraction)
+    if "document" in kind_stats and kind_stats["document"].get("files", 0) > 0:
+        doc_entries = json_mod.loads(scanner.to_json_fast(kind="document"))
+    if doc_entries:
+        from mm.commands.cat import _l1_document
 
-    kind_stats: dict[str, dict[str, int | float]] = {}
-    total_files = 0
-    total_bytes = 0
-    total_tokens = 0
-    total_lines = 0
-
-    for entry in raw:
-        fk = entry["kind"]
-        size = entry["size"]
-        w = entry.get("width")
-        h = entry.get("height")
-
-        if fk == "image":
-            tokens = _estimate_tokens_for_image(w, h)
-            lines = 0
-        elif fk == "video":
-            tokens = 85
-            lines = 0
-        elif fk in ("code", "text", "config", "data"):
-            lines = 0
-            with (root / entry["path"]).open("r", encoding="utf-8", errors="replace") as f:
-                char_len = 0
-                for line in f:
-                    lines += 1
-                    char_len += len(line)
-            tokens = char_len // TOKEN_CHARS_RATIO
-        elif fk == "document":
+        for entry in doc_entries:
             content = _l1_document(root / entry["path"])
             char_len = len(content)
             lines = content.count("\n")
@@ -85,21 +65,14 @@ def wc_cmd(
                 lines += 1
             lines = max(1, lines)
             tokens = char_len // TOKEN_CHARS_RATIO
-        else:
-            tokens = size // TOKEN_CHARS_RATIO
-            lines = 0
 
-        total_files += 1
-        total_bytes += size
-        total_tokens += tokens
-        total_lines += lines
+            total_tokens += tokens
+            total_lines += lines
 
-        if fk not in kind_stats:
-            kind_stats[fk] = {"files": 0, "bytes": 0, "tokens": 0, "lines": 0}
-        kind_stats[fk]["files"] += 1
-        kind_stats[fk]["bytes"] += size
-        kind_stats[fk]["tokens"] += tokens
-        kind_stats[fk]["lines"] += lines
+            if "document" not in kind_stats:
+                kind_stats["document"] = {"files": 0, "bytes": 0, "tokens": 0, "lines": 0}
+            kind_stats["document"]["tokens"] = int(kind_stats["document"].get("tokens", 0)) + tokens
+            kind_stats["document"]["lines"] = int(kind_stats["document"].get("lines", 0)) + lines
 
     result = {
         "files": total_files,
