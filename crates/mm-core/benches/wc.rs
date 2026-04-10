@@ -42,17 +42,13 @@ fn bench_wc(c: &mut Criterion) {
         let refs: Vec<&mm_core::FileEntry> = entries.iter().collect();
 
         // count_entries: parallel file reads + line/token counting
-        group.bench_with_input(
-            BenchmarkId::new("count_entries", size),
-            &refs,
-            |b, refs| {
-                b.iter(|| {
-                    let result = mm_core::wc::count_entries(refs, dir.path());
-                    assert!(result.files > 0);
-                    assert!(result.lines > 0);
-                });
-            },
-        );
+        group.bench_with_input(BenchmarkId::new("count_entries", size), &refs, |b, refs| {
+            b.iter(|| {
+                let result = mm_core::wc::count_entries(refs, dir.path());
+                assert!(result.files > 0);
+                assert!(result.lines > 0);
+            });
+        });
 
         // count_entries + JSON serialization (full pipeline)
         group.bench_with_input(
