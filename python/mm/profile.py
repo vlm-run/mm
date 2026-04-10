@@ -108,8 +108,8 @@ def _profiles(file_data: ConfigData) -> dict[str, ProfileData]:
 def get_profile_defaults(profile_name: str) -> dict[str, str]:
     """Return built-in defaults for a profile."""
     if profile_name in RESERVED_PROFILES:
-        return RESERVED_DEFAULTS[profile_name]
-    return RESERVED_DEFAULTS[DEFAULT_PROFILE]
+        return dict(RESERVED_DEFAULTS[profile_name])
+    return dict(RESERVED_DEFAULTS[DEFAULT_PROFILE])
 
 
 def get_default_profiles() -> dict[str, dict[str, str]]:
@@ -122,14 +122,15 @@ def ensure_builtin_profiles(file_data: ConfigData) -> bool:
     profiles = _profiles(file_data)
     changed = False
 
-    default_profile = cast(ProfileData, RESERVED_DEFAULTS[DEFAULT_PROFILE])
-    if profiles.get(DEFAULT_PROFILE) != default_profile:
-        profiles[DEFAULT_PROFILE] = default_profile
-        changed = True
-
     for name in RESERVED_PROFILES:
-        if name not in profiles:
-            profiles[name] = cast(ProfileData, dict(RESERVED_DEFAULTS[name]))
+        expected = {k: v for k, v in RESERVED_DEFAULTS[name].items() if k != "name"}
+
+        if name in IMMUTABLE_PROFILES:
+            if profiles.get(name) != expected:
+                profiles[name] = cast(ProfileData, expected)
+                changed = True
+        elif name not in profiles:
+            profiles[name] = cast(ProfileData, expected)
             changed = True
 
     if "active_profile" not in file_data:
@@ -277,7 +278,7 @@ def update_profile(
 
     if not updates:
         raise ValueError(
-            "No fields to update. Provide --base-url and --model, and --api-key if required."
+            "No fields to update. Provide at least one of --base-url, --model, and --api-key."
         )
 
     profiles[name].update(updates)
@@ -309,7 +310,7 @@ def remove_profile(name: str) -> Path:
             f"The '{name}' profile cannot be removed.\n\n"
             "You can:\n"
             f"  mm profile use {'|'.join(useable)}                                  # switch back to the default profile\n"
-            f"  mm profile update {'|'.join(removable)} --base-url <url> --model <model>   # change the local ollama profile\n"
+            f"  mm profile update {'|'.join(removable)} --base-url <url> --model <model>   # update a reserved profile\n"
             "  mm profile add <name> --base-url <url>                           # create a removable profile"
         )
 

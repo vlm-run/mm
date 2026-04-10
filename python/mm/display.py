@@ -453,8 +453,6 @@ def display_elapsed(start_time: float) -> None:
     """
     assert start_time > 0
     elapsed_ms = (perf_counter() - start_time) * 1000
-    from mm.display import output_console
-
     elapsed_value = f"{elapsed_ms:.0f}ms" if elapsed_ms < 1000 else f"{elapsed_ms / 1000:.1f}s"
     output_console.print(f"[dim]completed in {elapsed_value} [/dim]")
 

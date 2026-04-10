@@ -125,12 +125,12 @@ def _query_files(query: str, directory: Path, fmt: str, *, pre_index: bool = Fal
             columns, rows = _trim_columns(columns, rows)
         _emit(columns, rows, fmt)
     else:
-        from mm.display import output_console
+        from mm.display import console
 
-        output_console.print("\n[bold]No indexed files[/bold]\n[dim]---[/dim]")
         _emit([], [], fmt)
+        console.print("\n[bold]No indexed files[/bold]\n[dim]---[/dim]")
 
-    # Compute diff: files on disk but not in DB (only when pre-indexing)
+    # Compute diff: files on disk but not in DB (when NOT pre-indexing)
     if not pre_index:
         ctx = Context(directory)
         disk_uris = {str(resolved / f.path) for f in ctx.files}
@@ -305,9 +305,6 @@ def _parse_tsv(tsv: str) -> tuple[list[str], list[list[str]]]:
 
 
 def _emit(columns: list[str], rows: list[tuple], fmt: str) -> None:
-    if not columns:
-        return
-
     if fmt in ("json", "dataset-jsonl", "dataset-hf"):
         from mm.display import emit_rows
 
