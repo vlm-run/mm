@@ -17,6 +17,8 @@ import time
 from dataclasses import dataclass
 from pathlib import Path
 
+from mm.constants import DOCUMENT_EXTS as SUPPORTED_EXTS
+
 
 @contextlib.contextmanager
 def _suppress_stderr():
@@ -42,9 +44,6 @@ class DoclingResult:
     markdown: str
     pages: int = 0
     elapsed_ms: float = 0.0
-
-
-from mm.constants import DOCUMENT_EXTS as SUPPORTED_EXTS
 
 
 def docling_available() -> bool:

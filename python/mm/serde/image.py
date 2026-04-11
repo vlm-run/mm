@@ -19,10 +19,13 @@ import base64
 import io
 import logging
 from pathlib import Path
-from typing import Any, Iterable, Union
+from typing import TYPE_CHECKING, Any, Iterable, Union
 
-from mm.constants import IMAGE_EXTS, guess_mime
+from mm.constants import IMAGE_EXTS
 from mm.serde import Message, _resolve_provider, register
+
+if TYPE_CHECKING:
+    from PIL import Image
 
 logger = logging.getLogger(__name__)
 
@@ -39,14 +42,17 @@ def _open_image_with_exif(path: Union[Path, str]) -> "Image.Image":
     Returns:
         PIL Image with EXIF orientation applied.
     """
-    from PIL import Image, ImageOps
+    from PIL import Image as PILImage  # noqa: N811
+    from PIL import ImageOps
 
-    image = Image.open(str(path))
+    img = PILImage.open(str(path))
     try:
-        image = ImageOps.exif_transpose(image)
+        transposed = ImageOps.exif_transpose(img)
+        if transposed is not None:
+            img = transposed  # type: ignore[assignment]
     except Exception:
         pass
-    return image
+    return img
 
 
 def _validate_image_path(path: Path) -> None:
@@ -158,7 +164,7 @@ def _pillow_resize(path: Path, max_width: int) -> dict[str, Any]:
         new_h = round(orig_h * scale)
         from PIL import Image as _PILImage
 
-        img = img.resize((new_w, new_h), _PILImage.LANCZOS)
+        img = img.resize((new_w, new_h), _PILImage.Resampling.LANCZOS)
 
     w, h = img.size
     b64, mime = _encode_pil_image(img, path)

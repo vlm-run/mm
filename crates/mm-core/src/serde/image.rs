@@ -107,8 +107,8 @@ pub fn tile_and_encode_with_quality(
         }]);
     }
 
-    let cols = (w + tile_size - 1) / tile_size;
-    let rows = (h + tile_size - 1) / tile_size;
+    let cols = w.div_ceil(tile_size);
+    let rows = h.div_ceil(tile_size);
     let mut tiles = Vec::with_capacity((cols * rows) as usize);
 
     for row in 0..rows {

@@ -11,7 +11,7 @@ import base64
 import json
 import logging
 from pathlib import Path
-from typing import Any, Iterable, Optional
+from typing import Any, Iterable
 
 from mm.constants import guess_mime
 from mm.serde import Message, register

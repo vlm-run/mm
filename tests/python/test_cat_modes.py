@@ -6,11 +6,11 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 from mm.commands.cat import (
-    DOCUMENT_EXTS,
     _CatOpts,
     _file_kind,
     _l2_modal,
 )
+from mm.constants import DOCUMENT_EXTS
 
 
 class TestFileKind:

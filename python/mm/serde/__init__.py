@@ -63,6 +63,8 @@ class MessageStrategy(Protocol):
 
 _REGISTRY: dict[str, MessageStrategy] = {}
 _DISCOVERED = False
+_LOADED_SOURCES: dict[str, list[str]] = {}
+"""Maps a source key (file path or code hash) to the strategy names it registered."""
 
 
 def register(strat: MessageStrategy) -> MessageStrategy:
@@ -122,7 +124,8 @@ class _FunctionStrategy:
         self._fn = fn
 
     def encode(self, path: Path, **kwargs: Any) -> Iterable[Message]:
-        return self._fn(path, **kwargs)
+        result: Iterable[Message] = self._fn(path, **kwargs)
+        return result
 
 
 def strategy(
@@ -165,17 +168,23 @@ def load_strategy_file(path: Path) -> list[str]:
     """Dynamically import a ``.py`` file and register its strategies.
 
     Any ``@strategy``-decorated functions in the file are automatically
-    registered when the module is executed.
+    registered when the module is executed.  Results are cached so
+    repeated loads of the same file return the same names without
+    re-executing.
 
     Args:
         path: Absolute or relative path to a Python file.
 
     Returns:
-        List of strategy names that were newly registered.
+        List of strategy names registered from this file.
 
     Raises:
         ImportError: If the file cannot be loaded.
     """
+    source_key: str = str(path.resolve())
+    if source_key in _LOADED_SOURCES:
+        return _LOADED_SOURCES[source_key]
+
     before = set(_REGISTRY)
     module_name = f"mm_strategy_{path.stem}"
     spec = importlib.util.spec_from_file_location(module_name, str(path))
@@ -185,7 +194,9 @@ def load_strategy_file(path: Path) -> list[str]:
     sys.modules[module_name] = module
     spec.loader.exec_module(module)
     after = set(_REGISTRY)
-    return sorted(after - before)
+    names = sorted(after - before)
+    _LOADED_SOURCES[source_key] = names
+    return names
 
 
 def load_inline_strategy(code: str) -> list[str]:
@@ -193,15 +204,22 @@ def load_inline_strategy(code: str) -> list[str]:
 
     The executed code has access to the ``strategy`` decorator and
     ``pathlib.Path``.  Intended for agent-generated code passed via
-    ``mm cat -s '<code>'``.
+    ``mm cat -s '<code>'``.  Results are cached by code content so
+    repeated calls with identical code skip re-execution.
 
     Args:
         code: Python source code containing ``@strategy``-decorated
             functions.
 
     Returns:
-        List of strategy names that were newly registered.
+        List of strategy names registered from this code.
     """
+    import hashlib
+
+    source_key: str = f"inline:{hashlib.sha256(code.encode()).hexdigest()[:16]}"
+    if source_key in _LOADED_SOURCES:
+        return _LOADED_SOURCES[source_key]
+
     before = set(_REGISTRY)
     exec_globals: dict[str, Any] = {
         "strategy": strategy,
@@ -210,7 +228,9 @@ def load_inline_strategy(code: str) -> list[str]:
     }
     exec(code, exec_globals)  # noqa: S102
     after = set(_REGISTRY)
-    return sorted(after - before)
+    names = sorted(after - before)
+    _LOADED_SOURCES[source_key] = names
+    return names
 
 
 def _ensure_discovered() -> None:
@@ -301,20 +321,17 @@ def resolve_strategy(value: str, media_type: str) -> MessageStrategy:
 def _pick_by_media_type(
     names: list[str], media_type: str, source: str
 ) -> MessageStrategy:
-    """Select the best-matching strategy from a set of newly registered names.
+    """Select the best-matching strategy from a list of registered names.
 
-    If *names* is empty (e.g. a strategy file was re-loaded and the name
-    was already in the registry), falls back to searching the full
-    registry for strategies matching *media_type*.
+    Args:
+        names: Strategy names registered from *source*.
+        media_type: Target media kind to match against.
+        source: Human-readable description of the source (for errors).
+
+    Raises:
+        ValueError: If *names* is empty (nothing was registered).
     """
     if not names:
-        # Re-load case: the strategy was already registered on a prior call.
-        # Search the registry for a matching media_type.
-        candidates = [
-            s for s in _REGISTRY.values() if media_type in s.media_types
-        ]
-        if candidates:
-            return candidates[0]
         raise ValueError(f"No strategies registered from {source}")
     matching = [n for n in names if media_type in _REGISTRY[n].media_types]
     if matching:

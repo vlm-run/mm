@@ -14,7 +14,8 @@ from pathlib import Path
 
 import pytest
 from mm.cli import app
-from mm.commands.cat import AUDIO_EXTS, IMAGE_EXTS, VIDEO_EXTS, _file_kind
+from mm.commands.cat import _file_kind
+from mm.constants import AUDIO_EXTS, IMAGE_EXTS, VIDEO_EXTS
 from typer.testing import CliRunner
 
 runner = CliRunner()

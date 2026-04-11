@@ -25,11 +25,11 @@ File-type behaviour:
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING, Annotated, Literal, Optional
+from typing import TYPE_CHECKING, Annotated, Optional
 
 import typer
 
-from mm.constants import AUDIO_EXTS, DOCUMENT_EXTS, IMAGE_EXTS, VIDEO_EXTS, FileKind
+from mm.constants import FileKind
 from mm.pipe import read_paths_from_stdin
 
 if TYPE_CHECKING:

@@ -350,7 +350,7 @@ fn resize_image(py: Python<'_>, path: String, max_width: u32, quality: u8) -> Py
     let p = std::path::Path::new(&path);
     let result =
         mm_core::serde::image::resize_and_encode_with_quality(p, max_width, quality)
-            .map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(e))?;
+            .map_err(pyo3::exceptions::PyRuntimeError::new_err)?;
     let dict = pyo3::types::PyDict::new(py);
     dict.set_item("base64", &result.base64)?;
     dict.set_item("mime", &result.mime)?;
@@ -368,7 +368,7 @@ fn resize_image(py: Python<'_>, path: String, max_width: u32, quality: u8) -> Py
 fn tile_image(py: Python<'_>, path: String, tile_size: u32, quality: u8) -> PyResult<PyObject> {
     let p = std::path::Path::new(&path);
     let tiles = mm_core::serde::image::tile_and_encode_with_quality(p, tile_size, quality)
-        .map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(e))?;
+        .map_err(pyo3::exceptions::PyRuntimeError::new_err)?;
     let list = pyo3::types::PyList::empty(py);
     for tile in &tiles {
         let dict = pyo3::types::PyDict::new(py);
@@ -390,7 +390,7 @@ fn tile_image(py: Python<'_>, path: String, tile_size: u32, quality: u8) -> PyRe
 fn gemini_image_part(path: String) -> PyResult<String> {
     let p = std::path::Path::new(&path);
     mm_core::serde::gemini::image_part_json(p)
-        .map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(e))
+        .map_err(pyo3::exceptions::PyRuntimeError::new_err)
 }
 
 /// Serialize video as Gemini inline_data Part JSON strings (with chunking).
@@ -399,7 +399,7 @@ fn gemini_image_part(path: String) -> PyResult<String> {
 fn gemini_video_parts(path: String, max_seconds: u32, overlap: u32) -> PyResult<Vec<String>> {
     let p = std::path::Path::new(&path);
     mm_core::serde::gemini::video_parts_json(p, max_seconds, overlap)
-        .map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(e))
+        .map_err(pyo3::exceptions::PyRuntimeError::new_err)
 }
 
 /// Serialize document as Gemini inline_data Part JSON string.
@@ -407,7 +407,7 @@ fn gemini_video_parts(path: String, max_seconds: u32, overlap: u32) -> PyResult<
 fn gemini_document_part(path: String) -> PyResult<String> {
     let p = std::path::Path::new(&path);
     mm_core::serde::gemini::document_part_json(p)
-        .map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(e))
+        .map_err(pyo3::exceptions::PyRuntimeError::new_err)
 }
 
 #[pymodule]
