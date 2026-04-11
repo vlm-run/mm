@@ -35,6 +35,7 @@
 - **Zen of Python applies.** Beautiful is better than ugly. Simple is better than complex. Flat is better than nested. Readability counts. Write code that a staff or principal engineer would be proud to review — elegant, minimal, and intentional. No sloppy shortcuts, no over-engineering.
 - Prioritize developer experience and performance equally. Neither is negotiable. If a design forces a tradeoff between the two, find a third option.
 - Use type annotations on all public APIs. Leverage `typing` and `typing_extensions` to make interfaces self-documenting.
+- **Think in abstractions.** Prefer classes with `@classmethod` / `@staticmethod` and `abc.ABC` / metaclasses over loose collections of functions. Design at the right abstraction level — group related behavior into cohesive classes, define clear interfaces via abstract base classes, and use the type system to enforce contracts. Flat function-based code is fine for scripts; library code should express intent through well-designed object hierarchies.
 
 ### Code style — Rust
 
