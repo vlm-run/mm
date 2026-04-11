@@ -9,6 +9,7 @@ from typing import Annotated, Optional
 import typer
 
 from mm.pipe import read_paths_from_stdin, resolve_piped_paths
+from mm.utils import Format
 
 
 def grep_cmd(
@@ -27,7 +28,7 @@ def grep_cmd(
         bool, typer.Option("--index", help="Index unindexed files before L2 search (max 50)")
     ] = False,
     format: Annotated[
-        Optional[str],
+        Optional[Format],
         typer.Option(
             "--format", "-f", help="Output format: json, tsv, csv, dataset-jsonl, dataset-hf"
         ),

@@ -10,6 +10,8 @@ from typing import Annotated, Any, Optional
 
 import typer
 
+from mm.utils import Format
+
 _STORED_TABLES = {"l2_results", "chunks", "chunks_vec"}
 _RICH_COLUMNS = {
     "name",
@@ -32,7 +34,7 @@ def sql_cmd(
     ] = None,
     directory: Annotated[Path, typer.Option("--dir", "-d", help="Directory to index")] = Path("."),
     format: Annotated[
-        Optional[str],
+        Optional[Format],
         typer.Option(
             "--format", "-f", help="Output format: json, tsv, csv, dataset-jsonl, dataset-hf"
         ),

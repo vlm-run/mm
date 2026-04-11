@@ -8,6 +8,7 @@ from typing import Annotated, Optional
 import typer
 
 from mm.pipe import read_paths_from_stdin
+from mm.utils import Format
 
 TOKEN_CHARS_RATIO = 4
 
@@ -27,7 +28,7 @@ def wc_cmd(
     kind: Annotated[Optional[str], typer.Option("--kind", "-k", help="Filter by kind")] = None,
     by_kind: Annotated[bool, typer.Option("--by-kind", help="Break down by file kind")] = False,
     format: Annotated[
-        Optional[str],
+        Optional[Format],
         typer.Option(
             "--format", "-f", help="Output format: json, tsv, csv, dataset-jsonl, dataset-hf"
         ),
@@ -274,7 +275,22 @@ _VIDEO_EXTS = frozenset((".mp4", ".mkv", ".avi", ".mov", ".wmv", ".flv", ".webm"
 _AUDIO_EXTS = frozenset((".mp3", ".wav", ".flac", ".aac", ".ogg", ".m4a", ".wma", ".opus"))
 _DOC_EXTS = frozenset((".pdf", ".docx", ".pptx"))
 _CODE_EXTS = frozenset(
-    (".py", ".rs", ".js", ".ts", ".go", ".c", ".cpp", ".h", ".java", ".rb", ".sh", ".toml", ".yaml", ".yml")
+    (
+        ".py",
+        ".rs",
+        ".js",
+        ".ts",
+        ".go",
+        ".c",
+        ".cpp",
+        ".h",
+        ".java",
+        ".rb",
+        ".sh",
+        ".toml",
+        ".yaml",
+        ".yml",
+    )
 )
 
 

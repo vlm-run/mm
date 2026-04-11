@@ -1,9 +1,20 @@
+from __future__ import annotations
+
 import sys
 import time as _time
+from enum import Enum
 from typing import Callable, ParamSpec, TypeVar
 
 P = ParamSpec("P")
 T = TypeVar("T")
+
+
+class Format(str, Enum):
+    json = "json"
+    tsv = "tsv"
+    csv = "csv"
+    dataset_jsonl = "dataset-jsonl"
+    dataset_hf = "dataset-hf"
 
 
 def get_elapsed_ms(

@@ -30,6 +30,7 @@ from typing import TYPE_CHECKING, Annotated, Literal, Optional
 import typer
 
 from mm.pipe import read_paths_from_stdin
+from mm.utils import Format
 
 if TYPE_CHECKING:
     from mm.config import Mode
@@ -125,7 +126,7 @@ def cat_cmd(
         bool, typer.Option("--no-cache", help="Bypass L2 cache and force a fresh LLM run")
     ] = False,
     format: Annotated[
-        Optional[str],
+        Optional[Format],
         typer.Option("--format", help="Output format: json, tsv, csv, dataset-jsonl, dataset-hf"),
     ] = None,
 ) -> None:
