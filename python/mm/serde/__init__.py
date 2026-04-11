@@ -301,8 +301,20 @@ def resolve_strategy(value: str, media_type: str) -> MessageStrategy:
 def _pick_by_media_type(
     names: list[str], media_type: str, source: str
 ) -> MessageStrategy:
-    """Select the best-matching strategy from a set of newly registered names."""
+    """Select the best-matching strategy from a set of newly registered names.
+
+    If *names* is empty (e.g. a strategy file was re-loaded and the name
+    was already in the registry), falls back to searching the full
+    registry for strategies matching *media_type*.
+    """
     if not names:
+        # Re-load case: the strategy was already registered on a prior call.
+        # Search the registry for a matching media_type.
+        candidates = [
+            s for s in _REGISTRY.values() if media_type in s.media_types
+        ]
+        if candidates:
+            return candidates[0]
         raise ValueError(f"No strategies registered from {source}")
     matching = [n for n in names if media_type in _REGISTRY[n].media_types]
     if matching:

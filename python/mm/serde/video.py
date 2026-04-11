@@ -122,12 +122,11 @@ class VideoChunk:
         chunk_duration: int = kwargs.get("chunk_duration", 60)
         overlap: int = kwargs.get("overlap", 20)
         max_width: int = kwargs.get("max_width", 1024)
-        tile_cols: int = kwargs.get("tile_cols", 4)
-        tile_rows: int = kwargs.get("tile_rows", 4)
+        frames_per_chunk: int = kwargs.get("frames_per_chunk", 16)
         provider: str = _resolve_provider()
 
         from mm.ffmpeg import (
-            extract_uniform_mosaics,
+            extract_frames_at_timestamps,
             ffmpeg_available,
             probe_duration,
         )
@@ -153,24 +152,26 @@ class VideoChunk:
         while start < duration:
             end: float = min(start + chunk_duration, duration)
 
-            result = extract_uniform_mosaics(
-                path,
-                tile_cols=tile_cols,
-                tile_rows=tile_rows,
-                thumb_width=max_width // tile_cols,
-                num_mosaics=1,
+            # Sample timestamps *within this chunk* so each chunk gets
+            # its own unique frames, not a repeat of the full video.
+            chunk_timestamps: list[float] = _uniform_timestamps_range(
+                start, end, frames_per_chunk,
             )
 
-            if result.mosaic_paths:
+            frame_paths: list[Path] = extract_frames_at_timestamps(
+                path, chunk_timestamps, thumb_width=max_width,
+            )
+
+            if frame_paths:
                 parts: list[dict[str, Any]] = [{
                     "type": "text",
                     "text": f"Video chunk {chunk_idx} ({start:.0f}s - {end:.0f}s) of {path.name}:",
                 }]
-                for mp in result.mosaic_paths:
-                    b64: str = base64.b64encode(mp.read_bytes()).decode()
+                for fp in frame_paths:
+                    b64: str = base64.b64encode(fp.read_bytes()).decode()
                     parts.append(_image_part(b64, "image/jpeg", provider))
                     try:
-                        mp.unlink(missing_ok=True)
+                        fp.unlink(missing_ok=True)
                     except OSError:
                         pass
                 yield _to_message(parts)
@@ -180,7 +181,7 @@ class VideoChunk:
 
 
 def _uniform_timestamps(duration: float, fps: float) -> list[float]:
-    """Generate uniformly spaced timestamps at *fps* across *duration*."""
+    """Generate uniformly spaced timestamps at *fps* from 0 to *duration*."""
     interval: float = 1.0 / fps
     timestamps: list[float] = []
     t: float = 0.0
@@ -188,6 +189,16 @@ def _uniform_timestamps(duration: float, fps: float) -> list[float]:
         timestamps.append(t)
         t += interval
     return timestamps
+
+
+def _uniform_timestamps_range(
+    start: float, end: float, count: int
+) -> list[float]:
+    """Generate *count* uniformly spaced timestamps between *start* and *end*."""
+    if count <= 1:
+        return [start]
+    step: float = (end - start) / count
+    return [start + i * step for i in range(count)]
 
 
 register(VideoFrameSample())

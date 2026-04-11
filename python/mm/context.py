@@ -265,9 +265,9 @@ class Context:
         from mm.constants import file_kind
         from mm.serde import resolve_strategy
 
-        full_path = self._root / path
+        full_path = self.root / path
         if not full_path.exists():
-            raise FileNotFoundError(f"{path} not found in {self._root}")
+            raise FileNotFoundError(f"{path} not found in {self.root}")
 
         media_type = file_kind(full_path.name)
 
