@@ -2,7 +2,9 @@
 
 ## What this is
 
-`mm` is a high-performance multi-modal context management library + CLI. Rust core for speed, Python for developer experience, Unix philosophy for composability.
+`mm` is a high-performance multi-modal context management library + CLI designed primarily for **AI agents** to understand file types that are not natively understood by LLMs — images, video, audio, PDFs, and other binary/media formats. Text files are already natively understood by LLMs and do not need `mm` processing.
+
+Rust core for speed, Python for developer experience, Unix philosophy for composability.
 
 ## Core ideology
 
@@ -28,6 +30,8 @@
 - pypdfium2 — PDF text extraction and page rendering
 - Pillow — image mosaic tiling
 - tomli — TOML config parsing (Python <3.11)
+- pydantic — schema validation for YAML generation templates
+- pyyaml — YAML template parsing
 
 **Rust (mm-core):**
 - arrow / parquet — Arrow RecordBatch + Parquet I/O
@@ -87,6 +91,14 @@ mm/
 │   ├── pdf.py                  # PDF page mosaic extraction (pypdfium2 + Pillow)
 │   ├── ffmpeg.py               # ffmpeg wrappers (keyframe mosaics, audio/video segment extraction)
 │   ├── video.py                # Video metadata helpers
+│   ├── templates/              # YAML-based MLLM generation templates
+│   │   ├── __init__.py         # Template loading, caching, prompt rendering
+│   │   ├── schema.py           # Pydantic schema (Encode, Generate, TemplateSpec)
+│   │   ├── spec.yaml           # Reference YAML spec with all fields documented
+│   │   ├── image/              # Image templates (fast.yaml, accurate.yaml)
+│   │   ├── video/              # Video templates (fast.yaml, accurate.yaml)
+│   │   ├── audio/              # Audio templates (fast.yaml, accurate.yaml)
+│   │   └── document/           # Document templates (fast.yaml, accurate.yaml)
 │   ├── store/                  # SQLite + sqlite-vec storage (metadata + embeddings)
 │   │   ├── __init__.py         # Lazy re-exports
 │   │   ├── schema.py           # SQL DDL + column enums (3 tables)
@@ -216,7 +228,7 @@ Columns (`files`): `uri`, `name`, `stem`, `ext`, `size`, `modified`, `created`, 
 
 - **L0** (metadata): path, size, kind, ext, timestamps, depth, parent, width, height. Built in Rust with `ignore` + `rayon`. Measured at ~0.02ms/file on real multi-modal data (249 files in 5ms).
 - **L1** (content): `cat` auto-detects file type. PDFs → text via pypdfium2. Images → dimensions/MIME/xxh3/EXIF via Rust. Video/audio → metadata only (resolution, duration, codecs, <100ms, no ffmpeg). Code/text → raw passthrough. Scanned/image-only PDFs yield empty text at L1.
-- **L2** (semantic): LLM-generated captions/descriptions via OpenAI-compatible API. Requires a configured profile (`mm profile add/update`).
+- **L2** (semantic): LLM-generated captions/descriptions for non-text media (images, video, audio, PDFs) via OpenAI-compatible API. Text files don't need L2 as they're natively understood by LLMs. Requires a configured profile (`mm profile add/update`).
 
 ## Python API
 
@@ -252,7 +264,8 @@ ctx.info()   # Rich summary panel
 - **Video metadata (L1)**: Native MP4 parsing (mp4parse) and MKV/WebM parsing (matroska) in Rust. No ffmpeg at L1 — metadata only, <100ms.
 - **PDF text extraction**: `pypdfium2` on the Python CLI side (in `commands/cat.py`). Scanned/image-only PDFs return empty text.
 - **Pipe detection**: `pipe.py` uses `select.select()` with zero timeout to avoid blocking when stdin is not a TTY but has no data.
-- **LLM backend**: Uses the `openai` Python SDK for all chat/completions calls. Sends `think=false` and `reasoning_effort="none"` to suppress chain-of-thought. Temperature defaults to 0.1.
+- **LLM backend**: Uses the `openai` Python SDK for all chat/completions calls. Sends `think=false` and `reasoning_effort="none"` to suppress chain-of-thought. Temperature defaults to 0.1. All prompts and generation parameters are externalized into YAML templates (`python/mm/templates/{kind}/{mode}.yaml`) validated via Pydantic at load time. The single entry point is `LlmBackend.generate(kind, mode, *, context, parts)`.
+- **Template pipeline**: `encode` (file → LLM-ready parts) → `generate` (LLM call) → text output. Templates support custom inline `pyfunc` transforms. Users can override built-in templates at `~/.config/mm/templates/`.
 
 ## LLM configuration
 
@@ -331,7 +344,7 @@ Every commit that changes performance numbers or adds/modifies benchmarks should
 ## Known gaps / TODOs
 
 - Python `Context.cat(level=1)` for PDFs uses Rust L1 extractor (raw bytes) instead of pypdfium2. The CLI `cat --level 1` correctly uses pypdfium2.
-- L2 requires an external LLM server; no built-in model. Default: local Ollama with `qwen3.5:0.8b`.
+- L2 requires an external LLM server; no built-in model. Default: local Ollama with `gemma4:e2b`.
 - Audio embedding fails for files >80s if sent as a single Part (Gemini limit). Use `audio_parts()` to auto-chunk.
 - `upsert_files()` reads the full `files` table to preserve L1 columns — will need optimization at >100K files.
 - sqlite-vec cold import is ~130ms. No daemon or sidecar cache needed.

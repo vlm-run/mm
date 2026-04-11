@@ -1,0 +1,95 @@
+# mm template spec — reference YAML
+#
+# Templates configure a 2-stage pipeline for LLM-based media understanding:
+#
+#     file → encode → generate (LLM) → text output
+#
+# Built-in templates live in  python/mm/templates/{kind}/{mode}.yaml
+# User overrides go to        ~/.config/mm/templates/{kind}/{mode}.yaml
+#
+# All fields are validated at load time via Pydantic (see schema.py).
+
+# ──────────────────────────────────────────────────────────────────────
+# Required top-level fields
+# ──────────────────────────────────────────────────────────────────────
+
+kind: image                 # Media kind: image | video | audio | document
+mode: fast                  # Processing mode: fast | accurate
+
+# ──────────────────────────────────────────────────────────────────────
+# encode — how to convert the file into LLM-ready content parts
+# ──────────────────────────────────────────────────────────────────────
+
+encode:
+  # Serde strategy name (registered in mm's strategy registry).
+  # Examples: resize, tile, frame-sample, rasterize.
+  # null = use the kind-specific default.
+  strategy: resize
+
+  # Extra kwargs forwarded to strategy.encode().
+  strategy_kwargs: {}
+
+  # Max image width in pixels (image strategies only).
+  max_width: 1024
+
+  # Mosaic grid spec as "COLSxROWS" (video strategies only).
+  mosaic_tile: "4x4"
+
+  # Number of mosaics to generate (video strategies only).
+  mosaic_count: 1
+
+  # Run Whisper transcription before LLM call (audio/video).
+  transcribe: false
+
+  # Whisper model size: tiny | small | medium | large.
+  whisper_model: null
+
+  # Audio speed multiplier for transcription (e.g. 2.0 = 2x speed).
+  audio_speed: null
+
+  # Inline Python function body for custom encode transforms.
+  # The function receives (parts, context) and must return list[dict].
+  #
+  # Example:
+  #   pyfunc: |
+  #     return [p for p in parts if p.get("type") == "image_url"]
+  pyfunc: null
+
+# ──────────────────────────────────────────────────────────────────────
+# generate — LLM call parameters
+# ──────────────────────────────────────────────────────────────────────
+
+generate:
+  # Prompt template string. Supports Python format-string interpolation
+  # from the runtime context dict.
+  #
+  # Available variables (context-dependent):
+  #   {filename}      — source file name
+  #   {content}       — extracted text content (documents)
+  #   {transcript}    — Whisper transcript (audio/video)
+  #   {duration_ctx}  — " Duration: Xs." or empty string
+  #   {word_count}    — word count of extracted content
+  #   {kind}          — media kind
+  #
+  # Missing variables silently resolve to empty string.
+  prompt: >-
+    Describe this image in 10 words or less.
+    Then list exactly 5 keyword tags.
+
+    Use this format:
+    ## Description
+    <description>
+
+    ## Tags
+    - tag1
+    - tag2
+    ...
+
+  # Max completion tokens for the LLM response.
+  max_tokens: 256
+
+  # Sampling temperature. null = use model default (0.1).
+  temperature: null
+
+  # Request JSON-formatted response from the model.
+  json_mode: false

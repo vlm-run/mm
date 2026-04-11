@@ -1,0 +1,21 @@
+kind: image
+mode: fast
+
+encode:
+  strategy: resize
+  max_width: 1024
+
+generate:
+  prompt: >-
+    Describe this image in 10 words or less.
+    Then list exactly 5 keyword tags.
+
+    Use this format:
+    ## Description
+    <description>
+
+    ## Tags
+    - tag1
+    - tag2
+    ...
+  max_tokens: 256

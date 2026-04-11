@@ -1,0 +1,29 @@
+kind: audio
+mode: accurate
+
+encode:
+  transcribe: true
+  whisper_model: medium
+  audio_speed: 1.0
+
+generate:
+  prompt: >-
+    Analyze this audio transcript ({filename}):
+
+    {transcript}
+
+    Provide a detailed summary (~200 words), up to 10 keyword tags,
+    and the detected language.
+
+    Use this format:
+    ## Summary
+    <detailed summary>
+
+    ## Tags
+    - tag1
+    - tag2
+    ...
+
+    ## Language
+    <detected language>
+  max_tokens: 1024

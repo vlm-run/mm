@@ -159,15 +159,29 @@ mm cat doc.pdf -s gemini-doc                  # Gemini document passthrough
 mm cat photo.png -s ~/my_strategy.py
 
 # 3. Inline Python (for agents)
-mm cat photo.png -s 'from mm.serde import strategy
+mm cat photo.png -s 'import base64
+from pathlib import Path
+from mm.serde import strategy
 @strategy(media_types=("image",))
-def inline_test(path, **kw):
-    import base64
+def inline_test(path: Path, **kw):
     b64 = base64.b64encode(path.read_bytes()).decode()
     yield {"role": "user", "content": [{"type": "image_url", "image_url": {"url": f"data:image/png;base64,{b64}"}}]}'
 ```
 
 Output is JSON Message dicts (pretty in TTY, compact when piped). Use `--verbose` / `-v` for progress bars.
+
+Combine `-s` with `-l 2` to encode with a strategy **and** send to the LLM for analysis:
+
+```bash
+mm cat photo.png -s resize -l 2               # encode as 1024px image → LLM description
+mm cat photo.png -s tile -l 2 --detail         # tile into squares → detailed LLM analysis
+mm cat video.mp4 -s frame-sample -l 2          # extract 1fps frames → LLM description
+mm cat video.mp4 -s video-chunk -l 2           # 60s chunks → LLM description
+mm cat doc.pdf -s rasterize -l 2               # render pages as images → LLM summary
+mm cat doc.pdf -s rasterize-text -l 2          # pages + text → LLM summary
+```
+
+Note: `gemini-video` and `gemini-doc` produce Gemini-native parts that are incompatible with OpenAI APIs. Use `frame-sample`/`video-chunk` for video and `rasterize`/`rasterize-text` for documents when targeting Ollama or OpenAI-compatible APIs.
 
 ### Built-in strategies
 
@@ -320,7 +334,7 @@ Provider settings are managed through **profiles** stored in `~/.config/mm/mm.to
 mm profile list                                            # list all profiles (● = active)
 mm profile list --format json                              # JSON output
 mm profile add openrouter --base-url https://openrouter.ai/api/v1 --model vlm-1  # add (--base-url and --model required)
-mm profile update openrouter --model qwen3-vl:8b           # update fields on existing profile
+mm profile update openrouter --model gemma4:e2b             # update fields on existing profile
 mm profile use openrouter                                  # switch active profile
 mm profile remove openrouter                               # remove (cannot remove active or 'default')
 ```

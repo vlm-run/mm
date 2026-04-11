@@ -1,0 +1,32 @@
+kind: video
+mode: accurate
+
+encode:
+  strategy: null
+  mosaic_tile: "4x4"
+  mosaic_count: 8
+  transcribe: true
+  whisper_model: medium
+  audio_speed: 1.0
+
+generate:
+  prompt: >-
+    Analyze this video mosaic ({filename}).{duration_ctx}
+
+    Provide a detailed visual analysis (~200 words), up to 10 keyword tags,
+    and describe each major scene or segment visible in the frames.
+
+    Use this format:
+    ## Summary
+    <detailed analysis>
+
+    ## Tags
+    - tag1
+    - tag2
+    ...
+
+    ## Scenes
+    - Scene 1: <description>
+    - Scene 2: <description>
+    ...
+  max_tokens: 1536

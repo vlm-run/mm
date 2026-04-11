@@ -13,6 +13,24 @@ from mm.commands.cat import (
 from mm.constants import DOCUMENT_EXTS
 
 
+def _make_opts(mode: str | None = "fast", **overrides: object) -> _CatOpts:
+    defaults: dict[str, object] = dict(
+        level=2,
+        n=None,
+        detail=False,
+        output_dir=None,
+        mosaic_tile="4x4",
+        mosaic_image_width=160,
+        video_mosaic_count=1,
+        video_mosaic_strategy="uniform",
+        mode=mode,
+        no_cache=False,
+        format="rich",
+    )
+    defaults.update(overrides)
+    return _CatOpts(**defaults)
+
+
 class TestFileKind:
     """Test file kind detection including document types."""
 
@@ -56,84 +74,22 @@ class TestCatOptsMode:
     """Test that _CatOpts carries the mode parameter."""
 
     def test_mode_none(self):
-        opts = _CatOpts(
-            level=2,
-            n=None,
-            detail=False,
-            output_dir=None,
-            max_pages=None,
-            mosaic_tile="4x4",
-            mosaic_image_width=160,
-            video_mosaic_count=1,
-            video_mosaic_strategy="uniform",
-            audio_speed=2.0,
-            audio_sample_rate=16000,
-            mode=None,
-            format="rich",
-        )
-        assert opts.mode is None
+        assert _make_opts(mode=None).mode is None
 
     def test_mode_fast(self):
-        opts = _CatOpts(
-            level=2,
-            n=None,
-            detail=False,
-            output_dir=None,
-            max_pages=None,
-            mosaic_tile="4x4",
-            mosaic_image_width=160,
-            video_mosaic_count=1,
-            video_mosaic_strategy="uniform",
-            audio_speed=2.0,
-            audio_sample_rate=16000,
-            mode="fast",
-            format="rich",
-        )
-        assert opts.mode == "fast"
+        assert _make_opts(mode="fast").mode == "fast"
 
     def test_mode_accurate(self):
-        opts = _CatOpts(
-            level=2,
-            n=None,
-            detail=False,
-            output_dir=None,
-            max_pages=None,
-            mosaic_tile="4x4",
-            mosaic_image_width=160,
-            video_mosaic_count=1,
-            video_mosaic_strategy="uniform",
-            audio_speed=2.0,
-            audio_sample_rate=16000,
-            mode="accurate",
-            format="rich",
-        )
-        assert opts.mode == "accurate"
+        assert _make_opts(mode="accurate").mode == "accurate"
 
 
 class TestL2ModalDispatch:
     """Test that _l2_modal dispatches correctly by kind."""
 
-    def _make_opts(self, mode: str = "fast") -> _CatOpts:
-        return _CatOpts(
-            level=2,
-            n=None,
-            detail=False,
-            output_dir=None,
-            max_pages=None,
-            mosaic_tile="4x4",
-            mosaic_image_width=160,
-            video_mosaic_count=1,
-            video_mosaic_strategy="uniform",
-            audio_speed=2.0,
-            audio_sample_rate=16000,
-            mode=mode,
-            format="rich",
-        )
-
     def test_unknown_mode(self, tmp_path):
         f = tmp_path / "test.txt"
         f.write_text("hello")
-        result = _l2_modal(f, "text", self._make_opts("unknown"))
+        result = _l2_modal(f, "text", _make_opts("unknown"))
         assert "Unknown mode" in result
 
     def test_image_dispatch(self, tmp_path):
@@ -141,7 +97,7 @@ class TestL2ModalDispatch:
         f.write_bytes(b"\xff\xd8\xff" + b"\x00" * 100)
         with patch("mm.commands.cat._l2_image_modal") as mock:
             mock.return_value = "mocked image result"
-            result = _l2_modal(f, "image", self._make_opts("fast"))
+            result = _l2_modal(f, "image", _make_opts("fast"))
             mock.assert_called_once_with(f, "fast")
             assert result == "mocked image result"
 
@@ -150,7 +106,7 @@ class TestL2ModalDispatch:
         f.write_bytes(b"\x00" * 100)
         with patch("mm.commands.cat._l2_video_modal") as mock:
             mock.return_value = "mocked video result"
-            opts = self._make_opts("fast")
+            opts = _make_opts("fast")
             result = _l2_modal(f, "video", opts)
             mock.assert_called_once_with(f, opts, "fast")
             assert result == "mocked video result"
@@ -160,7 +116,7 @@ class TestL2ModalDispatch:
         f.write_bytes(b"\x00" * 100)
         with patch("mm.commands.cat._l2_audio_modal") as mock:
             mock.return_value = "mocked audio result"
-            opts = self._make_opts("accurate")
+            opts = _make_opts("accurate")
             result = _l2_modal(f, "audio", opts)
             mock.assert_called_once_with(f, opts, "accurate")
             assert result == "mocked audio result"
@@ -174,8 +130,8 @@ class TestL2ModalDispatch:
         ):
             mock_l1.return_value = "extracted text"
             mock_llm = MagicMock()
-            mock_llm.describe.return_value = "summary of document"
+            mock_llm.generate.return_value = "summary of document"
             mock_llm_cls.return_value = mock_llm
 
-            result = _l2_modal(f, "document", self._make_opts("fast"))
+            result = _l2_modal(f, "document", _make_opts("fast"))
             assert result == "summary of document"

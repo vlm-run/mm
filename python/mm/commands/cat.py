@@ -25,15 +25,12 @@ File-type behaviour:
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING, Annotated, Optional
+from typing import Annotated, Optional
 
 import typer
 
 from mm.constants import FileKind
 from mm.pipe import read_paths_from_stdin
-
-if TYPE_CHECKING:
-    from mm.config import Mode
 
 
 def cat_cmd(
@@ -52,9 +49,6 @@ def cat_cmd(
         Optional[Path],
         typer.Option("--output-dir", "-o", help="Output directory for mosaics/audio"),
     ] = None,
-    max_pages: Annotated[
-        Optional[int], typer.Option("--max-pages", help="Max PDF pages to render at L2")
-    ] = None,
     mosaic_tile: Annotated[
         str, typer.Option("--mosaic-tile", help="Mosaic tile grid COLSxROWS")
     ] = "6x8",
@@ -70,12 +64,6 @@ def cat_cmd(
             "--video-mosaic-strategy", help="Video frame selection: uniform, keyframe, scene"
         ),
     ] = "uniform",
-    audio_speed: Annotated[
-        float, typer.Option("--audio-speed", help="Audio playback speed multiplier")
-    ] = 2.0,
-    audio_sample_rate: Annotated[
-        int, typer.Option("--audio-sample-rate", help="Audio sample rate Hz")
-    ] = 16000,
     mode: Annotated[
         Optional[str],
         typer.Option("--mode", "-m", help="Extraction mode: 'fast' or 'accurate' (L2 only)"),
@@ -157,9 +145,14 @@ def cat_cmd(
         typer.echo("Error: No files specified.", err=True)
         raise typer.Exit(1)
 
-    # -s / --strategy: serde encoding mode — output JSON Messages
+    # -s / --strategy: serde encoding mode
     if serde_strategy is not None:
-        _run_serde(paths, serde_strategy, format, verbose=verbose)
+        if level >= 2:
+            # -s + -l 2: encode with strategy, then send to LLM for analysis
+            _run_serde_l2(paths, serde_strategy, detail=detail, format=format, verbose=verbose)
+        else:
+            # -s alone: output raw encoded JSON Messages
+            _run_serde(paths, serde_strategy, format, verbose=verbose)
         return
 
     from mm.display import resolve_format
@@ -171,13 +164,10 @@ def cat_cmd(
         n=n,
         detail=detail,
         output_dir=output_dir,
-        max_pages=max_pages,
         mosaic_tile=mosaic_tile,
         mosaic_image_width=mosaic_image_width,
         video_mosaic_count=video_mosaic_count,
         video_mosaic_strategy=video_mosaic_strategy,
-        audio_speed=audio_speed,
-        audio_sample_rate=audio_sample_rate,
         mode=mode,
         no_cache=no_cache,
         format=fmt,
@@ -238,13 +228,10 @@ class _CatOpts:
         "n",
         "detail",
         "output_dir",
-        "max_pages",
         "mosaic_tile",
         "mosaic_image_width",
         "video_mosaic_count",
         "video_mosaic_strategy",
-        "audio_speed",
-        "audio_sample_rate",
         "mode",
         "no_cache",
         "format",
@@ -254,14 +241,11 @@ class _CatOpts:
     n: int | None
     detail: bool
     output_dir: Path | None
-    max_pages: int | None
     mosaic_tile: str
     mosaic_image_width: int
     video_mosaic_count: int
     video_mosaic_strategy: str
-    audio_speed: float
-    audio_sample_rate: int
-    mode: Mode | None
+    mode: str | None
     no_cache: bool
     format: str
 
@@ -534,24 +518,31 @@ def _l1_pdf(path: Path) -> str:
 
 
 def _l2(path: Path, kind: str, opts: _CatOpts) -> str:
+    """Dispatch L2 extraction — all paths use template-driven generate()."""
+    from mm.llm import LlmBackend, image_part
+
+    llm = LlmBackend()
+
     if kind == "image":
-        return _l2_image(path, opts)
+        mode = "accurate" if opts.detail else "fast"
+        parts = [image_part(path)]
+        return llm.generate("image", mode, context={"filename": path.name}, parts=parts)
+
     if kind == "video":
         return _l2_video(path, opts)
-    if kind == "audio":
-        return _l2_audio(path, opts)
 
-    # document / text: extract L1 text then summarise
-    from mm.llm import LlmBackend
+    if kind == "audio":
+        metadata = _run_l1(path, "audio")
+        mode = "accurate" if opts.detail else "fast"
+        return llm.generate("audio", mode, context={"filename": path.name, "content": metadata})
 
     content = _run_l1(path, kind)
-    return LlmBackend().describe(path, content, detail=opts.detail)
-
-
-def _l2_image(path: Path, opts: _CatOpts) -> str:
-    from mm.llm import LlmBackend
-
-    return LlmBackend().caption(path, detail=opts.detail)
+    mode = "accurate" if opts.detail else "fast"
+    return llm.generate(
+        "document",
+        mode,
+        context={"filename": path.name, "content": content[:4000]},
+    )
 
 
 def _l2_video(path: Path, opts: _CatOpts) -> str:
@@ -563,7 +554,7 @@ def _l2_video(path: Path, opts: _CatOpts) -> str:
             extract_uniform_mosaics,
             ffmpeg_available,
         )
-        from mm.llm import LlmBackend
+        from mm.llm import LlmBackend, image_part
 
         if not ffmpeg_available():
             raise RuntimeError(f"ffmpeg not found — cannot generate mosaic for {path.name}")
@@ -602,22 +593,20 @@ def _l2_video(path: Path, opts: _CatOpts) -> str:
         if not result.mosaic_paths:
             raise RuntimeError(f"No keyframes extracted from {path.name}")
 
-        info = LlmBackend().describe_video(
-            result.mosaic_paths,
-            video_name=path.name,
-            duration_s=result.duration_s,
+        dur_ctx = ""
+        if result.duration_s > 0:
+            mins, secs = divmod(result.duration_s, 60)
+            dur_ctx = f" Duration: {int(mins)}m{secs:.0f}s."
+
+        parts = [image_part(mp, mime="image/jpeg") for mp in result.mosaic_paths]
+        llm = LlmBackend()
+        return llm.generate(
+            "video", "fast",
+            context={"filename": path.name, "duration_ctx": dur_ctx},
+            parts=parts,
         )
-        return info.get("summary", "") or str(info)
     except Exception as e:
         return f"[Video L2 failed: {e}]"
-
-
-def _l2_audio(path: Path, opts: _CatOpts) -> str:
-    """Describe audio from metadata via LLM."""
-    from mm.llm import LlmBackend
-
-    metadata = _run_l1(path, "audio")
-    return LlmBackend().describe(path, metadata, detail=opts.detail)
 
 
 def _l2_modal(path: Path, kind: str, opts: _CatOpts) -> str:
@@ -632,45 +621,40 @@ def _l2_modal(path: Path, kind: str, opts: _CatOpts) -> str:
         return _l2_video_modal(path, opts, mode)
     if kind == "audio":
         return _l2_audio_modal(path, opts, mode)
-    if kind == "document":
-        # Documents use basic extraction at L1; at L2, summarize via LLM
-        from mm.llm import LlmBackend
 
-        content = _run_l1(path, kind)
-        return LlmBackend().describe(path, content, detail=(mode == "accurate"))
-
-    # text/code: summarize
     from mm.llm import LlmBackend
 
     content = _run_l1(path, kind)
-    return LlmBackend().describe(path, content, detail=(mode == "accurate"))
+    llm = LlmBackend()
+    return llm.generate(
+        "document",
+        mode,
+        context={"filename": path.name, "content": content[:4000]},
+    )
 
 
-def _l2_image_modal(path: Path, mode: Mode) -> str:
-    """Image extraction with mode-specific LLM prompts.
-
-    fast:     10-word description + 5 tags
-    accurate: 200-word description + 10 tags + 10 objects
-    """
+def _l2_image_modal(path: Path, mode: str) -> str:
+    """Image extraction with mode-specific LLM prompts."""
     import time
 
-    from mm.llm import LlmBackend
+    from mm.llm import LlmBackend, image_part
 
     t0 = time.monotonic()
     llm = LlmBackend()
-    content = llm.caption_modal(path, mode=mode)
+    parts = [image_part(path)]
+    content = llm.generate("image", mode, context={"filename": path.name}, parts=parts)
     elapsed = (time.monotonic() - t0) * 1000
     u = llm.last_usage
 
     return f"{content}\n\n[mode={mode}, {elapsed:.0f}ms, {u.prompt_tokens}→{u.completion_tokens} tokens]"
 
 
-def _l2_video_modal(path: Path, opts: _CatOpts, mode: Mode) -> str:
+def _l2_video_modal(path: Path, opts: _CatOpts, mode: str) -> str:
     """Video extraction with mode-aware mosaic + whisper + LLM pipeline.
 
     fast (<5min):  16 uniform frames, 1 mosaic, whisper tiny @ 2x
-    fast (≥5min):  scene detection → 16 shots, 1 mosaic, whisper tiny @ 2x
-    accurate:      scene detection → 128 shots, 8 mosaics, whisper medium @ 1x
+    fast (>=5min): scene detection -> 16 shots, 1 mosaic, whisper tiny @ 2x
+    accurate:      scene detection -> 128 shots, 8 mosaics, whisper medium @ 1x
     """
     import shutil
     import time
@@ -683,42 +667,34 @@ def _l2_video_modal(path: Path, opts: _CatOpts, mode: Mode) -> str:
         probe_duration,
         tile_frames_to_mosaics,
     )
-    from mm.llm import LlmBackend
+    from mm.llm import LlmBackend, image_part
+    from mm.templates import load
 
     if not ffmpeg_available():
         return f"[ffmpeg not found — cannot process {path.name}]"
 
+    tpl = load("video", mode)
+
     timing: dict[str, float] = {}
     t_total = time.monotonic()
 
-    # 1. Get duration
     duration = probe_duration(path)
     if duration <= 0:
         return f"[Could not determine duration for {path.name}]"
 
-    # 2+3. Frame extraction and audio transcription run in parallel —
-    #       they are independent and converge only at the LLM call.
     from concurrent.futures import Future, ThreadPoolExecutor
 
-    tile_cols, tile_rows = 4, 4
-    if mode == "accurate":
-        num_frames = 128
-        num_mosaics = 8
-    else:
-        num_frames = 16
-        num_mosaics = 1
+    tile_spec = tpl.encode.mosaic_tile or "4x4"
+    tile_cols, tile_rows = _parse_tile(tile_spec)
+    num_mosaics = tpl.encode.mosaic_count or (8 if mode == "accurate" else 1)
+    num_frames = 128 if mode == "accurate" else 16
 
-    # Target ~1500px mosaic width
     mosaic_max_width = 1500
-    thumb_width = mosaic_max_width // tile_cols  # 375px per tile
+    thumb_width = mosaic_max_width // tile_cols
 
     use_scenes = (mode == "accurate") or (mode == "fast" and duration >= 300)
 
     def _extract_visual_and_vlm() -> tuple[list[Path], str]:
-        """Extract frames, assemble mosaics, run VLM — all sequential.
-
-        Returns (mosaic_paths, vlm_analysis).
-        """
         t0 = time.monotonic()
         if use_scenes:
             from mm.scenes import (
@@ -771,14 +747,18 @@ def _l2_video_modal(path: Path, opts: _CatOpts, mode: Mode) -> str:
         if not mosaics:
             return mosaics, ""
 
-        # VLM call on mosaic only — no transcript in prompt
+        dur_ctx = ""
+        if duration > 0:
+            mins, secs = divmod(duration, 60)
+            dur_ctx = f" Duration: {int(mins)}m{secs:.0f}s."
+
         t_vlm = time.monotonic()
         llm = LlmBackend()
-        analysis = llm.analyze_video_visual(
-            mosaics,
-            video_name=path.name,
-            duration_s=duration,
-            mode=mode,
+        img_parts = [image_part(mp, mime="image/jpeg") for mp in mosaics]
+        analysis = llm.generate(
+            "video", mode,
+            context={"filename": path.name, "duration_ctx": dur_ctx},
+            parts=img_parts,
         )
         timing["vlm_call_ms"] = (time.monotonic() - t_vlm) * 1000
         timing["vlm_prompt_tokens"] = llm.last_usage.prompt_tokens
@@ -786,27 +766,29 @@ def _l2_video_modal(path: Path, opts: _CatOpts, mode: Mode) -> str:
         return mosaics, analysis
 
     def _extract_audio_transcript() -> str:
-        """Extract audio and transcribe with whisper."""
+        if not tpl.encode.transcribe:
+            return ""
+
         from mm.whisper import whisper_available
 
         if not whisper_available():
             return ""
 
-        from mm.config import get_mode_config
-
-        mode_cfg = get_mode_config(mode)
+        whisper_model = tpl.encode.whisper_model or "tiny"
+        audio_speed = tpl.encode.audio_speed or 2.0
+        beam_size = 5 if mode == "accurate" else 1
 
         t_audio = time.monotonic()
-        audio_result = extract_audio(path, speed=mode_cfg.audio_speed)
+        audio_result = extract_audio(path, speed=audio_speed)
         timing["audio_extraction_ms"] = (time.monotonic() - t_audio) * 1000
 
         from mm.whisper import transcribe
 
         whisper_result = transcribe(
             audio_result.path,
-            model_size=mode_cfg.whisper_model,
-            beam_size=mode_cfg.beam_size or 1,
-            audio_speed=mode_cfg.audio_speed,
+            model_size=whisper_model,
+            beam_size=beam_size,
+            audio_speed=audio_speed,
         )
         timing["audio_transcription_ms"] = whisper_result.elapsed_ms
 
@@ -816,8 +798,6 @@ def _l2_video_modal(path: Path, opts: _CatOpts, mode: Mode) -> str:
             pass
         return whisper_result.text
 
-    # Run (visual → VLM) ∥ (audio → whisper) in parallel
-    # The VLM sees only the mosaic; transcript is concatenated at the end.
     with ThreadPoolExecutor(max_workers=2) as pool:
         visual_future: Future[tuple[list[Path], str]] = pool.submit(_extract_visual_and_vlm)
         audio_future: Future[str] = pool.submit(_extract_audio_transcript)
@@ -829,7 +809,6 @@ def _l2_video_modal(path: Path, opts: _CatOpts, mode: Mode) -> str:
 
     timing["total_ms"] = (time.monotonic() - t_total) * 1000
 
-    # Cleanup temp mosaics (unless --output-dir was specified)
     if opts.output_dir is None:
         for mp in mosaic_paths:
             try:
@@ -840,66 +819,68 @@ def _l2_video_modal(path: Path, opts: _CatOpts, mode: Mode) -> str:
             except Exception:
                 pass
 
-    # Concatenate: VLM visual analysis + whisper transcript
-    parts: list[str] = [analysis]
+    out_parts: list[str] = [analysis]
     if transcript:
         word_count = len(transcript.split())
-        parts.append(f"\n## Transcript ({word_count} words)\n{transcript}")
+        out_parts.append(f"\n## Transcript ({word_count} words)\n{transcript}")
 
-    # Separate timing and token metrics
     time_keys = {k: v for k, v in timing.items() if k.endswith("_ms") and k != "total_ms"}
     token_keys = {k: v for k, v in timing.items() if "tokens" in k}
     timing_str = " | ".join(f"{k}: {v:.0f}ms" for k, v in time_keys.items())
     token_str = (
-        f" | {int(token_keys.get('vlm_prompt_tokens', 0))}→{int(token_keys.get('vlm_completion_tokens', 0))} tokens"
+        f" | {int(token_keys.get('vlm_prompt_tokens', 0))}"
+        f"→{int(token_keys.get('vlm_completion_tokens', 0))} tokens"
         if token_keys
         else ""
     )
-    parts.append(f"\n[mode={mode}, total={timing['total_ms']:.0f}ms{token_str} | {timing_str}]")
-    return "\n".join(parts)
+    out_parts.append(
+        f"\n[mode={mode}, total={timing['total_ms']:.0f}ms{token_str} | {timing_str}]"
+    )
+    return "\n".join(out_parts)
 
 
-def _l2_audio_modal(path: Path, opts: _CatOpts, mode: Mode) -> str:
+def _l2_audio_modal(path: Path, opts: _CatOpts, mode: str) -> str:
     """Audio extraction with transcription.
 
-    fast:     2x speed + tiny model + greedy decoding
-    accurate: 1x speed + medium model + beam search
+    Uses template-driven config for whisper model and audio speed.
     """
     import time
 
     from mm.ffmpeg import extract_audio, ffmpeg_available
+    from mm.templates import load
     from mm.whisper import transcribe, whisper_available
 
     if not ffmpeg_available():
         return f"[ffmpeg not found — cannot process {path.name}]"
 
     if not whisper_available():
-        return "[whisper not installed — pip install mm[extract] or pip install mm[extract,mlx] for MLX support on Apple Silicon]"
+        return (
+            "[whisper not installed — pip install mm[extract] "
+            "or pip install mm[extract,mlx] for MLX support on Apple Silicon]"
+        )
 
-    from mm.config import get_mode_config
-
-    mode_cfg = get_mode_config(mode)
+    tpl = load("audio", mode)
 
     timing: dict[str, float] = {}
     t_total = time.monotonic()
 
-    # 1. Extract audio
+    whisper_model = tpl.encode.whisper_model or "tiny"
+    audio_speed = tpl.encode.audio_speed or 2.0
+    beam_size = 5 if mode == "accurate" else 1
+
     t0 = time.monotonic()
-    audio_result = extract_audio(path, speed=mode_cfg.audio_speed)
+    audio_result = extract_audio(path, speed=audio_speed)
     timing["audio_extraction_ms"] = (time.monotonic() - t0) * 1000
 
-    # 2. Transcribe
-    whisper_model = mode_cfg.whisper_model
     whisper_result = transcribe(
         audio_result.path,
         model_size=whisper_model,
-        beam_size=mode_cfg.beam_size or 1,
-        audio_speed=mode_cfg.audio_speed,
+        beam_size=beam_size,
+        audio_speed=audio_speed,
     )
     timing["audio_transcription_ms"] = whisper_result.elapsed_ms
     transcript = whisper_result.text
 
-    # Cleanup temp audio
     try:
         audio_result.path.unlink(missing_ok=True)
     except Exception:
@@ -908,23 +889,25 @@ def _l2_audio_modal(path: Path, opts: _CatOpts, mode: Mode) -> str:
     if not transcript or transcript.startswith("["):
         return transcript or "[No speech detected]"
 
-    # 3. Optionally summarize via LLM
     from mm.llm import LlmBackend
 
     t_llm = time.monotonic()
     llm = LlmBackend()
-    summary = llm.summarize_transcript(transcript, mode=mode, filename=path.name)
+    summary = llm.generate(
+        "audio", mode,
+        context={"filename": path.name, "transcript": transcript},
+    )
     timing["llm_call_ms"] = (time.monotonic() - t_llm) * 1000
     timing["total_ms"] = (time.monotonic() - t_total) * 1000
     u = llm.last_usage
 
-    # 4. Format output
     word_count = len(transcript.split())
     timing_str = " | ".join(f"{k}: {v:.0f}ms" for k, v in timing.items() if k != "total_ms")
     return (
         f"{summary}\n\n"
         f"[Transcript: {word_count} words]\n"
-        f"[mode={mode}, total={timing['total_ms']:.0f}ms, {u.prompt_tokens}→{u.completion_tokens} tokens | {timing_str}]"
+        f"[mode={mode}, total={timing['total_ms']:.0f}ms, "
+        f"{u.prompt_tokens}→{u.completion_tokens} tokens | {timing_str}]"
     )
 
 
@@ -1138,6 +1121,82 @@ def _run_serde(
 
     indent = 2 if sys.stdout.isatty() else None
     typer.echo(json.dumps(all_messages, indent=indent))
+
+
+def _run_serde_l2(
+    paths: list[str],
+    strategy_value: str,
+    *,
+    detail: bool = False,
+    format: str | None = None,
+    verbose: bool = False,
+) -> None:
+    """Encode files with a serde strategy, then send to LLM for analysis.
+
+    Combines ``-s`` encoding with ``-l 2`` LLM inference: the strategy
+    produces OpenAI-compatible Messages which are sent to the active LLM
+    profile using the template-driven ``generate()`` method.
+    """
+    from mm.llm import LlmBackend
+    from mm.serde import resolve_strategy
+
+    llm = LlmBackend()
+
+    for file_path in paths:
+        p = Path(file_path)
+        if not p.exists():
+            typer.echo(f"Error: {file_path} not found.", err=True)
+            continue
+
+        media_type = _file_kind(p)
+        try:
+            strat = resolve_strategy(strategy_value, media_type)
+            messages = list(strat.encode(p))
+        except Exception as e:
+            typer.echo(f"Error encoding {file_path}: {e}", err=True)
+            continue
+
+        if not messages:
+            typer.echo(f"No messages produced for {file_path}.", err=True)
+            continue
+
+        all_parts: list[dict] = []
+        for msg in messages:
+            content = msg.get("content", [])
+            if isinstance(content, list):
+                for part in content:
+                    if "inline_data" in part:
+                        idata = part["inline_data"]
+                        mime = idata.get("mime_type", "")
+                        b64 = idata.get("data", "")
+                        if mime.startswith("video/"):
+                            typer.echo(
+                                f"Warning: strategy produced raw {mime} blob — "
+                                f"converting to image is not supported. "
+                                f"Use frame-sample or video-chunk instead "
+                                f"for OpenAI-compatible APIs.",
+                                err=True,
+                            )
+                            continue
+                        all_parts.append(
+                            {"type": "image_url", "image_url": {"url": f"data:{mime};base64,{b64}"}}
+                        )
+                    else:
+                        all_parts.append(part)
+            elif isinstance(content, str):
+                all_parts.append({"type": "text", "text": content})
+
+        if not all_parts:
+            typer.echo(f"No LLM-compatible content parts for {p.name}.", err=True)
+            continue
+
+        mode = "accurate" if detail else "fast"
+        kind = media_type if media_type in ("image", "video", "audio", "document") else "document"
+        result = llm.generate(kind, mode, context={"filename": p.name}, parts=all_parts)
+
+        if len(paths) > 1:
+            typer.echo(f"--- {p.name} ---", err=True)
+        typer.echo(result)
 
 
 def _parse_tile(tile: str) -> tuple[int, int]:

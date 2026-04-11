@@ -1,0 +1,14 @@
+kind: document
+mode: accurate
+
+encode:
+  strategy: null
+
+generate:
+  prompt: >-
+    Summarize this file ({filename}) in about 80 words:
+
+    ```
+    {content}
+    ```
+  max_tokens: 512

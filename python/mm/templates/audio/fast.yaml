@@ -1,0 +1,29 @@
+kind: audio
+mode: fast
+
+encode:
+  transcribe: true
+  whisper_model: tiny
+  audio_speed: 2.0
+
+generate:
+  prompt: >-
+    Summarize this audio transcript ({filename}):
+
+    {transcript}
+
+    Provide a concise summary (~50 words), 5 keyword tags,
+    and the detected language.
+
+    Use this format:
+    ## Summary
+    <summary>
+
+    ## Tags
+    - tag1
+    - tag2
+    ...
+
+    ## Language
+    <detected language>
+  max_tokens: 256
