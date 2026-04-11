@@ -104,7 +104,7 @@ def find_cmd(
     """
     from mm.display import resolve_format
 
-    fmt = resolve_format(format)
+    fmt = resolve_format(format.value if format else None)
 
     if tree:
         _find_tree(directory, kind, name, depth, size, fmt)

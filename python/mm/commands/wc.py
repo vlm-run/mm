@@ -50,7 +50,7 @@ def wc_cmd(
         console.print(f"[red]Directory not found: {directory}[/red]")
         raise typer.Exit(1)
 
-    fmt = resolve_format(format)
+    fmt = resolve_format(format.value if format else None)
     root = Path(directory).resolve()
 
     stdin_paths = read_paths_from_stdin()

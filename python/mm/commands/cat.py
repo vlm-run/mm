@@ -179,7 +179,7 @@ def cat_cmd(
 
     from mm.display import resolve_format
 
-    fmt = resolve_format(format)
+    fmt = resolve_format(format.value if format else None)
 
     opts = _CatOpts(
         level=level,

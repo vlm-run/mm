@@ -67,7 +67,7 @@ def sql_cmd(
     """
     from mm.display import resolve_format
 
-    fmt = resolve_format(format)
+    fmt = resolve_format(format.value if format else None)
     if list_tables:
         _list_tables(fmt)
         return

@@ -9,6 +9,12 @@ P = ParamSpec("P")
 T = TypeVar("T")
 
 
+class BaseFormat(str, Enum):
+    json = "json"
+    tsv = "tsv"
+    csv = "csv"
+
+
 class Format(str, Enum):
     json = "json"
     tsv = "tsv"

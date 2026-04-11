@@ -47,7 +47,7 @@ def grep_cmd(
     """
     from mm.display import resolve_format
 
-    fmt = resolve_format(format)
+    fmt = resolve_format(format.value if format else None)
     stdin_paths = read_paths_from_stdin()
 
     # L2 semantic search — vector similarity via embeddings
