@@ -139,6 +139,90 @@ Level 1 behavior by file type (<100ms target):
 - **Audio** (.mp3/.wav/.flac/.aac/.ogg/.m4a): duration, codec, bitrate (metadata only).
 - **Code/text/config**: raw content passthrough.
 
+## cat -s — serde encoding strategies
+
+The `-s` / `--strategy` flag encodes media files into VLM-ready OpenAI-compatible Message JSON. Three ways to specify a strategy:
+
+```bash
+# 1. Named strategy (built-in)
+mm cat photo.png -s resize                    # Resize to 1024px, base64 encode
+mm cat photo.png -s tile                      # Tile into 1024x1024 squares
+mm cat video.mp4 -s frame_sample              # Extract frames at 1fps
+mm cat video.mp4 -s video_chunk               # Chunk into 60s segments
+mm cat doc.pdf -s rasterize                   # Render pages as images
+mm cat doc.pdf -s rasterize_text              # Rasterize + extract text
+mm cat video.mp4 -s gemini_video              # Gemini passthrough (full file)
+mm cat video.mp4 -s gemini_video_chunked      # Gemini chunked
+mm cat doc.pdf -s gemini_doc                  # Gemini document passthrough
+
+# 2. File path (dynamically loaded .py file)
+mm cat photo.png -s ~/my_strategy.py          # Load and use custom strategy
+mm cat photo.png -s python/mm/strategies/contrast.py
+
+# 3. Inline Python (for agents)
+mm cat photo.png -s 'from mm.serde import strategy
+@strategy(name="inline_test", media_types=("image",))
+def inline_test(path, **kw):
+    import base64
+    b64 = base64.b64encode(path.read_bytes()).decode()
+    yield {"role": "user", "content": [{"type": "image_url", "image_url": {"url": f"data:image/png;base64,{b64}"}}]}'
+```
+
+Output is JSON Message dicts (pretty in TTY, compact when piped).
+
+### Built-in strategies
+
+| Name | Media | Description |
+|------|-------|-------------|
+| `resize` | image | Resize to max 1024px width (Rust fast path) |
+| `tile` | image | Tile into 1024x1024 squares, one Message per tile |
+| `frame_sample` | video | Extract frames at 1fps (requires ffmpeg) |
+| `video_chunk` | video | Chunk into 60s segments with 20s overlap |
+| `rasterize` | document | Render PDF pages as images (requires pypdfium2) |
+| `rasterize_text` | document | Rasterize + extract text, interleaved |
+| `gemini_video` | video | Pass video file as Gemini Part |
+| `gemini_video_chunked` | video | Chunk video as Gemini Parts |
+| `gemini_doc` | document | Pass PDF as Gemini Part |
+
+### Writing custom strategies
+
+Create a `.py` file in `python/mm/strategies/` (auto-discovered) or `~/.config/mm/strategies/`:
+
+```python
+from pathlib import Path
+from mm.serde import strategy
+
+@strategy(name="my_custom", media_types=("image",))
+def my_custom(path: Path, **kw):
+    import base64, io
+    from PIL import Image
+    img = Image.open(path)
+    img.thumbnail((1024, 1024))
+    buf = io.BytesIO()
+    img.save(buf, "JPEG", quality=90)
+    b64 = base64.b64encode(buf.getvalue()).decode()
+    yield {"role": "user", "content": [
+        {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{b64}"}}
+    ]}
+```
+
+### Python API
+
+```python
+from mm import process_image, process_image_tiled, process_video, process_document
+from pathlib import Path
+
+msg = process_image(Path("photo.png"), max_width=1024)       # Single Message dict
+tiles = list(process_image_tiled(Path("scan.png"), tile_size=1024))  # Multiple Messages
+chunks = list(process_video(Path("video.mp4")))               # Multiple Messages
+pages = list(process_document(Path("doc.pdf")))               # Multiple Messages
+
+# Via Context
+from mm import Context
+ctx = Context("~/data")
+messages = ctx.encode("photo.png", strategy="resize")
+```
+
 ## wc — count files, bytes, lines, tokens
 
 ```bash

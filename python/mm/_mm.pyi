@@ -79,3 +79,25 @@ def directory_hash(path: str) -> str | None:
 def perceptual_hash(path: str) -> int | None:
     """Perceptual hash (pHash) of an image file. Returns 64-bit hash."""
     ...
+
+# Serde: image resize/tile + Gemini Part serialization
+
+def resize_image(path: str, max_width: int) -> dict[str, object]:
+    """Resize image to max_width (Lanczos3), return {base64, mime, width, height}."""
+    ...
+
+def tile_image(path: str, tile_size: int) -> list[dict[str, object]]:
+    """Tile image into squares, return list of {base64, mime, col, row, total_cols, total_rows, width, height}."""
+    ...
+
+def gemini_image_part(path: str) -> str:
+    """Serialize image as Gemini inline_data Part JSON string."""
+    ...
+
+def gemini_video_parts(path: str, max_seconds: int = 120, overlap: int = 10) -> list[str]:
+    """Serialize video as Gemini inline_data Part JSON strings."""
+    ...
+
+def gemini_document_part(path: str) -> str:
+    """Serialize document as Gemini inline_data Part JSON string."""
+    ...

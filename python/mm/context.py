@@ -243,6 +243,48 @@ class Context:
         lines = content.splitlines()
         return "\n".join(lines[-n:])
 
+    def encode(
+        self,
+        path: str,
+        *,
+        strategy: str | None = None,
+        **kwargs: Any,
+    ) -> list[dict[str, Any]]:
+        """Encode a file for VLM consumption using a serde strategy.
+
+        Args:
+            path: Relative path within the context root.
+            strategy: Strategy name, .py file path, or inline code.
+                      If None, defaults to "resize" for images,
+                      "frame_sample" for video, "rasterize" for documents.
+            **kwargs: Strategy-specific parameters (max_width, fps, etc.)
+
+        Returns:
+            List of OpenAI-compatible Message dicts.
+        """
+        from mm.serde import resolve_strategy
+
+        full_path = self._root / path
+        if not full_path.exists():
+            raise FileNotFoundError(f"{path} not found in {self._root}")
+
+        ext = full_path.suffix.lower()
+        if ext in (".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp", ".tiff", ".svg"):
+            media_type = "image"
+        elif ext in (".mp4", ".mkv", ".avi", ".mov", ".webm", ".wmv"):
+            media_type = "video"
+        elif ext in (".pdf", ".docx", ".pptx"):
+            media_type = "document"
+        else:
+            media_type = "text"
+
+        if strategy is None:
+            strategy = {"image": "resize", "video": "frame_sample",
+                        "document": "rasterize"}.get(media_type, "resize")
+
+        strat = resolve_strategy(strategy, media_type)
+        return list(strat.encode(full_path, **kwargs))
+
     def grep(self, pattern: str, *, kind: str | None = None) -> list[dict[str, Any]]:
         """Search for a pattern across files."""
         import re

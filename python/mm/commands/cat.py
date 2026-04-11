@@ -128,6 +128,14 @@ def cat_cmd(
         Optional[str],
         typer.Option("--format", help="Output format: json, tsv, csv, dataset-jsonl, dataset-hf"),
     ] = None,
+    serde_strategy: Annotated[
+        Optional[str],
+        typer.Option(
+            "--strategy",
+            "-s",
+            help="Serde strategy: name (resize, tile, ...), path to .py file, or inline Python",
+        ),
+    ] = None,
 ) -> None:
     """Display file content semantically (like bat/cat).
 
@@ -175,6 +183,11 @@ def cat_cmd(
     if not paths:
         typer.echo("Error: No files specified.", err=True)
         raise typer.Exit(1)
+
+    # -s / --strategy: serde encoding mode — output JSON Messages
+    if serde_strategy is not None:
+        _run_serde(paths, serde_strategy, format)
+        return
 
     from mm.display import resolve_format
 
@@ -1096,6 +1109,47 @@ def _display_rich(
                 box=box.ROUNDED,
             )
         )
+
+
+# ---------------------------------------------------------------------------
+# Serde strategy dispatch
+# ---------------------------------------------------------------------------
+
+
+def _run_serde(paths: list[str], strategy_value: str, format: str | None) -> None:
+    """Run serde encoding and output JSON Messages."""
+    import json
+
+    from mm.serde import resolve_strategy
+
+    all_messages: list[dict] = []
+
+    for file_path in paths:
+        p = Path(file_path)
+        if not p.exists():
+            typer.echo(f"Error: {file_path} not found.", err=True)
+            continue
+
+        media_type = _file_kind(p)
+        try:
+            strat = resolve_strategy(strategy_value, media_type)
+            messages = list(strat.encode(p))
+            for msg in messages:
+                msg["_source"] = str(p)
+                msg["_strategy"] = getattr(strat, "name", strategy_value)
+            all_messages.extend(messages)
+        except Exception as e:
+            typer.echo(f"Error encoding {file_path}: {e}", err=True)
+
+    if not all_messages:
+        typer.echo("No messages produced.", err=True)
+        raise typer.Exit(1)
+
+    # Output as JSON (pretty in TTY, compact when piped)
+    import sys
+
+    indent = 2 if sys.stdout.isatty() else None
+    typer.echo(json.dumps(all_messages, indent=indent))
 
 
 # ---------------------------------------------------------------------------
