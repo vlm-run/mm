@@ -29,7 +29,7 @@ def _to_gemini_message(parts: list[dict[str, Any]]) -> Message:
 class GeminiVideo:
     """Pass video file directly as a Gemini inline_data Part."""
 
-    name = "gemini_video"
+    name = "gemini-video"
     media_types = ("video",)
 
     def encode(self, path: Path, **kwargs: Any) -> Iterable[Message]:
@@ -53,7 +53,7 @@ class GeminiVideoChunked:
     segment as a Gemini inline_data Part.
     """
 
-    name = "gemini_video_chunked"
+    name = "gemini-video-chunked"
     media_types = ("video",)
 
     def encode(self, path: Path, **kwargs: Any) -> Iterable[Message]:
@@ -97,7 +97,7 @@ class GeminiVideoChunked:
 class GeminiDocument:
     """Pass document file directly as a Gemini inline_data Part."""
 
-    name = "gemini_doc"
+    name = "gemini-doc"
     media_types = ("document",)
 
     def encode(self, path: Path, **kwargs: Any) -> Iterable[Message]:

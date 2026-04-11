@@ -141,59 +141,59 @@ Level 1 behavior by file type (<100ms target):
 
 ## cat -s — serde encoding strategies
 
-The `-s` / `--strategy` flag encodes media files into VLM-ready OpenAI-compatible Message JSON. Three ways to specify a strategy:
+The `-s` / `--strategy` flag encodes media files into VLM-ready OpenAI-compatible Message JSON. The **default** strategy is `resize`, which fits images into a 1024px bounding box while preserving aspect ratio. Three ways to specify a strategy:
 
 ```bash
 # 1. Named strategy (built-in)
-mm cat photo.png -s resize                    # Resize to 1024px, base64 encode
+mm cat photo.png -s resize                    # Default: fit to 1024px, base64 encode
 mm cat photo.png -s tile                      # Tile into 1024x1024 squares
-mm cat video.mp4 -s frame_sample              # Extract frames at 1fps
-mm cat video.mp4 -s video_chunk               # Chunk into 60s segments
+mm cat video.mp4 -s frame-sample              # Extract frames at 1fps
+mm cat video.mp4 -s video-chunk               # Chunk into 60s segments
 mm cat doc.pdf -s rasterize                   # Render pages as images
-mm cat doc.pdf -s rasterize_text              # Rasterize + extract text
-mm cat video.mp4 -s gemini_video              # Gemini passthrough (full file)
-mm cat video.mp4 -s gemini_video_chunked      # Gemini chunked
-mm cat doc.pdf -s gemini_doc                  # Gemini document passthrough
+mm cat doc.pdf -s rasterize-text              # Rasterize + extract text
+mm cat video.mp4 -s gemini-video              # Gemini passthrough (full file)
+mm cat video.mp4 -s gemini-video-chunked      # Gemini chunked
+mm cat doc.pdf -s gemini-doc                  # Gemini document passthrough
 
 # 2. File path (dynamically loaded .py file)
-mm cat photo.png -s ~/my_strategy.py          # Load and use custom strategy
-mm cat photo.png -s python/mm/strategies/contrast.py
+mm cat photo.png -s ~/my_strategy.py
 
 # 3. Inline Python (for agents)
 mm cat photo.png -s 'from mm.serde import strategy
-@strategy(name="inline_test", media_types=("image",))
+@strategy(media_types=("image",))
 def inline_test(path, **kw):
     import base64
     b64 = base64.b64encode(path.read_bytes()).decode()
     yield {"role": "user", "content": [{"type": "image_url", "image_url": {"url": f"data:image/png;base64,{b64}"}}]}'
 ```
 
-Output is JSON Message dicts (pretty in TTY, compact when piped).
+Output is JSON Message dicts (pretty in TTY, compact when piped). Use `--verbose` / `-v` for progress bars.
 
 ### Built-in strategies
 
 | Name | Media | Description |
 |------|-------|-------------|
-| `resize` | image | Resize to max 1024px width (Rust fast path) |
+| `resize` | image | **Default.** Fit to 1024px bounding box (Rust fast path) |
 | `tile` | image | Tile into 1024x1024 squares, one Message per tile |
-| `frame_sample` | video | Extract frames at 1fps (requires ffmpeg) |
-| `video_chunk` | video | Chunk into 60s segments with 20s overlap |
+| `frame-sample` | video | Extract frames at 1fps (requires ffmpeg) |
+| `video-chunk` | video | Chunk into 60s segments with 20s overlap |
 | `rasterize` | document | Render PDF pages as images (requires pypdfium2) |
-| `rasterize_text` | document | Rasterize + extract text, interleaved |
-| `gemini_video` | video | Pass video file as Gemini Part |
-| `gemini_video_chunked` | video | Chunk video as Gemini Parts |
-| `gemini_doc` | document | Pass PDF as Gemini Part |
+| `rasterize-text` | document | Rasterize + extract text, interleaved |
+| `gemini-video` | video | Pass video file as Gemini Part |
+| `gemini-video-chunked` | video | Chunk video as Gemini Parts |
+| `gemini-doc` | document | Pass PDF as Gemini Part |
 
 ### Writing custom strategies
 
-Create a `.py` file in `python/mm/strategies/` (auto-discovered) or `~/.config/mm/strategies/`:
+Create a `.py` file in `python/mm/strategies/` (auto-discovered) or `~/.config/mm/strategies/`. The `name` is optional — it defaults to the function name with underscores replaced by hyphens:
 
 ```python
 from pathlib import Path
 from mm.serde import strategy
 
-@strategy(name="my_custom", media_types=("image",))
+@strategy(media_types=("image",))
 def my_custom(path: Path, **kw):
+    """Registered as 'my-custom' (auto-named from function)."""
     import base64, io
     from PIL import Image
     img = Image.open(path)

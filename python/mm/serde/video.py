@@ -19,7 +19,7 @@ class VideoFrameSample:
     multiple Messages based on ``max_frames_per_message``.
     """
 
-    name = "frame_sample"
+    name = "frame-sample"
     media_types = ("video",)
 
     def encode(self, path: Path, **kwargs: Any) -> Iterable[Message]:
@@ -56,7 +56,6 @@ class VideoFrameSample:
             step = len(timestamps) // (max_frames_per_message * 8)
             timestamps = timestamps[::step]
 
-        # Extract frames
         frame_paths = extract_frames_at_timestamps(
             path,
             timestamps,
@@ -67,30 +66,29 @@ class VideoFrameSample:
             yield _to_message([{"type": "text", "text": f"[No frames extracted from {path.name}]"}])
             return
 
-        # Batch frames into messages
-        for i in range(0, len(frame_paths), max_frames_per_message):
-            batch = frame_paths[i : i + max_frames_per_message]
-            parts: list[dict[str, Any]] = []
+        try:
+            for i in range(0, len(frame_paths), max_frames_per_message):
+                batch = frame_paths[i : i + max_frames_per_message]
+                parts: list[dict[str, Any]] = []
 
-            t_start = timestamps[i] if i < len(timestamps) else 0
-            t_end = timestamps[min(i + max_frames_per_message, len(timestamps)) - 1] if timestamps else 0
-            parts.append({
-                "type": "text",
-                "text": f"Video frames from {path.name} ({t_start:.1f}s - {t_end:.1f}s):",
-            })
+                t_start = timestamps[i] if i < len(timestamps) else 0
+                t_end = timestamps[min(i + max_frames_per_message, len(timestamps)) - 1] if timestamps else 0
+                parts.append({
+                    "type": "text",
+                    "text": f"Video frames from {path.name} ({t_start:.1f}s - {t_end:.1f}s):",
+                })
 
-            for frame_path in batch:
-                b64 = base64.b64encode(frame_path.read_bytes()).decode()
-                parts.append(_image_part(b64, "image/jpeg", provider))
+                for frame_path in batch:
+                    b64 = base64.b64encode(frame_path.read_bytes()).decode()
+                    parts.append(_image_part(b64, "image/jpeg", provider))
 
-            yield _to_message(parts)
-
-        # Cleanup temp frames
-        for fp in frame_paths:
-            try:
-                fp.unlink(missing_ok=True)
-            except Exception:
-                pass
+                yield _to_message(parts)
+        finally:
+            for fp in frame_paths:
+                try:
+                    fp.unlink(missing_ok=True)
+                except OSError:
+                    pass
 
 
 class VideoChunk:
@@ -99,7 +97,7 @@ class VideoChunk:
     Each yielded Message represents one chunk of the video.
     """
 
-    name = "video_chunk"
+    name = "video-chunk"
     media_types = ("video",)
 
     def encode(self, path: Path, **kwargs: Any) -> Iterable[Message]:

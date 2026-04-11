@@ -272,7 +272,7 @@ class Context:
         media_type = file_kind(full_path.name)
 
         if strategy is None:
-            strategy = {"image": "resize", "video": "frame_sample",
+            strategy = {"image": "resize", "video": "frame-sample",
                         "document": "rasterize"}.get(media_type, "resize")
 
         strat = resolve_strategy(strategy, media_type)

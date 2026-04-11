@@ -41,16 +41,22 @@ def _to_message(parts: list[dict[str, Any]]) -> Message:
 
 
 def _pillow_resize(path: Path, max_width: int) -> dict[str, Any]:
-    """Pillow fallback for image resize."""
+    """Pillow fallback for image resize.
+
+    Resizes when either dimension exceeds *max_width*, fitting the image
+    into a ``max_width x max_width`` bounding box while preserving
+    aspect ratio.
+    """
     from PIL import Image
 
     img = Image.open(path)
     orig_w, orig_h = img.size
 
-    if orig_w > max_width:
-        scale = max_width / orig_w
+    if orig_w > max_width or orig_h > max_width:
+        scale = min(max_width / orig_w, max_width / orig_h)
+        new_w = round(orig_w * scale)
         new_h = round(orig_h * scale)
-        img = img.resize((max_width, new_h), Image.LANCZOS)
+        img = img.resize((new_w, new_h), Image.LANCZOS)
 
     w, h = img.size
     has_alpha = img.mode in ("RGBA", "LA", "PA")

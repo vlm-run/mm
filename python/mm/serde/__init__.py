@@ -125,23 +125,36 @@ class _FunctionStrategy:
         return self._fn(path, **kwargs)
 
 
-def strategy(name: str, media_types: tuple[str, ...]):
+def strategy(
+    name: str | None = None,
+    media_types: tuple[str, ...] = ("image",),
+):
     """Decorator that turns a generator function into a registered strategy.
 
-    Example::
+    The ``name`` is optional — if omitted, it is derived from the
+    function name by replacing underscores with hyphens.
 
-        @strategy(name="my_resize", media_types=("image",))
+    Examples::
+
+        @strategy(media_types=("image",))
         def my_resize(path, **kw):
             ...
             yield {"role": "user", "content": [...]}
+        # Registered as "my-resize"
+
+        @strategy(name="custom-name", media_types=("video",))
+        def whatever(path, **kw):
+            ...
 
     Args:
-        name: Registry key for the strategy.
+        name: Registry key.  Defaults to the function name with
+            underscores replaced by hyphens.
         media_types: Tuple of media kinds this strategy handles.
     """
 
     def decorator(fn: Any) -> _FunctionStrategy:
-        s = _FunctionStrategy(name, media_types, fn)
+        resolved_name = name if name is not None else fn.__name__.replace("_", "-")
+        s = _FunctionStrategy(resolved_name, media_types, fn)
         register(s)
         return s
 
@@ -334,7 +347,10 @@ def process_image(
     _ensure_discovered()
     s = get(strategy_name)
     path = _ensure_path(image)
-    messages = list(s.encode(path, max_width=max_width, **kwargs))
+    try:
+        messages = list(s.encode(path, max_width=max_width, **kwargs))
+    finally:
+        _cleanup_temp(path, image)
     if not messages:
         raise RuntimeError(f"Strategy {strategy_name!r} produced no messages")
     return messages[0]
@@ -359,21 +375,25 @@ def process_image_tiled(
     _ensure_discovered()
     s = get("tile")
     path = _ensure_path(image)
-    return s.encode(path, tile_size=tile_size, **kwargs)
+    try:
+        messages = list(s.encode(path, tile_size=tile_size, **kwargs))
+    finally:
+        _cleanup_temp(path, image)
+    return messages
 
 
 def process_video(
     video: Path,
     *,
-    strategy_name: str = "frame_sample",
+    strategy_name: str = "frame-sample",
     **kwargs: Any,
 ) -> Iterable[Message]:
     """Encode a video and yield one Message per chunk.
 
     Args:
         video: Path to a video file.
-        strategy_name: Registry name (e.g. ``"frame_sample"``,
-            ``"video_chunk"``).
+        strategy_name: Registry name (e.g. ``"frame-sample"``,
+            ``"video-chunk"``).
         **kwargs: Forwarded to ``strategy.encode()``.
 
     Yields:
@@ -395,7 +415,7 @@ def process_document(
     Args:
         document: Path to a PDF, DOCX, or PPTX file.
         strategy_name: Registry name (e.g. ``"rasterize"``,
-            ``"rasterize_text"``).
+            ``"rasterize-text"``).
         **kwargs: Forwarded to ``strategy.encode()``.
 
     Yields:
@@ -407,11 +427,26 @@ def process_document(
 
 
 def _ensure_path(image: Path | Any) -> Path:
-    """Convert a PIL Image to a temporary file path if necessary."""
+    """Convert a PIL Image to a temporary file path if necessary.
+
+    Uses ``NamedTemporaryFile`` with ``delete=False`` so the caller
+    retains access to the path.  The file is deleted after strategy
+    execution in the convenience functions above.
+    """
     if isinstance(image, Path):
         return image
     import tempfile
 
-    tmp = Path(tempfile.mktemp(suffix=".png"))
+    with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as f:
+        tmp = Path(f.name)
     image.save(tmp)
     return tmp
+
+
+def _cleanup_temp(path: Path, original: Path | Any) -> None:
+    """Delete *path* if it was created by ``_ensure_path`` (i.e. differs from *original*)."""
+    if not isinstance(original, Path) and path.exists():
+        try:
+            path.unlink()
+        except OSError:
+            pass

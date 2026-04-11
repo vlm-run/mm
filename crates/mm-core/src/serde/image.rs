@@ -52,17 +52,21 @@ pub fn resize_and_encode_with_quality(
     let img = load_image(path)?;
     let (orig_w, orig_h) = img.dimensions();
 
-    let (resized, w, h) = if orig_w > max_width {
-        let scale = max_width as f64 / orig_w as f64;
+    // Resize when *either* dimension exceeds max_width, scaling by
+    // whichever axis overflows more so the result fits in a
+    // max_width × max_width bounding box while preserving aspect ratio.
+    let (resized, w, h) = if orig_w > max_width || orig_h > max_width {
+        let scale = (max_width as f64 / orig_w as f64).min(max_width as f64 / orig_h as f64);
+        let new_w = (orig_w as f64 * scale).round() as u32;
         let new_h = (orig_h as f64 * scale).round() as u32;
-        let r = img.resize(max_width, new_h, FilterType::Lanczos3);
+        let r = img.resize(new_w, new_h, FilterType::Lanczos3);
         let dims = r.dimensions();
         (r, dims.0, dims.1)
     } else {
         (img, orig_w, orig_h)
     };
 
-    let (base64, mime) = encode_to_base64(&resized, path, quality);
+    let (base64, mime) = encode_to_base64(&resized, path, quality)?;
     Ok(EncodedImage {
         base64,
         mime,
@@ -90,7 +94,7 @@ pub fn tile_and_encode_with_quality(
     let (w, h) = img.dimensions();
 
     if w <= tile_size && h <= tile_size {
-        let (base64, mime) = encode_to_base64(&img, path, quality);
+        let (base64, mime) = encode_to_base64(&img, path, quality)?;
         return Ok(vec![EncodedTile {
             base64,
             mime,
@@ -115,7 +119,7 @@ pub fn tile_and_encode_with_quality(
             let th = tile_size.min(h - y);
 
             let tile_img = img.crop_imm(x, y, tw, th);
-            let (base64, mime) = encode_to_base64(&tile_img, path, quality);
+            let (base64, mime) = encode_to_base64(&tile_img, path, quality)?;
 
             tiles.push(EncodedTile {
                 base64,
@@ -149,7 +153,11 @@ fn load_image(path: &Path) -> Result<DynamicImage, String> {
 ///
 /// For JPEG the image is first converted to RGB8 to strip any alpha
 /// channel that would cause the encoder to fail.
-fn encode_to_base64(img: &DynamicImage, source_path: &Path, quality: u8) -> (String, String) {
+fn encode_to_base64(
+    img: &DynamicImage,
+    source_path: &Path,
+    quality: u8,
+) -> Result<(String, String), String> {
     let has_alpha = matches!(
         img,
         DynamicImage::ImageRgba8(_)
@@ -176,20 +184,19 @@ fn encode_to_base64(img: &DynamicImage, source_path: &Path, quality: u8) -> (Str
     let mut buf: Vec<u8> = Vec::new();
 
     if format == ImageFormat::Jpeg {
-        // Use JpegEncoder directly so we can control quality.
         let rgb = img.to_rgb8();
         let mut encoder = JpegEncoder::new_with_quality(&mut buf, quality);
         encoder
             .encode_image(&rgb)
-            .expect("JPEG encode failed");
+            .map_err(|e| format!("JPEG encode failed: {e}"))?;
     } else {
         let mut cursor = Cursor::new(&mut buf);
         img.write_to(&mut cursor, format)
-            .expect("image encode failed");
+            .map_err(|e| format!("{format:?} encode failed: {e}"))?;
     }
 
     let b64 = base64::engine::general_purpose::STANDARD.encode(&buf);
-    (b64, mime.to_string())
+    Ok((b64, mime.to_string()))
 }
 
 #[cfg(test)]

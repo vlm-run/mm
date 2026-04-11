@@ -92,9 +92,23 @@ def cat_cmd(
         typer.Option(
             "--strategy",
             "-s",
-            help="Serde strategy: name (resize, tile, ...), path to .py file, or inline Python",
+            help=(
+                "Encode file for VLM consumption. Accepts a strategy name, "
+                "path to a .py file, or inline Python code. "
+                "Built-in strategies: "
+                "resize (default, fit to 1024px), "
+                "tile (1024x1024 tiles), "
+                "frame-sample (video at 1fps), "
+                "video-chunk (60s segments), "
+                "rasterize (PDF pages as images), "
+                "rasterize-text (pages + text), "
+                "gemini-video, gemini-video-chunked, gemini-doc."
+            ),
         ),
     ] = None,
+    verbose: Annotated[
+        bool, typer.Option("--verbose", "-v", help="Show progress bars during encoding")
+    ] = False,
 ) -> None:
     """Display file content semantically (like bat/cat).
 
@@ -145,7 +159,7 @@ def cat_cmd(
 
     # -s / --strategy: serde encoding mode — output JSON Messages
     if serde_strategy is not None:
-        _run_serde(paths, serde_strategy, format)
+        _run_serde(paths, serde_strategy, format, verbose=verbose)
         return
 
     from mm.display import resolve_format
@@ -1057,7 +1071,13 @@ def _display_rich(
         )
 
 
-def _run_serde(paths: list[str], strategy_value: str, format: str | None) -> None:
+def _run_serde(
+    paths: list[str],
+    strategy_value: str,
+    format: str | None,
+    *,
+    verbose: bool = False,
+) -> None:
     """Encode files with a serde strategy and emit JSON Messages to stdout.
 
     Resolves the ``-s`` value (named strategy, file path, or inline code),
@@ -1068,6 +1088,7 @@ def _run_serde(paths: list[str], strategy_value: str, format: str | None) -> Non
         paths: File paths to encode.
         strategy_value: The raw ``-s`` value from the CLI.
         format: Output format hint (unused, always JSON for serde).
+        verbose: If True, show a rich progress bar on stderr.
     """
     import json
 
@@ -1075,10 +1096,21 @@ def _run_serde(paths: list[str], strategy_value: str, format: str | None) -> Non
 
     all_messages: list[dict] = []
 
+    if verbose:
+        from rich.progress import Progress
+
+        progress = Progress(transient=True)
+        task = progress.add_task("Encoding...", total=len(paths))
+        progress.start()
+    else:
+        progress = None  # type: ignore[assignment]
+
     for file_path in paths:
         p = Path(file_path)
         if not p.exists():
             typer.echo(f"Error: {file_path} not found.", err=True)
+            if progress:
+                progress.advance(task)
             continue
 
         media_type = _file_kind(p)
@@ -1092,11 +1124,16 @@ def _run_serde(paths: list[str], strategy_value: str, format: str | None) -> Non
         except Exception as e:
             typer.echo(f"Error encoding {file_path}: {e}", err=True)
 
+        if progress:
+            progress.advance(task)
+
+    if progress:
+        progress.stop()
+
     if not all_messages:
         typer.echo("No messages produced.", err=True)
         raise typer.Exit(1)
 
-    # Output as JSON (pretty in TTY, compact when piped)
     import sys
 
     indent = 2 if sys.stdout.isatty() else None

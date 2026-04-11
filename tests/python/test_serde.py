@@ -72,13 +72,13 @@ class TestRegistry:
         names = list_strategies()
         assert "resize" in names
         assert "tile" in names
-        assert "frame_sample" in names
-        assert "video_chunk" in names
+        assert "frame-sample" in names
+        assert "video-chunk" in names
         assert "rasterize" in names
-        assert "rasterize_text" in names
-        assert "gemini_video" in names
-        assert "gemini_video_chunked" in names
-        assert "gemini_doc" in names
+        assert "rasterize-text" in names
+        assert "gemini-video" in names
+        assert "gemini-video-chunked" in names
+        assert "gemini-doc" in names
         assert len(names) >= 9
 
     def test_list_strategies_by_image(self):
@@ -87,15 +87,15 @@ class TestRegistry:
         names = list_strategies(media_type="image")
         assert "resize" in names
         assert "tile" in names
-        assert "frame_sample" not in names
+        assert "frame-sample" not in names
 
     def test_list_strategies_by_video(self):
         from mm.serde import list_strategies
 
         names = list_strategies(media_type="video")
-        assert "frame_sample" in names
-        assert "video_chunk" in names
-        assert "gemini_video" in names
+        assert "frame-sample" in names
+        assert "video-chunk" in names
+        assert "gemini-video" in names
         assert "resize" not in names
 
     def test_list_strategies_by_document(self):
@@ -103,8 +103,8 @@ class TestRegistry:
 
         names = list_strategies(media_type="document")
         assert "rasterize" in names
-        assert "rasterize_text" in names
-        assert "gemini_doc" in names
+        assert "rasterize-text" in names
+        assert "gemini-doc" in names
         assert "resize" not in names
 
     def test_get_unknown_strategy_raises(self):
@@ -149,12 +149,22 @@ class TestRegistry:
     def test_strategy_decorator(self):
         from mm.serde import _REGISTRY, strategy
 
-        @strategy(name="test_decorator_xyz", media_types=("image",))
+        @strategy(name="test-decorator-xyz", media_types=("image",))
         def test_decorator_xyz(path, **kw):
             yield {"role": "user", "content": []}
 
-        assert "test_decorator_xyz" in _REGISTRY
-        assert _REGISTRY["test_decorator_xyz"].media_types == ("image",)
+        assert "test-decorator-xyz" in _REGISTRY
+        assert _REGISTRY["test-decorator-xyz"].media_types == ("image",)
+
+    def test_strategy_decorator_auto_name(self):
+        """@strategy without name= should derive name from function name."""
+        from mm.serde import _REGISTRY, strategy
+
+        @strategy(media_types=("image",))
+        def my_auto_named_strat(path, **kw):
+            yield {"role": "user", "content": []}
+
+        assert "my-auto-named-strat" in _REGISTRY
 
 
 # ---------------------------------------------------------------------------
@@ -228,6 +238,28 @@ class TestImageResize:
         # Original: 3000x2000, ratio ~1.5
         ratio = w / h
         assert abs(ratio - 1.5) < 0.1
+
+
+    def test_resize_tall_image_respects_max_height(self, tmp_path):
+        """A tall image (H > max_width) should be downscaled by height."""
+        tall = _make_jpeg(tmp_path / "tall.jpg", 500, 3000)
+        from mm.serde import get
+
+        strat = get("resize")
+        messages = list(strat.encode(tall, max_width=1024))
+        msg = messages[0]
+        url = msg["content"][0]["image_url"]["url"]
+        b64_data = url.split(";base64,")[1]
+        img_bytes = base64.b64decode(b64_data)
+        from PIL import Image
+        import io
+
+        img = Image.open(io.BytesIO(img_bytes))
+        w, h = img.size
+        assert w <= 1024
+        assert h <= 1024
+        # Aspect ratio: 500/3000 ≈ 0.167
+        assert abs(w / h - 500 / 3000) < 0.05
 
 
 class TestImageTile:
