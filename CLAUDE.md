@@ -14,6 +14,33 @@
     - Input tok/s: audio/video content measured in toks (tok), duration in seconds (s)
     - Input tok/MB: audio/video content, Mtok/MB.
 
+## Best practices
+
+### Testing and benchmarks
+
+- Every performance-oriented or performance-critical method **must** have both unit tests and benchmark coverage. No exceptions — if it's on the hot path, prove it with numbers.
+- Write Criterion benchmarks for Rust (in `crates/mm-core/benches/`) and pytest-benchmark tests for Python (in `tests/python/test_benchmark.py`). When adding a new method that touches I/O, parsing, hashing, or serialization, add a corresponding benchmark in the same PR.
+- Benchmarks are not afterthoughts. Treat them as first-class artifacts — they catch regressions that unit tests cannot.
+
+### Rust-first for performance
+
+- Default to implementing performance-critical logic in Rust and exposing it to Python via PyO3 bindings. The pattern: Rust core method → PyO3 wrapper in `mm-python` → Python type stub in `_mm.pyi` → importable from `mm`.
+- If a Python method shows up in profiling or processes data at scale (file I/O, hashing, parsing, batch transforms), it is a candidate for Rust. Prototype in Python if needed, but graduate to Rust before shipping.
+- Keep the Rust → Python boundary clean: pass Arrow IPC bytes, primitive types, or simple structs. Avoid complex Python objects crossing the FFI.
+
+### Code style — Python
+
+- **No header/separator comments.** Do not write `# === Section ===` or `# --- helpers ---` dividers. The code structure should speak for itself.
+- **Google-style docstrings** for all public functions, classes, and modules. Document args, returns, raises, and include a short usage example for non-obvious APIs. Internal helpers get a one-liner docstring if the name isn't self-explanatory.
+- **Zen of Python applies.** Beautiful is better than ugly. Simple is better than complex. Flat is better than nested. Readability counts. Write code that a staff or principal engineer would be proud to review — elegant, minimal, and intentional. No sloppy shortcuts, no over-engineering.
+- Prioritize developer experience and performance equally. Neither is negotiable. If a design forces a tradeoff between the two, find a third option.
+- Use type annotations on all public APIs. Leverage `typing` and `typing_extensions` to make interfaces self-documenting.
+
+### Code style — Rust
+
+- Follow idiomatic Rust: use `clippy::pedantic` as guidance, prefer zero-copy where possible, and keep allocations off the hot path.
+- Public APIs get `///` doc comments with examples. Internal functions get `//` comments only where the intent isn't obvious from the code.
+
 ## Libraries
 
 **Python:**
