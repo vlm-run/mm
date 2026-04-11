@@ -29,52 +29,11 @@ from typing import TYPE_CHECKING, Annotated, Literal, Optional
 
 import typer
 
+from mm.constants import AUDIO_EXTS, DOCUMENT_EXTS, IMAGE_EXTS, VIDEO_EXTS, FileKind
 from mm.pipe import read_paths_from_stdin
 
 if TYPE_CHECKING:
     from mm.config import Mode
-
-VIDEO_EXTS = frozenset(
-    (
-        ".mp4",
-        ".mkv",
-        ".avi",
-        ".mov",
-        ".wmv",
-        ".flv",
-        ".webm",
-        ".m4v",
-        ".mpg",
-        ".mpeg",
-        ".3gp",
-        ".ogv",
-    )
-)
-IMAGE_EXTS = frozenset(
-    (
-        ".png",
-        ".jpg",
-        ".jpeg",
-        ".gif",
-        ".webp",
-        ".bmp",
-        ".tiff",
-        ".svg",
-    )
-)
-AUDIO_EXTS = frozenset(
-    (
-        ".mp3",
-        ".wav",
-        ".flac",
-        ".aac",
-        ".ogg",
-        ".m4a",
-        ".wma",
-        ".opus",
-    )
-)
-DOCUMENT_EXTS = frozenset((".pdf", ".docx", ".pptx"))
 
 
 def cat_cmd(
@@ -257,11 +216,6 @@ def cat_cmd(
         emit_rows(fmt, results, output_dir=str(output_dir) if output_dir else "mm_dataset")
 
 
-# ---------------------------------------------------------------------------
-# Internal types
-# ---------------------------------------------------------------------------
-
-
 class _CatOpts:
     """Bag of resolved options threaded through extraction."""
 
@@ -302,24 +256,11 @@ class _CatOpts:
             setattr(self, k, v)
 
 
-# ---------------------------------------------------------------------------
-# Dispatch
-# ---------------------------------------------------------------------------
-
-FileKind = Literal["text", "image", "video", "audio", "document"]
-
-
 def _file_kind(path: Path) -> FileKind:
-    ext = path.suffix.lower()
-    if ext in IMAGE_EXTS:
-        return "image"
-    if ext in VIDEO_EXTS:
-        return "video"
-    if ext in AUDIO_EXTS:
-        return "audio"
-    if ext in DOCUMENT_EXTS:
-        return "document"
-    return "text"
+    """Classify a file into a media kind based on its extension."""
+    from mm.constants import file_kind
+
+    return file_kind(path.name)
 
 
 def _extract(path: Path, opts: _CatOpts) -> str:
@@ -335,7 +276,19 @@ def _extract(path: Path, opts: _CatOpts) -> str:
 
 
 def _run_l2(path: Path, kind: str, opts: _CatOpts) -> str:
-    """Run L2 with cache lookup/store unless --no-cache."""
+    """Run L2 semantic extraction with cache lookup and storage.
+
+    Checks the SQLite cache first, runs the LLM call if not cached,
+    then stores the result and triggers embedding generation.
+
+    Args:
+        path: Absolute path to the file.
+        kind: Media kind string (image, video, audio, document, text).
+        opts: Resolved extraction options from CLI flags.
+
+    Returns:
+        LLM-generated description or summary text.
+    """
     from mm.profile import get_profile
     from mm.store.db import MmDatabase
     from mm.store.util import get_content_hash
@@ -400,12 +353,20 @@ def _run_l2(path: Path, kind: str, opts: _CatOpts) -> str:
     return result
 
 
-# ---------------------------------------------------------------------------
-# L1 — structured extraction, <100ms per file
-# ---------------------------------------------------------------------------
+def _run_l1(path: Path, kind: str, *, no_cache: bool = False) -> str:
+    """Run L1 content extraction with caching.
 
+    Dispatches to the appropriate extractor based on file kind:
+    image metadata, video metadata, PDF text, or raw text passthrough.
 
-def _run_l1(path: Path, kind: str, *, no_cache=False) -> str:
+    Args:
+        path: Absolute path to the file.
+        kind: Media kind string.
+        no_cache: If True, bypass the L1 cache.
+
+    Returns:
+        Extracted content as a human-readable string.
+    """
     from mm.store.db import MmDatabase
     from mm.store.util import get_content_hash
 
@@ -558,11 +519,6 @@ def _l1_pdf(path: Path) -> str:
         return f"[PDF extraction failed: {e}]"
 
 
-# ---------------------------------------------------------------------------
-# L2 — semantic understanding via LLM
-# ---------------------------------------------------------------------------
-
-
 def _l2(path: Path, kind: str, opts: _CatOpts) -> str:
     if kind == "image":
         return _l2_image(path, opts)
@@ -648,11 +604,6 @@ def _l2_audio(path: Path, opts: _CatOpts) -> str:
 
     metadata = _run_l1(path, "audio")
     return LlmBackend().describe(path, metadata, detail=opts.detail)
-
-
-# ---------------------------------------------------------------------------
-# L2 Modal — mode-aware extraction (--mode fast|accurate)
-# ---------------------------------------------------------------------------
 
 
 def _l2_modal(path: Path, kind: str, opts: _CatOpts) -> str:
@@ -963,11 +914,6 @@ def _l2_audio_modal(path: Path, opts: _CatOpts, mode: Mode) -> str:
     )
 
 
-# ---------------------------------------------------------------------------
-# Display
-# ---------------------------------------------------------------------------
-
-
 def _display_rich(
     path: Path,
     content: str,
@@ -1111,13 +1057,18 @@ def _display_rich(
         )
 
 
-# ---------------------------------------------------------------------------
-# Serde strategy dispatch
-# ---------------------------------------------------------------------------
-
-
 def _run_serde(paths: list[str], strategy_value: str, format: str | None) -> None:
-    """Run serde encoding and output JSON Messages."""
+    """Encode files with a serde strategy and emit JSON Messages to stdout.
+
+    Resolves the ``-s`` value (named strategy, file path, or inline code),
+    encodes each file, and prints the resulting OpenAI-compatible Message
+    dicts as JSON.
+
+    Args:
+        paths: File paths to encode.
+        strategy_value: The raw ``-s`` value from the CLI.
+        format: Output format hint (unused, always JSON for serde).
+    """
     import json
 
     from mm.serde import resolve_strategy
@@ -1150,11 +1101,6 @@ def _run_serde(paths: list[str], strategy_value: str, format: str | None) -> Non
 
     indent = 2 if sys.stdout.isatty() else None
     typer.echo(json.dumps(all_messages, indent=indent))
-
-
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
 
 
 def _parse_tile(tile: str) -> tuple[int, int]:

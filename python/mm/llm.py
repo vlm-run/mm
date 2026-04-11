@@ -424,13 +424,7 @@ def _to_kebab_case(s: str) -> str:
 
 
 def _guess_image_mime(path: Path) -> str:
-    ext = path.suffix.lower()
-    return {
-        ".png": "image/png",
-        ".jpg": "image/jpeg",
-        ".jpeg": "image/jpeg",
-        ".gif": "image/gif",
-        ".webp": "image/webp",
-        ".bmp": "image/bmp",
-        ".svg": "image/svg+xml",
-    }.get(ext, "image/png")
+    """Return the MIME type for an image path, defaulting to ``image/png``."""
+    from mm.constants import guess_mime
+
+    return guess_mime(path.name, fallback="image/png")

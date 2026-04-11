@@ -1,4 +1,10 @@
-"""Image encoding strategies: resize and tile."""
+"""Image encoding strategies: resize and tile.
+
+Provides ``ImageResize`` and ``ImageTile`` strategies that transform image
+files into OpenAI-compatible Message dicts.  Both use a Rust fast-path
+(``mm._mm.resize_image`` / ``tile_image``) with an automatic Pillow fallback
+when the native extension is unavailable.
+"""
 
 from __future__ import annotations
 
@@ -7,27 +13,8 @@ import io
 from pathlib import Path
 from typing import Any, Iterable
 
+from mm.constants import guess_mime
 from mm.serde import Message, _resolve_provider, register
-
-
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
-
-
-def _guess_mime(path: Path) -> str:
-    ext = path.suffix.lower()
-    return {
-        ".png": "image/png",
-        ".jpg": "image/jpeg",
-        ".jpeg": "image/jpeg",
-        ".gif": "image/gif",
-        ".webp": "image/webp",
-        ".bmp": "image/bmp",
-        ".svg": "image/svg+xml",
-        ".tiff": "image/tiff",
-        ".tif": "image/tiff",
-    }.get(ext, "image/png")
 
 
 def _openai_image_part(b64: str, mime: str) -> dict[str, Any]:
@@ -120,11 +107,6 @@ def _pillow_tile(path: Path, tile_size: int) -> list[dict[str, Any]]:
                 "width": tw, "height": th,
             })
     return tiles
-
-
-# ---------------------------------------------------------------------------
-# Strategies
-# ---------------------------------------------------------------------------
 
 
 class ImageResize:

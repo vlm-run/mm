@@ -4,15 +4,26 @@ import hashlib
 import time
 from pathlib import Path
 
-_IMAGE_EXTS = frozenset((".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp", ".tiff"))
+from mm.constants import IMAGE_EXTS
 
 
 def get_content_hash(path: Path) -> str | None:
-    """Get a cache-suitable hash for a file."""
+    """Get a cache-suitable hash for a file.
+
+    Uses perceptual hash for images (resize-invariant) and xxh3 content
+    hash for everything else.
+
+    Args:
+        path: Absolute path to the file.
+
+    Returns:
+        Hex hash string prefixed with ``phash:`` for images, or a plain
+        16-char hex xxh3 digest.  ``None`` on failure.
+    """
     try:
         from mm._mm import content_hash, perceptual_hash
 
-        if path.suffix.lower() in _IMAGE_EXTS:
+        if path.suffix.lower() in IMAGE_EXTS:
             if phash := perceptual_hash(str(path)):
                 return f"phash:{phash:016x}"
         return content_hash(str(path))

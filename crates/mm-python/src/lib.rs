@@ -340,16 +340,17 @@ fn perceptual_hash(path: String) -> PyResult<Option<u64>> {
     Ok(mm_core::hash::phash(&data))
 }
 
-// ---------------------------------------------------------------------------
-// Serde: image resize/tile + Gemini Part serialization
-// ---------------------------------------------------------------------------
-
-/// Resize image to max_width (keeping aspect ratio), return dict with base64, mime, width, height.
+/// Resize image to max_width (keeping aspect ratio).
+///
+/// Returns a dict with keys: base64, mime, width, height.
+/// JPEG quality defaults to 85; pass `quality` to override.
 #[pyfunction]
-fn resize_image(py: Python<'_>, path: String, max_width: u32) -> PyResult<PyObject> {
+#[pyo3(signature = (path, max_width, quality=85))]
+fn resize_image(py: Python<'_>, path: String, max_width: u32, quality: u8) -> PyResult<PyObject> {
     let p = std::path::Path::new(&path);
-    let result = mm_core::serde::image::resize_and_encode(p, max_width)
-        .map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(e))?;
+    let result =
+        mm_core::serde::image::resize_and_encode_with_quality(p, max_width, quality)
+            .map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(e))?;
     let dict = pyo3::types::PyDict::new(py);
     dict.set_item("base64", &result.base64)?;
     dict.set_item("mime", &result.mime)?;
@@ -358,11 +359,15 @@ fn resize_image(py: Python<'_>, path: String, max_width: u32) -> PyResult<PyObje
     Ok(dict.into_pyobject(py)?.into_any().unbind())
 }
 
-/// Tile image into tile_size squares, return list of dicts.
+/// Tile image into tile_size squares.
+///
+/// Returns a list of dicts, one per tile.
+/// JPEG quality defaults to 85; pass `quality` to override.
 #[pyfunction]
-fn tile_image(py: Python<'_>, path: String, tile_size: u32) -> PyResult<PyObject> {
+#[pyo3(signature = (path, tile_size, quality=85))]
+fn tile_image(py: Python<'_>, path: String, tile_size: u32, quality: u8) -> PyResult<PyObject> {
     let p = std::path::Path::new(&path);
-    let tiles = mm_core::serde::image::tile_and_encode(p, tile_size)
+    let tiles = mm_core::serde::image::tile_and_encode_with_quality(p, tile_size, quality)
         .map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(e))?;
     let list = pyo3::types::PyList::empty(py);
     for tile in &tiles {

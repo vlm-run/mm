@@ -29,38 +29,64 @@ if TYPE_CHECKING:
     from PIL import Image
 
 Message = dict[str, Any]
-
-# ---------------------------------------------------------------------------
-# Protocol
-# ---------------------------------------------------------------------------
+"""OpenAI-compatible message dict: ``{"role": "user", "content": [...]}``."""
 
 
 @runtime_checkable
 class MessageStrategy(Protocol):
-    """Interface for media encoding strategies."""
+    """Interface that all encoding strategies must satisfy.
+
+    Attributes:
+        name: Short identifier used with ``-s`` on the CLI.
+        media_types: Tuple of media kinds this strategy handles
+            (e.g. ``("image",)``, ``("video",)``).
+    """
 
     name: str
     media_types: tuple[str, ...]
 
-    def encode(self, path: Path, **kwargs: Any) -> Iterable[Message]: ...
+    def encode(self, path: Path, **kwargs: Any) -> Iterable[Message]:
+        """Encode a media file into one or more Message dicts.
 
+        Args:
+            path: Absolute path to the source file.
+            **kwargs: Strategy-specific parameters (``max_width``,
+                ``tile_size``, ``fps``, etc.).
 
-# ---------------------------------------------------------------------------
-# Registry
-# ---------------------------------------------------------------------------
+        Yields:
+            OpenAI-compatible Message dicts.  Each dict is independently
+            sendable to a VLM, which enables parallel inference over tiles
+            or video chunks.
+        """
+        ...
+
 
 _REGISTRY: dict[str, MessageStrategy] = {}
 _DISCOVERED = False
 
 
 def register(strat: MessageStrategy) -> MessageStrategy:
-    """Register a strategy instance by name."""
+    """Add a strategy instance to the global registry.
+
+    Args:
+        strat: Any object satisfying the ``MessageStrategy`` protocol.
+
+    Returns:
+        The same strategy, for use as a decorator return value.
+    """
     _REGISTRY[strat.name] = strat
     return strat
 
 
 def get(name: str) -> MessageStrategy:
-    """Look up a registered strategy. Raises KeyError if not found."""
+    """Look up a registered strategy by name.
+
+    Args:
+        name: Strategy identifier (e.g. ``"resize"``).
+
+    Raises:
+        KeyError: If no strategy with that name is registered.
+    """
     _ensure_discovered()
     if name not in _REGISTRY:
         available = ", ".join(sorted(_REGISTRY))
@@ -69,7 +95,12 @@ def get(name: str) -> MessageStrategy:
 
 
 def list_strategies(*, media_type: str | None = None) -> list[str]:
-    """List registered strategy names, optionally filtered by media type."""
+    """Return sorted names of all registered strategies.
+
+    Args:
+        media_type: If given, only return strategies that handle this
+            kind (``"image"``, ``"video"``, ``"document"``).
+    """
     _ensure_discovered()
     if media_type is None:
         return sorted(_REGISTRY)
@@ -80,22 +111,12 @@ def list_strategies(*, media_type: str | None = None) -> list[str]:
     )
 
 
-# ---------------------------------------------------------------------------
-# @strategy decorator
-# ---------------------------------------------------------------------------
-
-
 class _FunctionStrategy:
-    """Wraps a generator function as a MessageStrategy."""
+    """Adapts a bare generator function into a ``MessageStrategy``."""
 
     __slots__ = ("name", "media_types", "_fn")
 
-    def __init__(
-        self,
-        name: str,
-        media_types: tuple[str, ...],
-        fn: Any,
-    ) -> None:
+    def __init__(self, name: str, media_types: tuple[str, ...], fn: Any) -> None:
         self.name = name
         self.media_types = media_types
         self._fn = fn
@@ -105,7 +126,7 @@ class _FunctionStrategy:
 
 
 def strategy(name: str, media_types: tuple[str, ...]):
-    """Decorator: turn a function into a registered MessageStrategy.
+    """Decorator that turns a generator function into a registered strategy.
 
     Example::
 
@@ -113,6 +134,10 @@ def strategy(name: str, media_types: tuple[str, ...]):
         def my_resize(path, **kw):
             ...
             yield {"role": "user", "content": [...]}
+
+    Args:
+        name: Registry key for the strategy.
+        media_types: Tuple of media kinds this strategy handles.
     """
 
     def decorator(fn: Any) -> _FunctionStrategy:
@@ -123,15 +148,20 @@ def strategy(name: str, media_types: tuple[str, ...]):
     return decorator
 
 
-# ---------------------------------------------------------------------------
-# Dynamic loading
-# ---------------------------------------------------------------------------
-
-
 def load_strategy_file(path: Path) -> list[str]:
-    """Import a .py file and register any @strategy-decorated functions.
+    """Dynamically import a ``.py`` file and register its strategies.
 
-    Returns list of strategy names registered from the file.
+    Any ``@strategy``-decorated functions in the file are automatically
+    registered when the module is executed.
+
+    Args:
+        path: Absolute or relative path to a Python file.
+
+    Returns:
+        List of strategy names that were newly registered.
+
+    Raises:
+        ImportError: If the file cannot be loaded.
     """
     before = set(_REGISTRY)
     module_name = f"mm_strategy_{path.stem}"
@@ -146,14 +176,18 @@ def load_strategy_file(path: Path) -> list[str]:
 
 
 def load_inline_strategy(code: str) -> list[str]:
-    """Execute inline Python code and register any @strategy-decorated functions.
+    """Execute inline Python code and register its strategies.
 
-    The code has access to:
-      - ``strategy``: the decorator
-      - ``Path``: pathlib.Path
-      - Standard library modules
+    The executed code has access to the ``strategy`` decorator and
+    ``pathlib.Path``.  Intended for agent-generated code passed via
+    ``mm cat -s '<code>'``.
 
-    Returns list of strategy names registered.
+    Args:
+        code: Python source code containing ``@strategy``-decorated
+            functions.
+
+    Returns:
+        List of strategy names that were newly registered.
     """
     before = set(_REGISTRY)
     exec_globals: dict[str, Any] = {
@@ -166,12 +200,8 @@ def load_inline_strategy(code: str) -> list[str]:
     return sorted(after - before)
 
 
-# ---------------------------------------------------------------------------
-# Auto-discovery
-# ---------------------------------------------------------------------------
-
-
 def _ensure_discovered() -> None:
+    """Lazily register built-in strategies and run auto-discovery."""
     global _DISCOVERED
     if _DISCOVERED:
         return
@@ -186,10 +216,13 @@ def _register_builtins() -> None:
 
 
 def discover_strategies() -> None:
-    """Auto-discover strategies from known directories."""
-    # 1. Project-level: python/mm/strategies/
+    """Scan known directories for user-defined strategy files.
+
+    Discovery order:
+        1. ``python/mm/strategies/*.py`` (project-level, checked into repo)
+        2. ``~/.config/mm/strategies/*.py`` (per-user, not in repo)
+    """
     _discover_from_dir(_project_strategies_dir())
-    # 2. User-level: ~/.config/mm/strategies/
     _discover_from_dir(_user_strategies_dir())
 
 
@@ -202,33 +235,39 @@ def _discover_from_dir(directory: Path | None) -> None:
         try:
             load_strategy_file(py_file)
         except Exception:
-            pass  # Skip broken strategy files silently
+            pass
 
 
 def _project_strategies_dir() -> Path | None:
-    """Return python/mm/strategies/ relative to the package."""
     d = Path(__file__).resolve().parent.parent / "strategies"
     return d if d.is_dir() else None
 
 
 def _user_strategies_dir() -> Path | None:
-    """Return ~/.config/mm/strategies/."""
     d = Path.home() / ".config" / "mm" / "strategies"
     return d if d.is_dir() else None
 
 
-# ---------------------------------------------------------------------------
-# Resolve -s value
-# ---------------------------------------------------------------------------
-
-
 def resolve_strategy(value: str, media_type: str) -> MessageStrategy:
-    """Resolve a ``-s`` value to a MessageStrategy.
+    """Resolve a ``-s`` CLI value to a concrete ``MessageStrategy``.
 
-    Detection logic:
-      1. Contains ``def `` or ``lambda`` -> inline Python code
-      2. Ends with ``.py`` or contains ``/`` -> file path
-      3. Otherwise -> named strategy lookup
+    Detection logic applied to *value*:
+        1. Contains ``def `` or ``lambda`` -- treated as inline Python.
+        2. Ends with ``.py`` or contains ``/`` -- treated as a file path.
+        3. Otherwise -- looked up by name in the registry.
+
+    Args:
+        value: The raw ``-s`` argument from the CLI.
+        media_type: Media kind of the target file (used to disambiguate
+            when a loaded file defines multiple strategies).
+
+    Returns:
+        A ``MessageStrategy`` ready to call ``.encode()``.
+
+    Raises:
+        KeyError: Named strategy not found.
+        FileNotFoundError: Strategy file does not exist.
+        ValueError: Loaded file/code registered no strategies.
     """
     _ensure_discovered()
 
@@ -249,26 +288,22 @@ def resolve_strategy(value: str, media_type: str) -> MessageStrategy:
 def _pick_by_media_type(
     names: list[str], media_type: str, source: str
 ) -> MessageStrategy:
-    """From a list of newly registered strategy names, pick the one matching media_type."""
+    """Select the best-matching strategy from a set of newly registered names."""
     if not names:
         raise ValueError(f"No strategies registered from {source}")
-    # Filter by media type
     matching = [n for n in names if media_type in _REGISTRY[n].media_types]
-    if len(matching) == 1:
+    if matching:
         return _REGISTRY[matching[0]]
-    if len(matching) > 1:
-        return _REGISTRY[matching[0]]
-    # No media type match — return the first one
     return _REGISTRY[names[0]]
 
 
-# ---------------------------------------------------------------------------
-# Provider resolution
-# ---------------------------------------------------------------------------
-
-
 def _resolve_provider() -> str:
-    """Infer message format from active profile. Returns 'gemini' or 'openai'."""
+    """Infer the message format from the active LLM profile.
+
+    Returns:
+        ``"gemini"`` if the active profile name contains *gemini*,
+        otherwise ``"openai"``.
+    """
     try:
         from mm.profile import get_active_profile_name
 
@@ -278,11 +313,6 @@ def _resolve_provider() -> str:
         return "openai"
 
 
-# ---------------------------------------------------------------------------
-# Convenience functions
-# ---------------------------------------------------------------------------
-
-
 def process_image(
     image: Path | Image.Image,
     *,
@@ -290,16 +320,16 @@ def process_image(
     max_width: int = 1024,
     **kwargs: Any,
 ) -> Message:
-    """Process a single image and return an OpenAI-compatible Message dict.
+    """Encode a single image and return an OpenAI-compatible Message.
 
     Args:
-        image: Path to image or PIL Image object.
-        strategy_name: Strategy name (default: "resize").
-        max_width: Maximum width in pixels.
-        **kwargs: Additional strategy-specific parameters.
+        image: Path to an image file, or a PIL ``Image`` object.
+        strategy_name: Registry name of the strategy to use.
+        max_width: Maximum width in pixels (passed to the strategy).
+        **kwargs: Forwarded to ``strategy.encode()``.
 
     Returns:
-        A single Message dict: ``{"role": "user", "content": [...]}``.
+        A single Message dict ``{"role": "user", "content": [...]}``.
     """
     _ensure_discovered()
     s = get(strategy_name)
@@ -316,7 +346,16 @@ def process_image_tiled(
     tile_size: int = 1024,
     **kwargs: Any,
 ) -> Iterable[Message]:
-    """Process a large image as tiles. Returns iterable of Messages."""
+    """Tile a large image and yield one Message per tile.
+
+    Args:
+        image: Path to an image file, or a PIL ``Image`` object.
+        tile_size: Maximum tile dimension in pixels.
+        **kwargs: Forwarded to ``strategy.encode()``.
+
+    Yields:
+        One Message per tile, suitable for parallel VLM inference.
+    """
     _ensure_discovered()
     s = get("tile")
     path = _ensure_path(image)
@@ -329,7 +368,17 @@ def process_video(
     strategy_name: str = "frame_sample",
     **kwargs: Any,
 ) -> Iterable[Message]:
-    """Process video into chunks. Returns iterable of Messages."""
+    """Encode a video and yield one Message per chunk.
+
+    Args:
+        video: Path to a video file.
+        strategy_name: Registry name (e.g. ``"frame_sample"``,
+            ``"video_chunk"``).
+        **kwargs: Forwarded to ``strategy.encode()``.
+
+    Yields:
+        One Message per video chunk.
+    """
     _ensure_discovered()
     s = get(strategy_name)
     return s.encode(video, **kwargs)
@@ -341,17 +390,26 @@ def process_document(
     strategy_name: str = "rasterize",
     **kwargs: Any,
 ) -> Iterable[Message]:
-    """Process document into page groups. Returns iterable of Messages."""
+    """Encode a document and yield one Message per page group.
+
+    Args:
+        document: Path to a PDF, DOCX, or PPTX file.
+        strategy_name: Registry name (e.g. ``"rasterize"``,
+            ``"rasterize_text"``).
+        **kwargs: Forwarded to ``strategy.encode()``.
+
+    Yields:
+        One Message per group of pages.
+    """
     _ensure_discovered()
     s = get(strategy_name)
     return s.encode(document, **kwargs)
 
 
 def _ensure_path(image: Path | Any) -> Path:
-    """Convert PIL Image to a temp file path if needed."""
+    """Convert a PIL Image to a temporary file path if necessary."""
     if isinstance(image, Path):
         return image
-    # Assume PIL Image
     import tempfile
 
     tmp = Path(tempfile.mktemp(suffix=".png"))

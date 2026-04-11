@@ -1,4 +1,9 @@
-"""Gemini passthrough strategies: pass files directly as Gemini Parts."""
+"""Gemini passthrough strategies for native multimodal input.
+
+Encodes video and document files as Gemini ``inline_data`` Part dicts,
+suitable for the Google Generative AI API.  Supports both single-shot
+passthrough and duration-based chunking for long videos.
+"""
 
 from __future__ import annotations
 
@@ -7,27 +12,14 @@ import json
 from pathlib import Path
 from typing import Any, Iterable
 
+from mm.constants import guess_mime
 from mm.serde import Message, register
 
 
 def _gemini_inline_data_part(data: bytes, mime: str) -> dict[str, Any]:
-    """Construct a Gemini inline_data Part."""
+    """Construct a Gemini ``inline_data`` Part dict."""
     b64 = base64.b64encode(data).decode()
     return {"inline_data": {"mime_type": mime, "data": b64}}
-
-
-def _mime_for(path: Path) -> str:
-    ext = path.suffix.lower()
-    return {
-        ".mp4": "video/mp4",
-        ".mov": "video/quicktime",
-        ".mkv": "video/x-matroska",
-        ".webm": "video/webm",
-        ".avi": "video/x-msvideo",
-        ".pdf": "application/pdf",
-        ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-        ".pptx": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
-    }.get(ext, "application/octet-stream")
 
 
 def _to_gemini_message(parts: list[dict[str, Any]]) -> Message:
@@ -48,7 +40,7 @@ class GeminiVideo:
             parts = [json.loads(s) for s in json_strs]
         except (ImportError, RuntimeError):
             data = path.read_bytes()
-            mime = _mime_for(path)
+            mime = guess_mime(path.name)
             parts = [_gemini_inline_data_part(data, mime)]
 
         yield _to_gemini_message(parts)
@@ -81,7 +73,7 @@ class GeminiVideoChunked:
         if duration <= max_seconds:
             # Short video — pass as single part
             data = path.read_bytes()
-            mime = _mime_for(path)
+            mime = guess_mime(path.name)
             yield _to_gemini_message([_gemini_inline_data_part(data, mime)])
             return
 
@@ -96,7 +88,7 @@ class GeminiVideoChunked:
                 seg_path = Path(tmp.name)
             extract_segment(str(path), str(seg_path), start, end)
             data = seg_path.read_bytes()
-            mime = _mime_for(path)
+            mime = guess_mime(path.name)
             seg_path.unlink(missing_ok=True)
             yield _to_gemini_message([_gemini_inline_data_part(data, mime)])
             start += step
@@ -116,7 +108,7 @@ class GeminiDocument:
             part = json.loads(json_str)
         except (ImportError, RuntimeError):
             data = path.read_bytes()
-            mime = _mime_for(path)
+            mime = guess_mime(path.name)
             part = _gemini_inline_data_part(data, mime)
 
         yield _to_gemini_message([part])

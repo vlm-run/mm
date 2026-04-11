@@ -1,21 +1,54 @@
 //! Image resize and tiling with base64 encoding.
 //!
-//! Uses the `image` crate for Lanczos3 resizing and JPEG/PNG encoding,
-//! and the `base64` crate for encoding. Zero Python dependencies.
+//! Provides high-performance image-to-base64 encoding for VLM message
+//! construction.  Uses the `image` crate for Lanczos3 resizing and the
+//! `base64` crate for encoding.  Zero Python or ffmpeg dependencies.
+//!
+//! # Quality
+//!
+//! JPEG quality defaults to **85** — a good balance between file size
+//! and visual fidelity for VLM consumption.  Most VLMs downsample
+//! internally, so quality above 90 wastes tokens without benefit.
 
 use std::io::Cursor;
 use std::path::Path;
 
+use base64::Engine;
+use image::codecs::jpeg::JpegEncoder;
 use image::imageops::FilterType;
 use image::{DynamicImage, GenericImageView, ImageFormat, ImageReader};
 
 use super::{EncodedImage, EncodedTile};
 
-/// Resize an image to fit within `max_width` (keeping aspect ratio) and
-/// return the base64-encoded result.
+/// Default JPEG quality (1–100).  85 balances size and fidelity for VLMs.
+const DEFAULT_JPEG_QUALITY: u8 = 85;
+
+/// Resize an image to fit within `max_width` pixels (preserving aspect
+/// ratio) and return the base64-encoded result.
 ///
-/// Output format: JPEG for opaque images, PNG if the source has alpha.
+/// # Arguments
+///
+/// * `path` – Filesystem path to the source image.
+/// * `max_width` – Maximum output width.  Images narrower than this are
+///   returned unchanged.
+///
+/// Output format is JPEG for opaque images and PNG when the source has an
+/// alpha channel.
 pub fn resize_and_encode(path: &Path, max_width: u32) -> Result<EncodedImage, String> {
+    resize_and_encode_with_quality(path, max_width, DEFAULT_JPEG_QUALITY)
+}
+
+/// Like [`resize_and_encode`] but with an explicit JPEG quality setting.
+///
+/// # Arguments
+///
+/// * `quality` – JPEG quality from 1 (worst) to 100 (best).  Ignored
+///   when the output format is PNG.
+pub fn resize_and_encode_with_quality(
+    path: &Path,
+    max_width: u32,
+    quality: u8,
+) -> Result<EncodedImage, String> {
     let img = load_image(path)?;
     let (orig_w, orig_h) = img.dimensions();
 
@@ -29,7 +62,7 @@ pub fn resize_and_encode(path: &Path, max_width: u32) -> Result<EncodedImage, St
         (img, orig_w, orig_h)
     };
 
-    let (base64, mime) = encode_to_base64(&resized, path);
+    let (base64, mime) = encode_to_base64(&resized, path, quality);
     Ok(EncodedImage {
         base64,
         mime,
@@ -38,17 +71,26 @@ pub fn resize_and_encode(path: &Path, max_width: u32) -> Result<EncodedImage, St
     })
 }
 
-/// Tile a large image into `tile_size x tile_size` squares and encode each tile.
+/// Tile a large image into `tile_size × tile_size` squares and encode
+/// each tile as base64.
 ///
-/// If the image is smaller than `tile_size` in both dimensions, returns a
-/// single tile containing the full (possibly resized) image.
+/// Images smaller than `tile_size` in both dimensions are returned as a
+/// single tile without splitting.
 pub fn tile_and_encode(path: &Path, tile_size: u32) -> Result<Vec<EncodedTile>, String> {
+    tile_and_encode_with_quality(path, tile_size, DEFAULT_JPEG_QUALITY)
+}
+
+/// Like [`tile_and_encode`] but with an explicit JPEG quality setting.
+pub fn tile_and_encode_with_quality(
+    path: &Path,
+    tile_size: u32,
+    quality: u8,
+) -> Result<Vec<EncodedTile>, String> {
     let img = load_image(path)?;
     let (w, h) = img.dimensions();
 
-    // If image is smaller than one tile, just return it as a single tile
     if w <= tile_size && h <= tile_size {
-        let (base64, mime) = encode_to_base64(&img, path);
+        let (base64, mime) = encode_to_base64(&img, path, quality);
         return Ok(vec![EncodedTile {
             base64,
             mime,
@@ -69,11 +111,11 @@ pub fn tile_and_encode(path: &Path, tile_size: u32) -> Result<Vec<EncodedTile>, 
         for col in 0..cols {
             let x = col * tile_size;
             let y = row * tile_size;
-            let tw = (tile_size).min(w - x);
-            let th = (tile_size).min(h - y);
+            let tw = tile_size.min(w - x);
+            let th = tile_size.min(h - y);
 
             let tile_img = img.crop_imm(x, y, tw, th);
-            let (base64, mime) = encode_to_base64(&tile_img, path);
+            let (base64, mime) = encode_to_base64(&tile_img, path, quality);
 
             tiles.push(EncodedTile {
                 base64,
@@ -91,10 +133,6 @@ pub fn tile_and_encode(path: &Path, tile_size: u32) -> Result<Vec<EncodedTile>, 
     Ok(tiles)
 }
 
-// ---------------------------------------------------------------------------
-// Internal helpers
-// ---------------------------------------------------------------------------
-
 fn load_image(path: &Path) -> Result<DynamicImage, String> {
     ImageReader::open(path)
         .map_err(|e| format!("failed to open image {}: {e}", path.display()))?
@@ -102,10 +140,16 @@ fn load_image(path: &Path) -> Result<DynamicImage, String> {
         .map_err(|e| format!("failed to decode image {}: {e}", path.display()))
 }
 
-/// Encode a `DynamicImage` to base64 as JPEG (opaque) or PNG (has alpha).
-fn encode_to_base64(img: &DynamicImage, source_path: &Path) -> (String, String) {
-    use base64::Engine;
-
+/// Encode a `DynamicImage` to base64 using the most appropriate format.
+///
+/// Format selection:
+///   - **PNG** if the image has an alpha channel or the source is `.png`.
+///   - **WebP** if the source is `.webp`.
+///   - **JPEG** otherwise, encoded with the given `quality` (1–100).
+///
+/// For JPEG the image is first converted to RGB8 to strip any alpha
+/// channel that would cause the encoder to fail.
+fn encode_to_base64(img: &DynamicImage, source_path: &Path, quality: u8) -> (String, String) {
     let has_alpha = matches!(
         img,
         DynamicImage::ImageRgba8(_)
@@ -115,7 +159,6 @@ fn encode_to_base64(img: &DynamicImage, source_path: &Path) -> (String, String) 
             | DynamicImage::ImageLumaA16(_)
     );
 
-    // Prefer source format hint for PNG/WebP/GIF; default JPEG for photos
     let ext = source_path
         .extension()
         .and_then(|e| e.to_str())
@@ -130,15 +173,17 @@ fn encode_to_base64(img: &DynamicImage, source_path: &Path) -> (String, String) 
         (ImageFormat::Jpeg, "image/jpeg")
     };
 
-    let mut buf = Vec::new();
-    let mut cursor = Cursor::new(&mut buf);
+    let mut buf: Vec<u8> = Vec::new();
 
-    // For JPEG, encode the RGB version to avoid alpha issues
     if format == ImageFormat::Jpeg {
-        let rgb = DynamicImage::ImageRgb8(img.to_rgb8());
-        rgb.write_to(&mut cursor, format)
+        // Use JpegEncoder directly so we can control quality.
+        let rgb = img.to_rgb8();
+        let mut encoder = JpegEncoder::new_with_quality(&mut buf, quality);
+        encoder
+            .encode_image(&rgb)
             .expect("JPEG encode failed");
     } else {
+        let mut cursor = Cursor::new(&mut buf);
         img.write_to(&mut cursor, format)
             .expect("image encode failed");
     }
@@ -176,9 +221,30 @@ mod tests {
         let path = create_test_image(tmp.path(), "large.jpg", 3000, 2000);
         let result = resize_and_encode(&path, 1024).unwrap();
         assert_eq!(result.width, 1024);
-        // Aspect ratio: 2000/3000 * 1024 ≈ 683
         assert!(result.height > 650 && result.height < 700);
         assert_eq!(result.mime, "image/jpeg");
+    }
+
+    #[test]
+    fn test_resize_with_explicit_quality() {
+        let tmp = tempfile::tempdir().unwrap();
+        // Create a noisy image so JPEG quality actually affects size.
+        let mut img = image::RgbImage::new(800, 600);
+        for (x, y, pixel) in img.enumerate_pixels_mut() {
+            *pixel = image::Rgb([(x % 256) as u8, (y % 256) as u8, ((x + y) % 256) as u8]);
+        }
+        let path = tmp.path().join("noisy.jpg");
+        DynamicImage::ImageRgb8(img).save(&path).unwrap();
+
+        let high = resize_and_encode_with_quality(&path, 1024, 95).unwrap();
+        let low = resize_and_encode_with_quality(&path, 1024, 50).unwrap();
+        // Lower quality → smaller base64 string
+        assert!(
+            low.base64.len() < high.base64.len(),
+            "q50 ({}) should be smaller than q95 ({})",
+            low.base64.len(),
+            high.base64.len()
+        );
     }
 
     #[test]
@@ -196,11 +262,9 @@ mod tests {
         let tmp = tempfile::tempdir().unwrap();
         let path = create_test_image(tmp.path(), "large.png", 3000, 2000);
         let tiles = tile_and_encode(&path, 1024).unwrap();
-        // 3000/1024 = 3 cols, 2000/1024 = 2 rows → 6 tiles
         assert_eq!(tiles.len(), 6);
         assert_eq!(tiles[0].total_cols, 3);
         assert_eq!(tiles[0].total_rows, 2);
-        // Each tile should have valid base64
         for tile in &tiles {
             assert!(!tile.base64.is_empty());
         }

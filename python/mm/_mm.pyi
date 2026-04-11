@@ -82,12 +82,24 @@ def perceptual_hash(path: str) -> int | None:
 
 # Serde: image resize/tile + Gemini Part serialization
 
-def resize_image(path: str, max_width: int) -> dict[str, object]:
-    """Resize image to max_width (Lanczos3), return {base64, mime, width, height}."""
+def resize_image(path: str, max_width: int, quality: int = 85) -> dict[str, object]:
+    """Resize image to max_width (Lanczos3), return {base64, mime, width, height}.
+
+    Args:
+        path: Filesystem path to the source image.
+        max_width: Maximum output width in pixels.
+        quality: JPEG quality 1-100 (default 85, ignored for PNG).
+    """
     ...
 
-def tile_image(path: str, tile_size: int) -> list[dict[str, object]]:
-    """Tile image into squares, return list of {base64, mime, col, row, total_cols, total_rows, width, height}."""
+def tile_image(path: str, tile_size: int, quality: int = 85) -> list[dict[str, object]]:
+    """Tile image into squares, return list of tile dicts.
+
+    Args:
+        path: Filesystem path to the source image.
+        tile_size: Maximum tile dimension in pixels.
+        quality: JPEG quality 1-100 (default 85, ignored for PNG).
+    """
     ...
 
 def gemini_image_part(path: str) -> str:

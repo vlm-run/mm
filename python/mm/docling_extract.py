@@ -44,7 +44,7 @@ class DoclingResult:
     elapsed_ms: float = 0.0
 
 
-SUPPORTED_EXTS = frozenset((".pdf", ".docx", ".pptx"))
+from mm.constants import DOCUMENT_EXTS as SUPPORTED_EXTS
 
 
 def docling_available() -> bool:

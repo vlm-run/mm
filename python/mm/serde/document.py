@@ -90,11 +90,6 @@ class DocumentRasterizeText:
             yield _to_message(parts)
 
 
-# ---------------------------------------------------------------------------
-# Internal helpers
-# ---------------------------------------------------------------------------
-
-
 def _rasterize_pages(
     path: Path, max_width: int, max_pages: int | None
 ) -> list[tuple[str, str]]:

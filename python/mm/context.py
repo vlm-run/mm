@@ -262,21 +262,14 @@ class Context:
         Returns:
             List of OpenAI-compatible Message dicts.
         """
+        from mm.constants import file_kind
         from mm.serde import resolve_strategy
 
         full_path = self._root / path
         if not full_path.exists():
             raise FileNotFoundError(f"{path} not found in {self._root}")
 
-        ext = full_path.suffix.lower()
-        if ext in (".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp", ".tiff", ".svg"):
-            media_type = "image"
-        elif ext in (".mp4", ".mkv", ".avi", ".mov", ".webm", ".wmv"):
-            media_type = "video"
-        elif ext in (".pdf", ".docx", ".pptx"):
-            media_type = "document"
-        else:
-            media_type = "text"
+        media_type = file_kind(full_path.name)
 
         if strategy is None:
             strategy = {"image": "resize", "video": "frame_sample",
