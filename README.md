@@ -193,9 +193,15 @@ Use `mm config reset-db` to clear all databases and caches.
 
 ### L2 pipeline — encode + generate
 
-When `mm cat -l 2` is called on a non-text file, the **strategy** YAML orchestrates two stages:
+When `mm cat -l 2` is called on a non-text file, the **pipeline** YAML orchestrates two stages:
 
-Strategies are YAML configs under `strategies/{kind}/{mode}.yaml` that pair an encoder with LLM generation parameters. Encoders are Python classes under `encoders/` that convert media files into VLM-ready Messages. See [`strategies/README.md`](python/mm/strategies/README.md) for the full encoder reference.
+Pipelines are YAML configs under `pipelines/{kind}/{mode}.yaml` that pair an encoder with LLM generation parameters. Encoders are Python classes under `encoders/` that convert media files into VLM-ready Messages. See [`pipelines/README.md`](python/mm/pipelines/README.md) for the full encoder and pipeline reference.
+
+Pipeline fields can be overridden from the CLI:
+
+```bash
+mm cat photo.jpg -l 2 --encode strategy=tile-overview --generate max_tokens=1024
+```
 
 ## L2 LLM Configuration using Profiles
 

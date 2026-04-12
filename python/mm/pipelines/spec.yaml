@@ -1,11 +1,11 @@
-# mm strategy spec — reference YAML
+# mm pipeline spec — reference YAML
 #
-# Strategies configure a 2-stage pipeline for LLM-based media understanding:
+# Pipelines configure a 2-stage flow for LLM-based media understanding:
 #
 #     file → encode → generate (LLM) → text output
 #
-# Built-in strategies live in  python/mm/strategies/{kind}/{mode}.yaml
-# User overrides go to         ~/.config/mm/strategies/{kind}/{mode}.yaml
+# Built-in pipelines live in  python/mm/pipelines/{kind}/{mode}.yaml
+# User overrides go to        ~/.config/mm/pipelines/{kind}/{mode}.yaml
 #
 # All fields are validated at load time via Pydantic (see schema.py).
 

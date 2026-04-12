@@ -1,4 +1,4 @@
-"""Tests for mm.strategies — YAML loading, schema validation, prompt rendering."""
+"""Tests for mm.pipelines — YAML loading, schema validation, prompt rendering."""
 
 from __future__ import annotations
 
@@ -9,12 +9,14 @@ import pytest
 import yaml
 from pydantic import ValidationError
 
-from mm.strategies import load, render_prompt, run_pyfunc
-from mm.strategies.schema import Encode, Generate, TemplateSpec
+from mm.pipelines import apply_overrides, load, render_prompt, run_pyfunc
+from mm.pipelines.schema import Encode, Generate, PipelineSpec
+
+TemplateSpec = PipelineSpec
 
 
-class TestTemplateSpecSchema:
-    """Pydantic model validation for strategy YAML files."""
+class TestPipelineSpecSchema:
+    """Pydantic model validation for pipeline YAML files."""
 
     def test_valid_minimal(self):
         spec = TemplateSpec.model_validate({
@@ -103,7 +105,7 @@ class TestTemplateSpecSchema:
 
 
 class TestLoad:
-    """Tests for strategies.load() — YAML loading and caching."""
+    """Tests for pipelines.load() — YAML loading and caching."""
 
     def test_load_image_fast(self):
         spec = load("image", "fast")
@@ -136,19 +138,19 @@ class TestLoad:
         assert spec.kind == "audio"
 
     def test_load_nonexistent_raises(self):
-        with pytest.raises(FileNotFoundError, match="No strategy"):
+        with pytest.raises(FileNotFoundError, match="No pipeline"):
             load("nonexistent_kind_xyz", "nonexistent_mode_abc")
 
     def test_all_builtin_yamls_valid(self):
-        """Every builtin YAML should parse into a valid TemplateSpec."""
-        strategies_dir = Path(__file__).resolve().parent.parent.parent / "python" / "mm" / "strategies"
-        yaml_files = list(strategies_dir.rglob("*.yaml"))
+        """Every builtin YAML should parse into a valid PipelineSpec."""
+        pipelines_dir = Path(__file__).resolve().parent.parent.parent / "python" / "mm" / "pipelines"
+        yaml_files = list(pipelines_dir.rglob("*.yaml"))
         yaml_files = [f for f in yaml_files if f.name != "spec.yaml"]
         assert len(yaml_files) >= 8, f"Expected at least 8 YAML files, got {len(yaml_files)}"
 
         for yaml_file in yaml_files:
             data = yaml.safe_load(yaml_file.read_text())
-            spec = TemplateSpec.model_validate(data)
+            spec = PipelineSpec.model_validate(data)
             assert spec.kind in ("image", "video", "audio", "document")
             assert spec.mode in ("fast", "accurate")
             assert len(spec.generate.prompt) > 0
@@ -240,3 +242,80 @@ class TestRunPyfunc:
         result = run_pyfunc(spec, parts, {"extra": "injected"})
         assert len(result) == 1
         assert result[0]["text"] == "injected"
+
+
+class TestApplyOverrides:
+    """Tests for apply_overrides — CLI override merging."""
+
+    def _base_spec(self) -> PipelineSpec:
+        return PipelineSpec.model_validate({
+            "kind": "image",
+            "mode": "fast",
+            "encode": {"strategy": "resize", "max_width": 1024},
+            "generate": {"prompt": "Describe this image.", "max_tokens": 256},
+        })
+
+    def test_no_overrides_returns_same(self):
+        spec = self._base_spec()
+        result = apply_overrides(spec)
+        assert result.encode.strategy == "resize"
+        assert result.generate.max_tokens == 256
+
+    def test_encode_strategy_override(self):
+        spec = self._base_spec()
+        result = apply_overrides(spec, encode_overrides={"strategy": "tile-overview"})
+        assert result.encode.strategy == "tile-overview"
+        assert result.encode.max_width == 1024
+
+    def test_encode_max_width_override(self):
+        spec = self._base_spec()
+        result = apply_overrides(spec, encode_overrides={"max_width": "2048"})
+        assert result.encode.max_width == 2048
+        assert isinstance(result.encode.max_width, int)
+
+    def test_generate_max_tokens_override(self):
+        spec = self._base_spec()
+        result = apply_overrides(spec, generate_overrides={"max_tokens": "1024"})
+        assert result.generate.max_tokens == 1024
+
+    def test_generate_temperature_override(self):
+        spec = self._base_spec()
+        result = apply_overrides(spec, generate_overrides={"temperature": "0.5"})
+        assert result.generate.temperature == 0.5
+        assert isinstance(result.generate.temperature, float)
+
+    def test_generate_json_mode_override(self):
+        spec = self._base_spec()
+        result = apply_overrides(spec, generate_overrides={"json_mode": "true"})
+        assert result.generate.json_mode is True
+
+    def test_bool_false_override(self):
+        spec = self._base_spec()
+        result = apply_overrides(spec, encode_overrides={"transcribe": "false"})
+        assert result.encode.transcribe is False
+
+    def test_both_overrides_at_once(self):
+        spec = self._base_spec()
+        result = apply_overrides(
+            spec,
+            encode_overrides={"strategy": "tile"},
+            generate_overrides={"max_tokens": "512", "temperature": "0.8"},
+        )
+        assert result.encode.strategy == "tile"
+        assert result.generate.max_tokens == 512
+        assert result.generate.temperature == 0.8
+
+    def test_unknown_encode_field_raises(self):
+        spec = self._base_spec()
+        with pytest.raises(ValueError, match="Unknown field"):
+            apply_overrides(spec, encode_overrides={"nonexistent_field": "val"})
+
+    def test_unknown_generate_field_raises(self):
+        spec = self._base_spec()
+        with pytest.raises(ValueError, match="Unknown field"):
+            apply_overrides(spec, generate_overrides={"nonexistent_field": "val"})
+
+    def test_original_spec_unchanged(self):
+        spec = self._base_spec()
+        apply_overrides(spec, generate_overrides={"max_tokens": "9999"})
+        assert spec.generate.max_tokens == 256

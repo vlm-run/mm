@@ -1,10 +1,10 @@
-"""Pydantic schema for YAML-based MLLM generation strategies.
+"""Pydantic schema for YAML-based MLLM generation pipelines.
 
-Each strategy configures a 2-stage pipeline:
+Each pipeline configures a 2-stage flow:
 
     file → encode → generate (LLM) → text output
 
-Strategies live in ``python/mm/strategies/{kind}/{mode}.yaml`` and are
+Pipelines live in ``python/mm/pipelines/{kind}/{mode}.yaml`` and are
 validated at load time against these models.
 """
 
@@ -93,10 +93,13 @@ class Generate(BaseModel):
     )
 
 
-class TemplateSpec(BaseModel):
-    """Complete strategy for a single (kind, mode) MLLM generation call."""
+class PipelineSpec(BaseModel):
+    """Complete pipeline for a single (kind, mode) MLLM generation call."""
 
     kind: str = Field(description="Media kind: image, video, audio, document.")
     mode: str = Field(description="Processing mode: fast, accurate.")
     encode: Encode = Field(default_factory=Encode)
     generate: Generate
+
+
+TemplateSpec = PipelineSpec

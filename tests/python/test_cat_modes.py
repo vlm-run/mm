@@ -26,6 +26,8 @@ def _make_opts(mode: str | None = "fast", **overrides: object) -> _CatOpts:
         mode=mode,
         no_cache=False,
         format="rich",
+        encode_overrides={},
+        generate_overrides={},
     )
     defaults.update(overrides)
     return _CatOpts(**defaults)
@@ -97,8 +99,9 @@ class TestL2ModalDispatch:
         f.write_bytes(b"\xff\xd8\xff" + b"\x00" * 100)
         with patch("mm.commands.cat._l2_image_modal") as mock:
             mock.return_value = "mocked image result"
-            result = _l2_modal(f, "image", _make_opts("fast"))
-            mock.assert_called_once_with(f, "fast")
+            opts = _make_opts("fast")
+            result = _l2_modal(f, "image", opts)
+            mock.assert_called_once_with(f, opts, "fast")
             assert result == "mocked image result"
 
     def test_video_dispatch(self, tmp_path):

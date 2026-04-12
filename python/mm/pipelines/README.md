@@ -1,6 +1,6 @@
-# mm Strategies
+# mm Pipelines
 
-Strategies configure a 2-stage pipeline for LLM-based media understanding:
+Pipelines configure a 2-stage flow for LLM-based media understanding:
 **encode** (via an encoder) then **generate** (LLM call) to produce text output.
 
 ```mermaid
@@ -29,7 +29,7 @@ graph LR
   style generate fill:#fff0f0,stroke:#ef9a9a,stroke-width:1px,rx:10
 ```
 
-Each strategy is a YAML file under `strategies/{kind}/{mode}.yaml` that references
+Each pipeline is a YAML file under `pipelines/{kind}/{mode}.yaml` that references
 an encoder from `mm/encoders/` and configures LLM generation parameters.
 
 ```bash
@@ -37,6 +37,10 @@ mm cat photo.jpg -s resize          # named encoder
 mm cat video.mp4 -s shot-mosaic     # scene-aware video encoder
 mm cat video.mp4 -s ~/my_encoder.py # custom file
 mm cat photo.jpg -s 'def encode(path, **kw): ...'  # inline
+
+# Override pipeline config from CLI
+mm cat photo.jpg -l 2 --encode strategy=tile-overview --encode max_width=2048
+mm cat photo.jpg -l 2 --generate max_tokens=1024 --generate temperature=0.5
 ```
 
 ## Built-in Encoders

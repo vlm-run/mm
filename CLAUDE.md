@@ -104,15 +104,15 @@ mm/
 │   │   └── video/              # Video encoders
 │   │       ├── __init__.py     # frame-sample, video-chunk (ffmpeg-based)
 │   │       └── shot.py         # shot-frames + shot-mosaic (PySceneDetect-based)
-│   ├── strategies/             # YAML-based MLLM generation strategies
-│   │   ├── __init__.py         # Strategy loading, caching, prompt rendering
-│   │   ├── schema.py           # Pydantic schema (Encode, Generate, TemplateSpec)
+│   ├── pipelines/              # YAML-based MLLM generation pipelines
+│   │   ├── __init__.py         # Pipeline loading, caching, prompt rendering, overrides
+│   │   ├── schema.py           # Pydantic schema (Encode, Generate, PipelineSpec)
 │   │   ├── README.md           # Encoder reference table and authoring guide
 │   │   ├── spec.yaml           # Reference YAML spec with all fields documented
-│   │   ├── image/              # Image strategies (fast.yaml, accurate.yaml)
-│   │   ├── video/              # Video strategies (fast.yaml, accurate.yaml)
-│   │   ├── audio/              # Audio strategies (fast.yaml, accurate.yaml)
-│   │   └── document/           # Document strategies (fast.yaml, accurate.yaml)
+│   │   ├── image/              # Image pipelines (fast.yaml, accurate.yaml)
+│   │   ├── video/              # Video pipelines (fast.yaml, accurate.yaml)
+│   │   ├── audio/              # Audio pipelines (fast.yaml, accurate.yaml)
+│   │   └── document/           # Document pipelines (fast.yaml, accurate.yaml)
 │   ├── store/                  # SQLite + sqlite-vec storage (metadata + embeddings)
 │   │   ├── __init__.py         # Lazy re-exports
 │   │   ├── schema.py           # SQL DDL + column enums (3 tables)
@@ -278,8 +278,8 @@ ctx.info()   # Rich summary panel
 - **Video metadata (L1)**: Native MP4 parsing (mp4parse) and MKV/WebM parsing (matroska) in Rust. No ffmpeg at L1 — metadata only, <100ms.
 - **PDF text extraction**: `pypdfium2` on the Python CLI side (in `commands/cat.py`). Scanned/image-only PDFs return empty text.
 - **Pipe detection**: `pipe.py` uses `select.select()` with zero timeout to avoid blocking when stdin is not a TTY but has no data.
-- **LLM backend**: Uses the `openai` Python SDK for all chat/completions calls. Sends `think=false` and `reasoning_effort="none"` to suppress chain-of-thought. Temperature defaults to 0.1. All prompts and generation parameters are externalized into YAML strategies (`python/mm/strategies/{kind}/{mode}.yaml`) validated via Pydantic at load time. The single entry point is `LlmBackend.generate(kind, mode, *, context, parts)`.
-- **Strategy pipeline**: `encode` (file → LLM-ready parts via `mm/encoders/`) → `generate` (LLM call) → text output. Strategies support custom inline `pyfunc` transforms. Users can override built-in strategies at `~/.config/mm/strategies/`.
+- **LLM backend**: Uses the `openai` Python SDK for all chat/completions calls. Sends `think=false` and `reasoning_effort="none"` to suppress chain-of-thought. Temperature defaults to 0.1. All prompts and generation parameters are externalized into YAML pipelines (`python/mm/pipelines/{kind}/{mode}.yaml`) validated via Pydantic at load time. The single entry point is `LlmBackend.generate(kind, mode, *, context, parts, encode_overrides, generate_overrides)`.
+- **Pipeline**: `encode` (file → LLM-ready parts via `mm/encoders/`) → `generate` (LLM call) → text output. Pipelines support custom inline `pyfunc` transforms and CLI overrides (`--encode key=val --generate key=val`). Users can override built-in pipelines at `~/.config/mm/pipelines/`.
 
 ## LLM configuration
 

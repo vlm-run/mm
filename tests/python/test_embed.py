@@ -212,6 +212,8 @@ class TestCatEmbedIntegration:
             mode=None,
             no_cache=False,
             format="rich",
+            encode_overrides={},
+            generate_overrides={},
         )
 
         mock_db = MagicMock()

@@ -33,6 +33,19 @@ from mm.constants import FileKind
 from mm.pipe import read_paths_from_stdin
 
 
+def _parse_overrides(raw: list[str] | None) -> dict[str, str]:
+    """Parse ``['key=val', ...]`` from ``--encode`` / ``--generate`` flags."""
+    if not raw:
+        return {}
+    out: dict[str, str] = {}
+    for item in raw:
+        k, _, v = item.partition("=")
+        if not v and not _:
+            raise typer.BadParameter(f"Expected key=value, got {item!r}")
+        out[k.strip()] = v.strip()
+    return out
+
+
 def cat_cmd(
     files: Annotated[Optional[list[Path]], typer.Argument(help="Files to display")] = None,
     level: Annotated[
@@ -94,6 +107,20 @@ def cat_cmd(
             ),
         ),
     ] = None,
+    encode_override: Annotated[
+        Optional[list[str]],
+        typer.Option(
+            "--encode",
+            help="Override encode config: --encode strategy=tile-overview --encode max_width=2048",
+        ),
+    ] = None,
+    generate_override: Annotated[
+        Optional[list[str]],
+        typer.Option(
+            "--generate",
+            help="Override generate config: --generate max_tokens=1024 --generate temperature=0.5",
+        ),
+    ] = None,
     verbose: Annotated[
         bool, typer.Option("--verbose", "-v", help="Show progress bars during encoding")
     ] = False,
@@ -145,13 +172,17 @@ def cat_cmd(
         typer.echo("Error: No files specified.", err=True)
         raise typer.Exit(1)
 
+    enc_overrides = _parse_overrides(encode_override)
+    gen_overrides = _parse_overrides(generate_override)
+
     # -s / --strategy: serde encoding mode
     if serde_strategy is not None:
         if level >= 2:
-            # -s + -l 2: encode with strategy, then send to LLM for analysis
-            _run_serde_l2(paths, serde_strategy, detail=detail, format=format, verbose=verbose)
+            _run_serde_l2(
+                paths, serde_strategy, detail=detail, format=format, verbose=verbose,
+                encode_overrides=enc_overrides, generate_overrides=gen_overrides,
+            )
         else:
-            # -s alone: output raw encoded JSON Messages
             _run_serde(paths, serde_strategy, format, verbose=verbose)
         return
 
@@ -171,6 +202,8 @@ def cat_cmd(
         mode=mode,
         no_cache=no_cache,
         format=fmt,
+        encode_overrides=enc_overrides,
+        generate_overrides=gen_overrides,
     )
 
     multi_file = len(paths) > 1 or bool(stdin_paths)
@@ -235,6 +268,8 @@ class _CatOpts:
         "mode",
         "no_cache",
         "format",
+        "encode_overrides",
+        "generate_overrides",
     )
 
     level: int
@@ -248,6 +283,8 @@ class _CatOpts:
     mode: str | None
     no_cache: bool
     format: str
+    encode_overrides: dict[str, str]
+    generate_overrides: dict[str, str]
 
     def __init__(self, **kwargs: object) -> None:
         for k, v in kwargs.items():
@@ -518,15 +555,20 @@ def _l1_pdf(path: Path) -> str:
 
 
 def _l2(path: Path, kind: str, opts: _CatOpts) -> str:
-    """Dispatch L2 extraction — all paths use template-driven generate()."""
+    """Dispatch L2 extraction — all paths use pipeline-driven generate()."""
     from mm.llm import LlmBackend, image_part
 
     llm = LlmBackend()
+    enc_ov = opts.encode_overrides or None
+    gen_ov = opts.generate_overrides or None
 
     if kind == "image":
         mode = "accurate" if opts.detail else "fast"
         parts = [image_part(path)]
-        return llm.generate("image", mode, context={"filename": path.name}, parts=parts)
+        return llm.generate(
+            "image", mode, context={"filename": path.name}, parts=parts,
+            encode_overrides=enc_ov, generate_overrides=gen_ov,
+        )
 
     if kind == "video":
         return _l2_video(path, opts)
@@ -534,14 +576,17 @@ def _l2(path: Path, kind: str, opts: _CatOpts) -> str:
     if kind == "audio":
         metadata = _run_l1(path, "audio")
         mode = "accurate" if opts.detail else "fast"
-        return llm.generate("audio", mode, context={"filename": path.name, "content": metadata})
+        return llm.generate(
+            "audio", mode, context={"filename": path.name, "content": metadata},
+            encode_overrides=enc_ov, generate_overrides=gen_ov,
+        )
 
     content = _run_l1(path, kind)
     mode = "accurate" if opts.detail else "fast"
     return llm.generate(
-        "document",
-        mode,
+        "document", mode,
         context={"filename": path.name, "content": content[:4000]},
+        encode_overrides=enc_ov, generate_overrides=gen_ov,
     )
 
 
@@ -604,6 +649,8 @@ def _l2_video(path: Path, opts: _CatOpts) -> str:
             "video", "fast",
             context={"filename": path.name, "duration_ctx": dur_ctx},
             parts=parts,
+            encode_overrides=opts.encode_overrides or None,
+            generate_overrides=opts.generate_overrides or None,
         )
     except Exception as e:
         return f"[Video L2 failed: {e}]"
@@ -616,7 +663,7 @@ def _l2_modal(path: Path, kind: str, opts: _CatOpts) -> str:
         return f"[Unknown mode: {mode}. Use 'fast' or 'accurate'.]"
 
     if kind == "image":
-        return _l2_image_modal(path, mode)
+        return _l2_image_modal(path, opts, mode)
     if kind == "video":
         return _l2_video_modal(path, opts, mode)
     if kind == "audio":
@@ -627,13 +674,14 @@ def _l2_modal(path: Path, kind: str, opts: _CatOpts) -> str:
     content = _run_l1(path, kind)
     llm = LlmBackend()
     return llm.generate(
-        "document",
-        mode,
+        "document", mode,
         context={"filename": path.name, "content": content[:4000]},
+        encode_overrides=opts.encode_overrides or None,
+        generate_overrides=opts.generate_overrides or None,
     )
 
 
-def _l2_image_modal(path: Path, mode: str) -> str:
+def _l2_image_modal(path: Path, opts: _CatOpts, mode: str) -> str:
     """Image extraction with mode-specific LLM prompts."""
     import time
 
@@ -642,7 +690,11 @@ def _l2_image_modal(path: Path, mode: str) -> str:
     t0 = time.monotonic()
     llm = LlmBackend()
     parts = [image_part(path)]
-    content = llm.generate("image", mode, context={"filename": path.name}, parts=parts)
+    content = llm.generate(
+        "image", mode, context={"filename": path.name}, parts=parts,
+        encode_overrides=opts.encode_overrides or None,
+        generate_overrides=opts.generate_overrides or None,
+    )
     elapsed = (time.monotonic() - t0) * 1000
     u = llm.last_usage
 
@@ -668,7 +720,7 @@ def _l2_video_modal(path: Path, opts: _CatOpts, mode: str) -> str:
         tile_frames_to_mosaics,
     )
     from mm.llm import LlmBackend, image_part
-    from mm.strategies import load
+    from mm.pipelines import load
 
     if not ffmpeg_available():
         return f"[ffmpeg not found — cannot process {path.name}]"
@@ -759,6 +811,8 @@ def _l2_video_modal(path: Path, opts: _CatOpts, mode: str) -> str:
             "video", mode,
             context={"filename": path.name, "duration_ctx": dur_ctx},
             parts=img_parts,
+            encode_overrides=opts.encode_overrides or None,
+            generate_overrides=opts.generate_overrides or None,
         )
         timing["vlm_call_ms"] = (time.monotonic() - t_vlm) * 1000
         timing["vlm_prompt_tokens"] = llm.last_usage.prompt_tokens
@@ -847,7 +901,7 @@ def _l2_audio_modal(path: Path, opts: _CatOpts, mode: str) -> str:
     import time
 
     from mm.ffmpeg import extract_audio, ffmpeg_available
-    from mm.strategies import load
+    from mm.pipelines import load
     from mm.whisper import transcribe, whisper_available
 
     if not ffmpeg_available():
@@ -896,6 +950,8 @@ def _l2_audio_modal(path: Path, opts: _CatOpts, mode: str) -> str:
     summary = llm.generate(
         "audio", mode,
         context={"filename": path.name, "transcript": transcript},
+        encode_overrides=opts.encode_overrides or None,
+        generate_overrides=opts.generate_overrides or None,
     )
     timing["llm_call_ms"] = (time.monotonic() - t_llm) * 1000
     timing["total_ms"] = (time.monotonic() - t_total) * 1000
@@ -1130,16 +1186,18 @@ def _run_serde_l2(
     detail: bool = False,
     format: str | None = None,
     verbose: bool = False,
+    encode_overrides: dict[str, str] | None = None,
+    generate_overrides: dict[str, str] | None = None,
 ) -> None:
-    """Encode files with a serde strategy, then send to LLM for analysis.
+    """Encode files with a serde encoder, then send to LLM for analysis.
 
-    Combines ``-s`` encoding with ``-l 2`` LLM inference: the strategy
+    Combines ``-s`` encoding with ``-l 2`` LLM inference: the encoder
     produces OpenAI-compatible Messages which are sent to the active LLM
-    profile for semantic understanding.
+    pipeline for semantic understanding.
 
-    Multi-message strategies (e.g. shot-frames, shot-mosaic) are processed
+    Multi-message encoders (e.g. shot-frames, shot-mosaic) are processed
     chunk-by-chunk via ``generate_chunked`` to avoid OOM.  Single-message
-    strategies go through the standard ``generate()`` path.
+    encoders go through the standard ``generate()`` path.
     """
     from mm.llm import LlmBackend
     from mm.encoders import resolve_strategy
@@ -1179,7 +1237,11 @@ def _run_serde_l2(
             continue
 
         if len(chunks) == 1:
-            result = llm.generate(kind, mode, context=ctx, parts=chunks[0])
+            result = llm.generate(
+                kind, mode, context=ctx, parts=chunks[0],
+                encode_overrides=encode_overrides or None,
+                generate_overrides=generate_overrides or None,
+            )
         else:
             def _on_chunk(idx: int, total: int, res: str) -> None:
                 if verbose:
@@ -1189,6 +1251,8 @@ def _run_serde_l2(
             )
             result = llm.generate_chunked(
                 kind, mode, context=ctx, chunks=chunks, on_chunk=_on_chunk,
+                encode_overrides=encode_overrides or None,
+                generate_overrides=generate_overrides or None,
             )
 
         if len(paths) > 1:

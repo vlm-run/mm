@@ -37,7 +37,7 @@ def _detect_shots(
 
     if not scenedetect_available():
         raise ImportError(
-            "scenedetect is required for shot-based strategies. "
+            "scenedetect is required for shot-based encoders. "
             "Install with: pip install mm[extract]"
         )
 
