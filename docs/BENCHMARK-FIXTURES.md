@@ -2,8 +2,8 @@
 
 ## Dataset 
 We use the following 2 datasets for benchmarking:
- - [mmbench-tiny](https://storage.googleapis.com/vlm-data-public-prod/mmbench/mmbench-tiny.tar.gz)
- - [mmbench-mini](https://storage.googleapis.com/vlm-data-public-prod/mmbench/mmbench-mini.tar.gz)
+ - [mmbench-tiny](https://storage.googleapis.com/vlm-data-public-prod/mmbench/mmbench-tiny.tar.gz) - 5 files, 42.4MB
+ - [mmbench-mini](https://storage.googleapis.com/vlm-data-public-prod/mmbench/mmbench-mini.tar.gz) - 44 files, 1.3GB
 
 
 ## Image Examples
@@ -42,6 +42,16 @@ uv run mm cat input.docx -m accurate
 uv run mm cat input.pdf --encoder.strategy ocr -m accurate
 ```
 
+## Audio Examples
+```bash
+# Extract audio quickly (w/ whisper.tiny)
+uv run mm cat input.mp3
+# Extract audio accurately (with whisper.medium)
+uv run mm cat input.mp3 -m accurate
+# Extract audio accurately (with Gemini encoder)
+uv run mm cat input.mp3 --encoder.strategy audio-gemini -m accurate
+```
+
 ## Video Examples
 ```bash
 # Extract video quickly
@@ -51,28 +61,3 @@ uv run mm cat input.mp4 -m accurate
 # Extract video accurately (with video chunking)
 uv run mm cat input.mp4 --encoder.strategy video-frame-sample -m accurate
 ```
-
-        - cat
-            - pipelines
-                - PDF
-                    - doc -> pages -> concat txt
-                    - doc -> enc=docling-markdown/html -> txt
-                    - doc -> pages -> image (batch=4) -> vlm summary -> concat txt (with page id)
-                    - doc -> pages -> image (batch=1) -> glm-ocr -> concat txt (with page id)
-                - image
-                    - img -> enc=blip -> txt (w/ vocab lookup)
-                    - Img -> enc=orion -> txt
-                - video
-                - audio
-
-```
-
-### mmbench-mini
-
-- 45 files, 588MB
-- 10 images, 10 videos, 10 audio files, 10 documents
-- 10 code files
-- 10 text files
-- 10 config files
-- 10 data files
-- 10 other files

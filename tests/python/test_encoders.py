@@ -1,4 +1,4 @@
-"""Tests for mm.encoders — registry, discovery, video/document/gemini encoders, tile-overview."""
+"""Tests for mm.encoders — registry, discovery, video/document/gemini encoders, tile."""
 
 from __future__ import annotations
 
@@ -46,7 +46,7 @@ class TestRegistryExtended:
     def test_custom_encoders_discovered(self):
         from mm.encoders import list_strategies
         names = list_strategies()
-        assert "tile-overview" in names
+        assert "tile" in names
         assert "shot-frames" in names
         assert "shot-mosaic" in names
 
@@ -56,10 +56,10 @@ class TestRegistryExtended:
         assert "shot-frames" in video_names
         assert "shot-mosaic" in video_names
 
-    def test_tile_overview_is_image_type(self):
+    def test_tile_is_image_type(self):
         from mm.encoders import list_strategies
         image_names = list_strategies(media_type="image")
-        assert "tile-overview" in image_names
+        assert "tile" in image_names
 
     def test_resolve_strategy_file_not_found(self):
         from mm.encoders import resolve_strategy
@@ -215,7 +215,7 @@ class TestTileOverview:
         """Image smaller than max_width yields only the overview, no tiles."""
         from mm.encoders import get
         img = _make_jpeg(tmp_path / "small.jpg", 100, 80)
-        strat = get("tile-overview")
+        strat = get("tile")
         messages = list(strat.encode(img, max_width=1024))
         assert len(messages) == 1
         msg = messages[0]
@@ -228,7 +228,7 @@ class TestTileOverview:
         """Large image yields overview + N tiles in a single message."""
         from mm.encoders import get
         img = _make_jpeg(tmp_path / "large.jpg", 2048, 2048)
-        strat = get("tile-overview")
+        strat = get("tile")
         messages = list(strat.encode(img, max_width=1024))
         assert len(messages) == 1
         msg = messages[0]
@@ -243,7 +243,7 @@ class TestTileOverview:
         """4096x4096 at max_width=1024 should give 1 overview + 16 tiles = 17 image parts."""
         from mm.encoders import get
         img = _make_jpeg(tmp_path / "huge.jpg", 4096, 4096)
-        strat = get("tile-overview")
+        strat = get("tile")
         messages = list(strat.encode(img, max_width=1024))
         assert len(messages) == 1
         content = messages[0]["content"]
@@ -483,7 +483,7 @@ class TestGeminiEncoders:
         from mm.encoders import get
         video = tmp_path / "short.mp4"
         video.write_bytes(b"\x00" * 100)
-        strat = get("gemini-video-chunked")
+        strat = get("video-gemini-chunked")
         with (
             patch("mm.ffmpeg.ffmpeg_available", return_value=True),
             patch("mm.ffmpeg.probe_duration", return_value=30.0),
@@ -496,7 +496,7 @@ class TestGeminiEncoders:
         from mm.encoders import get
         video = tmp_path / "test.mp4"
         video.write_bytes(b"\x00" * 100)
-        strat = get("gemini-video-chunked")
+        strat = get("video-gemini-chunked")
         with patch("mm.ffmpeg.ffmpeg_available", return_value=False):
             messages = list(strat.encode(video))
             assert len(messages) == 1

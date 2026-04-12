@@ -254,32 +254,85 @@ class ImageResize:
 
 
 class ImageTile:
-    """Tile a large image into squares, yielding one Message per tile.
+    """Resize the full image + tile it, yielding overview and tiles in one Message.
 
-    Falls back to a single tile (resize) when the image is smaller than
-    ``tile_size`` in both dimensions.
+    The Message contains:
+      1. A text header describing the layout.
+      2. The full image resized to ``max_width`` (overview for global context).
+      3. Each ``max_width x max_width`` tile crop from the original (fine detail).
+
+    If the image already fits within a single tile, only the resized
+    overview is returned (no redundant duplicate).
 
     Kwargs:
-        tile_size: Tile dimension in pixels (default 1024).
+        max_width: Pixel size for both tile dimension and overview
+            bounding box (default 1024).
     """
 
     name: str = "tile"
     media_types: tuple[str, ...] = ("image",)
 
     def encode(self, path: Path, **kwargs: Any) -> Iterable[Message]:
-        tile_size: int = kwargs.get("tile_size", 1024)
+        max_width: int = kwargs.get("max_width", 1024)
         provider: str = _resolve_provider()
 
-        try:
-            from mm._mm import tile_image
+        img = _open_image_with_exif(path)
+        w, h = img.size
 
-            tiles: list[dict[str, Any]] = tile_image(str(path), tile_size)
-        except (ImportError, RuntimeError):
-            tiles = _pillow_tile(path, tile_size)
+        from PIL import Image as PILImage
 
-        for tile in tiles:
-            part = _image_part(tile["base64"], tile["mime"], provider)
-            yield _to_message([part])
+        if w > max_width or h > max_width:
+            scale = min(max_width / w, max_width / h)
+            overview = img.resize(
+                (round(w * scale), round(h * scale)),
+                PILImage.Resampling.LANCZOS,
+            )
+        else:
+            overview = img
+
+        overview_b64, overview_mime = _encode_pil_image(overview, path)
+
+        cols = (w + max_width - 1) // max_width
+        rows = (h + max_width - 1) // max_width
+        single_tile = cols == 1 and rows == 1
+
+        if single_tile:
+            parts: list[dict[str, Any]] = [
+                _image_part(overview_b64, overview_mime, provider),
+            ]
+            logger.debug(
+                "tile [path=%s, %dx%d, fits in one tile]",
+                path.name, w, h,
+            )
+            yield _to_message(parts)
+            return
+
+        parts = [
+            {
+                "type": "text",
+                "text": (
+                    f"{path.name} ({w}x{h}) — overview + {cols}x{rows} "
+                    f"tiles ({cols * rows} crops at {max_width}px):"
+                ),
+            },
+            _image_part(overview_b64, overview_mime, provider),
+        ]
+
+        for row_idx in range(rows):
+            for col_idx in range(cols):
+                x = col_idx * max_width
+                y = row_idx * max_width
+                tw = min(max_width, w - x)
+                th = min(max_width, h - y)
+                tile_img = img.crop((x, y, x + tw, y + th))
+                tile_b64, tile_mime = _encode_pil_image(tile_img, path)
+                parts.append(_image_part(tile_b64, tile_mime, provider))
+
+        logger.debug(
+            "tile [path=%s, %dx%d, grid=%dx%d, parts=%d]",
+            path.name, w, h, cols, rows, len(parts),
+        )
+        yield _to_message(parts)
 
 
 register(ImageResize())

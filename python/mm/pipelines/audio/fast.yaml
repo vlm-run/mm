@@ -2,4 +2,6 @@ kind: audio
 mode: fast
 
 encode:
-  strategy: null
+  strategy: transcribe
+  whisper_model: medium
+  audio_speed: 1.0

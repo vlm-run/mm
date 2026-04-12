@@ -47,7 +47,7 @@ class GeminiVideo:
     Yields a single Message containing the entire video.
     """
 
-    name: str = "gemini-video"
+    name: str = "video-gemini"
     media_types: tuple[str, ...] = ("video",)
 
     def encode(self, path: Path, **kwargs: Any) -> Iterable[Message]:
@@ -76,7 +76,7 @@ class GeminiVideoChunked:
         overlap: Overlap between chunks in seconds (default 10).
     """
 
-    name: str = "gemini-video-chunked"
+    name: str = "video-gemini-chunked"
     media_types: tuple[str, ...] = ("video",)
 
     def encode(self, path: Path, **kwargs: Any) -> Iterable[Message]:
@@ -131,7 +131,7 @@ class GeminiDocument:
     Uses the Rust fast-path when available.  Yields a single Message.
     """
 
-    name: str = "gemini-doc"
+    name: str = "document-gemini"
     media_types: tuple[str, ...] = ("document",)
 
     def encode(self, path: Path, **kwargs: Any) -> Iterable[Message]:

@@ -2,7 +2,7 @@ kind: document
 mode: accurate
 
 encode:
-  strategy: null
+  strategy: page-text
 
 generate:
   prompt: >-

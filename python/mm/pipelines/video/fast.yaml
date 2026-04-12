@@ -2,4 +2,6 @@ kind: video
 mode: fast
 
 encode:
-  strategy: null
+  strategy: mosaic
+  mosaic_tile: "4x4"
+  mosaic_count: 8

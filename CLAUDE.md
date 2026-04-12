@@ -96,13 +96,17 @@ mm/
 │   │       └── shot_detection.py  # PySceneDetect wrapper (detect_scenes, sample_*)
 │   ├── encoders/               # Media encoders (file → VLM-ready Messages)
 │   │   ├── __init__.py         # Registry, @register_encoder, resolve_strategy, process_*
-│   │   ├── document.py         # rasterize, rasterize-text (pypdfium2)
-│   │   ├── gemini.py           # gemini-video, gemini-video-chunked, gemini-doc
+│   │   ├── audio.py            # transcribe (Whisper), audio-gemini
+│   │   ├── document/
+│   │   │   ├── __init__.py     # rasterize, rasterize-text (pypdfium2)
+│   │   │   └── page_text.py    # page-text (text extraction per page)
+│   │   ├── gemini.py           # video-gemini, video-gemini-chunked, document-gemini
 │   │   ├── image/              # Image encoders
-│   │   │   ├── __init__.py     # resize, tile (Rust fast-path + Pillow fallback)
-│   │   │   └── tile_overview.py  # tile-overview (overview + tile crops in one Message)
+│   │   │   └── __init__.py     # resize, tile (overview + tile crops in one Message)
 │   │   └── video/              # Video encoders
 │   │       ├── __init__.py     # frame-sample, video-chunk (ffmpeg-based)
+│   │       ├── frame_sample_transcript.py  # frames-transcript (frames + Whisper)
+│   │       ├── mosaic.py       # mosaic (scene-aware frame extraction + tiled grids)
 │   │       └── shot.py         # shot-frames + shot-mosaic (PySceneDetect-based)
 │   ├── pipelines/              # YAML-based MLLM generation pipelines
 │   │   ├── __init__.py         # Pipeline loading, caching, prompt rendering, overrides
@@ -240,8 +244,8 @@ Columns (`files`): `uri`, `name`, `stem`, `ext`, `size`, `modified`, `created`, 
 
 ## Processing modes
 
-- **fast** (default): Local extraction, no LLM call. PDFs → text via pypdfium2. Images → dimensions/MIME/xxh3/EXIF via Rust. Video/audio → metadata only (resolution, duration, codecs, <100ms, no ffmpeg). Code/text → raw passthrough. Pipeline-driven via `pipelines/{kind}/fast.yaml`.
-- **accurate**: LLM-powered descriptions for all media types via OpenAI-compatible API. Images → VLM caption. Videos → keyframe mosaic → VLM description. Audio → transcript → LLM summary. Documents/code → text → LLM summary. Requires a configured profile (`mm profile add/update`). Pipeline-driven via `pipelines/{kind}/accurate.yaml`.
+- **fast** (default): Local extraction, no LLM call. PDFs → text via pypdfium2. Images → resize/base64. Videos → mosaic grids. Audio → Whisper transcription. Code/text → raw passthrough (no pipeline). Pipeline-driven via `pipelines/{kind}/fast.yaml` for image, video, audio, document.
+- **accurate**: LLM-powered descriptions via OpenAI-compatible API. Images → VLM caption. Videos → mosaic → VLM description. Audio → transcript → LLM summary. Documents → text → LLM structuring. Code/text → passed directly to LLM (no pipeline). Requires a configured profile (`mm profile add/update`). Pipeline-driven via `pipelines/{kind}/accurate.yaml`.
 
 ## Python API
 

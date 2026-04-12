@@ -2,4 +2,4 @@ kind: document
 mode: fast
 
 encode:
-  strategy: null
+  strategy: page-text

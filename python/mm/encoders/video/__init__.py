@@ -103,15 +103,14 @@ class VideoFrameSample:
 class VideoChunk:
     """Split video into overlapping time-based chunks.
 
-    Each yielded Message contains a keyframe mosaic for one chunk plus
+    Each yielded Message contains extracted frames for one chunk plus
     a text header with the time range.
 
     Kwargs:
         chunk_duration: Seconds per chunk (default 60).
         overlap: Overlap between chunks in seconds (default 20).
-        max_width: Mosaic width in pixels (default 1024).
-        tile_cols: Mosaic grid columns (default 4).
-        tile_rows: Mosaic grid rows (default 4).
+        max_width: Frame resize width in pixels (default 1024).
+        frames_per_chunk: Number of frames to extract per chunk (default 16).
     """
 
     name: str = "video-chunk"

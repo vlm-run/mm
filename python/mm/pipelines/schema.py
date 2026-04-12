@@ -108,7 +108,7 @@ class PipelineSpec(BaseModel):
     call is made and the raw extraction output is returned directly.
     """
 
-    kind: str = Field(description="Media kind: image, video, audio, document, text, code.")
+    kind: str = Field(description="Media kind: image, video, audio, document.")
     mode: str = Field(description="Processing mode: fast, accurate.")
     encode: Encode = Field(default_factory=Encode)
     generate: Generate | None = Field(default=None)

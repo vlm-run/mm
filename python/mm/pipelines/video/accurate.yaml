@@ -2,20 +2,23 @@ kind: video
 mode: accurate
 
 encode:
-  strategy: null
-  mosaic_tile: "4x4"
-  mosaic_count: 8
-  frame_selection: scene
-  transcribe: true
+  strategy: frames-transcript
+  fps: 1.0
+  max_width: 1024
+  max_frames_per_message: 16
   whisper_model: medium
   audio_speed: 1.0
 
 generate:
   prompt: >-
-    Analyze this video mosaic ({filename}).{duration_ctx}
+    Analyze this video ({filename}).{duration_ctx}
 
-    Provide a detailed visual analysis (~200 words), up to 10 keyword tags,
-    and describe each major scene or segment visible in the frames.
+    You have been provided with the audio transcript (with timestamps)
+    followed by sampled video frames. Use both modalities to produce a
+    comprehensive analysis.
+
+    Provide a detailed visual and audio analysis (~200 words), up to 10
+    keyword tags, and describe each major scene or segment.
 
     Use this format:
     ## Summary

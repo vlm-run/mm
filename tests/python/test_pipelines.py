@@ -175,26 +175,6 @@ class TestLoad:
         assert spec.kind == "audio"
         assert spec.generate is not None
 
-    def test_load_text_fast(self):
-        spec = load("text", "fast")
-        assert spec.kind == "text"
-        assert spec.generate is None
-
-    def test_load_text_accurate(self):
-        spec = load("text", "accurate")
-        assert spec.kind == "text"
-        assert spec.generate is not None
-
-    def test_load_code_fast(self):
-        spec = load("code", "fast")
-        assert spec.kind == "code"
-        assert spec.generate is None
-
-    def test_load_code_accurate(self):
-        spec = load("code", "accurate")
-        assert spec.kind == "code"
-        assert spec.generate is not None
-
     def test_load_nonexistent_raises(self):
         with pytest.raises(FileNotFoundError, match="No pipeline"):
             load("nonexistent_kind_xyz", "nonexistent_mode_abc")
@@ -204,12 +184,12 @@ class TestLoad:
         pipelines_dir = Path(__file__).resolve().parent.parent.parent / "python" / "mm" / "pipelines"
         yaml_files = list(pipelines_dir.rglob("*.yaml"))
         yaml_files = [f for f in yaml_files if f.name != "spec.yaml"]
-        assert len(yaml_files) >= 12, f"Expected at least 12 YAML files, got {len(yaml_files)}"
+        assert len(yaml_files) >= 8, f"Expected at least 8 YAML files, got {len(yaml_files)}"
 
         for yaml_file in yaml_files:
             data = yaml.safe_load(yaml_file.read_text())
             spec = PipelineSpec.model_validate(data)
-            assert spec.kind in ("image", "video", "audio", "document", "text", "code")
+            assert spec.kind in ("image", "video", "audio", "document")
             assert spec.mode in ("fast", "accurate")
             if spec.generate is not None:
                 assert len(spec.generate.prompt) > 0
@@ -335,8 +315,8 @@ class TestApplyOverrides:
 
     def test_encode_strategy_override(self):
         spec = self._base_spec()
-        result = apply_overrides(spec, encode_overrides={"strategy": "tile-overview"})
-        assert result.encode.strategy == "tile-overview"
+        result = apply_overrides(spec, encode_overrides={"strategy": "tile"})
+        assert result.encode.strategy == "tile"
         assert result.encode.max_width == 1024
 
     def test_encode_max_width_override(self):

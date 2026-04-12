@@ -135,7 +135,7 @@ def cat_cmd(
       mm cat paper.pdf                    # text extraction (fast)
       mm cat photo.png -m accurate        # VLM description
       mm cat video.mp4 -m accurate        # mosaic → VLM
-      mm cat photo.png -p tile-overview   # use named encoder
+      mm cat photo.png -p tile            # use named encoder
       mm cat photo.png -p my-pipeline.yaml  # custom pipeline YAML
     """
     if list_pipelines:
@@ -1114,6 +1114,9 @@ def _parse_tile(tile: str) -> tuple[int, int]:
     return n, n
 
 
+_KIND_ORDER = ("image", "video", "audio", "document")
+
+
 def _do_list_pipelines() -> None:
     """Print a Rich panel of all built-in and user-override pipelines."""
     import yaml as _yaml
@@ -1125,7 +1128,7 @@ def _do_list_pipelines() -> None:
     pipelines_dir = Path(__file__).resolve().parent.parent / "pipelines"
     user_dir = Path.home() / ".config" / "mm" / "pipelines"
 
-    rows: list[tuple[str, str, str, str, str]] = []
+    rows: list[tuple[str, str, str, str]] = []
 
     for search_dir in (pipelines_dir, user_dir):
         if not search_dir.is_dir():
@@ -1139,55 +1142,64 @@ def _do_list_pipelines() -> None:
                 continue
             kind = data.get("kind", "?")
             mode = data.get("mode", "?")
-            encoder = data.get("encode", {}).get("strategy") or "default"
-            has_generate = "yes" if data.get("generate") else "—"
-            rows.append((str(yaml_file), kind, mode, encoder, has_generate))
+            encoder = data.get("encode", {}).get("strategy") or "—"
+            rows.append((str(yaml_file), kind, mode, encoder))
 
     try:
         from mm.config import get_pipeline_path
 
-        for kind in ("image", "video", "audio", "document", "text", "code"):
+        for kind in _KIND_ORDER:
             for mode in ("fast", "accurate"):
                 p = get_pipeline_path(kind, mode)
                 if p:
-                    rows.insert(0, (p, kind, mode, "—", "—"))
+                    rows.insert(0, (p, kind, mode, "—"))
     except Exception:
         pass
 
-    rows.sort(key=lambda r: r[0])
+    kind_rank = {k: i for i, k in enumerate(_KIND_ORDER)}
+    mode_rank = {"fast": 0, "accurate": 1}
+    rows.sort(key=lambda r: (kind_rank.get(r[1], 99), mode_rank.get(r[2], 99), r[0]))
 
     home = str(Path.home())
-    display_rows: list[tuple[str, str, str, str, str]] = []
-    for yaml_path, kind, mode, encoder, has_gen in rows:
+    display_rows: list[tuple[str, str, str, str]] = []
+    for yaml_path, kind, mode, encoder in rows:
         dp = "~" + yaml_path[len(home):] if yaml_path.startswith(home) else yaml_path
-        display_rows.append((dp, kind, mode, encoder, has_gen))
+        display_rows.append((dp, kind, mode, encoder))
 
     max_path = max((len(dp) for dp, *_ in display_rows), default=40)
     path_w = min(max(max_path + 2, 40), 80)
+    max_enc = max((len(enc) for _, _, _, enc in display_rows), default=12)
+    enc_w = max(max_enc + 2, 14)
 
-    def _pipeline_line(path_s: str, kind_s: str, mode_s: str, enc_s: str, llm_s: str, *, is_header: bool = False) -> Text:
+    def _pipeline_line(
+        kind_s: str, mode_s: str, enc_s: str, path_s: str,
+        *, is_header: bool = False,
+    ) -> Text:
         line = Text(no_wrap=True, overflow="ellipsis")
         if is_header:
-            line.append(path_s.ljust(path_w), style="bold cyan")
             line.append(kind_s.ljust(10), style="bold cyan")
             line.append(mode_s.ljust(10), style="bold cyan")
-            line.append(enc_s.ljust(10), style="bold cyan")
-            line.append(llm_s, style="bold cyan")
+            line.append(enc_s.ljust(enc_w), style="bold cyan")
+            line.append(path_s, style="bold cyan")
         else:
-            line.append(path_s.ljust(path_w), style="bold white")
             line.append(kind_s.ljust(10), style="white")
             line.append(mode_s.ljust(10), style="green" if mode_s == "fast" else "yellow")
-            line.append(enc_s.ljust(10), style="white")
-            line.append(llm_s, style="dim")
+            line.append(enc_s.ljust(enc_w), style="bold white")
+            line.append(path_s, style="dim")
         return line
 
     lines: list[Text] = []
-    lines.append(_pipeline_line("Path", "Kind", "Mode", "Encoder", "LLM", is_header=True))
-    for dp, kind, mode, encoder, has_gen in display_rows:
-        lines.append(_pipeline_line(dp, kind, mode, encoder, has_gen))
+    lines.append(_pipeline_line("Kind", "Mode", "Encoder", "Path", is_header=True))
+
+    prev_kind = ""
+    for dp, kind, mode, encoder in display_rows:
+        if kind != prev_kind and prev_kind:
+            lines.append(Text(""))
+        prev_kind = kind
+        lines.append(_pipeline_line(kind, mode, encoder, dp))
 
     body = Text("\n").join(lines)
-    panel_w = path_w + 10 + 10 + 10 + 5 + 8
+    panel_w = 10 + 10 + enc_w + path_w + 8
     console = Console(width=max(panel_w, 80))
     panel = Panel(body, title="Pipelines", title_align="left", box=box.ROUNDED, padding=(1, 2), width=panel_w)
     console.print()
@@ -1206,9 +1218,19 @@ def _do_list_encoders() -> None:
 
     entries = list_encoders_detail()
 
-    name_w = 30
+    kind_rank = {k: i for i, k in enumerate(_KIND_ORDER)}
+    entries.sort(key=lambda e: (kind_rank.get(e["media_types"][0], 99), e["prefixed_name"]))
+
+    max_name = max((len(e["prefixed_name"]) for e in entries), default=28)
+    name_w = max_name + 2
     lines: list[Text] = []
+    prev_kind = ""
     for entry in entries:
+        cur_kind = entry["media_types"][0] if entry["media_types"] else "unknown"
+        if cur_kind != prev_kind and prev_kind:
+            lines.append(Text(""))
+        prev_kind = cur_kind
+
         prefixed = entry["prefixed_name"]
         desc = entry["description"]
         params: list[tuple[str, str]] = entry["params"]

@@ -192,12 +192,12 @@ Use `mm config reset-db` to clear all databases and caches.
 
 ### Pipelines — encode + generate
 
-Pipelines are YAML configs under `pipelines/{kind}/{mode}.yaml` that pair an **encoder** with optional LLM **generation** parameters. When `generate` is `null`, the pipeline is encode-only (no LLM call). Encoders are Python classes under `encoders/` that convert media files into VLM-ready Messages. See [`pipelines/README.md`](python/mm/pipelines/README.md) for the full encoder and pipeline reference.
+Pipelines are YAML configs under `pipelines/{kind}/{mode}.yaml` that pair an **encoder** with optional LLM **generation** parameters. When `generate` is `null`, the pipeline is encode-only (no LLM call). Encoders are Python classes under `encoders/` that convert media files into VLM-ready Messages. See [`docs/PIPELINES.md`](docs/PIPELINES.md) and [`docs/ENCODERS.md`](docs/ENCODERS.md) for the full pipeline and encoder reference.
 
 Pipeline fields can be overridden from the CLI:
 
 ```bash
-mm cat photo.jpg -m accurate --encode.strategy tile-overview --generate.max-tokens 1024
+mm cat photo.jpg -m accurate --encode.strategy tile --generate.max-tokens 1024
 mm cat photo.jpg -m accurate --generate.temperature 0.5
 ```
 

@@ -145,7 +145,7 @@ The `-p` / `--pipeline` flag accepts either a registered encoder name or a YAML 
 # Named encoder (encodes media into VLM-ready JSON messages)
 mm cat photo.png -p resize                    # Fit to 1024px, base64 encode
 mm cat photo.png -p tile                      # Tile into 1024x1024 squares
-mm cat photo.png -p tile-overview             # Resized overview + all tiles
+mm cat photo.png -p tile             # Resized overview + all tiles
 mm cat video.mp4 -p frame-sample              # Extract frames at 1fps
 mm cat video.mp4 -p video-chunk               # Chunk into 60s segments
 mm cat doc.pdf -p rasterize                   # Render pages as images
@@ -167,16 +167,18 @@ mm cat --list-pipelines
 |------|-------|-------------|
 | `resize` | image | **Default.** Fit to 1024px bounding box (Rust fast path) |
 | `tile` | image | Tile into 1024x1024 squares, one Message per tile |
-| `tile-overview` | image | Resized overview + all tiles in one Message |
+| `tile` | image | Resized overview + all tiles in one Message |
 | `frame-sample` | video | Extract frames at 1fps (requires ffmpeg) |
+| `frames-transcript` | video | Frames + Whisper transcript (accurate mode default) |
 | `video-chunk` | video | Chunk into 60s segments with 20s overlap |
 | `shot-frames` | video | Scene detection → representative frames per shot |
 | `shot-mosaic` | video | Scene detection → mosaic grid per shot |
 | `rasterize` | document | Render PDF pages as images (requires pypdfium2) |
 | `rasterize-text` | document | Rasterize + extract text, interleaved |
-| `gemini-video` | video | Pass video file as Gemini Part |
-| `gemini-video-chunked` | video | Chunk video as Gemini Parts |
-| `gemini-doc` | document | Pass PDF as Gemini Part |
+| `video-gemini` | video | Pass video file as Gemini Part |
+| `video-gemini-chunked` | video | Chunk video as Gemini Parts |
+| `audio-gemini` | audio | Pass audio file as Gemini Part |
+| `document-gemini` | document | Pass document file as Gemini Part |
 
 ### Writing custom encoders
 
@@ -225,7 +227,7 @@ Pipelines are 2-stage YAMLs: **encode** (convert to LLM-ready parts) → **gener
 ### Encode overrides (--encode.*)
 
 ```bash
-mm cat photo.png -m accurate --encode.strategy tile-overview   # override encoder
+mm cat photo.png -m accurate --encode.strategy tile   # override encoder
 mm cat photo.png -m accurate --encode.pyfunc ~/my_filter.py    # custom transform
 ```
 
@@ -242,7 +244,7 @@ mm cat photo.png -m accurate --generate.json-mode true            # request JSON
 
 ```bash
 mm cat photo.png -m accurate \
-  --encode.strategy tile-overview \
+  --encode.strategy tile \
   --generate.max-tokens 512 \
   --generate.prompt "Analyze this architecture diagram."
 ```
@@ -286,7 +288,7 @@ encode:
 kind: image
 mode: accurate
 encode:
-  strategy: tile-overview
+  strategy: tile
   max_width: 2048
 generate:
   prompt: "Describe this image in detail."

@@ -304,7 +304,9 @@ def _ensure_discovered() -> None:
 
 def _register_builtins() -> None:
     """Import built-in encoder modules so their classes self-register."""
-    from mm.encoders import document, gemini, image, video  # noqa: F401
+    from mm.encoders import audio, document, gemini, image, video  # noqa: F401
+    from mm.encoders.document import page_text  # noqa: F401
+    from mm.encoders.video import frame_sample_transcript, mosaic  # noqa: F401
 
 
 def discover_encoders() -> None:
@@ -460,23 +462,27 @@ def process_image_tiled(
     image: Path | Image.Image,
     *,
     tile_size: int = 1024,
+    max_width: int | None = None,
     **kwargs: Any,
 ) -> Iterable[Message]:
-    """Tile a large image and yield one Message per tile.
+    """Tile an image with overview, yielding all tiles in one Message.
 
     Args:
         image: Path to an image file, or a PIL ``Image`` object.
-        tile_size: Maximum tile dimension in pixels.
+        tile_size: Alias for max_width (kept for backward compat).
+        max_width: Pixel size for tile dimension and overview bounding box.
+            Takes precedence over tile_size if both are given.
         **kwargs: Forwarded to ``encoder.encode()``.
 
     Yields:
-        One Message per tile, suitable for parallel VLM inference.
+        Messages containing overview + tile crops.
     """
     _ensure_discovered()
     s = get("tile")
     path = _ensure_path(image)
+    width = max_width if max_width is not None else tile_size
     try:
-        messages = list(s.encode(path, tile_size=tile_size, **kwargs))
+        messages = list(s.encode(path, max_width=width, **kwargs))
     finally:
         _cleanup_temp(path, image)
     return messages
