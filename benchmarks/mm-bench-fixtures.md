@@ -49,7 +49,7 @@ uv run mm cat input.mp4
 # Extract video accurately (with VLMs)
 uv run mm cat input.mp4 -m accurate
 # Extract video accurately (with video chunking)
-uv run mm cat input.mp4 --encoder.strategy video-chunk -m accurate
+uv run mm cat input.mp4 --encoder.strategy video-frame-sample -m accurate
 ```
 
         - cat

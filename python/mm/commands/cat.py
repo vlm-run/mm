@@ -1224,7 +1224,7 @@ def _do_list_encoders() -> None:
             param_parts: list[str] = []
             for pname, default in params:
                 param_parts.append(f"{pname}={default}")
-            param_line.append(", ".join(param_parts), style="dim green")
+            param_line.append(", ".join(param_parts), style="green")
             lines.append(param_line)
 
     body = Text("\n").join(lines)
