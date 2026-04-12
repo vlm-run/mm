@@ -192,22 +192,53 @@ Use `mm config reset-db` to clear all databases and caches.
 
 ## Architecture
 
+```mermaid
+graph LR
+  subgraph rust ["Rust (mm-core)"]
+    walk["ignore + rayon\nparallel dir walk"]
+    arrow["Arrow RecordBatch\nxxh3 hashing"]
+    l1["L1 extractors\ncode, image, video\nEXIF, mp4parse"]
+  end
+
+  subgraph python ["Python (mm)"]
+    cli["Typer CLI\nfind, cat, grep, sql, wc"]
+    ctx["Context class\nto_polars, to_pandas, sql"]
+    store["SQLite + sqlite-vec\nstorage + vector search"]
+  end
+
+  walk -->|"serde_json\n(fast path)"| cli
+  arrow -->|"Arrow IPC\nPyO3"| ctx
+  l1 <-->|PyO3| store
 ```
-Rust (mm-core)                   Python (mm)
-┌─────────────────────┐             ┌─────────────────────┐
-│ ignore (parallel     │  serde_json │ Typer CLI           │
-│   dir walk + stat)  │────────────>│   find/wc        │
-│ rayon parallelism   │  (fast path)│   (60ms, no pyarrow)│
-│ Arrow RecordBatch   │             │                     │
-│ xxh3 hashing (mmap) │  Arrow IPC  │ Context class       │
-│ directory_hash      │────────────>│ .to_polars/pandas() │
-│ L1 extractors       │  PyO3       │ .sql() via SQLite    │
-│   code, image,      │<───────────>│ SQLite + sqlite-vec  │
-│   video (mp4parse,  │             │   (storage + vector  │
-│    matroska)        │             │    search, ~130ms)   │
-│ EXIF extraction     │             │ Embeddings (Gemini)  │
-└─────────────────────┘             └─────────────────────┘
+
+### L2 pipeline — encode + generate
+
+When `mm cat -l 2` is called on a non-text file, the **strategy** YAML orchestrates two stages:
+
+```mermaid
+graph LR
+  file["Media File\n.mp4 .png .pdf .mp3"]
+
+  subgraph encode ["Stage 1 — Encode"]
+    enc["Encoder\n(mm/encoders/)"]
+    parts["OpenAI Messages\nimage_url, text parts"]
+  end
+
+  subgraph generate ["Stage 2 — Generate"]
+    strategy["Strategy YAML\n(mm/strategies/)"]
+    llm["LLM Backend\nOllama / OpenAI / vLLM"]
+  end
+
+  output["Text Output\ndescription, tags, scenes"]
+
+  file -->|"encoder.encode(path)"| enc
+  enc --> parts
+  strategy -.->|"prompt, max_tokens\ntemperature"| llm
+  parts -->|"content parts"| llm
+  llm --> output
 ```
+
+Strategies are YAML configs under `strategies/{kind}/{mode}.yaml` that pair an encoder with LLM generation parameters. Encoders are Python classes under `encoders/` that convert media files into VLM-ready Messages. See [`strategies/README.md`](python/mm/strategies/README.md) for the full encoder reference.
 
 ## L2 LLM Configuration using Profiles
 

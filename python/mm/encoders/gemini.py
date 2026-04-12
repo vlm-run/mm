@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import Any, Iterable
 
 from mm.constants import guess_mime
-from mm.serde import Message, register
+from mm.encoders import Message, register
 
 logger = logging.getLogger(__name__)
 

@@ -50,7 +50,7 @@ def collect() -> SystemInfo:
         pass
 
     try:
-        from mm.scenes import scenedetect_available
+        from mm.common.video.shot_detection import scenedetect_available
 
         info.scenedetect_available = scenedetect_available()
     except Exception:

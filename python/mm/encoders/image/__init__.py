@@ -7,7 +7,7 @@ when the native extension is unavailable.
 
 Typical usage::
 
-    from mm.serde import process_image, process_image_tiled
+    from mm.encoders import process_image, process_image_tiled
 
     msg = process_image(Path("photo.jpg"), max_width=1024)
     tiles = list(process_image_tiled(Path("scan.tiff"), tile_size=1024))
@@ -22,7 +22,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, Iterable, Union
 
 from mm.constants import IMAGE_EXTS
-from mm.serde import Message, _resolve_provider, register
+from mm.encoders import Message, _resolve_provider, register
 
 if TYPE_CHECKING:
     from PIL import Image

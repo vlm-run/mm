@@ -13,8 +13,8 @@ import logging
 from pathlib import Path
 from typing import Any, Iterable, Optional
 
-from mm.serde import Message, _resolve_provider, register
-from mm.serde.image import _image_part, _to_message
+from mm.encoders import Message, _resolve_provider, register
+from mm.encoders.image import _image_part, _to_message
 
 logger = logging.getLogger(__name__)
 

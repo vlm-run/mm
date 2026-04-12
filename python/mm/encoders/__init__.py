@@ -1,18 +1,18 @@
-"""Message serialization strategies for VLM encoding.
+"""Media encoders for VLM-ready message generation.
 
-Strategies transform media files (images, videos, documents) into
+Encoders transform media files (images, videos, documents) into
 OpenAI-compatible Message dicts ready for chat/completions APIs.
 
-Three ways to use a strategy:
+Three ways to use an encoder:
     1. Named:  ``mm cat photo.png -s resize``
-    2. File:   ``mm cat photo.png -s ~/my_strat.py``
+    2. File:   ``mm cat photo.png -s ~/my_encoder.py``
     3. Inline: ``mm cat photo.png -s 'def encode(path, **kw): ...'``
 
-Custom strategies use the ``@strategy`` decorator::
+Custom encoders use the ``@register_encoder`` decorator::
 
-    from mm.serde import strategy
+    from mm.encoders import register_encoder
 
-    @strategy(name="my_custom", media_types=("image",))
+    @register_encoder(name="my_custom", media_types=("image",))
     def my_custom(path, **kw):
         ...
         yield {"role": "user", "content": [...]}
@@ -64,43 +64,43 @@ class MessageStrategy(Protocol):
 _REGISTRY: dict[str, MessageStrategy] = {}
 _DISCOVERED = False
 _LOADED_SOURCES: dict[str, list[str]] = {}
-"""Maps a source key (file path or code hash) to the strategy names it registered."""
+"""Maps a source key (file path or code hash) to the encoder names it registered."""
 
 
 def register(strat: MessageStrategy) -> MessageStrategy:
-    """Add a strategy instance to the global registry.
+    """Add an encoder instance to the global registry.
 
     Args:
         strat: Any object satisfying the ``MessageStrategy`` protocol.
 
     Returns:
-        The same strategy, for use as a decorator return value.
+        The same encoder, for use as a decorator return value.
     """
     _REGISTRY[strat.name] = strat
     return strat
 
 
 def get(name: str) -> MessageStrategy:
-    """Look up a registered strategy by name.
+    """Look up a registered encoder by name.
 
     Args:
-        name: Strategy identifier (e.g. ``"resize"``).
+        name: Encoder identifier (e.g. ``"resize"``).
 
     Raises:
-        KeyError: If no strategy with that name is registered.
+        KeyError: If no encoder with that name is registered.
     """
     _ensure_discovered()
     if name not in _REGISTRY:
         available = ", ".join(sorted(_REGISTRY))
-        raise KeyError(f"Unknown strategy {name!r}. Available: {available}")
+        raise KeyError(f"Unknown encoder {name!r}. Available: {available}")
     return _REGISTRY[name]
 
 
 def list_strategies(*, media_type: str | None = None) -> list[str]:
-    """Return sorted names of all registered strategies.
+    """Return sorted names of all registered encoders.
 
     Args:
-        media_type: If given, only return strategies that handle this
+        media_type: If given, only return encoders that handle this
             kind (``"image"``, ``"video"``, ``"document"``).
     """
     _ensure_discovered()
@@ -113,7 +113,7 @@ def list_strategies(*, media_type: str | None = None) -> list[str]:
     )
 
 
-class _FunctionStrategy:
+class _FunctionEncoder:
     """Adapts a bare generator function into a ``MessageStrategy``."""
 
     __slots__ = ("name", "media_types", "_fn")
@@ -128,46 +128,50 @@ class _FunctionStrategy:
         return result
 
 
-def strategy(
+def register_encoder(
     name: str | None = None,
     media_types: tuple[str, ...] = ("image",),
 ):
-    """Decorator that turns a generator function into a registered strategy.
+    """Decorator that turns a generator function into a registered encoder.
 
     The ``name`` is optional — if omitted, it is derived from the
     function name by replacing underscores with hyphens.
 
     Examples::
 
-        @strategy(media_types=("image",))
+        @register_encoder(media_types=("image",))
         def my_resize(path, **kw):
             ...
             yield {"role": "user", "content": [...]}
         # Registered as "my-resize"
 
-        @strategy(name="custom-name", media_types=("video",))
+        @register_encoder(name="custom-name", media_types=("video",))
         def whatever(path, **kw):
             ...
 
     Args:
         name: Registry key.  Defaults to the function name with
             underscores replaced by hyphens.
-        media_types: Tuple of media kinds this strategy handles.
+        media_types: Tuple of media kinds this encoder handles.
     """
 
-    def decorator(fn: Any) -> _FunctionStrategy:
+    def decorator(fn: Any) -> _FunctionEncoder:
         resolved_name = name if name is not None else fn.__name__.replace("_", "-")
-        s = _FunctionStrategy(resolved_name, media_types, fn)
+        s = _FunctionEncoder(resolved_name, media_types, fn)
         register(s)
         return s
 
     return decorator
 
 
-def load_strategy_file(path: Path) -> list[str]:
-    """Dynamically import a ``.py`` file and register its strategies.
+strategy = register_encoder
+"""Backward-compatible alias for ``register_encoder``."""
 
-    Any ``@strategy``-decorated functions in the file are automatically
+
+def load_strategy_file(path: Path) -> list[str]:
+    """Dynamically import a ``.py`` file and register its encoders.
+
+    Any ``@register_encoder``-decorated functions in the file are automatically
     registered when the module is executed.  Results are cached so
     repeated loads of the same file return the same names without
     re-executing.
@@ -176,7 +180,7 @@ def load_strategy_file(path: Path) -> list[str]:
         path: Absolute or relative path to a Python file.
 
     Returns:
-        List of strategy names registered from this file.
+        List of encoder names registered from this file.
 
     Raises:
         ImportError: If the file cannot be loaded.
@@ -186,10 +190,10 @@ def load_strategy_file(path: Path) -> list[str]:
         return _LOADED_SOURCES[source_key]
 
     before = set(_REGISTRY)
-    module_name = f"mm_strategy_{path.stem}"
+    module_name = f"mm_encoder_{path.stem}"
     spec = importlib.util.spec_from_file_location(module_name, str(path))
     if spec is None or spec.loader is None:
-        raise ImportError(f"Cannot load strategy from {path}")
+        raise ImportError(f"Cannot load encoder from {path}")
     module = importlib.util.module_from_spec(spec)
     sys.modules[module_name] = module
     spec.loader.exec_module(module)
@@ -200,19 +204,20 @@ def load_strategy_file(path: Path) -> list[str]:
 
 
 def load_inline_strategy(code: str) -> list[str]:
-    """Execute inline Python code and register its strategies.
+    """Execute inline Python code and register its encoders.
 
-    The executed code has access to the ``strategy`` decorator and
-    ``pathlib.Path``.  Intended for agent-generated code passed via
-    ``mm cat -s '<code>'``.  Results are cached by code content so
-    repeated calls with identical code skip re-execution.
+    The executed code has access to the ``register_encoder`` decorator
+    (also available as ``strategy``) and ``pathlib.Path``.  Intended
+    for agent-generated code passed via ``mm cat -s '<code>'``.
+    Results are cached by code content so repeated calls with
+    identical code skip re-execution.
 
     Args:
-        code: Python source code containing ``@strategy``-decorated
+        code: Python source code containing ``@register_encoder``-decorated
             functions.
 
     Returns:
-        List of strategy names registered from this code.
+        List of encoder names registered from this code.
     """
     import hashlib
 
@@ -222,6 +227,7 @@ def load_inline_strategy(code: str) -> list[str]:
 
     before = set(_REGISTRY)
     exec_globals: dict[str, Any] = {
+        "register_encoder": register_encoder,
         "strategy": strategy,
         "Path": Path,
         "__builtins__": __builtins__,
@@ -234,35 +240,42 @@ def load_inline_strategy(code: str) -> list[str]:
 
 
 def _ensure_discovered() -> None:
-    """Lazily register built-in strategies and run auto-discovery."""
+    """Lazily register built-in encoders and run auto-discovery."""
     global _DISCOVERED
     if _DISCOVERED:
         return
     _DISCOVERED = True
     _register_builtins()
-    discover_strategies()
+    discover_encoders()
 
 
 def _register_builtins() -> None:
-    """Import built-in strategy modules so their classes self-register."""
-    from mm.serde import document, gemini, image, video  # noqa: F401
+    """Import built-in encoder modules so their classes self-register."""
+    from mm.encoders import document, gemini, image, video  # noqa: F401
 
 
-def discover_strategies() -> None:
-    """Scan known directories for user-defined strategy files.
+def discover_encoders() -> None:
+    """Scan known directories for user-defined encoder files.
 
     Discovery order:
-        1. ``python/mm/strategies/*.py`` (project-level, checked into repo)
-        2. ``~/.config/mm/strategies/*.py`` (per-user, not in repo)
+        1. ``python/mm/encoders/{image,video}/*.py`` (project-level subdirs)
+        2. ``~/.config/mm/encoders/*.py`` (per-user, not in repo)
+
+    Top-level ``.py`` files in the project encoders directory are
+    registered by ``_register_builtins`` and are skipped here.
     """
-    _discover_from_dir(_project_strategies_dir())
-    _discover_from_dir(_user_strategies_dir())
+    project_dir = _project_encoders_dir()
+    if project_dir is not None:
+        for subdir in sorted(project_dir.iterdir()):
+            if subdir.is_dir() and not subdir.name.startswith("_"):
+                _discover_from_dir(subdir)
+    _discover_from_dir(_user_encoders_dir())
 
 
 def _discover_from_dir(directory: Path | None) -> None:
     if directory is None or not directory.is_dir():
         return
-    for py_file in sorted(directory.glob("*.py")):
+    for py_file in sorted(directory.rglob("*.py")):
         if py_file.name.startswith("_"):
             continue
         try:
@@ -271,13 +284,18 @@ def _discover_from_dir(directory: Path | None) -> None:
             pass
 
 
-def _project_strategies_dir() -> Path | None:
-    d = Path(__file__).resolve().parent.parent / "strategies"
+def _project_encoders_dir() -> Path | None:
+    """Return the encoders package directory for auto-discovery.
+
+    Only subdirectories (image/, video/) are scanned — top-level
+    modules (document.py, gemini.py) are imported by _register_builtins.
+    """
+    d = Path(__file__).resolve().parent
     return d if d.is_dir() else None
 
 
-def _user_strategies_dir() -> Path | None:
-    d = Path.home() / ".config" / "mm" / "strategies"
+def _user_encoders_dir() -> Path | None:
+    d = Path.home() / ".config" / "mm" / "encoders"
     return d if d.is_dir() else None
 
 
@@ -292,15 +310,15 @@ def resolve_strategy(value: str, media_type: str) -> MessageStrategy:
     Args:
         value: The raw ``-s`` argument from the CLI.
         media_type: Media kind of the target file (used to disambiguate
-            when a loaded file defines multiple strategies).
+            when a loaded file defines multiple encoders).
 
     Returns:
         A ``MessageStrategy`` ready to call ``.encode()``.
 
     Raises:
-        KeyError: Named strategy not found.
-        FileNotFoundError: Strategy file does not exist.
-        ValueError: Loaded file/code registered no strategies.
+        KeyError: Named encoder not found.
+        FileNotFoundError: Encoder file does not exist.
+        ValueError: Loaded file/code registered no encoders.
     """
     _ensure_discovered()
 
@@ -311,7 +329,7 @@ def resolve_strategy(value: str, media_type: str) -> MessageStrategy:
     if value.endswith(".py") or "/" in value:
         path = Path(value).expanduser().resolve()
         if not path.exists():
-            raise FileNotFoundError(f"Strategy file not found: {path}")
+            raise FileNotFoundError(f"Encoder file not found: {path}")
         names = load_strategy_file(path)
         return _pick_by_media_type(names, media_type, source=str(path))
 
@@ -321,10 +339,10 @@ def resolve_strategy(value: str, media_type: str) -> MessageStrategy:
 def _pick_by_media_type(
     names: list[str], media_type: str, source: str
 ) -> MessageStrategy:
-    """Select the best-matching strategy from a list of registered names.
+    """Select the best-matching encoder from a list of registered names.
 
     Args:
-        names: Strategy names registered from *source*.
+        names: Encoder names registered from *source*.
         media_type: Target media kind to match against.
         source: Human-readable description of the source (for errors).
 
@@ -332,7 +350,7 @@ def _pick_by_media_type(
         ValueError: If *names* is empty (nothing was registered).
     """
     if not names:
-        raise ValueError(f"No strategies registered from {source}")
+        raise ValueError(f"No encoders registered from {source}")
     matching = [n for n in names if media_type in _REGISTRY[n].media_types]
     if matching:
         return _REGISTRY[matching[0]]
@@ -366,9 +384,9 @@ def process_image(
 
     Args:
         image: Path to an image file, or a PIL ``Image`` object.
-        strategy_name: Registry name of the strategy to use.
-        max_width: Maximum width in pixels (passed to the strategy).
-        **kwargs: Forwarded to ``strategy.encode()``.
+        strategy_name: Registry name of the encoder to use.
+        max_width: Maximum width in pixels (passed to the encoder).
+        **kwargs: Forwarded to ``encoder.encode()``.
 
     Returns:
         A single Message dict ``{"role": "user", "content": [...]}``.
@@ -381,7 +399,7 @@ def process_image(
     finally:
         _cleanup_temp(path, image)
     if not messages:
-        raise RuntimeError(f"Strategy {strategy_name!r} produced no messages")
+        raise RuntimeError(f"Encoder {strategy_name!r} produced no messages")
     return messages[0]
 
 
@@ -396,7 +414,7 @@ def process_image_tiled(
     Args:
         image: Path to an image file, or a PIL ``Image`` object.
         tile_size: Maximum tile dimension in pixels.
-        **kwargs: Forwarded to ``strategy.encode()``.
+        **kwargs: Forwarded to ``encoder.encode()``.
 
     Yields:
         One Message per tile, suitable for parallel VLM inference.
@@ -423,7 +441,7 @@ def process_video(
         video: Path to a video file.
         strategy_name: Registry name (e.g. ``"frame-sample"``,
             ``"video-chunk"``).
-        **kwargs: Forwarded to ``strategy.encode()``.
+        **kwargs: Forwarded to ``encoder.encode()``.
 
     Yields:
         One Message per video chunk.
@@ -445,7 +463,7 @@ def process_document(
         document: Path to a PDF, DOCX, or PPTX file.
         strategy_name: Registry name (e.g. ``"rasterize"``,
             ``"rasterize-text"``).
-        **kwargs: Forwarded to ``strategy.encode()``.
+        **kwargs: Forwarded to ``encoder.encode()``.
 
     Yields:
         One Message per group of pages.
@@ -456,12 +474,7 @@ def process_document(
 
 
 def _ensure_path(image: Path | Any) -> Path:
-    """Convert a PIL Image to a temporary file path if necessary.
-
-    Uses ``NamedTemporaryFile`` with ``delete=False`` so the caller
-    retains access to the path.  The file is deleted after strategy
-    execution in the convenience functions above.
-    """
+    """Convert a PIL Image to a temporary file path if necessary."""
     if isinstance(image, Path):
         return image
     import tempfile

@@ -13,10 +13,10 @@ __version__ = version("mm")
 
 _LAZY_IMPORTS = {
     "Context": ("mm.context", "Context"),
-    "process_image": ("mm.serde", "process_image"),
-    "process_image_tiled": ("mm.serde", "process_image_tiled"),
-    "process_video": ("mm.serde", "process_video"),
-    "process_document": ("mm.serde", "process_document"),
+    "process_image": ("mm.encoders", "process_image"),
+    "process_image_tiled": ("mm.encoders", "process_image_tiled"),
+    "process_video": ("mm.encoders", "process_video"),
+    "process_document": ("mm.encoders", "process_document"),
 }
 
 

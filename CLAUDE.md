@@ -91,14 +91,28 @@ mm/
 │   ├── pdf.py                  # PDF page mosaic extraction (pypdfium2 + Pillow)
 │   ├── ffmpeg.py               # ffmpeg wrappers (keyframe mosaics, audio/video segment extraction)
 │   ├── video.py                # Video metadata helpers
-│   ├── templates/              # YAML-based MLLM generation templates
-│   │   ├── __init__.py         # Template loading, caching, prompt rendering
+│   ├── common/                 # Shared utilities
+│   │   └── video/
+│   │       └── shot_detection.py  # PySceneDetect wrapper (detect_scenes, sample_*)
+│   ├── encoders/               # Media encoders (file → VLM-ready Messages)
+│   │   ├── __init__.py         # Registry, @register_encoder, resolve_strategy, process_*
+│   │   ├── document.py         # rasterize, rasterize-text (pypdfium2)
+│   │   ├── gemini.py           # gemini-video, gemini-video-chunked, gemini-doc
+│   │   ├── image/              # Image encoders
+│   │   │   ├── __init__.py     # resize, tile (Rust fast-path + Pillow fallback)
+│   │   │   └── tile_overview.py  # tile-overview (overview + tile crops in one Message)
+│   │   └── video/              # Video encoders
+│   │       ├── __init__.py     # frame-sample, video-chunk (ffmpeg-based)
+│   │       └── shot.py         # shot-frames + shot-mosaic (PySceneDetect-based)
+│   ├── strategies/             # YAML-based MLLM generation strategies
+│   │   ├── __init__.py         # Strategy loading, caching, prompt rendering
 │   │   ├── schema.py           # Pydantic schema (Encode, Generate, TemplateSpec)
+│   │   ├── README.md           # Encoder reference table and authoring guide
 │   │   ├── spec.yaml           # Reference YAML spec with all fields documented
-│   │   ├── image/              # Image templates (fast.yaml, accurate.yaml)
-│   │   ├── video/              # Video templates (fast.yaml, accurate.yaml)
-│   │   ├── audio/              # Audio templates (fast.yaml, accurate.yaml)
-│   │   └── document/           # Document templates (fast.yaml, accurate.yaml)
+│   │   ├── image/              # Image strategies (fast.yaml, accurate.yaml)
+│   │   ├── video/              # Video strategies (fast.yaml, accurate.yaml)
+│   │   ├── audio/              # Audio strategies (fast.yaml, accurate.yaml)
+│   │   └── document/           # Document strategies (fast.yaml, accurate.yaml)
 │   ├── store/                  # SQLite + sqlite-vec storage (metadata + embeddings)
 │   │   ├── __init__.py         # Lazy re-exports
 │   │   ├── schema.py           # SQL DDL + column enums (3 tables)
@@ -264,8 +278,8 @@ ctx.info()   # Rich summary panel
 - **Video metadata (L1)**: Native MP4 parsing (mp4parse) and MKV/WebM parsing (matroska) in Rust. No ffmpeg at L1 — metadata only, <100ms.
 - **PDF text extraction**: `pypdfium2` on the Python CLI side (in `commands/cat.py`). Scanned/image-only PDFs return empty text.
 - **Pipe detection**: `pipe.py` uses `select.select()` with zero timeout to avoid blocking when stdin is not a TTY but has no data.
-- **LLM backend**: Uses the `openai` Python SDK for all chat/completions calls. Sends `think=false` and `reasoning_effort="none"` to suppress chain-of-thought. Temperature defaults to 0.1. All prompts and generation parameters are externalized into YAML templates (`python/mm/templates/{kind}/{mode}.yaml`) validated via Pydantic at load time. The single entry point is `LlmBackend.generate(kind, mode, *, context, parts)`.
-- **Template pipeline**: `encode` (file → LLM-ready parts) → `generate` (LLM call) → text output. Templates support custom inline `pyfunc` transforms. Users can override built-in templates at `~/.config/mm/templates/`.
+- **LLM backend**: Uses the `openai` Python SDK for all chat/completions calls. Sends `think=false` and `reasoning_effort="none"` to suppress chain-of-thought. Temperature defaults to 0.1. All prompts and generation parameters are externalized into YAML strategies (`python/mm/strategies/{kind}/{mode}.yaml`) validated via Pydantic at load time. The single entry point is `LlmBackend.generate(kind, mode, *, context, parts)`.
+- **Strategy pipeline**: `encode` (file → LLM-ready parts via `mm/encoders/`) → `generate` (LLM call) → text output. Strategies support custom inline `pyfunc` transforms. Users can override built-in strategies at `~/.config/mm/strategies/`.
 
 ## LLM configuration
 

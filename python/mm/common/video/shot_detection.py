@@ -99,7 +99,6 @@ def sample_scene_timestamps(
     if len(scenes) <= n:
         return sorted((s + e) / 2 for s, e in scenes)
 
-    # Uniform index sampling across scene list
     step = len(scenes) / n
     indices = [int(i * step) for i in range(n)]
     timestamps = [(scenes[i][0] + scenes[i][1]) / 2 for i in indices]

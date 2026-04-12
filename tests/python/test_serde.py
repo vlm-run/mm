@@ -1,4 +1,4 @@
-"""Tests for mm.serde message serialization strategies."""
+"""Tests for mm.encoders message serialization strategies."""
 
 from __future__ import annotations
 
@@ -67,7 +67,7 @@ def serde_images(tmp_path: Path) -> dict[str, Path]:
 
 class TestRegistry:
     def test_builtin_strategies_registered(self):
-        from mm.serde import list_strategies
+        from mm.encoders import list_strategies
 
         names = list_strategies()
         assert "resize" in names
@@ -82,7 +82,7 @@ class TestRegistry:
         assert len(names) >= 9
 
     def test_list_strategies_by_image(self):
-        from mm.serde import list_strategies
+        from mm.encoders import list_strategies
 
         names = list_strategies(media_type="image")
         assert "resize" in names
@@ -90,7 +90,7 @@ class TestRegistry:
         assert "frame-sample" not in names
 
     def test_list_strategies_by_video(self):
-        from mm.serde import list_strategies
+        from mm.encoders import list_strategies
 
         names = list_strategies(media_type="video")
         assert "frame-sample" in names
@@ -99,7 +99,7 @@ class TestRegistry:
         assert "resize" not in names
 
     def test_list_strategies_by_document(self):
-        from mm.serde import list_strategies
+        from mm.encoders import list_strategies
 
         names = list_strategies(media_type="document")
         assert "rasterize" in names
@@ -108,25 +108,25 @@ class TestRegistry:
         assert "resize" not in names
 
     def test_get_unknown_strategy_raises(self):
-        from mm.serde import get
+        from mm.encoders import get
 
-        with pytest.raises(KeyError, match="Unknown strategy"):
+        with pytest.raises(KeyError, match="Unknown encoder"):
             get("nonexistent_strategy_xyz")
 
     def test_resolve_named(self, serde_images):
-        from mm.serde import resolve_strategy
+        from mm.encoders import resolve_strategy
 
         strat = resolve_strategy("resize", "image")
         assert strat.name == "resize"
 
     def test_resolve_file_path(self, tmp_path, serde_images):
-        from mm.serde import resolve_strategy
+        from mm.encoders import resolve_strategy
 
         # Create a custom strategy file
         strat_file = tmp_path / "custom_strat.py"
         strat_file.write_text(
             "from pathlib import Path\n"
-            "from mm.serde import strategy\n"
+            "from mm.encoders import strategy\n"
             "@strategy(name='test_custom_file', media_types=('image',))\n"
             "def test_custom_file(path, **kw):\n"
             "    yield {'role': 'user', 'content': [{'type': 'text', 'text': str(path)}]}\n"
@@ -135,10 +135,10 @@ class TestRegistry:
         assert strat.name == "test_custom_file"
 
     def test_resolve_inline(self, serde_images):
-        from mm.serde import resolve_strategy
+        from mm.encoders import resolve_strategy
 
         code = (
-            "from mm.serde import strategy\n"
+            "from mm.encoders import strategy\n"
             "@strategy(name='test_inline_xyz', media_types=('image',))\n"
             "def test_inline_xyz(path, **kw):\n"
             "    yield {'role': 'user', 'content': [{'type': 'text', 'text': 'inline'}]}\n"
@@ -147,7 +147,7 @@ class TestRegistry:
         assert strat.name == "test_inline_xyz"
 
     def test_strategy_decorator(self):
-        from mm.serde import _REGISTRY, strategy
+        from mm.encoders import _REGISTRY, strategy
 
         @strategy(name="test-decorator-xyz", media_types=("image",))
         def test_decorator_xyz(path, **kw):
@@ -158,7 +158,7 @@ class TestRegistry:
 
     def test_strategy_decorator_auto_name(self):
         """@strategy without name= should derive name from function name."""
-        from mm.serde import _REGISTRY, strategy
+        from mm.encoders import _REGISTRY, strategy
 
         @strategy(media_types=("image",))
         def my_auto_named_strat(path, **kw):
@@ -174,7 +174,7 @@ class TestRegistry:
 
 class TestImageResize:
     def test_output_format(self, serde_images):
-        from mm.serde import get
+        from mm.encoders import get
 
         strat = get("resize")
         messages = list(strat.encode(serde_images["small_jpg"]))
@@ -191,7 +191,7 @@ class TestImageResize:
 
     def test_resize_small_no_upscale(self, serde_images):
         """Images smaller than max_width should not be upscaled."""
-        from mm.serde import get
+        from mm.encoders import get
 
         strat = get("resize")
         messages = list(strat.encode(serde_images["small_png"], max_width=1024))
@@ -207,7 +207,7 @@ class TestImageResize:
         assert img.size[0] == 100  # Not upscaled
 
     def test_resize_large_respects_max_width(self, serde_images):
-        from mm.serde import get
+        from mm.encoders import get
 
         strat = get("resize")
         messages = list(strat.encode(serde_images["large_jpg"], max_width=512))
@@ -222,7 +222,7 @@ class TestImageResize:
         assert img.size[0] <= 512
 
     def test_resize_preserves_aspect_ratio(self, serde_images):
-        from mm.serde import get
+        from mm.encoders import get
 
         strat = get("resize")
         messages = list(strat.encode(serde_images["large_jpg"], max_width=1024))
@@ -243,7 +243,7 @@ class TestImageResize:
     def test_resize_tall_image_respects_max_height(self, tmp_path):
         """A tall image (H > max_width) should be downscaled by height."""
         tall = _make_jpeg(tmp_path / "tall.jpg", 500, 3000)
-        from mm.serde import get
+        from mm.encoders import get
 
         strat = get("resize")
         messages = list(strat.encode(tall, max_width=1024))
@@ -265,7 +265,7 @@ class TestImageResize:
 class TestImageTile:
     def test_small_image_single_tile(self, serde_images):
         """Image smaller than tile_size yields a single message."""
-        from mm.serde import get
+        from mm.encoders import get
 
         strat = get("tile")
         messages = list(strat.encode(serde_images["small_jpg"], tile_size=1024))
@@ -273,7 +273,7 @@ class TestImageTile:
 
     def test_large_image_multiple_tiles(self, serde_images):
         """Large image yields multiple messages (one per tile)."""
-        from mm.serde import get
+        from mm.encoders import get
 
         strat = get("tile")
         messages = list(strat.encode(serde_images["large_jpg"], tile_size=1024))
@@ -284,7 +284,7 @@ class TestImageTile:
             assert len(msg["content"]) >= 1
 
     def test_tile_medium_image(self, serde_images):
-        from mm.serde import get
+        from mm.encoders import get
 
         strat = get("tile")
         messages = list(strat.encode(serde_images["medium_jpg"], tile_size=512))
@@ -347,14 +347,14 @@ class TestRustParity:
 
 class TestConvenienceFunctions:
     def test_process_image(self, serde_images):
-        from mm.serde import process_image
+        from mm.encoders import process_image
 
         msg = process_image(serde_images["medium_jpg"], max_width=512)
         assert msg["role"] == "user"
         assert len(msg["content"]) >= 1
 
     def test_process_image_tiled(self, serde_images):
-        from mm.serde import process_image_tiled
+        from mm.encoders import process_image_tiled
 
         messages = list(process_image_tiled(serde_images["large_jpg"], tile_size=1024))
         assert len(messages) == 6
@@ -377,28 +377,28 @@ class TestSerdeBenchmarks:
 
     def test_bench_image_resize_small(self, benchmark, serde_images):
         """Benchmark: resize 100x80 JPEG."""
-        from mm.serde import get
+        from mm.encoders import get
 
         strat = get("resize")
         benchmark(lambda: list(strat.encode(serde_images["small_jpg"], max_width=1024)))
 
     def test_bench_image_resize_medium(self, benchmark, serde_images):
         """Benchmark: resize 1000x800 JPEG."""
-        from mm.serde import get
+        from mm.encoders import get
 
         strat = get("resize")
         benchmark(lambda: list(strat.encode(serde_images["medium_jpg"], max_width=1024)))
 
     def test_bench_image_resize_large(self, benchmark, serde_images):
         """Benchmark: resize 3000x2000 JPEG."""
-        from mm.serde import get
+        from mm.encoders import get
 
         strat = get("resize")
         benchmark(lambda: list(strat.encode(serde_images["large_jpg"], max_width=1024)))
 
     def test_bench_image_tile_large(self, benchmark, serde_images):
         """Benchmark: tile 3000x2000 JPEG into 1024x1024 tiles."""
-        from mm.serde import get
+        from mm.encoders import get
 
         strat = get("tile")
         benchmark(lambda: list(strat.encode(serde_images["large_jpg"], tile_size=1024)))
@@ -423,12 +423,12 @@ class TestSerdeBenchmarks:
 
     def test_bench_pillow_resize(self, benchmark, serde_images):
         """Benchmark: Pillow fallback resize."""
-        from mm.serde.image import _pillow_resize
+        from mm.encoders.image import _pillow_resize
 
         benchmark(lambda: _pillow_resize(serde_images["large_jpg"], 1024))
 
     def test_bench_pillow_tile(self, benchmark, serde_images):
         """Benchmark: Pillow fallback tile."""
-        from mm.serde.image import _pillow_tile
+        from mm.encoders.image import _pillow_tile
 
         benchmark(lambda: _pillow_tile(serde_images["large_jpg"], 1024))

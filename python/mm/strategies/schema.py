@@ -1,10 +1,10 @@
-"""Pydantic schema for YAML-based MLLM generation templates.
+"""Pydantic schema for YAML-based MLLM generation strategies.
 
-Each template configures a 2-stage pipeline:
+Each strategy configures a 2-stage pipeline:
 
     file → encode → generate (LLM) → text output
 
-Templates live in ``python/mm/templates/{kind}/{mode}.yaml`` and are
+Strategies live in ``python/mm/strategies/{kind}/{mode}.yaml`` and are
 validated at load time against these models.
 """
 
@@ -18,9 +18,9 @@ from pydantic import BaseModel, Field
 class Encode(BaseModel):
     """Input encoding: how to convert a file into LLM-ready parts.
 
-    The ``strategy`` field selects a registered serde strategy (e.g.
+    The ``strategy`` field selects a registered encoder (e.g.
     ``resize``, ``frame-sample``, ``rasterize``).  If omitted, the
-    default for the media kind is used.  Extra strategy kwargs are
+    default for the media kind is used.  Extra encoder kwargs are
     passed through via ``strategy_kwargs``.
 
     ``pyfunc`` allows inline Python to transform/filter the parts list
@@ -30,24 +30,24 @@ class Encode(BaseModel):
 
     strategy: str | None = Field(
         default=None,
-        description="Serde strategy name (e.g. resize, tile, frame-sample). "
+        description="Encoder name (e.g. resize, tile, frame-sample). "
         "None = use kind-specific default.",
     )
     strategy_kwargs: dict[str, Any] = Field(
         default_factory=dict,
-        description="Extra kwargs forwarded to strategy.encode().",
+        description="Extra kwargs forwarded to encoder.encode().",
     )
     max_width: int | None = Field(
         default=None,
-        description="Max image width in px (for image strategies).",
+        description="Max image width in px (for image encoders).",
     )
     mosaic_tile: str | None = Field(
         default=None,
-        description="Mosaic grid spec COLSxROWS (for video strategies).",
+        description="Mosaic grid spec COLSxROWS (for video encoders).",
     )
     mosaic_count: int | None = Field(
         default=None,
-        description="Number of mosaics to generate (for video strategies).",
+        description="Number of mosaics to generate (for video encoders).",
     )
     transcribe: bool = Field(
         default=False,
@@ -94,7 +94,7 @@ class Generate(BaseModel):
 
 
 class TemplateSpec(BaseModel):
-    """Complete template for a single (kind, mode) MLLM generation call."""
+    """Complete strategy for a single (kind, mode) MLLM generation call."""
 
     kind: str = Field(description="Media kind: image, video, audio, document.")
     mode: str = Field(description="Processing mode: fast, accurate.")

@@ -12,8 +12,8 @@ import logging
 from pathlib import Path
 from typing import Any, Iterable
 
-from mm.serde import Message, _resolve_provider, register
-from mm.serde.image import _image_part, _to_message
+from mm.encoders import Message, _resolve_provider, register
+from mm.encoders.image import _image_part, _to_message
 
 logger = logging.getLogger(__name__)
 
@@ -56,7 +56,6 @@ class VideoFrameSample:
 
         timestamps: list[float] = _uniform_timestamps(duration, fps)
 
-        # Cap at a reasonable number to avoid excessive extraction.
         max_total: int = max_frames_per_message * 8
         if len(timestamps) > max_total:
             step: int = len(timestamps) // max_total
@@ -152,8 +151,6 @@ class VideoChunk:
         while start < duration:
             end: float = min(start + chunk_duration, duration)
 
-            # Sample timestamps *within this chunk* so each chunk gets
-            # its own unique frames, not a repeat of the full video.
             chunk_timestamps: list[float] = _uniform_timestamps_range(
                 start, end, frames_per_chunk,
             )

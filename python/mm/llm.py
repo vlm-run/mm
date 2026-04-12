@@ -7,8 +7,9 @@ Profile settings are resolved in order:
     CLI flags > env vars > active profile in ~/.config/mm/mm.toml > built-in defaults
 
 Public API:
-    LlmBackend.generate(kind, mode, *, context, parts)  — template-driven
-    image_part(path, *, mime)                            — build an image content part
+    LlmBackend.generate(kind, mode, *, context, parts)          — template-driven
+    LlmBackend.generate_chunked(kind, mode, *, context, chunks) — multi-chunk concat
+    image_part(path, *, mime)                                    — build an image content part
 """
 
 from __future__ import annotations
@@ -89,7 +90,7 @@ class LlmBackend:
         Returns:
             Raw LLM response text.
         """
-        from mm.templates import load, render_prompt, run_pyfunc
+        from mm.strategies import load, render_prompt, run_pyfunc
 
         ctx = context or {}
         tpl = load(kind, mode)
@@ -116,6 +117,52 @@ class LlmBackend:
             temperature=tpl.generate.temperature,
             json_mode=tpl.generate.json_mode,
         )
+
+    def generate_chunked(
+        self,
+        kind: str,
+        mode: str = "fast",
+        *,
+        context: dict[str, Any] | None = None,
+        chunks: list[list[dict[str, Any]]],
+        separator: str = "\n\n---\n\n",
+        on_chunk: Any | None = None,
+    ) -> str:
+        """Process multiple content chunks sequentially and concatenate results.
+
+        Each chunk gets its own ``generate()`` call with the same template.
+        Chunks are processed one at a time to avoid OOM from loading all
+        encoded media simultaneously.
+
+        Args:
+            kind: Media kind (image, video, audio, document).
+            mode: Processing mode (fast, accurate).
+            context: Template variables shared across all chunks.
+            chunks: List of content-part lists, one per chunk.
+            separator: String inserted between chunk results.
+            on_chunk: Optional callback ``(chunk_idx, total, result) -> None``
+                called after each chunk completes.
+
+        Returns:
+            Concatenated LLM responses from all chunks.
+        """
+        results: list[str] = []
+        total = len(chunks)
+        cumulative_usage = LlmUsage()
+
+        for i, parts in enumerate(chunks):
+            result = self.generate(kind, mode, context=context, parts=parts)
+            results.append(result)
+
+            cumulative_usage.prompt_tokens += self.last_usage.prompt_tokens
+            cumulative_usage.completion_tokens += self.last_usage.completion_tokens
+            cumulative_usage.total_tokens += self.last_usage.total_tokens
+
+            if on_chunk is not None:
+                on_chunk(i, total, result)
+
+        self.last_usage = cumulative_usage
+        return separator.join(r for r in results if r and not r.startswith("[LLM error"))
 
     def _chat(
         self,

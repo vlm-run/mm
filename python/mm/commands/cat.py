@@ -668,7 +668,7 @@ def _l2_video_modal(path: Path, opts: _CatOpts, mode: str) -> str:
         tile_frames_to_mosaics,
     )
     from mm.llm import LlmBackend, image_part
-    from mm.templates import load
+    from mm.strategies import load
 
     if not ffmpeg_available():
         return f"[ffmpeg not found — cannot process {path.name}]"
@@ -697,7 +697,7 @@ def _l2_video_modal(path: Path, opts: _CatOpts, mode: str) -> str:
     def _extract_visual_and_vlm() -> tuple[list[Path], str]:
         t0 = time.monotonic()
         if use_scenes:
-            from mm.scenes import (
+            from mm.common.video.shot_detection import (
                 detect_scenes,
                 sample_scene_timestamps,
                 sample_uniform_timestamps,
@@ -847,7 +847,7 @@ def _l2_audio_modal(path: Path, opts: _CatOpts, mode: str) -> str:
     import time
 
     from mm.ffmpeg import extract_audio, ffmpeg_available
-    from mm.templates import load
+    from mm.strategies import load
     from mm.whisper import transcribe, whisper_available
 
     if not ffmpeg_available():
@@ -1075,7 +1075,7 @@ def _run_serde(
     """
     import json
 
-    from mm.serde import resolve_strategy
+    from mm.encoders import resolve_strategy
 
     all_messages: list[dict] = []
 
@@ -1135,10 +1135,14 @@ def _run_serde_l2(
 
     Combines ``-s`` encoding with ``-l 2`` LLM inference: the strategy
     produces OpenAI-compatible Messages which are sent to the active LLM
-    profile using the template-driven ``generate()`` method.
+    profile for semantic understanding.
+
+    Multi-message strategies (e.g. shot-frames, shot-mosaic) are processed
+    chunk-by-chunk via ``generate_chunked`` to avoid OOM.  Single-message
+    strategies go through the standard ``generate()`` path.
     """
     from mm.llm import LlmBackend
-    from mm.serde import resolve_strategy
+    from mm.encoders import resolve_strategy
 
     llm = LlmBackend()
 
@@ -1160,43 +1164,62 @@ def _run_serde_l2(
             typer.echo(f"No messages produced for {file_path}.", err=True)
             continue
 
-        all_parts: list[dict] = []
-        for msg in messages:
-            content = msg.get("content", [])
-            if isinstance(content, list):
-                for part in content:
-                    if "inline_data" in part:
-                        idata = part["inline_data"]
-                        mime = idata.get("mime_type", "")
-                        b64 = idata.get("data", "")
-                        if mime.startswith("video/"):
-                            typer.echo(
-                                f"Warning: strategy produced raw {mime} blob — "
-                                f"converting to image is not supported. "
-                                f"Use frame-sample or video-chunk instead "
-                                f"for OpenAI-compatible APIs.",
-                                err=True,
-                            )
-                            continue
-                        all_parts.append(
-                            {"type": "image_url", "image_url": {"url": f"data:{mime};base64,{b64}"}}
-                        )
-                    else:
-                        all_parts.append(part)
-            elif isinstance(content, str):
-                all_parts.append({"type": "text", "text": content})
+        mode = "accurate" if detail else "fast"
+        kind = media_type if media_type in ("image", "video", "audio", "document") else "document"
+        ctx = {"filename": p.name}
 
-        if not all_parts:
+        chunks: list[list[dict]] = []
+        for msg in messages:
+            parts = _extract_llm_parts(msg)
+            if parts:
+                chunks.append(parts)
+
+        if not chunks:
             typer.echo(f"No LLM-compatible content parts for {p.name}.", err=True)
             continue
 
-        mode = "accurate" if detail else "fast"
-        kind = media_type if media_type in ("image", "video", "audio", "document") else "document"
-        result = llm.generate(kind, mode, context={"filename": p.name}, parts=all_parts)
+        if len(chunks) == 1:
+            result = llm.generate(kind, mode, context=ctx, parts=chunks[0])
+        else:
+            def _on_chunk(idx: int, total: int, res: str) -> None:
+                if verbose:
+                    typer.echo(f"  chunk {idx + 1}/{total} done", err=True)
+            typer.echo(
+                f"Processing {len(chunks)} chunks for {p.name}...", err=True,
+            )
+            result = llm.generate_chunked(
+                kind, mode, context=ctx, chunks=chunks, on_chunk=_on_chunk,
+            )
 
         if len(paths) > 1:
             typer.echo(f"--- {p.name} ---", err=True)
         typer.echo(result)
+
+
+def _extract_llm_parts(msg: dict) -> list[dict]:
+    """Extract OpenAI-compatible content parts from a Message dict.
+
+    Converts Gemini ``inline_data`` parts to OpenAI ``image_url`` format,
+    skipping raw video blobs which can't be sent to OpenAI-compatible APIs.
+    """
+    parts: list[dict] = []
+    content = msg.get("content", [])
+    if isinstance(content, list):
+        for part in content:
+            if "inline_data" in part:
+                idata = part["inline_data"]
+                mime = idata.get("mime_type", "")
+                b64 = idata.get("data", "")
+                if mime.startswith("video/"):
+                    continue
+                parts.append(
+                    {"type": "image_url", "image_url": {"url": f"data:{mime};base64,{b64}"}}
+                )
+            else:
+                parts.append(part)
+    elif isinstance(content, str):
+        parts.append({"type": "text", "text": content})
+    return parts
 
 
 def _parse_tile(tile: str) -> tuple[int, int]:

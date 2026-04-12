@@ -161,8 +161,8 @@ mm cat photo.png -s ~/my_strategy.py
 # 3. Inline Python (for agents)
 mm cat photo.png -s 'import base64
 from pathlib import Path
-from mm.serde import strategy
-@strategy(media_types=("image",))
+from mm.encoders import register_encoder
+@register_encoder(media_types=("image",))
 def inline_test(path: Path, **kw):
     b64 = base64.b64encode(path.read_bytes()).decode()
     yield {"role": "user", "content": [{"type": "image_url", "image_url": {"url": f"data:image/png;base64,{b64}"}}]}'
@@ -197,15 +197,15 @@ Note: `gemini-video` and `gemini-doc` produce Gemini-native parts that are incom
 | `gemini-video-chunked` | video | Chunk video as Gemini Parts |
 | `gemini-doc` | document | Pass PDF as Gemini Part |
 
-### Writing custom strategies
+### Writing custom encoders
 
-Create a `.py` file in `python/mm/strategies/` (auto-discovered) or `~/.config/mm/strategies/`. The `name` is optional — it defaults to the function name with underscores replaced by hyphens:
+Create a `.py` file in `python/mm/encoders/image/`, `python/mm/encoders/video/` (auto-discovered) or `~/.config/mm/encoders/`. The `name` is optional — it defaults to the function name with underscores replaced by hyphens:
 
 ```python
 from pathlib import Path
-from mm.serde import strategy
+from mm.encoders import register_encoder
 
-@strategy(media_types=("image",))
+@register_encoder(media_types=("image",))
 def my_custom(path: Path, **kw):
     """Registered as 'my-custom' (auto-named from function)."""
     import base64, io

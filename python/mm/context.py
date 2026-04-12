@@ -263,7 +263,7 @@ class Context:
             List of OpenAI-compatible Message dicts.
         """
         from mm.constants import file_kind
-        from mm.serde import resolve_strategy
+        from mm.encoders import resolve_strategy
 
         full_path = self.root / path
         if not full_path.exists():
