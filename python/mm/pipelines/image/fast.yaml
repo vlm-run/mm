@@ -3,3 +3,4 @@ mode: fast
 
 encode:
   strategy: resize
+  max_width: 512

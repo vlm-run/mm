@@ -15,13 +15,12 @@ from typing import Any
 from pydantic import BaseModel, Field
 
 
-class Encode(BaseModel):
+class Encode(BaseModel, extra="allow"):
     """Input encoding: how to convert a file into LLM-ready parts.
 
     The ``strategy`` field selects a registered encoder (e.g.
-    ``resize``, ``frame-sample``, ``rasterize``).  If omitted, the
-    default for the media kind is used.  Extra encoder kwargs are
-    passed through via ``strategy_kwargs``.
+    ``resize``, ``frame-sample``, ``rasterize``).  All other fields
+    are forwarded as kwargs to ``encoder.encode()``.
 
     ``pyfunc`` allows inline Python to transform/filter the parts list
     before it reaches the LLM.  Signature:
@@ -33,47 +32,18 @@ class Encode(BaseModel):
         description="Encoder name (e.g. resize, tile, frame-sample). "
         "None = use kind-specific default.",
     )
-    strategy_kwargs: dict[str, Any] = Field(
-        default_factory=dict,
-        description="Extra kwargs forwarded to encoder.encode().",
-    )
-    max_width: int | None = Field(
-        default=None,
-        description="Max image width in px (for image encoders).",
-    )
-    mosaic_tile: str | None = Field(
-        default=None,
-        description="Mosaic grid spec COLSxROWS (for video encoders).",
-    )
-    mosaic_count: int | None = Field(
-        default=None,
-        description="Number of mosaics to generate (for video encoders).",
-    )
-    mosaic_image_width: int | None = Field(
-        default=None,
-        description="Thumbnail width in pixels for mosaic frames.",
-    )
-    frame_selection: str | None = Field(
-        default=None,
-        description="Frame selection method: uniform, keyframe, scene.",
-    )
-    transcribe: bool = Field(
-        default=False,
-        description="Run Whisper transcription (audio/video).",
-    )
-    whisper_model: str | None = Field(
-        default=None,
-        description="Whisper model size: tiny, medium, etc.",
-    )
-    audio_speed: float | None = Field(
-        default=None,
-        description="Audio speed multiplier for transcription.",
-    )
     pyfunc: str | None = Field(
         default=None,
         description="Inline Python function body for custom transform. "
         "Receives (parts, context) and must return list[dict].",
     )
+
+    @property
+    def encoder_kwargs(self) -> dict[str, Any]:
+        """All extra fields beyond strategy/pyfunc, forwarded to the encoder."""
+        if self.model_extra:
+            return dict(self.model_extra)
+        return {}
 
 
 class Generate(BaseModel):

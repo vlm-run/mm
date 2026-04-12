@@ -3,6 +3,7 @@ mode: accurate
 
 encode:
   strategy: page-text
+  pages_per_message: 4
 
 generate:
   prompt: >-

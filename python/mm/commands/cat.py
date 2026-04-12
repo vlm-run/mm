@@ -20,7 +20,7 @@ File-type behaviour:
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Annotated, Optional
+from typing import Annotated, Any, Optional
 
 import typer
 
@@ -475,7 +475,7 @@ def _run_encoder(path: Path, kind: str, spec: PipelineSpec, opts: _CatOpts) -> s
     from mm.encoders import resolve_strategy
 
     strat = resolve_strategy(spec.encode.strategy, kind)
-    messages = list(strat.encode(path))
+    messages = list(strat.encode(path, **spec.encode.encoder_kwargs))
 
     if spec.generate is None:
         import sys
@@ -559,12 +559,13 @@ def _accurate_video(path: Path, spec: PipelineSpec, opts: _CatOpts) -> str:
 
     from concurrent.futures import Future, ThreadPoolExecutor
 
-    tile_spec = spec.encode.mosaic_tile or "4x4"
+    ekw = spec.encode.encoder_kwargs
+    tile_spec = ekw.get("mosaic_tile") or "4x4"
     tile_cols, tile_rows = _parse_tile(tile_spec)
-    num_mosaics = spec.encode.mosaic_count or 8
+    num_mosaics = ekw.get("mosaic_count") or 8
     num_frames = 128
 
-    thumb_width = spec.encode.mosaic_image_width or (1500 // tile_cols)
+    thumb_width = ekw.get("mosaic_image_width") or (1500 // tile_cols)
 
     use_scenes = True
 
@@ -641,7 +642,7 @@ def _accurate_video(path: Path, spec: PipelineSpec, opts: _CatOpts) -> str:
         return mosaics, analysis
 
     def _extract_audio_transcript() -> str:
-        if not spec.encode.transcribe:
+        if not ekw.get("transcribe"):
             return ""
 
         from mm.whisper import whisper_available
@@ -649,8 +650,8 @@ def _accurate_video(path: Path, spec: PipelineSpec, opts: _CatOpts) -> str:
         if not whisper_available():
             return ""
 
-        whisper_model = spec.encode.whisper_model or "medium"
-        audio_speed = spec.encode.audio_speed or 1.0
+        whisper_model = ekw.get("whisper_model") or "medium"
+        audio_speed = ekw.get("audio_speed") or 1.0
         beam_size = 5
 
         t_audio = time.monotonic()
@@ -736,8 +737,9 @@ def _accurate_audio(path: Path, spec: PipelineSpec, opts: _CatOpts) -> str:
     timing: dict[str, float] = {}
     t_total = time.monotonic()
 
-    whisper_model = spec.encode.whisper_model or "medium"
-    audio_speed = spec.encode.audio_speed or 1.0
+    akw = spec.encode.encoder_kwargs
+    whisper_model = akw.get("whisper_model") or "medium"
+    audio_speed = akw.get("audio_speed") or 1.0
     beam_size = 5
 
     t0 = time.monotonic()
@@ -1128,7 +1130,9 @@ def _do_list_pipelines() -> None:
     pipelines_dir = Path(__file__).resolve().parent.parent / "pipelines"
     user_dir = Path.home() / ".config" / "mm" / "pipelines"
 
-    rows: list[tuple[str, str, str, str]] = []
+    _RESERVED_KEYS = {"strategy", "pyfunc"}
+
+    rows: list[tuple[str, str, str, str, dict[str, Any]]] = []
 
     for search_dir in (pipelines_dir, user_dir):
         if not search_dir.is_dir():
@@ -1142,8 +1146,10 @@ def _do_list_pipelines() -> None:
                 continue
             kind = data.get("kind", "?")
             mode = data.get("mode", "?")
-            encoder = data.get("encode", {}).get("strategy") or "—"
-            rows.append((str(yaml_file), kind, mode, encoder))
+            enc_data = data.get("encode", {})
+            encoder = enc_data.get("strategy") or "—"
+            params = {k: v for k, v in enc_data.items() if k not in _RESERVED_KEYS}
+            rows.append((str(yaml_file), kind, mode, encoder, params))
 
     try:
         from mm.config import get_pipeline_path
@@ -1152,7 +1158,7 @@ def _do_list_pipelines() -> None:
             for mode in ("fast", "accurate"):
                 p = get_pipeline_path(kind, mode)
                 if p:
-                    rows.insert(0, (p, kind, mode, "—"))
+                    rows.insert(0, (p, kind, mode, "—", {}))
     except Exception:
         pass
 
@@ -1161,45 +1167,41 @@ def _do_list_pipelines() -> None:
     rows.sort(key=lambda r: (kind_rank.get(r[1], 99), mode_rank.get(r[2], 99), r[0]))
 
     home = str(Path.home())
-    display_rows: list[tuple[str, str, str, str]] = []
-    for yaml_path, kind, mode, encoder in rows:
+    display_rows: list[tuple[str, str, str, str, dict[str, Any]]] = []
+    for yaml_path, kind, mode, encoder, params in rows:
         dp = "~" + yaml_path[len(home):] if yaml_path.startswith(home) else yaml_path
-        display_rows.append((dp, kind, mode, encoder))
-
-    max_path = max((len(dp) for dp, *_ in display_rows), default=40)
-    path_w = min(max(max_path + 2, 40), 80)
-    max_enc = max((len(enc) for _, _, _, enc in display_rows), default=12)
-    enc_w = max(max_enc + 2, 14)
-
-    def _pipeline_line(
-        kind_s: str, mode_s: str, enc_s: str, path_s: str,
-        *, is_header: bool = False,
-    ) -> Text:
-        line = Text(no_wrap=True, overflow="ellipsis")
-        if is_header:
-            line.append(kind_s.ljust(10), style="bold cyan")
-            line.append(mode_s.ljust(10), style="bold cyan")
-            line.append(enc_s.ljust(enc_w), style="bold cyan")
-            line.append(path_s, style="bold cyan")
-        else:
-            line.append(kind_s.ljust(10), style="white")
-            line.append(mode_s.ljust(10), style="green" if mode_s == "fast" else "yellow")
-            line.append(enc_s.ljust(enc_w), style="bold white")
-            line.append(path_s, style="dim")
-        return line
+        display_rows.append((dp, kind, mode, encoder, params))
 
     lines: list[Text] = []
-    lines.append(_pipeline_line("Kind", "Mode", "Encoder", "Path", is_header=True))
+    header = Text(no_wrap=True, overflow="ellipsis")
+    header.append("Kind".ljust(10), style="bold cyan")
+    header.append("Mode".ljust(10), style="bold cyan")
+    header.append("Encoder", style="bold cyan")
+    lines.append(header)
 
     prev_kind = ""
-    for dp, kind, mode, encoder in display_rows:
+    for dp, kind, mode, encoder, params in display_rows:
         if kind != prev_kind and prev_kind:
             lines.append(Text(""))
         prev_kind = kind
-        lines.append(_pipeline_line(kind, mode, encoder, dp))
+
+        line = Text(no_wrap=True, overflow="ellipsis")
+        line.append(kind.ljust(10), style="white")
+        line.append(mode.ljust(10), style="green" if mode == "fast" else "yellow")
+        line.append(encoder, style="bold white")
+        if params:
+            param_str = ", ".join(f"{k}={v}" for k, v in params.items())
+            line.append(f"({param_str})", style="green")
+        lines.append(line)
+
+        path_line = Text(no_wrap=True, overflow="ellipsis")
+        path_line.append(" " * 20)
+        path_line.append(dp, style="dim")
+        lines.append(path_line)
 
     body = Text("\n").join(lines)
-    panel_w = 10 + 10 + enc_w + path_w + 8
+    max_line = max((len(l.plain) for l in lines), default=60)
+    panel_w = max_line + 8
     console = Console(width=max(panel_w, 80))
     panel = Panel(body, title="Pipelines", title_align="left", box=box.ROUNDED, padding=(1, 2), width=panel_w)
     console.print()

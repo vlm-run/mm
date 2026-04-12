@@ -153,10 +153,14 @@ def run_pyfunc(
 
 
 def _coerce(model: type[Encode] | type[Generate], key: str, value: str) -> Any:
-    """Cast a CLI string value to the type expected by the Pydantic field."""
+    """Cast a CLI string value to the type expected by the Pydantic field.
+
+    For ``Encode`` extra fields (encoder kwargs), the string is returned as-is
+    since the encoder will handle its own type coercion.
+    """
     field_info = model.model_fields.get(key)
     if field_info is None:
-        raise ValueError(f"Unknown field {key!r} on {model.__name__}")
+        return value
 
     annotation = field_info.annotation
     # Unwrap Optional (Union[X, None]) to get the inner type

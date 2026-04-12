@@ -22,36 +22,33 @@ mode: fast                  # Processing mode: fast | accurate
 
 encode:
   # Encoder name (registered in mm's encoder registry).
-  # Examples: resize, tile, frame-sample, rasterize.
+  # Examples: resize, tile, frame-sample, mosaic, page-text, transcribe.
   # null = use the kind-specific default.
   strategy: resize
 
-  # Extra kwargs forwarded to encoder.encode().
-  strategy_kwargs: {}
-
-  # Max image width in pixels (image encoders only).
+  # All other keys are forwarded as kwargs to encoder.encode().
+  # Each encoder accepts different parameters — see `mm cat --list-encoders`.
+  #
+  # Examples for image-resize:
   max_width: 1024
 
-  # Mosaic grid spec as "COLSxROWS" (video encoders only).
-  mosaic_tile: "4x4"
+  # Examples for video-mosaic:
+  #   tile_cols: 4
+  #   tile_rows: 4
+  #   thumb_width: 160
+  #   num_mosaics: 8
+  #   num_frames: 128
 
-  # Number of mosaics to generate (video encoders only).
-  mosaic_count: 1
+  # Examples for video-frames-transcript:
+  #   fps: 1.0
+  #   max_width: 1024
+  #   max_frames_per_message: 16
+  #   whisper_model: medium
+  #   audio_speed: 1.0
 
-  # Thumbnail width in pixels for mosaic frames (video encoders only).
-  mosaic_image_width: null
-
-  # Frame selection method: uniform | keyframe | scene (video encoders only).
-  frame_selection: null
-
-  # Run Whisper transcription before LLM call (audio/video).
-  transcribe: false
-
-  # Whisper model size: tiny | small | medium | large.
-  whisper_model: null
-
-  # Audio speed multiplier for transcription (e.g. 2.0 = 2x speed).
-  audio_speed: null
+  # Examples for audio-transcribe:
+  #   whisper_model: medium
+  #   audio_speed: 1.0
 
   # Custom Python transform — file path or inline code.
   # Must define: def transform(parts, context) -> list[dict]
@@ -63,14 +60,10 @@ encode:
   #   pyfunc: |
   #     def transform(parts, context):
   #       return [p for p in parts if p.get("type") == "image_url"]
-  #
-  # Legacy inline (body only, auto-wrapped):
-  #   pyfunc: |
-  #     return [p for p in parts if p.get("type") == "image_url"]
   pyfunc: null
 
 # ──────────────────────────────────────────────────────────────────────
-# generate — LLM call parameters
+# generate — LLM call parameters (omit for encode-only pipelines)
 # ──────────────────────────────────────────────────────────────────────
 
 generate:

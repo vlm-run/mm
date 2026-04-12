@@ -105,11 +105,8 @@ class TestPipelineSpecSchema:
     def test_encode_defaults(self):
         enc = Encode()
         assert enc.strategy is None
-        assert enc.strategy_kwargs == {}
-        assert enc.max_width is None
-        assert enc.mosaic_tile is None
-        assert enc.transcribe is False
         assert enc.pyfunc is None
+        assert enc.encoder_kwargs == {}
 
     def test_generate_defaults(self):
         gen = Generate(prompt="Hello")
@@ -317,13 +314,12 @@ class TestApplyOverrides:
         spec = self._base_spec()
         result = apply_overrides(spec, encode_overrides={"strategy": "tile"})
         assert result.encode.strategy == "tile"
-        assert result.encode.max_width == 1024
+        assert result.encode.encoder_kwargs["max_width"] == 1024
 
     def test_encode_max_width_override(self):
         spec = self._base_spec()
         result = apply_overrides(spec, encode_overrides={"max_width": "2048"})
-        assert result.encode.max_width == 2048
-        assert isinstance(result.encode.max_width, int)
+        assert result.encode.encoder_kwargs["max_width"] == "2048"
 
     def test_generate_max_tokens_override(self):
         spec = self._base_spec()
@@ -347,7 +343,7 @@ class TestApplyOverrides:
     def test_bool_false_override(self):
         spec = self._base_spec()
         result = apply_overrides(spec, encode_overrides={"transcribe": "false"})
-        assert result.encode.transcribe is False
+        assert result.encode.encoder_kwargs["transcribe"] == "false"
 
     def test_both_overrides_at_once(self):
         spec = self._base_spec()
@@ -361,15 +357,16 @@ class TestApplyOverrides:
         assert result.generate.max_tokens == 512
         assert result.generate.temperature == 0.8
 
-    def test_unknown_encode_field_raises(self):
+    def test_unknown_encode_field_becomes_encoder_kwarg(self):
         spec = self._base_spec()
-        with pytest.raises(ValueError, match="Unknown field"):
-            apply_overrides(spec, encode_overrides={"nonexistent_field": "val"})
+        result = apply_overrides(spec, encode_overrides={"custom_param": "val"})
+        assert result.encode.encoder_kwargs["custom_param"] == "val"
 
-    def test_unknown_generate_field_raises(self):
+    def test_unknown_generate_field_ignored(self):
         spec = self._base_spec()
-        with pytest.raises(ValueError, match="Unknown field"):
-            apply_overrides(spec, generate_overrides={"nonexistent_field": "val"})
+        result = apply_overrides(spec, generate_overrides={"nonexistent_field": "val"})
+        assert result.generate is not None
+        assert not hasattr(result.generate, "nonexistent_field")
 
     def test_original_spec_unchanged(self):
         spec = self._base_spec()
@@ -380,12 +377,12 @@ class TestApplyOverrides:
     def test_mosaic_image_width_override(self):
         spec = self._base_spec()
         result = apply_overrides(spec, encode_overrides={"mosaic_image_width": "320"})
-        assert result.encode.mosaic_image_width == 320
+        assert result.encode.encoder_kwargs.get("mosaic_image_width") == "320"
 
     def test_frame_selection_override(self):
         spec = self._base_spec()
         result = apply_overrides(spec, encode_overrides={"frame_selection": "scene"})
-        assert result.encode.frame_selection == "scene"
+        assert result.encode.encoder_kwargs.get("frame_selection") == "scene"
 
     def test_pyfunc_override(self):
         spec = self._base_spec()
@@ -400,35 +397,35 @@ class TestApplyOverrides:
         assert result.generate.max_tokens == 512
 
 
-class TestEncodeNewFields:
-    """Validate the new mosaic_image_width and frame_selection fields."""
+class TestEncodeExtraKwargs:
+    """Validate that extra encode fields are stored as encoder_kwargs."""
 
-    def test_defaults_are_none(self):
+    def test_defaults_empty(self):
         enc = Encode()
-        assert enc.mosaic_image_width is None
-        assert enc.frame_selection is None
+        assert enc.encoder_kwargs == {}
 
     def test_set_via_model(self):
         enc = Encode(mosaic_image_width=320, frame_selection="scene")
-        assert enc.mosaic_image_width == 320
-        assert enc.frame_selection == "scene"
+        assert enc.encoder_kwargs["mosaic_image_width"] == 320
+        assert enc.encoder_kwargs["frame_selection"] == "scene"
 
     def test_roundtrip_yaml(self, tmp_path: Path):
         data = {
             "kind": "video",
             "mode": "fast",
             "encode": {
-                "mosaic_tile": "6x4",
-                "mosaic_count": 2,
-                "mosaic_image_width": 200,
-                "frame_selection": "keyframe",
+                "strategy": "mosaic",
+                "tile_cols": 6,
+                "tile_rows": 4,
+                "thumb_width": 200,
             },
         }
         p = tmp_path / "pipeline.yaml"
         p.write_text(yaml.dump(data))
         spec = PipelineSpec.model_validate(yaml.safe_load(p.read_text()))
-        assert spec.encode.mosaic_image_width == 200
-        assert spec.encode.frame_selection == "keyframe"
+        assert spec.encode.encoder_kwargs["tile_cols"] == 6
+        assert spec.encode.encoder_kwargs["tile_rows"] == 4
+        assert spec.encode.encoder_kwargs["thumb_width"] == 200
 
 
 class TestLoadFile:
