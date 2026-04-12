@@ -48,6 +48,7 @@ dev = [
     "pytest>=8.0",
     "pytest-benchmark>=4.0",
     "mypy>=1.10",
+    "types-PyYAML>=6.0",
     "ruff>=0.4",
     "maturin>=1.7",
 ]

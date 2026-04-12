@@ -86,8 +86,9 @@ def run_pyfunc(
 
     ns: dict[str, Any] = {}
     exec(  # noqa: S102
-        f"def transform(parts, context):\n"
+        "def transform(parts, context):\n"
         + "\n".join(f"    {line}" for line in template.encode.pyfunc.splitlines()),
         ns,
     )
-    return ns["transform"](parts, context)
+    result: list[dict[str, Any]] = ns["transform"](parts, context)
+    return result
