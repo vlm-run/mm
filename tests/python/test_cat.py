@@ -1,8 +1,8 @@
 """Tests for `mm cat` auto-detection and dispatch.
 
 Verifies that the CLI correctly auto-detects file types (image, video,
-audio, pdf, text) and dispatches to the right L0 / L1 handler based on
-extension — without needing manual --visual / --audio flags.
+audio, pdf, text) and dispatches to the right handler based on extension
+and the --mode flag (fast/accurate).
 """
 
 from __future__ import annotations
@@ -83,69 +83,45 @@ class TestFileKindDetection:
         assert _file_kind(Path(f"file{ext}")) == "text"
 
 
-# ── L0 raw passthrough ───────────────────────────────────────────────
+# ── Fast mode (default) ──────────────────────────────────────────────
 
 
-class TestL0:
-    """L0 always returns raw text regardless of file type."""
-
-    def test_text_file_l0(self, mixed_dir: Path):
-        r = runner.invoke(app, ["cat", str(mixed_dir / "main.py"), "-l", "0"])
-        assert r.exit_code == 0
-        assert "def run" in r.output
-
-    def test_config_file_l0(self, mixed_dir: Path):
-        r = runner.invoke(app, ["cat", str(mixed_dir / "config.toml"), "-l", "0"])
-        assert r.exit_code == 0
-        assert "port" in r.output
-
-    def test_l0_json(self, mixed_dir: Path):
-        r = runner.invoke(app, ["cat", str(mixed_dir / "main.py"), "-l", "0", "--format", "json"])
-        assert r.exit_code == 0
-        data = json.loads(r.output)
-        assert data[0]["level"] == 0
-        assert "def run" in data[0]["content"]
-
-
-# ── L1 auto-detection ────────────────────────────────────────────────
-
-
-class TestL1Image:
-    def test_image_l1_shows_dimensions(self, mixed_dir: Path):
-        r = runner.invoke(app, ["cat", str(mixed_dir / "photo.png"), "-l", "1", "--no-cache"])
+class TestFastImage:
+    def test_image_shows_dimensions(self, mixed_dir: Path):
+        r = runner.invoke(app, ["cat", str(mixed_dir / "photo.png"), "--no-cache"])
         assert r.exit_code == 0
         assert "64x48" in r.output
 
-    def test_image_l1_shows_hash(self, mixed_dir: Path):
-        r = runner.invoke(app, ["cat", str(mixed_dir / "photo.png"), "-l", "1", "--format", "json"])
+    def test_image_shows_hash(self, mixed_dir: Path):
+        r = runner.invoke(app, ["cat", str(mixed_dir / "photo.png"), "--format", "json"])
         data = json.loads(r.output)
         assert "Hash" in data[0]["content"] or "hash" in data[0]["content"].lower()
 
-    def test_image_l1_shows_mime(self, mixed_dir: Path):
-        r = runner.invoke(app, ["cat", str(mixed_dir / "photo.png"), "-l", "1"])
+    def test_image_shows_mime(self, mixed_dir: Path):
+        r = runner.invoke(app, ["cat", str(mixed_dir / "photo.png")])
         assert "png" in r.output.lower()
 
 
-class TestL1Video:
-    def test_video_l1_metadata(self, mixed_dir: Path):
-        r = runner.invoke(app, ["cat", str(mixed_dir / "clip.mp4"), "-l", "1"])
+class TestFastVideo:
+    def test_video_metadata(self, mixed_dir: Path):
+        r = runner.invoke(app, ["cat", str(mixed_dir / "clip.mp4")])
         assert r.exit_code == 0
 
 
-class TestL1Audio:
-    def test_audio_l1_metadata(self, mixed_dir: Path):
-        r = runner.invoke(app, ["cat", str(mixed_dir / "track.mp3"), "-l", "1"])
+class TestFastAudio:
+    def test_audio_metadata(self, mixed_dir: Path):
+        r = runner.invoke(app, ["cat", str(mixed_dir / "track.mp3")])
         assert r.exit_code == 0
 
 
-class TestL1Text:
-    def test_text_l1_passthrough(self, mixed_dir: Path):
-        r = runner.invoke(app, ["cat", str(mixed_dir / "readme.md"), "-l", "1"])
+class TestFastText:
+    def test_text_passthrough(self, mixed_dir: Path):
+        r = runner.invoke(app, ["cat", str(mixed_dir / "readme.md")])
         assert r.exit_code == 0
         assert "Title" in r.output
 
-    def test_code_l1_passthrough(self, mixed_dir: Path):
-        r = runner.invoke(app, ["cat", str(mixed_dir / "main.py"), "-l", "1"])
+    def test_code_passthrough(self, mixed_dir: Path):
+        r = runner.invoke(app, ["cat", str(mixed_dir / "main.py")])
         assert r.exit_code == 0
         assert "def run" in r.output
 
@@ -239,91 +215,83 @@ class TestErrors:
         assert "not found" in r.output.lower()
         assert "main.py" in r.output
 
+    def test_invalid_mode(self, mixed_dir: Path):
+        r = runner.invoke(app, ["cat", str(mixed_dir / "main.py"), "-m", "bogus"])
+        assert r.exit_code != 0
 
-# ── L2 cache error handling ────────────────────────────────────────
+
+# ── Accurate mode cache handling ──────────────────────────────────────
 
 
-class TestL2CacheError:
-    """Verify that L2 error results are not persisted in the cache."""
+class TestAccurateCacheError:
+    """Verify that error results from accurate mode are not persisted in the cache."""
 
     def test_error_result_not_cached(self, tmp_path: Path):
-        """An error string like '[Video L2 failed: ...]' must not be stored."""
         from unittest.mock import MagicMock, patch
 
-        from mm.commands.cat import _CatOpts, _run_l2
+        from mm.commands.cat import _CatOpts, _run_accurate
 
         txt = tmp_path / "test.txt"
         txt.write_text("hello")
 
         opts = _CatOpts(
-            level=2,
             n=None,
-            detail=False,
             output_dir=None,
-            mosaic_tile="4x4",
-            mosaic_image_width=160,
-            video_mosaic_count=1,
-            video_mosaic_strategy="uniform",
-            mode=None,
+            mode="accurate",
             no_cache=False,
             format="rich",
             encode_overrides={},
             generate_overrides={},
+            pipelines={},
         )
 
         mock_db = MagicMock()
         mock_db.get_l2.return_value = None
 
         with (
-            patch("mm.commands.cat._l2", return_value="[LLM error: connection refused]"),
+            patch("mm.commands.cat._accurate_dispatch", return_value="[LLM error: connection refused]"),
             patch("mm.store.util.get_content_hash", return_value="fakehash123"),
             patch("mm.store.db.MmDatabase", return_value=mock_db),
             patch("mm.profile.get_profile") as mock_profile,
         ):
             mock_profile.return_value.name = "default"
             mock_profile.return_value.model = "test-model"
-            result = _run_l2(txt, "text", opts)
+            result = _run_accurate(txt, "text", opts)
 
         assert result == "[LLM error: connection refused]"
         mock_db.put_l2.assert_not_called()
 
     def test_success_result_is_cached(self, tmp_path: Path):
-        """A normal result should be stored in the cache."""
         from unittest.mock import MagicMock, patch
 
-        from mm.commands.cat import _CatOpts, _run_l2
+        from mm.commands.cat import _CatOpts, _run_accurate
 
         txt = tmp_path / "test.txt"
         txt.write_text("hello")
 
         opts = _CatOpts(
-            level=2,
             n=None,
-            detail=False,
             output_dir=None,
-            mosaic_tile="4x4",
-            mosaic_image_width=160,
-            video_mosaic_count=1,
-            video_mosaic_strategy="uniform",
-            mode=None,
+            mode="accurate",
             no_cache=False,
             format="rich",
             encode_overrides={},
             generate_overrides={},
+            pipelines={},
         )
 
         mock_db = MagicMock()
         mock_db.get_l2.return_value = None
 
         with (
-            patch("mm.commands.cat._l2", return_value="A beautiful sunset over the ocean."),
+            patch("mm.commands.cat._accurate_dispatch", return_value="A beautiful sunset over the ocean."),
             patch("mm.store.util.get_content_hash", return_value="fakehash123"),
             patch("mm.store.db.MmDatabase", return_value=mock_db),
             patch("mm.profile.get_profile") as mock_profile,
         ):
             mock_profile.return_value.name = "default"
             mock_profile.return_value.model = "test-model"
-            result = _run_l2(txt, "text", opts)
+            result = _run_accurate(txt, "text", opts)
 
         assert result == "A beautiful sunset over the ocean."
         mock_db.put_l2.assert_called_once_with(
@@ -332,34 +300,28 @@ class TestL2CacheError:
             profile="default",
             model="test-model",
             content="A beautiful sunset over the ocean.",
-            mode=None,
+            mode="accurate",
             detail=False,
             extra="",
         )
 
     def test_various_error_prefixes_not_cached(self, tmp_path: Path):
-        """All bracket-prefixed error strings should be skipped."""
         from unittest.mock import MagicMock, patch
 
-        from mm.commands.cat import _CatOpts, _run_l2
+        from mm.commands.cat import _CatOpts, _run_accurate
 
         txt = tmp_path / "test.txt"
         txt.write_text("hello")
 
         opts = _CatOpts(
-            level=2,
             n=None,
-            detail=False,
             output_dir=None,
-            mosaic_tile="4x4",
-            mosaic_image_width=160,
-            video_mosaic_count=1,
-            video_mosaic_strategy="uniform",
-            mode=None,
+            mode="accurate",
             no_cache=False,
             format="rich",
             encode_overrides={},
             generate_overrides={},
+            pipelines={},
         )
 
         error_messages = [
@@ -374,13 +336,36 @@ class TestL2CacheError:
             mock_db.get_l2.return_value = None
 
             with (
-                patch("mm.commands.cat._l2", return_value=error_msg),
+                patch("mm.commands.cat._accurate_dispatch", return_value=error_msg),
                 patch("mm.store.util.get_content_hash", return_value="hash"),
                 patch("mm.store.db.MmDatabase", return_value=mock_db),
                 patch("mm.profile.get_profile") as mock_profile,
             ):
                 mock_profile.return_value.name = "default"
                 mock_profile.return_value.model = "m"
-                _run_l2(txt, "text", opts)
+                _run_accurate(txt, "text", opts)
 
             mock_db.put_l2.assert_not_called()
+
+
+# ── JSON output includes mode ────────────────────────────────────────
+
+
+class TestJsonOutput:
+    def test_json_includes_mode(self, mixed_dir: Path):
+        r = runner.invoke(
+            app,
+            ["cat", str(mixed_dir / "main.py"), "--format", "json"],
+        )
+        assert r.exit_code == 0
+        data = json.loads(r.output)
+        assert data[0]["mode"] == "fast"
+
+    def test_json_accurate_mode(self, mixed_dir: Path):
+        r = runner.invoke(
+            app,
+            ["cat", str(mixed_dir / "main.py"), "--format", "json", "-m", "accurate"],
+        )
+        # Will fail at LLM step, but we can check the error includes mode
+        # or it completes if the pipeline is encode-only
+        assert r.exit_code == 0

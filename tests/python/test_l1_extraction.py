@@ -304,9 +304,9 @@ class TestImageL1:
         assert hasattr(result, "exif_gps")
         assert hasattr(result, "exif_orientation")
 
-    def test_cat_level1_image(self, image_tree: Path):
+    def test_cat_fast_image(self, image_tree: Path):
         result = runner.invoke(
-            app, ["cat", str(image_tree / "small.png"), "--level", "1", "--no-cache"]
+            app, ["cat", str(image_tree / "small.png"), "--no-cache"]
         )
         assert result.exit_code == 0
         assert "16x16" in result.output
@@ -317,8 +317,6 @@ class TestImageL1:
             [
                 "cat",
                 str(image_tree / "small.png"),
-                "--level",
-                "1",
                 "--format",
                 "json",
                 "--no-cache",
@@ -329,22 +327,19 @@ class TestImageL1:
         assert len(data) == 1
         assert "16x16" in data[0]["content"]
 
-    def test_cat_level0_image_no_crash(self, image_tree: Path):
-        """L0 cat of binary image must not crash Rich with MarkupError."""
+    def test_cat_binary_image_no_crash(self, image_tree: Path):
+        """Fast cat of binary image must not crash."""
         result = runner.invoke(
             app,
             [
                 "cat",
                 str(image_tree / "small.png"),
-                "--level",
-                "0",
             ],
         )
         assert result.exit_code == 0
 
-    def test_cat_level0_pdf_no_crash(self, tmp_path: Path):
-        """L0 cat of binary PDF must not crash Rich with MarkupError."""
-        # Minimal valid PDF with binary content and escape-like bytes
+    def test_cat_binary_pdf_no_crash(self, tmp_path: Path):
+        """Fast cat of binary PDF must not crash Rich with MarkupError."""
         pdf = tmp_path / "test.pdf"
         pdf.write_bytes(
             b"%PDF-1.0\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n"
@@ -352,7 +347,6 @@ class TestImageL1:
             b"3 0 obj<</Type/Page/MediaBox[0 0 612 792]/Parent 2 0 R>>endobj\n"
             b"xref\n0 4\n0000000000 65535 f \n"
             b"trailer<</Size 4/Root 1 0 R>>\nstartxref\n0\n%%EOF\n"
-            # Add bytes that look like ANSI escapes and Rich markup
             b"\x1b[?1;2c \x1b[0m [bold]not markup[/bold]"
         )
         result = runner.invoke(
@@ -360,8 +354,6 @@ class TestImageL1:
             [
                 "cat",
                 str(pdf),
-                "--level",
-                "0",
             ],
         )
         assert result.exit_code == 0
@@ -421,28 +413,24 @@ class TestVideoL1:
         meta = extract_video_metadata(video_tree / "test_clip.mp4")
         assert meta.pixel_format == "yuv420p"
 
-    def test_cat_level1_video(self, video_tree: Path):
+    def test_cat_fast_video(self, video_tree: Path):
         result = runner.invoke(
             app,
             [
                 "cat",
                 str(video_tree / "test_clip.mp4"),
-                "--level",
-                "1",
             ],
         )
         assert result.exit_code == 0
         assert "320x240" in result.output
         assert "h264" in result.output
 
-    def test_cat_level1_video_json(self, video_tree: Path):
+    def test_cat_fast_video_json(self, video_tree: Path):
         result = runner.invoke(
             app,
             [
                 "cat",
                 str(video_tree / "test_clip.mp4"),
-                "--level",
-                "1",
                 "--format",
                 "json",
             ],

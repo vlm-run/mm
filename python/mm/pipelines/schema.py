@@ -49,6 +49,14 @@ class Encode(BaseModel):
         default=None,
         description="Number of mosaics to generate (for video encoders).",
     )
+    mosaic_image_width: int | None = Field(
+        default=None,
+        description="Thumbnail width in pixels for mosaic frames.",
+    )
+    frame_selection: str | None = Field(
+        default=None,
+        description="Frame selection method: uniform, keyframe, scene.",
+    )
     transcribe: bool = Field(
         default=False,
         description="Run Whisper transcription (audio/video).",
@@ -94,12 +102,16 @@ class Generate(BaseModel):
 
 
 class PipelineSpec(BaseModel):
-    """Complete pipeline for a single (kind, mode) MLLM generation call."""
+    """Complete pipeline for a single (kind, mode) processing call.
 
-    kind: str = Field(description="Media kind: image, video, audio, document.")
+    When ``generate`` is ``None`` the pipeline is encode-only — no LLM
+    call is made and the raw extraction output is returned directly.
+    """
+
+    kind: str = Field(description="Media kind: image, video, audio, document, text, code.")
     mode: str = Field(description="Processing mode: fast, accurate.")
     encode: Encode = Field(default_factory=Encode)
-    generate: Generate
+    generate: Generate | None = Field(default=None)
 
 
 TemplateSpec = PipelineSpec

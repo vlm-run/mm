@@ -38,6 +38,12 @@ encode:
   # Number of mosaics to generate (video encoders only).
   mosaic_count: 1
 
+  # Thumbnail width in pixels for mosaic frames (video encoders only).
+  mosaic_image_width: null
+
+  # Frame selection method: uniform | keyframe | scene (video encoders only).
+  frame_selection: null
+
   # Run Whisper transcription before LLM call (audio/video).
   transcribe: false
 
@@ -47,10 +53,18 @@ encode:
   # Audio speed multiplier for transcription (e.g. 2.0 = 2x speed).
   audio_speed: null
 
-  # Inline Python function body for custom encode transforms.
-  # The function receives (parts, context) and must return list[dict].
+  # Custom Python transform — file path or inline code.
+  # Must define: def transform(parts, context) -> list[dict]
   #
-  # Example:
+  # File reference:
+  #   pyfunc: ~/my_transforms/filter.py
+  #
+  # Inline (full def):
+  #   pyfunc: |
+  #     def transform(parts, context):
+  #       return [p for p in parts if p.get("type") == "image_url"]
+  #
+  # Legacy inline (body only, auto-wrapped):
   #   pyfunc: |
   #     return [p for p in parts if p.get("type") == "image_url"]
   pyfunc: null

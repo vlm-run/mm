@@ -72,14 +72,9 @@ class LlmBackend:
         *,
         context: dict[str, Any] | None = None,
         parts: list[dict[str, Any]] | None = None,
-        encode_overrides: dict[str, str] | None = None,
-        generate_overrides: dict[str, str] | None = None,
+        pipeline_spec: Any | None = None,
     ) -> str:
         """Pipeline-driven MLLM generation.
-
-        Loads the YAML pipeline for ``(kind, mode)``, applies any CLI
-        overrides, renders the prompt with *context*, builds the message
-        from *parts*, and returns the LLM response.
 
         Args:
             kind: Media kind (image, video, audio, document).
@@ -88,17 +83,21 @@ class LlmBackend:
                 {content}, {transcript}, {word_count}, etc.
             parts: OpenAI-compatible content parts (image_url, text, etc.)
                 to include alongside the prompt.
-            encode_overrides: Field-level overrides for the encode stage.
-            generate_overrides: Field-level overrides for the generate stage.
+            pipeline_spec: Pre-loaded ``PipelineSpec`` (with overrides
+                already applied).  When provided, ``load(kind, mode)``
+                is skipped.
 
         Returns:
             Raw LLM response text.
         """
-        from mm.pipelines import apply_overrides, load, render_prompt, run_pyfunc
+        from mm.pipelines import load, render_prompt, run_pyfunc
 
         ctx = context or {}
-        tpl = load(kind, mode)
-        tpl = apply_overrides(tpl, encode_overrides, generate_overrides)
+        tpl = pipeline_spec if pipeline_spec is not None else load(kind, mode)
+
+        if tpl.generate is None:
+            return ""
+
         prompt = render_prompt(tpl, ctx)
 
         content_parts: list[dict[str, Any]] = parts or []
@@ -132,14 +131,9 @@ class LlmBackend:
         chunks: list[list[dict[str, Any]]],
         separator: str = "\n\n---\n\n",
         on_chunk: Any | None = None,
-        encode_overrides: dict[str, str] | None = None,
-        generate_overrides: dict[str, str] | None = None,
+        pipeline_spec: Any | None = None,
     ) -> str:
         """Process multiple content chunks sequentially and concatenate results.
-
-        Each chunk gets its own ``generate()`` call with the same pipeline.
-        Chunks are processed one at a time to avoid OOM from loading all
-        encoded media simultaneously.
 
         Args:
             kind: Media kind (image, video, audio, document).
@@ -149,8 +143,8 @@ class LlmBackend:
             separator: String inserted between chunk results.
             on_chunk: Optional callback ``(chunk_idx, total, result) -> None``
                 called after each chunk completes.
-            encode_overrides: Field-level overrides for the encode stage.
-            generate_overrides: Field-level overrides for the generate stage.
+            pipeline_spec: Pre-loaded ``PipelineSpec`` (with overrides
+                already applied).
 
         Returns:
             Concatenated LLM responses from all chunks.
@@ -162,8 +156,7 @@ class LlmBackend:
         for i, parts in enumerate(chunks):
             result = self.generate(
                 kind, mode, context=context, parts=parts,
-                encode_overrides=encode_overrides,
-                generate_overrides=generate_overrides,
+                pipeline_spec=pipeline_spec,
             )
             results.append(result)
 

@@ -33,14 +33,19 @@ Each pipeline is a YAML file under `pipelines/{kind}/{mode}.yaml` that reference
 an encoder from `mm/encoders/` and configures LLM generation parameters.
 
 ```bash
-mm cat photo.jpg -s resize          # named encoder
-mm cat video.mp4 -s shot-mosaic     # scene-aware video encoder
-mm cat video.mp4 -s ~/my_encoder.py # custom file
-mm cat photo.jpg -s 'def encode(path, **kw): ...'  # inline
+mm cat photo.jpg -p resize          # named encoder
+mm cat video.mp4 -p shot-mosaic     # scene-aware video encoder
 
 # Override pipeline config from CLI
-mm cat photo.jpg -l 2 --encode strategy=tile-overview --encode max_width=2048
-mm cat photo.jpg -l 2 --generate max_tokens=1024 --generate temperature=0.5
+mm cat photo.jpg -m accurate --encode.strategy tile-overview
+mm cat photo.jpg -m accurate --generate.max-tokens 1024 --generate.temperature 0.5
+
+# Load explicit pipeline YAML (repeatable, dispatched by kind)
+mm cat photo.jpg -p ~/my-image-pipeline.yaml
+mm cat *.jpg *.mp4 -p image.yaml -p video.yaml
+
+# Custom Python transform via pyfunc
+mm cat photo.jpg -m accurate --encode.pyfunc ~/my_filter.py
 ```
 
 ## Built-in Encoders

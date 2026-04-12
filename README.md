@@ -19,7 +19,7 @@ uv run maturin develop --release
 Commands that mirror familiar Unix tools but operate on multi-modal semantics.
 Indexing is implicit — every command auto-builds a metadata index on first use.
 
-L0 commands (`find`, `wc` with `--format json`) run in **~60ms** on 700 files via the Rust fast path.
+Metadata commands (`find`, `wc` with `--format json`) run in **~60ms** on 700 files via the Rust fast path.
 
 ### Quick start
 
@@ -28,10 +28,11 @@ mm --version                                 # print version
 mm find ~/data --tree --depth 1              # directory overview with sizes
 mm wc ~/data --by-kind                       # file/byte/token counts by kind
 mm find ~/data --kind image --format json    # find all images (60ms)
-mm cat paper.pdf                             # extract text from PDF
+mm cat paper.pdf                             # extract text from PDF (fast mode)
 mm cat video.mp4                             # video metadata (<100ms)
-mm cat video.mp4 -l 2                        # keyframe mosaic → LLM description
-mm cat photo.png -l 2 --detail               # LLM caption (~80 words)
+mm cat video.mp4 -m accurate                 # keyframe mosaic → LLM description
+mm cat photo.png -m accurate                 # LLM caption
+mm cat photo.png -p resize                   # use named encoder
 ```
 
 ### Command reference
@@ -39,11 +40,11 @@ mm cat photo.png -l 2 --detail               # LLM caption (~80 words)
 | Command | Purpose | Key flags |
 |---------|---------|-----------|
 | `find`  | Find/list files, tree view, schema | `--name`, `--kind`, `--ext`, `--min-size`, `--max-size`, `--sort`, `--reverse`, `--columns`, `--tree`, `--depth`, `--schema`, `--limit`, `--format` |
-| `cat` | Content extraction (auto-detected by file type) | `--level 0/1/2`, `-n`, `--detail`, `--mosaic-*`, `--audio-*`, `--format` |
-| `grep` | Content search — text (L0/L1) and semantic (L2) | `--kind`, `--ext`, `-C`, `--count`, `--level`, `--index`, `--format` |
-| `sql` | SQL queries on file index, L2 results, chunks, and embeddings | `--dir`, `--pre-index`, `--format`, `--list-tables` |
+| `cat` | Content extraction (auto-detected by file type × mode) | `--mode fast/accurate`, `-p` (pipeline), `-n`, `--encode.*`, `--generate.*`, `--format` |
+| `grep` | Content search across files | `--kind`, `--ext`, `-C`, `--count`, `--format` |
+| `sql` | SQL queries on file index, results, chunks, and embeddings | `--dir`, `--pre-index`, `--format`, `--list-tables` |
 | `wc` | Count files, size, lines (est.), tokens (est.) | `--kind`, `--by-kind`, `--format` |
-| `bench` | Benchmark suite (L0/L1/L2) | `--format`, `--rounds` |
+| `bench` | Benchmark suite | `--format`, `--rounds` |
 | `config` | Extraction mode settings | `show`, `init`, `set`, `reset-db`, `reset-profiles`, `reset` |
 | `profile` | Manage LLM provider profiles | `list`, `add`, `update`, `use`, `remove` |
 
@@ -68,14 +69,16 @@ mm find ~/data --format json                           # full metadata JSON
 ### cat — content extraction
 
 ```bash
-mm cat paper.pdf                               # extract text (L1)
+mm cat paper.pdf                               # extract text (fast mode, no LLM)
 mm cat paper.pdf -n 20                         # first 20 lines (head)
 mm cat paper.pdf -n -20                        # last 20 lines (tail)
 mm cat photo.png                               # image dims, MIME, hash, EXIF
 mm cat video.mp4                               # resolution, duration, codecs (<100ms)
-mm cat video.mp4 -l 2                          # mosaic → LLM description
-mm cat photo.png -l 2                          # LLM caption (~20 words)
-mm cat photo.png -l 2 --detail                 # LLM description (~80 words)
+mm cat video.mp4 -m accurate                   # mosaic → LLM description
+mm cat photo.png -m accurate                   # LLM caption
+mm cat photo.png -p resize                     # use named encoder
+mm cat photo.png -p my-pipeline.yaml           # custom pipeline YAML
+mm cat --list-pipelines                        # list registered pipelines
 ```
 
 ### wc — count files, size, tokens
@@ -85,22 +88,17 @@ mm wc ~/data --by-kind
 mm wc ~/data --by-kind --format json
 ```
 
-### grep — content search (text + semantic)
+### grep — content search
 
 ```bash
 mm grep "attention" ~/data --kind document
 mm grep "TODO" ~/data --kind code
 mm grep "invoice" ~/data --count               # match counts per file
-
-# Semantic search (L2 — vector similarity via embeddings)
-mm grep "financial projections" ~/data -l 2    # semantic search
-mm grep "financial projections" ~/data -l 2 --index  # auto-index before search
-mm grep "patient diagnosis" ~/data -l 2 --kind document --format json
 ```
 
 ### sql — query the index
 
-Queries file metadata via scan + SQLite, or L2 results and chunks from the persistent SQLite store.
+Queries file metadata via scan + SQLite, or results and chunks from the persistent SQLite store.
 
 ```bash
 mm find ~/data --schema                          # see available columns
@@ -141,7 +139,7 @@ result = ctx.sql("SELECT kind, COUNT(*) as n FROM files GROUP BY kind ORDER BY n
 big_images = ctx.filter(kind="image", min_size="1MB")
 
 # Content access
-text  = ctx.cat("paper.pdf", level=1)
+text  = ctx.cat("paper.pdf")
 hits  = ctx.grep("revenue", kind="document")
 
 # Display
@@ -149,13 +147,14 @@ ctx.show()    # Rich table
 ctx.info()    # Rich summary panel
 ```
 
-## Processing Levels
+## Processing Modes
 
-| Level | What | Speed | How |
-|-------|------|-------|-----|
-| L0 | File metadata (path, size, kind, ext, timestamps, dimensions) | ~60ms / 700 files | Rust `stat()` + extension classification + image headers |
-| L1 | Content extraction (text from PDF, image hash/EXIF, video metadata) | <100ms/file | pypdfium2 (PDF), Rust mmap (images), mp4parse/matroska (video) |
-| L2 | Semantic understanding (captions, descriptions) | Varies | LLM API via active profile |
+| Mode | What | Speed | How |
+|------|------|-------|-----|
+| **fast** (default) | Local extraction — text from PDF, image hash/EXIF, video metadata | <100ms/file | pypdfium2 (PDF), Rust mmap (images), mp4parse/matroska (video) |
+| **accurate** | LLM-powered semantic understanding (captions, descriptions, summaries) | Varies | LLM API via active profile + pipeline config |
+
+Metadata scanning (`find`, `wc`) always uses Rust-native extraction (~60ms / 700 files).
 
 ## Performance
 
@@ -163,14 +162,14 @@ Benchmarked on Apple Silicon (M-series), 702 files (7.2GB):
 
 | Operation | Latency |
 |-----------|---------|
-| L0 scan (702 files) | 8ms |
+| Metadata scan (702 files) | 8ms |
 | CLI cold start (`find --format json`) | 60ms |
 | CLI cold start (`find --schema --format json`) | 109ms |
 | CLI cold start (`sql`) | 300ms |
-| L1 code extraction | ~52ms |
-| L1 image extraction | ~61ms |
-| L1 PDF text extraction | ~220ms |
-| L1 video metadata | <100ms |
+| Fast code extraction | ~52ms |
+| Fast image extraction | ~61ms |
+| Fast PDF text extraction | ~220ms |
+| Fast video metadata | <100ms |
 | PDF page mosaic (per page) | ~10ms |
 | Video keyframe mosaic (48 frames) | ~1s |
 
@@ -180,32 +179,47 @@ mm uses a global SQLite database at `~/.local/share/mm/mm.db` with sqlite-vec fo
 
 | Table | Contents | Relationship |
 |-------|----------|-------------|
-| `files` | L0 + L1 file metadata (one row per file, `uri` = absolute path) | — |
+| `files` | File metadata + content (one row per file, `uri` = absolute path) | — |
 | `l2_results` | LLM-generated summaries (many per file, `file_uri` = FK) | FK → `files.uri` |
 | `chunks` | ~1024-char content chunks (`file_uri` = FK) | FK → `l2_results.id` |
 | `chunks_vec` | Embedding vectors (sqlite-vec virtual table) | FK → `chunks.id` |
-| `cache` | Key-value L1/L2 result cache | — |
+| `cache` | Key-value result cache | — |
 
-The `files` table includes both L0 columns (path, size, kind, etc.) and L1 columns (content_hash, text_preview, line_count, duration_s, exif_*, video_codec, etc.).
+The `files` table includes metadata columns (path, size, kind, etc.) and content columns (content_hash, text_preview, line_count, duration_s, exif_*, video_codec, etc.).
 
 Use `mm config reset-db` to clear all databases and caches.
 
 
-### L2 pipeline — encode + generate
+### Pipelines — encode + generate
 
-When `mm cat -l 2` is called on a non-text file, the **pipeline** YAML orchestrates two stages:
-
-Pipelines are YAML configs under `pipelines/{kind}/{mode}.yaml` that pair an encoder with LLM generation parameters. Encoders are Python classes under `encoders/` that convert media files into VLM-ready Messages. See [`pipelines/README.md`](python/mm/pipelines/README.md) for the full encoder and pipeline reference.
+Pipelines are YAML configs under `pipelines/{kind}/{mode}.yaml` that pair an **encoder** with optional LLM **generation** parameters. When `generate` is `null`, the pipeline is encode-only (no LLM call). Encoders are Python classes under `encoders/` that convert media files into VLM-ready Messages. See [`pipelines/README.md`](python/mm/pipelines/README.md) for the full encoder and pipeline reference.
 
 Pipeline fields can be overridden from the CLI:
 
 ```bash
-mm cat photo.jpg -l 2 --encode strategy=tile-overview --generate max_tokens=1024
+mm cat photo.jpg -m accurate --encode.strategy tile-overview --generate.max-tokens 1024
+mm cat photo.jpg -m accurate --generate.temperature 0.5
 ```
 
-## L2 LLM Configuration using Profiles
+Load explicit pipeline YAML(s) with `-p` (repeatable, dispatched by `kind` field):
 
-For semantic understanding (`--level 2`), mm uses the `openai` Python SDK to call any OpenAI-compatible API. Provider settings are managed through **profiles** — named configurations stored in `~/.config/mm/mm.toml`.
+```bash
+mm cat photo.jpg -p my-image-pipeline.yaml
+mm cat *.jpg *.mp4 -p image-pipeline.yaml -p video-pipeline.yaml
+mm cat photo.jpg -p ~/custom.yaml --generate.max-tokens 512
+```
+
+Custom pipeline paths can also be set in `~/.config/mm/mm.toml`:
+
+```toml
+[pipelines]
+image.fast = "/path/to/my-image-fast.yaml"
+video.accurate = "/path/to/my-video-accurate.yaml"
+```
+
+## LLM Configuration using Profiles
+
+For accurate mode, mm uses the `openai` Python SDK to call any OpenAI-compatible API. Provider settings are managed through **profiles** — named configurations stored in `~/.config/mm/mm.toml`.
 
 ### Quick setup
 

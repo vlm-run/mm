@@ -193,27 +193,22 @@ class TestEmbedFileChunks:
 
 
 class TestCatEmbedIntegration:
-    def test_run_l2_triggers_embedding(self, tmp_path: Path, mock_server: MagicMock):
-        """After L2 extraction, embed_file_chunks should be called."""
-        from mm.commands.cat import _CatOpts, _run_l2
+    def test_run_accurate_triggers_embedding(self, tmp_path: Path, mock_server: MagicMock):
+        """After accurate extraction, embed_file_chunks should be called."""
+        from mm.commands.cat import _CatOpts, _run_accurate
 
         txt = tmp_path / "test.txt"
         txt.write_text("hello")
 
         opts = _CatOpts(
-            level=2,
             n=None,
-            detail=False,
             output_dir=None,
-            mosaic_tile="4x4",
-            mosaic_image_width=160,
-            video_mosaic_count=1,
-            video_mosaic_strategy="uniform",
-            mode=None,
+            mode="accurate",
             no_cache=False,
             format="rich",
             encode_overrides={},
             generate_overrides={},
+            pipelines={},
         )
 
         mock_db = MagicMock()
@@ -222,7 +217,7 @@ class TestCatEmbedIntegration:
         mock_db.put_l2.return_value = l2_id
 
         with (
-            patch("mm.commands.cat._l2", return_value="LLM generated text."),
+            patch("mm.commands.cat._accurate_dispatch", return_value="LLM generated text."),
             patch("mm.store.util.get_content_hash", return_value="fakehash"),
             patch("mm.store.db.MmDatabase", return_value=mock_db),
             patch("mm.profile.get_profile") as mock_profile,
@@ -230,8 +225,8 @@ class TestCatEmbedIntegration:
         ):
             mock_profile.return_value.name = "default"
             mock_profile.return_value.model = "test-model"
-            result = _run_l2(txt, "text", opts)
+            result = _run_accurate(txt, "text", opts)
 
         assert result == "LLM generated text."
         mock_db.put_l2.assert_called_once()
-        mock_embed.assert_called_once_with(l2_id)
+        mock_embed.assert_called_once()

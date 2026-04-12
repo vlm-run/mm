@@ -3,12 +3,3 @@ mode: fast
 
 encode:
   strategy: null
-
-generate:
-  prompt: >-
-    Summarize this file ({filename}) in one sentence (max 20 words):
-
-    ```
-    {content}
-    ```
-  max_tokens: 128

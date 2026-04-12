@@ -5,6 +5,7 @@ encode:
   strategy: null
   mosaic_tile: "4x4"
   mosaic_count: 8
+  frame_selection: scene
   transcribe: true
   whisper_model: medium
   audio_speed: 1.0

@@ -153,12 +153,24 @@ class TestLlmBackendChat:
         client.chat.completions.create.return_value = resp
 
         result = backend.generate(
-            "image", "fast",
+            "image", "accurate",
             context={"filename": "test.jpg"},
             parts=[{"type": "image_url", "image_url": {"url": "data:image/jpeg;base64,abc"}}],
         )
         assert result == "A sunset photo"
         client.chat.completions.create.assert_called_once()
+
+    def test_generate_encode_only_returns_empty(self):
+        """When pipeline has generate=None, generate() returns '' without calling LLM."""
+        backend, client = self._make_backend()
+
+        result = backend.generate(
+            "image", "fast",
+            context={"filename": "test.jpg"},
+            parts=[{"type": "image_url", "image_url": {"url": "data:image/jpeg;base64,abc"}}],
+        )
+        assert result == ""
+        client.chat.completions.create.assert_not_called()
 
     def test_generate_chunked_concatenates(self):
         backend, client = self._make_backend()
@@ -175,7 +187,7 @@ class TestLlmBackendChat:
             [{"type": "text", "text": "part2"}],
             [{"type": "text", "text": "part3"}],
         ]
-        result = backend.generate_chunked("image", "fast", chunks=chunks)
+        result = backend.generate_chunked("image", "accurate", chunks=chunks)
         assert "chunk1" in result
         assert "chunk2" in result
         assert "chunk3" in result
@@ -195,7 +207,7 @@ class TestLlmBackendChat:
             [{"type": "text", "text": "b"}],
             [{"type": "text", "text": "c"}],
         ]
-        result = backend.generate_chunked("image", "fast", chunks=chunks)
+        result = backend.generate_chunked("image", "accurate", chunks=chunks)
         assert "good result" in result
         assert "another good result" in result
         assert "[LLM error" not in result
@@ -210,7 +222,7 @@ class TestLlmBackendChat:
             callback_calls.append((idx, total, result))
 
         chunks = [[{"type": "text", "text": "a"}], [{"type": "text", "text": "b"}]]
-        backend.generate_chunked("image", "fast", chunks=chunks, on_chunk=on_chunk)
+        backend.generate_chunked("image", "accurate", chunks=chunks, on_chunk=on_chunk)
         assert len(callback_calls) == 2
         assert callback_calls[0] == (0, 2, "ok")
         assert callback_calls[1] == (1, 2, "ok")
@@ -221,6 +233,6 @@ class TestLlmBackendChat:
         client.chat.completions.create.return_value = self._mock_response("ok", usage=usage)
 
         chunks = [[{"type": "text", "text": "a"}], [{"type": "text", "text": "b"}]]
-        backend.generate_chunked("image", "fast", chunks=chunks)
+        backend.generate_chunked("image", "accurate", chunks=chunks)
         assert backend.last_usage.prompt_tokens == 200
         assert backend.last_usage.total_tokens == 300

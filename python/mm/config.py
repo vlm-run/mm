@@ -60,6 +60,7 @@ class ConfigData(TypedDict, total=False):
     active_profile: str
     profile: dict[str, ProfileData]
     mode: dict[str, ModeData]
+    pipelines: dict[str, dict[str, str]]
 
 
 WhisperModel = Literal["tiny", "medium"]  # can extend with more sizes if needed
@@ -143,6 +144,26 @@ def get_mode_config(mode: Mode) -> ModeConfig:
         audio_speed=float(mode_section.get("audio_speed", defaults.audio_speed)),
         beam_size=int(mode_section.get("beam_size", defaults.beam_size)),
     )
+
+
+def get_pipeline_path(kind: str, mode: str) -> str | None:
+    """Return a user-configured pipeline YAML path from ``[pipelines]`` in mm.toml.
+
+    Example TOML section::
+
+        [pipelines]
+        image.fast = "~/.config/mm/pipelines/image/fast.yaml"
+
+    Returns:
+        Expanded absolute path string, or ``None`` if not configured.
+    """
+    file_data = _read_config_file()
+    pipelines_section = file_data.get("pipelines", {})
+    kind_section = pipelines_section.get(kind, {})
+    raw_path = kind_section.get(mode)
+    if raw_path:
+        return str(Path(raw_path).expanduser().resolve())
+    return None
 
 
 def get_full_config() -> VlmctxConfig:

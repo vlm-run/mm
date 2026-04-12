@@ -1,4 +1,4 @@
-"""Tests for --mode basic|fast|accurate extraction in cat command."""
+"""Tests for --mode fast/accurate pipeline-driven extraction in cat command."""
 
 from __future__ import annotations
 
@@ -7,27 +7,23 @@ from unittest.mock import MagicMock, patch
 
 from mm.commands.cat import (
     _CatOpts,
+    _extract,
     _file_kind,
-    _l2_modal,
+    _run_fast,
 )
 from mm.constants import DOCUMENT_EXTS
 
 
-def _make_opts(mode: str | None = "fast", **overrides: object) -> _CatOpts:
+def _make_opts(mode: str = "fast", **overrides: object) -> _CatOpts:
     defaults: dict[str, object] = dict(
-        level=2,
         n=None,
-        detail=False,
         output_dir=None,
-        mosaic_tile="4x4",
-        mosaic_image_width=160,
-        video_mosaic_count=1,
-        video_mosaic_strategy="uniform",
         mode=mode,
         no_cache=False,
         format="rich",
         encode_overrides={},
         generate_overrides={},
+        pipelines={},
     )
     defaults.update(overrides)
     return _CatOpts(**defaults)
@@ -75,9 +71,6 @@ class TestDocumentExts:
 class TestCatOptsMode:
     """Test that _CatOpts carries the mode parameter."""
 
-    def test_mode_none(self):
-        assert _make_opts(mode=None).mode is None
-
     def test_mode_fast(self):
         assert _make_opts(mode="fast").mode == "fast"
 
@@ -85,56 +78,84 @@ class TestCatOptsMode:
         assert _make_opts(mode="accurate").mode == "accurate"
 
 
-class TestL2ModalDispatch:
-    """Test that _l2_modal dispatches correctly by kind."""
+class TestExtractDispatch:
+    """Test that _extract dispatches correctly by kind and mode."""
 
-    def test_unknown_mode(self, tmp_path):
+    def test_fast_text(self, tmp_path):
         f = tmp_path / "test.txt"
-        f.write_text("hello")
-        result = _l2_modal(f, "text", _make_opts("unknown"))
-        assert "Unknown mode" in result
+        f.write_text("hello world")
+        result = _extract(f, _make_opts("fast"))
+        assert "hello world" in result
 
-    def test_image_dispatch(self, tmp_path):
+    def test_fast_image_dispatch(self, tmp_path):
         f = tmp_path / "test.jpg"
         f.write_bytes(b"\xff\xd8\xff" + b"\x00" * 100)
-        with patch("mm.commands.cat._l2_image_modal") as mock:
-            mock.return_value = "mocked image result"
+        with patch("mm.commands.cat._run_fast") as mock:
+            mock.return_value = "mocked fast result"
             opts = _make_opts("fast")
-            result = _l2_modal(f, "image", opts)
-            mock.assert_called_once_with(f, opts, "fast")
-            assert result == "mocked image result"
+            result = _extract(f, opts)
+            mock.assert_called_once_with(f, "image", opts)
+            assert result == "mocked fast result"
 
-    def test_video_dispatch(self, tmp_path):
-        f = tmp_path / "test.mp4"
-        f.write_bytes(b"\x00" * 100)
-        with patch("mm.commands.cat._l2_video_modal") as mock:
-            mock.return_value = "mocked video result"
-            opts = _make_opts("fast")
-            result = _l2_modal(f, "video", opts)
-            mock.assert_called_once_with(f, opts, "fast")
-            assert result == "mocked video result"
-
-    def test_audio_dispatch(self, tmp_path):
-        f = tmp_path / "test.mp3"
-        f.write_bytes(b"\x00" * 100)
-        with patch("mm.commands.cat._l2_audio_modal") as mock:
-            mock.return_value = "mocked audio result"
+    def test_accurate_image_dispatch(self, tmp_path):
+        f = tmp_path / "test.jpg"
+        f.write_bytes(b"\xff\xd8\xff" + b"\x00" * 100)
+        with patch("mm.commands.cat._run_accurate") as mock:
+            mock.return_value = "mocked accurate result"
             opts = _make_opts("accurate")
-            result = _l2_modal(f, "audio", opts)
-            mock.assert_called_once_with(f, opts, "accurate")
-            assert result == "mocked audio result"
+            result = _extract(f, opts)
+            mock.assert_called_once_with(f, "image", opts)
+            assert result == "mocked accurate result"
 
-    def test_document_dispatch(self, tmp_path):
+    def test_accurate_document_dispatch(self, tmp_path):
         f = tmp_path / "test.pdf"
         f.write_bytes(b"%PDF-1.4 fake")
-        with (
-            patch("mm.commands.cat._run_l1") as mock_l1,
-            patch("mm.llm.LlmBackend") as mock_llm_cls,
-        ):
-            mock_l1.return_value = "extracted text"
-            mock_llm = MagicMock()
-            mock_llm.generate.return_value = "summary of document"
-            mock_llm_cls.return_value = mock_llm
-
-            result = _l2_modal(f, "document", _make_opts("fast"))
+        with patch("mm.commands.cat._run_accurate") as mock:
+            mock.return_value = "summary of document"
+            opts = _make_opts("accurate")
+            result = _extract(f, opts)
+            mock.assert_called_once_with(f, "document", opts)
             assert result == "summary of document"
+
+
+class TestRunFastEncodeOnly:
+    """Test that _run_fast with encode-only pipeline returns L1 extraction."""
+
+    def test_text_passthrough(self, tmp_path):
+        f = tmp_path / "test.txt"
+        f.write_text("hello world")
+        result = _run_fast(f, "text", _make_opts("fast"))
+        assert "hello world" in result
+
+    def test_document_passthrough(self, tmp_path):
+        f = tmp_path / "test.txt"
+        f.write_text("doc content here")
+        with patch("mm.commands.cat._run_l1", return_value="extracted text"):
+            result = _run_fast(f, "document", _make_opts("fast"))
+            assert result == "extracted text"
+
+
+class TestAccurateDispatch:
+    """Test that accurate mode calls LLM for text/document."""
+
+    def test_accurate_text_with_llm(self, tmp_path):
+        f = tmp_path / "test.txt"
+        f.write_text("hello")
+
+        with (
+            patch("mm.commands.cat._run_l1", return_value="hello"),
+            patch("mm.llm.LlmBackend") as mock_llm_cls,
+            patch("mm.store.util.get_content_hash", return_value=None),
+            patch("mm.store.db.MmDatabase"),
+            patch("mm.profile.get_profile") as mock_profile,
+        ):
+            mock_llm = MagicMock()
+            mock_llm.generate.return_value = "summary of text"
+            mock_llm_cls.return_value = mock_llm
+            mock_profile.return_value.name = "default"
+            mock_profile.return_value.model = "test-model"
+
+            from mm.commands.cat import _run_accurate
+
+            result = _run_accurate(f, "text", _make_opts("accurate"))
+            assert result == "summary of text"

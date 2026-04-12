@@ -3,26 +3,3 @@ mode: fast
 
 encode:
   strategy: null
-  mosaic_tile: "4x4"
-  mosaic_count: 1
-
-generate:
-  prompt: >-
-    Analyze this video mosaic ({filename}).{duration_ctx}
-
-    Provide a concise summary (~50 words), 5 keyword tags,
-    and a brief scene list.
-
-    Use this format:
-    ## Summary
-    <summary>
-
-    ## Tags
-    - tag1
-    - tag2
-    ...
-
-    ## Scenes
-    - Scene 1: <description>
-    ...
-  max_tokens: 512
