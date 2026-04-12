@@ -113,6 +113,59 @@ def list_strategies(*, media_type: str | None = None) -> list[str]:
     )
 
 
+def _encoder_description(strat: MessageStrategy) -> str:
+    """Extract a one-line description from an encoder's class docstring."""
+    doc = getattr(strat, "__doc__", None) or getattr(type(strat), "__doc__", None) or ""
+    first_line = doc.strip().split("\n")[0].strip() if doc.strip() else ""
+    return first_line.rstrip(".")
+
+
+def _encoder_params(strat: MessageStrategy) -> list[tuple[str, str]]:
+    """Extract (param_name, default_value) pairs from the encode() method body.
+
+    Looks for ``kwargs.get("param", default)`` patterns in the source.
+    """
+    import inspect
+    import re
+
+    results: list[tuple[str, str]] = []
+    try:
+        src = inspect.getsource(type(strat).encode if hasattr(type(strat), "encode") else strat.encode)
+    except (TypeError, OSError):
+        return results
+
+    for m in re.finditer(r'kwargs\.get\(\s*["\'](\w+)["\']\s*,\s*([^)]+)\)', src):
+        param_name = m.group(1)
+        default = m.group(2).strip().strip("\"'")
+        if param_name == "provider" or param_name.startswith("_"):
+            continue
+        results.append((param_name, default))
+    return results
+
+
+def list_encoders_detail(*, media_type: str | None = None) -> list[dict[str, Any]]:
+    """Return structured info for all registered encoders.
+
+    Each entry contains ``name``, ``media_types``, ``description``, and
+    ``params`` (list of ``(param_name, default_value)`` tuples).
+    """
+    _ensure_discovered()
+    entries: list[dict[str, Any]] = []
+    for name in sorted(_REGISTRY):
+        s = _REGISTRY[name]
+        if media_type and media_type not in s.media_types:
+            continue
+        media_prefix = s.media_types[0] if s.media_types else "unknown"
+        entries.append({
+            "name": name,
+            "prefixed_name": f"{media_prefix}-{name}" if not name.startswith(media_prefix) else name,
+            "media_types": s.media_types,
+            "description": _encoder_description(s),
+            "params": _encoder_params(s),
+        })
+    return sorted(entries, key=lambda e: e["prefixed_name"])
+
+
 class _FunctionEncoder:
     """Adapts a bare generator function into a ``MessageStrategy``."""
 

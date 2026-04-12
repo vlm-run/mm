@@ -61,6 +61,14 @@ def cat_cmd(
             help="Pipeline: YAML path or registered encoder name. Repeatable.",
         ),
     ] = None,
+    list_pipelines: Annotated[
+        bool,
+        typer.Option("--list-pipelines", help="List built-in pipelines and exit"),
+    ] = False,
+    list_encoders: Annotated[
+        bool,
+        typer.Option("--list-encoders", help="List registered encoders and exit"),
+    ] = False,
     # -- Positional argument --
     files: Annotated[Optional[list[Path]], typer.Argument(help="Files to display")] = None,
     n: Annotated[
@@ -105,10 +113,6 @@ def cat_cmd(
         typer.Option("--generate.json-mode", help="Override JSON mode (true/false)"),
     ] = None,
     # -- Utility --
-    list_pipelines: Annotated[
-        bool,
-        typer.Option("--list-pipelines", help="List all registered pipeline/encoder names and exit"),
-    ] = False,
     verbose: Annotated[
         bool, typer.Option("--verbose", "-v", help="Show progress bars")
     ] = False,
@@ -136,6 +140,9 @@ def cat_cmd(
     """
     if list_pipelines:
         _do_list_pipelines()
+        return
+    if list_encoders:
+        _do_list_encoders()
         return
 
     paths: list[str] = []
@@ -1108,22 +1115,123 @@ def _parse_tile(tile: str) -> tuple[int, int]:
 
 
 def _do_list_pipelines() -> None:
-    """Print a table of all registered encoders and built-in pipeline paths."""
-    from mm.encoders import list_strategies
+    """Print a Rich panel of all built-in and user-override pipelines."""
+    import yaml as _yaml
+    from rich import box
+    from rich.console import Console
+    from rich.panel import Panel
+    from rich.text import Text
 
-    names = list_strategies()
-
-    typer.echo("Registered encoders:")
-    if names:
-        for name in names:
-            typer.echo(f"  {name}")
-    else:
-        typer.echo("  (none)")
-
-    typer.echo("")
-    typer.echo("Built-in pipelines:")
     pipelines_dir = Path(__file__).resolve().parent.parent / "pipelines"
-    if pipelines_dir.is_dir():
-        for yaml_file in sorted(pipelines_dir.rglob("*.yaml")):
-            rel = yaml_file.relative_to(pipelines_dir)
-            typer.echo(f"  {rel}")
+    user_dir = Path.home() / ".config" / "mm" / "pipelines"
+
+    rows: list[tuple[str, str, str, str, str]] = []
+
+    for search_dir in (pipelines_dir, user_dir):
+        if not search_dir.is_dir():
+            continue
+        for yaml_file in sorted(search_dir.rglob("*.yaml")):
+            if yaml_file.name == "spec.yaml":
+                continue
+            try:
+                data = _yaml.safe_load(yaml_file.read_text()) or {}
+            except Exception:
+                continue
+            kind = data.get("kind", "?")
+            mode = data.get("mode", "?")
+            encoder = data.get("encode", {}).get("strategy") or "default"
+            has_generate = "yes" if data.get("generate") else "—"
+            rows.append((str(yaml_file), kind, mode, encoder, has_generate))
+
+    try:
+        from mm.config import get_pipeline_path
+
+        for kind in ("image", "video", "audio", "document", "text", "code"):
+            for mode in ("fast", "accurate"):
+                p = get_pipeline_path(kind, mode)
+                if p:
+                    rows.insert(0, (p, kind, mode, "—", "—"))
+    except Exception:
+        pass
+
+    rows.sort(key=lambda r: r[0])
+
+    home = str(Path.home())
+    display_rows: list[tuple[str, str, str, str, str]] = []
+    for yaml_path, kind, mode, encoder, has_gen in rows:
+        dp = "~" + yaml_path[len(home):] if yaml_path.startswith(home) else yaml_path
+        display_rows.append((dp, kind, mode, encoder, has_gen))
+
+    max_path = max((len(dp) for dp, *_ in display_rows), default=40)
+    path_w = min(max(max_path + 2, 40), 80)
+
+    def _pipeline_line(path_s: str, kind_s: str, mode_s: str, enc_s: str, llm_s: str, *, is_header: bool = False) -> Text:
+        line = Text(no_wrap=True, overflow="ellipsis")
+        if is_header:
+            line.append(path_s.ljust(path_w), style="bold cyan")
+            line.append(kind_s.ljust(10), style="bold cyan")
+            line.append(mode_s.ljust(10), style="bold cyan")
+            line.append(enc_s.ljust(10), style="bold cyan")
+            line.append(llm_s, style="bold cyan")
+        else:
+            line.append(path_s.ljust(path_w), style="bold white")
+            line.append(kind_s.ljust(10), style="white")
+            line.append(mode_s.ljust(10), style="green" if mode_s == "fast" else "yellow")
+            line.append(enc_s.ljust(10), style="white")
+            line.append(llm_s, style="dim")
+        return line
+
+    lines: list[Text] = []
+    lines.append(_pipeline_line("Path", "Kind", "Mode", "Encoder", "LLM", is_header=True))
+    for dp, kind, mode, encoder, has_gen in display_rows:
+        lines.append(_pipeline_line(dp, kind, mode, encoder, has_gen))
+
+    body = Text("\n").join(lines)
+    panel_w = path_w + 10 + 10 + 10 + 5 + 8
+    console = Console(width=max(panel_w, 80))
+    panel = Panel(body, title="Pipelines", title_align="left", box=box.ROUNDED, padding=(1, 2), width=panel_w)
+    console.print()
+    console.print(panel)
+    console.print()
+
+
+def _do_list_encoders() -> None:
+    """Print a Rich panel of all registered encoders with descriptions."""
+    from rich import box
+    from rich.console import Console
+    from rich.panel import Panel
+    from rich.text import Text
+
+    from mm.encoders import list_encoders_detail
+
+    entries = list_encoders_detail()
+
+    name_w = 30
+    lines: list[Text] = []
+    for entry in entries:
+        prefixed = entry["prefixed_name"]
+        desc = entry["description"]
+        params: list[tuple[str, str]] = entry["params"]
+
+        line = Text(no_wrap=True, overflow="ellipsis")
+        line.append(prefixed.ljust(name_w), style="bold white")
+        line.append(desc, style="white")
+        lines.append(line)
+
+        if params:
+            param_line = Text(no_wrap=True, overflow="ellipsis")
+            param_line.append(" " * name_w)
+            param_parts: list[str] = []
+            for pname, default in params:
+                param_parts.append(f"{pname}={default}")
+            param_line.append(", ".join(param_parts), style="dim green")
+            lines.append(param_line)
+
+    body = Text("\n").join(lines)
+    max_line = max((len(l.plain) for l in lines), default=60)
+    panel_w = max_line + 8
+    console = Console(width=max(panel_w, 80))
+    panel = Panel(body, title="Encoders", title_align="left", box=box.ROUNDED, padding=(1, 2), width=panel_w)
+    console.print()
+    console.print(panel)
+    console.print()
