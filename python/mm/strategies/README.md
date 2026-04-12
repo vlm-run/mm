@@ -4,38 +4,29 @@ Strategies configure a 2-stage pipeline for LLM-based media understanding:
 **encode** (via an encoder) then **generate** (LLM call) to produce text output.
 
 ```mermaid
-graph TB
-  subgraph input [Input]
-    file["Media File"]
-    kind["kind: image\nmode: fast"]
+%%{init: {'theme': 'base', 'themeVariables': { 'fontSize': '14px', 'lineColor': '#666'}}}%%
+graph LR
+  file["Media File"]:::input
+
+  subgraph encode ["Encode"]
+    encoder["Encoder"]:::encode
   end
 
-  subgraph yaml ["Strategy YAML — strategies/image/fast.yaml"]
-    direction LR
-    enc_cfg["encode:\n  strategy: resize\n  max_width: 1024"]
-    gen_cfg["generate:\n  prompt: Describe this image...\n  max_tokens: 256"]
+  subgraph generate ["Generate"]
+    llm["MLLM"]:::generate
   end
 
-  subgraph stage1 ["Stage 1 — Encode"]
-    encoder["Encoder: resize\n(encoders/image/)"]
-    msgs["OpenAI Messages\n{role: user, content: [image_url, ...]}"]
-  end
+  out["stdout"]:::output
 
-  subgraph stage2 ["Stage 2 — Generate"]
-    prompt["Rendered Prompt\n+ content parts"]
-    llm["LLM Backend\nOllama / OpenAI / vLLM"]
-  end
+  file --> encoder --> llm --> out
 
-  output["Text Output\n## Description\n## Tags"]
+  classDef input fill:#e8f4fd,stroke:#4a90d9,stroke-width:1.5px,color:#1a3a5c,rx:8
+  classDef encode fill:#e8f5e9,stroke:#4caf50,stroke-width:1.5px,color:#1b5e20,rx:8
+  classDef generate fill:#fce4ec,stroke:#e57373,stroke-width:1.5px,color:#6a1b1b,rx:8
+  classDef output fill:#f5f5f5,stroke:#bdbdbd,stroke-width:1.5px,color:#424242,rx:8
 
-  kind --> yaml
-  enc_cfg --> encoder
-  file --> encoder
-  encoder --> msgs
-  gen_cfg --> prompt
-  msgs --> prompt
-  prompt --> llm
-  llm --> output
+  style encode fill:#f1f8e9,stroke:#66bb6a,stroke-width:1px,rx:10
+  style generate fill:#fff0f0,stroke:#ef9a9a,stroke-width:1px,rx:10
 ```
 
 Each strategy is a YAML file under `strategies/{kind}/{mode}.yaml` that references
@@ -97,22 +88,24 @@ def my_custom(path: Path, **kw):
 Encoders that yield multiple Messages (e.g. one per video shot) are processed sequentially via `generate_chunked`. Each Message gets its own LLM call and results are concatenated. This avoids OOM from loading all chunks into memory simultaneously.
 
 ```mermaid
+%%{init: {'theme': 'base', 'themeVariables': { 'fontSize': '14px', 'primaryColor': '#e8f4fd', 'primaryBorderColor': '#4a90d9', 'lineColor': '#666'}}}%%
 graph LR
-  video["video.mp4"]
+  video["🎬 video"]:::input
 
-  subgraph encode ["Encode — shot-mosaic"]
-    s1["Shot 1\nmosaic"]
-    s2["Shot 2\nmosaic"]
-    s3["Shot N\nmosaic"]
+  subgraph encode ["Encode"]
+    s1["Shot 1"]:::encode
+    s2["Shot 2"]:::encode
+    s3["Shot N"]:::encode
   end
 
-  subgraph generate ["Generate — sequential"]
-    g1["LLM call 1"]
-    g2["LLM call 2"]
-    g3["LLM call N"]
+  subgraph generate ["Generate"]
+    g1["LLM"]:::generate
+    g2["LLM"]:::generate
+    g3["LLM"]:::generate
   end
 
-  concat["Concatenated\ntext output"]
+  concat["Concat"]:::output
+  out["stdout"]:::output
 
   video --> s1
   video --> s2
@@ -123,6 +116,15 @@ graph LR
   g1 --> concat
   g2 --> concat
   g3 --> concat
+  concat --> out
+
+  classDef input fill:#e8f4fd,stroke:#4a90d9,stroke-width:1.5px,color:#1a3a5c,rx:8
+  classDef encode fill:#e8f5e9,stroke:#4caf50,stroke-width:1.5px,color:#1b5e20,rx:8
+  classDef generate fill:#fce4ec,stroke:#e57373,stroke-width:1.5px,color:#6a1b1b,rx:8
+  classDef output fill:#f5f5f5,stroke:#bdbdbd,stroke-width:1.5px,color:#424242,rx:8
+
+  style encode fill:#f1f8e9,stroke:#66bb6a,stroke-width:1px,rx:10
+  style generate fill:#fff0f0,stroke:#ef9a9a,stroke-width:1px,rx:10
 ```
 
 ## Encoder Protocol
