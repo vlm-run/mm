@@ -25,56 +25,15 @@ File-type behaviour:
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING, Annotated, Literal, Optional
+from typing import TYPE_CHECKING, Annotated, Optional
 
 import typer
 
 from mm.pipe import read_paths_from_stdin
+from mm.utils import Format, file_kind
 
 if TYPE_CHECKING:
     from mm.config import Mode
-
-VIDEO_EXTS = frozenset(
-    (
-        ".mp4",
-        ".mkv",
-        ".avi",
-        ".mov",
-        ".wmv",
-        ".flv",
-        ".webm",
-        ".m4v",
-        ".mpg",
-        ".mpeg",
-        ".3gp",
-        ".ogv",
-    )
-)
-IMAGE_EXTS = frozenset(
-    (
-        ".png",
-        ".jpg",
-        ".jpeg",
-        ".gif",
-        ".webp",
-        ".bmp",
-        ".tiff",
-        ".svg",
-    )
-)
-AUDIO_EXTS = frozenset(
-    (
-        ".mp3",
-        ".wav",
-        ".flac",
-        ".aac",
-        ".ogg",
-        ".m4a",
-        ".wma",
-        ".opus",
-    )
-)
-DOCUMENT_EXTS = frozenset((".pdf", ".docx", ".pptx"))
 
 
 def cat_cmd(
@@ -125,8 +84,8 @@ def cat_cmd(
         bool, typer.Option("--no-cache", help="Bypass L2 cache and force a fresh LLM run")
     ] = False,
     format: Annotated[
-        Optional[str],
-        typer.Option("--format", help="Output format: json, tsv, csv, dataset-jsonl, dataset-hf"),
+        Optional[Format],
+        typer.Option("--format", "-f", help="Output format: json, tsv, csv, dataset-jsonl, dataset-hf"),
     ] = None,
 ) -> None:
     """Display file content semantically (like bat/cat).
@@ -178,7 +137,7 @@ def cat_cmd(
 
     from mm.display import resolve_format
 
-    fmt = resolve_format(format)
+    fmt = resolve_format(format.value if format else None)
 
     opts = _CatOpts(
         level=level,
@@ -221,7 +180,7 @@ def cat_cmd(
                     "level": level,
                     "content": content,
                     "name": p.name,
-                    "type": _file_kind(p),
+                    "type": file_kind(p),
                     "size": p.stat().st_size,
                 }
             if mode:
@@ -233,7 +192,7 @@ def cat_cmd(
             # When piping multiple files, emit a compact header so LLMs can
             # distinguish which content belongs to which file.
             if multi_file:
-                kind = _file_kind(p)
+                kind = file_kind(p)
                 size = p.stat().st_size
                 print(f"--- {p} ({kind}, {size}B) ---")
             print(content)
@@ -293,28 +252,13 @@ class _CatOpts:
 # Dispatch
 # ---------------------------------------------------------------------------
 
-FileKind = Literal["text", "image", "video", "audio", "document"]
-
-
-def _file_kind(path: Path) -> FileKind:
-    ext = path.suffix.lower()
-    if ext in IMAGE_EXTS:
-        return "image"
-    if ext in VIDEO_EXTS:
-        return "video"
-    if ext in AUDIO_EXTS:
-        return "audio"
-    if ext in DOCUMENT_EXTS:
-        return "document"
-    return "text"
-
 
 def _extract(path: Path, opts: _CatOpts) -> str:
     """Dispatch extraction based on (file_kind, level).
 
     Uses the path.read_text(errors="replace") fallback in _l1
     """
-    kind = _file_kind(path)
+    kind = file_kind(path)
     if opts.level >= 2:
         return _run_l2(path, kind, opts)
 
@@ -967,6 +911,7 @@ def _display_rich(
     from rich.text import Text
 
     from mm.display import format_size, output_console
+    from mm.utils import is_binary_content
 
     ext = path.suffix.lstrip(".")
     size_str = format_size(path.stat().st_size)
@@ -1020,9 +965,8 @@ def _display_rich(
     }
 
     title = f"[bold]{path}[/bold]"
-    kind = _file_kind(path)
-    is_binary = kind in ("image", "document", "video", "audio") or "\x00" in content[:512]
-    if is_binary:
+    kind = file_kind(path)
+    if is_binary_content(kind=kind, content=content):
         safe_content: Text | str = Text(content.replace("\x1b", "\ufffd"))
     else:
         safe_content = Text(content) if level >= 2 else content

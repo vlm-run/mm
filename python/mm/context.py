@@ -185,9 +185,9 @@ class Context:
         full_path = self.root / path
 
         if level == 0:
-            from mm.commands.cat import _file_kind
+            from mm.utils import file_kind
 
-            kind = _file_kind(full_path)
+            kind = file_kind(full_path)
             if kind != "text":
                 from mm.commands.cat import _run_l1
 

@@ -111,7 +111,7 @@ mm/
 │   ├── df.py                   # arrow_to_polars / arrow_to_pandas
 │   ├── query.py                # SQLite-based SQL queries against Arrow tables
 │   ├── display.py              # Rich formatting (tables, panels, format_size, format_number)
-│   ├── pipe.py                 # stdin/stdout pipe detection (uses select())
+│   ├── pipe.py                 # stdin/stdout pipe detection + multi-format path reading
 │   ├── pdf.py                  # PDF page mosaic extraction (pypdfium2 + Pillow)
 │   ├── ffmpeg.py               # ffmpeg wrappers (keyframe mosaics, audio/video segment extraction)
 │   ├── video.py                # Video metadata helpers
@@ -279,7 +279,7 @@ ctx.info()   # Rich summary panel
 - **SQL routing**: `mm sql` auto-detects table from `FROM` clause. `files` → scan + in-memory SQLite. `l2_results`/`chunks` → persistent SQLite direct.
 - **Video metadata (L1)**: Native MP4 parsing (mp4parse) and MKV/WebM parsing (matroska) in Rust. No ffmpeg at L1 — metadata only, <100ms.
 - **PDF text extraction**: `pypdfium2` on the Python CLI side (in `commands/cat.py`). Scanned/image-only PDFs return empty text.
-- **Pipe detection**: `pipe.py` uses `select.select()` with zero timeout to avoid blocking when stdin is not a TTY but has no data.
+- **Pipe detection**: `pipe.py` uses `isatty()` only — no `select.select()`. A zero-timeout `select` poll races with upstream writers in pipelines (`mm find | mm wc`) and misses data not yet flushed. Standard Unix tools block-read when stdin is not a TTY; we do the same.
 - **LLM backend**: Uses the `openai` Python SDK for all chat/completions calls. Sends `think=false` and `reasoning_effort="none"` to suppress chain-of-thought. Temperature defaults to 0.1.
 
 ## LLM configuration

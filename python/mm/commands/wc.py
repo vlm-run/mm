@@ -7,6 +7,8 @@ from typing import Annotated, Optional
 
 import typer
 
+from mm.utils import Format
+
 TOKEN_CHARS_RATIO = 4
 
 # Canonical field names — used in data dicts, JSON keys, column headers, row
@@ -25,7 +27,7 @@ def wc_cmd(
     kind: Annotated[Optional[str], typer.Option("--kind", "-k", help="Filter by kind")] = None,
     by_kind: Annotated[bool, typer.Option("--by-kind", help="Break down by file kind")] = False,
     format: Annotated[
-        Optional[str],
+        Optional[Format],
         typer.Option(
             "--format", "-f", help="Output format: json, tsv, csv, dataset-jsonl, dataset-hf"
         ),
@@ -42,37 +44,47 @@ def wc_cmd(
     """
     from mm._mm import Scanner
     from mm.display import console, resolve_format
+    from mm.pipe import read_paths_from_stdin
 
     if not Path(directory).exists():
         console.print(f"[red]Directory not found: {directory}[/red]")
         raise typer.Exit(1)
 
-    fmt = resolve_format(format)
+    import json as json_mod
+
+    fmt = resolve_format(format.value if format else None)
     root = Path(directory).resolve()
+    stdin_paths = read_paths_from_stdin()
     scanner = Scanner(str(root))
     scanner.scan()
 
-    import json as json_mod
-
-    # Rust handles all kinds except documents (which need pypdfium2).
-    # Rust JSON uses internal names; we normalize to canonical field names here.
-    base = json_mod.loads(scanner.wc(kind=kind))
-    kind_stats: dict[str, dict[str, int | float]] = {}
-    for k, s in base.get("by_kind", {}).items():
-        kind_stats[k] = {
-            F_FILES: s["files"],
-            F_SIZE: s["bytes"],
-            F_LINES: s["lines"],
-            F_TOKENS: s["tokens"],
-        }
-    total_files = base["files"]
-    total_size = base["bytes"]
-    total_tokens = base["estimated_tokens"]
-    total_lines = base["lines"]
+    kind_stats: dict[str, dict[str, int | float]]
+    if stdin_paths:
+        # Piped input: compute stats only for the specified files.
+        kind_stats, total_files, total_size, total_tokens, total_lines = _wc_from_paths(
+            root, stdin_paths, kind
+        )
+    else:
+        # Rust handles all kinds except documents (which need pypdfium2).
+        # Rust JSON uses internal names; we normalize to canonical field names here.
+        base = json_mod.loads(scanner.wc(kind=kind))
+        kind_stats = {}
+        for k, s in base.get("by_kind", {}).items():
+            kind_stats[k] = {
+                F_FILES: s["files"],
+                F_SIZE: s["bytes"],
+                F_LINES: s["lines"],
+                F_TOKENS: s["tokens"],
+            }
+        total_files = base["files"]
+        total_size = base["bytes"]
+        total_tokens = base["estimated_tokens"]
+        total_lines = base["lines"]
 
     doc_entries = []
-    # Overlay document counts from Python (pypdfium2 extraction)
-    if "document" in kind_stats and kind_stats["document"].get(F_FILES, 0) > 0:
+    # Overlay document counts from Python (pypdfium2 extraction).
+    # Skip when using piped input — _wc_from_paths already handles documents.
+    if not stdin_paths and "document" in kind_stats and kind_stats["document"].get(F_FILES, 0) > 0:
         doc_entries = json_mod.loads(scanner.to_json_fast(kind="document"))
     if doc_entries:
         from mm.commands.cat import _l1_document
@@ -252,3 +264,59 @@ def wc_cmd(
         )
 
         output_console.print(tbl)
+
+
+def _wc_from_paths(
+    root: Path,
+    paths: list[str],
+    kind_filter: str | None,
+) -> tuple[dict[str, dict[str, int | float]], int, int, int, int]:
+    """Compute wc stats for a specific set of piped file paths."""
+    from mm.pipe import resolve_piped_paths
+    from mm.utils import file_kind_with_code
+
+    kind_stats: dict[str, dict[str, int | float]] = {}
+    total_files = 0
+    total_size = 0
+    total_tokens = 0
+    total_lines = 0
+
+    for p_str in resolve_piped_paths(paths):
+        p = Path(p_str)
+        if not p.is_file():
+            continue
+
+        fkind = file_kind_with_code(p)
+        if kind_filter and kind_filter != fkind:
+            continue
+
+        stat = p.stat()
+        fsize = stat.st_size
+        if fkind in ("text", "code"):
+            content = p.read_text(errors="replace")
+            flines = content.count("\n") or 1
+            ftokens = len(content) // TOKEN_CHARS_RATIO
+        elif fkind == "document":
+            from mm.commands.cat import _l1_document
+
+            content = _l1_document(p)
+            flines = max(1, content.count("\n"))
+            ftokens = len(content) // TOKEN_CHARS_RATIO
+        else:
+            # binary: image, video, audio — no text lines/tokens
+            flines = 0
+            ftokens = 0
+
+        total_files += 1
+        total_size += fsize
+        total_lines += flines
+        total_tokens += ftokens
+
+        if fkind not in kind_stats:
+            kind_stats[fkind] = {F_FILES: 0, F_SIZE: 0, F_LINES: 0, F_TOKENS: 0}
+        kind_stats[fkind][F_FILES] += 1
+        kind_stats[fkind][F_SIZE] += fsize
+        kind_stats[fkind][F_LINES] += flines
+        kind_stats[fkind][F_TOKENS] += ftokens
+
+    return kind_stats, total_files, total_size, total_tokens, total_lines
