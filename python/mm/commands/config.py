@@ -6,6 +6,8 @@ from typing import Annotated, Optional
 
 import typer
 
+from mm.utils import BaseFormat
+
 config_app = typer.Typer(
     name="config",
     help="View and manage mm configuration.",
@@ -16,7 +18,8 @@ config_app = typer.Typer(
 @config_app.command()
 def show(
     format: Annotated[
-        Optional[str], typer.Option("--format", help="Output format: json, tsv, csv")
+        Optional[BaseFormat],
+        typer.Option("--format", help="Output format: json, tsv, csv"),
     ] = None,
 ) -> None:
     """Show resolved configuration with source annotations.
@@ -32,7 +35,7 @@ def show(
     )
     from mm.display import resolve_format
 
-    fmt = resolve_format(format)
+    fmt = resolve_format(format.value if format else None)
     cfg = get_full_config()
 
     if fmt == "json":

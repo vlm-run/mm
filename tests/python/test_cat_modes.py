@@ -5,40 +5,36 @@ from __future__ import annotations
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-from mm.commands.cat import (
-    DOCUMENT_EXTS,
-    _CatOpts,
-    _file_kind,
-    _l2_modal,
-)
+from mm.commands.cat import _CatOpts, _l2_modal
+from mm.utils import DOCUMENT_EXTS, file_kind
 
 
 class TestFileKind:
     """Test file kind detection including document types."""
 
     def test_pdf(self):
-        assert _file_kind(Path("test.pdf")) == "document"
+        assert file_kind(Path("test.pdf")) == "document"
 
     def test_docx(self):
-        assert _file_kind(Path("test.docx")) == "document"
+        assert file_kind(Path("test.docx")) == "document"
 
     def test_pptx(self):
-        assert _file_kind(Path("test.pptx")) == "document"
+        assert file_kind(Path("test.pptx")) == "document"
 
     def test_image(self):
-        assert _file_kind(Path("photo.jpg")) == "image"
+        assert file_kind(Path("photo.jpg")) == "image"
 
     def test_video(self):
-        assert _file_kind(Path("clip.mp4")) == "video"
+        assert file_kind(Path("clip.mp4")) == "video"
 
     def test_audio(self):
-        assert _file_kind(Path("song.mp3")) == "audio"
+        assert file_kind(Path("song.mp3")) == "audio"
 
     def test_text(self):
-        assert _file_kind(Path("readme.txt")) == "text"
+        assert file_kind(Path("readme.txt")) == "text"
 
     def test_code(self):
-        assert _file_kind(Path("main.py")) == "text"
+        assert file_kind(Path("main.py")) == "text"
 
 
 class TestDocumentExts:
