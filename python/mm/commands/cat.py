@@ -911,6 +911,7 @@ def _display_rich(
     from rich.text import Text
 
     from mm.display import format_size, output_console
+    from mm.utils import is_binary_content
 
     ext = path.suffix.lstrip(".")
     size_str = format_size(path.stat().st_size)
@@ -965,8 +966,7 @@ def _display_rich(
 
     title = f"[bold]{path}[/bold]"
     kind = file_kind(path)
-    is_binary = kind in ("image", "document", "video", "audio") or "\x00" in content[:512]
-    if is_binary:
+    if is_binary_content(kind=kind, content=content):
         safe_content: Text | str = Text(content.replace("\x1b", "\ufffd"))
     else:
         safe_content = Text(content) if level >= 2 else content

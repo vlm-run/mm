@@ -220,7 +220,7 @@ def _find_table(
     if stdin_paths:
         from mm.query import query_arrow_table
 
-        resolved = resolve_piped_paths(stdin_paths, directory)
+        resolved = resolve_piped_paths(stdin_paths)
         path_list = ", ".join(f"'{p}'" for p in resolved)
         table = query_arrow_table(table, f"SELECT * FROM files WHERE path IN ({path_list})")
 

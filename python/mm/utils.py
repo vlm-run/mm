@@ -121,3 +121,10 @@ def file_kind_with_code(path: Path) -> str:
     if path.suffix.lower() in CODE_EXTS:
         return "code"
     return "other"
+
+
+def is_binary_content(*, kind: str, content: str | None = None) -> bool:
+    """Heuristic to determine if content is binary based on kind and content."""
+    return kind in ("image", "document", "video", "audio") or bool(
+        content and "\x00" in content[:512]
+    )
