@@ -92,7 +92,7 @@ mm
 ├── CLI Commands (6 + config+profile, Typer, Unix-philosophy composability)
 │   ├── [x] --version/-v global flag
 │   ├── [x] find     — find/list files, tree view (--tree), schema (--schema), columns (--columns), name filter (--name, string/regex via Rust)
-│   ├── [x] cat      — auto-detected content extraction (fast/accurate mode)
+│   ├── [x] cat      — auto-detected content extraction (fast/accurate mode) → [full spec](spec/cat.md)
 │   │   ├── [x] head/tail via -n (replaces old head/tail commands)
 │   │   ├── [x] --mode fast|accurate (pipeline-driven modal extraction)
 │   │   ├── [x] video accurate: parallel mosaic + whisper → LLM (102x realtime)
@@ -100,7 +100,10 @@ mm
 │   │   ├── [x] image accurate: fast (10w+5tags) / accurate (200w+10tags+objects)
 │   │   ├── [x] document accurate: docling PDF/DOCX/PPTX → markdown → LLM
 │   │   ├── [x] --encode.*, --generate.* namespaced flags
-│   │   ├── [x] --no-cache flag bypasses accurate-mode caches
+│   │   ├── [x] --no-cache flag bypasses L2 cache (both fast and accurate)
+│   │   ├── [x] unified L2 caching for both fast and accurate modes
+│   │   ├── [x] verbose pipeline tree (-v): encode/generate timing + token counts
+│   │   ├── [x] -p pipeline.yaml / -p encoder_name for custom pipelines
 │   ├── [x] grep     — content search with context lines (like rg), --index for on-demand semantic indexing
 │   ├── [x] sql      — SQLite SQL on file index, --pre-index for on-demand metadata indexing before query
 │   ├── [x] wc       — count files, size, lines (est.), tokens (est.)
