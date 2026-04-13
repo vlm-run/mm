@@ -643,8 +643,6 @@ def _run_encoder(path: Path, kind: str, spec: PipelineSpec, opts: _CatOpts) -> s
         
         pipeline_tree = _format_pipeline_tree(encode_output, generate_output)
         output_parts = [result, "", pipeline_tree]
-        if footer:
-            output_parts.extend(["", footer])
         return "\n".join(output_parts)
     
     return f"{result}\n\n{footer}" if footer else result
