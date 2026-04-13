@@ -2,21 +2,11 @@
 
 from importlib.metadata import version
 
-__all__ = [
-    "Context",
-    "process_image",
-    "process_image_tiled",
-    "process_video",
-    "process_document",
-]
+__all__ = ["Context"]
 __version__ = version("mm")
 
 _LAZY_IMPORTS = {
     "Context": ("mm.context", "Context"),
-    "process_image": ("mm.encoders", "process_image"),
-    "process_image_tiled": ("mm.encoders", "process_image_tiled"),
-    "process_video": ("mm.encoders", "process_video"),
-    "process_document": ("mm.encoders", "process_document"),
 }
 
 

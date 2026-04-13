@@ -144,6 +144,3 @@ class PipelineSpec:
         }
         out["generate"] = self.generate.to_dict() if self.generate is not None else None
         return out
-
-
-TemplateSpec = PipelineSpec

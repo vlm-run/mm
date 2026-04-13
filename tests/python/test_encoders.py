@@ -71,45 +71,6 @@ class TestRegistryExtended:
         with patch("mm.profile.get_active_profile_name", return_value="my-gemini-profile"):
             assert _resolve_provider() == "gemini"
 
-    def test_process_video_delegates(self, tmp_path):
-        from mm.encoders import process_video
-        video = tmp_path / "test.mp4"
-        video.write_bytes(b"\x00" * 100)
-        mock_encoder = MagicMock()
-        mock_encoder.encode.return_value = [{"role": "user", "content": []}]
-        with patch("mm.encoders.get", return_value=mock_encoder):
-            msgs = list(process_video(video, strategy_name="frame-sample"))
-            mock_encoder.encode.assert_called_once_with(video)
-            assert len(msgs) == 1
-
-    def test_process_document_delegates(self, tmp_path):
-        from mm.encoders import process_document
-        doc = tmp_path / "test.pdf"
-        doc.write_bytes(b"%PDF-1.4 fake")
-        mock_encoder = MagicMock()
-        mock_encoder.encode.return_value = [{"role": "user", "content": []}]
-        with patch("mm.encoders.get", return_value=mock_encoder):
-            msgs = list(process_document(doc, strategy_name="rasterize"))
-            mock_encoder.encode.assert_called_once_with(doc)
-            assert len(msgs) == 1
-
-    def test_ensure_path_with_pil_image(self, tmp_path):
-        from PIL import Image
-        from mm.encoders import _ensure_path, _cleanup_temp
-        img = Image.new("RGB", (10, 10), "red")
-        path = _ensure_path(img)
-        assert path.exists()
-        assert path.suffix == ".png"
-        _cleanup_temp(path, img)
-        assert not path.exists()
-
-    def test_cleanup_temp_preserves_original_path(self, tmp_path):
-        from mm.encoders import _cleanup_temp
-        f = tmp_path / "keep.png"
-        f.write_bytes(b"\x00")
-        _cleanup_temp(f, f)
-        assert f.exists()
-
     def test_load_strategy_file_caching(self, tmp_path):
         from mm.encoders import _LOADED_SOURCES, load_strategy_file
         strat_file = tmp_path / "cached_encoder.py"

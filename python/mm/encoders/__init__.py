@@ -23,10 +23,7 @@ from __future__ import annotations
 import importlib.util
 import sys
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Iterable, Protocol, runtime_checkable
-
-if TYPE_CHECKING:
-    from PIL import Image
+from typing import Any, Iterable, Protocol, runtime_checkable
 
 Message = dict[str, Any]
 """OpenAI-compatible message dict: ``{"role": "user", "content": [...]}``."""
@@ -333,17 +330,6 @@ def _user_encoders_dir() -> Path | None:
     return d if d.is_dir() else None
 
 
-def resolve_strategy(name: str, media_type: str) -> MessageStrategy:
-    """Look up a registered encoder by name.
-
-    Accepts either the bare registry key (``"resize"``) or the
-    kind-prefixed display name (``"image-resize"``). The ``media_type``
-    argument is currently unused — kept for call-site compatibility.
-    """
-    del media_type  # unused; kept for back-compat with existing callers
-    return get(name)
-
-
 def _resolve_provider() -> str:
     """Infer the message format from the active LLM profile.
 
@@ -360,126 +346,3 @@ def _resolve_provider() -> str:
         return "openai"
 
 
-def process_image(
-    image: Path | Image.Image,
-    *,
-    strategy_name: str = "resize",
-    max_width: int = 1024,
-    **kwargs: Any,
-) -> Message:
-    """Encode a single image and return an OpenAI-compatible Message.
-
-    Args:
-        image: Path to an image file, or a PIL ``Image`` object.
-        strategy_name: Registry name of the encoder to use.
-        max_width: Maximum width in pixels (passed to the encoder).
-        **kwargs: Forwarded to ``encoder.encode()``.
-
-    Returns:
-        A single Message dict ``{"role": "user", "content": [...]}``.
-    """
-    _ensure_discovered()
-    s = get(strategy_name)
-    path = _ensure_path(image)
-    try:
-        messages = list(s.encode(path, max_width=max_width, **kwargs))
-    finally:
-        _cleanup_temp(path, image)
-    if not messages:
-        raise RuntimeError(f"Encoder {strategy_name!r} produced no messages")
-    return messages[0]
-
-
-def process_image_tiled(
-    image: Path | Image.Image,
-    *,
-    tile_size: int = 1024,
-    max_width: int | None = None,
-    **kwargs: Any,
-) -> Iterable[Message]:
-    """Tile an image with overview, yielding all tiles in one Message.
-
-    Args:
-        image: Path to an image file, or a PIL ``Image`` object.
-        tile_size: Alias for max_width (kept for backward compat).
-        max_width: Pixel size for tile dimension and overview bounding box.
-            Takes precedence over tile_size if both are given.
-        **kwargs: Forwarded to ``encoder.encode()``.
-
-    Yields:
-        Messages containing overview + tile crops.
-    """
-    _ensure_discovered()
-    s = get("tile")
-    path = _ensure_path(image)
-    width = max_width if max_width is not None else tile_size
-    try:
-        messages = list(s.encode(path, max_width=width, **kwargs))
-    finally:
-        _cleanup_temp(path, image)
-    return messages
-
-
-def process_video(
-    video: Path,
-    *,
-    strategy_name: str = "frame-sample",
-    **kwargs: Any,
-) -> Iterable[Message]:
-    """Encode a video and yield one Message per chunk.
-
-    Args:
-        video: Path to a video file.
-        strategy_name: Registry name (e.g. ``"frame-sample"``,
-            ``"video-chunk"``).
-        **kwargs: Forwarded to ``encoder.encode()``.
-
-    Yields:
-        One Message per video chunk.
-    """
-    _ensure_discovered()
-    s = get(strategy_name)
-    return s.encode(video, **kwargs)
-
-
-def process_document(
-    document: Path,
-    *,
-    strategy_name: str = "rasterize",
-    **kwargs: Any,
-) -> Iterable[Message]:
-    """Encode a document and yield one Message per page group.
-
-    Args:
-        document: Path to a PDF, DOCX, or PPTX file.
-        strategy_name: Registry name (e.g. ``"rasterize"``,
-            ``"rasterize-text"``).
-        **kwargs: Forwarded to ``encoder.encode()``.
-
-    Yields:
-        One Message per group of pages.
-    """
-    _ensure_discovered()
-    s = get(strategy_name)
-    return s.encode(document, **kwargs)
-
-
-def _ensure_path(image: Path | Any) -> Path:
-    """Convert a PIL Image to a temporary file path if necessary."""
-    if isinstance(image, Path):
-        return image
-    import tempfile
-
-    with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as f:
-        tmp = Path(f.name)
-    image.save(tmp)
-    return tmp
-
-
-def _cleanup_temp(path: Path, original: Path | Any) -> None:
-    """Delete *path* if it was created by ``_ensure_path`` (i.e. differs from *original*)."""
-    if not isinstance(original, Path) and path.exists():
-        try:
-            path.unlink()
-        except OSError:
-            pass

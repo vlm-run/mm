@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 from mm.commands.cat import (
     _CatOpts,
@@ -118,44 +118,11 @@ class TestExtractDispatch:
             assert result == "summary of document"
 
 
-class TestRunFastEncodeOnly:
-    """Test that _run_fast with encode-only pipeline returns L1 extraction."""
+class TestRunFastTextPassthrough:
+    """Code/text/config files have no pipeline — fast mode reads raw content."""
 
     def test_text_passthrough(self, tmp_path):
         f = tmp_path / "test.txt"
         f.write_text("hello world")
         result = _run_fast(f, "text", _make_opts("fast"))
         assert "hello world" in result
-
-    def test_document_passthrough(self, tmp_path):
-        f = tmp_path / "test.txt"
-        f.write_text("doc content here")
-        with patch("mm.commands.cat._run_l1", return_value="extracted text"):
-            result = _run_fast(f, "document", _make_opts("fast"))
-            assert result == "extracted text"
-
-
-class TestAccurateDispatch:
-    """Test that accurate mode calls LLM for text/document."""
-
-    def test_accurate_text_with_llm(self, tmp_path):
-        f = tmp_path / "test.txt"
-        f.write_text("hello")
-
-        with (
-            patch("mm.commands.cat._run_l1", return_value="hello"),
-            patch("mm.llm.LlmBackend") as mock_llm_cls,
-            patch("mm.store.util.get_content_hash", return_value=None),
-            patch("mm.store.db.MmDatabase"),
-            patch("mm.profile.get_profile") as mock_profile,
-        ):
-            mock_llm = MagicMock()
-            mock_llm.generate.return_value = "summary of text"
-            mock_llm_cls.return_value = mock_llm
-            mock_profile.return_value.name = "default"
-            mock_profile.return_value.model = "test-model"
-
-            from mm.commands.cat import _run_accurate
-
-            result = _run_accurate(f, "text", _make_opts("accurate"))
-            assert result == "summary of text"

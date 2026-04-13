@@ -1,4 +1,4 @@
-"""LLM backend for L2 semantic understanding.
+"""LLM backend for accurate-mode pipelines.
 
 Supports any OpenAI-compatible API (Ollama, vLLM, OpenAI, etc.)
 via the official openai Python SDK.
@@ -33,7 +33,7 @@ class LlmUsage:
 
 
 class LlmBackend:
-    """Wraps any OpenAI-compatible chat/completions API for L2 semantic operations."""
+    """Wraps any OpenAI-compatible chat/completions API for accurate-mode generate calls."""
 
     last_usage: LlmUsage
 

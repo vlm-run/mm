@@ -113,12 +113,6 @@ class TestRegistry:
         with pytest.raises(KeyError, match="Unknown encoder"):
             get("nonexistent_strategy_xyz")
 
-    def test_resolve_named(self, serde_images):
-        from mm.encoders import resolve_strategy
-
-        strat = resolve_strategy("resize", "image")
-        assert strat.name == "resize"
-
     def test_strategy_decorator(self):
         from mm.encoders import _REGISTRY, strategy
 
@@ -317,36 +311,6 @@ class TestRustParity:
         part = json.loads(json_str)
         assert "inline_data" in part
         assert part["inline_data"]["mime_type"] == "image/jpeg"
-
-
-# ---------------------------------------------------------------------------
-# Convenience function tests
-# ---------------------------------------------------------------------------
-
-
-class TestConvenienceFunctions:
-    def test_process_image(self, serde_images):
-        from mm.encoders import process_image
-
-        msg = process_image(serde_images["medium_jpg"], max_width=512)
-        assert msg["role"] == "user"
-        assert len(msg["content"]) >= 1
-
-    def test_process_image_tiled(self, serde_images):
-        from mm.encoders import process_image_tiled
-
-        messages = list(process_image_tiled(serde_images["large_jpg"], tile_size=1024))
-        assert len(messages) == 1
-        content = messages[0]["content"]
-        image_parts = [p for p in content if p.get("type") == "image_url" or "inline_data" in p]
-        assert len(image_parts) == 7  # 1 overview + 6 tiles
-
-    def test_process_image_from_module(self, serde_images):
-        """Test import from top-level mm module."""
-        from mm import process_image
-
-        msg = process_image(serde_images["small_jpg"])
-        assert msg["role"] == "user"
 
 
 # ---------------------------------------------------------------------------

@@ -5,16 +5,15 @@ which runs local extraction (no LLM). Use ``--mode accurate`` for LLM-powered
 descriptions.
 
 File-type behaviour:
-  Images   fast: dimensions, MIME, hash, EXIF metadata.
-           accurate: VLM caption via vision model.
-  Videos   fast: resolution, duration, FPS, codecs (metadata only).
-           accurate: keyframe mosaic → VLM description.
-  Audio    fast: duration, codec, bitrate (metadata only).
-           accurate: transcript → LLM summary.
-  PDFs     fast: text extraction via pypdfium2.
-           accurate: LLM summary of extracted text.
-  Code/text  fast: raw text passthrough.
-             accurate: LLM summary.
+  Images     fast: dimensions, MIME, hash, EXIF metadata.
+             accurate: VLM caption via vision model.
+  Videos     fast: resolution, duration, FPS, codecs (metadata only).
+             accurate: keyframe mosaic → VLM description.
+  Audio      fast: duration, codec, bitrate (metadata only).
+             accurate: transcript → LLM summary.
+  PDFs       fast: text extraction via pypdfium2.
+             accurate: LLM summary of extracted text.
+  Code/text  raw content passthrough (no pipeline, no LLM in either mode).
 """
 
 from __future__ import annotations
@@ -347,8 +346,14 @@ def _extract(path: Path, opts: _CatOpts) -> str:
 def _run_fast(path: Path, kind: str, opts: _CatOpts) -> str:
     """Fast mode: local extraction only (no LLM unless pipeline says otherwise).
 
-    For most kinds this is just L1 metadata/text extraction.
+    For image/video/audio/document kinds this loads a YAML pipeline and
+    may invoke an encoder or, if the pipeline defines a ``generate``
+    stage, a short LLM call. For text-like kinds (code, config, plain
+    text) there is no pipeline — content is passed through directly.
     """
+    if kind == "text":
+        return _run_l1(path, kind, no_cache=opts.no_cache)
+
     from mm.pipelines import apply_overrides
 
     spec = _resolve_pipeline(opts, kind)
@@ -378,6 +383,10 @@ def _run_accurate(path: Path, kind: str, opts: _CatOpts) -> str:
     from mm.profile import get_profile
     from mm.store.db import MmDatabase
     from mm.store.util import get_content_hash
+
+    # No pipeline exists for code/text/config — pass content through raw.
+    if kind == "text":
+        return _run_l1(path, kind, no_cache=opts.no_cache)
 
     spec = _resolve_pipeline(opts, kind)
     spec = apply_overrides(spec, opts.encode_overrides or None, opts.generate_overrides or None)
@@ -452,7 +461,7 @@ def _accurate_dispatch(path: Path, kind: str, spec: PipelineSpec, opts: _CatOpts
         return _accurate_audio(path, spec, opts)
 
     if spec.encode.strategy:
-        return _run_encoder_l2(path, kind, spec, opts)
+        return _run_encoder(path, kind, spec, opts)
 
     content = _run_l1(path, kind)
     if spec.generate is None:
@@ -500,11 +509,6 @@ def _run_encoder(path: Path, kind: str, spec: PipelineSpec, opts: _CatOpts) -> s
         return llm.generate(kind, opts.mode, context=ctx, parts=chunks[0], pipeline_spec=spec)
 
     return llm.generate_chunked(kind, opts.mode, context=ctx, chunks=chunks, pipeline_spec=spec)
-
-
-def _run_encoder_l2(path: Path, kind: str, spec: PipelineSpec, opts: _CatOpts) -> str:
-    """Run a named encoder + LLM for accurate mode."""
-    return _run_encoder(path, kind, spec, opts)
 
 
 def _accurate_image(path: Path, spec: PipelineSpec, opts: _CatOpts) -> str:
@@ -802,10 +806,10 @@ def _accurate_audio(path: Path, spec: PipelineSpec, opts: _CatOpts) -> str:
 
 
 def _run_l1(path: Path, kind: str, *, no_cache: bool = False) -> str:
-    """Run L1 content extraction with caching.
+    """Run local content extraction (fast mode) with caching.
 
-    Dispatches to the appropriate extractor based on file kind:
-    image metadata, video metadata, PDF text, or raw text passthrough.
+    Dispatches to the appropriate extractor based on file kind: image
+    metadata, video metadata, PDF text, or raw text passthrough.
     """
     from mm.store.db import MmDatabase
     from mm.store.util import get_content_hash

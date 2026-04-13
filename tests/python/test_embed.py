@@ -197,8 +197,10 @@ class TestCatEmbedIntegration:
         """After accurate extraction, embed_file_chunks should be called."""
         from mm.commands.cat import _CatOpts, _run_accurate
 
-        txt = tmp_path / "test.txt"
-        txt.write_text("hello")
+        # Use a document kind since text kind short-circuits to raw passthrough
+        # (no pipeline, no LLM, no cache) and thus never triggers embedding.
+        pdf = tmp_path / "test.pdf"
+        pdf.write_bytes(b"%PDF-1.4 fake")
 
         opts = _CatOpts(
             n=None,
@@ -225,7 +227,7 @@ class TestCatEmbedIntegration:
         ):
             mock_profile.return_value.name = "default"
             mock_profile.return_value.model = "test-model"
-            result = _run_accurate(txt, "text", opts)
+            result = _run_accurate(pdf, "document", opts)
 
         assert result == "LLM generated text."
         mock_db.put_l2.assert_called_once()

@@ -95,7 +95,7 @@ mm/
 │   │   └── video/
 │   │       └── shot_detection.py  # PySceneDetect wrapper (detect_scenes, sample_*)
 │   ├── encoders/               # Media encoders (file → VLM-ready Messages)
-│   │   ├── __init__.py         # Registry, @register_encoder, resolve_strategy, process_*
+│   │   ├── __init__.py         # Registry, @register_encoder, get()
 │   │   ├── audio.py            # transcribe (Whisper), audio-gemini
 │   │   ├── document/
 │   │   │   ├── __init__.py     # rasterize, rasterize-text (pypdfium2)
