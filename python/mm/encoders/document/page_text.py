@@ -52,28 +52,41 @@ class DocumentPageText:
         else:
             try:
                 text = path.read_text(errors="replace")
-                yield _to_message([{
-                    "type": "text",
-                    "text": f"Document {path.name}:\n\n{text}",
-                }])
+                yield _to_message(
+                    [
+                        {
+                            "type": "text",
+                            "text": f"Document {path.name}:\n\n{text}",
+                        }
+                    ]
+                )
             except Exception as e:
-                yield _to_message([{
-                    "type": "text",
-                    "text": f"[Failed to read {path.name}: {e}]",
-                }])
+                yield _to_message(
+                    [
+                        {
+                            "type": "text",
+                            "text": f"[Failed to read {path.name}: {e}]",
+                        }
+                    ]
+                )
 
     def _encode_pdf(
-        self, path: Path,
+        self,
+        path: Path,
         pages_per_message: int,
         max_pages: Optional[int],
     ) -> Iterable[Message]:
         try:
             import pypdfium2 as pdfium
         except ImportError:
-            yield _to_message([{
-                "type": "text",
-                "text": "[pypdfium2 not installed — pip install pypdfium2]",
-            }])
+            yield _to_message(
+                [
+                    {
+                        "type": "text",
+                        "text": "[pypdfium2 not installed — pip install pypdfium2]",
+                    }
+                ]
+            )
             return
 
         pdf = pdfium.PdfDocument(str(path))
@@ -83,10 +96,14 @@ class DocumentPageText:
                 total = min(total, max_pages)
 
             if total == 0:
-                yield _to_message([{
-                    "type": "text",
-                    "text": f"[No pages in {path.name}]",
-                }])
+                yield _to_message(
+                    [
+                        {
+                            "type": "text",
+                            "text": f"[No pages in {path.name}]",
+                        }
+                    ]
+                )
                 return
 
             logger.debug("page_text [path=%s, pages=%d]", path.name, total)
@@ -102,7 +119,8 @@ class DocumentPageText:
                         try:
                             text = textpage.get_text_range().strip()
                             page_texts.append(
-                                f"--- Page {j + 1} ---\n{text}" if text
+                                f"--- Page {j + 1} ---\n{text}"
+                                if text
                                 else f"--- Page {j + 1} ---\n[No extractable text]"
                             )
                         finally:
@@ -110,59 +128,89 @@ class DocumentPageText:
                     finally:
                         page.close()
 
-                yield _to_message([{
-                    "type": "text",
-                    "text": (
-                        f"{path.name} — pages {i + 1}-{batch_end} of {total}:\n\n"
-                        + "\n\n".join(page_texts)
-                    ),
-                }])
+                yield _to_message(
+                    [
+                        {
+                            "type": "text",
+                            "text": (
+                                f"{path.name} — pages {i + 1}-{batch_end} of {total}:\n\n"
+                                + "\n\n".join(page_texts)
+                            ),
+                        }
+                    ]
+                )
         finally:
             pdf.close()
 
     def _encode_docx(self, path: Path) -> Iterable[Message]:
         try:
             from mm.docs_extract import extract_docx
+
             text = extract_docx(str(path))
         except ImportError:
-            yield _to_message([{
-                "type": "text",
-                "text": "[python-docx not installed — pip install python-docx]",
-            }])
+            yield _to_message(
+                [
+                    {
+                        "type": "text",
+                        "text": "[python-docx not installed — pip install python-docx]",
+                    }
+                ]
+            )
             return
         except Exception as e:
-            yield _to_message([{
-                "type": "text",
-                "text": f"[DOCX extraction failed for {path.name}: {e}]",
-            }])
+            yield _to_message(
+                [
+                    {
+                        "type": "text",
+                        "text": f"[DOCX extraction failed for {path.name}: {e}]",
+                    }
+                ]
+            )
             return
 
-        yield _to_message([{
-            "type": "text",
-            "text": f"Document {path.name}:\n\n{text}",
-        }])
+        yield _to_message(
+            [
+                {
+                    "type": "text",
+                    "text": f"Document {path.name}:\n\n{text}",
+                }
+            ]
+        )
 
     def _encode_pptx(self, path: Path) -> Iterable[Message]:
         try:
             from mm.docs_extract import extract_pptx
+
             text = extract_pptx(str(path))
         except ImportError:
-            yield _to_message([{
-                "type": "text",
-                "text": "[python-pptx not installed — pip install python-pptx]",
-            }])
+            yield _to_message(
+                [
+                    {
+                        "type": "text",
+                        "text": "[python-pptx not installed — pip install python-pptx]",
+                    }
+                ]
+            )
             return
         except Exception as e:
-            yield _to_message([{
-                "type": "text",
-                "text": f"[PPTX extraction failed for {path.name}: {e}]",
-            }])
+            yield _to_message(
+                [
+                    {
+                        "type": "text",
+                        "text": f"[PPTX extraction failed for {path.name}: {e}]",
+                    }
+                ]
+            )
             return
 
-        yield _to_message([{
-            "type": "text",
-            "text": f"Document {path.name}:\n\n{text}",
-        }])
+        yield _to_message(
+            [
+                {
+                    "type": "text",
+                    "text": f"Document {path.name}:\n\n{text}",
+                }
+            ]
+        )
 
 
 register(DocumentPageText())

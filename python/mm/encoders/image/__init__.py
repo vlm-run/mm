@@ -69,8 +69,7 @@ def _validate_image_path(path: Path) -> None:
         raise FileNotFoundError(f"Image not found: {path}")
     if path.suffix.lower() not in IMAGE_EXTS:
         raise ValueError(
-            f"Unsupported image type: {path.suffix}. "
-            f"Supported: {', '.join(sorted(IMAGE_EXTS))}"
+            f"Unsupported image type: {path.suffix}. Supported: {', '.join(sorted(IMAGE_EXTS))}"
         )
 
 
@@ -170,7 +169,13 @@ def _pillow_resize(path: Path, max_width: int) -> dict[str, Any]:
     b64, mime = _encode_pil_image(img, path)
     logger.debug(
         "pillow_resize [path=%s, %dx%d -> %dx%d, mime=%s, b64_len=%d]",
-        path.name, orig_w, orig_h, w, h, mime, len(b64),
+        path.name,
+        orig_w,
+        orig_h,
+        w,
+        h,
+        mime,
+        len(b64),
     )
     return {"base64": b64, "mime": mime, "width": w, "height": h}
 
@@ -195,8 +200,18 @@ def _pillow_tile(path: Path, tile_size: int) -> list[dict[str, Any]]:
 
     if w <= tile_size and h <= tile_size:
         b64, mime = _encode_pil_image(img, path)
-        return [{"base64": b64, "mime": mime, "col": 0, "row": 0,
-                 "total_cols": 1, "total_rows": 1, "width": w, "height": h}]
+        return [
+            {
+                "base64": b64,
+                "mime": mime,
+                "col": 0,
+                "row": 0,
+                "total_cols": 1,
+                "total_rows": 1,
+                "width": w,
+                "height": h,
+            }
+        ]
 
     cols: int = (w + tile_size - 1) // tile_size
     rows: int = (h + tile_size - 1) // tile_size
@@ -210,16 +225,26 @@ def _pillow_tile(path: Path, tile_size: int) -> list[dict[str, Any]]:
             th: int = min(tile_size, h - y)
             tile_img = img.crop((x, y, x + tw, y + th))
             b64, mime = _encode_pil_image(tile_img, path)
-            tiles.append({
-                "base64": b64, "mime": mime,
-                "col": col_idx, "row": row_idx,
-                "total_cols": cols, "total_rows": rows,
-                "width": tw, "height": th,
-            })
+            tiles.append(
+                {
+                    "base64": b64,
+                    "mime": mime,
+                    "col": col_idx,
+                    "row": row_idx,
+                    "total_cols": cols,
+                    "total_rows": rows,
+                    "width": tw,
+                    "height": th,
+                }
+            )
 
     logger.debug(
         "pillow_tile [path=%s, %dx%d, tile_size=%d, tiles=%d]",
-        path.name, w, h, tile_size, len(tiles),
+        path.name,
+        w,
+        h,
+        tile_size,
+        len(tiles),
     )
     return tiles
 
@@ -302,7 +327,9 @@ class ImageTile:
             ]
             logger.debug(
                 "tile [path=%s, %dx%d, fits in one tile]",
-                path.name, w, h,
+                path.name,
+                w,
+                h,
             )
             yield _to_message(parts)
             return
@@ -330,7 +357,12 @@ class ImageTile:
 
         logger.debug(
             "tile [path=%s, %dx%d, grid=%dx%d, parts=%d]",
-            path.name, w, h, cols, rows, len(parts),
+            path.name,
+            w,
+            h,
+            cols,
+            rows,
+            len(parts),
         )
         yield _to_message(parts)
 

@@ -86,10 +86,14 @@ class GeminiVideoChunked:
         from mm.ffmpeg import extract_segment, ffmpeg_available, probe_duration
 
         if not ffmpeg_available():
-            yield _to_gemini_message([{
-                "type": "text",
-                "text": f"[ffmpeg not available for {path.name}]",
-            }])
+            yield _to_gemini_message(
+                [
+                    {
+                        "type": "text",
+                        "text": f"[ffmpeg not available for {path.name}]",
+                    }
+                ]
+            )
             return
 
         duration: float = probe_duration(path)
@@ -107,7 +111,9 @@ class GeminiVideoChunked:
 
         logger.debug(
             "gemini_video_chunked [path=%s, duration=%.1fs, chunk=%ds]",
-            path.name, duration, max_seconds,
+            path.name,
+            duration,
+            max_seconds,
         )
 
         while start < duration:

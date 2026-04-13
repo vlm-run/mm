@@ -20,11 +20,13 @@ class TestPipelineSpecSchema:
     """Schema validation for pipeline YAML files."""
 
     def test_valid_minimal_with_generate(self):
-        spec = TemplateSpec.from_dict({
-            "kind": "image",
-            "mode": "fast",
-            "generate": {"prompt": "Describe this image."},
-        })
+        spec = TemplateSpec.from_dict(
+            {
+                "kind": "image",
+                "mode": "fast",
+                "generate": {"prompt": "Describe this image."},
+            }
+        )
         assert spec.kind == "image"
         assert spec.mode == "fast"
         assert spec.generate is not None
@@ -36,43 +38,49 @@ class TestPipelineSpecSchema:
 
     def test_valid_encode_only(self):
         """generate is optional — None means encode-only pipeline."""
-        spec = TemplateSpec.from_dict({
-            "kind": "document",
-            "mode": "fast",
-        })
+        spec = TemplateSpec.from_dict(
+            {
+                "kind": "document",
+                "mode": "fast",
+            }
+        )
         assert spec.kind == "document"
         assert spec.mode == "fast"
         assert spec.generate is None
         assert spec.encode.strategy is None
 
     def test_explicit_generate_null(self):
-        spec = TemplateSpec.from_dict({
-            "kind": "text",
-            "mode": "fast",
-            "encode": {"strategy": None},
-            "generate": None,
-        })
+        spec = TemplateSpec.from_dict(
+            {
+                "kind": "text",
+                "mode": "fast",
+                "encode": {"strategy": None},
+                "generate": None,
+            }
+        )
         assert spec.generate is None
 
     def test_valid_full(self):
-        spec = TemplateSpec.from_dict({
-            "kind": "video",
-            "mode": "accurate",
-            "encode": {
-                "strategy": "frame-sample",
-                "strategy_opts": {
-                    "max_width": 512,
-                    "transcribe": True,
-                    "whisper_model": "medium",
+        spec = TemplateSpec.from_dict(
+            {
+                "kind": "video",
+                "mode": "accurate",
+                "encode": {
+                    "strategy": "frame-sample",
+                    "strategy_opts": {
+                        "max_width": 512,
+                        "transcribe": True,
+                        "whisper_model": "medium",
+                    },
                 },
-            },
-            "generate": {
-                "prompt": "Describe the video {filename}.",
-                "max_tokens": 1024,
-                "temperature": 0.7,
-                "json_mode": True,
-            },
-        })
+                "generate": {
+                    "prompt": "Describe the video {filename}.",
+                    "max_tokens": 1024,
+                    "temperature": 0.7,
+                    "json_mode": True,
+                },
+            }
+        )
         assert spec.encode.strategy == "frame-sample"
         assert spec.encode.strategy_opts["max_width"] == 512
         assert spec.encode.strategy_opts["transcribe"] is True
@@ -84,26 +92,32 @@ class TestPipelineSpecSchema:
 
     def test_missing_generate_prompt_raises(self):
         with pytest.raises(ValidationError):
-            TemplateSpec.from_dict({
-                "kind": "image",
-                "mode": "fast",
-                "generate": {"max_tokens": 256},
-            })
+            TemplateSpec.from_dict(
+                {
+                    "kind": "image",
+                    "mode": "fast",
+                    "generate": {"max_tokens": 256},
+                }
+            )
 
     def test_missing_generate_is_ok(self):
         """generate is optional — omitting it defaults to None."""
-        spec = TemplateSpec.from_dict({
-            "kind": "image",
-            "mode": "fast",
-        })
+        spec = TemplateSpec.from_dict(
+            {
+                "kind": "image",
+                "mode": "fast",
+            }
+        )
         assert spec.generate is None
 
     def test_missing_kind_raises(self):
         with pytest.raises(ValidationError):
-            TemplateSpec.from_dict({
-                "mode": "fast",
-                "generate": {"prompt": "test"},
-            })
+            TemplateSpec.from_dict(
+                {
+                    "mode": "fast",
+                    "generate": {"prompt": "test"},
+                }
+            )
 
     def test_encode_defaults(self):
         enc = Encode()
@@ -118,12 +132,14 @@ class TestPipelineSpecSchema:
         assert gen.json_mode is False
 
     def test_extra_fields_ignored(self):
-        spec = TemplateSpec.from_dict({
-            "kind": "image",
-            "mode": "fast",
-            "generate": {"prompt": "test"},
-            "extra_unknown": "should not break",
-        })
+        spec = TemplateSpec.from_dict(
+            {
+                "kind": "image",
+                "mode": "fast",
+                "generate": {"prompt": "test"},
+                "extra_unknown": "should not break",
+            }
+        )
         assert spec.kind == "image"
 
 
@@ -182,7 +198,9 @@ class TestLoad:
 
     def test_all_builtin_yamls_valid(self):
         """Every builtin YAML should parse into a valid PipelineSpec."""
-        pipelines_dir = Path(__file__).resolve().parent.parent.parent / "python" / "mm" / "pipelines"
+        pipelines_dir = (
+            Path(__file__).resolve().parent.parent.parent / "python" / "mm" / "pipelines"
+        )
         yaml_files = list(pipelines_dir.rglob("*.yaml"))
         yaml_files = [f for f in yaml_files if f.name != "spec.yaml"]
         assert len(yaml_files) >= 8, f"Expected at least 8 YAML files, got {len(yaml_files)}"
@@ -200,49 +218,59 @@ class TestRenderPrompt:
     """Tests for render_prompt — template interpolation."""
 
     def test_simple_substitution(self):
-        spec = TemplateSpec.from_dict({
-            "kind": "image",
-            "mode": "fast",
-            "generate": {"prompt": "Describe {filename} in {word_count} words."},
-        })
+        spec = TemplateSpec.from_dict(
+            {
+                "kind": "image",
+                "mode": "fast",
+                "generate": {"prompt": "Describe {filename} in {word_count} words."},
+            }
+        )
         result = render_prompt(spec, {"filename": "photo.jpg", "word_count": "20"})
         assert result == "Describe photo.jpg in 20 words."
 
     def test_missing_key_becomes_empty(self):
-        spec = TemplateSpec.from_dict({
-            "kind": "video",
-            "mode": "fast",
-            "generate": {"prompt": "Video: {filename}. Duration: {duration_ctx}"},
-        })
+        spec = TemplateSpec.from_dict(
+            {
+                "kind": "video",
+                "mode": "fast",
+                "generate": {"prompt": "Video: {filename}. Duration: {duration_ctx}"},
+            }
+        )
         result = render_prompt(spec, {"filename": "clip.mp4"})
         assert "clip.mp4" in result
         assert "Duration: " in result
         assert "{duration_ctx}" not in result
 
     def test_empty_context(self):
-        spec = TemplateSpec.from_dict({
-            "kind": "image",
-            "mode": "fast",
-            "generate": {"prompt": "Hello {name}!"},
-        })
+        spec = TemplateSpec.from_dict(
+            {
+                "kind": "image",
+                "mode": "fast",
+                "generate": {"prompt": "Hello {name}!"},
+            }
+        )
         result = render_prompt(spec, {})
         assert result == "Hello !"
 
     def test_no_placeholders(self):
-        spec = TemplateSpec.from_dict({
-            "kind": "image",
-            "mode": "fast",
-            "generate": {"prompt": "Just a plain prompt."},
-        })
+        spec = TemplateSpec.from_dict(
+            {
+                "kind": "image",
+                "mode": "fast",
+                "generate": {"prompt": "Just a plain prompt."},
+            }
+        )
         result = render_prompt(spec, {"anything": "should not appear"})
         assert result == "Just a plain prompt."
 
     def test_encode_only_returns_empty(self):
         """When generate is None, render_prompt returns empty string."""
-        spec = TemplateSpec.from_dict({
-            "kind": "text",
-            "mode": "fast",
-        })
+        spec = TemplateSpec.from_dict(
+            {
+                "kind": "text",
+                "mode": "fast",
+            }
+        )
         result = render_prompt(spec, {"filename": "test.txt"})
         assert result == ""
 
@@ -251,23 +279,25 @@ class TestRunPyfunc:
     """Tests for run_pyfunc — inline Python transforms."""
 
     def test_no_pyfunc_passthrough(self):
-        spec = TemplateSpec.from_dict({
-            "kind": "image",
-            "mode": "fast",
-            "encode": {},
-        })
+        spec = TemplateSpec.from_dict(
+            {
+                "kind": "image",
+                "mode": "fast",
+                "encode": {},
+            }
+        )
         parts: list[dict[str, Any]] = [{"type": "text", "text": "hello"}]
         result = run_pyfunc(spec, parts, {})
         assert result == parts
 
     def test_pyfunc_filters_parts(self):
-        spec = TemplateSpec.from_dict({
-            "kind": "image",
-            "mode": "fast",
-            "encode": {
-                "pyfunc": "return [p for p in parts if p.get('type') == 'text']"
-            },
-        })
+        spec = TemplateSpec.from_dict(
+            {
+                "kind": "image",
+                "mode": "fast",
+                "encode": {"pyfunc": "return [p for p in parts if p.get('type') == 'text']"},
+            }
+        )
         parts: list[dict[str, Any]] = [
             {"type": "text", "text": "keep"},
             {"type": "image_url", "image_url": {"url": "data:image/png;base64,abc"}},
@@ -277,13 +307,15 @@ class TestRunPyfunc:
         assert result[0]["type"] == "text"
 
     def test_pyfunc_accesses_context(self):
-        spec = TemplateSpec.from_dict({
-            "kind": "image",
-            "mode": "fast",
-            "encode": {
-                "pyfunc": "return parts + [{'type': 'text', 'text': context.get('extra', '')}]"
-            },
-        })
+        spec = TemplateSpec.from_dict(
+            {
+                "kind": "image",
+                "mode": "fast",
+                "encode": {
+                    "pyfunc": "return parts + [{'type': 'text', 'text': context.get('extra', '')}]"
+                },
+            }
+        )
         parts: list[dict[str, Any]] = []
         result = run_pyfunc(spec, parts, {"extra": "injected"})
         assert len(result) == 1
@@ -294,21 +326,25 @@ class TestApplyOverrides:
     """Tests for apply_overrides — CLI override merging."""
 
     def _base_spec(self) -> PipelineSpec:
-        return PipelineSpec.from_dict({
-            "kind": "image",
-            "mode": "fast",
-            "encode": {
-                "strategy": "resize",
-                "strategy_opts": {"max_width": 1024},
-            },
-            "generate": {"prompt": "Describe this image.", "max_tokens": 256},
-        })
+        return PipelineSpec.from_dict(
+            {
+                "kind": "image",
+                "mode": "fast",
+                "encode": {
+                    "strategy": "resize",
+                    "strategy_opts": {"max_width": 1024},
+                },
+                "generate": {"prompt": "Describe this image.", "max_tokens": 256},
+            }
+        )
 
     def _encode_only_spec(self) -> PipelineSpec:
-        return PipelineSpec.from_dict({
-            "kind": "document",
-            "mode": "fast",
-        })
+        return PipelineSpec.from_dict(
+            {
+                "kind": "document",
+                "mode": "fast",
+            }
+        )
 
     def test_no_overrides_returns_same(self):
         spec = self._base_spec()
@@ -500,44 +536,51 @@ class TestPyfuncFileRef:
     def test_file_pyfunc(self, tmp_path: Path):
         py_file = tmp_path / "my_transform.py"
         py_file.write_text(
-            "def transform(parts, context):\n"
-            "    return [{'type': 'text', 'text': 'filtered'}]\n"
+            "def transform(parts, context):\n    return [{'type': 'text', 'text': 'filtered'}]\n"
         )
-        spec = PipelineSpec.from_dict({
-            "kind": "image",
-            "mode": "fast",
-            "encode": {"pyfunc": str(py_file)},
-        })
+        spec = PipelineSpec.from_dict(
+            {
+                "kind": "image",
+                "mode": "fast",
+                "encode": {"pyfunc": str(py_file)},
+            }
+        )
         result = run_pyfunc(spec, [{"type": "text", "text": "original"}], {})
         assert len(result) == 1
         assert result[0]["text"] == "filtered"
 
     def test_inline_full_def(self):
         code = "def transform(parts, context):\n    return [{'type': 'text', 'text': 'inline'}]"
-        spec = PipelineSpec.from_dict({
-            "kind": "image",
-            "mode": "fast",
-            "encode": {"pyfunc": code},
-        })
+        spec = PipelineSpec.from_dict(
+            {
+                "kind": "image",
+                "mode": "fast",
+                "encode": {"pyfunc": code},
+            }
+        )
         result = run_pyfunc(spec, [{"type": "text", "text": "original"}], {})
         assert result[0]["text"] == "inline"
 
     def test_legacy_body_only(self):
         body = "return [{'type': 'text', 'text': 'legacy'}]"
-        spec = PipelineSpec.from_dict({
-            "kind": "image",
-            "mode": "fast",
-            "encode": {"pyfunc": body},
-        })
+        spec = PipelineSpec.from_dict(
+            {
+                "kind": "image",
+                "mode": "fast",
+                "encode": {"pyfunc": body},
+            }
+        )
         result = run_pyfunc(spec, [], {})
         assert result[0]["text"] == "legacy"
 
     def test_nonexistent_file_raises(self):
-        spec = PipelineSpec.from_dict({
-            "kind": "image",
-            "mode": "fast",
-            "encode": {"pyfunc": "/nonexistent/file.py"},
-        })
+        spec = PipelineSpec.from_dict(
+            {
+                "kind": "image",
+                "mode": "fast",
+                "encode": {"pyfunc": "/nonexistent/file.py"},
+            }
+        )
         with pytest.raises(FileNotFoundError, match="pyfunc file not found"):
             run_pyfunc(spec, [], {})
 

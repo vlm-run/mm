@@ -46,9 +46,7 @@ class Encode:
         if data is None:
             return cls()
         if not isinstance(data, dict):
-            raise PipelineValidationError(
-                f"encode must be a mapping, got {type(data).__name__}"
-            )
+            raise PipelineValidationError(f"encode must be a mapping, got {type(data).__name__}")
         opts = data.get("strategy_opts") or {}
         if not isinstance(opts, dict):
             raise PipelineValidationError(
@@ -127,9 +125,7 @@ class PipelineSpec:
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "PipelineSpec":
         if not isinstance(data, dict):
-            raise PipelineValidationError(
-                f"pipeline must be a mapping, got {type(data).__name__}"
-            )
+            raise PipelineValidationError(f"pipeline must be a mapping, got {type(data).__name__}")
         kind = data.get("kind", _MISSING)
         mode = data.get("mode", _MISSING)
         if kind is _MISSING:

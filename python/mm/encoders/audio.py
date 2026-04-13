@@ -49,17 +49,25 @@ class AudioTranscribe:
         from mm.whisper import transcribe, whisper_available
 
         if not ffmpeg_available():
-            yield _to_message([{
-                "type": "text",
-                "text": f"[ffmpeg not available for {path.name}]",
-            }])
+            yield _to_message(
+                [
+                    {
+                        "type": "text",
+                        "text": f"[ffmpeg not available for {path.name}]",
+                    }
+                ]
+            )
             return
 
         if not whisper_available():
-            yield _to_message([{
-                "type": "text",
-                "text": "[whisper not installed — pip install mm[extract]]",
-            }])
+            yield _to_message(
+                [
+                    {
+                        "type": "text",
+                        "text": "[whisper not installed — pip install mm[extract]]",
+                    }
+                ]
+            )
             return
 
         audio_result = extract_audio(path, speed=audio_speed)
@@ -83,10 +91,14 @@ class AudioTranscribe:
 
         transcript = whisper_result.text
         if not transcript or transcript.startswith("["):
-            yield _to_message([{
-                "type": "text",
-                "text": transcript or "[No speech detected]",
-            }])
+            yield _to_message(
+                [
+                    {
+                        "type": "text",
+                        "text": transcript or "[No speech detected]",
+                    }
+                ]
+            )
             return
 
         parts: list[dict[str, Any]] = []
@@ -95,25 +107,31 @@ class AudioTranscribe:
             segment_lines = []
             for seg in whisper_result.segments:
                 segment_lines.append(f"[{seg.start:.1f}s - {seg.end:.1f}s] {seg.text.strip()}")
-            parts.append({
-                "type": "text",
-                "text": (
-                    f"Transcript of {path.name}"
-                    f" (lang={whisper_result.language},"
-                    f" model={whisper_model},"
-                    f" {whisper_result.elapsed_ms:.0f}ms):\n\n"
-                    + "\n".join(segment_lines)
-                ),
-            })
+            parts.append(
+                {
+                    "type": "text",
+                    "text": (
+                        f"Transcript of {path.name}"
+                        f" (lang={whisper_result.language},"
+                        f" model={whisper_model},"
+                        f" {whisper_result.elapsed_ms:.0f}ms):\n\n" + "\n".join(segment_lines)
+                    ),
+                }
+            )
         else:
-            parts.append({
-                "type": "text",
-                "text": f"Transcript of {path.name}:\n\n{transcript}",
-            })
+            parts.append(
+                {
+                    "type": "text",
+                    "text": f"Transcript of {path.name}:\n\n{transcript}",
+                }
+            )
 
         logger.debug(
             "audio_transcribe [path=%s, words=%d, model=%s, %.0fms]",
-            path.name, len(transcript.split()), whisper_model, whisper_result.elapsed_ms,
+            path.name,
+            len(transcript.split()),
+            whisper_model,
+            whisper_result.elapsed_ms,
         )
         yield _to_message(parts)
 
@@ -164,7 +182,9 @@ class GeminiAudio:
 
         logger.debug(
             "gemini_audio_chunked [path=%s, duration=%.1fs, chunk=%ds]",
-            path.name, duration, max_seconds,
+            path.name,
+            duration,
+            max_seconds,
         )
 
         while start < duration:
@@ -178,10 +198,15 @@ class GeminiAudio:
                 seg_path.unlink(missing_ok=True)
             mime = guess_mime(path.name)
             b64 = base64.b64encode(seg_data).decode()
-            yield _to_message([
-                {"type": "text", "text": f"Audio chunk {chunk_idx + 1} ({start:.0f}s-{end:.0f}s):"},
-                {"inline_data": {"mime_type": mime, "data": b64}},
-            ])
+            yield _to_message(
+                [
+                    {
+                        "type": "text",
+                        "text": f"Audio chunk {chunk_idx + 1} ({start:.0f}s-{end:.0f}s):",
+                    },
+                    {"inline_data": {"mime_type": mime, "data": b64}},
+                ]
+            )
             start += step
             chunk_idx += 1
 

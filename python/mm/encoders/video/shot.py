@@ -29,26 +29,26 @@ from mm.encoders.image import _image_part, _to_message
 logger = logging.getLogger(__name__)
 
 
-def _detect_shots(
-    video_path: Path, threshold: float
-) -> list[tuple[float, float]]:
+def _detect_shots(video_path: Path, threshold: float) -> list[tuple[float, float]]:
     """Run PySceneDetect and return shot boundaries as (start_s, end_s) pairs."""
     from mm.common.video.shot_detection import detect_scenes, scenedetect_available
 
     if not scenedetect_available():
         raise ImportError(
-            "scenedetect is required for shot-based encoders. "
-            "Install with: pip install mm[extract]"
+            "scenedetect is required for shot-based encoders. Install with: pip install mm[extract]"
         )
 
     result = detect_scenes(video_path, threshold=threshold)
     logger.debug(
         "scene_detect [path=%s, shots=%d, elapsed=%.0fms]",
-        video_path.name, result.num_scenes, result.elapsed_ms,
+        video_path.name,
+        result.num_scenes,
+        result.elapsed_ms,
     )
 
     if not result.scenes:
         from mm.ffmpeg import probe_duration
+
         duration = probe_duration(video_path)
         if duration > 0:
             return [(0.0, duration)]
@@ -57,9 +57,7 @@ def _detect_shots(
     return result.scenes
 
 
-def _sample_timestamps_in_range(
-    start: float, end: float, n: int
-) -> list[float]:
+def _sample_timestamps_in_range(start: float, end: float, n: int) -> list[float]:
     """Generate n uniformly spaced timestamps within [start, end)."""
     if n <= 0:
         return []
@@ -96,46 +94,63 @@ class ShotFrames:
         from mm.ffmpeg import extract_frames_at_timestamps, ffmpeg_available
 
         if not ffmpeg_available():
-            yield _to_message([{
-                "type": "text",
-                "text": f"[ffmpeg not available for {path.name}]",
-            }])
+            yield _to_message(
+                [
+                    {
+                        "type": "text",
+                        "text": f"[ffmpeg not available for {path.name}]",
+                    }
+                ]
+            )
             return
 
         shots = _detect_shots(path, threshold)
         if not shots:
-            yield _to_message([{
-                "type": "text",
-                "text": f"[No shots detected in {path.name}]",
-            }])
+            yield _to_message(
+                [
+                    {
+                        "type": "text",
+                        "text": f"[No shots detected in {path.name}]",
+                    }
+                ]
+            )
             return
 
         logger.debug(
             "shot_frames [path=%s, shots=%d, max_frames=%d]",
-            path.name, len(shots), max_frames_per_shot,
+            path.name,
+            len(shots),
+            max_frames_per_shot,
         )
 
         for shot_idx, (start, end) in enumerate(shots):
             timestamps = _sample_timestamps_in_range(
-                start, end, max_frames_per_shot,
+                start,
+                end,
+                max_frames_per_shot,
             )
 
             out_dir = Path(tempfile.mkdtemp(prefix=f"mm_sf_{shot_idx}_"))
             try:
                 frame_paths = extract_frames_at_timestamps(
-                    path, timestamps, thumb_width=max_width, out_dir=out_dir,
+                    path,
+                    timestamps,
+                    thumb_width=max_width,
+                    out_dir=out_dir,
                 )
 
                 if not frame_paths:
                     continue
 
-                parts: list[dict[str, Any]] = [{
-                    "type": "text",
-                    "text": (
-                        f"Shot {shot_idx + 1}/{len(shots)} of {path.name} "
-                        f"({start:.1f}s \u2013 {end:.1f}s):"
-                    ),
-                }]
+                parts: list[dict[str, Any]] = [
+                    {
+                        "type": "text",
+                        "text": (
+                            f"Shot {shot_idx + 1}/{len(shots)} of {path.name} "
+                            f"({start:.1f}s \u2013 {end:.1f}s):"
+                        ),
+                    }
+                ]
 
                 for fp in frame_paths:
                     b64 = base64.b64encode(fp.read_bytes()).decode()
@@ -178,38 +193,53 @@ class ShotMosaic:
         )
 
         if not ffmpeg_available():
-            yield _to_message([{
-                "type": "text",
-                "text": f"[ffmpeg not available for {path.name}]",
-            }])
+            yield _to_message(
+                [
+                    {
+                        "type": "text",
+                        "text": f"[ffmpeg not available for {path.name}]",
+                    }
+                ]
+            )
             return
 
         shots = _detect_shots(path, threshold)
         if not shots:
-            yield _to_message([{
-                "type": "text",
-                "text": f"[No shots detected in {path.name}]",
-            }])
+            yield _to_message(
+                [
+                    {
+                        "type": "text",
+                        "text": f"[No shots detected in {path.name}]",
+                    }
+                ]
+            )
             return
 
         frames_per_mosaic = tile_cols * tile_rows
 
         logger.debug(
             "shot_mosaic [path=%s, shots=%d, grid=%dx%d]",
-            path.name, len(shots), tile_cols, tile_rows,
+            path.name,
+            len(shots),
+            tile_cols,
+            tile_rows,
         )
 
         for shot_idx, (start, end) in enumerate(shots):
             timestamps = _sample_timestamps_in_range(
-                start, end, frames_per_mosaic,
+                start,
+                end,
+                frames_per_mosaic,
             )
 
             frame_dir = Path(tempfile.mkdtemp(prefix=f"mm_sm_fr_{shot_idx}_"))
             mosaic_dir = Path(tempfile.mkdtemp(prefix=f"mm_sm_mo_{shot_idx}_"))
             try:
                 frame_paths = extract_frames_at_timestamps(
-                    path, timestamps,
-                    thumb_width=thumb_width, out_dir=frame_dir,
+                    path,
+                    timestamps,
+                    thumb_width=thumb_width,
+                    out_dir=frame_dir,
                 )
 
                 if not frame_paths:
@@ -226,13 +256,15 @@ class ShotMosaic:
                 if not mosaic_paths:
                     continue
 
-                parts: list[dict[str, Any]] = [{
-                    "type": "text",
-                    "text": (
-                        f"Shot {shot_idx + 1}/{len(shots)} of {path.name} "
-                        f"({start:.1f}s \u2013 {end:.1f}s):"
-                    ),
-                }]
+                parts: list[dict[str, Any]] = [
+                    {
+                        "type": "text",
+                        "text": (
+                            f"Shot {shot_idx + 1}/{len(shots)} of {path.name} "
+                            f"({start:.1f}s \u2013 {end:.1f}s):"
+                        ),
+                    }
+                ]
 
                 for mp in mosaic_paths:
                     b64 = base64.b64encode(mp.read_bytes()).decode()

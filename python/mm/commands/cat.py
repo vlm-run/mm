@@ -19,11 +19,10 @@ File-type behaviour:
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING, Annotated, Any, Optional
+from typing import Annotated, Any, Optional
 
 import typer
 
-from mm.constants import FileKind
 from mm.pipe import read_paths_from_stdin
 from mm.pipelines.schema import PipelineSpec
 from mm.utils import Format, file_kind
@@ -32,7 +31,6 @@ from mm.utils import Format, file_kind
 _total_bytes_processed = 0
 # Track whether the result was served from cache
 _was_cached = False
-
 
 
 def _collect_overrides(**kwargs: str | None) -> dict[str, str]:
@@ -49,9 +47,7 @@ def _build_pipeline_help() -> str:
         names_str = ", ".join(names) if names else "none discovered"
     except Exception:
         names_str = "(run --list-pipelines to see)"
-    return (
-        f"Pipeline: YAML path or encoder name ({names_str}). Repeatable."
-    )
+    return f"Pipeline: YAML path or encoder name ({names_str}). Repeatable."
 
 
 def cat_cmd(
@@ -63,7 +59,8 @@ def cat_cmd(
     pipeline: Annotated[
         Optional[list[str]],
         typer.Option(
-            "--pipeline", "-p",
+            "--pipeline",
+            "-p",
             help="Pipeline: YAML path or registered encoder name. Repeatable.",
         ),
     ] = None,
@@ -90,7 +87,9 @@ def cat_cmd(
     ] = False,
     format: Annotated[
         Optional[Format],
-        typer.Option("--format", "-f", help="Output format: json, tsv, csv, dataset-jsonl, dataset-hf"),
+        typer.Option(
+            "--format", "-f", help="Output format: json, tsv, csv, dataset-jsonl, dataset-hf"
+        ),
     ] = None,
     # -- Surviving encode overrides --
     encode_strategy: Annotated[
@@ -119,9 +118,7 @@ def cat_cmd(
         typer.Option("--generate.json-mode", help="Override JSON mode (true/false)"),
     ] = None,
     # -- Utility --
-    verbose: Annotated[
-        bool, typer.Option("--verbose", "-v", help="Show progress bars")
-    ] = False,
+    verbose: Annotated[bool, typer.Option("--verbose", "-v", help="Show progress bars")] = False,
 ) -> None:
     """Extract and describe file content.
 
@@ -201,7 +198,7 @@ def cat_cmd(
 
     multi_file = len(paths) > 1 or bool(stdin_paths)
     results: list[dict] = []
-    
+
     global _total_bytes_processed, _was_cached
     _total_bytes_processed = 0
     _was_cached = False
@@ -211,7 +208,7 @@ def cat_cmd(
         if not p.exists():
             typer.echo(f"Error: {file_path} not found.", err=True)
             continue
-        
+
         # Track bytes for throughput calculation
         _total_bytes_processed += p.stat().st_size
 
@@ -256,6 +253,7 @@ def cat_cmd(
                 print("\n".join(plain_lines))
             if rich_lines:
                 from mm.display import output_console
+
                 output_console.print("\n".join(rich_lines))
 
     if fmt in ("json", "dataset-jsonl", "dataset-hf"):
@@ -322,7 +320,8 @@ def _load_pipeline_args(pipeline_args: list[str]) -> dict[str, PipelineSpec]:
             known = list_strategies()
             if arg in known:
                 specs["_encoder"] = PipelineSpec(
-                    kind="_encoder", mode="fast",
+                    kind="_encoder",
+                    mode="fast",
                     encode=Encode(strategy=arg),
                     generate=None,
                 )
@@ -421,7 +420,9 @@ def _extract(path: Path, opts: _CatOpts) -> str:
 
     # Strip verbose decoration before caching (pipeline tree, footer, etc.)
     _pipeline_marker = "\n[dim]pipeline\n"
-    cache_content = result.split(_pipeline_marker)[0].rstrip() if _pipeline_marker in result else result
+    cache_content = (
+        result.split(_pipeline_marker)[0].rstrip() if _pipeline_marker in result else result
+    )
 
     if content_hash and cache_content and not cache_content.startswith("["):
         _run_l1(path, kind)
@@ -476,23 +477,29 @@ def _run_fast(path: Path, kind: str, opts: _CatOpts) -> str:
         t0 = time.monotonic()
         llm = LlmBackend()
         result = llm.generate(
-            kind, "fast",
+            kind,
+            "fast",
             context={"filename": path.name, "content": content[:4000]},
             pipeline_spec=spec,
         )
         elapsed = (time.monotonic() - t0) * 1000
         u = llm.last_usage
-        footer = _format_footer(path, "fast", elapsed, u.prompt_tokens, u.completion_tokens, opts.verbose)
-        
+        footer = _format_footer(
+            path, "fast", elapsed, u.prompt_tokens, u.completion_tokens, opts.verbose
+        )
+
         if opts.verbose:
             from mm.profile import get_active_profile_name
+
             profile_name = get_active_profile_name()
-            generate_output = _format_generate_verbose(profile_name, elapsed, u.prompt_tokens, u.completion_tokens)
+            generate_output = _format_generate_verbose(
+                profile_name, elapsed, u.prompt_tokens, u.completion_tokens
+            )
             output_parts = [result, "", generate_output]
             if footer:
                 output_parts.extend(["", footer])
             return "\n".join(output_parts)
-        
+
         return f"{result}\n\n{footer}" if footer else result
 
     return content
@@ -530,7 +537,8 @@ def _accurate_dispatch(path: Path, kind: str, spec: PipelineSpec, opts: _CatOpts
 
     llm = LlmBackend()
     return llm.generate(
-        kind, "accurate",
+        kind,
+        "accurate",
         context={"filename": path.name, "content": content[:4000]},
         pipeline_spec=spec,
     )
@@ -541,16 +549,24 @@ def _fmt_ms(ms: float) -> str:
     return f"{ms:,.0f}ms"
 
 
-def _format_generate_verbose(profile_name: str, elapsed_ms: float, prompt_tokens: int, completion_tokens: int) -> str:
+def _format_generate_verbose(
+    profile_name: str, elapsed_ms: float, prompt_tokens: int, completion_tokens: int
+) -> str:
     """Format verbose output for the generate step."""
-    token_info = f"{prompt_tokens}→{completion_tokens}" if (prompt_tokens > 0 or completion_tokens > 0) else "no tokens"
+    token_info = (
+        f"{prompt_tokens}→{completion_tokens}"
+        if (prompt_tokens > 0 or completion_tokens > 0)
+        else "no tokens"
+    )
     generate_text = f"generate: {profile_name} • {_fmt_ms(elapsed_ms)} • {token_info} tokens"
     return f"[dim]{generate_text}[/dim]"
 
 
 def _format_pipeline_tree(encode_info: str, generate_info: str | None = None) -> str:
     """Format pipeline steps as a tree structure."""
-    encode_text = encode_info.replace("[dim]", "").replace("[/dim]", "").replace("Encode: ", "encode: ")
+    encode_text = (
+        encode_info.replace("[dim]", "").replace("[/dim]", "").replace("Encode: ", "encode: ")
+    )
 
     if generate_info:
         generate_text = generate_info.replace("[dim]", "").replace("[/dim]", "")
@@ -560,25 +576,33 @@ def _format_pipeline_tree(encode_info: str, generate_info: str | None = None) ->
     return f"[dim]{pipeline}[/dim]"
 
 
-def _format_footer(path: Path, mode: str, elapsed_ms: float, prompt_tokens: int = 0, completion_tokens: int = 0, verbose: bool = False) -> str:
+def _format_footer(
+    path: Path,
+    mode: str,
+    elapsed_ms: float,
+    prompt_tokens: int = 0,
+    completion_tokens: int = 0,
+    verbose: bool = False,
+) -> str:
     """Format the footer with time, size, mode, profile, and tokens."""
     if not verbose:
         return ""
-    
+
     from mm.display import format_size
-    
+
     size_str = format_size(path.stat().st_size)
-    
+
     parts = [_fmt_ms(elapsed_ms), size_str, mode]
-    
+
     if mode == "accurate":
         from mm.profile import get_active_profile_name
+
         profile_name = get_active_profile_name()
         parts.append(profile_name)
-    
+
     if prompt_tokens > 0 or completion_tokens > 0:
         parts.append(f"{prompt_tokens}→{completion_tokens} tokens")
-    
+
     footer_text = " • ".join(parts)
     # Use Rich markup for dim styling (will work properly with output console)
     return f"[dim]{footer_text}[/dim]"
@@ -588,12 +612,12 @@ def _format_encode_verbose(strategy: str | None, messages: list[dict], elapsed_m
     """Format verbose output for the encode step."""
     if not strategy:
         strategy = "unknown"
-    
+
     # Count part types
     text_count = 0
     image_count = 0
     total_parts = 0
-    
+
     for msg in messages:
         content = msg.get("content", [])
         if isinstance(content, list):
@@ -605,17 +629,19 @@ def _format_encode_verbose(strategy: str | None, messages: list[dict], elapsed_m
                         text_count += 1
                     elif part_type == "image_url" or "inline_data" in part:
                         image_count += 1
-    
+
     # Format part summary
     part_details = []
     if text_count > 0:
         part_details.append(f"{text_count} text" if text_count == 1 else f"{text_count} texts")
     if image_count > 0:
         part_details.append(f"{image_count} image" if image_count == 1 else f"{image_count} images")
-    
+
     part_summary = ", ".join(part_details)
-    encode_text = f"Encode: {strategy} • {_fmt_ms(elapsed_ms)} → {total_parts} parts ({part_summary})"
-    
+    encode_text = (
+        f"Encode: {strategy} • {_fmt_ms(elapsed_ms)} → {total_parts} parts ({part_summary})"
+    )
+
     return f"[dim]{encode_text}[/dim]"
 
 
@@ -644,14 +670,14 @@ def _run_encoder(path: Path, kind: str, spec: PipelineSpec, opts: _CatOpts) -> s
             elif isinstance(content, str):
                 if content:
                     text_parts.append(content)
-        
+
         result = "\n\n".join(text_parts) if text_parts else ""
-        
+
         if opts.verbose:
             encode_output = _format_encode_verbose(spec.encode.strategy, messages, encode_elapsed)
             pipeline_tree = _format_pipeline_tree(encode_output)
             return f"{result}\n{pipeline_tree}" if result else pipeline_tree
-        
+
         return result
 
     from mm.llm import LlmBackend
@@ -671,22 +697,29 @@ def _run_encoder(path: Path, kind: str, spec: PipelineSpec, opts: _CatOpts) -> s
     if len(chunks) == 1:
         result = llm.generate(kind, opts.mode, context=ctx, parts=chunks[0], pipeline_spec=spec)
     else:
-        result = llm.generate_chunked(kind, opts.mode, context=ctx, chunks=chunks, pipeline_spec=spec)
-    
+        result = llm.generate_chunked(
+            kind, opts.mode, context=ctx, chunks=chunks, pipeline_spec=spec
+        )
+
     elapsed = (time.monotonic() - t0) * 1000
     u = llm.last_usage
-    footer = _format_footer(path, opts.mode, elapsed, u.prompt_tokens, u.completion_tokens, opts.verbose)
-    
+    footer = _format_footer(
+        path, opts.mode, elapsed, u.prompt_tokens, u.completion_tokens, opts.verbose
+    )
+
     if opts.verbose:
         from mm.profile import get_active_profile_name
+
         encode_output = _format_encode_verbose(spec.encode.strategy, messages, encode_elapsed)
         profile_name = get_active_profile_name()
-        generate_output = _format_generate_verbose(profile_name, elapsed, u.prompt_tokens, u.completion_tokens)
-        
+        generate_output = _format_generate_verbose(
+            profile_name, elapsed, u.prompt_tokens, u.completion_tokens
+        )
+
         pipeline_tree = _format_pipeline_tree(encode_output, generate_output)
         output_parts = [result, pipeline_tree]
         return "\n".join(output_parts)
-    
+
     return f"{result}\n\n{footer}" if footer else result
 
 
@@ -703,22 +736,30 @@ def _accurate_image(path: Path, spec: PipelineSpec, opts: _CatOpts) -> str:
     llm = LlmBackend()
     parts = [image_part(path)]
     content = llm.generate(
-        "image", "accurate", context={"filename": path.name}, parts=parts,
+        "image",
+        "accurate",
+        context={"filename": path.name},
+        parts=parts,
         pipeline_spec=spec,
     )
     elapsed = (time.monotonic() - t0) * 1000
     u = llm.last_usage
-    footer = _format_footer(path, "accurate", elapsed, u.prompt_tokens, u.completion_tokens, opts.verbose)
+    footer = _format_footer(
+        path, "accurate", elapsed, u.prompt_tokens, u.completion_tokens, opts.verbose
+    )
 
     if opts.verbose:
         from mm.profile import get_active_profile_name
+
         profile_name = get_active_profile_name()
-        generate_output = _format_generate_verbose(profile_name, elapsed, u.prompt_tokens, u.completion_tokens)
+        generate_output = _format_generate_verbose(
+            profile_name, elapsed, u.prompt_tokens, u.completion_tokens
+        )
         output_parts = [content, "", generate_output]
         if footer:
             output_parts.extend(["", footer])
         return "\n".join(output_parts)
-    
+
     return f"{content}\n\n{footer}" if footer else content
 
 
@@ -832,7 +873,8 @@ def _accurate_video(path: Path, spec: PipelineSpec, opts: _CatOpts) -> str:
         llm = LlmBackend()
         img_parts = [image_part(mp, mime="image/jpeg") for mp in mosaics]
         analysis = llm.generate(
-            "video", "accurate",
+            "video",
+            "accurate",
             context={"filename": path.name, "duration_ctx": dur_ctx},
             parts=img_parts,
             pipeline_spec=spec,
@@ -902,16 +944,21 @@ def _accurate_video(path: Path, spec: PipelineSpec, opts: _CatOpts) -> str:
         out_parts.append(f"\n## Transcript ({word_count} words)\n{transcript}")
 
     token_keys = {k: v for k, v in timing.items() if "tokens" in k}
-    prompt_tokens = int(token_keys.get('vlm_prompt_tokens', 0))
-    completion_tokens = int(token_keys.get('vlm_completion_tokens', 0))
-    footer = _format_footer(path, "accurate", timing['total_ms'], prompt_tokens, completion_tokens, opts.verbose)
-    
+    prompt_tokens = int(token_keys.get("vlm_prompt_tokens", 0))
+    completion_tokens = int(token_keys.get("vlm_completion_tokens", 0))
+    footer = _format_footer(
+        path, "accurate", timing["total_ms"], prompt_tokens, completion_tokens, opts.verbose
+    )
+
     if opts.verbose:
         from mm.profile import get_active_profile_name
+
         profile_name = get_active_profile_name()
-        generate_output = _format_generate_verbose(profile_name, timing['total_ms'], prompt_tokens, completion_tokens)
+        generate_output = _format_generate_verbose(
+            profile_name, timing["total_ms"], prompt_tokens, completion_tokens
+        )
         out_parts.append(f"\n{generate_output}")
-    
+
     if footer:
         out_parts.append(f"\n{footer}")
     return "\n".join(out_parts)
@@ -977,7 +1024,8 @@ def _accurate_audio(path: Path, spec: PipelineSpec, opts: _CatOpts) -> str:
     t_llm = time.monotonic()
     llm = LlmBackend()
     summary = llm.generate(
-        "audio", "accurate",
+        "audio",
+        "accurate",
         context={"filename": path.name, "transcript": transcript},
         pipeline_spec=spec,
     )
@@ -986,15 +1034,20 @@ def _accurate_audio(path: Path, spec: PipelineSpec, opts: _CatOpts) -> str:
     u = llm.last_usage
 
     word_count = len(transcript.split())
-    footer = _format_footer(path, "accurate", timing['total_ms'], u.prompt_tokens, u.completion_tokens, opts.verbose)
+    footer = _format_footer(
+        path, "accurate", timing["total_ms"], u.prompt_tokens, u.completion_tokens, opts.verbose
+    )
     result = f"{summary}\n\n[Transcript: {word_count} words]"
-    
+
     if opts.verbose:
         from mm.profile import get_active_profile_name
+
         profile_name = get_active_profile_name()
-        generate_output = _format_generate_verbose(profile_name, timing['total_ms'], u.prompt_tokens, u.completion_tokens)
+        generate_output = _format_generate_verbose(
+            profile_name, timing["total_ms"], u.prompt_tokens, u.completion_tokens
+        )
         result += f"\n\n{generate_output}"
-    
+
     if footer:
         result += f"\n{footer}"
     return result
@@ -1170,9 +1223,62 @@ def _display_rich(
     kind = file_kind(path)
     is_binary = kind in ("image", "document", "video", "audio") or "\x00" in content[:512]
 
-    if not is_binary and ext in ("py", "rs", "js", "ts", "tsx", "jsx", "go", "java", "c", "cpp", "h", "hpp", "rb", "sh", "bash", "zsh", "yaml", "yml", "toml", "json", "md", "html", "css", "sql", "xml"):
+    if not is_binary and ext in (
+        "py",
+        "rs",
+        "js",
+        "ts",
+        "tsx",
+        "jsx",
+        "go",
+        "java",
+        "c",
+        "cpp",
+        "h",
+        "hpp",
+        "rb",
+        "sh",
+        "bash",
+        "zsh",
+        "yaml",
+        "yml",
+        "toml",
+        "json",
+        "md",
+        "html",
+        "css",
+        "sql",
+        "xml",
+    ):
         from rich.syntax import Syntax
-        syntax = Syntax(content, ext if ext in ("py", "rs", "js", "ts", "go", "java", "c", "cpp", "rb", "bash", "yaml", "json", "md", "html", "css", "sql", "xml") else "text", theme="monokai", line_numbers=True)
+
+        syntax = Syntax(
+            content,
+            ext
+            if ext
+            in (
+                "py",
+                "rs",
+                "js",
+                "ts",
+                "go",
+                "java",
+                "c",
+                "cpp",
+                "rb",
+                "bash",
+                "yaml",
+                "json",
+                "md",
+                "html",
+                "css",
+                "sql",
+                "xml",
+            )
+            else "text",
+            theme="monokai",
+            line_numbers=True,
+        )
         output_console.print(syntax)
     else:
         output_console.print(content)
@@ -1261,7 +1367,7 @@ def _do_list_pipelines() -> None:
     home = str(Path.home())
     display_rows: list[tuple[str, str, str, str, dict[str, Any]]] = []
     for yaml_path, kind, mode, encoder, params in rows:
-        dp = "~" + yaml_path[len(home):] if yaml_path.startswith(home) else yaml_path
+        dp = "~" + yaml_path[len(home) :] if yaml_path.startswith(home) else yaml_path
         display_rows.append((dp, kind, mode, encoder, params))
 
     lines: list[Text] = []
@@ -1295,7 +1401,9 @@ def _do_list_pipelines() -> None:
     max_line = max((len(line.plain) for line in lines), default=60)
     panel_w = max_line + 8
     console = Console(width=max(panel_w, 80))
-    panel = Panel(body, title="Pipelines", title_align="left", box=box.ROUNDED, padding=(1, 2), width=panel_w)
+    panel = Panel(
+        body, title="Pipelines", title_align="left", box=box.ROUNDED, padding=(1, 2), width=panel_w
+    )
     console.print()
     console.print(panel)
     console.print()
@@ -1347,7 +1455,9 @@ def _do_list_encoders() -> None:
     max_line = max((len(line.plain) for line in lines), default=60)
     panel_w = max_line + 8
     console = Console(width=max(panel_w, 80))
-    panel = Panel(body, title="Encoders", title_align="left", box=box.ROUNDED, padding=(1, 2), width=panel_w)
+    panel = Panel(
+        body, title="Encoders", title_align="left", box=box.ROUNDED, padding=(1, 2), width=panel_w
+    )
     console.print()
     console.print(panel)
     console.print()

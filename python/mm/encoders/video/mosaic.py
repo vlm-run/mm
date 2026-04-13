@@ -57,18 +57,26 @@ class VideoMosaic:
         )
 
         if not ffmpeg_available():
-            yield _to_message([{
-                "type": "text",
-                "text": f"[ffmpeg not available for {path.name}]",
-            }])
+            yield _to_message(
+                [
+                    {
+                        "type": "text",
+                        "text": f"[ffmpeg not available for {path.name}]",
+                    }
+                ]
+            )
             return
 
         duration = probe_duration(path)
         if duration <= 0:
-            yield _to_message([{
-                "type": "text",
-                "text": f"[Cannot determine duration for {path.name}]",
-            }])
+            yield _to_message(
+                [
+                    {
+                        "type": "text",
+                        "text": f"[Cannot determine duration for {path.name}]",
+                    }
+                ]
+            )
             return
 
         timestamps = _get_timestamps(path, duration, num_frames)
@@ -77,16 +85,21 @@ class VideoMosaic:
         mosaic_dir = Path(tempfile.mkdtemp(prefix="mm_mosaic_mo_"))
         try:
             frame_paths = extract_frames_at_timestamps(
-                path, timestamps,
+                path,
+                timestamps,
                 thumb_width=thumb_width,
                 out_dir=frame_dir,
             )
 
             if not frame_paths:
-                yield _to_message([{
-                    "type": "text",
-                    "text": f"[No frames extracted from {path.name}]",
-                }])
+                yield _to_message(
+                    [
+                        {
+                            "type": "text",
+                            "text": f"[No frames extracted from {path.name}]",
+                        }
+                    ]
+                )
                 return
 
             mosaic_paths = tile_frames_to_mosaics(
@@ -98,10 +111,14 @@ class VideoMosaic:
             )
 
             if not mosaic_paths:
-                yield _to_message([{
-                    "type": "text",
-                    "text": f"[Mosaic assembly failed for {path.name}]",
-                }])
+                yield _to_message(
+                    [
+                        {
+                            "type": "text",
+                            "text": f"[Mosaic assembly failed for {path.name}]",
+                        }
+                    ]
+                )
                 return
 
             if len(mosaic_paths) > num_mosaics:
@@ -112,19 +129,25 @@ class VideoMosaic:
 
             logger.debug(
                 "video_mosaic [path=%s, duration=%s, frames=%d, mosaics=%d, grid=%dx%d]",
-                path.name, dur_str, len(frame_paths), len(mosaic_paths),
-                tile_cols, tile_rows,
+                path.name,
+                dur_str,
+                len(frame_paths),
+                len(mosaic_paths),
+                tile_cols,
+                tile_rows,
             )
 
-            parts: list[dict[str, Any]] = [{
-                "type": "text",
-                "text": (
-                    f"{path.name} ({dur_str}) — "
-                    f"{len(mosaic_paths)} mosaic(s), "
-                    f"{tile_cols}x{tile_rows} grid, "
-                    f"{len(frame_paths)} frames:"
-                ),
-            }]
+            parts: list[dict[str, Any]] = [
+                {
+                    "type": "text",
+                    "text": (
+                        f"{path.name} ({dur_str}) — "
+                        f"{len(mosaic_paths)} mosaic(s), "
+                        f"{tile_cols}x{tile_rows} grid, "
+                        f"{len(frame_paths)} frames:"
+                    ),
+                }
+            ]
             for mp in mosaic_paths:
                 b64 = base64.b64encode(mp.read_bytes()).decode()
                 parts.append(_image_part(b64, "image/jpeg", provider))
@@ -136,7 +159,9 @@ class VideoMosaic:
 
 
 def _get_timestamps(
-    path: Path, duration: float, num_frames: int,
+    path: Path,
+    duration: float,
+    num_frames: int,
 ) -> list[float]:
     """Get frame timestamps via scene detection or uniform sampling."""
     try:

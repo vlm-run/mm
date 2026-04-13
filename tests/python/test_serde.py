@@ -206,7 +206,6 @@ class TestImageResize:
         ratio = w / h
         assert abs(ratio - 1.5) < 0.1
 
-
     def test_resize_tall_image_respects_max_height(self, tmp_path):
         """A tall image (H > max_width) should be downscaled by height."""
         tall = _make_jpeg(tmp_path / "tall.jpg", 500, 3000)

@@ -17,18 +17,49 @@ FileKind = Literal["image", "video", "audio", "document", "text"]
 
 # -- Extension sets ----------------------------------------------------------
 
-IMAGE_EXTS: frozenset[str] = frozenset((
-    ".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp", ".tiff", ".tif", ".svg",
-))
+IMAGE_EXTS: frozenset[str] = frozenset(
+    (
+        ".png",
+        ".jpg",
+        ".jpeg",
+        ".gif",
+        ".webp",
+        ".bmp",
+        ".tiff",
+        ".tif",
+        ".svg",
+    )
+)
 
-VIDEO_EXTS: frozenset[str] = frozenset((
-    ".mp4", ".mkv", ".avi", ".mov", ".wmv", ".flv", ".webm",
-    ".m4v", ".mpg", ".mpeg", ".3gp", ".ogv",
-))
+VIDEO_EXTS: frozenset[str] = frozenset(
+    (
+        ".mp4",
+        ".mkv",
+        ".avi",
+        ".mov",
+        ".wmv",
+        ".flv",
+        ".webm",
+        ".m4v",
+        ".mpg",
+        ".mpeg",
+        ".3gp",
+        ".ogv",
+    )
+)
 
-AUDIO_EXTS: frozenset[str] = frozenset((
-    ".mp3", ".wav", ".flac", ".aac", ".ogg", ".m4a", ".wma", ".opus",
-))
+AUDIO_EXTS: frozenset[str] = frozenset(
+    (
+        ".mp3",
+        ".wav",
+        ".flac",
+        ".aac",
+        ".ogg",
+        ".m4a",
+        ".wma",
+        ".opus",
+    )
+)
 
 DOCUMENT_EXTS: frozenset[str] = frozenset((".pdf", ".docx", ".pptx"))
 

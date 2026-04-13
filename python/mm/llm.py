@@ -111,9 +111,7 @@ class LlmBackend:
         else:
             message_content = prompt
 
-        messages: list[dict[str, Any]] = [
-            {"role": "user", "content": message_content}
-        ]
+        messages: list[dict[str, Any]] = [{"role": "user", "content": message_content}]
 
         return self._chat(
             messages,
@@ -157,7 +155,10 @@ class LlmBackend:
 
         for i, parts in enumerate(chunks):
             result = self.generate(
-                kind, mode, context=context, parts=parts,
+                kind,
+                mode,
+                context=context,
+                parts=parts,
                 pipeline_spec=pipeline_spec,
             )
             results.append(result)

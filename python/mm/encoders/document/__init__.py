@@ -44,18 +44,24 @@ class DocumentRasterize:
 
         page_images: list[tuple[str, str]] = _rasterize_pages(path, max_width, max_pages)
         if not page_images:
-            yield _to_message([{
-                "type": "text",
-                "text": f"[No pages could be rasterized from {path.name}]",
-            }])
+            yield _to_message(
+                [
+                    {
+                        "type": "text",
+                        "text": f"[No pages could be rasterized from {path.name}]",
+                    }
+                ]
+            )
             return
 
         for i in range(0, len(page_images), pages_per_message):
             batch: list[tuple[str, str]] = page_images[i : i + pages_per_message]
-            parts: list[dict[str, Any]] = [{
-                "type": "text",
-                "text": f"Document pages {i + 1}-{i + len(batch)} of {path.name}:",
-            }]
+            parts: list[dict[str, Any]] = [
+                {
+                    "type": "text",
+                    "text": f"Document pages {i + 1}-{i + len(batch)} of {path.name}:",
+                }
+            ]
             for b64, mime in batch:
                 parts.append(_image_part(b64, mime, provider))
             yield _to_message(parts)
@@ -86,26 +92,34 @@ class DocumentRasterizeText:
         page_texts: list[str] = _extract_page_texts(path, max_pages)
 
         if not page_images:
-            yield _to_message([{
-                "type": "text",
-                "text": f"[No pages could be rasterized from {path.name}]",
-            }])
+            yield _to_message(
+                [
+                    {
+                        "type": "text",
+                        "text": f"[No pages could be rasterized from {path.name}]",
+                    }
+                ]
+            )
             return
 
         for i in range(0, len(page_images), pages_per_message):
             batch_imgs: list[tuple[str, str]] = page_images[i : i + pages_per_message]
             batch_texts: list[str] = page_texts[i : i + pages_per_message] if page_texts else []
-            parts: list[dict[str, Any]] = [{
-                "type": "text",
-                "text": f"Document pages {i + 1}-{i + len(batch_imgs)} of {path.name}:",
-            }]
+            parts: list[dict[str, Any]] = [
+                {
+                    "type": "text",
+                    "text": f"Document pages {i + 1}-{i + len(batch_imgs)} of {path.name}:",
+                }
+            ]
             for j, (b64, mime) in enumerate(batch_imgs):
                 parts.append(_image_part(b64, mime, provider))
                 if j < len(batch_texts) and batch_texts[j].strip():
-                    parts.append({
-                        "type": "text",
-                        "text": f"[Page {i + j + 1} text]: {batch_texts[j].strip()}",
-                    })
+                    parts.append(
+                        {
+                            "type": "text",
+                            "text": f"[Page {i + j + 1} text]: {batch_texts[j].strip()}",
+                        }
+                    )
             yield _to_message(parts)
 
 
@@ -142,7 +156,9 @@ def _rasterize_pages(
 
         logger.debug(
             "rasterize_pages [path=%s, pages=%d, max_width=%d]",
-            path.name, total, max_width,
+            path.name,
+            total,
+            max_width,
         )
 
         results: list[tuple[str, str]] = []

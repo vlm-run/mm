@@ -505,11 +505,12 @@ def display_elapsed_wrapper(start_time: float):
             cached = False
             try:
                 from mm.commands import cat as cat_module
-                total_bytes = getattr(cat_module, '_total_bytes_processed', 0)
-                cached = getattr(cat_module, '_was_cached', False)
+
+                total_bytes = getattr(cat_module, "_total_bytes_processed", 0)
+                cached = getattr(cat_module, "_was_cached", False)
             except (ImportError, AttributeError):
                 pass
-            
+
             display_elapsed(start_time, total_bytes, cached=cached)
 
     return check_exit, display_if_successful

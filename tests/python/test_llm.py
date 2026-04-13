@@ -2,12 +2,8 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from pathlib import Path
-from typing import Any
 from unittest.mock import MagicMock, patch
 
-import pytest
 
 from mm.llm import LlmUsage, _extract_answer_from_thinking, image_part
 
@@ -27,7 +23,9 @@ class TestLlmUsage:
 
 class TestExtractAnswerFromThinking:
     def test_quoted_answer(self):
-        thinking = 'The user asked for a description. "A beautiful sunset over the ocean" seems right.'
+        thinking = (
+            'The user asked for a description. "A beautiful sunset over the ocean" seems right.'
+        )
         result = _extract_answer_from_thinking(thinking)
         assert result == "A beautiful sunset over the ocean"
 
@@ -92,6 +90,7 @@ class TestLlmBackendChat:
                 mock_client = MagicMock()
                 mock_openai_cls.return_value = mock_client
                 from mm.llm import LlmBackend
+
                 backend = LlmBackend()
                 return backend, mock_client
 
@@ -144,8 +143,9 @@ class TestLlmBackendChat:
             json_mode=True,
         )
         call_kwargs = client.chat.completions.create.call_args
-        assert call_kwargs.kwargs.get("response_format") == {"type": "json_object"} or \
-               call_kwargs[1].get("response_format") == {"type": "json_object"}
+        assert call_kwargs.kwargs.get("response_format") == {"type": "json_object"} or call_kwargs[
+            1
+        ].get("response_format") == {"type": "json_object"}
 
     def test_generate_loads_template_and_calls_chat(self):
         backend, client = self._make_backend()
@@ -153,7 +153,8 @@ class TestLlmBackendChat:
         client.chat.completions.create.return_value = resp
 
         result = backend.generate(
-            "image", "accurate",
+            "image",
+            "accurate",
             context={"filename": "test.jpg"},
             parts=[{"type": "image_url", "image_url": {"url": "data:image/jpeg;base64,abc"}}],
         )
@@ -166,7 +167,8 @@ class TestLlmBackendChat:
 
         # document/fast.yaml ships with no `generate` stage (encode-only pipeline).
         result = backend.generate(
-            "document", "fast",
+            "document",
+            "fast",
             context={"filename": "test.pdf"},
             parts=[{"type": "text", "text": "page content"}],
         )
@@ -196,11 +198,13 @@ class TestLlmBackendChat:
 
     def test_generate_chunked_filters_errors(self):
         backend, client = self._make_backend()
-        responses = iter([
-            self._mock_response("good result"),
-            self._mock_response("[LLM error: timeout]"),
-            self._mock_response("another good result"),
-        ])
+        responses = iter(
+            [
+                self._mock_response("good result"),
+                self._mock_response("[LLM error: timeout]"),
+                self._mock_response("another good result"),
+            ]
+        )
         client.chat.completions.create.side_effect = lambda **kw: next(responses)
 
         chunks = [

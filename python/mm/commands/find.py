@@ -247,9 +247,7 @@ def _find_table(
     elif fmt == "tsv":
         display_cols = cols or table.column_names
         n = table.num_rows if limit is None else min(limit, table.num_rows)
-        str_rows = [
-            [str(table.column(c)[i].as_py()) for c in display_cols] for i in range(n)
-        ]
+        str_rows = [[str(table.column(c)[i].as_py()) for c in display_cols] for i in range(n)]
         widths = [len(c) for c in display_cols]
         RIGHT_ALIGN = {"size", "depth", "width", "height", "line_count", "word_count", "pages"}
         for sr in str_rows:
@@ -264,7 +262,9 @@ def _find_table(
         for sr in str_rows:
             print(
                 "\t".join(
-                    cell.rjust(widths[j]) if display_cols[j] in RIGHT_ALIGN else cell.ljust(widths[j])
+                    cell.rjust(widths[j])
+                    if display_cols[j] in RIGHT_ALIGN
+                    else cell.ljust(widths[j])
                     for j, cell in enumerate(sr)
                 )
             )

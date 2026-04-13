@@ -83,8 +83,7 @@ def load(kind: str, mode: str = "fast") -> PipelineSpec:
     path = user_path if user_path.is_file() else builtin_path
     if not path.is_file():
         raise FileNotFoundError(
-            f"No pipeline for kind={kind!r}, mode={mode!r}. "
-            f"Looked in: {user_path}, {builtin_path}"
+            f"No pipeline for kind={kind!r}, mode={mode!r}. Looked in: {user_path}, {builtin_path}"
         )
 
     data = yaml.safe_load(path.read_text())

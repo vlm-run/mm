@@ -100,7 +100,7 @@ def get(name: str) -> MessageStrategy:
     for prefix in _KIND_PREFIXES:
         token = f"{prefix}-"
         if name.startswith(token):
-            bare = name[len(token):]
+            bare = name[len(token) :]
             if bare in _REGISTRY and prefix in _REGISTRY[bare].media_types:
                 return _REGISTRY[bare]
             break
@@ -118,11 +118,7 @@ def list_strategies(*, media_type: str | None = None) -> list[str]:
     _ensure_discovered()
     if media_type is None:
         return sorted(_REGISTRY)
-    return sorted(
-        name
-        for name, s in _REGISTRY.items()
-        if media_type in s.media_types
-    )
+    return sorted(name for name, s in _REGISTRY.items() if media_type in s.media_types)
 
 
 def _encoder_description(strat: MessageStrategy) -> str:
@@ -142,7 +138,9 @@ def _encoder_params(strat: MessageStrategy) -> list[tuple[str, str]]:
 
     results: list[tuple[str, str]] = []
     try:
-        src = inspect.getsource(type(strat).encode if hasattr(type(strat), "encode") else strat.encode)
+        src = inspect.getsource(
+            type(strat).encode if hasattr(type(strat), "encode") else strat.encode
+        )
     except (TypeError, OSError):
         return results
 
@@ -168,13 +166,17 @@ def list_encoders_detail(*, media_type: str | None = None) -> list[dict[str, Any
         if media_type and media_type not in s.media_types:
             continue
         media_prefix = s.media_types[0] if s.media_types else "unknown"
-        entries.append({
-            "name": name,
-            "prefixed_name": f"{media_prefix}-{name}" if not name.startswith(media_prefix) else name,
-            "media_types": s.media_types,
-            "description": _encoder_description(s),
-            "params": _encoder_params(s),
-        })
+        entries.append(
+            {
+                "name": name,
+                "prefixed_name": f"{media_prefix}-{name}"
+                if not name.startswith(media_prefix)
+                else name,
+                "media_types": s.media_types,
+                "description": _encoder_description(s),
+                "params": _encoder_params(s),
+            }
+        )
     return sorted(entries, key=lambda e: e["prefixed_name"])
 
 
@@ -344,5 +346,3 @@ def _resolve_provider() -> str:
         return "gemini" if "gemini" in name.lower() else "openai"
     except Exception:
         return "openai"
-
-

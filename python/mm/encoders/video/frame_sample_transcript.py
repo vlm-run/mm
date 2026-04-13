@@ -59,7 +59,9 @@ class VideoFrameSampleWithTranscript:
 
         duration: float = probe_duration(path)
         if duration <= 0:
-            yield _to_message([{"type": "text", "text": f"[Cannot determine duration for {path.name}]"}])
+            yield _to_message(
+                [{"type": "text", "text": f"[Cannot determine duration for {path.name}]"}]
+            )
             return
 
         yield from self._transcript_messages(path, whisper_model, language, audio_speed)
@@ -72,11 +74,16 @@ class VideoFrameSampleWithTranscript:
 
         logger.debug(
             "frame_sample_w_transcript [path=%s, duration=%.1fs, fps=%.1f, frames=%d]",
-            path.name, duration, fps, len(timestamps),
+            path.name,
+            duration,
+            fps,
+            len(timestamps),
         )
 
         frame_paths: list[Path] = extract_frames_at_timestamps(
-            path, timestamps, thumb_width=max_width,
+            path,
+            timestamps,
+            thumb_width=max_width,
         )
 
         if not frame_paths:
@@ -91,10 +98,12 @@ class VideoFrameSampleWithTranscript:
                 t_start: float = timestamps[i] if i < len(timestamps) else 0.0
                 t_end_idx: int = min(i + max_frames_per_message, len(timestamps)) - 1
                 t_end: float = timestamps[t_end_idx] if timestamps else 0.0
-                parts.append({
-                    "type": "text",
-                    "text": f"Video frames from {path.name} ({t_start:.1f}s - {t_end:.1f}s):",
-                })
+                parts.append(
+                    {
+                        "type": "text",
+                        "text": f"Video frames from {path.name} ({t_start:.1f}s - {t_end:.1f}s):",
+                    }
+                )
 
                 for frame_path in batch:
                     b64: str = base64.b64encode(frame_path.read_bytes()).decode()
@@ -157,8 +166,7 @@ class VideoFrameSampleWithTranscript:
                 f"Audio transcript of {path.name}"
                 f" (lang={whisper_result.language},"
                 f" model={whisper_model},"
-                f" {whisper_result.elapsed_ms:.0f}ms):\n\n"
-                + "\n".join(segment_lines)
+                f" {whisper_result.elapsed_ms:.0f}ms):\n\n" + "\n".join(segment_lines)
             )
         else:
             text = f"Audio transcript of {path.name}:\n\n{transcript}"
