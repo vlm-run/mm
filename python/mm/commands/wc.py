@@ -8,7 +8,7 @@ from typing import Annotated, Optional
 import typer
 
 from mm.pipe import read_paths_from_stdin
-from mm.utils import Format
+from mm.utils import Format, file_kind_with_code
 
 TOKEN_CHARS_RATIO = 4
 
@@ -266,49 +266,6 @@ def wc_cmd(
         output_console.print(tbl)
 
 
-# ---------------------------------------------------------------------------
-# Piped-input helper
-# ---------------------------------------------------------------------------
-
-_IMAGE_EXTS = frozenset((".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp", ".tiff", ".svg"))
-_VIDEO_EXTS = frozenset((".mp4", ".mkv", ".avi", ".mov", ".wmv", ".flv", ".webm", ".m4v"))
-_AUDIO_EXTS = frozenset((".mp3", ".wav", ".flac", ".aac", ".ogg", ".m4a", ".wma", ".opus"))
-_DOC_EXTS = frozenset((".pdf", ".docx", ".pptx"))
-_CODE_EXTS = frozenset(
-    (
-        ".py",
-        ".rs",
-        ".js",
-        ".ts",
-        ".go",
-        ".c",
-        ".cpp",
-        ".h",
-        ".java",
-        ".rb",
-        ".sh",
-        ".toml",
-        ".yaml",
-        ".yml",
-    )
-)
-
-
-def _kind_from_ext(ext: str) -> str:
-    ext = ext.lower()
-    if ext in _IMAGE_EXTS:
-        return "image"
-    if ext in _VIDEO_EXTS:
-        return "video"
-    if ext in _AUDIO_EXTS:
-        return "audio"
-    if ext in _DOC_EXTS:
-        return "document"
-    if ext in _CODE_EXTS:
-        return "code"
-    return "other"
-
-
 def _wc_from_paths(
     root: Path, paths: list[str], kind_filter: str | None
 ) -> tuple[dict[str, dict[str, int | float]], int, int, int, int]:
@@ -326,7 +283,7 @@ def _wc_from_paths(
         if not p.is_file():
             continue
 
-        fkind = _kind_from_ext(p.suffix)
+        fkind = file_kind_with_code(p)
         if kind_filter and fkind != kind_filter:
             continue
 

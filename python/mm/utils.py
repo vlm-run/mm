@@ -3,7 +3,8 @@ from __future__ import annotations
 import sys
 import time as _time
 from enum import Enum
-from typing import Callable, ParamSpec, TypeVar
+from pathlib import Path
+from typing import Callable, Literal, ParamSpec, TypeVar
 
 P = ParamSpec("P")
 T = TypeVar("T")
@@ -53,3 +54,70 @@ def batch_array(arr: list[T], x: int) -> list[list[T]]:
     if x <= 0:
         raise ValueError("x must be greater than 0")
     return [arr[i : i + x] for i in range(0, len(arr), x)]
+
+
+# ---------------------------------------------------------------------------
+# Piped-input helper
+# ---------------------------------------------------------------------------
+
+IMAGE_EXTS = frozenset({".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp", ".tiff", ".svg"})
+VIDEO_EXTS = frozenset(
+    {
+        ".mp4",
+        ".mkv",
+        ".avi",
+        ".mov",
+        ".wmv",
+        ".flv",
+        ".webm",
+        ".m4v",
+        ".mpg",
+        ".mpeg",
+        ".3gp",
+        ".ogv",
+    }
+)
+AUDIO_EXTS = frozenset({".mp3", ".wav", ".flac", ".aac", ".ogg", ".m4a", ".wma", ".opus"})
+DOCUMENT_EXTS = frozenset({".pdf", ".docx", ".pptx"})
+CODE_EXTS = frozenset(
+    {
+        ".py",
+        ".rs",
+        ".js",
+        ".ts",
+        ".go",
+        ".c",
+        ".cpp",
+        ".h",
+        ".java",
+        ".rb",
+        ".sh",
+        ".toml",
+        ".yaml",
+        ".yml",
+    }
+)
+
+FileKind = Literal["text", "image", "video", "audio", "document"]
+
+
+def file_kind(path: Path | str) -> FileKind:
+    ext = Path(path).suffix.lower()
+    if ext in IMAGE_EXTS:
+        return "image"
+    if ext in VIDEO_EXTS:
+        return "video"
+    if ext in AUDIO_EXTS:
+        return "audio"
+    if ext in DOCUMENT_EXTS:
+        return "document"
+    return "text"
+
+
+def file_kind_with_code(path: Path) -> str:
+    kind = file_kind(path)
+    if kind != "text":
+        return kind
+    if path.suffix.lower() in CODE_EXTS:
+        return "code"
+    return "other"
