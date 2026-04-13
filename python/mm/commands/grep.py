@@ -73,32 +73,47 @@ def grep_cmd(
         typer.echo(f"Invalid regex: {e}", err=True)
         raise typer.Exit(1)
 
-    files_to_search: list[FileEntry] = []
     all_matches: list[dict] = []
     file_counts: dict[str, int] = {}
+    files_to_search: list[FileEntry] = []
+    seen_paths: set[str] = set()
 
-    from mm.context import Context
-
+    # Directory scan (when provided)
     if directory:
+        from mm.context import Context
+
         ctx = Context(_directory)
         if kind:
             ctx = ctx.filter(kind=kind)
         if ext:
             ctx = ctx.filter(ext=ext)
+        for f in ctx.files:
+            if f.path.startswith("."):
+                continue
+            resolved = str((_directory.resolve() / f.path).resolve())
+            if resolved not in seen_paths:
+                seen_paths.add(resolved)
+                files_to_search.append(f)
 
-        files_to_search = list(filter(lambda v: not v.path.startswith("."), ctx.files))
-
+    # Piped paths (deduped against directory scan)
     if stdin_paths:
-        from mm.utils import file_kind, is_binary_content
+        from mm.utils import file_kind_with_code, is_binary_content
 
         for item in resolve_piped_paths(stdin_paths):
-            kind = file_kind(item)
+            if item in seen_paths:
+                continue
+            fkind = file_kind_with_code(Path(item))
+            if kind and kind != fkind:
+                continue
+            if ext and not item.endswith(ext):
+                continue
+            seen_paths.add(item)
             files_to_search.append(
                 FileEntry(
                     row=dict(
                         path=item,
-                        kind=kind,
-                        is_binary=is_binary_content(kind=kind),
+                        kind=fkind,
+                        is_binary=is_binary_content(kind=fkind),
                     )
                 )
             )

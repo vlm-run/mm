@@ -202,11 +202,13 @@ def _find_table(
         table = table.filter(mask)
 
     if stdin_paths:
-        from mm.query import query_arrow_table
+        from mm.pipe import resolve_piped_paths
 
-        resolved = resolve_piped_paths(stdin_paths)
-        path_list = ", ".join(f"'{p}'" for p in resolved)
-        table = query_arrow_table(table, f"SELECT * FROM files WHERE path IN ({path_list})")
+        # Arrow table has relative paths; resolve both sides to absolute for matching.
+        stdin_set = set(resolve_piped_paths(stdin_paths))
+        root = Path(directory).resolve()
+        mask = [str(root / p) in stdin_set for p in table.column("path").to_pylist()]
+        table = table.filter(mask)
 
     if depth is not None:
         from mm.query import query_arrow_table

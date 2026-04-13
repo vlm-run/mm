@@ -80,8 +80,9 @@ def wc_cmd(
         total_lines = base["lines"]
 
     doc_entries = []
-    # Overlay document counts from Python (pypdfium2 extraction)
-    if "document" in kind_stats and kind_stats["document"].get(F_FILES, 0) > 0:
+    # Overlay document counts from Python (pypdfium2 extraction).
+    # Skip when using piped input — _wc_from_paths already handles documents.
+    if not stdin_paths and "document" in kind_stats and kind_stats["document"].get(F_FILES, 0) > 0:
         doc_entries = json_mod.loads(scanner.to_json_fast(kind="document"))
     if doc_entries:
         from mm.commands.cat import _l1_document
@@ -269,6 +270,7 @@ def _wc_from_paths(
     kind_filter: str | None,
 ) -> tuple[dict[str, dict[str, int | float]], int, int, int, int]:
     """Compute wc stats for a specific set of piped file paths."""
+    from mm.pipe import resolve_piped_paths
     from mm.utils import file_kind_with_code
 
     kind_stats: dict[str, dict[str, int | float]] = {}
@@ -277,10 +279,8 @@ def _wc_from_paths(
     total_tokens = 0
     total_lines = 0
 
-    for p_str in paths:
+    for p_str in resolve_piped_paths(paths):
         p = Path(p_str)
-        if not p.is_absolute():
-            p = root / p
         if not p.is_file():
             continue
 
@@ -312,9 +312,9 @@ def _wc_from_paths(
 
         if fkind not in kind_stats:
             kind_stats[fkind] = {F_FILES: 0, F_SIZE: 0, F_LINES: 0, F_TOKENS: 0}
-        kind_stats[fkind][F_FILES] = int(kind_stats[fkind][F_FILES]) + 1
-        kind_stats[fkind][F_SIZE] = int(kind_stats[fkind][F_SIZE]) + fsize
-        kind_stats[fkind][F_LINES] = int(kind_stats[fkind][F_LINES]) + flines
-        kind_stats[fkind][F_TOKENS] = int(kind_stats[fkind][F_TOKENS]) + ftokens
+        kind_stats[fkind][F_FILES] += 1
+        kind_stats[fkind][F_SIZE] += fsize
+        kind_stats[fkind][F_LINES] += flines
+        kind_stats[fkind][F_TOKENS] += ftokens
 
     return kind_stats, total_files, total_size, total_tokens, total_lines
