@@ -477,6 +477,26 @@ def _accurate_dispatch(path: Path, kind: str, spec: PipelineSpec, opts: _CatOpts
     )
 
 
+def _format_footer(path: Path, mode: str, elapsed_ms: float, prompt_tokens: int = 0, completion_tokens: int = 0) -> str:
+    """Format the footer with time, size, mode, profile, and tokens."""
+    from mm.display import format_size
+    
+    size_str = format_size(path.stat().st_size)
+    elapsed_s = elapsed_ms / 1000.0
+    
+    parts = [f"{elapsed_s:.1f}s", size_str, mode]
+    
+    if mode == "accurate":
+        from mm.profile import get_active_profile_name
+        profile_name = get_active_profile_name()
+        parts.append(profile_name)
+    
+    if prompt_tokens > 0 or completion_tokens > 0:
+        parts.append(f"{prompt_tokens}→{completion_tokens} tokens")
+    
+    return " • ".join(parts)
+
+
 def _run_encoder(path: Path, kind: str, spec: PipelineSpec, opts: _CatOpts) -> str:
     """Run a named encoder strategy and output JSON messages or pipe to LLM."""
     import json
@@ -538,8 +558,9 @@ def _accurate_image(path: Path, spec: PipelineSpec, opts: _CatOpts) -> str:
     )
     elapsed = (time.monotonic() - t0) * 1000
     u = llm.last_usage
+    footer = _format_footer(path, "accurate", elapsed, u.prompt_tokens, u.completion_tokens)
 
-    return f"{content}\n\n[mode=accurate, {elapsed:.0f}ms, {u.prompt_tokens}→{u.completion_tokens} tokens]"
+    return f"{content}\n\n[{footer}]"
 
 
 def _accurate_video(path: Path, spec: PipelineSpec, opts: _CatOpts) -> str:
@@ -721,18 +742,11 @@ def _accurate_video(path: Path, spec: PipelineSpec, opts: _CatOpts) -> str:
         word_count = len(transcript.split())
         out_parts.append(f"\n## Transcript ({word_count} words)\n{transcript}")
 
-    time_keys = {k: v for k, v in timing.items() if k.endswith("_ms") and k != "total_ms"}
     token_keys = {k: v for k, v in timing.items() if "tokens" in k}
-    timing_str = " | ".join(f"{k}: {v:.0f}ms" for k, v in time_keys.items())
-    token_str = (
-        f" | {int(token_keys.get('vlm_prompt_tokens', 0))}"
-        f"→{int(token_keys.get('vlm_completion_tokens', 0))} tokens"
-        if token_keys
-        else ""
-    )
-    out_parts.append(
-        f"\n[mode=accurate, total={timing['total_ms']:.0f}ms{token_str} | {timing_str}]"
-    )
+    prompt_tokens = int(token_keys.get('vlm_prompt_tokens', 0))
+    completion_tokens = int(token_keys.get('vlm_completion_tokens', 0))
+    footer = _format_footer(path, "accurate", timing['total_ms'], prompt_tokens, completion_tokens)
+    out_parts.append(f"\n[{footer}]")
     return "\n".join(out_parts)
 
 
@@ -805,12 +819,11 @@ def _accurate_audio(path: Path, spec: PipelineSpec, opts: _CatOpts) -> str:
     u = llm.last_usage
 
     word_count = len(transcript.split())
-    timing_str = " | ".join(f"{k}: {v:.0f}ms" for k, v in timing.items() if k != "total_ms")
+    footer = _format_footer(path, "accurate", timing['total_ms'], u.prompt_tokens, u.completion_tokens)
     return (
         f"{summary}\n\n"
         f"[Transcript: {word_count} words]\n"
-        f"[mode=accurate, total={timing['total_ms']:.0f}ms, "
-        f"{u.prompt_tokens}→{u.completion_tokens} tokens | {timing_str}]"
+        f"[{footer}]"
     )
 
 
@@ -978,140 +991,18 @@ def _display_rich(
     mode: str,
     n: int | None,
 ) -> None:
-    from rich import box
-    from rich.panel import Panel
-    from rich.syntax import Syntax
-    from rich.text import Text
-
-    from mm.display import format_size, output_console
+    from mm.display import output_console
 
     ext = path.suffix.lstrip(".")
-    size_str = format_size(path.stat().st_size)
-
-    subtitle = Text()
-    subtitle.append(f"{size_str}", style="bright_blue")
-    subtitle.append(f"  {mode}", style="dim")
-
-    if mode == "accurate":
-        from mm.profile import get_active_profile_name
-
-        profile_name = get_active_profile_name()
-        subtitle.append(f"  {profile_name}", style="yellow")
-
-    if n is not None:
-        total_lines = len(path.read_text(errors="replace").splitlines()) if mode == "fast" else None
-        if n >= 0:
-            subtitle.append(f"  lines 1-{n}", style="dim")
-        else:
-            subtitle.append(f"  last {abs(n)} lines", style="dim")
-        if total_lines:
-            subtitle.append(f" of {total_lines}", style="dim")
-
-    lang_map = {
-        "py": "python",
-        "rs": "rust",
-        "js": "javascript",
-        "ts": "typescript",
-        "tsx": "typescript",
-        "jsx": "javascript",
-        "go": "go",
-        "java": "java",
-        "c": "c",
-        "cpp": "cpp",
-        "h": "c",
-        "hpp": "cpp",
-        "rb": "ruby",
-        "sh": "bash",
-        "bash": "bash",
-        "zsh": "bash",
-        "yaml": "yaml",
-        "yml": "yaml",
-        "toml": "toml",
-        "json": "json",
-        "md": "markdown",
-        "html": "html",
-        "css": "css",
-        "sql": "sql",
-        "xml": "xml",
-    }
-
-    title = f"[bold]{path}[/bold]"
     kind = _file_kind(path)
     is_binary = kind in ("image", "document", "video", "audio") or "\x00" in content[:512]
-    if is_binary:
-        safe_content: Text | str = Text(content.replace("\x1b", "\ufffd"))
+    
+    if not is_binary and ext in ("py", "rs", "js", "ts", "tsx", "jsx", "go", "java", "c", "cpp", "h", "hpp", "rb", "sh", "bash", "zsh", "yaml", "yml", "toml", "json", "md", "html", "css", "sql", "xml"):
+        from rich.syntax import Syntax
+        syntax = Syntax(content, ext if ext in ("py", "rs", "js", "ts", "go", "java", "c", "cpp", "rb", "bash", "yaml", "json", "md", "html", "css", "sql", "xml") else "text", theme="monokai", line_numbers=True)
+        output_console.print(syntax)
     else:
-        safe_content = Text(content) if mode == "accurate" else content
-
-    if ext in lang_map and mode == "fast":
-        syntax = Syntax(content, lang_map[ext], theme="monokai", line_numbers=True)
-        output_console.print(
-            Panel(
-                syntax,
-                title=title,
-                title_align="left",
-                subtitle=subtitle,
-                expand=False,
-                border_style="green",
-                box=box.ROUNDED,
-            )
-        )
-    elif kind == "image":
-        min_width = len(subtitle.plain) + 10
-        output_console.print(
-            Panel(
-                safe_content,
-                title=title,
-                title_align="left",
-                subtitle=subtitle,
-                expand=True,
-                width=min_width,
-                border_style="green",
-                box=box.ROUNDED,
-            )
-        )
-    elif kind == "document":
-        line_count = len(content.splitlines())
-        if line_count > 0:
-            subtitle.append(f"  {line_count} lines", style="dim")
-        output_console.print(
-            Panel(
-                safe_content,
-                title=title,
-                title_align="left",
-                subtitle=subtitle,
-                expand=False,
-                border_style="cyan",
-                box=box.ROUNDED,
-            )
-        )
-    elif kind in ("video", "audio"):
-        content_width = max((len(line) for line in content.splitlines()), default=0)
-        min_width = max(content_width + 4, len(subtitle.plain) + 10)
-        output_console.print(
-            Panel(
-                safe_content,
-                title=title,
-                title_align="left",
-                subtitle=subtitle,
-                expand=False,
-                width=min_width,
-                border_style="magenta",
-                box=box.ROUNDED,
-            )
-        )
-    else:
-        output_console.print(
-            Panel(
-                safe_content,
-                title=title,
-                title_align="left",
-                subtitle=subtitle,
-                expand=False,
-                border_style="blue",
-                box=box.ROUNDED,
-            )
-        )
+        output_console.print(content)
 
 
 def _extract_llm_parts(msg: dict) -> list[dict]:
