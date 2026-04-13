@@ -651,7 +651,7 @@ def _run_encoder(path: Path, kind: str, spec: PipelineSpec, opts: _CatOpts) -> s
         generate_output = _format_generate_verbose(profile_name, elapsed, u.prompt_tokens, u.completion_tokens)
         
         pipeline_tree = _format_pipeline_tree(encode_output, generate_output)
-        output_parts = [result, "", pipeline_tree]
+        output_parts = [result, pipeline_tree]
         return "\n".join(output_parts)
     
     return f"{result}\n\n{footer}" if footer else result
