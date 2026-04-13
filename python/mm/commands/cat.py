@@ -502,8 +502,19 @@ def _format_generate_verbose(profile_name: str, elapsed_ms: float, prompt_tokens
     """Format verbose output for the generate step."""
     elapsed_s = elapsed_ms / 1000.0
     token_info = f"{prompt_tokens}→{completion_tokens}" if (prompt_tokens > 0 or completion_tokens > 0) else "no tokens"
-    generate_text = f"Generate: {profile_name} • {elapsed_s:.1f}s | {token_info} tokens"
+    generate_text = f"generate: {profile_name} • {elapsed_s:.1f}s • {token_info} tokens"
     return f"[dim]{generate_text}[/dim]"
+
+
+def _format_pipeline_tree(encode_info: str, generate_info: str) -> str:
+    """Format pipeline steps as a tree structure."""
+    # Extract just the dim text content from the formatted strings
+    # The strings are like "[dim]text[/dim]", we want just the text
+    encode_text = encode_info.replace("[dim]", "").replace("[/dim]", "").replace("Encode: ", "encode: ")
+    generate_text = generate_info.replace("[dim]", "").replace("[/dim]", "")
+    
+    pipeline = f"pipeline\n  ├─ {encode_text}\n  └─ {generate_text}"
+    return f"[dim]{pipeline}[/dim]"
 
 
 def _format_footer(path: Path, mode: str, elapsed_ms: float, prompt_tokens: int = 0, completion_tokens: int = 0, verbose: bool = False) -> str:
@@ -630,7 +641,8 @@ def _run_encoder(path: Path, kind: str, spec: PipelineSpec, opts: _CatOpts) -> s
         profile_name = get_active_profile_name()
         generate_output = _format_generate_verbose(profile_name, elapsed, u.prompt_tokens, u.completion_tokens)
         
-        output_parts = [encode_output, "", result, "", generate_output]
+        pipeline_tree = _format_pipeline_tree(encode_output, generate_output)
+        output_parts = [result, "", pipeline_tree]
         if footer:
             output_parts.extend(["", footer])
         return "\n".join(output_parts)
