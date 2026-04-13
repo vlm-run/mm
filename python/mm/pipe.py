@@ -2,19 +2,14 @@
 
 from __future__ import annotations
 
-import select
+import json
 import sys
+from pathlib import Path
 
 
 def is_piped_input() -> bool:
-    """Check if stdin is being piped (not a TTY) AND has data ready."""
-    if sys.stdin.isatty():
-        return False
-    try:
-        ready, _, _ = select.select([sys.stdin], [], [], 0.0)
-        return bool(ready)
-    except (ValueError, OSError):
-        return False
+    """Check if stdin is being piped (not a TTY)."""
+    return not sys.stdin.isatty()
 
 
 def is_piped_output() -> bool:
@@ -32,26 +27,101 @@ def is_piped_output() -> bool:
     return not sys.stdout.isatty()
 
 
+# Header values that indicate a TSV/CSV header row rather than data.
+_HEADER_TOKENS = frozenset(
+    ("path", "uri", "name", "file", "kind", "size", "ext", "mime", "column", "type", "table")
+)
+
+
 def read_paths_from_stdin() -> list[str]:
-    """Read paths from stdin when piped.
+    """Read file paths from stdin when piped.
 
-    Handles two formats transparently:
-      1. Bare paths (one per line):  ``src/main.py``
-      2. TSV with path in last column:  ``code\\t4301\\tsrc/main.py``
+    Handles three input formats transparently:
 
-    The heuristic is simple: if a line contains a tab, take the last field.
-    This lets ``mm find | mm cat`` work regardless of whether
-    find emits bare paths or the richer ``kind\\tsize\\tpath`` format.
+      1. **Bare paths** (one per line)::
+
+           src/main.py
+
+      2. **TSV / CSV** with a path-like field in the last column::
+
+           code\\t4301\\tsrc/main.py
+
+         Header rows are detected and skipped automatically.
+
+      3. **JSON** — an array of objects with a ``"path"`` key, or an
+         array of plain strings::
+
+           [{"path": "src/main.py", ...}, ...]
+           ["src/main.py", ...]
+
+    This lets ``mm find | mm cat`` and ``mm find -f json | mm cat``
+    both work seamlessly.
     """
     if not is_piped_input():
         return []
+
+    raw = sys.stdin.read()
+    stripped = raw.strip()
+    if not stripped:
+        return []
+
+    # ── JSON input ───────────────────────────────────────────────
+    if stripped.startswith("[") or stripped.startswith("{"):
+        try:
+            data = json.loads(stripped)
+            return _paths_from_json(data)
+        except (json.JSONDecodeError, TypeError):
+            pass
+
+    # ── Line-based input (bare paths or TSV/CSV) ────────────────
     paths: list[str] = []
-    for line in sys.stdin:
+    for line in raw.splitlines():
         line = line.strip()
         if not line:
             continue
         # TSV: take last field (the path column)
         if "\t" in line:
-            line = line.rsplit("\t", 1)[-1]
-        paths.append(line)
+            value = line.rsplit("\t", 1)[-1]
+        elif "," in line:
+            # CSV: take last field
+            value = line.rsplit(",", 1)[-1].strip().strip('"')
+        else:
+            value = line
+        # Skip header rows
+        if value.lower() in _HEADER_TOKENS:
+            continue
+        paths.append(value)
     return paths
+
+
+def resolve_piped_paths(paths: list[str]) -> list[str]:
+    """Resolve piped paths to absolute, preserving order and deduplicating."""
+    seen: set[str] = set()
+    result: list[str] = []
+    for p in paths:
+        resolved = str(Path(p).resolve())
+        if resolved not in seen:
+            seen.add(resolved)
+            result.append(resolved)
+    return result
+
+
+def _paths_from_json(data: object) -> list[str]:
+    """Extract paths from parsed JSON (array of objects or strings)."""
+    if isinstance(data, dict):
+        # Single object — look for a path key
+        for key in ("path", "uri", "name"):
+            if key in data and isinstance(data[key], str):
+                return [data[key]]
+        return []
+    if not isinstance(data, list) or not data:
+        return []
+    first = data[0]
+    if isinstance(first, str):
+        return [s for s in data if isinstance(s, str)]
+    if isinstance(first, dict):
+        # Find the best path key
+        for key in ("path", "uri", "name"):
+            if key in first:
+                return [row[key] for row in data if isinstance(row, dict) and key in row]
+    return []

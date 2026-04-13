@@ -13,6 +13,7 @@ from typing import Annotated, Any, Callable, Optional
 import typer
 
 from mm.commands.bench_commands import ALL_COMMANDS, resolve_command
+from mm.utils import BaseFormat
 
 # ── Data model ──────────────────────────────────────────────────────
 
@@ -367,7 +368,8 @@ def bench_cmd(
         typer.Option("--mode", "-m", help="L2 modes to bench: fast (default), accurate, all"),
     ] = None,
     format: Annotated[
-        Optional[str], typer.Option("--format", help="Output format: rich, json")
+        Optional[BaseFormat],
+        typer.Option("--format", help="Output format: rich, json"),
     ] = None,
 ) -> None:
     """Benchmark all subcommands with statistical analysis.
@@ -387,7 +389,7 @@ def bench_cmd(
     from mm.commands.bench_commands import L0_COMMANDS, L1_COMMANDS, L2_COMMANDS, OVERHEAD_COMMANDS
     from mm.display import resolve_format
 
-    fmt = resolve_format(format)
+    fmt = resolve_format(format.value if format else None)
 
     # Filter L2 commands by mode
     bench_mode = mode or "fast"

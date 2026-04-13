@@ -6,6 +6,8 @@ from typing import Annotated, Optional, TypedDict
 
 import typer
 
+from mm.utils import BaseFormat
+
 profile_app = typer.Typer(
     name="profile",
     help=(
@@ -30,7 +32,8 @@ profile_app = typer.Typer(
 @profile_app.command("list")
 def profile_list(
     format: Annotated[
-        Optional[str], typer.Option("--format", help="Output format: json, tsv, csv")
+        Optional[BaseFormat],
+        typer.Option("--format", help="Output format: json, tsv, csv"),
     ] = None,
 ) -> None:
     """List all configuration profiles.
@@ -48,7 +51,7 @@ def profile_list(
         load_profile_config,
     )
 
-    fmt = resolve_format(format)
+    fmt = resolve_format(format.value if format else None)
     names = get_profile_names()
     active = get_active_profile_name()
     file_data = load_profile_config()

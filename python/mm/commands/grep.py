@@ -8,12 +8,12 @@ from typing import Annotated, Optional
 
 import typer
 
-from mm.pipe import read_paths_from_stdin
+from mm.utils import Format
 
 
 def grep_cmd(
     pattern: Annotated[str, typer.Argument(help="Search pattern (regex)")],
-    directory: Annotated[Path, typer.Argument(help="Directory to search")] = Path("."),
+    directory: Annotated[Optional[Path], typer.Argument(help="Directory to search")] = None,
     kind: Annotated[Optional[str], typer.Option("--kind", "-k", help="Filter by file kind")] = None,
     ext: Annotated[
         Optional[str], typer.Option("--ext", "-e", help="Filter by extension(s)")
@@ -27,7 +27,7 @@ def grep_cmd(
         bool, typer.Option("--index", help="Index unindexed files before L2 search (max 50)")
     ] = False,
     format: Annotated[
-        Optional[str],
+        Optional[Format],
         typer.Option(
             "--format", "-f", help="Output format: json, tsv, csv, dataset-jsonl, dataset-hf"
         ),
@@ -44,16 +44,19 @@ def grep_cmd(
       mm grep "neural network" ~/data --level 2         # semantic search
       mm grep "def main" ~/src --count                  # match counts only
     """
+
+    from mm.context import FileEntry
     from mm.display import resolve_format
+    from mm.pipe import read_paths_from_stdin, resolve_piped_paths
 
-    fmt = resolve_format(format)
+    fmt = resolve_format(format.value if format else None)
     stdin_paths = read_paths_from_stdin()
-
+    _directory = directory or Path("./")
     # L2 semantic search — vector similarity via embeddings
     if level >= 2:
         _grep_l2(
             pattern,
-            directory,
+            _directory,
             kind,
             ext,
             count,
@@ -64,14 +67,6 @@ def grep_cmd(
         )
         return
 
-    from mm.context import Context
-
-    ctx = Context(directory)
-    if kind:
-        ctx = ctx.filter(kind=kind)
-    if ext:
-        ctx = ctx.filter(ext=ext)
-
     try:
         regex = re.compile(pattern)
     except re.error as e:
@@ -80,15 +75,53 @@ def grep_cmd(
 
     all_matches: list[dict] = []
     file_counts: dict[str, int] = {}
+    files_to_search: list[FileEntry] = []
+    seen_paths: set[str] = set()
 
-    files_to_search = ctx.files
+    # Directory scan (when provided)
+    if directory:
+        from mm.context import Context
+
+        ctx = Context(_directory)
+        if kind:
+            ctx = ctx.filter(kind=kind)
+        if ext:
+            ctx = ctx.filter(ext=ext)
+        for f in ctx.files:
+            if f.path.startswith("."):
+                continue
+            resolved = str((_directory.resolve() / f.path).resolve())
+            if resolved not in seen_paths:
+                seen_paths.add(resolved)
+                files_to_search.append(f)
+
+    # Piped paths (deduped against directory scan)
     if stdin_paths:
-        stdin_set = set(stdin_paths)
-        files_to_search = [f for f in files_to_search if f.path in stdin_set]
+        from mm.utils import file_kind_with_code, is_binary_content
+
+        for item in resolve_piped_paths(stdin_paths):
+            if item in seen_paths:
+                continue
+            fkind = file_kind_with_code(Path(item))
+            if kind and kind != fkind:
+                continue
+            if ext and not item.endswith(ext):
+                continue
+            seen_paths.add(item)
+            files_to_search.append(
+                FileEntry(
+                    row=dict(
+                        path=item,
+                        kind=fkind,
+                        is_binary=is_binary_content(kind=fkind),
+                    )
+                )
+            )
 
     for f in files_to_search:
         try:
-            full_path = ctx.root / f.path
+            fp = Path(f.path)
+            full_path = fp if fp.is_absolute() else (_directory.resolve() / fp)
             if f.is_binary and f.kind not in ("document",):
                 continue
 

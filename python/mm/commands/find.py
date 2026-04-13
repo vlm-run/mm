@@ -8,7 +8,7 @@ from typing import Annotated, Optional
 
 import typer
 
-from mm.pipe import read_paths_from_stdin
+from mm.utils import Format
 
 COLUMN_DOCS: dict[str, str] = {
     "path": "Relative path from the scanned root directory",
@@ -76,7 +76,7 @@ def find_cmd(
         bool, typer.Option("--schema", help="Show table schema (column names, types, descriptions)")
     ] = False,
     format: Annotated[
-        Optional[str],
+        Optional[Format],
         typer.Option(
             "--format", "-f", help="Output format: json, tsv, csv, dataset-jsonl, dataset-hf"
         ),
@@ -103,12 +103,10 @@ def find_cmd(
     """
     from mm.display import resolve_format
 
-    fmt = resolve_format(format)
-
+    fmt = resolve_format(format.value if format else None)
     if tree:
         _find_tree(directory, kind, name, depth, size, fmt)
         return
-
     if schema:
         _find_schema(directory, fmt)
         return
@@ -146,8 +144,9 @@ def _find_table(
     fmt: str,
 ) -> None:
     """Default tabular listing."""
-    stdin_paths = read_paths_from_stdin()
+    from mm.pipe import read_paths_from_stdin, resolve_piped_paths
 
+    stdin_paths = read_paths_from_stdin()
     # Fast path: non-rich output without columns/stdin bypasses pyarrow
     if fmt != "rich" and not stdin_paths and not columns and depth is None:
         from mm._mm import Scanner
@@ -169,16 +168,18 @@ def _find_table(
             descending=reverse,
         )
 
+        rows = json_mod.loads(scanner.to_json_fast(**filter_args))
+        for row in rows:
+            row["path"] = f"{str(directory)}/{row['path']}"
         if fmt in ("json", "dataset-jsonl", "dataset-hf"):
             from mm.display import emit_rows
 
-            emit_rows(fmt, json_mod.loads(scanner.to_json_fast(**filter_args)))
+            emit_rows(fmt, rows)
         else:
-            entries = json_mod.loads(scanner.to_json_fast(**filter_args))
             sep = "," if fmt == "csv" else "\t"
             print(f"kind{sep}size{sep}path")
-            for entry in entries:
-                print(f"{entry['kind']}{sep}{entry['size']}{sep}{entry['path']}")
+            for row in rows:
+                print(f"{row['kind']}{sep}{row['size']}{sep}{row['path']}")
         return
 
     from mm.context import Context
@@ -201,10 +202,13 @@ def _find_table(
         table = table.filter(mask)
 
     if stdin_paths:
-        from mm.query import query_arrow_table
+        from mm.pipe import resolve_piped_paths
 
-        path_list = ", ".join(f"'{p}'" for p in stdin_paths)
-        table = query_arrow_table(table, f"SELECT * FROM files WHERE path IN ({path_list})")
+        # Arrow table has relative paths; resolve both sides to absolute for matching.
+        stdin_set = set(resolve_piped_paths(stdin_paths))
+        root = Path(directory).resolve()
+        mask = [str(root / p) in stdin_set for p in table.column("path").to_pylist()]
+        table = table.filter(mask)
 
     if depth is not None:
         from mm.query import query_arrow_table
@@ -244,9 +248,10 @@ def _find_table(
     else:
         from mm.display import arrow_table_to_rich, output_console
 
-        default_cols = ["name", "kind", "size", "ext"]
+        default_cols = ["path", "kind", "size", "ext"]
         if not cols and _has_media_dimensions(table):
-            default_cols = ["name", "kind", "size", "width", "height", "ext"]
+            default_cols = ["path", "kind", "size", "width", "height", "ext"]
+
         display_cols = cols or default_cols
         rich_table = arrow_table_to_rich(table, columns=display_cols, limit=limit)
         output_console.print(rich_table)
