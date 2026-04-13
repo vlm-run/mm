@@ -1,4 +1,4 @@
-"""mm -- High-performance multi-modal context management."""
+"""mm -- High-performance multi-modal context management library."""
 
 from importlib.metadata import version
 
