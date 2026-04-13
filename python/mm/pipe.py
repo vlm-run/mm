@@ -4,17 +4,11 @@ from __future__ import annotations
 
 import json
 import sys
+from pathlib import Path
 
 
 def is_piped_input() -> bool:
-    """Check if stdin is being piped (not a TTY).
-
-    Simply checks ``isatty()`` — no ``select()`` probe.  The previous
-    zero-timeout ``select.select()`` caused a race condition: in a pipe
-    chain like ``mm find | mm cat``, the upstream process may not have
-    written data yet when the downstream process starts, so ``select()``
-    returned *not ready* and the pipe was silently ignored.
-    """
+    """Check if stdin is being piped (not a TTY)"""
     return not sys.stdin.isatty()
 
 
@@ -67,11 +61,11 @@ def read_paths_from_stdin() -> list[str]:
         return []
 
     raw = sys.stdin.read()
-    if not raw.strip():
+    stripped = raw.strip()
+    if not stripped:
         return []
 
     # ── JSON input ───────────────────────────────────────────────
-    stripped = raw.strip()
     if stripped.startswith("[") or stripped.startswith("{"):
         try:
             data = json.loads(stripped)
@@ -108,12 +102,10 @@ def resolve_piped_paths(paths: list[str], root: str | Path) -> set[str]:
     This function strips the root prefix so the result can be compared directly
     against ``ctx.files[i].path``.
     """
-    from pathlib import Path as P
-
-    root_resolved = P(root).resolve()
+    root_resolved = Path(root).resolve()
     result: set[str] = set()
     for p in paths:
-        abs_p = P(p).resolve()
+        abs_p = Path(p).resolve()
         try:
             result.add(str(abs_p.relative_to(root_resolved)))
         except ValueError:

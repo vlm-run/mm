@@ -8,7 +8,6 @@ from typing import Annotated, Optional
 
 import typer
 
-from mm.pipe import read_paths_from_stdin, resolve_piped_paths
 from mm.utils import Format
 
 
@@ -46,6 +45,7 @@ def grep_cmd(
       mm grep "def main" ~/src --count                  # match counts only
     """
     from mm.display import resolve_format
+    from mm.pipe import read_paths_from_stdin, resolve_piped_paths
 
     fmt = resolve_format(format.value if format else None)
     stdin_paths = read_paths_from_stdin()
@@ -87,7 +87,6 @@ def grep_cmd(
         stdin_set = resolve_piped_paths(stdin_paths, ctx.root)
         files_to_search = [f for f in files_to_search if f.path in stdin_set]
 
-    # Prefix paths so they're resolvable from CWD when piped.
     dir_prefix = str(directory)
     _pfx = (lambda p: f"{dir_prefix}/{p}") if dir_prefix != "." else (lambda p: p)
 

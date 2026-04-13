@@ -8,7 +8,6 @@ from typing import Annotated, Optional
 
 import typer
 
-from mm.pipe import read_paths_from_stdin, resolve_piped_paths
 from mm.utils import Format
 
 COLUMN_DOCS: dict[str, str] = {
@@ -147,8 +146,10 @@ def _find_table(
     fmt: str,
 ) -> None:
     """Default tabular listing."""
-    stdin_paths = read_paths_from_stdin()
+    from mm.pipe import read_paths_from_stdin, resolve_piped_paths
 
+    stdin_paths = read_paths_from_stdin()
+    dir_prefix = str(directory)
     # Fast path: non-rich output without columns/stdin bypasses pyarrow
     if fmt != "rich" and not stdin_paths and not columns and depth is None:
         from mm._mm import Scanner
@@ -174,16 +175,13 @@ def _find_table(
             from mm.display import emit_rows
 
             rows = json_mod.loads(scanner.to_json_fast(**filter_args))
-            # Prefix relative paths with the directory argument so they're
-            # resolvable from CWD when piped to other commands.
-            dir_prefix = str(directory)
+            # make resolvable from CWD when piped to other commands.
             if dir_prefix != ".":
                 for row in rows:
                     row["path"] = f"{dir_prefix}/{row['path']}"
             emit_rows(fmt, rows)
         else:
             entries = json_mod.loads(scanner.to_json_fast(**filter_args))
-            dir_prefix = str(directory)
             sep = "," if fmt == "csv" else "\t"
             print(f"kind{sep}size{sep}path")
             for entry in entries:
@@ -199,9 +197,7 @@ def _find_table(
 
     table = ctx.to_arrow()
 
-    # Prefix relative paths with the directory argument so they're
-    # resolvable from CWD when piped to other commands.
-    dir_prefix = str(directory)
+    # make resolvable from CWD when piped to other commands.
     if dir_prefix != "." and "path" in table.column_names:
         import pyarrow as pa
 
