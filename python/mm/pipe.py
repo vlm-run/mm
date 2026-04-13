@@ -94,23 +94,11 @@ def read_paths_from_stdin() -> list[str]:
     return paths
 
 
-def resolve_piped_paths(paths: list[str], root: str | Path) -> set[str]:
-    """Resolve piped paths to be relative to a scan *root*.
-
-    Piped paths are typically relative to CWD (e.g. ``sample_files/img.png``),
-    while Context/Scanner paths are relative to the scan root (e.g. ``img.png``).
-    This function strips the root prefix so the result can be compared directly
-    against ``ctx.files[i].path``.
-    """
-    root_resolved = Path(root).resolve()
+def resolve_piped_paths(paths: list[str]) -> set[str]:
+    """Resolve piped paths to be relative to a scan *root*."""
     result: set[str] = set()
     for p in paths:
-        abs_p = Path(p).resolve()
-        try:
-            result.add(str(abs_p.relative_to(root_resolved)))
-        except ValueError:
-            # Not under root — keep as-is (may be an absolute path or different root)
-            result.add(p)
+        result.add(str(Path(p).resolve()))
     return result
 
 
