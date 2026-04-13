@@ -92,7 +92,7 @@ mm
 ├── CLI Commands (6 + config+profile, Typer, Unix-philosophy composability)
 │   ├── [x] --version/-v global flag
 │   ├── [x] find     — find/list files, tree view (--tree), schema (--schema), columns (--columns), name filter (--name, string/regex via Rust)
-│   ├── [x] cat      — auto-detected content extraction (fast/accurate mode) → [full spec](cat.md)
+│   ├── [x] [cat](./cat.md)      — auto-detected content extraction (fast/accurate mode) → [full spec](cat.md)
 │   │   ├── [x] head/tail via -n (replaces old head/tail commands)
 │   │   ├── [x] --mode fast|accurate (pipeline-driven modal extraction)
 │   │   ├── [x] video accurate: parallel mosaic + whisper → LLM (102x realtime)

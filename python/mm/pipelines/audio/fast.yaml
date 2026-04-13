@@ -4,5 +4,5 @@ mode: fast
 encode:
   strategy: transcribe
   strategy_opts:
-    whisper_model: medium
-    audio_speed: 1.0
+    whisper_model: tiny
+    audio_speed: 2.0
