@@ -507,7 +507,8 @@ def _format_footer(path: Path, mode: str, elapsed_ms: float, prompt_tokens: int 
         parts.append(f"{prompt_tokens}→{completion_tokens} tokens")
     
     footer_text = " • ".join(parts)
-    return f"[dim]{footer_text}[/dim]"
+    # Use ANSI gray color (90) for pure gray dim without other styling
+    return f"\033[90m{footer_text}\033[0m"
 
 
 def _format_encode_verbose(strategy: str | None, messages: list[dict], elapsed_ms: float) -> str:
@@ -529,7 +530,8 @@ def _format_encode_verbose(strategy: str | None, messages: list[dict], elapsed_m
                     elif part_type == "image_url" or "inline_data" in part:
                         part_summary.append(f"  Message {msg_idx + 1}, Part {part_idx + 1}: image")
     
-    encode_info = f"[dim]Encode: {strategy} • {elapsed_s:.1f}s[/dim]\n"
+    # Use ANSI gray color (90) for pure gray dim without other styling
+    encode_info = f"\033[90mEncode: {strategy} • {elapsed_s:.1f}s\033[0m\n"
     if part_summary:
         encode_info += "\n".join(part_summary)
     
