@@ -73,33 +73,35 @@ def grep_cmd(
         typer.echo(f"Invalid regex: {e}", err=True)
         raise typer.Exit(1)
 
+    files_to_search: list[FileEntry] = []
     all_matches: list[dict] = []
     file_counts: dict[str, int] = {}
 
-    if stdin_paths:
-        from mm.utils import file_kind, is_binary_content
+    from mm.context import Context
 
-        files_to_search: list[FileEntry] = []
-        for item in resolve_piped_paths(stdin_paths):
-            fkind = file_kind(item)
-            files_to_search.append(
-                FileEntry(
-                    row=dict(
-                        path=item,
-                        kind=fkind,
-                        is_binary=is_binary_content(kind=fkind),
-                    )
-                )
-            )
-    else:
-        from mm.context import Context
-
+    if directory:
         ctx = Context(_directory)
         if kind:
             ctx = ctx.filter(kind=kind)
         if ext:
             ctx = ctx.filter(ext=ext)
+
         files_to_search = list(filter(lambda v: not v.path.startswith("."), ctx.files))
+
+    if stdin_paths:
+        from mm.utils import file_kind, is_binary_content
+
+        for item in resolve_piped_paths(stdin_paths):
+            kind = file_kind(item)
+            files_to_search.append(
+                FileEntry(
+                    row=dict(
+                        path=item,
+                        kind=kind,
+                        is_binary=is_binary_content(kind=kind),
+                    )
+                )
+            )
 
     for f in files_to_search:
         try:

@@ -104,11 +104,9 @@ def find_cmd(
     from mm.display import resolve_format
 
     fmt = resolve_format(format.value if format else None)
-
     if tree:
         _find_tree(directory, kind, name, depth, size, fmt)
         return
-
     if schema:
         _find_schema(directory, fmt)
         return
@@ -248,9 +246,10 @@ def _find_table(
     else:
         from mm.display import arrow_table_to_rich, output_console
 
-        default_cols = ["name", "kind", "size", "ext"]
+        default_cols = ["path", "kind", "size", "ext"]
         if not cols and _has_media_dimensions(table):
-            default_cols = ["name", "kind", "size", "width", "height", "ext"]
+            default_cols = ["path", "kind", "size", "width", "height", "ext"]
+
         display_cols = cols or default_cols
         rich_table = arrow_table_to_rich(table, columns=display_cols, limit=limit)
         output_console.print(rich_table)
