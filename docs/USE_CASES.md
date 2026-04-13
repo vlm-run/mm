@@ -24,7 +24,7 @@ Scenarios that leverage mm's multimodal awareness, Rust-speed metadata extractio
 
 7. **Produce alt-text for a product demo** — `mm cat demo.mp4 -l 2` generates an LLM scene-by-scene description from keyframes. Pipe to clipboard: `mm cat demo.mp4 -l 2 | pbcopy`.
 
-8. **Compare codec and container usage across a library** — `mm find ~/videos --kind video | mm cat -l 1 --format json` gives per-file codec info. Aggregate to see h264 vs h265 vs av1 distribution — useful before batch transcoding decisions.
+8. **Compare codec and container usage across a library** — `mm find ~/videos --kind video | mm cat -l 1 --format json` gives per-file codec info. Aggregate to see h264 vs h265 vs av1 distribution — useful before batch analysis and transcoding decisions, i.e., Iterate: `for f in ~/videos/*.mp4; do mm cat "$f" -l 1; done`.
 
 ### Education
 
@@ -46,7 +46,7 @@ Scenarios that leverage mm's multimodal awareness, Rust-speed metadata extractio
 
 15. **Create a chain-of-custody file list for body camera footage** — `mm find ~/evidence --kind video --columns name,size,modified --sort modified --format csv > evidence_manifest.csv` — timestamped, sized, sortable. Attach to case files.
 
-16. **Estimate LLM token cost before processing video evidence** — `mm cat bodycam.mp4 -l 1 --format json` gives duration and resolution. Combined with keyframe rate and tile-based token estimates from `metrics/`, calculate the exact API cost before committing.
+16. **Estimate LLM token cost before processing video evidence** — `mm cat bodycam.mp4 -l 1 --format json` gives duration and resolution.
 
 ### Pipelines
 
@@ -92,7 +92,7 @@ Scenarios that leverage mm's multimodal awareness, Rust-speed metadata extractio
 
 33. **Audit image format adoption in a web project** — `mm sql "SELECT ext, COUNT(*) as n, ROUND(SUM(size)/1e6,1) as mb FROM files WHERE kind='image' GROUP BY ext ORDER BY mb DESC" --dir ~/site/public` — see how much bandwidth is wasted on PNG vs WebP vs AVIF.
 
-34. **Estimate token cost for batch image processing** — Image token cost depends on resolution (tile-based). `mm find ~/products --kind image | mm cat -l 1 --format json` gives per-image dimensions. The `metrics/` dashboard calculates exact tile counts and provider costs per resolution tier.
+34. **Estimate token cost for batch image processing** — Image token cost depends on resolution (tile-based). `mm find ~/products --kind image | mm cat -l 1 --format json` gives per-image dimensions.
 
 35. **Find images without EXIF data** — `mm find ~/photos --kind image | mm cat -l 1 --format json` — images without camera/date/GPS fields are likely screenshots, downloads, or synthetic. Useful for separating photos from non-photo images.
 
@@ -138,6 +138,6 @@ Scenarios that leverage mm's multimodal awareness, Rust-speed metadata extractio
 
 50. **Create an invoice summary from mixed document formats** — `mm find ~/invoices --kind document | mm cat -l 2 --format json` — the LLM extracts amounts, dates, and vendor names from PDFs, DOCX, and scanned documents. Output is structured JSON ready for aggregation.
 
-51. **Estimate total LLM cost for a mixed-media directory** — `mm wc ~/data --by-kind --format json` gives token estimates broken down by kind. Feed each kind's token count into the provider-specific pricing from `metrics/` to get a per-kind and total cost estimate.
+51. **Estimate total LLM cost for a mixed-media directory** — `mm wc ~/data --by-kind --format json` gives token estimates broken down by kind.
 
 52. **Batch-extract metadata for a digital asset manager** — `mm find ~/dam --format json > l0.json` for file-level metadata. `mm find ~/dam | mm cat -l 1 --format json > l1.json` for content metadata (text, dimensions, duration, hash, EXIF). Both are database-ready — one L0 scan at ~0.02ms/file, one L1 pass for richer extraction.
