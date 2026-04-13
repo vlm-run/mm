@@ -487,10 +487,19 @@ def _run_encoder(path: Path, kind: str, spec: PipelineSpec, opts: _CatOpts) -> s
     messages = list(strat.encode(path, **spec.encode.strategy_opts))
 
     if spec.generate is None:
-        import sys
-
-        indent = 2 if sys.stdout.isatty() else None
-        return json.dumps(messages, indent=indent)
+        text_parts: list[str] = []
+        for msg in messages:
+            content = msg.get("content", [])
+            if isinstance(content, list):
+                for part in content:
+                    if isinstance(part, dict) and part.get("type") == "text":
+                        text = part.get("text", "")
+                        if text:
+                            text_parts.append(text)
+            elif isinstance(content, str):
+                if content:
+                    text_parts.append(content)
+        return "\n\n".join(text_parts) if text_parts else ""
 
     from mm.llm import LlmBackend
 
