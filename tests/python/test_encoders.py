@@ -61,32 +61,6 @@ class TestRegistryExtended:
         image_names = list_strategies(media_type="image")
         assert "tile" in image_names
 
-    def test_resolve_strategy_file_not_found(self):
-        from mm.encoders import resolve_strategy
-        with pytest.raises(FileNotFoundError, match="Encoder file not found"):
-            resolve_strategy("/nonexistent/path/encoder.py", "image")
-
-    def test_resolve_strategy_empty_registration(self, tmp_path):
-        from mm.encoders import resolve_strategy
-        empty_file = tmp_path / "empty_encoder.py"
-        empty_file.write_text("# no encoder registered here\nx = 42\n")
-        with pytest.raises(ValueError, match="No encoders registered"):
-            resolve_strategy(str(empty_file), "image")
-
-    def test_pick_by_media_type_matches(self):
-        from mm.encoders import _pick_by_media_type, _REGISTRY, _ensure_discovered
-        _ensure_discovered()
-        names = ["resize", "frame-sample"]
-        result = _pick_by_media_type(names, "video", source="test")
-        assert result.name == "frame-sample"
-
-    def test_pick_by_media_type_falls_back(self):
-        from mm.encoders import _pick_by_media_type, _ensure_discovered
-        _ensure_discovered()
-        names = ["resize"]
-        result = _pick_by_media_type(names, "video", source="test")
-        assert result.name == "resize"
-
     def test_resolve_provider_default_openai(self):
         from mm.encoders import _resolve_provider
         with patch("mm.profile.get_active_profile_name", side_effect=Exception("no config")):

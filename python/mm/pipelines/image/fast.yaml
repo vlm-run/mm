@@ -3,7 +3,8 @@ mode: fast
 
 encode:
   strategy: resize
-  max_width: 512
+  strategy_opts:
+    max_width: 512
 
 generate:
   prompt: >-

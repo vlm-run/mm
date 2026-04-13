@@ -7,7 +7,7 @@
 # Built-in pipelines live in  python/mm/pipelines/{kind}/{mode}.yaml
 # User overrides go to        ~/.config/mm/pipelines/{kind}/{mode}.yaml
 #
-# All fields are validated at load time via Pydantic (see schema.py).
+# All fields are validated at load time via mm.pipelines.schema.
 
 # ──────────────────────────────────────────────────────────────────────
 # Required top-level fields
@@ -21,36 +21,42 @@ mode: fast                  # Processing mode: fast | accurate
 # ──────────────────────────────────────────────────────────────────────
 
 encode:
-  # Encoder name (registered in mm's encoder registry).
-  # Examples: resize, tile, frame-sample, mosaic, page-text, transcribe.
+  # Encoder name (registered in mm's encoder registry). Accepts either
+  # the bare name (`resize`) or the kind-prefixed display name
+  # (`image-resize`). Examples:
+  #   image:    resize, tile
+  #   video:    frame-sample, frames-transcript, mosaic, video-chunk,
+  #             video-gemini, video-gemini-chunked, shot-frames, shot-mosaic
+  #   audio:    transcribe, audio-gemini
+  #   document: page-text, rasterize, rasterize-text, document-gemini
   # null = use the kind-specific default.
   strategy: resize
 
-  # All other keys are forwarded as kwargs to encoder.encode().
-  # Each encoder accepts different parameters — see `mm cat --list-encoders`.
-  #
-  # Examples for image-resize:
-  max_width: 1024
+  # Encoder-specific parameters, forwarded as kwargs to encoder.encode().
+  # See `mm cat --list-encoders` for every encoder's accepted fields.
+  strategy_opts:
+    # Examples for image-resize / image-tile:
+    max_width: 1024
 
-  # Examples for video-mosaic:
-  #   tile_cols: 4
-  #   tile_rows: 4
-  #   thumb_width: 160
-  #   num_mosaics: 8
-  #   num_frames: 128
+    # Examples for video-mosaic:
+    # tile_cols: 4
+    # tile_rows: 4
+    # thumb_width: 160
+    # num_mosaics: 8
+    # num_frames: 128
 
-  # Examples for video-frames-transcript:
-  #   fps: 1.0
-  #   max_width: 1024
-  #   max_frames_per_message: 16
-  #   whisper_model: medium
-  #   audio_speed: 1.0
+    # Examples for video-frames-transcript:
+    # fps: 1.0
+    # max_width: 1024
+    # max_frames_per_message: 16
+    # whisper_model: medium
+    # audio_speed: 1.0
 
-  # Examples for audio-transcribe:
-  #   whisper_model: medium
-  #   audio_speed: 1.0
+    # Examples for audio-transcribe:
+    # whisper_model: medium
+    # audio_speed: 1.0
 
-  # Custom Python transform — file path or inline code.
+  # Custom Python transform — file path or inline `def`.
   # Must define: def transform(parts, context) -> list[dict]
   #
   # File reference:

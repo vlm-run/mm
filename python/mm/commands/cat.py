@@ -472,10 +472,10 @@ def _run_encoder(path: Path, kind: str, spec: PipelineSpec, opts: _CatOpts) -> s
     """Run a named encoder strategy and output JSON messages or pipe to LLM."""
     import json
 
-    from mm.encoders import resolve_strategy
+    from mm.encoders import get as get_encoder
 
-    strat = resolve_strategy(spec.encode.strategy, kind)
-    messages = list(strat.encode(path, **spec.encode.encoder_kwargs))
+    strat = get_encoder(spec.encode.strategy)
+    messages = list(strat.encode(path, **spec.encode.strategy_opts))
 
     if spec.generate is None:
         import sys
@@ -567,7 +567,7 @@ def _accurate_video(path: Path, spec: PipelineSpec, opts: _CatOpts) -> str:
 
     from concurrent.futures import Future, ThreadPoolExecutor
 
-    ekw = spec.encode.encoder_kwargs
+    ekw = spec.encode.strategy_opts
     tile_spec = ekw.get("mosaic_tile") or "4x4"
     tile_cols, tile_rows = _parse_tile(tile_spec)
     num_mosaics = ekw.get("mosaic_count") or 8
@@ -752,7 +752,7 @@ def _accurate_audio(path: Path, spec: PipelineSpec, opts: _CatOpts) -> str:
     timing: dict[str, float] = {}
     t_total = time.monotonic()
 
-    akw = spec.encode.encoder_kwargs
+    akw = spec.encode.strategy_opts
     whisper_model = akw.get("whisper_model") or "medium"
     audio_speed = akw.get("audio_speed") or 1.0
     beam_size = 5

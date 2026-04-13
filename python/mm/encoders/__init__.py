@@ -1,12 +1,9 @@
 """Media encoders for VLM-ready message generation.
 
-Encoders transform media files (images, videos, documents) into
-OpenAI-compatible Message dicts ready for chat/completions APIs.
-
-Three ways to use an encoder:
-    1. Named:  ``mm cat photo.png -s resize``
-    2. File:   ``mm cat photo.png -s ~/my_encoder.py``
-    3. Inline: ``mm cat photo.png -s 'def encode(path, **kw): ...'``
+Encoders transform media files (images, videos, documents, audio) into
+OpenAI-compatible Message dicts ready for chat/completions APIs. Each
+encoder is registered by name and referenced from pipeline YAMLs via
+the ``encode.strategy`` field.
 
 Custom encoders use the ``@register_encoder`` decorator::
 
@@ -16,6 +13,9 @@ Custom encoders use the ``@register_encoder`` decorator::
     def my_custom(path, **kw):
         ...
         yield {"role": "user", "content": [...]}
+
+User-defined encoder files placed in ``~/.config/mm/encoders/*.py`` are
+auto-discovered and registered at import time.
 """
 
 from __future__ import annotations
@@ -271,42 +271,6 @@ def load_strategy_file(path: Path) -> list[str]:
     return names
 
 
-def load_inline_strategy(code: str) -> list[str]:
-    """Execute inline Python code and register its encoders.
-
-    The executed code has access to the ``register_encoder`` decorator
-    (also available as ``strategy``) and ``pathlib.Path``.  Intended
-    for agent-generated code passed via ``mm cat -s '<code>'``.
-    Results are cached by code content so repeated calls with
-    identical code skip re-execution.
-
-    Args:
-        code: Python source code containing ``@register_encoder``-decorated
-            functions.
-
-    Returns:
-        List of encoder names registered from this code.
-    """
-    import hashlib
-
-    source_key: str = f"inline:{hashlib.sha256(code.encode()).hexdigest()[:16]}"
-    if source_key in _LOADED_SOURCES:
-        return _LOADED_SOURCES[source_key]
-
-    before = set(_REGISTRY)
-    exec_globals: dict[str, Any] = {
-        "register_encoder": register_encoder,
-        "strategy": strategy,
-        "Path": Path,
-        "__builtins__": __builtins__,
-    }
-    exec(code, exec_globals)  # noqa: S102
-    after = set(_REGISTRY)
-    names = sorted(after - before)
-    _LOADED_SOURCES[source_key] = names
-    return names
-
-
 def _ensure_discovered() -> None:
     """Lazily register built-in encoders and run auto-discovery."""
     global _DISCOVERED
@@ -369,62 +333,15 @@ def _user_encoders_dir() -> Path | None:
     return d if d.is_dir() else None
 
 
-def resolve_strategy(value: str, media_type: str) -> MessageStrategy:
-    """Resolve a ``-s`` CLI value to a concrete ``MessageStrategy``.
+def resolve_strategy(name: str, media_type: str) -> MessageStrategy:
+    """Look up a registered encoder by name.
 
-    Detection logic applied to *value*:
-        1. Contains ``def `` or ``lambda`` -- treated as inline Python.
-        2. Ends with ``.py`` or contains ``/`` -- treated as a file path.
-        3. Otherwise -- looked up by name in the registry.
-
-    Args:
-        value: The raw ``-s`` argument from the CLI.
-        media_type: Media kind of the target file (used to disambiguate
-            when a loaded file defines multiple encoders).
-
-    Returns:
-        A ``MessageStrategy`` ready to call ``.encode()``.
-
-    Raises:
-        KeyError: Named encoder not found.
-        FileNotFoundError: Encoder file does not exist.
-        ValueError: Loaded file/code registered no encoders.
+    Accepts either the bare registry key (``"resize"``) or the
+    kind-prefixed display name (``"image-resize"``). The ``media_type``
+    argument is currently unused — kept for call-site compatibility.
     """
-    _ensure_discovered()
-
-    if "def " in value or "lambda " in value:
-        names = load_inline_strategy(value)
-        return _pick_by_media_type(names, media_type, source="inline code")
-
-    if value.endswith(".py") or "/" in value:
-        path = Path(value).expanduser().resolve()
-        if not path.exists():
-            raise FileNotFoundError(f"Encoder file not found: {path}")
-        names = load_strategy_file(path)
-        return _pick_by_media_type(names, media_type, source=str(path))
-
-    return get(value)
-
-
-def _pick_by_media_type(
-    names: list[str], media_type: str, source: str
-) -> MessageStrategy:
-    """Select the best-matching encoder from a list of registered names.
-
-    Args:
-        names: Encoder names registered from *source*.
-        media_type: Target media kind to match against.
-        source: Human-readable description of the source (for errors).
-
-    Raises:
-        ValueError: If *names* is empty (nothing was registered).
-    """
-    if not names:
-        raise ValueError(f"No encoders registered from {source}")
-    matching = [n for n in names if media_type in _REGISTRY[n].media_types]
-    if matching:
-        return _REGISTRY[matching[0]]
-    return _REGISTRY[names[0]]
+    del media_type  # unused; kept for back-compat with existing callers
+    return get(name)
 
 
 def _resolve_provider() -> str:

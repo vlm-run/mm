@@ -3,8 +3,9 @@ mode: accurate
 
 encode:
   strategy: transcribe
-  whisper_model: medium
-  audio_speed: 1.0
+  strategy_opts:
+    whisper_model: medium
+    audio_speed: 1.0
 
 generate:
   prompt: >-

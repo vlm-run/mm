@@ -88,7 +88,7 @@ def test_files_iteration(small_tree: Path):
 def test_cat_text_file(small_tree: Path):
     from mm.context import Context
     ctx = Context(small_tree)
-    content = ctx.cat("src/main.py", level=0)
+    content = ctx.cat("src/main.py")
     assert "def main" in content
 
 

@@ -3,11 +3,12 @@ mode: accurate
 
 encode:
   strategy: frames-transcript
-  fps: 1.0
-  max_width: 1024
-  max_frames_per_message: 16
-  whisper_model: medium
-  audio_speed: 1.0
+  strategy_opts:
+    fps: 1.0
+    max_width: 1024
+    max_frames_per_message: 16
+    whisper_model: medium
+    audio_speed: 1.0
 
 generate:
   prompt: >-

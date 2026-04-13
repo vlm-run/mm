@@ -60,9 +60,11 @@ class TestPipelineSpecSchema:
             "mode": "accurate",
             "encode": {
                 "strategy": "frame-sample",
-                "max_width": 512,
-                "transcribe": True,
-                "whisper_model": "medium",
+                "strategy_opts": {
+                    "max_width": 512,
+                    "transcribe": True,
+                    "whisper_model": "medium",
+                },
             },
             "generate": {
                 "prompt": "Describe the video {filename}.",
@@ -72,9 +74,9 @@ class TestPipelineSpecSchema:
             },
         })
         assert spec.encode.strategy == "frame-sample"
-        assert spec.encode.max_width == 512
-        assert spec.encode.transcribe is True
-        assert spec.encode.whisper_model == "medium"
+        assert spec.encode.strategy_opts["max_width"] == 512
+        assert spec.encode.strategy_opts["transcribe"] is True
+        assert spec.encode.strategy_opts["whisper_model"] == "medium"
         assert spec.generate is not None
         assert spec.generate.max_tokens == 1024
         assert spec.generate.temperature == 0.7
@@ -107,7 +109,7 @@ class TestPipelineSpecSchema:
         enc = Encode()
         assert enc.strategy is None
         assert enc.pyfunc is None
-        assert enc.encoder_kwargs == {}
+        assert enc.strategy_opts == {}
 
     def test_generate_defaults(self):
         gen = Generate(prompt="Hello")
@@ -295,7 +297,10 @@ class TestApplyOverrides:
         return PipelineSpec.from_dict({
             "kind": "image",
             "mode": "fast",
-            "encode": {"strategy": "resize", "max_width": 1024},
+            "encode": {
+                "strategy": "resize",
+                "strategy_opts": {"max_width": 1024},
+            },
             "generate": {"prompt": "Describe this image.", "max_tokens": 256},
         })
 
@@ -316,12 +321,12 @@ class TestApplyOverrides:
         spec = self._base_spec()
         result = apply_overrides(spec, encode_overrides={"strategy": "tile"})
         assert result.encode.strategy == "tile"
-        assert result.encode.encoder_kwargs["max_width"] == 1024
+        assert result.encode.strategy_opts["max_width"] == 1024
 
     def test_encode_max_width_override(self):
         spec = self._base_spec()
         result = apply_overrides(spec, encode_overrides={"max_width": "2048"})
-        assert result.encode.encoder_kwargs["max_width"] == "2048"
+        assert result.encode.strategy_opts["max_width"] == "2048"
 
     def test_generate_max_tokens_override(self):
         spec = self._base_spec()
@@ -345,7 +350,7 @@ class TestApplyOverrides:
     def test_bool_false_override(self):
         spec = self._base_spec()
         result = apply_overrides(spec, encode_overrides={"transcribe": "false"})
-        assert result.encode.encoder_kwargs["transcribe"] == "false"
+        assert result.encode.strategy_opts["transcribe"] == "false"
 
     def test_both_overrides_at_once(self):
         spec = self._base_spec()
@@ -359,10 +364,10 @@ class TestApplyOverrides:
         assert result.generate.max_tokens == 512
         assert result.generate.temperature == 0.8
 
-    def test_unknown_encode_field_becomes_encoder_kwarg(self):
+    def test_unknown_encode_field_becomes_strategy_opt(self):
         spec = self._base_spec()
         result = apply_overrides(spec, encode_overrides={"custom_param": "val"})
-        assert result.encode.encoder_kwargs["custom_param"] == "val"
+        assert result.encode.strategy_opts["custom_param"] == "val"
 
     def test_unknown_generate_field_ignored(self):
         spec = self._base_spec()
@@ -379,12 +384,12 @@ class TestApplyOverrides:
     def test_mosaic_image_width_override(self):
         spec = self._base_spec()
         result = apply_overrides(spec, encode_overrides={"mosaic_image_width": "320"})
-        assert result.encode.encoder_kwargs.get("mosaic_image_width") == "320"
+        assert result.encode.strategy_opts.get("mosaic_image_width") == "320"
 
     def test_frame_selection_override(self):
         spec = self._base_spec()
         result = apply_overrides(spec, encode_overrides={"frame_selection": "scene"})
-        assert result.encode.encoder_kwargs.get("frame_selection") == "scene"
+        assert result.encode.strategy_opts.get("frame_selection") == "scene"
 
     def test_pyfunc_override(self):
         spec = self._base_spec()
@@ -399,17 +404,17 @@ class TestApplyOverrides:
         assert result.generate.max_tokens == 512
 
 
-class TestEncodeExtraKwargs:
-    """Validate that extra encode fields are stored as encoder_kwargs."""
+class TestEncodeStrategyOpts:
+    """Validate strategy_opts carries encoder parameters."""
 
     def test_defaults_empty(self):
         enc = Encode()
-        assert enc.encoder_kwargs == {}
+        assert enc.strategy_opts == {}
 
-    def test_set_via_model(self):
-        enc = Encode(mosaic_image_width=320, frame_selection="scene")
-        assert enc.encoder_kwargs["mosaic_image_width"] == 320
-        assert enc.encoder_kwargs["frame_selection"] == "scene"
+    def test_set_via_constructor(self):
+        enc = Encode(strategy_opts={"mosaic_image_width": 320, "frame_selection": "scene"})
+        assert enc.strategy_opts["mosaic_image_width"] == 320
+        assert enc.strategy_opts["frame_selection"] == "scene"
 
     def test_roundtrip_yaml(self, tmp_path: Path):
         data = {
@@ -417,17 +422,19 @@ class TestEncodeExtraKwargs:
             "mode": "fast",
             "encode": {
                 "strategy": "mosaic",
-                "tile_cols": 6,
-                "tile_rows": 4,
-                "thumb_width": 200,
+                "strategy_opts": {
+                    "tile_cols": 6,
+                    "tile_rows": 4,
+                    "thumb_width": 200,
+                },
             },
         }
         p = tmp_path / "pipeline.yaml"
         p.write_text(yaml.dump(data))
         spec = PipelineSpec.from_dict(yaml.safe_load(p.read_text()))
-        assert spec.encode.encoder_kwargs["tile_cols"] == 6
-        assert spec.encode.encoder_kwargs["tile_rows"] == 4
-        assert spec.encode.encoder_kwargs["thumb_width"] == 200
+        assert spec.encode.strategy_opts["tile_cols"] == 6
+        assert spec.encode.strategy_opts["tile_rows"] == 4
+        assert spec.encode.strategy_opts["thumb_width"] == 200
 
 
 class TestLoadFile:

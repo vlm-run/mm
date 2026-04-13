@@ -119,33 +119,6 @@ class TestRegistry:
         strat = resolve_strategy("resize", "image")
         assert strat.name == "resize"
 
-    def test_resolve_file_path(self, tmp_path, serde_images):
-        from mm.encoders import resolve_strategy
-
-        # Create a custom strategy file
-        strat_file = tmp_path / "custom_strat.py"
-        strat_file.write_text(
-            "from pathlib import Path\n"
-            "from mm.encoders import strategy\n"
-            "@strategy(name='test_custom_file', media_types=('image',))\n"
-            "def test_custom_file(path, **kw):\n"
-            "    yield {'role': 'user', 'content': [{'type': 'text', 'text': str(path)}]}\n"
-        )
-        strat = resolve_strategy(str(strat_file), "image")
-        assert strat.name == "test_custom_file"
-
-    def test_resolve_inline(self, serde_images):
-        from mm.encoders import resolve_strategy
-
-        code = (
-            "from mm.encoders import strategy\n"
-            "@strategy(name='test_inline_xyz', media_types=('image',))\n"
-            "def test_inline_xyz(path, **kw):\n"
-            "    yield {'role': 'user', 'content': [{'type': 'text', 'text': 'inline'}]}\n"
-        )
-        strat = resolve_strategy(code, "image")
-        assert strat.name == "test_inline_xyz"
-
     def test_strategy_decorator(self):
         from mm.encoders import _REGISTRY, strategy
 

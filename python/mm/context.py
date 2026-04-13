@@ -162,84 +162,30 @@ class Context:
 
     # --- Content access ---
 
-    def cat(
-        self,
-        path: str,
-        *,
-        level: int = 1,
-        mode: str | None = None,
-        no_cache: bool = False,
-    ) -> str:
-        """Read semantic content of a file.
+    def cat(self, path: str, *, no_cache: bool = False) -> str:
+        """Read the fast-mode content of a file.
 
-        Level 0: raw content (for text files)
-        Level 1: extracted content (text from PDF, image metadata)
-        Level 2: LLM-generated description (requires LLM config)
-
-        Args:
-            path: Relative path within the context root.
-            level: Processing level (0=raw, 1=extracted, 2=semantic).
-            mode: Extraction mode for L2: "fast" or "accurate". None uses default L2.
-            no_cache: Skip L2 cache lookup and force a fresh LLM call.
+        Mirrors ``mm cat <file>`` (fast mode) — metadata/text extraction
+        without an LLM call. For accurate-mode LLM descriptions, use
+        the ``mm cat -m accurate`` CLI or ``mm.llm.LlmBackend`` directly.
         """
         full_path = self.root / path
+        from mm.commands.cat import _file_kind, _run_l1
 
-        if level == 0:
-            from mm.commands.cat import _file_kind
-
-            kind = _file_kind(full_path)
-            if kind != "text":
-                from mm.commands.cat import _run_l1
-
-                return _run_l1(full_path, kind, no_cache=no_cache)
+        kind = _file_kind(full_path)
+        if kind == "text":
             return full_path.read_text(errors="replace")
-
-        if level >= 2 and mode is not None:
-            # Use the CLI's modal extraction pipeline
-            from mm.commands.cat import _CatOpts, _extract
-
-            opts = _CatOpts(
-                level=level,
-                n=None,
-                detail=False,
-                output_dir=None,
-                max_pages=None,
-                mosaic_tile="4x4",
-                mosaic_image_width=160,
-                video_mosaic_count=1,
-                video_mosaic_strategy="uniform",
-                audio_speed=2.0,
-                audio_sample_rate=16000,
-                mode=mode,
-                no_cache=no_cache,
-                format="rich",
-            )
-            return _extract(full_path, opts)
-
-        if level >= 1:
-            result = self._scanner.extract_l1(path)
-            parts: list[str] = []
-            if result.text_preview:
-                parts.append(result.text_preview)
-            if result.dimensions:
-                parts.append(f"Dimensions: {result.dimensions}")
-            if result.line_count is not None:
-                parts.append(f"Lines: {result.line_count}")
-            if result.language:
-                parts.append(f"Language: {result.language}")
-            return "\n".join(parts) if parts else full_path.read_text(errors="replace")
-
-        return ""
+        return _run_l1(full_path, kind, no_cache=no_cache)
 
     def head(self, path: str, *, n: int = 10) -> str:
         """First N lines/pages of a file."""
-        content = self.cat(path, level=1)
+        content = self.cat(path)
         lines = content.splitlines()
         return "\n".join(lines[:n])
 
     def tail(self, path: str, *, n: int = 10) -> str:
         """Last N lines/pages of a file."""
-        content = self.cat(path, level=1)
+        content = self.cat(path)
         lines = content.splitlines()
         return "\n".join(lines[-n:])
 
@@ -250,20 +196,21 @@ class Context:
         strategy: str | None = None,
         **kwargs: Any,
     ) -> list[dict[str, Any]]:
-        """Encode a file for VLM consumption using a serde strategy.
+        """Encode a file into VLM-ready Message dicts.
 
         Args:
             path: Relative path within the context root.
-            strategy: Strategy name, .py file path, or inline code.
-                      If None, defaults to "resize" for images,
-                      "frame_sample" for video, "rasterize" for documents.
-            **kwargs: Strategy-specific parameters (max_width, fps, etc.)
+            strategy: Registered encoder name (e.g. ``"image-resize"``).
+                If ``None``, defaults to ``image-resize`` for images,
+                ``video-frame-sample`` for video, ``document-rasterize``
+                for documents.
+            **kwargs: Forwarded to ``encoder.encode()``.
 
         Returns:
             List of OpenAI-compatible Message dicts.
         """
         from mm.constants import file_kind
-        from mm.encoders import resolve_strategy
+        from mm.encoders import get
 
         full_path = self.root / path
         if not full_path.exists():
@@ -272,10 +219,13 @@ class Context:
         media_type = file_kind(full_path.name)
 
         if strategy is None:
-            strategy = {"image": "resize", "video": "frame-sample",
-                        "document": "rasterize"}.get(media_type, "resize")
+            strategy = {
+                "image": "image-resize",
+                "video": "video-frame-sample",
+                "document": "document-rasterize",
+            }.get(media_type, "image-resize")
 
-        strat = resolve_strategy(strategy, media_type)
+        strat = get(strategy)
         return list(strat.encode(full_path, **kwargs))
 
     def grep(self, pattern: str, *, kind: str | None = None) -> list[dict[str, Any]]:
@@ -287,7 +237,7 @@ class Context:
 
         for f in target.files:
             try:
-                content = self.cat(f.path, level=1)
+                content = self.cat(f.path)
                 for i, line in enumerate(content.splitlines(), 1):
                     if re.search(pattern, line):
                         matches.append(

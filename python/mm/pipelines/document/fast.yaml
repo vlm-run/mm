@@ -3,4 +3,5 @@ mode: fast
 
 encode:
   strategy: page-text
-  pages_per_message: 4
+  strategy_opts:
+    pages_per_message: 4

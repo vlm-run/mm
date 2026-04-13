@@ -3,8 +3,9 @@ mode: fast
 
 encode:
   strategy: mosaic
-  tile_cols: 4
-  tile_rows: 4
-  thumb_width: 160
-  num_mosaics: 8
-  num_frames: 128
+  strategy_opts:
+    tile_cols: 4
+    tile_rows: 4
+    thumb_width: 160
+    num_mosaics: 8
+    num_frames: 128

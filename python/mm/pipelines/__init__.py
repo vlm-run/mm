@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import types
 import typing
-from dataclasses import fields, is_dataclass
+from dataclasses import fields
 from functools import lru_cache
 from pathlib import Path
 from typing import Any
@@ -24,6 +24,18 @@ from typing import Any
 import yaml
 
 from mm.pipelines.schema import Encode, Generate, PipelineSpec, PipelineValidationError
+
+__all__ = [
+    "Encode",
+    "Generate",
+    "PipelineSpec",
+    "PipelineValidationError",
+    "apply_overrides",
+    "load",
+    "load_file",
+    "render_prompt",
+    "run_pyfunc",
+]
 
 _PIPELINES_DIR = Path(__file__).parent
 
@@ -154,24 +166,16 @@ def run_pyfunc(
     return result
 
 
-def _coerce(model: type[Encode] | type[Generate], key: str, value: str) -> Any:
-    """Cast a CLI string value to the type expected by the dataclass field.
-
-    For ``Encode`` extra fields (encoder kwargs), the string is returned as-is
-    since the encoder will handle its own type coercion.
-    """
-    if not is_dataclass(model):
-        return value
-
+def _coerce_generate(key: str, value: str) -> Any:
+    """Cast a CLI string override value to the ``Generate`` field type."""
     try:
-        hints = typing.get_type_hints(model)
+        hints = typing.get_type_hints(Generate)
     except Exception:
         hints = {}
     annotation = hints.get(key)
-    if annotation is None and key not in {f.name for f in fields(model)}:
+    if annotation is None:
         return value
 
-    # Unwrap Optional (Union[X, None]) to get the inner type
     if isinstance(annotation, types.UnionType):
         args = [a for a in annotation.__args__ if a is not type(None)]
         annotation = args[0] if args else str
@@ -185,24 +189,38 @@ def _coerce(model: type[Encode] | type[Generate], key: str, value: str) -> Any:
     return value
 
 
+_ENCODE_TOP_LEVEL: frozenset[str] = frozenset({"strategy", "pyfunc"})
+
+
 def apply_overrides(
     spec: PipelineSpec,
     encode_overrides: dict[str, str] | None = None,
     generate_overrides: dict[str, str] | None = None,
 ) -> PipelineSpec:
-    """Return a new PipelineSpec with field-level overrides applied.
+    """Return a new ``PipelineSpec`` with field-level overrides applied.
 
-    Values are coerced from strings to the correct Python type based
-    on the dataclass field annotation (int, float, bool, str).
+    Encode overrides:
+      * ``strategy`` and ``pyfunc`` replace the top-level fields.
+      * Anything else is merged into ``encode.strategy_opts`` verbatim
+        (the encoder handles its own type coercion).
+
+    Generate overrides are coerced to the dataclass field type.
     """
     if not encode_overrides and not generate_overrides:
         return spec
 
     data = spec.to_dict()
+
     if encode_overrides:
         encode_section = data.setdefault("encode", {})
+        strategy_opts = dict(encode_section.get("strategy_opts") or {})
         for k, v in encode_overrides.items():
-            encode_section[k] = _coerce(Encode, k, v)
+            if k in _ENCODE_TOP_LEVEL:
+                encode_section[k] = v
+            else:
+                strategy_opts[k] = v
+        encode_section["strategy_opts"] = strategy_opts
+
     if generate_overrides:
         if data.get("generate") is None:
             data["generate"] = {"prompt": ""}
@@ -210,5 +228,6 @@ def apply_overrides(
         known = {f.name for f in fields(Generate)}
         for k, v in generate_overrides.items():
             if k in known:
-                gen[k] = _coerce(Generate, k, v)
+                gen[k] = _coerce_generate(k, v)
+
     return PipelineSpec.from_dict(data)

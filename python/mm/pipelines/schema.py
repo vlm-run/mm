@@ -7,9 +7,6 @@ Each pipeline configures a 2-stage flow:
 Pipelines live in ``python/mm/pipelines/{kind}/{mode}.yaml`` and are
 parsed with :func:`PipelineSpec.from_dict`. Validation failures raise
 :class:`PipelineValidationError` (a plain ``ValueError`` subclass).
-
-Historically these were Pydantic models; they are now plain classes so
-``mm`` has no runtime dependency on Pydantic.
 """
 
 from __future__ import annotations
@@ -25,12 +22,14 @@ class PipelineValidationError(ValueError):
 _MISSING = object()
 
 
+@dataclass
 class Encode:
     """Input encoding stage: how to convert a file into LLM-ready parts.
 
-    The ``strategy`` field selects a registered encoder (e.g. ``resize``,
-    ``frame-sample``, ``rasterize``). Any additional keyword arguments are
-    stored in :attr:`encoder_kwargs` and forwarded to ``encoder.encode()``.
+    ``strategy`` selects a registered encoder (e.g. ``resize``,
+    ``frame-sample``, ``rasterize``). Encoder-specific parameters live
+    nested under ``strategy_opts`` and are forwarded as kwargs to
+    ``encoder.encode()``.
 
     ``pyfunc`` allows inline Python to transform/filter the parts list
     before it reaches the LLM. Signature::
@@ -38,31 +37,9 @@ class Encode:
         def transform(parts: list[dict], context: dict) -> list[dict]
     """
 
-    __slots__ = ("strategy", "pyfunc", "_extras")
-
-    def __init__(
-        self,
-        strategy: str | None = None,
-        pyfunc: str | None = None,
-        **kwargs: Any,
-    ) -> None:
-        self.strategy = strategy
-        self.pyfunc = pyfunc
-        self._extras: dict[str, Any] = dict(kwargs)
-
-    # Attribute access for extras so spec.encode.max_width works like before.
-    def __getattr__(self, name: str) -> Any:
-        if name.startswith("_"):
-            raise AttributeError(name)
-        extras = object.__getattribute__(self, "_extras")
-        if name in extras:
-            return extras[name]
-        raise AttributeError(name)
-
-    @property
-    def encoder_kwargs(self) -> dict[str, Any]:
-        """All extra fields beyond strategy/pyfunc, forwarded to the encoder."""
-        return dict(self._extras)
+    strategy: str | None = None
+    pyfunc: str | None = None
+    strategy_opts: dict[str, Any] = field(default_factory=dict)
 
     @classmethod
     def from_dict(cls, data: dict[str, Any] | None) -> "Encode":
@@ -72,7 +49,16 @@ class Encode:
             raise PipelineValidationError(
                 f"encode must be a mapping, got {type(data).__name__}"
             )
-        return cls(**data)
+        opts = data.get("strategy_opts") or {}
+        if not isinstance(opts, dict):
+            raise PipelineValidationError(
+                f"encode.strategy_opts must be a mapping, got {type(opts).__name__}"
+            )
+        return cls(
+            strategy=data.get("strategy"),
+            pyfunc=data.get("pyfunc"),
+            strategy_opts=dict(opts),
+        )
 
     def to_dict(self) -> dict[str, Any]:
         out: dict[str, Any] = {}
@@ -80,7 +66,8 @@ class Encode:
             out["strategy"] = self.strategy
         if self.pyfunc is not None:
             out["pyfunc"] = self.pyfunc
-        out.update(self._extras)
+        if self.strategy_opts:
+            out["strategy_opts"] = dict(self.strategy_opts)
         return out
 
 
