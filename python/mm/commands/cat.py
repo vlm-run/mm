@@ -239,9 +239,22 @@ def cat_cmd(
                 kind = _file_kind(p)
                 size = p.stat().st_size
                 print(f"--- {p} ({kind}, {size}B) ---")
-            # Use Rich console to properly render markup like [dim]...[/dim]
-            from mm.display import output_console
-            output_console.print(content)
+            # Split content from verbose decoration (Rich markup).
+            # Plain content goes through print(); [dim] lines go through Rich.
+            _dim_prefix = "[dim]"
+            lines = content.split("\n")
+            plain_lines: list[str] = []
+            rich_lines: list[str] = []
+            for ln in lines:
+                if _dim_prefix in ln:
+                    rich_lines.append(ln)
+                else:
+                    plain_lines.append(ln)
+            if plain_lines:
+                print("\n".join(plain_lines))
+            if rich_lines:
+                from mm.display import output_console
+                output_console.print("\n".join(rich_lines))
 
     if fmt in ("json", "dataset-jsonl", "dataset-hf"):
         from mm.display import emit_rows
@@ -440,6 +453,7 @@ def _run_accurate(path: Path, kind: str, opts: _CatOpts) -> str:
             extra_parts.append(f"p:{pk}")
     extra = "|".join(extra_parts)
 
+    l2_id: str | None = None
     if content_hash:
         from mm.store.util import get_l2_id
 
@@ -482,12 +496,13 @@ def _run_accurate(path: Path, kind: str, opts: _CatOpts) -> str:
             detail=False,
             extra=extra,
         )
-        try:
-            from mm.store.embed import embed_file_chunks
+        if l2_id:
+            try:
+                from mm.store.embed import embed_file_chunks
 
-            embed_file_chunks(l2_id)
-        except Exception:
-            pass
+                embed_file_chunks(l2_id)
+            except Exception:
+                pass
     return result
 
 
@@ -600,11 +615,11 @@ def _format_encode_verbose(strategy: str | None, messages: list[dict], elapsed_m
 
 def _run_encoder(path: Path, kind: str, spec: PipelineSpec, opts: _CatOpts) -> str:
     """Run a named encoder strategy and output JSON messages or pipe to LLM."""
-    import json
     import time
 
     from mm.encoders import get as get_encoder
 
+    assert spec.encode.strategy is not None
     t_encode = time.monotonic()
     strat = get_encoder(spec.encode.strategy)
     messages = list(strat.encode(path, **spec.encode.strategy_opts))
@@ -1271,7 +1286,7 @@ def _do_list_pipelines() -> None:
         lines.append(path_line)
 
     body = Text("\n").join(lines)
-    max_line = max((len(l.plain) for l in lines), default=60)
+    max_line = max((len(line.plain) for line in lines), default=60)
     panel_w = max_line + 8
     console = Console(width=max(panel_w, 80))
     panel = Panel(body, title="Pipelines", title_align="left", box=box.ROUNDED, padding=(1, 2), width=panel_w)
@@ -1323,7 +1338,7 @@ def _do_list_encoders() -> None:
             lines.append(param_line)
 
     body = Text("\n").join(lines)
-    max_line = max((len(l.plain) for l in lines), default=60)
+    max_line = max((len(line.plain) for line in lines), default=60)
     panel_w = max_line + 8
     console = Console(width=max(panel_w, 80))
     panel = Panel(body, title="Encoders", title_align="left", box=box.ROUNDED, padding=(1, 2), width=panel_w)

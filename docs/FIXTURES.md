@@ -34,6 +34,8 @@ uv run mm cat input.png -m accurate
 uv run mm cat input.png --encode.strategy image-tile
 # Custom image resizing (for smaller resolution images)
 uv run mm cat input.png --encode.strategy image-resize -m accurate
+# With verbose output (shows pipeline steps and token usage)
+uv run mm cat input.png -v
 ```
 
 ### Document
@@ -51,6 +53,8 @@ uv run mm cat input.docx -m accurate
 uv run mm cat input.pdf --encode.strategy document-page-text
 # Rasterize pages and interleave extracted text (hybrid, batch=auto)
 uv run mm cat input.pdf --encode.strategy document-rasterize-text -m accurate
+# With verbose output (shows pipeline steps and token usage)
+uv run mm cat input.pdf -v
 ```
 
 ### Audio
@@ -62,6 +66,8 @@ uv run mm cat input.mp3
 uv run mm cat input.mp3 -m accurate
 # Extract audio accurately (pass audio directly to a Gemini-compatible VLM)
 uv run mm cat input.mp3 --encode.strategy audio-gemini -m accurate
+# With verbose output (shows pipeline steps and token usage)
+uv run mm cat input.mp3 -v
 ```
 
 ### Video

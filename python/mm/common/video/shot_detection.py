@@ -24,6 +24,9 @@ class SceneResult:
 
 def scenedetect_available() -> bool:
     """Check if scenedetect is installed."""
+    from mm._bootstrap import preload_media_libs
+
+    preload_media_libs()
     try:
         import scenedetect  # noqa: F401
 

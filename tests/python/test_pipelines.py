@@ -148,7 +148,7 @@ class TestLoad:
         spec = load("video", "fast")
         assert spec.kind == "video"
         assert spec.mode == "fast"
-        assert spec.generate is None
+        assert spec.generate is not None
 
     def test_load_video_accurate(self):
         spec = load("video", "accurate")

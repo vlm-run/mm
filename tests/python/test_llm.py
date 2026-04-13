@@ -164,11 +164,11 @@ class TestLlmBackendChat:
         """When pipeline has generate=None, generate() returns '' without calling LLM."""
         backend, client = self._make_backend()
 
-        # video/fast.yaml ships with no `generate` stage (encode-only pipeline).
+        # document/fast.yaml ships with no `generate` stage (encode-only pipeline).
         result = backend.generate(
-            "video", "fast",
-            context={"filename": "test.mp4"},
-            parts=[{"type": "image_url", "image_url": {"url": "data:image/jpeg;base64,abc"}}],
+            "document", "fast",
+            context={"filename": "test.pdf"},
+            parts=[{"type": "text", "text": "page content"}],
         )
         assert result == ""
         client.chat.completions.create.assert_not_called()
