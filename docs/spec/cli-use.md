@@ -22,6 +22,8 @@ Each benchmark is a real CLI invocation measured end-to-end via subprocess.
 
 ### Fast mode — content extraction (file-level)
 
+Use `--no-cache` to bypass caching.
+
 | Name | Command | Selection |
 |------|---------|-----------|
 | `mm cat <code> (x20)` | `mm cat {files} --format json` | first 20 code files |
@@ -34,6 +36,8 @@ Each benchmark is a real CLI invocation measured end-to-end via subprocess.
 | `mm grep /pattern/` | `mm grep 'import\|include\|require' {dir} --format json` | all text files |
 
 ### Accurate mode (LLM pipelines)
+
+Use `--no-cache` to bypass caching.
 
 | Name | Command | Selection |
 |------|---------|-----------|

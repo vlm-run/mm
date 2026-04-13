@@ -48,6 +48,31 @@ mm cat *.jpg *.mp4 -p image.yaml -p video.yaml
 mm cat photo.jpg -m accurate --encode.pyfunc ~/my_filter.py
 ```
 
+### Example `my_filter.py`
+
+A pyfunc file must define `transform(parts, context) -> list[dict]`.
+`parts` is a list of OpenAI-compatible message content dicts (e.g.
+`{"type": "text", ...}` or `{"type": "image_url", ...}`); `context` is
+file metadata (name, kind, size, etc.).
+
+```python
+# ~/my_filter.py — keep only image parts and prepend a custom instruction
+def transform(parts: list[dict], context: dict) -> list[dict]:
+    images = [p for p in parts if p.get("type") == "image_url"]
+    header = {"type": "text", "text": f"Analyze {context['name']} in detail."}
+    return [header, *images]
+```
+
+Inline variants also work inside a pipeline YAML:
+
+```yaml
+encode:
+  strategy: resize
+  pyfunc: |
+    def transform(parts, context):
+        return [p for p in parts if p.get("type") == "image_url"]
+```
+
 ## Encoders
 
 See [ENCODERS.md](ENCODERS.md) for the full encoder reference — all built-in encoders, parameters, planned encoders, and how to write custom encoders.
