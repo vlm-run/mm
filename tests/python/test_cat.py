@@ -14,7 +14,7 @@ from pathlib import Path
 
 import pytest
 from mm.cli import app
-from mm.commands.cat import AUDIO_EXTS, IMAGE_EXTS, VIDEO_EXTS, _file_kind
+from mm.utils import AUDIO_EXTS, IMAGE_EXTS, VIDEO_EXTS, file_kind
 from typer.testing import CliRunner
 
 runner = CliRunner()
@@ -56,30 +56,30 @@ def mixed_dir(tmp_path: Path) -> Path:
     return tmp_path
 
 
-# ── _file_kind unit tests ────────────────────────────────────────────
+# ── file_kind unit tests ────────────────────────────────────────────
 
 
 class TestFileKindDetection:
-    """Verify _file_kind classifies by extension."""
+    """Verify file_kind classifies by extension."""
 
     @pytest.mark.parametrize("ext", sorted(IMAGE_EXTS))
     def test_image_extensions(self, ext):
-        assert _file_kind(Path(f"test{ext}")) == "image"
+        assert file_kind(Path(f"test{ext}")) == "image"
 
     @pytest.mark.parametrize("ext", sorted(VIDEO_EXTS))
     def test_video_extensions(self, ext):
-        assert _file_kind(Path(f"test{ext}")) == "video"
+        assert file_kind(Path(f"test{ext}")) == "video"
 
     @pytest.mark.parametrize("ext", sorted(AUDIO_EXTS))
     def test_audio_extensions(self, ext):
-        assert _file_kind(Path(f"test{ext}")) == "audio"
+        assert file_kind(Path(f"test{ext}")) == "audio"
 
     def test_pdf(self):
-        assert _file_kind(Path("paper.pdf")) == "document"
+        assert file_kind(Path("paper.pdf")) == "document"
 
     @pytest.mark.parametrize("ext", [".py", ".rs", ".js", ".md", ".toml", ".txt", ".csv"])
     def test_text_fallback(self, ext):
-        assert _file_kind(Path(f"file{ext}")) == "text"
+        assert file_kind(Path(f"file{ext}")) == "text"
 
 
 # ── L0 raw passthrough ───────────────────────────────────────────────

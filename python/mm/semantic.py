@@ -48,7 +48,8 @@ def check_indexed(uris: list[str]) -> tuple[set[str], list[str]]:
 
 def _index_one(uri: str) -> str | None:
     """Index a single file via L2 pipeline. Returns URI on success, None on failure."""
-    from mm.commands.cat import _CatOpts, _file_kind, _run_l2
+    from mm.commands.cat import _CatOpts, _run_l2
+    from mm.utils import file_kind
 
     opts = _CatOpts(
         level=2,
@@ -71,7 +72,7 @@ def _index_one(uri: str) -> str | None:
     if not path.exists():
         return None
     try:
-        result = _run_l2(path, _file_kind(path), opts)
+        result = _run_l2(path, file_kind(path), opts)
         if not result.startswith("["):
             return uri
         raise ValueError(f"Failed to extract L2 for {uri}: {result}")
