@@ -67,14 +67,6 @@ def grep_cmd(
         )
         return
 
-    from mm.context import Context
-
-    ctx = Context(_directory)
-    if kind:
-        ctx = ctx.filter(kind=kind)
-    if ext:
-        ctx = ctx.filter(ext=ext)
-
     try:
         regex = re.compile(pattern)
     except re.error as e:
@@ -83,29 +75,36 @@ def grep_cmd(
 
     all_matches: list[dict] = []
     file_counts: dict[str, int] = {}
-    # remove dotfiles from search by default
-    files_to_search = list(filter(lambda v: not v.path.startswith("."), ctx.files))
 
     if stdin_paths:
         from mm.utils import file_kind, is_binary_content
 
-        if not directory:
-            files_to_search = []
+        files_to_search: list[FileEntry] = []
         for item in resolve_piped_paths(stdin_paths):
-            kind = file_kind(item)
+            fkind = file_kind(item)
             files_to_search.append(
                 FileEntry(
                     row=dict(
                         path=item,
-                        kind=kind,
-                        is_binary=is_binary_content(kind=kind),
+                        kind=fkind,
+                        is_binary=is_binary_content(kind=fkind),
                     )
                 )
             )
+    else:
+        from mm.context import Context
+
+        ctx = Context(_directory)
+        if kind:
+            ctx = ctx.filter(kind=kind)
+        if ext:
+            ctx = ctx.filter(ext=ext)
+        files_to_search = list(filter(lambda v: not v.path.startswith("."), ctx.files))
 
     for f in files_to_search:
         try:
-            full_path = ctx.root / f.path if not Path(f.path).is_absolute() else Path(f.path)
+            fp = Path(f.path)
+            full_path = fp if fp.is_absolute() else (_directory.resolve() / fp)
             if f.is_binary and f.kind not in ("document",):
                 continue
 

@@ -8,7 +8,7 @@ from pathlib import Path
 
 
 def is_piped_input() -> bool:
-    """Check if stdin is being piped (not a TTY)"""
+    """Check if stdin is being piped (not a TTY)."""
     return not sys.stdin.isatty()
 
 
@@ -94,11 +94,15 @@ def read_paths_from_stdin() -> list[str]:
     return paths
 
 
-def resolve_piped_paths(paths: list[str]) -> set[str]:
-    """Resolve piped paths to be relative to a scan *root*."""
-    result: set[str] = set()
+def resolve_piped_paths(paths: list[str]) -> list[str]:
+    """Resolve piped paths to absolute, preserving order and deduplicating."""
+    seen: set[str] = set()
+    result: list[str] = []
     for p in paths:
-        result.add(str(Path(p).resolve()))
+        resolved = str(Path(p).resolve())
+        if resolved not in seen:
+            seen.add(resolved)
+            result.append(resolved)
     return result
 
 

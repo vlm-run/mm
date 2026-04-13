@@ -44,6 +44,7 @@ def test_read_bare_paths(monkeypatch):
             return False
 
     monkeypatch.setattr(sys, "stdin", FakePipe("src/main.py\nsrc/lib.rs\n\n"))
+
     paths = read_paths_from_stdin()
     assert paths == ["src/main.py", "src/lib.rs"]
 
@@ -62,6 +63,7 @@ def test_read_tsv_with_header(monkeypatch):
 
     tsv = "kind\tsize\tpath\nimage\t4301\tsrc/photo.png\ncode\t1200\tsrc/main.py\n"
     monkeypatch.setattr(sys, "stdin", FakePipe(tsv))
+
     paths = read_paths_from_stdin()
     assert paths == ["src/photo.png", "src/main.py"]
 
@@ -75,6 +77,7 @@ def test_read_tsv_no_header(monkeypatch):
 
     tsv = "image\t4301\tsrc/photo.png\ncode\t1200\tsrc/main.py\n"
     monkeypatch.setattr(sys, "stdin", FakePipe(tsv))
+
     paths = read_paths_from_stdin()
     assert paths == ["src/photo.png", "src/main.py"]
 
@@ -93,6 +96,7 @@ def test_read_json_array_of_objects(monkeypatch):
 
     data = [{"path": "src/main.py", "kind": "code"}, {"path": "img.png", "kind": "image"}]
     monkeypatch.setattr(sys, "stdin", FakePipe(json.dumps(data)))
+
     paths = read_paths_from_stdin()
     assert paths == ["src/main.py", "img.png"]
 
@@ -106,6 +110,7 @@ def test_read_json_array_of_strings(monkeypatch):
 
     data = ["src/main.py", "img.png"]
     monkeypatch.setattr(sys, "stdin", FakePipe(json.dumps(data)))
+
     paths = read_paths_from_stdin()
     assert paths == ["src/main.py", "img.png"]
 
@@ -124,6 +129,7 @@ def test_read_csv_with_header(monkeypatch):
 
     csv_data = "kind,size,path\nimage,4301,src/photo.png\ncode,1200,src/main.py\n"
     monkeypatch.setattr(sys, "stdin", FakePipe(csv_data))
+
     paths = read_paths_from_stdin()
     assert paths == ["src/photo.png", "src/main.py"]
 
@@ -141,5 +147,6 @@ def test_read_empty_pipe(monkeypatch):
             return False
 
     monkeypatch.setattr(sys, "stdin", FakePipe(""))
+
     paths = read_paths_from_stdin()
     assert paths == []
