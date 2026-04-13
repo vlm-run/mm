@@ -149,7 +149,6 @@ def _find_table(
     from mm.pipe import read_paths_from_stdin, resolve_piped_paths
 
     stdin_paths = read_paths_from_stdin()
-    dir_prefix = str(directory)
     # Fast path: non-rich output without columns/stdin bypasses pyarrow
     if fmt != "rich" and not stdin_paths and not columns and depth is None:
         from mm._mm import Scanner
@@ -171,22 +170,18 @@ def _find_table(
             descending=reverse,
         )
 
+        rows = json_mod.loads(scanner.to_json_fast(**filter_args))
+        for row in rows:
+            row["path"] = f"{str(directory)}/{row['path']}"
         if fmt in ("json", "dataset-jsonl", "dataset-hf"):
             from mm.display import emit_rows
 
-            rows = json_mod.loads(scanner.to_json_fast(**filter_args))
-            # make resolvable from CWD when piped to other commands.
-            if dir_prefix != ".":
-                for row in rows:
-                    row["path"] = f"{dir_prefix}/{row['path']}"
             emit_rows(fmt, rows)
         else:
-            entries = json_mod.loads(scanner.to_json_fast(**filter_args))
             sep = "," if fmt == "csv" else "\t"
             print(f"kind{sep}size{sep}path")
-            for entry in entries:
-                p = f"{dir_prefix}/{entry['path']}" if dir_prefix != "." else entry["path"]
-                print(f"{entry['kind']}{sep}{entry['size']}{sep}{p}")
+            for row in rows:
+                print(f"{row['kind']}{sep}{row['size']}{sep}{row['path']}")
         return
 
     from mm.context import Context
@@ -196,15 +191,6 @@ def _find_table(
         ctx = ctx.filter(kind=kind, ext=ext, min_size=min_size, max_size=max_size)
 
     table = ctx.to_arrow()
-
-    # make resolvable from CWD when piped to other commands.
-    if dir_prefix != "." and "path" in table.column_names:
-        import pyarrow as pa
-
-        old_paths = table.column("path").to_pylist()
-        new_paths = [f"{dir_prefix}/{p}" for p in old_paths]
-        idx = table.column_names.index("path")
-        table = table.set_column(idx, "path", pa.array(new_paths, type=pa.utf8()))
 
     if name:
         import re as re_mod
