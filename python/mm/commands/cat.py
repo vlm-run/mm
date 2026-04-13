@@ -532,12 +532,16 @@ def _format_encode_verbose(strategy: str | None, messages: list[dict], elapsed_m
                     elif part_type == "image_url" or "inline_data" in part:
                         part_summary.append(f"  Message {msg_idx + 1}, Part {part_idx + 1}: image")
     
-    # Use Rich markup for dim styling
-    encode_info = f"[dim]Encode: {strategy} • {elapsed_s:.1f}s[/dim]\n"
-    if part_summary:
-        encode_info += "\n".join(part_summary)
+    # Use Rich markup for dim styling on entire output
+    encode_header = f"Encode: {strategy} • {elapsed_s:.1f}s"
+    part_text = "\n".join(part_summary) if part_summary else ""
     
-    return encode_info
+    if part_text:
+        full_text = f"{encode_header}\n{part_text}"
+    else:
+        full_text = encode_header
+    
+    return f"[dim]{full_text}[/dim]"
 
 
 def _run_encoder(path: Path, kind: str, spec: PipelineSpec, opts: _CatOpts) -> str:
