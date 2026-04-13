@@ -29,6 +29,8 @@ from mm.pipelines.schema import PipelineSpec
 
 # Track total bytes processed for throughput calculation
 _total_bytes_processed = 0
+# Track whether the result was served from cache
+_was_cached = False
 
 
 def _collect_overrides(**kwargs: str | None) -> dict[str, str]:
@@ -198,8 +200,9 @@ def cat_cmd(
     multi_file = len(paths) > 1 or bool(stdin_paths)
     results: list[dict] = []
     
-    global _total_bytes_processed
+    global _total_bytes_processed, _was_cached
     _total_bytes_processed = 0
+    _was_cached = False
 
     for file_path in paths:
         p = Path(file_path)
@@ -452,6 +455,8 @@ def _run_accurate(path: Path, kind: str, opts: _CatOpts) -> str:
         if not opts.no_cache:
             value = db.get_l2(l2_id)
             if value is not None:
+                global _was_cached
+                _was_cached = True
                 return value
         else:
             db.evict_l2(l2_id)
@@ -460,14 +465,19 @@ def _run_accurate(path: Path, kind: str, opts: _CatOpts) -> str:
 
     result = _accurate_dispatch(path, kind, spec, opts)
 
-    if content_hash and result and not result.startswith("["):
+    # Strip verbose decoration before caching (pipeline tree, footer, etc.)
+    # The pipeline tree is wrapped in Rich markup: "[dim]pipeline\n..."
+    _pipeline_marker = "\n[dim]pipeline\n"
+    cache_content = result.split(_pipeline_marker)[0].rstrip() if _pipeline_marker in result else result
+
+    if content_hash and cache_content and not cache_content.startswith("["):
         uri = str(path.resolve())
         db.put_l2(
             uri=uri,
             content_hash=content_hash,
             profile=profile.name,
             model=profile.model,
-            content=result,
+            content=cache_content,
             mode=opts.mode,
             detail=False,
             extra=extra,
@@ -515,14 +525,15 @@ def _format_generate_verbose(profile_name: str, elapsed_ms: float, prompt_tokens
     return f"[dim]{generate_text}[/dim]"
 
 
-def _format_pipeline_tree(encode_info: str, generate_info: str) -> str:
+def _format_pipeline_tree(encode_info: str, generate_info: str | None = None) -> str:
     """Format pipeline steps as a tree structure."""
-    # Extract just the dim text content from the formatted strings
-    # The strings are like "[dim]text[/dim]", we want just the text
     encode_text = encode_info.replace("[dim]", "").replace("[/dim]", "").replace("Encode: ", "encode: ")
-    generate_text = generate_info.replace("[dim]", "").replace("[/dim]", "")
-    
-    pipeline = f"pipeline\n  ├─ {encode_text}\n  └─ {generate_text}"
+
+    if generate_info:
+        generate_text = generate_info.replace("[dim]", "").replace("[/dim]", "")
+        pipeline = f"pipeline\n  ├─ {encode_text}\n  └─ {generate_text}"
+    else:
+        pipeline = f"pipeline\n  └─ {encode_text}"
     return f"[dim]{pipeline}[/dim]"
 
 
@@ -617,7 +628,8 @@ def _run_encoder(path: Path, kind: str, spec: PipelineSpec, opts: _CatOpts) -> s
         
         if opts.verbose:
             encode_output = _format_encode_verbose(spec.encode.strategy, messages, encode_elapsed)
-            result = f"{encode_output}\n\n{result}" if result else encode_output
+            pipeline_tree = _format_pipeline_tree(encode_output)
+            return f"{result}\n{pipeline_tree}" if result else pipeline_tree
         
         return result
 

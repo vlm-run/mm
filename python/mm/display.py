@@ -448,7 +448,7 @@ def info_panel(stats: dict[str, Any], title: str = "mm"):
     )
 
 
-def display_elapsed(start_time: float, total_bytes: int = 0) -> None:
+def display_elapsed(start_time: float, total_bytes: int = 0, cached: bool = False) -> None:
     """display elapsed time since start_time with throughput metrics.
 
     Only prints when the command completed successfully.
@@ -456,6 +456,7 @@ def display_elapsed(start_time: float, total_bytes: int = 0) -> None:
     Args:
         start_time: start time in seconds (from time.perf_counter())
         total_bytes: total bytes processed (for throughput calculation)
+        cached: whether the result was served from cache
     """
     assert start_time > 0
     elapsed_ms = (perf_counter() - start_time) * 1000
@@ -465,7 +466,10 @@ def display_elapsed(start_time: float, total_bytes: int = 0) -> None:
     elapsed_value = f"{elapsed_ms:.0f}ms" if elapsed_ms < 1000 else f"{elapsed_s:.1f}s"
     
     # Build output parts
-    output_parts = [elapsed_value]
+    output_parts: list[str] = []
+    if cached:
+        output_parts.append("cached")
+    output_parts.append(elapsed_value)
     
     if total_bytes > 0:
         size_str = format_size(total_bytes)
@@ -500,14 +504,15 @@ def display_elapsed_wrapper(start_time: float):
 
     def display_if_successful():
         if successful[0]:
-            # Try to get total bytes from cat command
             total_bytes = 0
+            cached = False
             try:
                 from mm.commands import cat as cat_module
                 total_bytes = getattr(cat_module, '_total_bytes_processed', 0)
+                cached = getattr(cat_module, '_was_cached', False)
             except (ImportError, AttributeError):
                 pass
             
-            display_elapsed(start_time, total_bytes)
+            display_elapsed(start_time, total_bytes, cached=cached)
 
     return check_exit, display_if_successful
