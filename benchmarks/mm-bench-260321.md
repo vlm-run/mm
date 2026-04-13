@@ -4,7 +4,7 @@
 **System**: macOS, Apple Silicon, Ollama qwen3.5:0.8b, MLX whisper tiny
 **Config**: beam_size=1 (greedy), audio_speed=2.0, mosaic 1500px
 
-## Video L2 Pipeline (--mode fast)
+## Video pipeline (--mode fast)
 
 
 | Video                        | Duration | Total | Realtime | VLM  | Transcription | Frames |
@@ -29,7 +29,7 @@ Architecture: `(visual → VLM) ∥ (audio → transcription)`, concat output.
 | + decoupled VLM (no transcript in prompt)      | 5.0s                | 203x     | full parallelism          |
 
 
-## Image L2
+## Image pipelines
 
 
 | Mode     | Latency | Tokens (prompt→completion) |
@@ -38,7 +38,7 @@ Architecture: `(visual → VLM) ∥ (audio → transcription)`, concat output.
 | accurate | ~2.6s   | 364→200                    |
 
 
-## L0 Metadata (45 files, 588MB)
+## Metadata scan (45 files, 588MB)
 
 
 | Command           | Latency | Throughput |
@@ -48,7 +48,7 @@ Architecture: `(visual → VLM) ∥ (audio → transcription)`, concat output.
 | sql GROUP BY kind | 11.2ms  | 441 Gbps   |
 
 
-## L1 Content Extraction
+## Fast-mode content extraction
 
 
 | Command            | Latency | Throughput |

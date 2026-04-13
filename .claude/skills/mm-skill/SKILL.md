@@ -108,14 +108,12 @@ mm cat <file>                                       # text/metadata extraction
 mm cat photo.png                                    # image metadata (dims, MIME, hash, EXIF)
 mm cat video.mp4                                    # video metadata (resolution, duration, codecs)
 mm cat paper.pdf                                    # text extraction via pypdfium2
-mm cat main.py                                      # raw text passthrough
 
 # Accurate mode — LLM-powered descriptions
 mm cat photo.png -m accurate                        # VLM caption
 mm cat video.mp4 -m accurate                        # mosaic → VLM description
 mm cat audio.mp3 -m accurate                        # transcript → LLM summary
 mm cat paper.pdf -m accurate                        # text → LLM summary
-mm cat main.py -m accurate                          # code → LLM summary
 
 # Head / tail
 mm cat <file> -n 20                                 # first 20 lines
@@ -135,7 +133,6 @@ Fast mode behavior by file type (<100ms target):
 - **Image** (.png/.jpg/.webp/.gif/.bmp/.tiff/.svg): dimensions, MIME, xxh3 hash, EXIF data.
 - **Video** (.mp4/.mkv/.webm/.avi/.mov): resolution, duration, FPS, codecs (metadata only, no ffmpeg).
 - **Audio** (.mp3/.wav/.flac/.aac/.ogg/.m4a): duration, codec, bitrate (metadata only).
-- **Code/text/config**: raw content passthrough.
 
 ## cat -p — named encoders and pipeline YAMLs
 
@@ -143,13 +140,12 @@ The `-p` / `--pipeline` flag accepts either a registered encoder name or a YAML 
 
 ```bash
 # Named encoder (encodes media into VLM-ready JSON messages)
-mm cat photo.png -p resize                    # Fit to 1024px, base64 encode
-mm cat photo.png -p tile                      # Tile into 1024x1024 squares
-mm cat photo.png -p tile             # Resized overview + all tiles
-mm cat video.mp4 -p frame-sample              # Extract frames at 1fps
+mm cat photo.png -p image-resize              # Fit to 1024px, base64 encode
+mm cat photo.png -p image-tile                # Resized overview + all tiles in one Message
+mm cat video.mp4 -p video-frame-sample        # Extract frames at 1fps
 mm cat video.mp4 -p video-chunk               # Chunk into 60s segments
-mm cat doc.pdf -p rasterize                   # Render pages as images
-mm cat doc.pdf -p rasterize-text              # Rasterize + extract text
+mm cat doc.pdf  -p document-rasterize         # Render pages as images
+mm cat doc.pdf  -p document-rasterize-text    # Rasterize + extract text
 
 # YAML pipeline file
 mm cat photo.png -p custom-pipeline.yaml
@@ -163,22 +159,26 @@ mm cat --list-pipelines
 
 ### Built-in encoders
 
+Use either the bare name or the kind-prefixed display name.
+
 | Name | Media | Description |
 |------|-------|-------------|
-| `resize` | image | **Default.** Fit to 1024px bounding box (Rust fast path) |
-| `tile` | image | Tile into 1024x1024 squares, one Message per tile |
-| `tile` | image | Resized overview + all tiles in one Message |
-| `frame-sample` | video | Extract frames at 1fps (requires ffmpeg) |
-| `frames-transcript` | video | Frames + Whisper transcript (accurate mode default) |
-| `video-chunk` | video | Chunk into 60s segments with 20s overlap |
-| `shot-frames` | video | Scene detection → representative frames per shot |
-| `shot-mosaic` | video | Scene detection → mosaic grid per shot |
-| `rasterize` | document | Render PDF pages as images (requires pypdfium2) |
-| `rasterize-text` | document | Rasterize + extract text, interleaved |
-| `video-gemini` | video | Pass video file as Gemini Part |
-| `video-gemini-chunked` | video | Chunk video as Gemini Parts |
-| `audio-gemini` | audio | Pass audio file as Gemini Part |
-| `document-gemini` | document | Pass document file as Gemini Part |
+| `image-resize` | image | **Default.** Fit to 1024px bounding box |
+| `image-tile` | image | Resized overview + tile crops in one Message |
+| `video-frame-sample` | video | Extract frames at *fps* (requires ffmpeg) |
+| `video-frames-transcript` | video | Frames + Whisper transcript (accurate mode default) |
+| `video-chunk` | video | Chunk into time-based segments with overlap |
+| `video-mosaic` | video | Build mosaic grids from sampled frames |
+| `video-shot-frames` | video | Scene detection → representative frames per shot |
+| `video-shot-mosaic` | video | Scene detection → mosaic grid per shot |
+| `video-gemini` | video | Pass video file as a Gemini Part |
+| `video-gemini-chunked` | video | Chunk video into Gemini Parts |
+| `audio-transcribe` | audio | Transcribe audio via Whisper (fast/accurate default) |
+| `audio-gemini` | audio | Pass audio file as a Gemini Part |
+| `document-page-text` | document | Extract text per page from PDF/DOCX/PPTX |
+| `document-rasterize` | document | Render PDF pages as images (requires pypdfium2) |
+| `document-rasterize-text` | document | Rasterize + extract text, interleaved |
+| `document-gemini` | document | Pass document file as a Gemini Part |
 
 ### Writing custom encoders
 
@@ -227,7 +227,7 @@ Pipelines are 2-stage YAMLs: **encode** (convert to LLM-ready parts) → **gener
 ### Encode overrides (--encode.*)
 
 ```bash
-mm cat photo.png -m accurate --encode.strategy tile   # override encoder
+mm cat photo.png -m accurate --encode.strategy image-tile      # override encoder
 mm cat photo.png -m accurate --encode.pyfunc ~/my_filter.py    # custom transform
 ```
 
@@ -244,7 +244,7 @@ mm cat photo.png -m accurate --generate.json-mode true            # request JSON
 
 ```bash
 mm cat photo.png -m accurate \
-  --encode.strategy tile \
+  --encode.strategy image-tile \
   --generate.max-tokens 512 \
   --generate.prompt "Analyze this architecture diagram."
 ```
@@ -288,7 +288,7 @@ encode:
 kind: image
 mode: accurate
 encode:
-  strategy: tile
+  strategy: image-tile
   max_width: 2048
 generate:
   prompt: "Describe this image in detail."
