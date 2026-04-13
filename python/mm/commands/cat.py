@@ -378,7 +378,7 @@ def _run_fast(path: Path, kind: str, opts: _CatOpts) -> str:
         elapsed = (time.monotonic() - t0) * 1000
         u = llm.last_usage
         footer = _format_footer(path, "fast", elapsed, u.prompt_tokens, u.completion_tokens)
-        return f"{result}\n\n[{footer}]"
+        return f"{result}\n\n{footer}"
 
     return content
 
@@ -500,7 +500,8 @@ def _format_footer(path: Path, mode: str, elapsed_ms: float, prompt_tokens: int 
     if prompt_tokens > 0 or completion_tokens > 0:
         parts.append(f"{prompt_tokens}→{completion_tokens} tokens")
     
-    return " • ".join(parts)
+    footer_text = " • ".join(parts)
+    return f"[dim]{footer_text}[/dim]"
 
 
 def _run_encoder(path: Path, kind: str, spec: PipelineSpec, opts: _CatOpts) -> str:
@@ -550,7 +551,7 @@ def _run_encoder(path: Path, kind: str, spec: PipelineSpec, opts: _CatOpts) -> s
     elapsed = (time.monotonic() - t0) * 1000
     u = llm.last_usage
     footer = _format_footer(path, opts.mode, elapsed, u.prompt_tokens, u.completion_tokens)
-    return f"{result}\n\n[{footer}]"
+    return f"{result}\n\n{footer}"
 
 
 def _accurate_image(path: Path, spec: PipelineSpec, opts: _CatOpts) -> str:
@@ -573,7 +574,7 @@ def _accurate_image(path: Path, spec: PipelineSpec, opts: _CatOpts) -> str:
     u = llm.last_usage
     footer = _format_footer(path, "accurate", elapsed, u.prompt_tokens, u.completion_tokens)
 
-    return f"{content}\n\n[{footer}]"
+    return f"{content}\n\n{footer}"
 
 
 def _accurate_video(path: Path, spec: PipelineSpec, opts: _CatOpts) -> str:
@@ -759,7 +760,7 @@ def _accurate_video(path: Path, spec: PipelineSpec, opts: _CatOpts) -> str:
     prompt_tokens = int(token_keys.get('vlm_prompt_tokens', 0))
     completion_tokens = int(token_keys.get('vlm_completion_tokens', 0))
     footer = _format_footer(path, "accurate", timing['total_ms'], prompt_tokens, completion_tokens)
-    out_parts.append(f"\n[{footer}]")
+    out_parts.append(f"\n{footer}")
     return "\n".join(out_parts)
 
 
@@ -836,7 +837,7 @@ def _accurate_audio(path: Path, spec: PipelineSpec, opts: _CatOpts) -> str:
     return (
         f"{summary}\n\n"
         f"[Transcript: {word_count} words]\n"
-        f"[{footer}]"
+        f"{footer}"
     )
 
 
