@@ -537,11 +537,15 @@ def _accurate_dispatch(path: Path, kind: str, spec: PipelineSpec, opts: _CatOpts
     )
 
 
+def _fmt_ms(ms: float) -> str:
+    """Format milliseconds with comma separators: 238ms, 1,000ms, 34,212ms."""
+    return f"{ms:,.0f}ms"
+
+
 def _format_generate_verbose(profile_name: str, elapsed_ms: float, prompt_tokens: int, completion_tokens: int) -> str:
     """Format verbose output for the generate step."""
-    elapsed_s = elapsed_ms / 1000.0
     token_info = f"{prompt_tokens}→{completion_tokens}" if (prompt_tokens > 0 or completion_tokens > 0) else "no tokens"
-    generate_text = f"generate: {profile_name} • {elapsed_s:.1f}s • {token_info} tokens"
+    generate_text = f"generate: {profile_name} • {_fmt_ms(elapsed_ms)} • {token_info} tokens"
     return f"[dim]{generate_text}[/dim]"
 
 
@@ -565,9 +569,8 @@ def _format_footer(path: Path, mode: str, elapsed_ms: float, prompt_tokens: int 
     from mm.display import format_size
     
     size_str = format_size(path.stat().st_size)
-    elapsed_s = elapsed_ms / 1000.0
     
-    parts = [f"{elapsed_s:.1f}s", size_str, mode]
+    parts = [_fmt_ms(elapsed_ms), size_str, mode]
     
     if mode == "accurate":
         from mm.profile import get_active_profile_name
@@ -586,7 +589,6 @@ def _format_encode_verbose(strategy: str | None, messages: list[dict], elapsed_m
     """Format verbose output for the encode step."""
     if not strategy:
         strategy = "unknown"
-    elapsed_s = elapsed_ms / 1000.0
     
     # Count part types
     text_count = 0
@@ -613,7 +615,7 @@ def _format_encode_verbose(strategy: str | None, messages: list[dict], elapsed_m
         part_details.append(f"{image_count} image" if image_count == 1 else f"{image_count} images")
     
     part_summary = ", ".join(part_details)
-    encode_text = f"Encode: {strategy} • {elapsed_s:.1f}s → {total_parts} parts ({part_summary})"
+    encode_text = f"Encode: {strategy} • {_fmt_ms(elapsed_ms)} → {total_parts} parts ({part_summary})"
     
     return f"[dim]{encode_text}[/dim]"
 

@@ -462,8 +462,7 @@ def display_elapsed(start_time: float, total_bytes: int = 0, cached: bool = Fals
     elapsed_ms = (perf_counter() - start_time) * 1000
     elapsed_s = elapsed_ms / 1000.0
     
-    # Format elapsed time
-    elapsed_value = f"{elapsed_ms:.0f}ms" if elapsed_ms < 1000 else f"{elapsed_s:.1f}s"
+    elapsed_value = f"{elapsed_ms:,.0f}ms"
     
     # Build output parts
     output_parts: list[str] = []
