@@ -471,9 +471,18 @@ def display_elapsed(start_time: float, total_bytes: int = 0) -> None:
         size_str = format_size(total_bytes)
         output_parts.append(size_str)
         
-        # Calculate throughput in KB/s
-        throughput_kb_s = (total_bytes / 1024) / elapsed_s if elapsed_s > 0 else 0
-        throughput_str = f"{throughput_kb_s:.1f} KB/s"
+        # Calculate throughput with appropriate units
+        throughput_bytes_s = total_bytes / elapsed_s if elapsed_s > 0 else 0
+        
+        if throughput_bytes_s < 1024:  # Less than 1 KB/s
+            throughput_str = f"{throughput_bytes_s:.1f} B/s"
+        elif throughput_bytes_s < 1024 * 1024:  # Less than 1 MB/s
+            throughput_str = f"{throughput_bytes_s / 1024:.1f} KB/s"
+        elif throughput_bytes_s < 1024 * 1024 * 1024:  # Less than 1 GB/s
+            throughput_str = f"{throughput_bytes_s / (1024 * 1024):.1f} MB/s"
+        else:  # GB/s or higher
+            throughput_str = f"{throughput_bytes_s / (1024 * 1024 * 1024):.1f} GB/s"
+        
         output_parts.append(throughput_str)
     
     output_text = " • ".join(output_parts)
