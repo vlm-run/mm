@@ -71,7 +71,7 @@ def read_paths_from_stdin() -> list[str]:
             data = json.loads(stripped)
             return _paths_from_json(data)
         except (json.JSONDecodeError, TypeError):
-            pass  # fall through to line-based parsing
+            pass
 
     # ── Line-based input (bare paths or TSV/CSV) ────────────────
     paths: list[str] = []
