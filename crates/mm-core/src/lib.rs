@@ -15,4 +15,4 @@ pub use hash::{directory_hash, fast_fingerprint, full_hash_mmap, hamming_distanc
 pub use meta::{FileEntry, FileKind, enrich_image_dimensions};
 pub use schema::{l0_schema, l1_schema};
 pub use table::build_l0_record_batch;
-pub use walk::scan_directory;
+pub use walk::{scan_directory, scan_directory_opts};

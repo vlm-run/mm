@@ -26,6 +26,9 @@ def grep_cmd(
     index: Annotated[
         bool, typer.Option("--index", help="Index unindexed files before L2 search (max 50)")
     ] = False,
+    ignore_case: Annotated[
+        bool, typer.Option("--ignore-case", "-i", help="Case-insensitive matching")
+    ] = False,
     format: Annotated[
         Optional[Format],
         typer.Option(
@@ -43,6 +46,7 @@ def grep_cmd(
       mm grep "error|warn" ~/logs -C 2                  # context lines
       mm grep "neural network" ~/data --level 2         # semantic search
       mm grep "def main" ~/src --count                  # match counts only
+      mm grep "Quantum" ~/docs -i                       # case-insensitive
     """
 
     from mm.context import FileEntry
@@ -67,8 +71,9 @@ def grep_cmd(
         )
         return
 
+    re_flags = re.IGNORECASE if ignore_case else 0
     try:
-        regex = re.compile(pattern)
+        regex = re.compile(pattern, re_flags)
     except re.error as e:
         typer.echo(f"Invalid regex: {e}", err=True)
         raise typer.Exit(1)

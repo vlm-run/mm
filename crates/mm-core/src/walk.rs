@@ -28,15 +28,24 @@ impl Drop for ThreadBatch {
 
 /// Parallel directory scan with per-thread collection (no lock contention on hot path).
 pub fn scan_directory(root: &Path, n_threads: Option<usize>) -> Vec<FileEntry> {
+    scan_directory_opts(root, n_threads, false)
+}
+
+/// Parallel directory scan with optional gitignore bypass.
+pub fn scan_directory_opts(
+    root: &Path,
+    n_threads: Option<usize>,
+    no_ignore: bool,
+) -> Vec<FileEntry> {
     let root = root.canonicalize().unwrap_or_else(|_| root.to_path_buf());
     let completed: Mutex<Vec<Vec<FileEntry>>> = Mutex::new(Vec::new());
 
     let mut builder = WalkBuilder::new(&root);
     builder
         .hidden(false)
-        .git_ignore(true)
-        .git_global(true)
-        .git_exclude(true)
+        .git_ignore(!no_ignore)
+        .git_global(!no_ignore)
+        .git_exclude(!no_ignore)
         .follow_links(false)
         .sort_by_file_path(|a, b| a.cmp(b));
 
