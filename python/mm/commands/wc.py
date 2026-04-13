@@ -56,6 +56,7 @@ def wc_cmd(
     scanner = Scanner(str(root))
     scanner.scan()
 
+    kind_stats: dict[str, dict[str, int | float]]
     if stdin_paths:
         # Piped input: compute stats only for the specified files.
         kind_stats, total_files, total_size, total_tokens, total_lines = _wc_from_paths(
@@ -65,7 +66,7 @@ def wc_cmd(
         # Rust handles all kinds except documents (which need pypdfium2).
         # Rust JSON uses internal names; we normalize to canonical field names here.
         base = json_mod.loads(scanner.wc(kind=kind))
-        kind_stats: dict[str, dict[str, int | float]] = {}
+        kind_stats = {}
         for k, s in base.get("by_kind", {}).items():
             kind_stats[k] = {
                 F_FILES: s["files"],
