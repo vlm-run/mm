@@ -27,6 +27,9 @@ from mm.constants import FileKind
 from mm.pipe import read_paths_from_stdin
 from mm.pipelines.schema import PipelineSpec
 
+# Track total bytes processed for throughput calculation
+_total_bytes_processed = 0
+
 
 def _collect_overrides(**kwargs: str | None) -> dict[str, str]:
     """Collect non-None CLI overrides into a ``{field: value}`` dict."""
@@ -194,12 +197,18 @@ def cat_cmd(
 
     multi_file = len(paths) > 1 or bool(stdin_paths)
     results: list[dict] = []
+    
+    global _total_bytes_processed
+    _total_bytes_processed = 0
 
     for file_path in paths:
         p = Path(file_path)
         if not p.exists():
             typer.echo(f"Error: {file_path} not found.", err=True)
             continue
+        
+        # Track bytes for throughput calculation
+        _total_bytes_processed += p.stat().st_size
 
         content = _extract(p, opts)
 

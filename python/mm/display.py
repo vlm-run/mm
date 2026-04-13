@@ -448,18 +448,36 @@ def info_panel(stats: dict[str, Any], title: str = "mm"):
     )
 
 
-def display_elapsed(start_time: float) -> None:
-    """display elapsed time since start_time in a human-friendly format.
+def display_elapsed(start_time: float, total_bytes: int = 0) -> None:
+    """display elapsed time since start_time with throughput metrics.
 
     Only prints when the command completed successfully.
 
     Args:
         start_time: start time in seconds (from time.perf_counter())
+        total_bytes: total bytes processed (for throughput calculation)
     """
     assert start_time > 0
     elapsed_ms = (perf_counter() - start_time) * 1000
-    elapsed_value = f"{elapsed_ms:.0f}ms" if elapsed_ms < 1000 else f"{elapsed_ms / 1000:.1f}s"
-    output_console.print(f"[dim]completed in {elapsed_value} [/dim]")
+    elapsed_s = elapsed_ms / 1000.0
+    
+    # Format elapsed time
+    elapsed_value = f"{elapsed_ms:.0f}ms" if elapsed_ms < 1000 else f"{elapsed_s:.1f}s"
+    
+    # Build output parts
+    output_parts = [elapsed_value]
+    
+    if total_bytes > 0:
+        size_str = format_size(total_bytes)
+        output_parts.append(size_str)
+        
+        # Calculate throughput in KB/s
+        throughput_kb_s = (total_bytes / 1024) / elapsed_s if elapsed_s > 0 else 0
+        throughput_str = f"{throughput_kb_s:.1f} KB/s"
+        output_parts.append(throughput_str)
+    
+    output_text = " • ".join(output_parts)
+    output_console.print(f"[dim]{output_text}[/dim]")
 
 
 def display_elapsed_wrapper(start_time: float):
@@ -473,6 +491,14 @@ def display_elapsed_wrapper(start_time: float):
 
     def display_if_successful():
         if successful[0]:
-            display_elapsed(start_time)
+            # Try to get total bytes from cat command
+            total_bytes = 0
+            try:
+                from mm.commands import cat as cat_module
+                total_bytes = getattr(cat_module, '_total_bytes_processed', 0)
+            except (ImportError, AttributeError):
+                pass
+            
+            display_elapsed(start_time, total_bytes)
 
     return check_exit, display_if_successful
