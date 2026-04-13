@@ -30,9 +30,18 @@ from mm.commands import bench, cat, find, grep, sql, wc
 from mm.commands.config import config_app
 from mm.commands.profile import profile_app
 
+_BANNER = (
+    f"\b\n"
+    f"  ╔╦╗╔╦╗   v{__version__}\n"
+    f"  ║║║║║║   ◈ pdf · ⬡ image · ▶ video · ♫ audio\n"
+    f"  ╩ ╩╩ ╩   ⟨ code · ≡ data · T text\n"
+    f"\n"
+    f"  High-performance multi-modal context management."
+)
+
 app = typer.Typer(
     name="mm",
-    help=f"High-performance multi-modal context management - v{__version__}.",
+    help=_BANNER,
     no_args_is_help=True,
     pretty_exceptions_enable=False,
 )
