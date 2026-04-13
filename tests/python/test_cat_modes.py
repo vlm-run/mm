@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 from mm.commands.cat import (
     _CatOpts,
@@ -24,9 +24,25 @@ def _make_opts(mode: str = "fast", **overrides: object) -> _CatOpts:
         encode_overrides={},
         generate_overrides={},
         pipelines={},
+        verbose=False,
     )
     defaults.update(overrides)
     return _CatOpts(**defaults)
+
+
+def _mock_cache_miss():
+    """Context manager stack that mocks the L2 cache infrastructure to always miss."""
+    mock_db = MagicMock()
+    mock_db.get_l2.return_value = None
+    mock_profile = MagicMock()
+    mock_profile.name = "test"
+    mock_profile.model = "test-model"
+    return (
+        patch("mm.store.util.get_content_hash", return_value="fakehash"),
+        patch("mm.store.db.MmDatabase", return_value=mock_db),
+        patch("mm.profile.get_profile", return_value=mock_profile),
+        patch("mm.store.util.get_l2_id", return_value="fake_l2_id"),
+    )
 
 
 class TestFileKind:
@@ -90,7 +106,8 @@ class TestExtractDispatch:
     def test_fast_image_dispatch(self, tmp_path):
         f = tmp_path / "test.jpg"
         f.write_bytes(b"\xff\xd8\xff" + b"\x00" * 100)
-        with patch("mm.commands.cat._run_fast") as mock:
+        cm1, cm2, cm3, cm4 = _mock_cache_miss()
+        with cm1, cm2, cm3, cm4, patch("mm.commands.cat._run_fast") as mock:
             mock.return_value = "mocked fast result"
             opts = _make_opts("fast")
             result = _extract(f, opts)
@@ -100,7 +117,8 @@ class TestExtractDispatch:
     def test_accurate_image_dispatch(self, tmp_path):
         f = tmp_path / "test.jpg"
         f.write_bytes(b"\xff\xd8\xff" + b"\x00" * 100)
-        with patch("mm.commands.cat._run_accurate") as mock:
+        cm1, cm2, cm3, cm4 = _mock_cache_miss()
+        with cm1, cm2, cm3, cm4, patch("mm.commands.cat._run_accurate") as mock:
             mock.return_value = "mocked accurate result"
             opts = _make_opts("accurate")
             result = _extract(f, opts)
@@ -110,7 +128,8 @@ class TestExtractDispatch:
     def test_accurate_document_dispatch(self, tmp_path):
         f = tmp_path / "test.pdf"
         f.write_bytes(b"%PDF-1.4 fake")
-        with patch("mm.commands.cat._run_accurate") as mock:
+        cm1, cm2, cm3, cm4 = _mock_cache_miss()
+        with cm1, cm2, cm3, cm4, patch("mm.commands.cat._run_accurate") as mock:
             mock.return_value = "summary of document"
             opts = _make_opts("accurate")
             result = _extract(f, opts)

@@ -355,22 +355,99 @@ def _resolve_pipeline(opts: _CatOpts, kind: str) -> PipelineSpec:
 
 
 def _extract(path: Path, opts: _CatOpts) -> str:
-    """Pipeline-driven extraction dispatch.
+    """Pipeline-driven extraction dispatch with unified L2 caching.
 
     1. Auto-detect kind from file extension
-    2. Resolve pipeline (explicit -p > toml override > built-in)
-    3. Apply CLI overrides
-    4. Run encode step (kind-specific L1 extraction)
-    5. If generate is not None: run LLM call
-    6. If generate is None: output encode result directly
+    2. Check L2 cache (applies to both fast and accurate modes)
+    3. Resolve pipeline (explicit -p > toml override > built-in)
+    4. Apply CLI overrides
+    5. Run encode step (kind-specific L1 extraction)
+    6. If generate is not None: run LLM call
+    7. If generate is None: output encode result directly
+    8. Store result in L2 cache
     """
     kind = _file_kind(path)
-    mode = opts.mode
 
-    if mode == "fast":
-        return _run_fast(path, kind, opts)
+    # Text-like kinds (code, config, plain text) bypass caching — they're passthrough.
+    if kind == "text":
+        return _run_l1(path, kind, no_cache=opts.no_cache)
+
+    from mm.profile import get_profile
+    from mm.store.db import MmDatabase
+    from mm.store.util import get_content_hash
+
+    db = MmDatabase()
+    profile = get_profile()
+    content_hash = get_content_hash(path)
+
+    extra_parts: list[str] = []
+    if opts.encode_overrides:
+        for k in sorted(opts.encode_overrides):
+            extra_parts.append(f"{k}={opts.encode_overrides[k]}")
+    if opts.generate_overrides:
+        for k in sorted(opts.generate_overrides):
+            extra_parts.append(f"g.{k}={opts.generate_overrides[k]}")
+    if opts.pipelines:
+        for pk in sorted(opts.pipelines):
+            extra_parts.append(f"p:{pk}")
+    extra = "|".join(extra_parts)
+
+    l2_id: str | None = None
+    if content_hash:
+        from mm.store.util import get_l2_id
+
+        l2_id = get_l2_id(
+            content_hash,
+            profile.name,
+            profile.model,
+            opts.mode,
+            False,
+            extra=extra,
+        )
+
+        if not opts.no_cache:
+            value = db.get_l2(l2_id)
+            if value is not None:
+                global _was_cached
+                _was_cached = True
+                return value
+        else:
+            db.evict_l2(l2_id)
+
+    # Dispatch to mode-specific execution.
+    if opts.mode == "fast":
+        result = _run_fast(path, kind, opts)
     else:
-        return _run_accurate(path, kind, opts)
+        result = _run_accurate(path, kind, opts)
+
+    # Strip verbose decoration before caching (pipeline tree, footer, etc.)
+    _pipeline_marker = "\n[dim]pipeline\n"
+    cache_content = result.split(_pipeline_marker)[0].rstrip() if _pipeline_marker in result else result
+
+    if content_hash and cache_content and not cache_content.startswith("["):
+        _run_l1(path, kind)
+        uri = str(path.resolve())
+        try:
+            db.put_l2(
+                uri=uri,
+                content_hash=content_hash,
+                profile=profile.name,
+                model=profile.model,
+                content=cache_content,
+                mode=opts.mode,
+                detail=False,
+                extra=extra,
+            )
+        except RuntimeError:
+            return result
+        if l2_id:
+            try:
+                from mm.store.embed import embed_file_chunks
+
+                embed_file_chunks(l2_id)
+            except Exception:
+                pass
+    return result
 
 
 def _run_fast(path: Path, kind: str, opts: _CatOpts) -> str:
@@ -378,8 +455,7 @@ def _run_fast(path: Path, kind: str, opts: _CatOpts) -> str:
 
     For image/video/audio/document kinds this loads a YAML pipeline and
     may invoke an encoder or, if the pipeline defines a ``generate``
-    stage, a short LLM call. For text-like kinds (code, config, plain
-    text) there is no pipeline — content is passed through directly.
+    stage, a short LLM call.
     """
     if kind == "text":
         return _run_l1(path, kind, no_cache=opts.no_cache)
@@ -426,84 +502,13 @@ def _run_fast(path: Path, kind: str, opts: _CatOpts) -> str:
 def _run_accurate(path: Path, kind: str, opts: _CatOpts) -> str:
     """Accurate mode: LLM-powered semantic extraction."""
     from mm.pipelines import apply_overrides
-    from mm.profile import get_profile
-    from mm.store.db import MmDatabase
-    from mm.store.util import get_content_hash
-
-    # No pipeline exists for code/text/config — pass content through raw.
-    if kind == "text":
-        return _run_l1(path, kind, no_cache=opts.no_cache)
 
     spec = _resolve_pipeline(opts, kind)
     spec = apply_overrides(spec, opts.encode_overrides or None, opts.generate_overrides or None)
 
-    db = MmDatabase()
-    profile = get_profile()
-    content_hash = get_content_hash(path)
-
-    extra_parts: list[str] = []
-    if opts.encode_overrides:
-        for k in sorted(opts.encode_overrides):
-            extra_parts.append(f"{k}={opts.encode_overrides[k]}")
-    if opts.generate_overrides:
-        for k in sorted(opts.generate_overrides):
-            extra_parts.append(f"g.{k}={opts.generate_overrides[k]}")
-    if opts.pipelines:
-        for pk in sorted(opts.pipelines):
-            extra_parts.append(f"p:{pk}")
-    extra = "|".join(extra_parts)
-
-    l2_id: str | None = None
-    if content_hash:
-        from mm.store.util import get_l2_id
-
-        l2_id = get_l2_id(
-            content_hash,
-            profile.name,
-            profile.model,
-            opts.mode,
-            False,
-            extra=extra,
-        )
-
-        if not opts.no_cache:
-            value = db.get_l2(l2_id)
-            if value is not None:
-                global _was_cached
-                _was_cached = True
-                return value
-        else:
-            db.evict_l2(l2_id)
-
     _run_l1(path, kind)
 
-    result = _accurate_dispatch(path, kind, spec, opts)
-
-    # Strip verbose decoration before caching (pipeline tree, footer, etc.)
-    # The pipeline tree is wrapped in Rich markup: "[dim]pipeline\n..."
-    _pipeline_marker = "\n[dim]pipeline\n"
-    cache_content = result.split(_pipeline_marker)[0].rstrip() if _pipeline_marker in result else result
-
-    if content_hash and cache_content and not cache_content.startswith("["):
-        uri = str(path.resolve())
-        db.put_l2(
-            uri=uri,
-            content_hash=content_hash,
-            profile=profile.name,
-            model=profile.model,
-            content=cache_content,
-            mode=opts.mode,
-            detail=False,
-            extra=extra,
-        )
-        if l2_id:
-            try:
-                from mm.store.embed import embed_file_chunks
-
-                embed_file_chunks(l2_id)
-            except Exception:
-                pass
-    return result
+    return _accurate_dispatch(path, kind, spec, opts)
 
 
 def _accurate_dispatch(path: Path, kind: str, spec: PipelineSpec, opts: _CatOpts) -> str:

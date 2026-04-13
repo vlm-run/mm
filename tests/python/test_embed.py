@@ -195,7 +195,7 @@ class TestEmbedFileChunks:
 class TestCatEmbedIntegration:
     def test_run_accurate_triggers_embedding(self, tmp_path: Path, mock_server: MagicMock):
         """After accurate extraction, embed_file_chunks should be called."""
-        from mm.commands.cat import _CatOpts, _run_accurate
+        from mm.commands.cat import _CatOpts, _extract
 
         # Use a document kind since text kind short-circuits to raw passthrough
         # (no pipeline, no LLM, no cache) and thus never triggers embedding.
@@ -211,6 +211,7 @@ class TestCatEmbedIntegration:
             encode_overrides={},
             generate_overrides={},
             pipelines={},
+            verbose=False,
         )
 
         mock_db = MagicMock()
@@ -219,15 +220,16 @@ class TestCatEmbedIntegration:
         mock_db.put_l2.return_value = l2_id
 
         with (
-            patch("mm.commands.cat._accurate_dispatch", return_value="LLM generated text."),
+            patch("mm.commands.cat._run_accurate", return_value="LLM generated text."),
             patch("mm.store.util.get_content_hash", return_value="fakehash"),
             patch("mm.store.db.MmDatabase", return_value=mock_db),
             patch("mm.profile.get_profile") as mock_profile,
+            patch("mm.store.util.get_l2_id", return_value="fake_l2_id"),
             patch("mm.store.embed.embed_file_chunks") as mock_embed,
         ):
             mock_profile.return_value.name = "default"
             mock_profile.return_value.model = "test-model"
-            result = _run_accurate(pdf, "document", opts)
+            result = _extract(pdf, opts)
 
         assert result == "LLM generated text."
         mock_db.put_l2.assert_called_once()
