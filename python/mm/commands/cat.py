@@ -383,6 +383,16 @@ def _run_fast(path: Path, kind: str, opts: _CatOpts) -> str:
         elapsed = (time.monotonic() - t0) * 1000
         u = llm.last_usage
         footer = _format_footer(path, "fast", elapsed, u.prompt_tokens, u.completion_tokens, opts.verbose)
+        
+        if opts.verbose:
+            from mm.profile import get_active_profile_name
+            profile_name = get_active_profile_name()
+            generate_output = _format_generate_verbose(profile_name, elapsed, u.prompt_tokens, u.completion_tokens)
+            output_parts = [result, "", generate_output]
+            if footer:
+                output_parts.extend(["", footer])
+            return "\n".join(output_parts)
+        
         return f"{result}\n\n{footer}" if footer else result
 
     return content
@@ -488,6 +498,14 @@ def _accurate_dispatch(path: Path, kind: str, spec: PipelineSpec, opts: _CatOpts
     )
 
 
+def _format_generate_verbose(profile_name: str, elapsed_ms: float, prompt_tokens: int, completion_tokens: int) -> str:
+    """Format verbose output for the generate step."""
+    elapsed_s = elapsed_ms / 1000.0
+    token_info = f"{prompt_tokens}→{completion_tokens}" if (prompt_tokens > 0 or completion_tokens > 0) else "no tokens"
+    generate_text = f"Generate: {profile_name} • {elapsed_s:.1f}s | {token_info} tokens"
+    return f"[dim]{generate_text}[/dim]"
+
+
 def _format_footer(path: Path, mode: str, elapsed_ms: float, prompt_tokens: int = 0, completion_tokens: int = 0, verbose: bool = False) -> str:
     """Format the footer with time, size, mode, profile, and tokens."""
     if not verbose:
@@ -518,30 +536,35 @@ def _format_encode_verbose(strategy: str | None, messages: list[dict], elapsed_m
     if not strategy:
         strategy = "unknown"
     elapsed_s = elapsed_ms / 1000.0
-    part_summary = []
     
-    for msg_idx, msg in enumerate(messages):
+    # Count part types
+    text_count = 0
+    image_count = 0
+    total_parts = 0
+    
+    for msg in messages:
         content = msg.get("content", [])
         if isinstance(content, list):
-            for part_idx, part in enumerate(content):
+            for part in content:
                 if isinstance(part, dict):
+                    total_parts += 1
                     part_type = part.get("type", "unknown")
                     if part_type == "text":
-                        text_len = len(part.get("text", ""))
-                        part_summary.append(f"  Message {msg_idx + 1}, Part {part_idx + 1}: text ({text_len} chars)")
+                        text_count += 1
                     elif part_type == "image_url" or "inline_data" in part:
-                        part_summary.append(f"  Message {msg_idx + 1}, Part {part_idx + 1}: image")
+                        image_count += 1
     
-    # Use Rich markup for dim styling on entire output
-    encode_header = f"Encode: {strategy} • {elapsed_s:.1f}s"
-    part_text = "\n".join(part_summary) if part_summary else ""
+    # Format part summary
+    part_details = []
+    if text_count > 0:
+        part_details.append(f"{text_count} text" if text_count == 1 else f"{text_count} texts")
+    if image_count > 0:
+        part_details.append(f"{image_count} image" if image_count == 1 else f"{image_count} images")
     
-    if part_text:
-        full_text = f"{encode_header}\n{part_text}"
-    else:
-        full_text = encode_header
+    part_summary = ", ".join(part_details)
+    encode_text = f"Encode: {strategy} • {elapsed_s:.1f}s → {total_parts} parts ({part_summary})"
     
-    return f"[dim]{full_text}[/dim]"
+    return f"[dim]{encode_text}[/dim]"
 
 
 def _run_encoder(path: Path, kind: str, spec: PipelineSpec, opts: _CatOpts) -> str:
@@ -602,9 +625,15 @@ def _run_encoder(path: Path, kind: str, spec: PipelineSpec, opts: _CatOpts) -> s
     footer = _format_footer(path, opts.mode, elapsed, u.prompt_tokens, u.completion_tokens, opts.verbose)
     
     if opts.verbose:
+        from mm.profile import get_active_profile_name
         encode_output = _format_encode_verbose(spec.encode.strategy, messages, encode_elapsed)
-        result = f"{encode_output}\n\n{result}\n\n{footer}" if footer else f"{encode_output}\n\n{result}"
-        return result
+        profile_name = get_active_profile_name()
+        generate_output = _format_generate_verbose(profile_name, elapsed, u.prompt_tokens, u.completion_tokens)
+        
+        output_parts = [encode_output, "", result, "", generate_output]
+        if footer:
+            output_parts.extend(["", footer])
+        return "\n".join(output_parts)
     
     return f"{result}\n\n{footer}" if footer else result
 
@@ -629,6 +658,15 @@ def _accurate_image(path: Path, spec: PipelineSpec, opts: _CatOpts) -> str:
     u = llm.last_usage
     footer = _format_footer(path, "accurate", elapsed, u.prompt_tokens, u.completion_tokens, opts.verbose)
 
+    if opts.verbose:
+        from mm.profile import get_active_profile_name
+        profile_name = get_active_profile_name()
+        generate_output = _format_generate_verbose(profile_name, elapsed, u.prompt_tokens, u.completion_tokens)
+        output_parts = [content, "", generate_output]
+        if footer:
+            output_parts.extend(["", footer])
+        return "\n".join(output_parts)
+    
     return f"{content}\n\n{footer}" if footer else content
 
 
@@ -815,6 +853,13 @@ def _accurate_video(path: Path, spec: PipelineSpec, opts: _CatOpts) -> str:
     prompt_tokens = int(token_keys.get('vlm_prompt_tokens', 0))
     completion_tokens = int(token_keys.get('vlm_completion_tokens', 0))
     footer = _format_footer(path, "accurate", timing['total_ms'], prompt_tokens, completion_tokens, opts.verbose)
+    
+    if opts.verbose:
+        from mm.profile import get_active_profile_name
+        profile_name = get_active_profile_name()
+        generate_output = _format_generate_verbose(profile_name, timing['total_ms'], prompt_tokens, completion_tokens)
+        out_parts.append(f"\n{generate_output}")
+    
     if footer:
         out_parts.append(f"\n{footer}")
     return "\n".join(out_parts)
@@ -891,6 +936,13 @@ def _accurate_audio(path: Path, spec: PipelineSpec, opts: _CatOpts) -> str:
     word_count = len(transcript.split())
     footer = _format_footer(path, "accurate", timing['total_ms'], u.prompt_tokens, u.completion_tokens, opts.verbose)
     result = f"{summary}\n\n[Transcript: {word_count} words]"
+    
+    if opts.verbose:
+        from mm.profile import get_active_profile_name
+        profile_name = get_active_profile_name()
+        generate_output = _format_generate_verbose(profile_name, timing['total_ms'], u.prompt_tokens, u.completion_tokens)
+        result += f"\n\n{generate_output}"
+    
     if footer:
         result += f"\n{footer}"
     return result
