@@ -189,6 +189,7 @@ def cat_cmd(
         encode_overrides=enc_overrides,
         generate_overrides=gen_overrides,
         pipelines=pipeline_specs,
+        verbose=verbose,
     )
 
     multi_file = len(paths) > 1 or bool(stdin_paths)
@@ -246,6 +247,7 @@ class _CatOpts:
         "encode_overrides",
         "generate_overrides",
         "pipelines",
+        "verbose",
     )
 
     n: int | None
@@ -256,6 +258,7 @@ class _CatOpts:
     encode_overrides: dict[str, str]
     generate_overrides: dict[str, str]
     pipelines: dict[str, PipelineSpec]
+    verbose: bool
 
     def __init__(self, **kwargs: object) -> None:
         for k, v in kwargs.items():
@@ -377,8 +380,8 @@ def _run_fast(path: Path, kind: str, opts: _CatOpts) -> str:
         )
         elapsed = (time.monotonic() - t0) * 1000
         u = llm.last_usage
-        footer = _format_footer(path, "fast", elapsed, u.prompt_tokens, u.completion_tokens)
-        return f"{result}\n\n{footer}"
+        footer = _format_footer(path, "fast", elapsed, u.prompt_tokens, u.completion_tokens, opts.verbose)
+        return f"{result}\n\n{footer}" if footer else result
 
     return content
 
@@ -483,8 +486,11 @@ def _accurate_dispatch(path: Path, kind: str, spec: PipelineSpec, opts: _CatOpts
     )
 
 
-def _format_footer(path: Path, mode: str, elapsed_ms: float, prompt_tokens: int = 0, completion_tokens: int = 0) -> str:
+def _format_footer(path: Path, mode: str, elapsed_ms: float, prompt_tokens: int = 0, completion_tokens: int = 0, verbose: bool = False) -> str:
     """Format the footer with time, size, mode, profile, and tokens."""
+    if not verbose:
+        return ""
+    
     from mm.display import format_size
     
     size_str = format_size(path.stat().st_size)
@@ -504,6 +510,32 @@ def _format_footer(path: Path, mode: str, elapsed_ms: float, prompt_tokens: int 
     return f"[dim]{footer_text}[/dim]"
 
 
+def _format_encode_verbose(strategy: str | None, messages: list[dict], elapsed_ms: float) -> str:
+    """Format verbose output for the encode step."""
+    if not strategy:
+        strategy = "unknown"
+    elapsed_s = elapsed_ms / 1000.0
+    part_summary = []
+    
+    for msg_idx, msg in enumerate(messages):
+        content = msg.get("content", [])
+        if isinstance(content, list):
+            for part_idx, part in enumerate(content):
+                if isinstance(part, dict):
+                    part_type = part.get("type", "unknown")
+                    if part_type == "text":
+                        text_len = len(part.get("text", ""))
+                        part_summary.append(f"  Message {msg_idx + 1}, Part {part_idx + 1}: text ({text_len} chars)")
+                    elif part_type == "image_url" or "inline_data" in part:
+                        part_summary.append(f"  Message {msg_idx + 1}, Part {part_idx + 1}: image")
+    
+    encode_info = f"[dim]Encode: {strategy} • {elapsed_s:.1f}s[/dim]\n"
+    if part_summary:
+        encode_info += "\n".join(part_summary)
+    
+    return encode_info
+
+
 def _run_encoder(path: Path, kind: str, spec: PipelineSpec, opts: _CatOpts) -> str:
     """Run a named encoder strategy and output JSON messages or pipe to LLM."""
     import json
@@ -511,8 +543,10 @@ def _run_encoder(path: Path, kind: str, spec: PipelineSpec, opts: _CatOpts) -> s
 
     from mm.encoders import get as get_encoder
 
+    t_encode = time.monotonic()
     strat = get_encoder(spec.encode.strategy)
     messages = list(strat.encode(path, **spec.encode.strategy_opts))
+    encode_elapsed = (time.monotonic() - t_encode) * 1000
 
     if spec.generate is None:
         text_parts: list[str] = []
@@ -527,7 +561,14 @@ def _run_encoder(path: Path, kind: str, spec: PipelineSpec, opts: _CatOpts) -> s
             elif isinstance(content, str):
                 if content:
                     text_parts.append(content)
-        return "\n\n".join(text_parts) if text_parts else ""
+        
+        result = "\n\n".join(text_parts) if text_parts else ""
+        
+        if opts.verbose:
+            encode_output = _format_encode_verbose(spec.encode.strategy, messages, encode_elapsed)
+            result = f"{encode_output}\n\n{result}" if result else encode_output
+        
+        return result
 
     from mm.llm import LlmBackend
 
@@ -550,8 +591,14 @@ def _run_encoder(path: Path, kind: str, spec: PipelineSpec, opts: _CatOpts) -> s
     
     elapsed = (time.monotonic() - t0) * 1000
     u = llm.last_usage
-    footer = _format_footer(path, opts.mode, elapsed, u.prompt_tokens, u.completion_tokens)
-    return f"{result}\n\n{footer}"
+    footer = _format_footer(path, opts.mode, elapsed, u.prompt_tokens, u.completion_tokens, opts.verbose)
+    
+    if opts.verbose:
+        encode_output = _format_encode_verbose(spec.encode.strategy, messages, encode_elapsed)
+        result = f"{encode_output}\n\n{result}\n\n{footer}" if footer else f"{encode_output}\n\n{result}"
+        return result
+    
+    return f"{result}\n\n{footer}" if footer else result
 
 
 def _accurate_image(path: Path, spec: PipelineSpec, opts: _CatOpts) -> str:
@@ -572,9 +619,9 @@ def _accurate_image(path: Path, spec: PipelineSpec, opts: _CatOpts) -> str:
     )
     elapsed = (time.monotonic() - t0) * 1000
     u = llm.last_usage
-    footer = _format_footer(path, "accurate", elapsed, u.prompt_tokens, u.completion_tokens)
+    footer = _format_footer(path, "accurate", elapsed, u.prompt_tokens, u.completion_tokens, opts.verbose)
 
-    return f"{content}\n\n{footer}"
+    return f"{content}\n\n{footer}" if footer else content
 
 
 def _accurate_video(path: Path, spec: PipelineSpec, opts: _CatOpts) -> str:
@@ -759,8 +806,9 @@ def _accurate_video(path: Path, spec: PipelineSpec, opts: _CatOpts) -> str:
     token_keys = {k: v for k, v in timing.items() if "tokens" in k}
     prompt_tokens = int(token_keys.get('vlm_prompt_tokens', 0))
     completion_tokens = int(token_keys.get('vlm_completion_tokens', 0))
-    footer = _format_footer(path, "accurate", timing['total_ms'], prompt_tokens, completion_tokens)
-    out_parts.append(f"\n{footer}")
+    footer = _format_footer(path, "accurate", timing['total_ms'], prompt_tokens, completion_tokens, opts.verbose)
+    if footer:
+        out_parts.append(f"\n{footer}")
     return "\n".join(out_parts)
 
 
@@ -833,12 +881,11 @@ def _accurate_audio(path: Path, spec: PipelineSpec, opts: _CatOpts) -> str:
     u = llm.last_usage
 
     word_count = len(transcript.split())
-    footer = _format_footer(path, "accurate", timing['total_ms'], u.prompt_tokens, u.completion_tokens)
-    return (
-        f"{summary}\n\n"
-        f"[Transcript: {word_count} words]\n"
-        f"{footer}"
-    )
+    footer = _format_footer(path, "accurate", timing['total_ms'], u.prompt_tokens, u.completion_tokens, opts.verbose)
+    result = f"{summary}\n\n[Transcript: {word_count} words]"
+    if footer:
+        result += f"\n{footer}"
+    return result
 
 
 def _run_l1(path: Path, kind: str, *, no_cache: bool = False) -> str:
