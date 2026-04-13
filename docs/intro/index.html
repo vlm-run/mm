@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>mm — Multi-modal context for humans and agents</title>
+  <style>
+    :root {
+      --bg: #0c1117;
+      --fg: #c9d1d9;
+      --dim: #6e7a88;
+      --steel: #4682B4;
+      --steel-light: #6ba3d6;
+      --silver: #C0D0E8;
+      --accent: #58a6ff;
+      --card-bg: #161b22;
+      --border: #21262d;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      height: 100vh;
+      overflow: hidden;
+      background: var(--bg);
+      color: var(--fg);
+      font-family: 'SF Mono', 'Cascadia Code', 'Fira Code', 'JetBrains Mono', monospace;
+    }
+
+    body {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 1.5vh 3vw;
+      gap: 1.8vh;
+    }
+
+    /* Header */
+    .header {
+      text-align: center;
+    }
+
+    .ascii-art {
+      font-size: clamp(0.55rem, 1.6vw, 1.05rem);
+      line-height: 1.15;
+      white-space: pre;
+      background: linear-gradient(180deg, var(--silver) 0%, var(--steel) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      font-weight: bold;
+      letter-spacing: 0.02em;
+    }
+
+    .tagline {
+      margin-top: 0.6vh;
+      font-size: clamp(0.65rem, 1.1vw, 0.9rem);
+      color: var(--dim);
+      letter-spacing: 0.08em;
+    }
+
+    .tagline em {
+      font-style: normal;
+      color: var(--steel-light);
+    }
+
+    /* Diagram */
+    .diagram {
+      width: min(92vw, 860px);
+      flex-shrink: 0;
+    }
+
+    .diagram svg {
+      width: 100%;
+      height: auto;
+      display: block;
+    }
+
+    /* Features row */
+    .features {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: clamp(6px, 1vw, 14px);
+      width: min(92vw, 860px);
+    }
+
+    .feat {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: clamp(6px, 1vh, 12px) clamp(8px, 1vw, 14px);
+      text-align: center;
+    }
+
+    .feat-icon {
+      font-size: clamp(0.9rem, 1.6vw, 1.3rem);
+      margin-bottom: 0.3vh;
+    }
+
+    .feat-name {
+      font-size: clamp(0.55rem, 0.85vw, 0.75rem);
+      color: var(--steel-light);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      margin-bottom: 0.2vh;
+    }
+
+    .feat-desc {
+      font-size: clamp(0.5rem, 0.7vw, 0.65rem);
+      color: var(--dim);
+      line-height: 1.35;
+    }
+
+    /* Footer */
+    .foot {
+      font-size: clamp(0.5rem, 0.7vw, 0.6rem);
+      color: var(--dim);
+      letter-spacing: 0.06em;
+    }
+
+    .foot a {
+      color: var(--accent);
+      text-decoration: none;
+    }
+
+    .foot a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- Header -->
+  <div class="header">
+    <pre class="ascii-art">███╗   ███╗███╗   ███╗
+████╗ ████║████╗ ████║
+██╔████╔██║██╔████╔██║
+██║╚██╔╝██║██║╚██╔╝██║
+██║ ╚═╝ ██║██║ ╚═╝ ██║
+╚═╝     ╚═╝╚═╝     ╚═╝</pre>
+    <div class="tagline"><em>High-performance multi-modal context</em> for humans and agents</div>
+  </div>
+
+  <!-- Diagram -->
+  <div class="diagram">
+    <svg viewBox="0 0 700 250" xmlns="http://www.w3.org/2000/svg" fill="none">
+      <defs>
+        <linearGradient id="g-steel" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stop-color="#C0D0E8" />
+          <stop offset="100%" stop-color="#4682B4" />
+        </linearGradient>
+        <linearGradient id="g-flow" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%" stop-color="#4682B4" stop-opacity="0.15" />
+          <stop offset="100%" stop-color="#4682B4" stop-opacity="0.03" />
+        </linearGradient>
+        <marker id="arrow" viewBox="0 0 10 7" refX="10" refY="3.5" markerWidth="8" markerHeight="6"
+          orient="auto-start-reverse">
+          <path d="M0,0 L10,3.5 L0,7" fill="#4682B4" opacity="0.6" />
+        </marker>
+        <filter id="glow">
+          <feGaussianBlur stdDeviation="3" result="blur" />
+          <feMerge>
+            <feMergeNode in="blur" />
+            <feMergeNode in="SourceGraphic" />
+          </feMerge>
+        </filter>
+      </defs>
+
+      <!-- Background flow band -->
+      <rect x="0" y="10" width="700" height="220" rx="12" fill="url(#g-flow)" />
+
+      <!-- Left column: Sources (center y=120) -->
+      <g font-family="'SF Mono','Cascadia Code','Fira Code',monospace" font-size="11">
+
+        <rect x="18" y="40" width="120" height="160" rx="8" fill="#161b22" stroke="#21262d" />
+        <text x="78" y="60" text-anchor="middle" fill="#6ba3d6" font-size="10" font-weight="600"
+          letter-spacing="0.1em">SOURCES</text>
+        <line x1="30" y1="68" x2="126" y2="68" stroke="#21262d" />
+
+        <text x="34" y="88" fill="#c9d1d9" font-size="12">◈</text><text x="50" y="88" fill="#6e7a88"
+          font-size="10">PDF</text>
+        <text x="34" y="108" fill="#c9d1d9" font-size="12">⬡</text><text x="50" y="108" fill="#6e7a88"
+          font-size="10">Image</text>
+        <text x="34" y="128" fill="#c9d1d9" font-size="12">▶</text><text x="50" y="128" fill="#6e7a88"
+          font-size="10">Video</text>
+        <text x="34" y="148" fill="#c9d1d9" font-size="12">♫</text><text x="50" y="148" fill="#6e7a88"
+          font-size="10">Audio</text>
+        <text x="34" y="168" fill="#c9d1d9" font-size="12">T</text><text x="50" y="168" fill="#6e7a88"
+          font-size="10">Text</text>
+        <text x="34" y="188" fill="#6e7a88" font-size="9">…</text><text x="46" y="188" fill="#6e7a88" font-size="9">and
+          more</text>
+
+      </g>
+
+      <!-- Arrow: Sources → mm -->
+      <line x1="143" y1="120" x2="182" y2="120" stroke="#4682B4" stroke-opacity="0.5" stroke-width="1.5"
+        marker-end="url(#arrow)" />
+
+      <!-- Center: mm processing -->
+      <g font-family="'SF Mono','Cascadia Code','Fira Code',monospace">
+
+        <rect x="188" y="22" width="320" height="196" rx="8" fill="#161b22" stroke="url(#g-steel)" stroke-width="1.5"
+          filter="url(#glow)" />
+
+        <!-- mm label -->
+        <text x="348" y="44" text-anchor="middle" fill="url(#g-steel)" font-size="13" font-weight="700"
+          letter-spacing="0.12em">mm</text>
+        <line x1="202" y1="52" x2="494" y2="52" stroke="#21262d" />
+
+        <!-- L0 -->
+        <rect x="204" y="62" width="290" height="42" rx="5" fill="#0c1117" stroke="#21262d" />
+        <text x="218" y="79" fill="#4682B4" font-size="10" font-weight="600">L0</text>
+        <text x="240" y="79" fill="#6e7a88" font-size="9">Metadata</text>
+        <text x="218" y="96" fill="#6e7a88" font-size="8.5">path · size · kind · ext · hash · timestamps · depth</text>
+        <text x="450" y="79" fill="#4682B4" font-size="8" text-anchor="end">~0.02 ms/file</text>
+
+        <!-- L1 -->
+        <rect x="204" y="112" width="290" height="42" rx="5" fill="#0c1117" stroke="#21262d" />
+        <text x="218" y="129" fill="#6ba3d6" font-size="10" font-weight="600">L1</text>
+        <text x="240" y="129" fill="#6e7a88" font-size="9">Content</text>
+        <text x="218" y="146" fill="#6e7a88" font-size="8.5">text · dims · EXIF · codecs · duration · pages</text>
+        <text x="450" y="129" fill="#6ba3d6" font-size="8" text-anchor="end">&lt;100 ms/file</text>
+
+        <!-- L2 -->
+        <rect x="204" y="162" width="290" height="42" rx="5" fill="#0c1117" stroke="#21262d" />
+        <text x="218" y="179" fill="#C0D0E8" font-size="10" font-weight="600">L2</text>
+        <text x="240" y="179" fill="#6e7a88" font-size="9">Semantic</text>
+        <text x="218" y="196" fill="#6e7a88" font-size="8.5">captions · descriptions · embeddings · search</text>
+        <text x="450" y="179" fill="#C0D0E8" font-size="8" text-anchor="end">LLM-powered</text>
+
+      </g>
+
+      <!-- Arrows: mm → Consumers (2 direct arrows, center y=120) -->
+      <line x1="513" y1="100" x2="560" y2="84" stroke="#4682B4" stroke-opacity="0.5" stroke-width="1.5"
+        marker-end="url(#arrow)" />
+      <line x1="513" y1="140" x2="560" y2="156" stroke="#4682B4" stroke-opacity="0.5" stroke-width="1.5"
+        marker-end="url(#arrow)" />
+
+      <!-- Consumers (group center y=120) -->
+      <g font-family="'SF Mono','Cascadia Code','Fira Code',monospace">
+
+        <rect x="565" y="57" width="115" height="54" rx="6" fill="#161b22" stroke="#21262d" />
+        <text x="622" y="79" text-anchor="middle" fill="#c9d1d9" font-size="15">🧑‍💻</text>
+        <text x="622" y="101" text-anchor="middle" fill="#6e7a88" font-size="9">Humans</text>
+
+        <rect x="565" y="129" width="115" height="54" rx="6" fill="#161b22" stroke="#21262d" />
+        <text x="622" y="151" text-anchor="middle" fill="#c9d1d9" font-size="15">🤖</text>
+        <text x="622" y="173" text-anchor="middle" fill="#6e7a88" font-size="9">Agents</text>
+
+      </g>
+
+      <!-- Bottom: Tech strip -->
+      <text x="350" y="242" text-anchor="middle" font-family="'SF Mono','Cascadia Code','Fira Code',monospace"
+        font-size="9" fill="#6e7a88" letter-spacing="0.06em">
+        Rust core · Arrow IPC · zero-copy · gitignore-aware · pipe-native
+      </text>
+
+    </svg>
+  </div>
+
+  <!-- Features -->
+  <div class="features">
+    <div class="feat">
+      <div class="feat-icon">⚡</div>
+      <div class="feat-name">Fast</div>
+      <div class="feat-desc">Rust core, rayon parallelism.<br>249 files in 5 ms.</div>
+    </div>
+    <div class="feat">
+      <div class="feat-icon">🔍</div>
+      <div class="feat-name">Multimodal</div>
+      <div class="feat-desc">find · cat · grep — upgraded<br>with multimodal awareness.</div>
+    </div>
+    <div class="feat">
+      <div class="feat-icon">🔗</div>
+      <div class="feat-name">Composable</div>
+      <div class="feat-desc">Pipes, Arrow, DataFrames.<br>CLI + Python API.</div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <div class="foot">
+    <code>pip install mm</code> · <a href="https://github.com/vlm-run/mm">GitHub</a> · Rust + Python · Apache 2.0
+  </div>
+
+</body>
+
+</html>

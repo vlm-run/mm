@@ -53,10 +53,9 @@ def _print_banner() -> None:
     if console.width >= 50:
         # Right-side labels aligned to art lines 1–4
         _right = {
-            1: "  ◈ pdf · ⬡ image",
-            2: "  ▶ video · ♫ audio",
-            3: "  ⟨/⟩ code · ≡ data",
-            4: "  T text",
+            1: "  ◈ pdf · ⬡ image · ▶ video",
+            2: "  ♫ audio · ⟨/⟩ code",
+            3: "  ≡ data · T text",
         }
         art_width = max(len(line) for line in _ART)
 
