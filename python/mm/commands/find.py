@@ -232,19 +232,42 @@ def _find_table(
         emit_rows(fmt, rows)
         return
 
-    elif fmt in ("tsv", "csv"):
+    elif fmt == "csv":
         import csv
         import io
 
         display_cols = cols or table.column_names
         buf = io.StringIO()
-        sep = "\t" if fmt == "tsv" else ","
-        writer = csv.writer(buf, delimiter=sep)
+        writer = csv.writer(buf)
         writer.writerow(display_cols)
         n = table.num_rows if limit is None else min(limit, table.num_rows)
         for i in range(n):
             writer.writerow(str(table.column(c)[i].as_py()) for c in display_cols)
         print(buf.getvalue(), end="")
+    elif fmt == "tsv":
+        display_cols = cols or table.column_names
+        n = table.num_rows if limit is None else min(limit, table.num_rows)
+        str_rows = [
+            [str(table.column(c)[i].as_py()) for c in display_cols] for i in range(n)
+        ]
+        widths = [len(c) for c in display_cols]
+        RIGHT_ALIGN = {"size", "depth", "width", "height", "line_count", "word_count", "pages"}
+        for sr in str_rows:
+            for j, cell in enumerate(sr):
+                if len(cell) > widths[j]:
+                    widths[j] = len(cell)
+        header = "\t".join(
+            c.rjust(widths[i]) if c in RIGHT_ALIGN else c.ljust(widths[i])
+            for i, c in enumerate(display_cols)
+        )
+        print(header)
+        for sr in str_rows:
+            print(
+                "\t".join(
+                    cell.rjust(widths[j]) if display_cols[j] in RIGHT_ALIGN else cell.ljust(widths[j])
+                    for j, cell in enumerate(sr)
+                )
+            )
     else:
         from mm.display import arrow_table_to_rich, output_console
 

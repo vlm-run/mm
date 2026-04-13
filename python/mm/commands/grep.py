@@ -24,7 +24,7 @@ def grep_cmd(
     ] = False,
     level: Annotated[int, typer.Option("--level", "-l", help="Processing level")] = 1,
     index: Annotated[
-        bool, typer.Option("--index", help="Index unindexed files before L2 search (max 50)")
+        bool, typer.Option("--index", help="Index unindexed files before semantic search (max 50)")
     ] = False,
     format: Annotated[
         Optional[Format],
@@ -52,9 +52,9 @@ def grep_cmd(
     fmt = resolve_format(format.value if format else None)
     stdin_paths = read_paths_from_stdin()
     _directory = directory or Path("./")
-    # L2 semantic search — vector similarity via embeddings
+    # Semantic search — vector similarity via embeddings
     if level >= 2:
-        _grep_l2(
+        _grep_semantic(
             pattern,
             _directory,
             kind,
@@ -244,11 +244,11 @@ def grep_cmd(
 
 
 # ---------------------------------------------------------------------------
-# L2 — semantic grep via embeddings
+# Semantic grep via embeddings
 # ---------------------------------------------------------------------------
 
 
-def _grep_l2(
+def _grep_semantic(
     pattern: str,
     directory: Path,
     kind: str | None,

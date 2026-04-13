@@ -1,25 +1,26 @@
-"""LLM backend for L2 semantic understanding.
+"""LLM backend for accurate-mode pipelines.
 
 Supports any OpenAI-compatible API (Ollama, vLLM, OpenAI, etc.)
 via the official openai Python SDK.
 
 Profile settings are resolved in order:
     CLI flags > env vars > active profile in ~/.config/mm/mm.toml > built-in defaults
+
+Public API:
+    LlmBackend.generate(kind, mode, *, context, parts)          — template-driven
+    LlmBackend.generate_chunked(kind, mode, *, context, chunks) — multi-chunk concat
+    image_part(path, *, mime)                                    — build an image content part
 """
 
 from __future__ import annotations
 
 import base64
-import json
 import re
 from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 from openai import OpenAI
-
-if TYPE_CHECKING:
-    from mm.config import Mode
 
 
 @dataclass
@@ -31,19 +32,8 @@ class LlmUsage:
     total_tokens: int = 0
 
 
-# Module-level usage tracker — updated by every _chat() call.
-# Allows callers without access to the LlmBackend instance
-# (e.g. bench command factories) to read token usage after _extract().
-_last_global_usage = LlmUsage()
-
-
-def get_last_usage() -> LlmUsage:
-    """Return token usage from the most recent LLM/VLM call."""
-    return _last_global_usage
-
-
 class LlmBackend:
-    """Wraps any OpenAI-compatible chat/completions API for L2 semantic operations."""
+    """Wraps any OpenAI-compatible chat/completions API for accurate-mode generate calls."""
 
     last_usage: LlmUsage
 
@@ -75,77 +65,112 @@ class LlmBackend:
     def is_configured(self) -> bool:
         return bool(self.client.base_url)
 
-    def caption(self, image_path: Path, *, detail: bool = False) -> str:
-        """Generate a caption for an image."""
-        b64 = base64.b64encode(image_path.read_bytes()).decode()
-        mime = _guess_image_mime(image_path)
+    def generate(
+        self,
+        kind: str,
+        mode: str = "fast",
+        *,
+        context: dict[str, Any] | None = None,
+        parts: list[dict[str, Any]] | None = None,
+        pipeline_spec: Any | None = None,
+    ) -> str:
+        """Pipeline-driven MLLM generation.
 
-        if detail:
-            prompt = "Describe this image in about 80 words. Cover the main subject, setting, and notable details."
-            max_tokens = 512
+        Args:
+            kind: Media kind (image, video, audio, document).
+            mode: Processing mode (fast, accurate).
+            context: Template variables — {filename}, {duration_ctx},
+                {content}, {transcript}, {word_count}, etc.
+            parts: OpenAI-compatible content parts (image_url, text, etc.)
+                to include alongside the prompt.
+            pipeline_spec: Pre-loaded ``PipelineSpec`` (with overrides
+                already applied).  When provided, ``load(kind, mode)``
+                is skipped.
+
+        Returns:
+            Raw LLM response text.
+        """
+        from mm.pipelines import load, render_prompt, run_pyfunc
+
+        ctx = context or {}
+        tpl = pipeline_spec if pipeline_spec is not None else load(kind, mode)
+
+        if tpl.generate is None:
+            return ""
+
+        prompt = render_prompt(tpl, ctx)
+
+        content_parts: list[dict[str, Any]] = parts or []
+        content_parts = run_pyfunc(tpl, content_parts, ctx)
+
+        if content_parts:
+            message_content: list[dict[str, Any]] | str = [
+                {"type": "text", "text": prompt},
+                *content_parts,
+            ]
         else:
-            prompt = "Describe this image in one sentence (max 20 words)."
-            max_tokens = 128
+            message_content = prompt
 
         messages: list[dict[str, Any]] = [
-            {
-                "role": "user",
-                "content": [
-                    {"type": "text", "text": prompt},
-                    {"type": "image_url", "image_url": {"url": f"data:{mime};base64,{b64}"}},
-                ],
-            }
+            {"role": "user", "content": message_content}
         ]
-        return self._chat(messages, max_tokens=max_tokens)
 
-    def describe(self, file_path: Path, content: str | None = None, *, detail: bool = False) -> str:
-        """Generate a description of a file's content."""
-        if content is None:
-            content = file_path.read_text(errors="replace")[:4000]
+        return self._chat(
+            messages,
+            max_tokens=tpl.generate.max_tokens,
+            temperature=tpl.generate.temperature,
+            json_mode=tpl.generate.json_mode,
+            think=tpl.generate.think,
+            reasoning_effort=tpl.generate.reasoning_effort,
+        )
 
-        if detail:
-            prompt = (
-                f"Summarize this file ({file_path.name}) in about 80 words:\n\n```\n{content}\n```"
-            )
-            max_tokens = 512
-        else:
-            prompt = f"Summarize this file ({file_path.name}) in one sentence (max 20 words):\n\n```\n{content}\n```"
-            max_tokens = 128
-
-        return self._chat([{"role": "user", "content": prompt}], max_tokens=max_tokens)
-
-    def describe_video(
+    def generate_chunked(
         self,
-        mosaic_paths: list[Path],
+        kind: str,
+        mode: str = "fast",
         *,
-        video_name: str = "",
-        duration_s: float = 0,
-    ) -> dict[str, Any]:
-        """Analyze video mosaics and return {filename, tags, summary}."""
-        dur_ctx = ""
-        if duration_s > 0:
-            mins, secs = divmod(duration_s, 60)
-            dur_ctx = f" ({int(mins)}m{secs:.0f}s)"
+        context: dict[str, Any] | None = None,
+        chunks: list[list[dict[str, Any]]],
+        separator: str = "\n\n---\n\n",
+        on_chunk: Any | None = None,
+        pipeline_spec: Any | None = None,
+    ) -> str:
+        """Process multiple content chunks sequentially and concatenate results.
 
-        prompt = (
-            f"What is this video mosaic{dur_ctx} about? "
-            "Give a descriptive content-based filename (not the original), tags, summary."
-        )
+        Args:
+            kind: Media kind (image, video, audio, document).
+            mode: Processing mode (fast, accurate).
+            context: Template variables shared across all chunks.
+            chunks: List of content-part lists, one per chunk.
+            separator: String inserted between chunk results.
+            on_chunk: Optional callback ``(chunk_idx, total, result) -> None``
+                called after each chunk completes.
+            pipeline_spec: Pre-loaded ``PipelineSpec`` (with overrides
+                already applied).
 
-        content_parts: list[dict[str, Any]] = [{"type": "text", "text": prompt}]
-        for mp in mosaic_paths:
-            b64 = base64.b64encode(mp.read_bytes()).decode()
-            content_parts.append(
-                {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{b64}"}}
+        Returns:
+            Concatenated LLM responses from all chunks.
+        """
+        results: list[str] = []
+        total = len(chunks)
+        cumulative_usage = LlmUsage()
+
+        for i, parts in enumerate(chunks):
+            result = self.generate(
+                kind, mode, context=context, parts=parts,
+                pipeline_spec=pipeline_spec,
             )
+            results.append(result)
 
-        raw = self._chat(
-            [{"role": "user", "content": content_parts}],
-            temperature=0.1,
-            max_tokens=512,
-            json_mode=True,
-        )
-        return _parse_video_json(raw)
+            cumulative_usage.prompt_tokens += self.last_usage.prompt_tokens
+            cumulative_usage.completion_tokens += self.last_usage.completion_tokens
+            cumulative_usage.total_tokens += self.last_usage.total_tokens
+
+            if on_chunk is not None:
+                on_chunk(i, total, result)
+
+        self.last_usage = cumulative_usage
+        return separator.join(r for r in results if r and not r.startswith("[LLM error"))
 
     def _chat(
         self,
@@ -154,36 +179,30 @@ class LlmBackend:
         temperature: float | None = None,
         max_tokens: int = 128,
         json_mode: bool = False,
+        think: bool = False,
+        reasoning_effort: str = "none",
     ) -> str:
-        """Single chat/completions call via the OpenAI SDK.
-
-        Thinking models consume tokens for reasoning before producing
-        the answer, so we request extra headroom (capped at 2048).
-        """
+        """Single chat/completions call via the OpenAI SDK."""
         kwargs: dict[str, Any] = {
             "model": self.model,
             "messages": messages,
-            "max_tokens": min(max_tokens * 8, 2048),
+            "max_tokens": min(max_tokens * 8, 16384),
         }
         kwargs["temperature"] = temperature if temperature is not None else 0.1
         if json_mode:
             kwargs["response_format"] = {"type": "json_object"}
 
-        extra_body: dict[str, Any] = {"think": False, "reasoning_effort": "none"}
+        extra_body: dict[str, Any] = {"think": think, "reasoning_effort": reasoning_effort}
 
         try:
             response = self.client.chat.completions.create(**kwargs, extra_body=extra_body)
 
-            # Capture token usage (instance + global)
             if response.usage:
-                global _last_global_usage
-                usage = LlmUsage(
+                self.last_usage = LlmUsage(
                     prompt_tokens=response.usage.prompt_tokens or 0,
                     completion_tokens=response.usage.completion_tokens or 0,
                     total_tokens=response.usage.total_tokens or 0,
                 )
-                self.last_usage = usage
-                _last_global_usage = usage
 
             choice = response.choices[0].message
             content = (choice.content or "").strip()
@@ -200,170 +219,19 @@ class LlmBackend:
         except Exception as e:
             return f"[LLM error: {e}]"
 
-    def caption_modal(self, image_path: Path, *, mode: Mode = "fast") -> str:
-        """Generate a markdown image caption with mode-specific detail.
 
-        Args:
-            image_path: Path to image file.
-            mode: "fast" (10 words + 5 tags) or "accurate" (200 words + 10 tags + objects).
+def image_part(path: Path, *, mime: str | None = None) -> dict[str, Any]:
+    """Build an OpenAI ``image_url`` content part from a file path."""
+    b64 = base64.b64encode(path.read_bytes()).decode()
+    if mime is None:
+        from mm.constants import guess_mime
 
-        Returns:
-            Markdown string with description, tags, and optionally objects.
-        """
-        b64 = base64.b64encode(image_path.read_bytes()).decode()
-        mime = _guess_image_mime(image_path)
-
-        if mode == "accurate":
-            prompt = (
-                "Describe this image in detail (~200 words).\n"
-                "Then list up to 10 keyword tags.\n"
-                "Then list up to 10 identifiable objects, people, faces, or logos.\n\n"
-                "Use this format:\n"
-                "## Description\n<description>\n\n"
-                "## Tags\n- tag1\n- tag2\n...\n\n"
-                "## Objects\n- object1\n- object2\n..."
-            )
-            max_tokens = 1024
-        else:
-            prompt = (
-                "Describe this image in 10 words or less.\n"
-                "Then list exactly 5 keyword tags.\n\n"
-                "Use this format:\n"
-                "## Description\n<description>\n\n"
-                "## Tags\n- tag1\n- tag2\n..."
-            )
-            max_tokens = 256
-
-        messages: list[dict[str, Any]] = [
-            {
-                "role": "user",
-                "content": [
-                    {"type": "text", "text": prompt},
-                    {"type": "image_url", "image_url": {"url": f"data:{mime};base64,{b64}"}},
-                ],
-            }
-        ]
-        return self._chat(messages, max_tokens=max_tokens)
-
-    def analyze_video_visual(
-        self,
-        mosaic_paths: list[Path],
-        *,
-        video_name: str = "",
-        duration_s: float = 0,
-        mode: Mode = "fast",
-    ) -> str:
-        """Analyze video from visual mosaics only (no transcript).
-
-        Pure vision call — faster because no transcript text in prompt.
-        Transcript is concatenated separately in the output.
-
-        Args:
-            mosaic_paths: List of mosaic JPEG paths.
-            video_name: Original video filename.
-            duration_s: Video duration in seconds.
-            mode: "fast" (concise) or "accurate" (detailed).
-
-        Returns:
-            Markdown string with summary, tags, and scenes.
-        """
-        dur_ctx = ""
-        if duration_s > 0:
-            mins, secs = divmod(duration_s, 60)
-            dur_ctx = f" Duration: {int(mins)}m{secs:.0f}s."
-
-        if mode == "accurate":
-            prompt = (
-                f"Analyze this video mosaic ({video_name}).{dur_ctx}\n\n"
-                "Provide a detailed visual analysis (~200 words), up to 10 keyword tags, "
-                "and describe each major scene or segment visible in the frames.\n\n"
-                "Use this format:\n"
-                "## Summary\n<detailed analysis>\n\n"
-                "## Tags\n- tag1\n- tag2\n...\n\n"
-                "## Scenes\n- Scene 1: <description>\n- Scene 2: <description>\n..."
-            )
-            max_tokens = 1536
-        else:
-            prompt = (
-                f"Analyze this video mosaic ({video_name}).{dur_ctx}\n\n"
-                "Provide a concise summary (~50 words), 5 keyword tags, "
-                "and a brief scene list.\n\n"
-                "Use this format:\n"
-                "## Summary\n<summary>\n\n"
-                "## Tags\n- tag1\n- tag2\n...\n\n"
-                "## Scenes\n- Scene 1: <description>\n..."
-            )
-            max_tokens = 512
-
-        content_parts: list[dict[str, Any]] = [{"type": "text", "text": prompt}]
-        for mp in mosaic_paths:
-            b64 = base64.b64encode(mp.read_bytes()).decode()
-            content_parts.append(
-                {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{b64}"}}
-            )
-
-        return self._chat(
-            [{"role": "user", "content": content_parts}],
-            max_tokens=max_tokens,
-        )
-
-    def summarize_transcript(
-        self,
-        transcript: str,
-        *,
-        mode: Mode = "fast",
-        filename: str = "",
-    ) -> str:
-        """Summarize an audio transcript via LLM.
-
-        Args:
-            transcript: Whisper transcript text.
-            mode: "fast" (concise) or "accurate" (detailed).
-            filename: Original audio filename.
-
-        Returns:
-            Markdown string with summary, tags, and language.
-        """
-        max_chars = 4000 if mode == "fast" else 16000
-        t = transcript[:max_chars]
-        if len(transcript) > max_chars:
-            t += "..."
-
-        if mode == "accurate":
-            prompt = (
-                f"Analyze this audio transcript ({filename}):\n\n{t}\n\n"
-                "Provide a detailed summary (~200 words), up to 10 keyword tags, "
-                "and the detected language.\n\n"
-                "Use this format:\n"
-                "## Summary\n<detailed summary>\n\n"
-                "## Tags\n- tag1\n- tag2\n...\n\n"
-                "## Language\n<detected language>"
-            )
-            max_tokens = 1024
-        else:
-            prompt = (
-                f"Summarize this audio transcript ({filename}):\n\n{t}\n\n"
-                "Provide a concise summary (~50 words), 5 keyword tags, "
-                "and the detected language.\n\n"
-                "Use this format:\n"
-                "## Summary\n<summary>\n\n"
-                "## Tags\n- tag1\n- tag2\n...\n\n"
-                "## Language\n<detected language>"
-            )
-            max_tokens = 256
-
-        return self._chat(
-            [{"role": "user", "content": prompt}],
-            max_tokens=max_tokens,
-        )
+        mime = guess_mime(path.name, fallback="image/png")
+    return {"type": "image_url", "image_url": {"url": f"data:{mime};base64,{b64}"}}
 
 
 def _extract_answer_from_thinking(thinking: str) -> str:
-    """Best-effort extraction of the final answer from a thinking trace.
-
-    Thinking models interleave reasoning with the answer. The actual
-    answer is typically the last quoted sentence or the last paragraph.
-    """
+    """Best-effort extraction of the final answer from a thinking trace."""
     quotes: list[str] = re.findall(r'"([^"]{10,})"', thinking)
     if quotes:
         return quotes[-1].strip()
@@ -373,64 +241,3 @@ def _extract_answer_from_thinking(thinking: str) -> str:
         last = re.sub(r"^(?:So|Answer|Result|Summary)[:\s]+", "", last, flags=re.IGNORECASE)
         return last.strip()
     return thinking.strip()
-
-
-def _parse_video_json(raw: str) -> dict[str, Any]:
-    """Extract and normalize {filename, tags, summary} from LLM response."""
-    if not raw or raw.startswith("[LLM error"):
-        return {"filename": "", "tags": [], "summary": raw}
-
-    try:
-        start = raw.index("{")
-        end = raw.rindex("}") + 1
-        data = json.loads(raw[start:end])
-    except (ValueError, json.JSONDecodeError):
-        return {"filename": "", "tags": [], "summary": raw.strip()}
-
-    filename = ""
-    for key in ("filename", "name", "file_name", "title"):
-        if key in data and isinstance(data[key], str):
-            filename = data[key]
-            break
-
-    tags: list[str] = []
-    for key in ("tags", "relevant_tags", "keywords"):
-        if key in data and isinstance(data[key], list):
-            tags = [str(t) for t in data[key]]
-            break
-
-    summary = ""
-    for key in ("summary", "one_sentence_summary", "description"):
-        if key in data and isinstance(data[key], str):
-            summary = data[key]
-            break
-
-    filename = _to_kebab_case(filename)
-
-    return {"filename": filename, "tags": tags, "summary": summary}
-
-
-def _to_kebab_case(s: str) -> str:
-    """Convert any string to kebab-case suitable for a filename."""
-    s = re.sub(r"\d+m\d+s$", "", s)
-    s = s.replace("_", " ")
-    s = re.sub(r"([a-z])([A-Z])", r"\1 \2", s)
-    s = re.sub(r"([A-Z]+)([A-Z][a-z])", r"\1 \2", s)
-    s = re.sub(r"(?i)\bmosaic\b", "", s)
-    s = re.sub(r"[^a-zA-Z0-9\s-]", "", s)
-    s = re.sub(r"[\s]+", "-", s.strip())
-    s = re.sub(r"-+", "-", s)
-    return s.lower().strip("-")[:80]
-
-
-def _guess_image_mime(path: Path) -> str:
-    ext = path.suffix.lower()
-    return {
-        ".png": "image/png",
-        ".jpg": "image/jpeg",
-        ".jpeg": "image/jpeg",
-        ".gif": "image/gif",
-        ".webp": "image/webp",
-        ".bmp": "image/bmp",
-        ".svg": "image/svg+xml",
-    }.get(ext, "image/png")

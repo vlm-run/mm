@@ -7,6 +7,7 @@ builtin normalization, CLI subcommands (list/use/add/update/remove), --profile f
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 from typing import cast
 
@@ -582,14 +583,19 @@ class TestProfileCli:
         result = cli_runner.invoke(app, ["profile", "use", "nope"])
         assert result.exit_code == 1
 
+    @staticmethod
+    def _strip_ansi(text: str) -> str:
+        return re.sub(r"\x1b\[[0-9;]*m", "", text)
+
     def test_profile_update_single_field(self, runner, two_profile_config):
         cli_runner, app = runner
         result = cli_runner.invoke(
             app, ["profile", "update", "gemini", "--model", "gemini-2.0-flash"]
         )
         assert result.exit_code == 0
-        assert "Updated" in result.output
-        assert "model=gemini-2.0-flash" in result.output
+        plain = self._strip_ansi(result.output)
+        assert "Updated" in plain
+        assert "model=gemini-2.0-flash" in plain
         # Verify change persisted
         result2 = cli_runner.invoke(app, ["profile", "list", "--format", "json"])
         data = json.loads(result2.output)
@@ -610,8 +616,9 @@ class TestProfileCli:
             ],
         )
         assert result.exit_code == 0
-        assert "model=gemini-2.0" in result.output
-        assert "base_url=http://new:8000" in result.output
+        plain = self._strip_ansi(result.output)
+        assert "model=gemini-2.0" in plain
+        assert "base_url=http://new:8000" in plain
 
     def test_profile_update_api_key_masked(self, runner, two_profile_config):
         cli_runner, app = runner

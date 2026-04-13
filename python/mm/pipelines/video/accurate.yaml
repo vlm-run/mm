@@ -1,0 +1,37 @@
+kind: video
+mode: accurate
+
+encode:
+  strategy: frames-transcript
+  strategy_opts:
+    fps: 1.0
+    max_width: 1024
+    max_frames_per_message: 16
+    whisper_model: medium
+    audio_speed: 1.0
+
+generate:
+  prompt: >-
+    Analyze this video. 
+
+    You have been provided with the audio transcript (with timestamps)
+    followed by sampled video frames. Use both modalities to produce a
+    comprehensive analysis.
+
+    Provide a detailed visual and audio analysis (~200 words), up to 10
+    keyword tags, and describe each major scene or segment.
+
+    Use this format:
+    ## Summary
+    <detailed analysis>
+
+    ## Tags
+    - tag1
+    - tag2
+    ...
+
+    ## Scenes
+    - Scene 1: <description>
+    - Scene 2: <description>
+    ...
+  max_tokens: 1536

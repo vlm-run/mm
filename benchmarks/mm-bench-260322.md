@@ -4,7 +4,7 @@
 **System**: macOS Apple Silicon, Ollama qwen3.5:0.8b, MLX whisper tiny
 **Config**: beam_size=1, audio_speed=2.0, mosaic 1500px, parallel VLM ∥ whisper
 
-## L0 — Metadata (Rust parallel scan)
+## Metadata scan (Rust parallel scan)
 
 | Command | Latency | Throughput |
 |---|---|---|
@@ -18,7 +18,7 @@
 | find --kind audio | 4.3ms | 2.08 Tbps |
 | find --kind document | 3.8ms | 2.37 Tbps |
 
-## L1 — Content Extraction
+## Fast-mode content extraction
 
 | Command | Latency | Throughput |
 |---|---|---|
@@ -30,7 +30,7 @@
 | cat \<pdf\> (x10) | 695ms | 174 Mbps |
 | grep /pattern/ | 257ms | 484 Mbps |
 
-## L2 — Semantic (LLM/VLM)
+## Accurate mode (LLM/VLM pipelines)
 
 | Command | Latency | Throughput | Tokens (in→out) |
 |---|---|---|---|
@@ -43,7 +43,7 @@
 
 ## Changes from mm-bench-260321
 
-- Token metrics now captured for all L2 commands
-- Audio L2 benchmarks use smallest audio file (Palantir 61MB/43min) instead of Lex Fridman (441MB/5hr) to avoid Metal GPU timeout
+- Token metrics now captured for all accurate-mode commands
+- Audio accurate benchmarks use smallest audio file (Palantir 61MB/43min) instead of Lex Fridman (441MB/5hr) to avoid Metal GPU timeout
 - Global LlmUsage tracker wired into bench pipeline
 - Benchmark naming: `mm-bench-YYYYMMDD` convention
