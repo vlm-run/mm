@@ -120,6 +120,8 @@ class LlmBackend:
             max_tokens=tpl.generate.max_tokens,
             temperature=tpl.generate.temperature,
             json_mode=tpl.generate.json_mode,
+            think=tpl.generate.think,
+            reasoning_effort=tpl.generate.reasoning_effort,
         )
 
     def generate_chunked(
@@ -177,6 +179,8 @@ class LlmBackend:
         temperature: float | None = None,
         max_tokens: int = 128,
         json_mode: bool = False,
+        think: bool = False,
+        reasoning_effort: str = "none",
     ) -> str:
         """Single chat/completions call via the OpenAI SDK."""
         kwargs: dict[str, Any] = {
@@ -188,7 +192,7 @@ class LlmBackend:
         if json_mode:
             kwargs["response_format"] = {"type": "json_object"}
 
-        extra_body: dict[str, Any] = {"think": False, "reasoning_effort": "none"}
+        extra_body: dict[str, Any] = {"think": think, "reasoning_effort": reasoning_effort}
 
         try:
             response = self.client.chat.completions.create(**kwargs, extra_body=extra_body)

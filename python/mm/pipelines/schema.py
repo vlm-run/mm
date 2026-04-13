@@ -83,6 +83,8 @@ class Generate:
     max_tokens: int = 256
     temperature: float | None = None
     json_mode: bool = False
+    think: bool = False
+    reasoning_effort: str = "none"
 
     @classmethod
     def from_dict(cls, data: dict[str, Any] | None) -> "Generate | None":
@@ -104,6 +106,8 @@ class Generate:
             "max_tokens": self.max_tokens,
             "temperature": self.temperature,
             "json_mode": self.json_mode,
+            "think": self.think,
+            "reasoning_effort": self.reasoning_effort,
         }
 
 
