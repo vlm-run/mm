@@ -227,7 +227,9 @@ def cat_cmd(
                 kind = _file_kind(p)
                 size = p.stat().st_size
                 print(f"--- {p} ({kind}, {size}B) ---")
-            print(content)
+            # Use Rich console to properly render markup like [dim]...[/dim]
+            from mm.display import output_console
+            output_console.print(content)
 
     if fmt in ("json", "dataset-jsonl", "dataset-hf"):
         from mm.display import emit_rows
@@ -507,8 +509,8 @@ def _format_footer(path: Path, mode: str, elapsed_ms: float, prompt_tokens: int 
         parts.append(f"{prompt_tokens}→{completion_tokens} tokens")
     
     footer_text = " • ".join(parts)
-    # Use ANSI gray color (90) for pure gray dim without other styling
-    return f"\033[90m{footer_text}\033[0m"
+    # Use Rich markup for dim styling (will work properly with output console)
+    return f"[dim]{footer_text}[/dim]"
 
 
 def _format_encode_verbose(strategy: str | None, messages: list[dict], elapsed_ms: float) -> str:
@@ -530,8 +532,8 @@ def _format_encode_verbose(strategy: str | None, messages: list[dict], elapsed_m
                     elif part_type == "image_url" or "inline_data" in part:
                         part_summary.append(f"  Message {msg_idx + 1}, Part {part_idx + 1}: image")
     
-    # Use ANSI gray color (90) for pure gray dim without other styling
-    encode_info = f"\033[90mEncode: {strategy} • {elapsed_s:.1f}s\033[0m\n"
+    # Use Rich markup for dim styling
+    encode_info = f"[dim]Encode: {strategy} • {elapsed_s:.1f}s[/dim]\n"
     if part_summary:
         encode_info += "\n".join(part_summary)
     
