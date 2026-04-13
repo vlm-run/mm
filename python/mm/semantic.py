@@ -1,6 +1,7 @@
 """Semantic search — check indexing status, index on demand, then KNN query.
 
-Used by `mm grep -l 2` to search inside files using vector similarity.
+Used by `mm grep -l 2` to search inside files using vector similarity
+over the persisted chunks table.
 """
 
 from __future__ import annotations
@@ -47,34 +48,35 @@ def check_indexed(uris: list[str]) -> tuple[set[str], list[str]]:
 
 
 def _index_one(uri: str) -> str | None:
-    """Index a single file via L2 pipeline. Returns URI on success, None on failure."""
-    from mm.commands.cat import _CatOpts, _file_kind, _run_l2
+    """Index a single file via the accurate-mode pipeline.
 
-    opts = _CatOpts(
-        level=2,
-        n=None,
-        detail=False,
-        output_dir=None,
-        max_pages=None,
-        mosaic_tile="4x4",
-        mosaic_image_width=160,
-        video_mosaic_count=1,
-        video_mosaic_strategy="uniform",
-        audio_speed=2.0,
-        audio_sample_rate=16000,
-        mode=None,
-        no_cache=False,
-        format="rich",
-    )
+    Returns the URI on success, or ``None`` on failure (missing file,
+    extractor error, or embed failure). Accurate-mode extraction writes
+    to the ``l2_results`` + ``chunks`` + ``chunks_vec`` tables as a
+    side effect of ``_run_accurate``.
+    """
+    from mm.commands.cat import _CatOpts, _file_kind, _run_accurate
 
     path = Path(uri)
     if not path.exists():
         return None
+
+    opts = _CatOpts(
+        n=None,
+        output_dir=None,
+        mode="accurate",
+        no_cache=False,
+        format="rich",
+        encode_overrides={},
+        generate_overrides={},
+        pipelines={},
+    )
+
     try:
-        result = _run_l2(path, _file_kind(path), opts)
-        if not result.startswith("["):
+        result = _run_accurate(path, _file_kind(path), opts)
+        if result and not result.startswith("["):
             return uri
-        raise ValueError(f"Failed to extract L2 for {uri}: {result}")
+        raise ValueError(f"Accurate extraction failed for {uri}: {result}")
     except Exception as e:
         from mm.display import console
 
