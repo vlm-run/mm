@@ -182,7 +182,7 @@ class LlmBackend:
         kwargs: dict[str, Any] = {
             "model": self.model,
             "messages": messages,
-            "max_tokens": min(max_tokens * 8, 2048),
+            "max_tokens": min(max_tokens * 8, 16384),
         }
         kwargs["temperature"] = temperature if temperature is not None else 0.1
         if json_mode:

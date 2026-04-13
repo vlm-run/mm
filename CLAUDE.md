@@ -262,7 +262,7 @@ result = ctx.sql("SELECT kind, COUNT(*) as n FROM files GROUP BY kind ORDER BY n
 
 big_images = ctx.filter(kind="image", min_size="1MB")
 
-text = ctx.cat("paper.pdf", level=1)
+text = ctx.cat("paper.pdf")
 hits = ctx.grep("attention", kind="document")
 
 ctx.show()   # Rich table
@@ -296,8 +296,8 @@ mm profile use openrouter                                      # switch active p
 mm profile list                                            # list all profiles
 
 # Per-command profile selection
-mm --profile openrouter cat photo.png -l 2
-MM_PROFILE=openrouter mm cat photo.png -l 2
+mm --profile openrouter cat photo.png -m accurate
+MM_PROFILE=openrouter mm cat photo.png -m accurate
 ```
 
 ## Testing
@@ -321,7 +321,7 @@ mm bench ~/data/mmbench-mini --format rich --rounds 3
 mm bench ~/data/mmbench-mini --format json --rounds 3 > benchmarks/mm-bench-YYYYMMDD.json
 
 # Single-file video benchmark
-mm cat video.mp4 -l 2 --mode fast   # timing + token metrics in footer
+mm cat video.mp4 --mode fast   # timing + token metrics in footer
 ```
 
 ### Saving benchmark results

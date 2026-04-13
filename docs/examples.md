@@ -313,10 +313,10 @@ Sampled:    992ms
 Mosaic:     /tmp/mm_.../bakery_mosaic_1.jpg
 ```
 
-### Head of a code file (L0)
+### Head of a code file
 
 ```bash
-$ mm cat ~/data/domains/healthcare-codegen-reports/create_longevity_report.py -n 10 --level 0
+$ mm cat ~/data/domains/healthcare-codegen-reports/create_longevity_report.py -n 10
 ```
 
 ```
@@ -332,10 +332,10 @@ from reportlab.lib.units import inch
 from reportlab.lib.colors import HexColor, black, white, Color
 ```
 
-### LLM caption (L2)
+### LLM caption (accurate mode)
 
 ```bash
-$ mm cat photo.jpg --level 2
+$ mm cat photo.jpg -m accurate
 ```
 
 ```
@@ -344,10 +344,10 @@ vineyard in the foreground. A stone farmhouse sits mid-frame with cypress
 trees lining a gravel path. Shot on Canon EOS R5, shallow depth of field.
 ```
 
-### Video keyframe mosaic + LLM description (L2)
+### Video keyframe mosaic + LLM description (accurate mode)
 
 ```bash
-$ mm cat demo.mp4 --level 2
+$ mm cat demo.mp4 -m accurate
 ```
 
 ```
@@ -394,10 +394,10 @@ healthcare-codegen-reports/create_longevity_report.py
   ...
 ```
 
-### Semantic search (L2 — vector similarity)
+### Semantic search (accurate mode — vector similarity)
 
 ```bash
-$ mm grep "financial projections" ~/data/domains -l 2
+$ mm grep "financial projections" ~/data/domains
 ```
 
 ```
@@ -407,7 +407,7 @@ document.invoice/sample-invoice.pdf                      0      0.3012    Invoic
 ```
 
 ```bash
-$ mm grep "patient diagnosis" ~/data/domains -l 2 --kind document --format json
+$ mm grep "patient diagnosis" ~/data/domains --kind document --format json
 ```
 
 ```json
@@ -557,7 +557,7 @@ $ mm profile list
 $ mm profile use openrouter
 
 # Use a different profile for a single command
-$ mm --profile openrouter cat photo.png -l 2
+$ mm --profile openrouter cat photo.png -m accurate
 
 # Update a field
 $ mm profile update openrouter --model qwen/qwen3.5-27b
@@ -566,7 +566,7 @@ $ mm profile update openrouter --model qwen/qwen3.5-27b
 $ mm profile remove openrouter
 
 # Environment variable override
-$ MM_PROFILE=openai mm cat photo.png -l 2
+$ MM_PROFILE=openai mm cat photo.png -m accurate
 ```
 
 ---
@@ -583,7 +583,7 @@ $ mm find ~/research --kind document | mm wc
 
 # Find the 5 largest images, get their EXIF metadata
 $ mm sql "SELECT path FROM files WHERE kind='image' ORDER BY size DESC LIMIT 5" \
-    --dir ~/photos | mm cat -l 1
+    --dir ~/photos | mm cat
 ```
 
 ### Unix pipes
@@ -596,7 +596,7 @@ mm find ~/data/domains --kind document --min-size 10mb | wc -l
 mm find ~/data/domains --kind video --format json | jq '.[].name'
 
 # Find all PDFs → extract text → search for a term
-mm find ~/papers --ext pdf | mm cat -l 1 | grep "attention"
+mm find ~/papers --ext pdf | mm cat | grep "attention"
 ```
 
 ### Piping to DuckDB
@@ -660,7 +660,7 @@ mm find ~/photos --kind image --ext cr3,nef,arw \
   | jq '.[] | {file: .SourceFile, iso: .ISO, shutter: .ShutterSpeed}'
 
 # rg finds pattern; mm counts the token cost
-rg -l "unsafe" --type rust ~/project | mm cat -l 0 | mm wc
+rg -l "unsafe" --type rust ~/project | mm cat | mm wc
 
 # jq on JSON output
 mm find ~/data --format json | jq '[.[] | select(.kind=="image")] | length'
@@ -675,6 +675,6 @@ mm find ~/data | mlr --tsvlite --from - then sort-by -nr size then head -n 10
 
 1. **Token efficiency** — piped output uses minimal formatting. No borders, no color codes, no padding. Every byte carries information.
 2. **Auto-detection** — `cat` knows a `.jpg` needs EXIF extraction, a `.mp4` needs codec/duration, a `.pdf` needs text extraction. No flags needed.
-3. **Three levels** — L0 (raw bytes, ~0ms), L1 (structured metadata, <100ms, no external deps), L2 (LLM-generated semantics, requires API).
+3. **Two modes** — fast mode (local extraction, <100ms, no external deps) and accurate mode (LLM pipelines via YAML, requires API).
 4. **Composability** — `find` outputs paths → `cat` reads from stdin → `wc` counts tokens. Standard Unix pipes, multimodal awareness.
-5. **Speed** — Rust core with `rayon` parallelism. L0 indexes 249 files in 5ms. L1 image metadata in <1ms/file. Video metadata without ffmpeg.
+5. **Speed** — Rust core with `rayon` parallelism. Metadata scan indexes 249 files in 5ms. Fast-mode image metadata in <1ms/file. Video metadata without ffmpeg.

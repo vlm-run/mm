@@ -13,3 +13,4 @@ generate:
     ```text
     {content}
     ```
+  max_tokens: 16384

@@ -255,10 +255,10 @@ mm profile remove openai
 
 ```bash
 # --profile flag (one-off override, does not change active profile)
-mm --profile openai cat photo.png -l 2
+mm --profile openai cat photo.png -m accurate
 
 # Environment variable
-MM_PROFILE=openai mm cat photo.png -l 2
+MM_PROFILE=openai mm cat photo.png -m accurate
 ```
 
 ### Resolution order

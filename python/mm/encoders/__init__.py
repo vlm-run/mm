@@ -80,20 +80,35 @@ def register(strat: MessageStrategy) -> MessageStrategy:
     return strat
 
 
+_KIND_PREFIXES: tuple[str, ...] = ("image", "video", "audio", "document")
+
+
 def get(name: str) -> MessageStrategy:
     """Look up a registered encoder by name.
 
+    Accepts either the bare registry key (``"tile"``) or the
+    kind-prefixed display name shown by ``--list-encoders``
+    (``"image-tile"``). The prefix must match one of the encoder's
+    declared media types.
+
     Args:
-        name: Encoder identifier (e.g. ``"resize"``).
+        name: Encoder identifier (e.g. ``"resize"`` or ``"image-resize"``).
 
     Raises:
         KeyError: If no encoder with that name is registered.
     """
     _ensure_discovered()
-    if name not in _REGISTRY:
-        available = ", ".join(sorted(_REGISTRY))
-        raise KeyError(f"Unknown encoder {name!r}. Available: {available}")
-    return _REGISTRY[name]
+    if name in _REGISTRY:
+        return _REGISTRY[name]
+    for prefix in _KIND_PREFIXES:
+        token = f"{prefix}-"
+        if name.startswith(token):
+            bare = name[len(token):]
+            if bare in _REGISTRY and prefix in _REGISTRY[bare].media_types:
+                return _REGISTRY[bare]
+            break
+    available = ", ".join(sorted(_REGISTRY))
+    raise KeyError(f"Unknown encoder {name!r}. Available: {available}")
 
 
 def list_strategies(*, media_type: str | None = None) -> list[str]:

@@ -386,9 +386,9 @@ mm grep "error" <dir> -C 2                             # 2 context lines
 mm grep "invoice" <dir> --count                        # match counts per file
 
 # Semantic search (vector similarity via embeddings)
-mm grep "financial projections" <dir> -l 2             # semantic search across all files
-mm grep "architecture overview" <dir> -l 2 --format json  # JSON output with distances
-mm grep "revenue forecast" <dir> -l 2 --index          # auto-index unindexed files before search
+mm grep "financial projections" <dir>                  # semantic search across all files
+mm grep "architecture overview" <dir> --format json    # JSON output with distances
+mm grep "revenue forecast" <dir> --index               # auto-index unindexed files before search
 ```
 
 **Warning**: grep runs extraction on every matching file. On large document directories (500+ PDFs), this can take minutes. Prefer `--kind code` or `--kind text` for fast text searches.

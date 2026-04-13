@@ -5,7 +5,7 @@ Documents
 
 Each benchmark is a real CLI invocation measured end-to-end via subprocess.
 
-### L0 — Metadata (directory-level)
+### Metadata scan (directory-level)
 
 | Name | Command |
 |------|---------|
@@ -20,7 +20,7 @@ Each benchmark is a real CLI invocation measured end-to-end via subprocess.
 | `mm find --kind audio` | `mm find {dir} --kind audio --format json` (skipped if no audio) |
 | `mm find --kind document` | `mm find {dir} --kind document --format json` (skipped if no documents) |
 
-### L1 — Content extraction (file-level)
+### Fast mode — content extraction (file-level)
 
 | Name | Command | Selection |
 |------|---------|-----------|
@@ -33,19 +33,19 @@ Each benchmark is a real CLI invocation measured end-to-end via subprocess.
 | `mm cat <pdf> (x10)` | `mm cat {files} --format json` | first 10 documents |
 | `mm grep /pattern/` | `mm grep 'import\|include\|require' {dir} --format json` | all text files |
 
-### L2 — Semantic (LLM-powered)
+### Accurate mode (LLM pipelines)
 
 | Name | Command | Selection |
 |------|---------|-----------|
-| `mm cat <image> -l2 --mode fast` | `mm cat {file} -l 2 --mode fast --format json` | first image |
-| `mm cat <image> -l2 --mode accurate` | `mm cat {file} -l 2 --mode accurate --format json` | first image |
-| `mm cat <video> -l2 --mode fast` | `mm cat {file} -l 2 --mode fast --format json` | first video |
-| `mm cat <audio> -l2 --mode fast` | `mm cat {file} -l 2 --mode fast --format json` | smallest audio |
+| `mm cat <image> --mode fast` | `mm cat {file} --mode fast --format json` | first image |
+| `mm cat <image> --mode accurate` | `mm cat {file} --mode accurate --format json` | first image |
+| `mm cat <video> --mode fast` | `mm cat {file} --mode fast --format json` | first video |
+| `mm cat <audio> --mode fast` | `mm cat {file} --mode fast --format json` | smallest audio |
 
 ### Placeholders
 
 - `{dir}` — resolved absolute directory path
-- `{file}` — single file auto-picked by kind (first match, or smallest for audio L2)
+- `{file}` — single file auto-picked by kind (first match, or smallest for accurate-mode audio)
 - `{files}` — space-separated list of files (batch commands, up to N)
 
 Commands are skipped when the required file kind is absent from the target directory.

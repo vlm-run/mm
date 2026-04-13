@@ -6,7 +6,7 @@ Legend: `[x]` implemented, `[ ]` roadmap, `[~]` partial/stubbed
 
 ```
 mm
-├── L0 — Metadata (Rust core, ~0.02ms/file)
+├── Metadata scan (Rust core, ~0.02ms/file)
 │   ├── [x] Parallel directory walk (ignore crate + per-thread batching, zero lock contention)
 │   ├── [x] Gitignore-aware (.gitignore, .git/info/exclude, global)
 │   ├── [x] 14-column Arrow schema (path, name, stem, ext, size, modified, created, mime, kind, is_binary, depth, parent, width, height)
@@ -20,7 +20,7 @@ mm
 │   ├── [x] Parquet I/O (ZSTD level 3 compression)
 │   └── [x] Manifest-based incremental cache (mtime + size staleness check)
 │
-├── L1 — Content Extraction (Rust extractors + Python ffmpeg)
+├── Fast mode — Content Extraction (Rust extractors + Python ffmpeg)
 │   ├── Code / Text / Config
 │   │   ├── [x] Line count, word count
 │   │   ├── [x] Text preview (first 500 chars)
@@ -58,15 +58,15 @@ mm
 │       ├── [x] content_hash() — direct Python-callable xxh3 hash (no Scanner overhead)
 │       └── [x] perceptual_hash() — direct Python-callable pHash for images
 │
-├── L2 — Semantic Understanding (LLM-powered)
+├── Accurate mode (LLM pipelines)
 │   ├── [x] OpenAI Python SDK (openai>=1.0, any compatible API)
 │   ├── [x] Image captioning (base64 vision API)
 │   ├── [x] File content description
-│   ├── [x] Video understanding via keyframe mosaic + LLM (auto at L2)
-│   ├── [x] Audio description via metadata + LLM (auto at L2)
+│   ├── [x] Video understanding via keyframe mosaic + LLM (auto in accurate mode)
+│   ├── [x] Audio description via metadata + LLM (auto in accurate mode)
 │   ├── [x] Configurable via profiles: built-in default + reserved ollama + custom add/use
 │   ├── [x] think=false + reasoning_effort="none" + temperature=0.1
-│   ├── [x] L2 errors propagate directly (no silent fallback to L1)
+│   ├── [x] Accurate-mode errors propagate directly (no silent fallback to fast mode)
 │   ├── [x] --mode fast|accurate per-modality extraction strategies
 │   ├── [x] Audio transcription via ffmpeg + whisper (2x speed, greedy beam=1)
 │   ├── [x] Whisper backend auto-select: MLX Metal GPU > CTranslate2 CPU/CUDA
@@ -77,13 +77,13 @@ mm
 │   └── [x] Embedding generation via Gemini API (text, image, audio, video, document → chunks_vec)
 │
 ├── Python API (Context class)
-│   ├── [x] L0 scan on construction (~5ms for 249 real files)
+│   ├── [x] Metadata scan on construction (~5ms for 249 real files)
 │   ├── [x] to_polars() — zero-copy Arrow → Polars
 │   ├── [x] to_pandas() — Arrow → Pandas
 │   ├── [x] to_arrow() — raw PyArrow Table
 │   ├── [x] sql(query) — SQLite SQL against 'files' table
 │   ├── [x] filter(kind, ext, min_size, max_size) — chainable, returns new Context
-│   ├── [x] cat(path, level) / head(path, n) / tail(path, n)
+│   ├── [x] cat(path) / head(path, n) / tail(path, n)
 │   ├── [x] grep(pattern, kind) — regex search across file contents
 │   ├── [x] show(limit, columns) — Rich table display
 │   ├── [x] info() — Rich summary panel
@@ -92,21 +92,21 @@ mm
 ├── CLI Commands (6 + config+profile, Typer, Unix-philosophy composability)
 │   ├── [x] --version/-v global flag
 │   ├── [x] find     — find/list files, tree view (--tree), schema (--schema), columns (--columns), name filter (--name, string/regex via Rust)
-│   ├── [x] cat      — auto-detected content extraction at L0/L1/L2
+│   ├── [x] cat      — auto-detected content extraction (fast/accurate mode)
 │   │   ├── [x] head/tail via -n (replaces old head/tail commands)
-│   │   ├── [x] --mode fast|accurate (L2 modal extraction)
-│   │   ├── [x] video L2: parallel mosaic + whisper → LLM (102x realtime)
-│   │   ├── [x] audio L2: ffmpeg 2x + whisper → LLM transcript summary
-│   │   ├── [x] image L2: fast (10w+5tags) / accurate (200w+10tags+objects)
-│   │   ├── [x] document L2: docling PDF/DOCX/PPTX → markdown → LLM
-│   │   ├── [x] --mosaic-*, --audio-* namespaced flags
-│   │   ├── [x] --no-cache flag bypasses L2 caches
-│   ├── [x] grep     — content search with context lines (like rg), --index for on-demand L2 indexing
-│   ├── [x] sql      — SQLite SQL on file index, --pre-index for on-demand L0 indexing before query
+│   │   ├── [x] --mode fast|accurate (pipeline-driven modal extraction)
+│   │   ├── [x] video accurate: parallel mosaic + whisper → LLM (102x realtime)
+│   │   ├── [x] audio accurate: ffmpeg 2x + whisper → LLM transcript summary
+│   │   ├── [x] image accurate: fast (10w+5tags) / accurate (200w+10tags+objects)
+│   │   ├── [x] document accurate: docling PDF/DOCX/PPTX → markdown → LLM
+│   │   ├── [x] --encode.*, --generate.* namespaced flags
+│   │   ├── [x] --no-cache flag bypasses accurate-mode caches
+│   ├── [x] grep     — content search with context lines (like rg), --index for on-demand semantic indexing
+│   ├── [x] sql      — SQLite SQL on file index, --pre-index for on-demand metadata indexing before query
 │   ├── [x] wc       — count files, size, lines (est.), tokens (est.)
 │   ├── [x] config   — extraction mode settings (show, init, set)
 │   ├── [x] profile  — LLM profile management (list, add, update, use, remove; default immutable, ollama reserved)
-│   ├── [x] bench    — 24-command benchmark suite (L0×10, L1×8, L2×6) with bits/s throughput
+│   ├── [x] bench    — 24-command benchmark suite (metadata×10, fast×8, accurate×6) with bits/s throughput
 │   └── [ ] context  — LLM-ready context payload builder (token budgeting)
 │
 ├── Output Modes
@@ -126,32 +126,32 @@ mm
 │   └── [~] PyCapsule FFI (abandoned — compatibility issues with pyarrow)
 │
 ├── Performance
-│   ├── L0 walk: ~5ms / 1K files, ~16ms / 10K files
-│   ├── L0 full pipeline: ~7ms / 1K mixed files (with image dims)
-│   ├── L0 real data: ~5ms / 249 files (~/data/1-demo)
+│   ├── Metadata walk: ~5ms / 1K files, ~16ms / 10K files
+│   ├── Metadata full pipeline: ~7ms / 1K mixed files (with image dims)
+│   ├── Metadata real data: ~5ms / 249 files (~/data/1-demo)
 │   ├── CLI cold start: ~58ms (find --format json via Rust fast path)
 │   ├── CLI cold start: ~66ms (find with Rich TTY output)
-│   ├── L1 code extraction: ~8μs/file
-│   ├── L1 image extraction: ~18μs/file (mmap)
-│   ├── L1 video metadata (native): ~10ms (6.4MB MP4, includes hash)
+│   ├── Fast code extraction: ~8μs/file
+│   ├── Fast image extraction: ~18μs/file (mmap)
+│   ├── Fast video metadata (native): ~10ms (6.4MB MP4, includes hash)
 │   ├── Partial hash 10MB: ~19μs (vs 610μs full, 33x speedup)
 │   ├── Keyframe mosaic (86min video): ~820ms → 5 mosaic grids
 │   ├── PDF page mosaic (68 pages): ~280ms → 2 mosaic grids
 │   ├── Audio 2x (163s video): ~200ms → 2.5MB Whisper-ready WAV
-│   ├── L2 video (17min, fast mode): ~9.9s total = 102x realtime
+│   ├── Accurate video (17min, fast mode): ~9.9s total = 102x realtime
 │   │   ├── Visual: 16 frames + 4x4 mosaic @ 1500px — 375ms (parallel)
 │   │   ├── Audio: ffmpeg 2x + whisper tiny MLX Metal — 3.0s (parallel)
 │   │   ├── LLM: qwen3.5:0.8b mosaic+transcript → markdown — 5.2s
 │   │   └── Optimization path: beam=5→1 (1.5x), CTranslate2→MLX (5.9x), parallel (6%)
-│   ├── L2 image (fast): ~1.0s (qwen3.5:0.8b, Ollama local)
-│   └── L2 image (accurate): ~2.6s (qwen3.5:0.8b, Ollama local)
+│   ├── Accurate image (fast pipeline): ~1.0s (qwen3.5:0.8b, Ollama local)
+│   └── Accurate image (accurate pipeline): ~2.6s (qwen3.5:0.8b, Ollama local)
 │
 ├── Tests
 │   ├── Rust: 75 tests (meta, walk, detect, schema, table, code, image, video, audio, document, hash)
-│   ├── Python: 271 tests (CLI, Context API, pipe, L0/L1/L2, config, whisper, scenes, docling, bench)
+│   ├── Python: 271 tests (CLI, Context API, pipe, metadata/fast/accurate, config, whisper, scenes, docling, bench)
 │   ├── Criterion benchmarks: l0_walk, l0_index, hash_strategies, l1_extract, find_filter
-│   ├── mm bench: 24 commands (L0×10, L1×8, L2×6) with bits/s throughput
-│   └── pytest-benchmark: 11 benchmarks (L0, L1, ffmpeg, e2e)
+│   ├── mm bench: 24 commands (metadata×10, fast×8, accurate×6) with bits/s throughput
+│   └── pytest-benchmark: 11 benchmarks (metadata, fast, ffmpeg, e2e)
 │
 └── Build & Tooling
     ├── [x] Maturin build backend (Rust → Python wheel)

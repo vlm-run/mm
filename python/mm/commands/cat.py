@@ -550,6 +550,14 @@ def _accurate_video(path: Path, spec: PipelineSpec, opts: _CatOpts) -> str:
     if spec.generate is None:
         return _run_l1(path, "video", no_cache=opts.no_cache)
 
+    # The hard-coded mosaic+whisper fast path only implements a fixed
+    # set of strategies. Anything else (e.g. video-gemini, frame-sample)
+    # must be routed through the generic encoder runner so we only
+    # report stages that actually ran.
+    _VIDEO_NATIVE = {"frames-transcript", "video-frames-transcript", "mosaic", "video-mosaic"}
+    if spec.encode.strategy and spec.encode.strategy not in _VIDEO_NATIVE:
+        return _run_encoder(path, "video", spec, opts)
+
     timing: dict[str, float] = {}
     t_total = time.monotonic()
 
@@ -733,6 +741,13 @@ def _accurate_audio(path: Path, spec: PipelineSpec, opts: _CatOpts) -> str:
 
     if spec.generate is None:
         return _run_l1(path, "audio", no_cache=opts.no_cache)
+
+    # The hard-coded whisper+LLM fast path only implements `transcribe`.
+    # Anything else (e.g. audio-gemini) must be routed through the
+    # generic encoder runner so we only report stages that actually ran.
+    _AUDIO_NATIVE = {"transcribe", "audio-transcribe"}
+    if spec.encode.strategy and spec.encode.strategy not in _AUDIO_NATIVE:
+        return _run_encoder(path, "audio", spec, opts)
 
     timing: dict[str, float] = {}
     t_total = time.monotonic()
