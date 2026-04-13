@@ -120,7 +120,7 @@ def file_kind_with_code(path: Path) -> str:
         return kind
     if path.suffix.lower() in CODE_EXTS:
         return "code"
-    return "other"
+    return "text"
 
 
 def is_binary_content(*, kind: str, content: str | None = None) -> bool:

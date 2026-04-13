@@ -7,9 +7,6 @@ from typing import Annotated, Optional
 
 import typer
 
-from mm.pipe import read_paths_from_stdin
-from mm.utils import Format, file_kind_with_code
-
 TOKEN_CHARS_RATIO = 4
 
 # Canonical field names — used in data dicts, JSON keys, column headers, row
@@ -28,7 +25,7 @@ def wc_cmd(
     kind: Annotated[Optional[str], typer.Option("--kind", "-k", help="Filter by kind")] = None,
     by_kind: Annotated[bool, typer.Option("--by-kind", help="Break down by file kind")] = False,
     format: Annotated[
-        Optional[Format],
+        Optional[str],
         typer.Option(
             "--format", "-f", help="Output format: json, tsv, csv, dataset-jsonl, dataset-hf"
         ),
@@ -45,20 +42,19 @@ def wc_cmd(
     """
     from mm._mm import Scanner
     from mm.display import console, resolve_format
+    from mm.pipe import read_paths_from_stdin
 
     if not Path(directory).exists():
         console.print(f"[red]Directory not found: {directory}[/red]")
         raise typer.Exit(1)
 
-    fmt = resolve_format(format.value if format else None)
+    import json as json_mod
+
+    fmt = resolve_format(format)
     root = Path(directory).resolve()
-
     stdin_paths = read_paths_from_stdin()
-
     scanner = Scanner(str(root))
     scanner.scan()
-
-    import json as json_mod
 
     if stdin_paths:
         # Piped input: compute stats only for the specified files.
@@ -69,7 +65,7 @@ def wc_cmd(
         # Rust handles all kinds except documents (which need pypdfium2).
         # Rust JSON uses internal names; we normalize to canonical field names here.
         base = json_mod.loads(scanner.wc(kind=kind))
-        kind_stats = {}
+        kind_stats: dict[str, dict[str, int | float]] = {}
         for k, s in base.get("by_kind", {}).items():
             kind_stats[k] = {
                 F_FILES: s["files"],
@@ -84,7 +80,7 @@ def wc_cmd(
 
     doc_entries = []
     # Overlay document counts from Python (pypdfium2 extraction)
-    if not stdin_paths and "document" in kind_stats and kind_stats["document"].get(F_FILES, 0) > 0:
+    if "document" in kind_stats and kind_stats["document"].get(F_FILES, 0) > 0:
         doc_entries = json_mod.loads(scanner.to_json_fast(kind="document"))
     if doc_entries:
         from mm.commands.cat import _l1_document
@@ -267,9 +263,13 @@ def wc_cmd(
 
 
 def _wc_from_paths(
-    root: Path, paths: list[str], kind_filter: str | None
+    root: Path,
+    paths: list[str],
+    kind_filter: str | None,
 ) -> tuple[dict[str, dict[str, int | float]], int, int, int, int]:
     """Compute wc stats for a specific set of piped file paths."""
+    from mm.utils import file_kind_with_code
+
     kind_stats: dict[str, dict[str, int | float]] = {}
     total_files = 0
     total_size = 0
@@ -284,31 +284,21 @@ def _wc_from_paths(
             continue
 
         fkind = file_kind_with_code(p)
-        if kind_filter and fkind != kind_filter:
+        if kind_filter and kind_filter != fkind:
             continue
 
         stat = p.stat()
         fsize = stat.st_size
-
-        # Estimate lines/tokens for text-like files
-        if fkind in ("code", "other", "text"):
-            try:
-                content = p.read_text(errors="replace")
-                flines = content.count("\n") or 1
-                ftokens = len(content) // TOKEN_CHARS_RATIO
-            except Exception:
-                flines = fsize // 40  # rough estimate
-                ftokens = fsize // TOKEN_CHARS_RATIO
+        if fkind in ("text", "code"):
+            content = p.read_text(errors="replace")
+            flines = content.count("\n") or 1
+            ftokens = len(content) // TOKEN_CHARS_RATIO
         elif fkind == "document":
-            try:
-                from mm.commands.cat import _l1_document
+            from mm.commands.cat import _l1_document
 
-                content = _l1_document(p)
-                flines = max(1, content.count("\n"))
-                ftokens = len(content) // TOKEN_CHARS_RATIO
-            except Exception:
-                flines = 0
-                ftokens = 0
+            content = _l1_document(p)
+            flines = max(1, content.count("\n"))
+            ftokens = len(content) // TOKEN_CHARS_RATIO
         else:
             # binary: image, video, audio — no text lines/tokens
             flines = 0
