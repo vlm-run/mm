@@ -85,7 +85,7 @@ def cat_cmd(
     ] = False,
     format: Annotated[
         Optional[Format],
-        typer.Option("--format", help="Output format: json, tsv, csv, dataset-jsonl, dataset-hf"),
+        typer.Option("--format", "-f", help="Output format: json, tsv, csv, dataset-jsonl, dataset-hf"),
     ] = None,
 ) -> None:
     """Display file content semantically (like bat/cat).
