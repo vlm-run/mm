@@ -15,13 +15,15 @@ Pipelines are resolved from:
 from __future__ import annotations
 
 import types
+import typing
+from dataclasses import fields, is_dataclass
 from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
 import yaml
 
-from mm.pipelines.schema import Encode, Generate, PipelineSpec
+from mm.pipelines.schema import Encode, Generate, PipelineSpec, PipelineValidationError
 
 _PIPELINES_DIR = Path(__file__).parent
 
@@ -51,7 +53,7 @@ def load(kind: str, mode: str = "fast") -> PipelineSpec:
 
     Raises:
         FileNotFoundError: No pipeline found for this combination.
-        pydantic.ValidationError: Pipeline YAML is malformed.
+        PipelineValidationError: Pipeline YAML is malformed.
     """
     from mm.config import get_pipeline_path
 
@@ -60,7 +62,7 @@ def load(kind: str, mode: str = "fast") -> PipelineSpec:
         toml_path = Path(toml_path_str)
         if toml_path.is_file():
             data: dict[str, Any] = yaml.safe_load(toml_path.read_text())
-            return PipelineSpec.model_validate(data)
+            return PipelineSpec.from_dict(data)
 
     rel = f"{kind}/{mode}.yaml"
     user_path = _user_pipelines_dir() / rel
@@ -74,7 +76,7 @@ def load(kind: str, mode: str = "fast") -> PipelineSpec:
         )
 
     data = yaml.safe_load(path.read_text())
-    return PipelineSpec.model_validate(data)
+    return PipelineSpec.from_dict(data)
 
 
 def load_file(path: str | Path) -> list[PipelineSpec]:
@@ -91,7 +93,7 @@ def load_file(path: str | Path) -> list[PipelineSpec]:
     specs: list[PipelineSpec] = []
     for doc in docs:
         if doc is not None:
-            specs.append(PipelineSpec.model_validate(doc))
+            specs.append(PipelineSpec.from_dict(doc))
     if not specs:
         raise ValueError(f"No valid pipeline documents in {p}")
     return specs
@@ -153,16 +155,22 @@ def run_pyfunc(
 
 
 def _coerce(model: type[Encode] | type[Generate], key: str, value: str) -> Any:
-    """Cast a CLI string value to the type expected by the Pydantic field.
+    """Cast a CLI string value to the type expected by the dataclass field.
 
     For ``Encode`` extra fields (encoder kwargs), the string is returned as-is
     since the encoder will handle its own type coercion.
     """
-    field_info = model.model_fields.get(key)
-    if field_info is None:
+    if not is_dataclass(model):
         return value
 
-    annotation = field_info.annotation
+    try:
+        hints = typing.get_type_hints(model)
+    except Exception:
+        hints = {}
+    annotation = hints.get(key)
+    if annotation is None and key not in {f.name for f in fields(model)}:
+        return value
+
     # Unwrap Optional (Union[X, None]) to get the inner type
     if isinstance(annotation, types.UnionType):
         args = [a for a in annotation.__args__ if a is not type(None)]
@@ -185,18 +193,22 @@ def apply_overrides(
     """Return a new PipelineSpec with field-level overrides applied.
 
     Values are coerced from strings to the correct Python type based
-    on the Pydantic field annotation (int, float, bool, str).
+    on the dataclass field annotation (int, float, bool, str).
     """
     if not encode_overrides and not generate_overrides:
         return spec
 
-    data = spec.model_dump()
+    data = spec.to_dict()
     if encode_overrides:
+        encode_section = data.setdefault("encode", {})
         for k, v in encode_overrides.items():
-            data["encode"][k] = _coerce(Encode, k, v)
+            encode_section[k] = _coerce(Encode, k, v)
     if generate_overrides:
         if data.get("generate") is None:
             data["generate"] = {"prompt": ""}
+        gen = data["generate"]
+        known = {f.name for f in fields(Generate)}
         for k, v in generate_overrides.items():
-            data["generate"][k] = _coerce(Generate, k, v)
-    return PipelineSpec.model_validate(data)
+            if k in known:
+                gen[k] = _coerce(Generate, k, v)
+    return PipelineSpec.from_dict(data)

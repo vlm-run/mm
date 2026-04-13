@@ -1,87 +1,162 @@
-"""Pydantic schema for YAML-based MLLM generation pipelines.
+"""Lightweight schema types for YAML-based MLLM generation pipelines.
 
 Each pipeline configures a 2-stage flow:
 
     file → encode → generate (LLM) → text output
 
 Pipelines live in ``python/mm/pipelines/{kind}/{mode}.yaml`` and are
-validated at load time against these models.
+parsed with :func:`PipelineSpec.from_dict`. Validation failures raise
+:class:`PipelineValidationError` (a plain ``ValueError`` subclass).
+
+Historically these were Pydantic models; they are now plain classes so
+``mm`` has no runtime dependency on Pydantic.
 """
 
 from __future__ import annotations
 
+from dataclasses import dataclass, field, fields
 from typing import Any
 
-from pydantic import BaseModel, Field
+
+class PipelineValidationError(ValueError):
+    """Raised when a pipeline dict fails schema validation."""
 
 
-class Encode(BaseModel, extra="allow"):
-    """Input encoding: how to convert a file into LLM-ready parts.
+_MISSING = object()
 
-    The ``strategy`` field selects a registered encoder (e.g.
-    ``resize``, ``frame-sample``, ``rasterize``).  All other fields
-    are forwarded as kwargs to ``encoder.encode()``.
+
+class Encode:
+    """Input encoding stage: how to convert a file into LLM-ready parts.
+
+    The ``strategy`` field selects a registered encoder (e.g. ``resize``,
+    ``frame-sample``, ``rasterize``). Any additional keyword arguments are
+    stored in :attr:`encoder_kwargs` and forwarded to ``encoder.encode()``.
 
     ``pyfunc`` allows inline Python to transform/filter the parts list
-    before it reaches the LLM.  Signature:
+    before it reaches the LLM. Signature::
+
         def transform(parts: list[dict], context: dict) -> list[dict]
     """
 
-    strategy: str | None = Field(
-        default=None,
-        description="Encoder name (e.g. resize, tile, frame-sample). "
-        "None = use kind-specific default.",
-    )
-    pyfunc: str | None = Field(
-        default=None,
-        description="Inline Python function body for custom transform. "
-        "Receives (parts, context) and must return list[dict].",
-    )
+    __slots__ = ("strategy", "pyfunc", "_extras")
+
+    def __init__(
+        self,
+        strategy: str | None = None,
+        pyfunc: str | None = None,
+        **kwargs: Any,
+    ) -> None:
+        self.strategy = strategy
+        self.pyfunc = pyfunc
+        self._extras: dict[str, Any] = dict(kwargs)
+
+    # Attribute access for extras so spec.encode.max_width works like before.
+    def __getattr__(self, name: str) -> Any:
+        if name.startswith("_"):
+            raise AttributeError(name)
+        extras = object.__getattribute__(self, "_extras")
+        if name in extras:
+            return extras[name]
+        raise AttributeError(name)
 
     @property
     def encoder_kwargs(self) -> dict[str, Any]:
         """All extra fields beyond strategy/pyfunc, forwarded to the encoder."""
-        if self.model_extra:
-            return dict(self.model_extra)
-        return {}
+        return dict(self._extras)
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any] | None) -> "Encode":
+        if data is None:
+            return cls()
+        if not isinstance(data, dict):
+            raise PipelineValidationError(
+                f"encode must be a mapping, got {type(data).__name__}"
+            )
+        return cls(**data)
+
+    def to_dict(self) -> dict[str, Any]:
+        out: dict[str, Any] = {}
+        if self.strategy is not None:
+            out["strategy"] = self.strategy
+        if self.pyfunc is not None:
+            out["pyfunc"] = self.pyfunc
+        out.update(self._extras)
+        return out
 
 
-class Generate(BaseModel):
+@dataclass
+class Generate:
     """LLM generation parameters.
 
     The ``prompt`` is a Python format string that receives the ``context``
     dict, so you can use ``{filename}``, ``{duration}``, ``{kind}`` etc.
     """
 
-    prompt: str = Field(
-        description="System/user prompt template. Supports {filename}, "
-        "{kind}, {duration}, {word_count} interpolation from context.",
-    )
-    max_tokens: int = Field(
-        default=256,
-        description="Max completion tokens.",
-    )
-    temperature: float | None = Field(
-        default=None,
-        description="Sampling temperature. None = use model default (0.1).",
-    )
-    json_mode: bool = Field(
-        default=False,
-        description="Request JSON-formatted response from the model.",
-    )
+    prompt: str
+    max_tokens: int = 256
+    temperature: float | None = None
+    json_mode: bool = False
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any] | None) -> "Generate | None":
+        if data is None:
+            return None
+        if not isinstance(data, dict):
+            raise PipelineValidationError(
+                f"generate must be a mapping or null, got {type(data).__name__}"
+            )
+        if "prompt" not in data:
+            raise PipelineValidationError("generate.prompt is required")
+        known = {f.name for f in fields(cls)}
+        kwargs = {k: v for k, v in data.items() if k in known}
+        return cls(**kwargs)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "prompt": self.prompt,
+            "max_tokens": self.max_tokens,
+            "temperature": self.temperature,
+            "json_mode": self.json_mode,
+        }
 
 
-class PipelineSpec(BaseModel):
+@dataclass
+class PipelineSpec:
     """Complete pipeline for a single (kind, mode) processing call.
 
     When ``generate`` is ``None`` the pipeline is encode-only — no LLM
     call is made and the raw extraction output is returned directly.
     """
 
-    kind: str = Field(description="Media kind: image, video, audio, document.")
-    mode: str = Field(description="Processing mode: fast, accurate.")
-    encode: Encode = Field(default_factory=Encode)
-    generate: Generate | None = Field(default=None)
+    kind: str
+    mode: str
+    encode: Encode = field(default_factory=Encode)
+    generate: Generate | None = None
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "PipelineSpec":
+        if not isinstance(data, dict):
+            raise PipelineValidationError(
+                f"pipeline must be a mapping, got {type(data).__name__}"
+            )
+        kind = data.get("kind", _MISSING)
+        mode = data.get("mode", _MISSING)
+        if kind is _MISSING:
+            raise PipelineValidationError("pipeline.kind is required")
+        if mode is _MISSING:
+            raise PipelineValidationError("pipeline.mode is required")
+        encode = Encode.from_dict(data.get("encode"))
+        generate = Generate.from_dict(data.get("generate")) if "generate" in data else None
+        return cls(kind=kind, mode=mode, encode=encode, generate=generate)
+
+    def to_dict(self) -> dict[str, Any]:
+        out: dict[str, Any] = {
+            "kind": self.kind,
+            "mode": self.mode,
+            "encode": self.encode.to_dict(),
+        }
+        out["generate"] = self.generate.to_dict() if self.generate is not None else None
+        return out
 
 
 TemplateSpec = PipelineSpec

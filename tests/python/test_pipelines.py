@@ -7,19 +7,20 @@ from typing import Any
 
 import pytest
 import yaml
-from pydantic import ValidationError
 
 from mm.pipelines import apply_overrides, load, render_prompt, run_pyfunc
-from mm.pipelines.schema import Encode, Generate, PipelineSpec
+from mm.pipelines.schema import Encode, Generate, PipelineSpec, PipelineValidationError
+
+ValidationError = PipelineValidationError
 
 TemplateSpec = PipelineSpec
 
 
 class TestPipelineSpecSchema:
-    """Pydantic model validation for pipeline YAML files."""
+    """Schema validation for pipeline YAML files."""
 
     def test_valid_minimal_with_generate(self):
-        spec = TemplateSpec.model_validate({
+        spec = TemplateSpec.from_dict({
             "kind": "image",
             "mode": "fast",
             "generate": {"prompt": "Describe this image."},
@@ -35,7 +36,7 @@ class TestPipelineSpecSchema:
 
     def test_valid_encode_only(self):
         """generate is optional — None means encode-only pipeline."""
-        spec = TemplateSpec.model_validate({
+        spec = TemplateSpec.from_dict({
             "kind": "document",
             "mode": "fast",
         })
@@ -45,7 +46,7 @@ class TestPipelineSpecSchema:
         assert spec.encode.strategy is None
 
     def test_explicit_generate_null(self):
-        spec = TemplateSpec.model_validate({
+        spec = TemplateSpec.from_dict({
             "kind": "text",
             "mode": "fast",
             "encode": {"strategy": None},
@@ -54,7 +55,7 @@ class TestPipelineSpecSchema:
         assert spec.generate is None
 
     def test_valid_full(self):
-        spec = TemplateSpec.model_validate({
+        spec = TemplateSpec.from_dict({
             "kind": "video",
             "mode": "accurate",
             "encode": {
@@ -81,7 +82,7 @@ class TestPipelineSpecSchema:
 
     def test_missing_generate_prompt_raises(self):
         with pytest.raises(ValidationError):
-            TemplateSpec.model_validate({
+            TemplateSpec.from_dict({
                 "kind": "image",
                 "mode": "fast",
                 "generate": {"max_tokens": 256},
@@ -89,7 +90,7 @@ class TestPipelineSpecSchema:
 
     def test_missing_generate_is_ok(self):
         """generate is optional — omitting it defaults to None."""
-        spec = TemplateSpec.model_validate({
+        spec = TemplateSpec.from_dict({
             "kind": "image",
             "mode": "fast",
         })
@@ -97,7 +98,7 @@ class TestPipelineSpecSchema:
 
     def test_missing_kind_raises(self):
         with pytest.raises(ValidationError):
-            TemplateSpec.model_validate({
+            TemplateSpec.from_dict({
                 "mode": "fast",
                 "generate": {"prompt": "test"},
             })
@@ -115,7 +116,7 @@ class TestPipelineSpecSchema:
         assert gen.json_mode is False
 
     def test_extra_fields_ignored(self):
-        spec = TemplateSpec.model_validate({
+        spec = TemplateSpec.from_dict({
             "kind": "image",
             "mode": "fast",
             "generate": {"prompt": "test"},
@@ -131,7 +132,8 @@ class TestLoad:
         spec = load("image", "fast")
         assert spec.kind == "image"
         assert spec.mode == "fast"
-        assert spec.generate is None
+        # image/fast.yaml ships with a generate stage to LLM-ify fast mode
+        assert spec.generate is not None
 
     def test_load_image_accurate(self):
         spec = load("image", "accurate")
@@ -185,7 +187,7 @@ class TestLoad:
 
         for yaml_file in yaml_files:
             data = yaml.safe_load(yaml_file.read_text())
-            spec = PipelineSpec.model_validate(data)
+            spec = PipelineSpec.from_dict(data)
             assert spec.kind in ("image", "video", "audio", "document")
             assert spec.mode in ("fast", "accurate")
             if spec.generate is not None:
@@ -196,7 +198,7 @@ class TestRenderPrompt:
     """Tests for render_prompt — template interpolation."""
 
     def test_simple_substitution(self):
-        spec = TemplateSpec.model_validate({
+        spec = TemplateSpec.from_dict({
             "kind": "image",
             "mode": "fast",
             "generate": {"prompt": "Describe {filename} in {word_count} words."},
@@ -205,7 +207,7 @@ class TestRenderPrompt:
         assert result == "Describe photo.jpg in 20 words."
 
     def test_missing_key_becomes_empty(self):
-        spec = TemplateSpec.model_validate({
+        spec = TemplateSpec.from_dict({
             "kind": "video",
             "mode": "fast",
             "generate": {"prompt": "Video: {filename}. Duration: {duration_ctx}"},
@@ -216,7 +218,7 @@ class TestRenderPrompt:
         assert "{duration_ctx}" not in result
 
     def test_empty_context(self):
-        spec = TemplateSpec.model_validate({
+        spec = TemplateSpec.from_dict({
             "kind": "image",
             "mode": "fast",
             "generate": {"prompt": "Hello {name}!"},
@@ -225,7 +227,7 @@ class TestRenderPrompt:
         assert result == "Hello !"
 
     def test_no_placeholders(self):
-        spec = TemplateSpec.model_validate({
+        spec = TemplateSpec.from_dict({
             "kind": "image",
             "mode": "fast",
             "generate": {"prompt": "Just a plain prompt."},
@@ -235,7 +237,7 @@ class TestRenderPrompt:
 
     def test_encode_only_returns_empty(self):
         """When generate is None, render_prompt returns empty string."""
-        spec = TemplateSpec.model_validate({
+        spec = TemplateSpec.from_dict({
             "kind": "text",
             "mode": "fast",
         })
@@ -247,7 +249,7 @@ class TestRunPyfunc:
     """Tests for run_pyfunc — inline Python transforms."""
 
     def test_no_pyfunc_passthrough(self):
-        spec = TemplateSpec.model_validate({
+        spec = TemplateSpec.from_dict({
             "kind": "image",
             "mode": "fast",
             "encode": {},
@@ -257,7 +259,7 @@ class TestRunPyfunc:
         assert result == parts
 
     def test_pyfunc_filters_parts(self):
-        spec = TemplateSpec.model_validate({
+        spec = TemplateSpec.from_dict({
             "kind": "image",
             "mode": "fast",
             "encode": {
@@ -273,7 +275,7 @@ class TestRunPyfunc:
         assert result[0]["type"] == "text"
 
     def test_pyfunc_accesses_context(self):
-        spec = TemplateSpec.model_validate({
+        spec = TemplateSpec.from_dict({
             "kind": "image",
             "mode": "fast",
             "encode": {
@@ -290,7 +292,7 @@ class TestApplyOverrides:
     """Tests for apply_overrides — CLI override merging."""
 
     def _base_spec(self) -> PipelineSpec:
-        return PipelineSpec.model_validate({
+        return PipelineSpec.from_dict({
             "kind": "image",
             "mode": "fast",
             "encode": {"strategy": "resize", "max_width": 1024},
@@ -298,7 +300,7 @@ class TestApplyOverrides:
         })
 
     def _encode_only_spec(self) -> PipelineSpec:
-        return PipelineSpec.model_validate({
+        return PipelineSpec.from_dict({
             "kind": "document",
             "mode": "fast",
         })
@@ -422,7 +424,7 @@ class TestEncodeExtraKwargs:
         }
         p = tmp_path / "pipeline.yaml"
         p.write_text(yaml.dump(data))
-        spec = PipelineSpec.model_validate(yaml.safe_load(p.read_text()))
+        spec = PipelineSpec.from_dict(yaml.safe_load(p.read_text()))
         assert spec.encode.encoder_kwargs["tile_cols"] == 6
         assert spec.encode.encoder_kwargs["tile_rows"] == 4
         assert spec.encode.encoder_kwargs["thumb_width"] == 200
@@ -494,7 +496,7 @@ class TestPyfuncFileRef:
             "def transform(parts, context):\n"
             "    return [{'type': 'text', 'text': 'filtered'}]\n"
         )
-        spec = PipelineSpec.model_validate({
+        spec = PipelineSpec.from_dict({
             "kind": "image",
             "mode": "fast",
             "encode": {"pyfunc": str(py_file)},
@@ -505,7 +507,7 @@ class TestPyfuncFileRef:
 
     def test_inline_full_def(self):
         code = "def transform(parts, context):\n    return [{'type': 'text', 'text': 'inline'}]"
-        spec = PipelineSpec.model_validate({
+        spec = PipelineSpec.from_dict({
             "kind": "image",
             "mode": "fast",
             "encode": {"pyfunc": code},
@@ -515,7 +517,7 @@ class TestPyfuncFileRef:
 
     def test_legacy_body_only(self):
         body = "return [{'type': 'text', 'text': 'legacy'}]"
-        spec = PipelineSpec.model_validate({
+        spec = PipelineSpec.from_dict({
             "kind": "image",
             "mode": "fast",
             "encode": {"pyfunc": body},
@@ -524,7 +526,7 @@ class TestPyfuncFileRef:
         assert result[0]["text"] == "legacy"
 
     def test_nonexistent_file_raises(self):
-        spec = PipelineSpec.model_validate({
+        spec = PipelineSpec.from_dict({
             "kind": "image",
             "mode": "fast",
             "encode": {"pyfunc": "/nonexistent/file.py"},
