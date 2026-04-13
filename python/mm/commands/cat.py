@@ -365,14 +365,20 @@ def _run_fast(path: Path, kind: str, opts: _CatOpts) -> str:
     content = _run_l1(path, kind, no_cache=opts.no_cache)
 
     if spec.generate is not None:
+        import time
         from mm.llm import LlmBackend
 
+        t0 = time.monotonic()
         llm = LlmBackend()
-        return llm.generate(
+        result = llm.generate(
             kind, "fast",
             context={"filename": path.name, "content": content[:4000]},
             pipeline_spec=spec,
         )
+        elapsed = (time.monotonic() - t0) * 1000
+        u = llm.last_usage
+        footer = _format_footer(path, "fast", elapsed, u.prompt_tokens, u.completion_tokens)
+        return f"{result}\n\n[{footer}]"
 
     return content
 
@@ -500,6 +506,7 @@ def _format_footer(path: Path, mode: str, elapsed_ms: float, prompt_tokens: int 
 def _run_encoder(path: Path, kind: str, spec: PipelineSpec, opts: _CatOpts) -> str:
     """Run a named encoder strategy and output JSON messages or pipe to LLM."""
     import json
+    import time
 
     from mm.encoders import get as get_encoder
 
@@ -523,6 +530,7 @@ def _run_encoder(path: Path, kind: str, spec: PipelineSpec, opts: _CatOpts) -> s
 
     from mm.llm import LlmBackend
 
+    t0 = time.monotonic()
     llm = LlmBackend()
     chunks: list[list[dict]] = []
     for msg in messages:
@@ -535,9 +543,14 @@ def _run_encoder(path: Path, kind: str, spec: PipelineSpec, opts: _CatOpts) -> s
 
     ctx = {"filename": path.name}
     if len(chunks) == 1:
-        return llm.generate(kind, opts.mode, context=ctx, parts=chunks[0], pipeline_spec=spec)
-
-    return llm.generate_chunked(kind, opts.mode, context=ctx, chunks=chunks, pipeline_spec=spec)
+        result = llm.generate(kind, opts.mode, context=ctx, parts=chunks[0], pipeline_spec=spec)
+    else:
+        result = llm.generate_chunked(kind, opts.mode, context=ctx, chunks=chunks, pipeline_spec=spec)
+    
+    elapsed = (time.monotonic() - t0) * 1000
+    u = llm.last_usage
+    footer = _format_footer(path, opts.mode, elapsed, u.prompt_tokens, u.completion_tokens)
+    return f"{result}\n\n[{footer}]"
 
 
 def _accurate_image(path: Path, spec: PipelineSpec, opts: _CatOpts) -> str:
