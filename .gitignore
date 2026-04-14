@@ -1,0 +1,41 @@
+# Rust
+/target/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+.eggs/
+*.so
+*.dylib
+
+# Virtual environments
+.venv/
+venv/
+
+# Testing / benchmarks
+.pytest_cache/
+.benchmarks/
+benchmarks/data/
+htmlcov/
+.coverage
+
+# mm cache
+.mm/
+
+# IDE
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+mlx_models/
+
+.mypy_cache/
+.cowork/
+sample_files/
+remotion-videos/
+web/

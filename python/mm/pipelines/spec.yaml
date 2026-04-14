@@ -1,0 +1,108 @@
+# mm pipeline spec — reference YAML
+#
+# Pipelines configure a 2-stage flow for LLM-based media understanding:
+#
+#     file → encode → generate (LLM) → text output
+#
+# Built-in pipelines live in  python/mm/pipelines/{kind}/{mode}.yaml
+# User overrides go to        ~/.config/mm/pipelines/{kind}/{mode}.yaml
+#
+# All fields are validated at load time via mm.pipelines.schema.
+
+# ──────────────────────────────────────────────────────────────────────
+# Required top-level fields
+# ──────────────────────────────────────────────────────────────────────
+
+kind: image                 # Media kind: image | video | audio | document
+mode: fast                  # Processing mode: fast | accurate
+
+# ──────────────────────────────────────────────────────────────────────
+# encode — how to convert the file into LLM-ready content parts
+# ──────────────────────────────────────────────────────────────────────
+
+encode:
+  # Encoder name (registered in mm's encoder registry). Accepts either
+  # the bare name (`resize`) or the kind-prefixed display name
+  # (`image-resize`). Examples:
+  #   image:    resize, tile
+  #   video:    frame-sample, frames-transcript, mosaic, video-chunk,
+  #             video-gemini, video-gemini-chunked, shot-frames, shot-mosaic
+  #   audio:    transcribe, audio-gemini
+  #   document: page-text, rasterize, rasterize-text, document-gemini
+  # null = use the kind-specific default.
+  strategy: resize
+
+  # Encoder-specific parameters, forwarded as kwargs to encoder.encode().
+  # See `mm cat --list-encoders` for every encoder's accepted fields.
+  strategy_opts:
+    # Examples for image-resize / image-tile:
+    max_width: 1024
+
+    # Examples for video-mosaic:
+    # tile_cols: 4
+    # tile_rows: 4
+    # thumb_width: 160
+    # num_mosaics: 8
+    # num_frames: 128
+
+    # Examples for video-frames-transcript:
+    # fps: 1.0
+    # max_width: 1024
+    # max_frames_per_message: 16
+    # whisper_model: medium
+    # audio_speed: 1.0
+
+    # Examples for audio-transcribe:
+    # whisper_model: medium
+    # audio_speed: 1.0
+
+  # Custom Python transform — file path or inline `def`.
+  # Must define: def transform(parts, context) -> list[dict]
+  #
+  # File reference:
+  #   pyfunc: ~/my_transforms/filter.py
+  #
+  # Inline (full def):
+  #   pyfunc: |
+  #     def transform(parts, context):
+  #       return [p for p in parts if p.get("type") == "image_url"]
+  pyfunc: null
+
+# ──────────────────────────────────────────────────────────────────────
+# generate — LLM call parameters (omit for encode-only pipelines)
+# ──────────────────────────────────────────────────────────────────────
+
+generate:
+  # Prompt template string. Supports Python format-string interpolation
+  # from the runtime context dict.
+  #
+  # Available variables (context-dependent):
+  #   {filename}      — source file name
+  #   {content}       — extracted text content (documents)
+  #   {transcript}    — Whisper transcript (audio/video)
+  #   {duration_ctx}  — " Duration: Xs." or empty string
+  #   {word_count}    — word count of extracted content
+  #   {kind}          — media kind
+  #
+  # Missing variables silently resolve to empty string.
+  prompt: >-
+    Describe this image in 10 words or less.
+    Then list exactly 5 keyword tags.
+
+    Use this format:
+    ## Description
+    <description>
+
+    ## Tags
+    - tag1
+    - tag2
+    ...
+
+  # Max completion tokens for the LLM response.
+  max_tokens: 256
+
+  # Sampling temperature. null = use model default (0.1).
+  temperature: null
+
+  # Request JSON-formatted response from the model.
+  json_mode: false

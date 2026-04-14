@@ -1,0 +1,57 @@
+# ~/.config/mm/mm.toml
+#
+# mm configuration file.
+# Copy to ~/.config/mm/mm.toml and edit to your needs.
+# Generate with: mm config init
+
+# ── Active profile ──────────────────────────────────────────────────
+# Switch with:  mm profile use <name>
+# Per-command:  mm --profile openrouter cat photo.png -m accurate
+# Env var:      MM_PROFILE=ollama mm cat photo.png -m accurate
+active_profile = "default"
+
+# ── Profiles (LLM API configs) ─────────────────────────────────────
+# Each profile has: base_url, api_key, model
+# List all:     mm profile list
+# Add new:      mm profile add <name> --base-url <url> --model <model>
+# Update:       mm profile update <name> --api-key <key>
+
+[profile.default]
+# Managed default profile (remote)
+base_url = "https://mm-ctx.ngrok.io/v1"
+api_key = ""
+model = "Qwen/Qwen3.5-0.8B"
+
+[profile.ollama]
+# Local Ollama profile (editable, but reserved)
+base_url = "http://localhost:11434"
+api_key = ""
+model = "qwen3.5:0.8"
+
+# [profile.vllm]
+# base_url = "http://localhost:8000/v1"
+# api_key = ""
+# model = "Qwen/Qwen3.5-0.8B"
+
+# [profile.openrouter]
+# base_url = "https://openrouter.ai/api/v1"
+# api_key = ""
+# model = "qwen/qwen-2.5-vl-7b-instruct"
+
+# [profile.openai]
+# base_url = "https://api.openai.com/v1"
+# api_key = ""
+# model = "gpt-4o"
+
+# [profile.gemini]
+# base_url = "https://generativelanguage.googleapis.com/v1beta/openai/"
+# api_key = ""
+# model = "gemini-2.5-flash"
+
+
+# ── Environment variable ─────────────────────────────────────────────
+#
+#   MM_PROFILE     — override active_profile (e.g. MM_PROFILE=example mm cat ...)
+#
+# Resolution order:
+#   active profile  >  built-in defaults

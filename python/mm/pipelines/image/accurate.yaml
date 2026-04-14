@@ -1,0 +1,20 @@
+kind: image
+mode: accurate
+
+encode:
+  strategy: resize
+  strategy_opts:
+    max_width: 1024
+
+generate:
+  prompt: >-
+    Describe this image in detail (~200 words).
+    Then list up to 10 keyword tags.
+    Then list up to 10 identifiable objects, people, faces, or logos.
+
+    Use this format:
+    <description>
+
+    Tags: <10 keyword tags>
+    Objects: <10 identifiable objects, people, faces, or logos>
+  max_tokens: 2048
