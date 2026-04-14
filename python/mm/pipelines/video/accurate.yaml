@@ -13,7 +13,7 @@ encode:
 
 generate:
   prompt: >-
-    Analyze this video. 
+    Analyze this video.
 
     You have been provided with the audio transcript (with timestamps)
     followed by sampled video frames. Use both modalities to produce a

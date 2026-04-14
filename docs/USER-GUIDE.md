@@ -55,7 +55,7 @@ Install the `mm-skill` via the skill marketplace:
 ```bash
 claude
 > /plugin marketplace add vlm-run/skills
-> /plugin install mm-skill@vlm-run/skills 
+> /plugin install mm-skill@vlm-run/skills
 > Organize my ~/Downloads folder using mm
 ```
 
