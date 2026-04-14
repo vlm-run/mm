@@ -228,10 +228,10 @@ jobs:
         with:
           node-version: "22"
       - name: Install dependencies
-        working-directory: metrics
+        working-directory: web/metrics
         run: npm ci
       - name: Build metrics dashboard
-        working-directory: metrics
+        working-directory: web/metrics
         env:
           VITE_BASE_PATH: /mm/dev/metrics/
         run: npm run build
@@ -239,7 +239,7 @@ jobs:
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./metrics/dist
+          publish_dir: ./web/metrics/dist
           destination_dir: dev/metrics
           keep_files: true
 
@@ -308,10 +308,10 @@ jobs:
         with:
           node-version: "22"
       - name: Install dependencies
-        working-directory: docs/intro
+        working-directory: web/intro
         run: npm ci
       - name: Build intro site
-        working-directory: docs/intro
+        working-directory: web/intro
         env:
           VITE_BASE_PATH: /mm/intro/
         run: npm run build
@@ -319,7 +319,7 @@ jobs:
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./docs/intro/dist
+          publish_dir: ./web/intro/dist
           destination_dir: intro
           keep_files: true
 
