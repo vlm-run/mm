@@ -144,6 +144,16 @@ def run_pyfunc(
     if not template.encode.pyfunc:
         return parts
 
+    import logging
+    import os
+
+    if os.environ.get("MM_ALLOW_PYFUNC", "").lower() not in ("1", "true", "yes"):
+        logging.getLogger(__name__).warning(
+            "Pipeline pyfunc ignored: set MM_ALLOW_PYFUNC=1 to enable. "
+            "pyfunc executes arbitrary Python code from pipeline YAML files."
+        )
+        return parts
+
     code = template.encode.pyfunc
 
     if code.rstrip().endswith(".py") and "\n" not in code:

@@ -135,20 +135,28 @@ class LlmBackend:
     ) -> str:
         """Process multiple content chunks sequentially and concatenate results.
 
+        When the pipeline uses ``json_mode``, chunk results are merged into
+        a JSON array instead of being joined with a plain text separator.
+
         Args:
             kind: Media kind (image, video, audio, document).
             mode: Processing mode (fast, accurate).
             context: Template variables shared across all chunks.
             chunks: List of content-part lists, one per chunk.
-            separator: String inserted between chunk results.
+            separator: String inserted between chunk results (text mode only).
             on_chunk: Optional callback ``(chunk_idx, total, result) -> None``
                 called after each chunk completes.
             pipeline_spec: Pre-loaded ``PipelineSpec`` (with overrides
                 already applied).
 
         Returns:
-            Concatenated LLM responses from all chunks.
+            Concatenated LLM responses (text mode) or JSON array (json_mode).
         """
+        from mm.pipelines import load
+
+        tpl = pipeline_spec if pipeline_spec is not None else load(kind, mode)
+        is_json = tpl.generate is not None and tpl.generate.json_mode
+
         results: list[str] = []
         total = len(chunks)
         cumulative_usage = LlmUsage()
@@ -171,7 +179,24 @@ class LlmBackend:
                 on_chunk(i, total, result)
 
         self.last_usage = cumulative_usage
-        return separator.join(r for r in results if r and not r.startswith("[LLM error"))
+        good = [r for r in results if r and not r.startswith("[LLM error")]
+
+        if is_json and good:
+            import json
+
+            merged: list[Any] = []
+            for r in good:
+                try:
+                    parsed = json.loads(r)
+                    if isinstance(parsed, list):
+                        merged.extend(parsed)
+                    else:
+                        merged.append(parsed)
+                except json.JSONDecodeError:
+                    merged.append(r)
+            return json.dumps(merged)
+
+        return separator.join(good)
 
     def _chat(
         self,
@@ -184,10 +209,11 @@ class LlmBackend:
         reasoning_effort: str = "none",
     ) -> str:
         """Single chat/completions call via the OpenAI SDK."""
+        effective_max = min(max_tokens * 8, 16384) if think else max_tokens
         kwargs: dict[str, Any] = {
             "model": self.model,
             "messages": messages,
-            "max_tokens": min(max_tokens * 8, 16384),
+            "max_tokens": effective_max,
         }
         kwargs["temperature"] = temperature if temperature is not None else 0.1
         if json_mode:

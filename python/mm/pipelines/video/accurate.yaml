@@ -7,6 +7,7 @@ encode:
     fps: 1.0
     max_width: 1024
     max_frames_per_message: 16
+    transcribe: true
     whisper_model: medium
     audio_speed: 1.0
 

@@ -114,24 +114,13 @@ def resolve_format(fmt: str | None) -> str:
 
 
 def emit_tsv(rows: list[dict], columns: list[str] | None = None) -> None:
-    """Print rows as aligned TSV with a header line.
-
-    Each column is padded to the max width of its values so that tabs
-    produce visually aligned output while remaining tab-delimited.
-    """
+    """Print rows as TSV with a header line."""
     if not rows:
         return
     cols = columns or list(rows[0].keys())
-    str_rows = [[str(row.get(c, "")) for c in cols] for row in rows]
-    widths = [len(c) for c in cols]
-    for sr in str_rows:
-        for j, cell in enumerate(sr):
-            if len(cell) > widths[j]:
-                widths[j] = len(cell)
-    header = "\t".join(c.ljust(widths[i]) for i, c in enumerate(cols))
-    print(header)
-    for sr in str_rows:
-        print("\t".join(cell.ljust(widths[j]) for j, cell in enumerate(sr)))
+    print("\t".join(cols))
+    for row in rows:
+        print("\t".join(str(row.get(c, "")) for c in cols))
 
 
 def emit_csv(rows: list[dict], columns: list[str] | None = None) -> None:

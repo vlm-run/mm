@@ -341,12 +341,28 @@ def _resolve_pipeline(opts: _CatOpts, kind: str) -> PipelineSpec:
     """Return a PipelineSpec from explicit -p pipelines or auto-resolve.
 
     If -p specified a named encoder (stored under key '_encoder'), that
-    overrides for any kind.
+    overrides for any kind.  Validates that the encoder supports the
+    target media kind before applying it.
     """
     if opts.pipelines:
-        spec = opts.pipelines.get(kind) or opts.pipelines.get("_encoder")
+        spec = opts.pipelines.get(kind)
         if spec is not None:
             return spec
+        encoder_spec = opts.pipelines.get("_encoder")
+        if encoder_spec is not None:
+            from mm.encoders import get
+
+            enc = get(encoder_spec.encode.strategy)
+            if enc is not None:
+                supported = getattr(enc, "media_types", ())
+                if supported and kind not in supported:
+                    typer.echo(
+                        f"Warning: encoder '{encoder_spec.encode.strategy}' "
+                        f"supports {supported}, not '{kind}'. Falling back to default.",
+                        err=True,
+                    )
+                else:
+                    return encoder_spec
     from mm.pipelines import load
 
     return load(kind, opts.mode)

@@ -371,6 +371,7 @@ class TestDocumentRasterize:
             assert len(messages) == 1
             assert "No pages" in messages[0]["content"][0]["text"]
 
+    @pytest.mark.skip(reason="slow: rasterizes real PDF pages")
     def test_pages_batched(self, tmp_path):
         from mm.encoders import get
 

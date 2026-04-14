@@ -11,7 +11,8 @@ import base64
 import io
 import logging
 from pathlib import Path
-from typing import Any, Iterable, Optional
+from itertools import islice
+from typing import Any, Iterable, Iterator, Optional
 
 from mm.encoders import Message, _resolve_provider, register
 from mm.encoders.image import _image_part, _to_message
@@ -42,8 +43,27 @@ class DocumentRasterize:
         max_pages: Optional[int] = kwargs.get("max_pages", None)
         provider: str = _resolve_provider()
 
-        page_images: list[tuple[str, str]] = _rasterize_pages(path, max_width, max_pages)
-        if not page_images:
+        page_iter = _rasterize_pages(path, max_width, max_pages)
+        page_idx = 0
+        any_pages = False
+
+        while True:
+            batch = list(islice(page_iter, pages_per_message))
+            if not batch:
+                break
+            any_pages = True
+            parts: list[dict[str, Any]] = [
+                {
+                    "type": "text",
+                    "text": f"Document pages {page_idx + 1}-{page_idx + len(batch)} of {path.name}:",
+                }
+            ]
+            for b64, mime in batch:
+                parts.append(_image_part(b64, mime, provider))
+            yield _to_message(parts)
+            page_idx += len(batch)
+
+        if not any_pages:
             yield _to_message(
                 [
                     {
@@ -52,19 +72,6 @@ class DocumentRasterize:
                     }
                 ]
             )
-            return
-
-        for i in range(0, len(page_images), pages_per_message):
-            batch: list[tuple[str, str]] = page_images[i : i + pages_per_message]
-            parts: list[dict[str, Any]] = [
-                {
-                    "type": "text",
-                    "text": f"Document pages {i + 1}-{i + len(batch)} of {path.name}:",
-                }
-            ]
-            for b64, mime in batch:
-                parts.append(_image_part(b64, mime, provider))
-            yield _to_message(parts)
 
 
 class DocumentRasterizeText:
@@ -88,27 +95,21 @@ class DocumentRasterizeText:
         max_pages: Optional[int] = kwargs.get("max_pages", None)
         provider: str = _resolve_provider()
 
-        page_images: list[tuple[str, str]] = _rasterize_pages(path, max_width, max_pages)
         page_texts: list[str] = _extract_page_texts(path, max_pages)
+        page_iter = _rasterize_pages(path, max_width, max_pages)
+        page_idx = 0
+        any_pages = False
 
-        if not page_images:
-            yield _to_message(
-                [
-                    {
-                        "type": "text",
-                        "text": f"[No pages could be rasterized from {path.name}]",
-                    }
-                ]
-            )
-            return
-
-        for i in range(0, len(page_images), pages_per_message):
-            batch_imgs: list[tuple[str, str]] = page_images[i : i + pages_per_message]
-            batch_texts: list[str] = page_texts[i : i + pages_per_message] if page_texts else []
+        while True:
+            batch_imgs = list(islice(page_iter, pages_per_message))
+            if not batch_imgs:
+                break
+            any_pages = True
+            batch_texts = page_texts[page_idx : page_idx + len(batch_imgs)] if page_texts else []
             parts: list[dict[str, Any]] = [
                 {
                     "type": "text",
-                    "text": f"Document pages {i + 1}-{i + len(batch_imgs)} of {path.name}:",
+                    "text": f"Document pages {page_idx + 1}-{page_idx + len(batch_imgs)} of {path.name}:",
                 }
             ]
             for j, (b64, mime) in enumerate(batch_imgs):
@@ -117,36 +118,47 @@ class DocumentRasterizeText:
                     parts.append(
                         {
                             "type": "text",
-                            "text": f"[Page {i + j + 1} text]: {batch_texts[j].strip()}",
+                            "text": f"[Page {page_idx + j + 1} text]: {batch_texts[j].strip()}",
                         }
                     )
             yield _to_message(parts)
+            page_idx += len(batch_imgs)
+
+        if not any_pages:
+            yield _to_message(
+                [
+                    {
+                        "type": "text",
+                        "text": f"[No pages could be rasterized from {path.name}]",
+                    }
+                ]
+            )
 
 
 def _rasterize_pages(
     path: Path,
     max_width: int,
     max_pages: Optional[int],
-) -> list[tuple[str, str]]:
-    """Render PDF pages to ``(base64, mime)`` tuples.
+) -> Iterator[tuple[str, str]]:
+    """Yield PDF pages as ``(base64, mime)`` tuples one at a time.
 
     Uses ``pypdfium2`` for rendering.  Each page is scaled so that its
     width matches *max_width* while preserving aspect ratio, then JPEG-
-    encoded at quality 85.
+    encoded at quality 85.  Pages are yielded lazily so that only one
+    rendered page is held in memory at a time.
 
     Args:
         path: Path to the PDF file.
         max_width: Target render width in pixels.
         max_pages: Maximum number of pages to render, or ``None``.
 
-    Returns:
-        List of ``(base64_str, mime_str)`` pairs, one per page.
-        Returns an empty list if ``pypdfium2`` is not installed.
+    Yields:
+        ``(base64_str, mime_str)`` pairs, one per page.
     """
     try:
         import pypdfium2 as pdfium
     except ImportError:
-        return []
+        return
 
     pdf = pdfium.PdfDocument(str(path))
     try:
@@ -161,7 +173,6 @@ def _rasterize_pages(
             max_width,
         )
 
-        results: list[tuple[str, str]] = []
         for i in range(total):
             page = pdf[i]
             try:
@@ -172,12 +183,11 @@ def _rasterize_pages(
                 buf = io.BytesIO()
                 pil_img.save(buf, "JPEG", quality=_JPEG_QUALITY, subsampling=0)
                 b64: str = base64.b64encode(buf.getvalue()).decode()
-                results.append((b64, "image/jpeg"))
+                yield (b64, "image/jpeg")
             finally:
                 page.close()
     finally:
         pdf.close()
-    return results
 
 
 def _extract_page_texts(path: Path, max_pages: Optional[int]) -> list[str]:
