@@ -29,7 +29,7 @@ fn bench_find_filter(c: &mut Criterion) {
     for size in [1_000, 5_000] {
         let dir = TempDir::new().unwrap();
         create_test_tree(dir.path(), size);
-        let entries = mm_core::scan_directory(dir.path(), None);
+        let entries = mm_core::scan_directory(dir.path(), None, false);
 
         // Baseline: no filters
         group.bench_with_input(

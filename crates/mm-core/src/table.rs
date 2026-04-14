@@ -113,7 +113,7 @@ mod tests {
         fs::write(dir.path().join("test.py"), "x = 1").unwrap();
         fs::write(dir.path().join("lib.rs"), "fn main() {}").unwrap();
 
-        let entries = scan_directory(dir.path(), None);
+        let entries = scan_directory(dir.path(), None, false);
         let batch = build_l0_record_batch(&entries).unwrap();
 
         assert_eq!(batch.num_rows(), 2);
@@ -125,7 +125,7 @@ mod tests {
         let dir = TempDir::new().unwrap();
         fs::write(dir.path().join("test.py"), "x = 1").unwrap();
 
-        let entries = scan_directory(dir.path(), None);
+        let entries = scan_directory(dir.path(), None, false);
         let batch = build_l0_record_batch(&entries).unwrap();
 
         let width_col = batch.column_by_name("width").unwrap();
@@ -147,7 +147,7 @@ mod tests {
         let dir = TempDir::new().unwrap();
         create_minimal_png(dir.path().join("test.png"));
 
-        let mut entries = scan_directory(dir.path(), None);
+        let mut entries = scan_directory(dir.path(), None, false);
         enrich_image_dimensions(&mut entries, dir.path());
         let batch = build_l0_record_batch(&entries).unwrap();
 
@@ -166,7 +166,7 @@ mod tests {
         let dir = TempDir::new().unwrap();
         fs::write(dir.path().join("test.py"), "x = 1").unwrap();
 
-        let entries = scan_directory(dir.path(), None);
+        let entries = scan_directory(dir.path(), None, false);
         let batch = build_l0_record_batch(&entries).unwrap();
 
         let parquet_path = dir.path().join("index.parquet");
@@ -183,7 +183,7 @@ mod tests {
         create_minimal_png(dir.path().join("img.png"));
         fs::write(dir.path().join("code.py"), "x = 1").unwrap();
 
-        let mut entries = scan_directory(dir.path(), None);
+        let mut entries = scan_directory(dir.path(), None, false);
         enrich_image_dimensions(&mut entries, dir.path());
         let batch = build_l0_record_batch(&entries).unwrap();
 

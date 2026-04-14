@@ -31,7 +31,7 @@ fn bench_l0_full_pipeline(c: &mut Criterion) {
 
         group.bench_with_input(BenchmarkId::from_parameter(size), &size, |b, _| {
             b.iter(|| {
-                let entries = mm_core::scan_directory(dir.path(), None);
+                let entries = mm_core::scan_directory(dir.path(), None, false);
                 let batch = mm_core::build_l0_record_batch(&entries).unwrap();
                 assert!(batch.num_rows() > 0);
             });

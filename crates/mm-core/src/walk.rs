@@ -26,17 +26,8 @@ impl Drop for ThreadBatch {
     }
 }
 
-/// Parallel directory scan with per-thread collection (no lock contention on hot path).
-pub fn scan_directory(root: &Path, n_threads: Option<usize>) -> Vec<FileEntry> {
-    scan_directory_opts(root, n_threads, false)
-}
-
-/// Parallel directory scan with optional gitignore bypass.
-pub fn scan_directory_opts(
-    root: &Path,
-    n_threads: Option<usize>,
-    no_ignore: bool,
-) -> Vec<FileEntry> {
+/// Parallel directory scan with per-thread collection (no lock contention on hot path), and optional gitignore bypass.
+pub fn scan_directory(root: &Path, n_threads: Option<usize>, no_ignore: bool) -> Vec<FileEntry> {
     let root = root.canonicalize().unwrap_or_else(|_| root.to_path_buf());
     let completed: Mutex<Vec<Vec<FileEntry>>> = Mutex::new(Vec::new());
 
@@ -92,7 +83,7 @@ mod tests {
     #[test]
     fn test_scan_empty_dir() {
         let dir = TempDir::new().unwrap();
-        let entries = scan_directory(dir.path(), None);
+        let entries = scan_directory(dir.path(), None, false);
         assert!(entries.is_empty());
     }
 
@@ -104,7 +95,7 @@ mod tests {
         fs::create_dir(dir.path().join("sub")).unwrap();
         fs::write(dir.path().join("sub/nested.txt"), "nested").unwrap();
 
-        let entries = scan_directory(dir.path(), None);
+        let entries = scan_directory(dir.path(), None, false);
         assert_eq!(entries.len(), 3);
 
         let names: Vec<&str> = entries.iter().map(|e| e.name.as_str()).collect();
@@ -122,7 +113,7 @@ mod tests {
         fs::write(dir.path().join("keep.py"), "x = 1").unwrap();
         fs::write(dir.path().join("skip.log"), "log data").unwrap();
 
-        let entries = scan_directory(dir.path(), None);
+        let entries = scan_directory(dir.path(), None, false);
         let names: Vec<&str> = entries.iter().map(|e| e.name.as_str()).collect();
         assert!(names.contains(&"keep.py"));
         assert!(!names.contains(&"skip.log"));
