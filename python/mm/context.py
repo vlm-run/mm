@@ -160,6 +160,7 @@ class Context:
         new_ctx._scanner = self._scanner
         new_ctx._table = filtered
         new_ctx._db = self._db
+        new_ctx._no_ignore = self._no_ignore
         return new_ctx
 
     # --- Content access ---
