@@ -264,7 +264,7 @@ hyperfine --warmup 2 --min-runs 10 \
 # ===========================================================================
 # mode=accurate benchmarks (opt-in, requires LLM server)
 # ===========================================================================
-if [ "${BENCH_mode=accurate-0}" = "1" ]; then
+if [ "${BENCH_ACCURATE:-0}" = "1" ]; then
   if [ -n "${VID}" ]; then
     echo ""
     echo "--- mode=accurate: keyframe mosaic + LLM ---"
