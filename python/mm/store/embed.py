@@ -13,7 +13,6 @@ Supported content types:
 
 from __future__ import annotations
 
-import mimetypes
 from pathlib import Path
 from typing import Any
 
@@ -179,10 +178,8 @@ def embed_file_chunks(l2_id: str) -> int:
     return len(vectors)
 
 
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
-
-
 def _mime_for(path: Path, fallback: str) -> str:
-    return mimetypes.guess_type(path.name)[0] or fallback
+    """Return the MIME type for *path*, falling back to *fallback*."""
+    from mm.constants import guess_mime
+
+    return guess_mime(path.name, fallback=fallback)

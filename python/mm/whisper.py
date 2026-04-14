@@ -66,6 +66,15 @@ def _detect_backend() -> str | None:
     except (ImportError, AttributeError):
         pass
 
+    # faster-whisper pulls in `av`, which on macOS races with `cv2`'s
+    # bundled ffmpeg dylibs and spews ObjC class-duplicate warnings to
+    # stderr. Preload both under an fd-level redirect first so the
+    # warnings (if any) go to /dev/null; subsequent imports hit the
+    # sys.modules cache and don't reload the dylibs.
+    from mm._bootstrap import preload_media_libs
+
+    preload_media_libs()
+
     # Fall back to faster-whisper (CTranslate2)
     try:
         import faster_whisper  # noqa: F401

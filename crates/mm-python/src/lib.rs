@@ -340,6 +340,76 @@ fn perceptual_hash(path: String) -> PyResult<Option<u64>> {
     Ok(mm_core::hash::phash(&data))
 }
 
+/// Resize image to max_width (keeping aspect ratio).
+///
+/// Returns a dict with keys: base64, mime, width, height.
+/// JPEG quality defaults to 85; pass `quality` to override.
+#[pyfunction]
+#[pyo3(signature = (path, max_width, quality=85))]
+fn resize_image(py: Python<'_>, path: String, max_width: u32, quality: u8) -> PyResult<PyObject> {
+    let p = std::path::Path::new(&path);
+    let result =
+        mm_core::serde::image::resize_and_encode_with_quality(p, max_width, quality)
+            .map_err(pyo3::exceptions::PyRuntimeError::new_err)?;
+    let dict = pyo3::types::PyDict::new(py);
+    dict.set_item("base64", &result.base64)?;
+    dict.set_item("mime", &result.mime)?;
+    dict.set_item("width", result.width)?;
+    dict.set_item("height", result.height)?;
+    Ok(dict.into_pyobject(py)?.into_any().unbind())
+}
+
+/// Tile image into tile_size squares.
+///
+/// Returns a list of dicts, one per tile.
+/// JPEG quality defaults to 85; pass `quality` to override.
+#[pyfunction]
+#[pyo3(signature = (path, tile_size, quality=85))]
+fn tile_image(py: Python<'_>, path: String, tile_size: u32, quality: u8) -> PyResult<PyObject> {
+    let p = std::path::Path::new(&path);
+    let tiles = mm_core::serde::image::tile_and_encode_with_quality(p, tile_size, quality)
+        .map_err(pyo3::exceptions::PyRuntimeError::new_err)?;
+    let list = pyo3::types::PyList::empty(py);
+    for tile in &tiles {
+        let dict = pyo3::types::PyDict::new(py);
+        dict.set_item("base64", &tile.base64)?;
+        dict.set_item("mime", &tile.mime)?;
+        dict.set_item("col", tile.col)?;
+        dict.set_item("row", tile.row)?;
+        dict.set_item("total_cols", tile.total_cols)?;
+        dict.set_item("total_rows", tile.total_rows)?;
+        dict.set_item("width", tile.width)?;
+        dict.set_item("height", tile.height)?;
+        list.append(dict)?;
+    }
+    Ok(list.into_pyobject(py)?.into_any().unbind())
+}
+
+/// Serialize image as Gemini inline_data Part JSON string.
+#[pyfunction]
+fn gemini_image_part(path: String) -> PyResult<String> {
+    let p = std::path::Path::new(&path);
+    mm_core::serde::gemini::image_part_json(p)
+        .map_err(pyo3::exceptions::PyRuntimeError::new_err)
+}
+
+/// Serialize video as Gemini inline_data Part JSON strings (with chunking).
+#[pyfunction]
+#[pyo3(signature = (path, max_seconds=120, overlap=10))]
+fn gemini_video_parts(path: String, max_seconds: u32, overlap: u32) -> PyResult<Vec<String>> {
+    let p = std::path::Path::new(&path);
+    mm_core::serde::gemini::video_parts_json(p, max_seconds, overlap)
+        .map_err(pyo3::exceptions::PyRuntimeError::new_err)
+}
+
+/// Serialize document as Gemini inline_data Part JSON string.
+#[pyfunction]
+fn gemini_document_part(path: String) -> PyResult<String> {
+    let p = std::path::Path::new(&path);
+    mm_core::serde::gemini::document_part_json(p)
+        .map_err(pyo3::exceptions::PyRuntimeError::new_err)
+}
+
 #[pymodule]
 #[pyo3(name = "_mm")]
 fn mm_module(m: &Bound<'_, PyModule>) -> PyResult<()> {
@@ -349,5 +419,11 @@ fn mm_module(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(content_hash, m)?)?;
     m.add_function(wrap_pyfunction!(directory_hash, m)?)?;
     m.add_function(wrap_pyfunction!(perceptual_hash, m)?)?;
+    // Serde functions
+    m.add_function(wrap_pyfunction!(resize_image, m)?)?;
+    m.add_function(wrap_pyfunction!(tile_image, m)?)?;
+    m.add_function(wrap_pyfunction!(gemini_image_part, m)?)?;
+    m.add_function(wrap_pyfunction!(gemini_video_parts, m)?)?;
+    m.add_function(wrap_pyfunction!(gemini_document_part, m)?)?;
     Ok(())
 }

@@ -1,0 +1,23 @@
+kind: video
+mode: fast
+
+encode:
+  strategy: mosaic
+  strategy_opts:
+    tile_cols: 4
+    tile_rows: 4
+    thumb_width: 160
+    num_mosaics: 8
+    num_frames: 128
+
+generate:
+  prompt: >-
+    You are provided with a mosaic of video frames extracted from a video. 
+    Do not mention that this is a mosaic, and instead describe the video.
+
+    Use this format:
+    <50 words or less description>
+    tags: <tag1>, <tag2>, ...
+  max_tokens: 512
+  think: false              # disable thinking (default)
+  reasoning_effort: "none"  # no reasoning effort (default)

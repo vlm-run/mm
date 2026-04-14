@@ -31,3 +31,4 @@ matroska = "0.30"
 rustdct = "0.7"
 symphonia = { version = "0.5", default-features = false, features = ["mp3", "wav", "aac", "flac", "ogg", "pcm"] }
 regex = "1"
+base64 = "0.22"
