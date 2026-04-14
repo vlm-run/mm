@@ -270,7 +270,7 @@ export default function Cookbook() {
           Cookbook
         </h1>
         <p className="text-[14px] text-[var(--text-secondary)] mt-1">
-          Hands-on recipes using a 9-file, 43 MB multi-modal dataset — images,
+          Hands-on recipes using a 9-file, 43 MB multimodal dataset — images,
           PDFs, video, and audio.
         </p>
       </div>
@@ -278,7 +278,7 @@ export default function Cookbook() {
       {/* Dataset overview */}
       <div className="panel p-5">
         <div className="flex items-center gap-3 mb-3">
-          <span className="font-mono text-[11px] font-semibold uppercase tracking-wider text-[var(--accent)]">
+          <span className="font-mono text-[11px] font-semibold uppercase tracking-wider text-[var(--forest)]">
             Dataset
           </span>
           <code className="font-mono text-[12px] text-[var(--text-secondary)] bg-[var(--bg)] border border-[var(--border)] rounded px-2 py-0.5">
@@ -293,11 +293,11 @@ export default function Cookbook() {
             const ext = f.split(".").pop();
             const kindColor =
               {
-                jpg: "#06b6d4",
-                pdf: "#f59e0b",
-                mp4: "#8b5cf6",
-                mp3: "#10b981",
-                wav: "#10b981",
+                jpg: "#FF8C69",
+                pdf: "#F4D35E",
+                mp4: "#1A3C2B",
+                mp3: "#9EFFBF",
+                wav: "#9EFFBF",
               }[ext] || "var(--text-muted)";
             return (
               <span
@@ -326,7 +326,7 @@ export default function Cookbook() {
             <a
               key={r.id}
               href={`#${r.id}`}
-              className="font-mono text-[11px] text-[var(--accent)] border border-[var(--border)] rounded px-2 py-0.5 hover:border-[var(--accent)] transition-colors no-underline"
+              className="font-mono text-[11px] text-[var(--forest)] border border-[var(--border)] rounded px-2 py-0.5 hover:border-[var(--forest)] transition-colors no-underline"
             >
               {r.title}
             </a>

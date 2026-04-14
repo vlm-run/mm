@@ -5,7 +5,7 @@ build-backend = "maturin"
 [project]
 name = "mm"
 version = "0.4.0"
-description = "High-performance multi-modal context management library"
+description = "High-performance multimodal context management library"
 requires-python = ">=3.10"
 license = { text = "MIT" }
 dependencies = [

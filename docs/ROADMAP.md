@@ -1,6 +1,6 @@
 # mm Roadmap
 
-> Make every multi-modal directory instantly queryable. Speed is the feature.
+> Make every multimodal directory instantly queryable. Speed is the feature.
 
 Design principle: **70-80% semantic coverage at 1000x the speed of full VLM inference.**
 Same philosophy as `fast_fingerprint` — trade marginal precision for orders-of-magnitude speedup.
@@ -163,7 +163,7 @@ mm roadmap
 ├── P3 — Context Builder (The Killer Feature)
 │   │
 │   │   This is what "mm" exists for: construct optimal LLM context
-│   │   payloads from multi-modal directories. Given a token budget and a
+│   │   payloads from multimodal directories. Given a token budget and a
 │   │   task, select and format the most relevant content.
 │   │
 │   ├── mm context — LLM-ready payload builder

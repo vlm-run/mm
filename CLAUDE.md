@@ -2,7 +2,7 @@
 
 ## What this is
 
-`mm` is a high-performance multi-modal context management library + CLI designed primarily for **AI agents** to understand file types that are not natively understood by LLMs — images, video, audio, PDFs, and other binary/media formats. Text files are already natively understood by LLMs and do not need `mm` processing.
+`mm` is a high-performance multimodal context management library + CLI designed primarily for **AI agents** to understand file types that are not natively understood by LLMs — images, video, audio, PDFs, and other binary/media formats. Text files are already natively understood by LLMs and do not need `mm` processing.
 
 Rust core for speed, Python for developer experience, Unix philosophy for composability.
 

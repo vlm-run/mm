@@ -85,7 +85,7 @@ export default function App() {
       {/* Footer */}
       <footer className="border-t border-[var(--border)] bg-[var(--panel)]">
         <div className="max-w-6xl mx-auto px-6 py-2.5 flex items-center justify-between">
-          <span className="font-mono text-[10px] text-[var(--text-muted)]">mm — multi-modal context management</span>
+          <span className="font-mono text-[10px] text-[var(--text-muted)]">mm — multimodal context management</span>
           <span className="font-mono text-[10px] text-[var(--text-muted)]">token estimates are approximate</span>
         </div>
       </footer>

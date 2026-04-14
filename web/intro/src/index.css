@@ -1,21 +1,24 @@
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap");
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
-  --bg: #f3f4f6;
+  --bg: #F7F7F5;
   --panel: #ffffff;
-  --border: #e5e7eb;
-  --border-strong: #d1d5db;
-  --accent: #06b6d4;
-  --accent-light: #ecfeff;
-  --text-primary: #111827;
-  --text-secondary: #6b7280;
-  --text-muted: #9ca3af;
-  --shadow-panel: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
-  --font-body: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --border: rgba(58, 58, 56, 0.2);
+  --border-strong: rgba(58, 58, 56, 0.35);
+  --forest: #1A3C2B;
+  --coral: #FF8C69;
+  --mint: #9EFFBF;
+  --gold: #F4D35E;
+  --grid: #3A3A38;
+  --text-primary: #1A3C2B;
+  --text-secondary: #3A3A38;
+  --text-muted: rgba(58, 58, 56, 0.5);
+  --font-heading: "Space Grotesk", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-body: "Space Grotesk", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   --font-mono: "JetBrains Mono", "SF Mono", "Fira Code", monospace;
 }
 
@@ -31,45 +34,30 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-body::before {
-  content: "";
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  z-index: 0;
-  background-image: linear-gradient(
-      var(--border) 1px,
-      transparent 1px
-    ),
-    linear-gradient(90deg, var(--border) 1px, transparent 1px);
-  background-size: 20px 20px;
-  opacity: 0.3;
-}
-
 #root {
   position: relative;
   z-index: 1;
 }
 
 ::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
+  width: 8px;
+  height: 8px;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
   background: var(--border-strong);
-  border-radius: 5px;
+  border-radius: 0;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #b0b5bc;
+  background: var(--grid);
 }
 
 @keyframes slide-up {
   from {
     opacity: 0;
-    transform: translateY(8px);
+    transform: translateY(6px);
   }
   to {
     opacity: 1;
@@ -78,14 +66,13 @@ body::before {
 }
 
 .animate-slide-up {
-  animation: slide-up 0.4s ease-in-out;
+  animation: slide-up 0.3s ease-out;
 }
 
 .panel {
   background: var(--panel);
   border: 1px solid var(--border);
-  border-radius: 8px;
-  box-shadow: var(--shadow-panel);
+  border-radius: 2px;
 }
 
 .font-mono {
@@ -93,39 +80,63 @@ body::before {
 }
 
 .nav-link {
-  transition: all 0.15s ease-in-out;
+  transition: all 0.12s ease-out;
   border: 1px solid transparent;
 }
 .nav-link:hover {
-  border-color: var(--accent);
-  color: var(--accent);
+  border-color: var(--forest);
+  color: var(--forest);
 }
 .nav-link.active {
-  background: var(--accent);
+  background: var(--forest);
   color: #ffffff;
-  border-color: var(--accent);
+  border-color: var(--forest);
+}
+
+table {
+  border-collapse: collapse;
+  width: 100%;
+}
+th {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border);
+  padding: 8px 12px;
+  text-align: left;
+}
+td {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+}
+tbody tr:hover {
+  background: rgba(26, 60, 43, 0.03);
 }
 
 pre.code-block {
-  background: #1e293b;
-  color: #e2e8f0;
-  border-radius: 8px;
+  background: var(--forest);
+  color: #d4e4db;
+  border-radius: 2px;
   padding: 16px 20px;
   overflow-x: auto;
   font-family: var(--font-mono);
   font-size: 13px;
   line-height: 1.6;
-  border: 1px solid #334155;
+  border: 1px solid rgba(26, 60, 43, 0.8);
 }
 
 pre.code-block .prompt {
-  color: #06b6d4;
+  color: var(--mint);
 }
 
 pre.code-block .comment {
-  color: #64748b;
+  color: rgba(212, 228, 219, 0.45);
 }
 
 pre.code-block .output {
-  color: #94a3b8;
+  color: rgba(212, 228, 219, 0.7);
 }

@@ -10,13 +10,13 @@ const pages = [
   {
     id: "getting-started",
     label: "Getting Started",
-    tag: "setup",
+    tag: "",
     component: lazy(() => import("./GettingStarted")),
   },
   {
     id: "cookbook",
     label: "Cookbook",
-    tag: "guide",
+    tag: "",
     component: lazy(() => import("./Cookbook")),
   },
 ];

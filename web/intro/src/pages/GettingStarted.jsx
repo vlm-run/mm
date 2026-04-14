@@ -57,7 +57,7 @@ export default function GettingStarted() {
         </h1>
         <p className="text-[14px] text-[var(--text-secondary)] mt-1">
           Install mm, configure a VLM provider, and start working with
-          multi-modal files.
+          multimodal files.
         </p>
       </div>
 
@@ -95,9 +95,9 @@ export default function GettingStarted() {
       <Section title="Profile setup">
         <P>
           mm uses profiles to store provider credentials. There are 3 reserved
-          profiles: <code className="font-mono text-[12px] text-[var(--accent)] bg-[var(--accent-light)] rounded px-1">ollama</code>,{" "}
-          <code className="font-mono text-[12px] text-[var(--accent)] bg-[var(--accent-light)] rounded px-1">gemini</code>, and{" "}
-          <code className="font-mono text-[12px] text-[var(--accent)] bg-[var(--accent-light)] rounded px-1">vlmrun</code>.
+          profiles: <code className="font-mono text-[12px] text-[var(--forest)] bg-[rgba(158,255,191,0.2)] rounded px-1">ollama</code>,{" "}
+          <code className="font-mono text-[12px] text-[var(--forest)] bg-[rgba(158,255,191,0.2)] rounded px-1">gemini</code>, and{" "}
+          <code className="font-mono text-[12px] text-[var(--forest)] bg-[rgba(158,255,191,0.2)] rounded px-1">vlmrun</code>.
         </P>
         <Code>
           <span className="comment"># Use an existing reserved profile</span>

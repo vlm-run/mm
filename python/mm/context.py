@@ -38,7 +38,7 @@ class FileEntry:
 
 
 class Context:
-    """Multi-modal context for a directory.
+    """Multimodal context for a directory.
 
     Scanning (L0) is performed on construction. L1 extraction is on-demand.
     """
@@ -171,7 +171,6 @@ class Context:
         """
         full_path = self.root / path
         from mm.commands.cat import _run_l1
-
         from mm.utils import file_kind
 
         kind = file_kind(full_path)

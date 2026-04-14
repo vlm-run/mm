@@ -1,5 +1,5 @@
 #!/bin/sh
-# Install mm — high-performance multi-modal context management CLI
+# Install mm — high-performance multimodal context management CLI
 #
 # Usage:
 #   curl -LsSf https://vlm-run.github.io/mm/install/install.sh | sh
@@ -255,7 +255,7 @@ verify_install() {
 main() {
     printf "\n"
     printf "${BOLD}  mm installer${RESET}\n"
-    printf "  high-performance multi-modal context management\n"
+    printf "  high-performance multimodal context management\n"
     printf "\n"
 
     detect_platform
