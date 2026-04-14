@@ -61,7 +61,7 @@ function Ensure-Rust {
 
     Write-Info "rust not found — installing via rustup..."
     $rustupInit = "$env:TEMP\rustup-init.exe"
-    Invoke-WebRequest -Uri "https://win.rustup.rs/x86_64" -OutFile $rustupInit
+    Invoke-WebRequest -Uri "https://win.rustup.rs/$script:PlatformArch" -OutFile $rustupInit
     & $rustupInit -y
     Remove-Item $rustupInit -ErrorAction SilentlyContinue
 
