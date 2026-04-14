@@ -116,7 +116,18 @@ def find_cmd(
         return
 
     _find_table(
-        directory, kind, ext, min_size, max_size, name, depth, sort, reverse, columns, limit, fmt,
+        directory,
+        kind,
+        ext,
+        min_size,
+        max_size,
+        name,
+        depth,
+        sort,
+        reverse,
+        columns,
+        limit,
+        fmt,
         no_ignore=no_ignore,
     )
 
@@ -158,7 +169,7 @@ def _find_table(
     if fmt != "rich" and not stdin_paths and not columns and depth is None:
         from mm._mm import Scanner
 
-        scanner = Scanner(str(Path(directory).resolve()), None, no_ignore)
+        scanner = Scanner(str(Path(directory).resolve()), None, no_ignore=no_ignore)
         scanner.scan()
 
         min_bytes = _parse_size(min_size) if min_size else None
@@ -376,7 +387,7 @@ def _find_tree(
 ) -> None:
     from mm._mm import Scanner
 
-    scanner = Scanner(str(Path(directory).resolve()), None, no_ignore)
+    scanner = Scanner(str(Path(directory).resolve()), no_ignore=no_ignore)
     scanner.scan()
 
     raw = json_mod.loads(scanner.to_json_fast(kind=kind, name=name))

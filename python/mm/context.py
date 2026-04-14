@@ -59,7 +59,7 @@ class Context:
 
         from mm._mm import Scanner
 
-        self._scanner = Scanner(str(self.root), n_threads, no_ignore)
+        self._scanner = Scanner(str(self.root), n_threads, no_ignore=no_ignore)
         self._scanner.scan()
 
         self._table = self._scanner.to_arrow()  # pa.Table
@@ -173,7 +173,6 @@ class Context:
         """
         full_path = self.root / path
         from mm.commands.cat import _run_l1
-
         from mm.utils import file_kind
 
         kind = file_kind(full_path)
