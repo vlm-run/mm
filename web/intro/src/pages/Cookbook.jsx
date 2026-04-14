@@ -247,7 +247,7 @@ function CodeBlock({ cmd, output, comment }) {
 
 function RecipeSection({ recipe }) {
   return (
-    <section id={recipe.id} className="panel p-6 animate-slide-up">
+    <section id={`recipe-${recipe.id}`} className="panel p-6 animate-slide-up">
       <h2 className="text-[16px] font-semibold text-[var(--text-primary)] mb-1">
         {recipe.title}
       </h2>
@@ -323,13 +323,17 @@ export default function Cookbook() {
         </span>
         <div className="flex flex-wrap gap-1.5">
           {recipes.map((r) => (
-            <a
+            <button
               key={r.id}
-              href={`#${r.id}`}
-              className="font-mono text-[11px] text-[var(--forest)] border border-[var(--border)] rounded px-2 py-0.5 hover:border-[var(--forest)] transition-colors no-underline"
+              onClick={() =>
+                document
+                  .getElementById(`recipe-${r.id}`)
+                  ?.scrollIntoView({ behavior: "smooth", block: "start" })
+              }
+              className="font-mono text-[11px] text-[var(--forest)] border border-[var(--border)] rounded px-2 py-0.5 hover:border-[var(--forest)] transition-colors cursor-pointer bg-transparent"
             >
               {r.title}
-            </a>
+            </button>
           ))}
         </div>
       </div>
