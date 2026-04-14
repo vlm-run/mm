@@ -395,6 +395,7 @@ mm grep "error" <dir> -C 2                             # 2 context lines
 mm grep "invoice" <dir> --count                        # match counts per file
 mm grep "Quantum Phase" <dir> -i                       # case-insensitive search
 mm grep "TODO" <dir> --ignore-case --kind code         # case-insensitive in code
+mm grep "secret" <dir> --no-ignore                     # search gitignored files too
 
 # Semantic search (vector similarity via embeddings)
 mm grep "financial projections" <dir>                  # semantic search across all files

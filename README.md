@@ -41,7 +41,7 @@ mm cat photo.png -p resize                   # use named encoder
 |---------|---------|-----------|
 | `find`  | Find/list files, tree view, schema | `--name`, `--kind`, `--ext`, `--min-size`, `--max-size`, `--sort`, `--reverse`, `--columns`, `--tree`, `--depth`, `--schema`, `--limit`, `--no-ignore`, `--format` |
 | `cat` | Content extraction (auto-detected by file type × mode) | `--mode fast/accurate`, `-p` (pipeline), `-n`, `--encode.*`, `--generate.*`, `--format` |
-| `grep` | Content search across files | `--kind`, `--ext`, `-C`, `--count`, `-i`, `--format` |
+| `grep` | Content search across files | `--kind`, `--ext`, `-C`, `--count`, `-i`, `--no-ignore`, `--format` |
 | `sql` | SQL queries on file index, results, chunks, and embeddings | `--dir`, `--pre-index`, `--format`, `--list-tables` |
 | `wc` | Count files, size, lines (est.), tokens (est.) | `--kind`, `--by-kind`, `--format` |
 | `bench` | Benchmark suite | `--format`, `--rounds` |
