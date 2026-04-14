@@ -61,6 +61,12 @@ jobs:
           # macOS Apple Silicon
           - os: macos-latest
             target: aarch64-apple-darwin
+          # Windows x86_64
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+          # Windows aarch64
+          - os: windows-latest
+            target: aarch64-pc-windows-msvc
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
     steps:
@@ -148,7 +154,7 @@ jobs:
                   "type": "section",
                   "text": {
                     "type": "mrkdwn",
-                    "text": ":white_check_mark: :python: *mm-ctx v${{ env.VERSION }} Published to PyPI*\n\n*Version:* `v${{ env.VERSION }}`\n*Platforms:* linux (x86_64, aarch64), macOS (x86_64, arm64)\n*Commit:* <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ github.sha }}>"
+                    "text": ":white_check_mark: :python: *mm-ctx v${{ env.VERSION }} Published to PyPI*\n\n*Version:* `v${{ env.VERSION }}`\n*Platforms:* linux (x86_64, aarch64), macOS (x86_64, arm64), Windows (x86_64, arm64)\n*Commit:* <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ github.sha }}>"
                   }
                 }
               ]
@@ -283,8 +289,9 @@ jobs:
           cp _pages/${VERSION}/*.whl _pages/latest/
           cp _pages/${VERSION}/SHA256SUMS _pages/latest/
 
-          # Place install.sh at the root
+          # Place install scripts at the root
           cp install.sh _pages/install.sh
+          cp install.ps1 _pages/install.ps1
 
       - name: Deploy installer to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4

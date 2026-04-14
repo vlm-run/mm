@@ -41,9 +41,12 @@ detect_platform() {
     ARCH="$(uname -m)"
 
     case "$OS" in
-        Linux)  PLATFORM_OS="linux" ;;
-        Darwin) PLATFORM_OS="macos" ;;
-        *)      err "unsupported OS: ${OS}. mm supports Linux and macOS." ;;
+        Linux)          PLATFORM_OS="linux" ;;
+        Darwin)         PLATFORM_OS="macos" ;;
+        MINGW*|MSYS*|CYGWIN*)
+            err "detected Windows shell (${OS}). Use the PowerShell installer instead:
+  irm https://vlm-run.github.io/mm/install/install.ps1 | iex" ;;
+        *)              err "unsupported OS: ${OS}. mm supports Linux, macOS, and Windows." ;;
     esac
 
     case "$ARCH" in
