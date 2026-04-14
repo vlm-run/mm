@@ -27,7 +27,7 @@ hyperfine --warmup 2 --min-runs 10 \
   "mm sql 'SELECT ext, SUM(size) as total FROM files GROUP BY ext ORDER BY total DESC LIMIT 10' --dir ${DEMO_DIR}"
 
 echo ""
-echo "--- L1: cat on video files ---"
+echo "--- mode=fast: cat on video files ---"
 if [ -f "${SMALL_VIDEO}" ]; then
   hyperfine --warmup 1 --min-runs 5 \
     "mm cat '${SMALL_VIDEO}'"

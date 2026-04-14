@@ -115,10 +115,10 @@ hyperfine --warmup 2 --min-runs 10 \
   "mm sql 'SELECT kind, COUNT(*) as n, SUM(size) as bytes FROM files GROUP BY kind ORDER BY bytes DESC' --dir ${DIR}"
 
 # ===========================================================================
-# mode=fast cat — PDF text extraction
+# mode=fast: cat — PDF text extraction
 # ===========================================================================
 echo ""
-echo "--- mode=fast mm cat PDF vs cat/strings ---"
+echo "--- mode=fast: mm cat PDF vs cat/strings ---"
 hyperfine --warmup 1 --min-runs 5 \
   --command-name "mm cat pdf (L1 text)" \
     "mm cat '${PDF}' --mode fast" \
@@ -153,11 +153,11 @@ hyperfine --warmup 2 --min-runs 10 \
     "tail -10 '${PDF}'"
 
 # ===========================================================================
-# mode=fast cat — video metadata (if available)
+# mode=fast: cat — video metadata (if available)
 # ===========================================================================
 if [ -n "${VID}" ]; then
   echo ""
-  echo "--- mode=fast mm cat video vs file/ffprobe ---"
+  echo "--- mode=fast: mm cat video vs file/ffprobe ---"
   if command -v ffprobe &>/dev/null; then
     hyperfine --warmup 1 --min-runs 5 \
       --command-name "mm cat video (fast)" \
@@ -176,11 +176,11 @@ if [ -n "${VID}" ]; then
 fi
 
 # ===========================================================================
-# mode=fast cat — audio metadata (if available)
+# mode=fast: cat — audio metadata (if available)
 # ===========================================================================
 if [ -n "${AUD}" ]; then
   echo ""
-  echo "--- mode=fast mm cat audio vs file/ffprobe ---"
+  echo "--- mode=fast: mm cat audio vs file/ffprobe ---"
   if command -v ffprobe &>/dev/null; then
     hyperfine --warmup 1 --min-runs 5 \
       --command-name "mm cat audio (fast)" \
@@ -199,11 +199,11 @@ if [ -n "${AUD}" ]; then
 fi
 
 # ===========================================================================
-# mode=fast cat — image metadata (if available)
+# mode=fast: cat — image metadata (if available)
 # ===========================================================================
 if [ -n "${IMG}" ]; then
   echo ""
-  echo "--- mode=fast mm cat image vs file/mdls ---"
+  echo "--- mode=fast: mm cat image vs file/mdls ---"
   if command -v mdls &>/dev/null; then
     hyperfine --warmup 1 --min-runs 10 \
       --command-name "mm cat image (fast)" \
@@ -262,7 +262,7 @@ hyperfine --warmup 2 --min-runs 10 \
     "find ${DIR} -type f | wc -l"
 
 # ===========================================================================
-# ACCURATE benchmarks (opt-in, requires LLM server)
+# mode=accurate benchmarks (opt-in, requires LLM server)
 # ===========================================================================
 if [ "${BENCH_mode=accurate-0}" = "1" ]; then
   if [ -n "${VID}" ]; then
@@ -274,13 +274,13 @@ if [ "${BENCH_mode=accurate-0}" = "1" ]; then
 
   if [ -n "${AUD}" ]; then
     echo ""
-    echo "--- mode=accurate audio extraction ---"
+    echo "--- mode=accurate: audio extraction ---"
     hyperfine --warmup 1 --min-runs 3 \
       "mm cat '${AUD}' -m accurate"
   fi
 else
   echo ""
-  echo "(accurate benchmarks skipped — set BENCH_ACCURATE=1 to enable, requires LLM server)"
+  echo "(mode=accurate benchmarks skipped — set BENCH_ACCURATE=1 to enable, requires LLM server)"
 fi
 
 echo ""

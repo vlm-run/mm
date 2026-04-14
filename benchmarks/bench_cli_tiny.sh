@@ -91,10 +91,10 @@ hyperfine --warmup 2 --min-runs 10 \
   "mm sql 'SELECT ext, SUM(size) as total FROM files GROUP BY ext ORDER BY total DESC' --dir ${DIR}"
 
 # ===========================================================================
-# mode=fast cat — PDF text extraction
+# mode=fast: cat — PDF text extraction
 # ===========================================================================
 echo ""
-echo "--- mode=fast mm cat PDF vs cat/strings ---"
+echo "--- mode=fast: mm cat PDF vs cat/strings ---"
 hyperfine --warmup 1 --min-runs 10 \
   --command-name "mm cat pdf (fast,text)" \
     "mm cat '${PDF}' --mode fast" \
@@ -104,7 +104,7 @@ hyperfine --warmup 1 --min-runs 10 \
     "strings '${PDF}'"
 
 # ===========================================================================
-# mode=fast cat — image metadata
+# mode=fast: cat — image metadata
 # ===========================================================================
 echo ""
 echo "--- mode=fast mm cat image vs file/mdls ---"
@@ -125,10 +125,10 @@ else
 fi
 
 # ===========================================================================
-# mode=fast cat — video metadata
+# mode=fast: cat — video metadata
 # ===========================================================================
 echo ""
-echo "--- mode=fast mm cat video vs file/ffprobe ---"
+echo "--- mode=fast: mm cat video vs file/ffprobe ---"
 if command -v ffprobe &>/dev/null; then
   hyperfine --warmup 1 --min-runs 5 \
     --command-name "mm cat video (fast)" \
@@ -146,10 +146,10 @@ else
 fi
 
 # ===========================================================================
-# mode=fast cat — audio metadata
+# mode=fast: cat — audio metadata
 # ===========================================================================
 echo ""
-echo "--- mode=fast mm cat audio vs file/ffprobe ---"
+echo "--- mode=fast: mm cat audio vs file/ffprobe ---"
 if command -v ffprobe &>/dev/null; then
   hyperfine --warmup 1 --min-runs 5 \
     --command-name "mm cat audio (fast)" \
@@ -206,21 +206,21 @@ hyperfine --warmup 2 --min-runs 10 \
     "find ${DIR} -type f | wc -l"
 
 # ===========================================================================
-# ACCURATE benchmarks (opt-in, requires LLM server)
+# mode=accurate benchmarks (opt-in, requires LLM server)
 # ===========================================================================
 if [ "${BENCH_ACCURATE:-0}" = "1" ]; then
   echo ""
-  echo "--- mode=accurate keyframe mosaic + LLM ---"
+  echo "--- mode=accurate: keyframe mosaic + LLM ---"
   hyperfine --warmup 1 --min-runs 3 \
     "mm cat '${VID}' -m accurate"
 
   echo ""
-  echo "--- mode=accurate audio extraction ---"
+  echo "--- mode=accurate: audio extraction ---"
   hyperfine --warmup 1 --min-runs 3 \
     "mm cat '${AUD}' -m accurate"
 else
   echo ""
-  echo "(ACCURATE benchmarks skipped — set BENCH_ACCURATE=1 to enable, requires LLM server)"
+  echo "(accurate benchmarks skipped — set BENCH_ACCURATE=1 to enable, requires LLM server)"
 fi
 
 echo ""
