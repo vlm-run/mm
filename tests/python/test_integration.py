@@ -134,6 +134,7 @@ def pdf_file(tmp_session: Path) -> Path:
 # ---------------------------------------------------------------------------
 
 
+@pytest.mark.slow
 @pytest.mark.integration
 class TestServerHealth:
     def test_default_profile_reachable(self, base_url):
@@ -169,6 +170,7 @@ class TestServerHealth:
 # ---------------------------------------------------------------------------
 
 
+@pytest.mark.slow
 @pytest.mark.integration
 class TestEmbeddings:
     def test_embed_text(self):
@@ -205,6 +207,7 @@ class TestEmbeddings:
 # ---------------------------------------------------------------------------
 
 
+@pytest.mark.slow
 @pytest.mark.integration
 class TestChunkEmbedding:
     def test_l2_store_and_embed(self, tmp_session: Path):

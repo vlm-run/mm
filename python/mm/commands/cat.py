@@ -196,8 +196,9 @@ def cat_cmd(
         verbose=verbose,
     )
 
-    multi_file = len(paths) > 1 or bool(stdin_paths)
+    multi_file = len(paths) > 1
     results: list[dict] = []
+    _emitted = 0
 
     global _total_bytes_processed, _was_cached
     _total_bytes_processed = 0
@@ -232,14 +233,19 @@ def cat_cmd(
                 }
             results.append(entry)
         elif fmt == "rich":
+            if multi_file:
+                from mm.display import output_console
+
+                if _emitted > 0:
+                    output_console.print("\n====")
+                output_console.print(f"<{p.name}>")
             _display_rich(p, content, mode, n)
+            _emitted += 1
         else:
             if multi_file:
-                kind = file_kind(p)
-                size = p.stat().st_size
-                print(f"--- {p} ({kind}, {size}B) ---")
-            # Split content from verbose decoration (Rich markup).
-            # Plain content goes through print(); [dim] lines go through Rich.
+                if _emitted > 0:
+                    print("\n====")
+                print(f"<{p.name}>")
             _dim_prefix = "[dim]"
             lines = content.split("\n")
             plain_lines: list[str] = []
@@ -255,6 +261,7 @@ def cat_cmd(
                 from mm.display import output_console
 
                 output_console.print("\n".join(rich_lines))
+            _emitted += 1
 
     if fmt in ("json", "dataset-jsonl", "dataset-hf"):
         from mm.display import emit_rows
