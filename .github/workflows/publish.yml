@@ -294,7 +294,7 @@ jobs:
           destination_dir: install
           keep_files: true
 
-  # Deploy intro landing page to GitHub Pages at /intro
+  # Deploy intro docs site to GitHub Pages at /intro
   deploy-intro:
     needs:
       - build
@@ -304,11 +304,22 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@v6
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install dependencies
+        working-directory: docs/intro
+        run: npm ci
+      - name: Build intro site
+        working-directory: docs/intro
+        env:
+          VITE_BASE_PATH: /mm/intro/
+        run: npm run build
       - name: Deploy intro to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./docs/intro
+          publish_dir: ./docs/intro/dist
           destination_dir: intro
           keep_files: true
 
