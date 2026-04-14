@@ -39,9 +39,9 @@ mm cat photo.png -p resize                   # use named encoder
 
 | Command | Purpose | Key flags |
 |---------|---------|-----------|
-| `find`  | Find/list files, tree view, schema | `--name`, `--kind`, `--ext`, `--min-size`, `--max-size`, `--sort`, `--reverse`, `--columns`, `--tree`, `--depth`, `--schema`, `--limit`, `--format` |
+| `find`  | Find/list files, tree view, schema | `--name`, `--kind`, `--ext`, `--min-size`, `--max-size`, `--sort`, `--reverse`, `--columns`, `--tree`, `--depth`, `--schema`, `--limit`, `--no-ignore`, `--format` |
 | `cat` | Content extraction (auto-detected by file type × mode) | `--mode fast/accurate`, `-p` (pipeline), `-n`, `--encode.*`, `--generate.*`, `--format` |
-| `grep` | Content search across files | `--kind`, `--ext`, `-C`, `--count`, `--format` |
+| `grep` | Content search across files | `--kind`, `--ext`, `-C`, `--count`, `-i`, `--format` |
 | `sql` | SQL queries on file index, results, chunks, and embeddings | `--dir`, `--pre-index`, `--format`, `--list-tables` |
 | `wc` | Count files, size, lines (est.), tokens (est.) | `--kind`, `--by-kind`, `--format` |
 | `bench` | Benchmark suite | `--format`, `--rounds` |
@@ -64,6 +64,7 @@ mm find ~/data --tree --depth 2                        # hierarchical tree view
 mm find ~/data --tree --kind video                     # tree filtered to videos
 mm find ~/data --schema                                # column names, types, descriptions
 mm find ~/data --format json                           # full metadata JSON
+mm find ~/data --no-ignore                             # include gitignored files
 ```
 
 ### cat — content extraction
@@ -94,6 +95,7 @@ mm wc ~/data --by-kind --format json
 mm grep "attention" ~/data --kind document
 mm grep "TODO" ~/data --kind code
 mm grep "invoice" ~/data --count               # match counts per file
+mm grep "Quantum Phase" ~/data -i              # case-insensitive search
 ```
 
 ### sql — query the index
