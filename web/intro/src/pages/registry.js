@@ -8,6 +8,12 @@ const pages = [
     component: lazy(() => import("./Landing")),
   },
   {
+    id: "getting-started",
+    label: "Getting Started",
+    tag: "setup",
+    component: lazy(() => import("./GettingStarted")),
+  },
+  {
     id: "cookbook",
     label: "Cookbook",
     tag: "guide",

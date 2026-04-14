@@ -360,10 +360,8 @@ export default function Landing() {
       {/* Install */}
       <div className="font-mono text-[12px] text-[var(--text-muted)]">
         <code className="bg-[var(--panel)] border border-[var(--border)] rounded px-2 py-1 text-[var(--text-secondary)]">
-          pip install mm
+          curl -LsSf https://vlm-run.github.io/mm/install/install.sh | sh
         </code>
-        <span className="mx-2">·</span>
-        Rust + Python · Apache 2.0
       </div>
     </div>
   );
