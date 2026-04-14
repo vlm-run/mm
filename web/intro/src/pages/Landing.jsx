@@ -1,3 +1,5 @@
+import GettingStarted from "./GettingStarted";
+
 const ASCII = `███╗   ███╗███╗   ███╗
 ████╗ ████║████╗ ████║
 ██╔████╔██║██╔████╔██║
@@ -22,9 +24,65 @@ function FeatureCard({ icon, name, desc }) {
   );
 }
 
+function Section({ title, children }) {
+  return (
+    <section className="panel p-6 animate-slide-up">
+      <h2 className="text-[16px] font-semibold text-[var(--text-primary)] mb-4">
+        {title}
+      </h2>
+      {children}
+    </section>
+  );
+}
+
+function Code({ children }) {
+  return <pre className="code-block">{children}</pre>;
+}
+
+function P({ children }) {
+  return (
+    <p className="text-[13px] text-[var(--text-secondary)] mb-3">{children}</p>
+  );
+}
+
+function Table({ headers, rows }) {
+  return (
+    <div className="overflow-x-auto mb-3">
+      <table>
+        <thead>
+          <tr>
+            {headers.map((h) => (
+              <th key={h}>{h}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row, i) => (
+            <tr key={i}>
+              {row.map((cell, j) => (
+                <td key={j} className="font-mono text-[13px]">
+                  {cell}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function InlineCode({ children }) {
+  return (
+    <code className="font-mono text-[12px] text-[var(--forest)] bg-[rgba(158,255,191,0.2)] rounded px-1">
+      {children}
+    </code>
+  );
+}
+
 export default function Landing() {
   return (
-    <div className="animate-slide-up flex flex-col items-center gap-8">
+    <div className="animate-slide-up max-w-3xl mx-auto flex flex-col items-center gap-8">
       {/* ASCII + tagline */}
       <div className="text-center">
         <pre
@@ -33,7 +91,7 @@ export default function Landing() {
         >
           {ASCII}
         </pre>
-        <p className="mt-3 text-[15px] text-[var(--text-secondary)] tracking-wide">
+        <p className="mt-3 text-[17px] tracking-wide">
           <span
             className="font-semibold"
             style={{
@@ -41,9 +99,11 @@ export default function Landing() {
               color: "var(--forest)",
             }}
           >
-            High-performance multimodal context
-          </span>{" "}
-          for humans & agents
+            Fast, multi-modal file intelligence for agents.
+          </span>
+        </p>
+        <p className="mt-1.5 text-[13px] text-[var(--text-secondary)] tracking-wide font-mono">
+          find · cat · grep — rebuilt for the multimodal era.
         </p>
       </div>
 
@@ -225,7 +285,7 @@ export default function Landing() {
             fontSize="8.5"
             fontFamily="var(--font-mono)"
           >
-            hash · kind · text · codecs · pages · duration
+            hash · kind · text · pages · duration · dimensions
           </text>
 
           {/* Semantic sub-block */}
@@ -255,7 +315,7 @@ export default function Landing() {
             fontSize="8.5"
             fontFamily="var(--font-mono)"
           >
-            captions · embeddings · analysis · search · encoders
+            captions · embeddings · search · encoders · pipelines
           </text>
 
           {/* Arrows: mm → Consumers */}
@@ -349,7 +409,7 @@ export default function Landing() {
             fill="rgba(58,58,56,0.5)"
             letterSpacing="0.06em"
           >
-            Rust core · Arrow IPC · zero-copy · gitignore-aware · pipe-native
+            Rust + Python · Arrow IPC · pipe-native · agent-ready
           </text>
         </svg>
       </div>
@@ -359,28 +419,208 @@ export default function Landing() {
         <FeatureCard
           icon="⚡"
           name="Fast"
-          desc="Rust core, rayon parallelism. Extremely fast."
+          desc="Index 10K files in <1s. Rust core, zero-copy Arrow."
         />
         <FeatureCard
           icon="🔍"
-          name="Multimodal"
-          desc="Multimodal awareness for find · cat · grep"
+          name="Universal"
+          desc="PDFs, images, video, audio — one interface."
         />
         <FeatureCard
           icon="🔗"
           name="Composable"
-          desc="Pipes, Arrow, DataFrames. CLI + Python API."
+          desc="Pipes to jq. DataFrames in Python. Built for agents."
         />
       </div>
 
-      {/* Install */}
+      {/* Install — curl only */}
       <div className="font-mono text-[12px] text-[var(--text-muted)] flex flex-col items-center gap-1">
         <code className="bg-[var(--panel)] border border-[var(--border)] rounded-sm px-2 py-1 text-[var(--text-secondary)]">
           curl -LsSf https://vlm-run.github.io/mm/install/install.sh | sh
         </code>
-        <code className="border border-[var(--border)] rounded-sm px-2 py-1 text-[var(--text-secondary)]">
-          irm https://vlm-run.github.io/mm/install/install.ps1 | iex
-        </code>
+      </div>
+
+      <GettingStarted />
+
+      {/* Getting Started content */}
+      <div className="w-full max-w-[760px] space-y-6">
+        {/* VLM Access */}
+        <Section title="VLM access">
+          <P>
+            mm requires access to a VLM on a live server for accurate-mode
+            (LLM-powered) operations. Recommended models:
+          </P>
+          <Table
+            headers={["Provider", "Models"]}
+            rows={[
+              [
+                "Qwen",
+                "qwen3vl-2b|4b|8b|32b, qwen3.5:0.8b|2b|9b|27b",
+              ],
+              [
+                "Gemini",
+                "gemini-2.5-flash-lite, gemini-3.1-flash-lite-preview",
+              ],
+            ]}
+          />
+        </Section>
+
+        {/* Profile setup */}
+        <Section title="Profile setup">
+          <P>
+            mm uses profiles to store provider credentials. There are 3 reserved
+            profiles: <InlineCode>ollama</InlineCode>,{" "}
+            <InlineCode>gemini</InlineCode>, and{" "}
+            <InlineCode>vlmrun</InlineCode>.
+          </P>
+          <Code>
+            <span className="comment"># Use an existing reserved profile</span>
+            {"\n"}
+            <span className="prompt">$ </span>mm profile update ollama
+            --base-url http://localhost:11434/v1 --model qwen3vl-8b{"\n\n"}
+            <span className="comment"># Or create a custom profile</span>
+            {"\n"}
+            <span className="prompt">$ </span>mm profile add fermi \{"\n"}
+            {"    "}--base-url https://openrouter.ai/api/v1 \{"\n"}
+            {"    "}--api-key "your-openrouter-api-key" \{"\n"}
+            {"    "}--model google/gemini-2.5-flash-lite{"\n\n"}
+            <span className="comment"># Set the active profile</span>
+            {"\n"}
+            <span className="prompt">$ </span>mm profile use fermi
+          </Code>
+        </Section>
+
+        {/* Integrations */}
+        <Section title="Integrations">
+          <h3 className="text-[14px] font-semibold text-[var(--text-primary)] mb-2">
+            Claude Code
+          </h3>
+          <P>Install the mm-skill via the skill marketplace:</P>
+          <Code>
+            <span className="prompt">$ </span>claude{"\n"}
+            <span className="prompt">&gt; </span>/plugin marketplace add
+            vlm-run/skills{"\n"}
+            <span className="prompt">&gt; </span>/plugin install
+            mm-skill@vlm-run/skills{"\n"}
+            <span className="prompt">&gt; </span>Organize my ~/Downloads folder
+            using mm
+          </Code>
+
+          <h3 className="text-[14px] font-semibold text-[var(--text-primary)] mt-5 mb-2">
+            Other CLI assistants
+          </h3>
+          <P>
+            Install mm-skill globally so any CLI assistant or agentic tool can
+            discover it:
+          </P>
+          <Code>
+            <span className="comment"># One-time setup</span>
+            {"\n"}
+            <span className="prompt">$ </span>npx skill add vlm-run/mm-skill
+            {"\n\n"}
+            <span className="comment">
+              # Then use any CLI assistant — it will discover mm automatically
+            </span>
+            {"\n"}
+            <span className="prompt">$ </span>openclaw "Organize my ~/Downloads
+            folder using mm"{"\n"}
+            <span className="prompt">$ </span>codex "Find all PDFs in ~/docs and
+            summarize them with mm"
+          </Code>
+        </Section>
+
+        {/* Use cases */}
+        <Section title="Use cases">
+          <P>
+            Use mm directly or through a CLI assistant (e.g.{" "}
+            <code className="font-mono text-[12px]">
+              claude "Organize ~/Downloads using mm"
+            </code>
+            ).
+          </P>
+
+          <h3 className="text-[14px] font-semibold text-[var(--text-primary)] mb-2">
+            Semantic search
+          </h3>
+          <Code>
+            <span className="prompt">$ </span>mm grep "photo of me and my dog in
+            a park" ~/photos{"\n\n"}
+            <span className="output">
+              Returns matching images and videos (via keyframe analysis).
+            </span>
+          </Code>
+
+          <h3 className="text-[14px] font-semibold text-[var(--text-primary)] mt-5 mb-2">
+            File inspection & extraction
+          </h3>
+          <Code>
+            <span className="prompt">$ </span>mm cat report.pdf
+            {"    "}
+            <span className="comment"># text extraction from PDF</span>
+            {"\n"}
+            <span className="prompt">$ </span>mm cat image.jpg
+            {"    "}
+            <span className="comment"># dimensions + MIME + hash + EXIF</span>
+            {"\n"}
+            <span className="prompt">$ </span>mm cat video.mp4
+            {"    "}
+            <span className="comment"># resolution + duration + codecs</span>
+          </Code>
+
+          <h3 className="text-[14px] font-semibold text-[var(--text-primary)] mt-5 mb-2">
+            Batch operations
+          </h3>
+          <Code>
+            <span className="prompt">$ </span>mm wc ~/docs
+            {"              "}
+            <span className="comment">
+              # file count, bytes, lines, tokens
+            </span>
+            {"\n"}
+            <span className="prompt">$ </span>mm find ~/videos
+            {"          "}
+            <span className="comment"># list files with kind, size, ext</span>
+            {"\n"}
+            <span className="prompt">$ </span>mm cat -m accurate video.mp4
+            {"  "}
+            <span className="comment">
+              # mosaic + transcript → LLM description
+            </span>
+          </Code>
+
+          <h3 className="text-[14px] font-semibold text-[var(--text-primary)] mt-5 mb-2">
+            Agentic integration
+          </h3>
+          <P>Use mm directly as a tool or as a skill for coding assistants:</P>
+          <ul className="list-disc list-inside text-[13px] text-[var(--text-secondary)] space-y-1 ml-1">
+            <li>
+              <em>
+                "Find all invoices in ~/Downloads and create a markdown table
+                with totals"
+              </em>
+            </li>
+            <li>
+              <em>"Clip the first scene from video.mp4"</em>
+            </li>
+            <li>
+              <em>"Extract all faces from ~/events/wedding"</em>
+            </li>
+          </ul>
+        </Section>
+
+        {/* Benchmarks */}
+        <Section title="Benchmarks">
+          <P>Benchmark mm against native Unix commands with hyperfine:</P>
+          <Code>
+            <span className="prompt">$ </span>hyperfine --warmup 3 'grep -R TODO
+            python' "mm grep 'TODO' python"
+          </Code>
+          <P>Or run the built-in benchmark suite:</P>
+          <Code>
+            <span className="prompt">$ </span>mm bench ~/data/mmbench-mini
+            --format rich
+          </Code>
+        </Section>
       </div>
     </div>
   );

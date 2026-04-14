@@ -275,7 +275,7 @@ function RecipeSection({ recipe }) {
 
 export default function Cookbook() {
   return (
-    <div className="animate-slide-up space-y-6">
+    <div className="animate-slide-up max-w-3xl mx-auto space-y-6">
       {/* Header */}
       <div>
         <h1 className="text-[22px] font-bold text-[var(--text-primary)]">
