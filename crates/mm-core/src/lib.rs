@@ -6,6 +6,7 @@ pub mod format;
 pub mod hash;
 pub mod meta;
 pub mod schema;
+pub mod serde;
 pub mod table;
 pub mod walk;
 pub mod wc;

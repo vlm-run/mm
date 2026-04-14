@@ -11,12 +11,14 @@ T = TypeVar("T")
 
 
 class BaseFormat(str, Enum):
+    rich = "rich"
     json = "json"
     tsv = "tsv"
     csv = "csv"
 
 
 class Format(str, Enum):
+    rich = "rich"
     json = "json"
     tsv = "tsv"
     csv = "csv"

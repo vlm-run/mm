@@ -22,6 +22,7 @@ dependencies = [
     "python-docx==1.2.0",
     "python-pptx>=1.0.2",
     "google-genai>=1.0",
+    "pyyaml>=6.0",
 ]
 
 [project.scripts]
@@ -29,7 +30,6 @@ mm = "mm.cli:app"
 
 [project.optional-dependencies]
 extract = [
-    "torch>=2.0",
     "faster-whisper>=1.0",
     "scenedetect[opencv]>=0.6",
     "docling>=2.0",
@@ -45,8 +45,9 @@ mlx = [
 dev = [
     "pytest>=8.0",
     "pytest-benchmark>=4.0",
-    "mypy>=1.10",
+    "ty>=0.0.28",
     "ruff>=0.4",
+    "pre-commit>=4.0",
     "maturin>=1.7",
 ]
 
@@ -55,21 +56,30 @@ python-source = "python"
 module-name = "mm._mm"
 manifest-path = "crates/mm-python/Cargo.toml"
 features = ["pyo3/extension-module"]
+# Ship built-in YAML pipelines alongside the Python package so
+# `pip install mm` can load them at runtime without the source tree.
+include = [
+    { path = "python/mm/pipelines/**/*.yaml", format = ["sdist", "wheel"] },
+]
 
 [tool.pytest.ini_options]
 testpaths = ["tests/python"]
-markers = ["integration: slow integration tests (deselect with '-m not integration')"]
-addopts = "-m 'not integration'"
+markers = [
+    "integration: slow integration tests that need external services (deselect with '-m not integration')",
+    "slow: resource-intensive tests such as pytest-benchmark suites (deselect with '-m not slow')",
+]
+# Default CI run executes only the fast tier. Run the full suite with
+# `pytest -m ''` or `make test-python-full`.
+addopts = "-m 'not integration and not slow'"
 
 [tool.ruff]
 target-version = "py310"
 line-length = 100
 
-[tool.mypy]
-python_version = "3.10"
-warn_return_any = true
-warn_unused_configs = true
-ignore_missing_imports = true
+[tool.ty.environment]
+python-version = "3.10"
 
-[tool.pyright]
-reportMissingImports = "none"
+[tool.ty.rules]
+# Start with warnings for gradual adoption
+possibly-missing-attribute = "warn"
+unresolved-import = "warn"

@@ -2,9 +2,30 @@
 
 from __future__ import annotations
 
+import sqlite3
 from pathlib import Path
 
 import pytest
+
+
+def _sqlite_vec_available() -> bool:
+    """Check if sqlite3 supports loading extensions (needed for sqlite-vec)."""
+    try:
+        conn = sqlite3.connect(":memory:")
+        conn.enable_load_extension(True)
+        import sqlite_vec
+
+        sqlite_vec.load(conn)
+        conn.close()
+        return True
+    except (AttributeError, ImportError, OSError):
+        return False
+
+
+requires_sqlite_vec = pytest.mark.skipif(
+    not _sqlite_vec_available(),
+    reason="sqlite3 extension loading not available (no sqlite-vec support)",
+)
 
 
 @pytest.fixture

@@ -115,8 +115,8 @@ class TestCat:
         assert r.exit_code == 0
         assert "main" in r.output
 
-    def test_text_file_l0(self, small_tree: Path):
-        r = runner.invoke(app, ["cat", str(small_tree / "src" / "main.py"), "--level", "0"])
+    def test_text_file_fast(self, small_tree: Path):
+        r = runner.invoke(app, ["cat", str(small_tree / "src" / "main.py"), "-m", "fast"])
         assert r.exit_code == 0
         assert "def main" in r.output
 
@@ -137,7 +137,7 @@ class TestCat:
         assert r.exit_code == 0
         data = json.loads(r.output)
         assert len(data) == 1
-        assert data[0]["level"] == 1
+        assert data[0]["mode"] == "fast"
         assert "content" in data[0]
         assert "path" in data[0]
 
@@ -182,7 +182,7 @@ class TestCat:
             assert "type" in row
             assert "size" in row
             assert "content" in row
-            assert "level" in row
+            assert "mode" in row
 
     def test_dataset_jsonl_single_file(self, small_tree: Path):
         r = runner.invoke(

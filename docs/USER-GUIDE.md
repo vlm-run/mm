@@ -17,7 +17,7 @@ curl -LsSf https://vlm-run.github.io/mm/install/install.sh | sh
 
 ### VLM access
 
-mm requires access to a VLM on a live server for L2 (semantic) operations. Recommended models:
+mm requires access to a VLM on a live server for accurate-mode (LLM-powered) operations. Recommended models:
 
 | Provider | Models |
 |----------|--------|
@@ -55,7 +55,7 @@ Install the `mm-skill` via the skill marketplace:
 ```bash
 claude
 > /plugin marketplace add vlm-run/skills
-> /plugin install mm-skill@vlm-run/skills 
+> /plugin install mm-skill@vlm-run/skills
 > Organize my ~/Downloads folder using mm
 ```
 
@@ -114,8 +114,8 @@ mm cat video.mp4     # scene summary + transcript snippet + keyframe grid
 
 ```bash
 mm wc ~/docs              # file count, bytes, lines, token estimate
-mm find ~/videos -l 1     # list with tags, duration, resolution
-mm cat -l 2 video.mp4     # full context: transcript + scenes + metadata
+mm find ~/videos              # list with tags, duration, resolution
+mm cat -m accurate video.mp4  # full context: transcript + scenes + metadata
 ```
 
 ### Agentic integration

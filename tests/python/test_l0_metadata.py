@@ -36,7 +36,7 @@ def media_tree(tmp_path: Path) -> Path:
 
     # Code files
     (tmp_path / "app.py").write_text("import os\nprint('hello world')\n")
-    (tmp_path / "lib.rs").write_text("fn main() { println!(\"hello\"); }\n")
+    (tmp_path / "lib.rs").write_text('fn main() { println!("hello"); }\n')
     (tmp_path / "index.js").write_text("console.log('hi');\n")
 
     # Config
@@ -85,6 +85,7 @@ def _write_jpeg(path: Path, width: int, height: int):
     """Create a valid JPEG."""
     try:
         from PIL import Image
+
         img = Image.new("RGB", (width, height), color=(64, 128, 0))
         img.save(str(path), format="JPEG")
     except ImportError:
@@ -107,8 +108,20 @@ class TestL0Schema:
         ctx = Context(media_tree)
         cols = ctx.to_arrow().column_names
         for name in [
-            "path", "name", "stem", "ext", "size", "modified", "created",
-            "mime", "kind", "is_binary", "depth", "parent", "width", "height",
+            "path",
+            "name",
+            "stem",
+            "ext",
+            "size",
+            "modified",
+            "created",
+            "mime",
+            "kind",
+            "is_binary",
+            "depth",
+            "parent",
+            "width",
+            "height",
         ]:
             assert name in cols, f"Missing column: {name}"
 
@@ -160,6 +173,7 @@ class TestImageDimensions:
         row = df.filter(df["name"] == "photo.jpg")
         try:
             import PIL  # noqa
+
             w, h = row["width"][0], row["height"][0]
             assert w is not None and w > 0
             assert h is not None and h > 0
@@ -205,8 +219,7 @@ class TestImageDimensions:
     def test_sql_avg_dimensions(self, media_tree: Path):
         ctx = Context(media_tree)
         result = ctx.sql(
-            "SELECT AVG(width) as avg_w, AVG(height) as avg_h "
-            "FROM files WHERE kind='image'"
+            "SELECT AVG(width) as avg_w, AVG(height) as avg_h FROM files WHERE kind='image'"
         )
         assert result.num_rows == 1
         avg_w = result.column("avg_w")[0].as_py()
@@ -217,7 +230,6 @@ class TestImageDimensions:
 
 
 class TestFileKindClassification:
-
     def test_code_detection(self, media_tree: Path):
         ctx = Context(media_tree)
         df = ctx.to_polars()
@@ -273,7 +285,6 @@ class TestFileKindClassification:
 
 
 class TestPathMetadata:
-
     def test_top_level_depth_zero(self, media_tree: Path):
         ctx = Context(media_tree)
         df = ctx.to_polars()
@@ -303,7 +314,6 @@ class TestPathMetadata:
 
 
 class TestExtensionMime:
-
     def test_ext_includes_dot(self, media_tree: Path):
         ctx = Context(media_tree)
         df = ctx.to_polars()
@@ -334,7 +344,6 @@ class TestExtensionMime:
 
 
 class TestDBRoundtrip:
-
     def test_roundtrip_preserves_dimensions(self, media_tree: Path):
         ctx = Context(media_tree)
         ctx.save()
@@ -363,7 +372,6 @@ class TestDBRoundtrip:
 
 
 class TestL0Cli:
-
     def test_describe_shows_width_height(self, media_tree: Path):
         result = runner.invoke(app, ["find", str(media_tree), "--schema", "--format", "json"])
         assert result.exit_code == 0
@@ -373,26 +381,39 @@ class TestL0Cli:
         assert "height" in names
 
     def test_find_width_height_columns(self, media_tree: Path):
-        result = runner.invoke(app, [
-            "find", str(media_tree), "--columns", "name,kind,width,height",
-        ])
+        result = runner.invoke(
+            app,
+            [
+                "find",
+                str(media_tree),
+                "--columns",
+                "name,kind,width,height",
+            ],
+        )
         assert result.exit_code == 0
 
     def test_sql_dimensions_query(self, media_tree: Path):
-        result = runner.invoke(app, [
-            "sql",
-            "SELECT name, width, height FROM files WHERE width IS NOT NULL",
-            "--dir", str(media_tree),
-            "--format", "json",
-            "--pre-index",
-        ])
+        result = runner.invoke(
+            app,
+            [
+                "sql",
+                "SELECT name, width, height FROM files WHERE width IS NOT NULL",
+                "--dir",
+                str(media_tree),
+                "--format",
+                "json",
+                "--pre-index",
+            ],
+        )
         assert result.exit_code == 0
         data = json.loads(result.output)
         assert len(data) > 0
         assert all("width" in row for row in data)
 
     def test_find_json_has_dimensions(self, media_tree: Path):
-        result = runner.invoke(app, ["find", str(media_tree), "--kind", "image", "--format", "json"])
+        result = runner.invoke(
+            app, ["find", str(media_tree), "--kind", "image", "--format", "json"]
+        )
         assert result.exit_code == 0
         data = json.loads(result.output)
         assert len(data) > 0
@@ -406,7 +427,6 @@ class TestL0Cli:
 
 
 class TestFileCount:
-
     def test_total_file_count(self, media_tree: Path):
         ctx = Context(media_tree)
         assert ctx.num_files == 13

@@ -28,11 +28,11 @@ mm roadmap
 │   │   ├── CLI find/ls with --format=json: ~60ms cold start (was 330ms, 5.5x speedup)
 │   │   └── Arrow path preserved for DataFrame/SQL/Rich display use cases
 │   │
-│   ├── Parallel L1 batch extraction
-│   │   ├── extract_l1_batch(paths) — rayon parallel across files
+│   ├── Parallel fast-mode batch extraction
+│   │   ├── extract_fast_batch(paths) — rayon parallel across files
 │   │   ├── All 17 demo videos: 5.1s sequential → <1s parallel
 │   │   ├── 218 images: already fast, but batch hashing benefits from IO overlap
-│   │   └── Return Vec<L1Record> as Arrow RecordBatch (L1 schema)
+│   │   └── Return Vec<FastRecord> as Arrow RecordBatch (fast-mode schema)
 │   │
 │   ├── [DONE] mm wc — token counting for LLM budgeting
 │   │   ├── Fast byte-level token estimator (~4 chars/token for text)
@@ -53,7 +53,7 @@ mm roadmap
 │   │   └── [ ] --format tsv|csv|jsonl for one-row-at-a-time output
 │   │
 │   ├── Faster grep on document directories
-│   │   ├── Current: L1 extraction on every file → 81s for 545 PDFs
+│   │   ├── Current: fast-mode extraction on every file → 81s for 545 PDFs
 │   │   ├── Pre-index text content in .mm/text_cache/ (one-time cost)
 │   │   ├── Subsequent greps search the text cache (< 1s for 500 files)
 │   │   ├── Rust-native regex search over cached text (bypass Python)
@@ -68,7 +68,7 @@ mm roadmap
 │   │
 │   │   Extract the maximum possible signal from each file type using only
 │   │   local, deterministic, sub-second operations. No network calls,
-│   │   no GPU, no model weights. This is the "L1.5" layer.
+│   │   no GPU, no model weights. This is the smart local extraction layer.
 │   │
 │   ├── [DONE] PDF → visual snapshots (mm cat)
 │   │   ├── Render pages to thumbnails via pypdfium2 + Pillow
@@ -83,7 +83,7 @@ mm roadmap
 │   │   ├── Average color histogram (dominant colors as hex triplet)
 │   │   ├── Aspect ratio + orientation classification (portrait/landscape/square)
 │   │   ├── Near-duplicate detection: hamming distance on pHash < 8 (DONE)
-│   │   ├── Add to L1Record: phash, dominant_colors, aspect (DONE)
+│   │   ├── Add to fast-mode record: phash, dominant_colors, aspect (DONE)
 │   │   └── All in Rust via image crate (already a dep), ~1ms/image
 │   │
 │   ├── Document structure extraction
@@ -98,7 +98,7 @@ mm roadmap
 │   │   ├── Import graph (which modules does this file depend on)
 │   │   ├── Complexity heuristic (line count × nesting depth)
 │   │   ├── Languages: Python, Rust, JS/TS, Go, Java, C/C++
-│   │   └── Add to L1Record: symbols, imports, complexity_score
+│   │   └── Add to fast-mode record: symbols, imports, complexity_score
 │   │
 │   ├── Video scene graph
 │   │   ├── Scene boundary detection (already have scene-change mosaics)
@@ -122,15 +122,15 @@ mm roadmap
 │
 ├── P2 — VLM-in-the-Loop (Remaining 20%)
 │   │
-│   │   Use VLMs selectively where L1.5 leaves gaps. Key insight: the smart
+│   │   Use VLMs selectively where the smart local layer leaves gaps. Key insight: the smart
 │   │   extraction layer provides enough structure to know WHICH files need
 │   │   VLM attention and WHAT to ask about them. Targeted queries >> blind captioning.
 │   │
 │   ├── Keyframe mosaic → VLM video summary
 │   │   ├── Feed mosaic grid(s) to qwen3-2b / llava for scene description
 │   │   ├── describe_video() already implemented, needs CLI integration
-│   │   ├── mm cat video.mp4 --level 2 → mosaic + VLM caption
-│   │   ├── Batch: mm find --kind video | mm cat --level 2 --format=json
+│   │   ├── mm cat video.mp4 -m accurate → mosaic + VLM caption
+│   │   ├── Batch: mm find --kind video | mm cat -m accurate --format=json
 │   │   └── Output: {filename_suggestion, tags, summary, scenes}
 │   │
 │   ├── Audio transcription pipeline
@@ -145,7 +145,7 @@ mm roadmap
 │   │   ├── Page thumbnails (from P1) → VLM for table/chart extraction
 │   │   ├── Targeted: only pages where text extraction returned <50 chars
 │   │   ├── Output structured data: extracted tables as CSV, chart descriptions
-│   │   └── mm cat scanned.pdf --level 2 → OCR + layout understanding
+│   │   └── mm cat scanned.pdf -m accurate → OCR + layout understanding
 │   │
 │   ├── Embedding generation
 │   │   ├── SemanticAnalyzer.embed() trait already defined in Rust
@@ -158,7 +158,7 @@ mm roadmap
 │       ├── mm search "query" — natural language search across all files
 │       ├── Hybrid: keyword (grep) + vector (embedding cosine similarity)
 │       ├── Cross-modal: text query → image/video/document results
-│       └── Ranking: combine L0 metadata, L1 features, L2 embeddings
+│       └── Ranking: combine metadata, fast-mode features, accurate-mode embeddings
 │
 ├── P3 — Context Builder (The Killer Feature)
 │   │
@@ -218,7 +218,7 @@ mm roadmap
 │   │
 │   ├── Cloud storage backends
 │   │   ├── S3/GCS/Azure Blob as scan targets (list + head requests)
-│   │   ├── Lazy download: only fetch content for L1+ when needed
+│   │   ├── Lazy download: only fetch content for fast-mode extraction when needed
 │   │   └── Cache metadata locally in .mm/
 │   │
 │   └── Pre-built wheels + Homebrew
@@ -229,7 +229,7 @@ mm roadmap
 │
 └── Performance Targets
     │
-    ├── L0 scan
+    ├── Metadata scan
     │   ├── Current: 5ms / 249 files, 5.7ms / 1K files
     │   ├── With persistent index: <2ms / 1K files (no changes)
     │   └── Target: <50ms / 100K files
@@ -239,19 +239,19 @@ mm roadmap
     │   ├── With Rust JSON: <30ms in-process for --format=json
     │   └── Target: <50ms wall-clock for any --format=json command
     │
-    ├── L1 batch extraction
+    ├── Fast-mode batch extraction
     │   ├── Current: 5.1s for 17 videos (sequential)
     │   ├── Target: <1s for 17 videos (parallel)
     │   └── Target: <100ms for 200 images (parallel hash + dims)
     │
-    ├── L1.5 smart extraction
+    ├── Smart local extraction
     │   ├── PDF page thumbnails: <20ms/page
     │   ├── Image pHash: <1ms/image (DONE)
     │   ├── Code symbol extraction: <5ms/file (tree-sitter)
     │   └── Video scene graph: <2s for 86min video
     │
     └── Context generation
-        ├── mm context (L0+L1): <200ms for 1K files
-        ├── mm context --level 2: depends on VLM latency
+        ├── mm context (metadata + fast mode): <200ms for 1K files
+        ├── mm context -m accurate: depends on VLM latency
         └── Token estimation: <1ms/file (byte heuristic)
 ```

@@ -9,6 +9,7 @@ on:
       - "crates/**"
       - "Cargo.toml"
       - ".github/workflows/ci.yml"
+      - ".pre-commit-config.yaml"
   push:
     branches:
       - main
@@ -18,21 +19,117 @@ on:
       - "crates/**"
       - "Cargo.toml"
       - ".github/workflows/ci.yml"
+      - ".pre-commit-config.yaml"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
+  check-version:
+    runs-on: ubuntu-latest
+    outputs:
+      changed: ${{ steps.version_check.outputs.changed }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - name: Check if version changed
+        id: version_check
+        run: |
+          CURRENT=$(python3 -c "import re, pathlib; print(re.search(r'version\s*=\s*\"([^\"]+)\"', pathlib.Path('pyproject.toml').read_text()).group(1))")
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            BASE_REF="origin/${{ github.event.pull_request.base.ref }}"
+          else
+            BASE_REF="HEAD~1"
+          fi
+          BASE=$(git show "${BASE_REF}:pyproject.toml" 2>/dev/null | python3 -c "import re,sys; m=re.search(r'version\s*=\s*\"([^\"]+)\"', sys.stdin.read()); print(m.group(1) if m else '')" || echo '')
+          if [ "$CURRENT" != "$BASE" ]; then
+            echo "changed=true" >> $GITHUB_OUTPUT
+            echo "Version changed: $BASE -> $CURRENT"
+          else
+            echo "changed=false" >> $GITHUB_OUTPUT
+            echo "Version unchanged: $CURRENT"
+          fi
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+      - uses: astral-sh/setup-uv@v4
+      - name: Install dev dependencies
+        run: |
+          uv venv --python 3.10
+          uv pip install -e ".[dev]"
+      - name: Quality Check (pre-commit)
+        uses: pre-commit/action@v3.0.1
+      - name: Type Check (ty)
+        continue-on-error: true
+        run: make typecheck
+
   test-rust:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
       - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: rust-stable
+          cache-on-failure: true
       - run: make lint-rust
       - run: make test-rust
 
   test-python:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.10"]
+    steps:
+      - uses: actions/checkout@v6
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Python v-${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - uses: astral-sh/setup-uv@v4
+        with:
+          enable-cache: true
+          cache-dependency-glob: "pyproject.toml"
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: rust-stable
+          cache-on-failure: true
+
+      - name: Restore pytest cache
+        uses: actions/cache@v4
+        with:
+          path: .pytest_cache
+          key: pytest-${{ runner.os }}-py${{ matrix.python-version }}-${{ hashFiles('pyproject.toml') }}
+          restore-keys: |
+            pytest-${{ runner.os }}-py${{ matrix.python-version }}-
+
+      - name: Install dependencies and build Rust extension
+        run: |
+          uv venv --python ${{ matrix.python-version }}
+          uv pip install -e ".[dev,extract,datasets]"
+          uv run maturin develop --release
+      - run: make lint-python
+      - run: make test-python-fast
+
+  # Full Python suite (fast + slow + integration). Runs only when the
+  # project version changes, since the slow tier includes pytest-
+  # benchmark suites and CLI cold-start subprocess benchmarks that add
+  # several minutes per run.
+  test-python-full:
+    needs: check-version
+    if: needs.check-version.outputs.changed == 'true'
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -52,11 +149,11 @@ jobs:
           uv venv --python ${{ matrix.python-version }}
           uv pip install -e ".[dev,extract,datasets]"
           uv run maturin develop --release
-      - run: make lint-python
-      - run: make test-python
+      - run: make test-python-full
 
   benchmark:
-    if: github.event_name == 'pull_request'
+    needs: check-version
+    if: github.event_name == 'pull_request' && needs.check-version.outputs.changed == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -64,6 +161,10 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: rust-bench
+          cache-on-failure: true
 
       - run: cargo bench --workspace
 
@@ -107,7 +208,8 @@ jobs:
           alert-comment-cc-users: "@nwaughachukwuma"
 
   benchmark-pages:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: check-version
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.check-version.outputs.changed == 'true'
     runs-on: ubuntu-latest
     permissions:
       deployments: write
@@ -115,6 +217,10 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: rust-bench
+          cache-on-failure: true
       - run: cargo bench --workspace
       - name: Extract benchmark results from Criterion JSON
         run: |

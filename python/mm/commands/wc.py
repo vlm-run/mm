@@ -7,6 +7,8 @@ from typing import Annotated, Optional
 
 import typer
 
+from mm.utils import Format
+
 TOKEN_CHARS_RATIO = 4
 
 # Canonical field names — used in data dicts, JSON keys, column headers, row
@@ -25,7 +27,7 @@ def wc_cmd(
     kind: Annotated[Optional[str], typer.Option("--kind", "-k", help="Filter by kind")] = None,
     by_kind: Annotated[bool, typer.Option("--by-kind", help="Break down by file kind")] = False,
     format: Annotated[
-        Optional[str],
+        Optional[Format],
         typer.Option(
             "--format", "-f", help="Output format: json, tsv, csv, dataset-jsonl, dataset-hf"
         ),
@@ -50,7 +52,7 @@ def wc_cmd(
 
     import json as json_mod
 
-    fmt = resolve_format(format)
+    fmt = resolve_format(format.value if format else None)
     root = Path(directory).resolve()
     stdin_paths = read_paths_from_stdin()
     scanner = Scanner(str(root))
