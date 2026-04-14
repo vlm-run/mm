@@ -145,7 +145,7 @@ mod tests {
     fn test_file_entry_defaults() {
         let dir = TempDir::new().unwrap();
         fs::write(dir.path().join("test.py"), "x = 1").unwrap();
-        let entries = scan_directory(dir.path(), None);
+        let entries = scan_directory(dir.path(), None, false);
         assert_eq!(entries.len(), 1);
         assert!(entries[0].width.is_none());
         assert!(entries[0].height.is_none());
@@ -158,7 +158,7 @@ mod tests {
         create_png(&dir.path().join("b.png"), 200, 150);
         fs::write(dir.path().join("c.py"), "x = 1").unwrap();
 
-        let mut entries = scan_directory(dir.path(), None);
+        let mut entries = scan_directory(dir.path(), None, false);
         enrich_image_dimensions(&mut entries, dir.path());
 
         let img_a = entries.iter().find(|e| e.name.as_str() == "a.png").unwrap();
@@ -179,7 +179,7 @@ mod tests {
         let dir = TempDir::new().unwrap();
         fs::write(dir.path().join("bad.png"), b"not a real png").unwrap();
 
-        let mut entries = scan_directory(dir.path(), None);
+        let mut entries = scan_directory(dir.path(), None, false);
         enrich_image_dimensions(&mut entries, dir.path());
 
         let bad = entries
@@ -195,7 +195,7 @@ mod tests {
         let dir = TempDir::new().unwrap();
         fs::write(dir.path().join("clip.mp4"), b"\x00\x00").unwrap();
 
-        let mut entries = scan_directory(dir.path(), None);
+        let mut entries = scan_directory(dir.path(), None, false);
         enrich_image_dimensions(&mut entries, dir.path());
 
         let video = entries
@@ -213,7 +213,7 @@ mod tests {
         fs::create_dir(&sub).unwrap();
         create_png(&sub.join("deep.png"), 64, 32);
 
-        let mut entries = scan_directory(dir.path(), None);
+        let mut entries = scan_directory(dir.path(), None, false);
         enrich_image_dimensions(&mut entries, dir.path());
 
         let deep = entries
@@ -236,7 +236,7 @@ mod tests {
         fs::write(dir.path().join("g.md"), "").unwrap();
         fs::write(dir.path().join("h.pdf"), b"").unwrap();
 
-        let entries = scan_directory(dir.path(), None);
+        let entries = scan_directory(dir.path(), None, false);
         let kinds: Vec<FileKind> = entries.iter().map(|e| e.kind).collect();
         assert!(kinds.contains(&FileKind::Code));
         assert!(kinds.contains(&FileKind::Image));
@@ -252,7 +252,7 @@ mod tests {
     fn test_timestamps_nonzero() {
         let dir = TempDir::new().unwrap();
         fs::write(dir.path().join("test.py"), "x = 1").unwrap();
-        let entries = scan_directory(dir.path(), None);
+        let entries = scan_directory(dir.path(), None, false);
         assert!(entries[0].modified_epoch_us > 0);
         // created_epoch_us (birth time) is not available on all
         // filesystems / kernels (e.g. ext4 without statx), so we
@@ -265,7 +265,7 @@ mod tests {
         let dir = TempDir::new().unwrap();
         let content = "hello world\n";
         fs::write(dir.path().join("test.txt"), content).unwrap();
-        let entries = scan_directory(dir.path(), None);
+        let entries = scan_directory(dir.path(), None, false);
         assert_eq!(entries[0].size, content.len() as u64);
     }
 
@@ -273,7 +273,7 @@ mod tests {
     fn test_stem_name_ext() {
         let dir = TempDir::new().unwrap();
         fs::write(dir.path().join("myfile.py"), "").unwrap();
-        let entries = scan_directory(dir.path(), None);
+        let entries = scan_directory(dir.path(), None, false);
         assert_eq!(entries[0].name.as_str(), "myfile.py");
         assert_eq!(entries[0].stem.as_str(), "myfile");
         assert_eq!(entries[0].ext.as_str(), ".py");

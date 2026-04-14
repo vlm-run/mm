@@ -77,6 +77,11 @@ mm find <dir> --tree --format json                    # JSON tree structure
 # Schema inspection
 mm find <dir> --schema                                # Rich table with column docs
 mm find <dir> --schema --format json                  # machine-readable
+
+# Include gitignored files
+mm find <dir> --no-ignore                             # bypass .gitignore rules
+mm find <dir> --no-ignore --kind video                # gitignored videos
+mm find <dir> --no-ignore --tree                      # tree including ignored dirs
 ```
 
 Columns in the `files` table:
@@ -384,6 +389,8 @@ mm grep "TODO" <dir> --kind code                       # search code files
 mm grep "invoice" <dir> --kind document --format json  # JSON output
 mm grep "error" <dir> -C 2                             # 2 context lines
 mm grep "invoice" <dir> --count                        # match counts per file
+mm grep "Quantum Phase" <dir> -i                       # case-insensitive search
+mm grep "TODO" <dir> --ignore-case --kind code         # case-insensitive in code
 
 # Semantic search (vector similarity via embeddings)
 mm grep "financial projections" <dir>                  # semantic search across all files

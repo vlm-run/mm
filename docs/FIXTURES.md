@@ -197,6 +197,20 @@ document  192580     document.invoice/hub_examples_document.invoice_google_invoi
 document  47568      document.invoice/hub_examples_document.invoice_receipt.pdf
 ```
 
+### Include gitignored files
+
+```bash
+$ mm find ~/data/domains --no-ignore --kind video
+```
+
+```
+name                                kind   size        ext
+bakery.mp4                          video  29346272    .mp4
+google_next_2025_keynote.mp4        video  173208064   .mp4
+```
+
+By default, `mm find` respects `.gitignore` rules (using the `ignore` crate). Pass `--no-ignore` to bypass this and include all files regardless of gitignore patterns.
+
 ### Large documents (>10 MB)
 
 ```bash
@@ -311,6 +325,19 @@ healthcare-codegen-reports/longevity_intake_form_scanned.pdf
     3  for a longevity screening patient. Combines:
   210  ...presenting for comprehensive longevity screening...
 ```
+
+### Case-insensitive search
+
+```bash
+$ mm grep "Quantum Phase" ~/data/domains --kind document -i
+```
+
+```
+document.science/paper.pdf
+   34  Persistent homology maps the same quantum phase across decades...
+```
+
+The `-i` / `--ignore-case` flag makes the regex match case-insensitive, matching the standard `grep -i` behavior.
 
 ### Semantic search (vector similarity)
 

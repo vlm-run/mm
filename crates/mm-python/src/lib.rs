@@ -17,6 +17,7 @@ use mm_core::meta::FileKind;
 struct Scanner {
     root: PathBuf,
     n_threads: Option<usize>,
+    no_ignore: bool,
     entries: Vec<mm_core::FileEntry>,
     batch: Option<RecordBatch>,
 }
@@ -24,18 +25,19 @@ struct Scanner {
 #[pymethods]
 impl Scanner {
     #[new]
-    #[pyo3(signature = (root, n_threads=None))]
-    fn new(root: String, n_threads: Option<usize>) -> Self {
+    #[pyo3(signature = (root, n_threads=None, no_ignore=false))]
+    fn new(root: String, n_threads: Option<usize>, no_ignore: bool) -> Self {
         Scanner {
             root: PathBuf::from(root),
             n_threads,
+            no_ignore,
             entries: Vec::new(),
             batch: None,
         }
     }
 
     fn scan(&mut self) -> PyResult<usize> {
-        self.entries = mm_core::scan_directory(&self.root, self.n_threads);
+        self.entries = mm_core::scan_directory(&self.root, self.n_threads, self.no_ignore);
         mm_core::enrich_image_dimensions(&mut self.entries, &self.root);
         let count = self.entries.len();
         let batch = mm_core::build_l0_record_batch(&self.entries)

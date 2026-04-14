@@ -38,7 +38,7 @@ fn bench_wc(c: &mut Criterion) {
     for size in [100, 500] {
         let dir = TempDir::new().unwrap();
         create_mixed_tree(dir.path(), size);
-        let entries = mm_core::scan_directory(dir.path(), None);
+        let entries = mm_core::scan_directory(dir.path(), None, false);
         let refs: Vec<&mm_core::FileEntry> = entries.iter().collect();
 
         // count_entries: parallel file reads + line/token counting

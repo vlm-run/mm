@@ -28,7 +28,7 @@ fn bench_l0_walk(c: &mut Criterion) {
 
         group.bench_with_input(BenchmarkId::from_parameter(size), &size, |b, _| {
             b.iter(|| {
-                let entries = mm_core::scan_directory(dir.path(), None);
+                let entries = mm_core::scan_directory(dir.path(), None, false);
                 assert!(!entries.is_empty());
             });
         });
