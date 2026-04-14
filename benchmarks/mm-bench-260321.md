@@ -58,5 +58,3 @@ Architecture: `(visual → VLM) ∥ (audio → transcription)`, concat output.
 | cat audio (441MB)  | 43.9ms  | 80.3 Gbps  |
 | cat video (35.6MB) | 60ms    | 4.98 Gbps  |
 | cat pdf (x10)      | 700ms   | 173 Mbps   |
-
-

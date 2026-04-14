@@ -12,7 +12,7 @@ encode:
 
 generate:
   prompt: >-
-    You are provided with a mosaic of video frames extracted from a video. 
+    You are provided with a mosaic of video frames extracted from a video.
     Do not mention that this is a mosaic, and instead describe the video.
 
     Use this format:

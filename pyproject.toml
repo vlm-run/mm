@@ -46,9 +46,9 @@ mlx = [
 dev = [
     "pytest>=8.0",
     "pytest-benchmark>=4.0",
-    "mypy>=1.10",
-    "types-PyYAML>=6.0",
+    "ty>=0.0.28",
     "ruff>=0.4",
+    "pre-commit>=4.0",
     "maturin>=1.7",
 ]
 
@@ -72,11 +72,10 @@ addopts = "-m 'not integration'"
 target-version = "py310"
 line-length = 100
 
-[tool.mypy]
-python_version = "3.10"
-warn_return_any = true
-warn_unused_configs = true
-ignore_missing_imports = true
+[tool.ty.environment]
+python-version = "3.10"
 
-[tool.pyright]
-reportMissingImports = "none"
+[tool.ty.rules]
+# Start with warnings for gradual adoption
+possibly-missing-attribute = "warn"
+unresolved-import = "warn"
