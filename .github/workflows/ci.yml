@@ -147,7 +147,7 @@ jobs:
       - name: Install dependencies and build Rust extension
         run: |
           uv venv --python ${{ matrix.python-version }}
-          uv pip install -e ".[dev]"
+          uv pip install -e ".[dev,gemini]"
           uv run maturin develop --release
       - run: make test-python-full
 
