@@ -23,6 +23,21 @@ from mm.store.embed import (
 from .conftest import requires_sqlite_vec
 from .test_utils import ensure_l1, get_hash
 
+
+def _genai_available() -> bool:
+    try:
+        import google.genai  # noqa: F401
+
+        return True
+    except ImportError:
+        return False
+
+
+requires_gemini = pytest.mark.skipif(
+    not _genai_available(),
+    reason="google-genai not installed (pip install mm[gemini])",
+)
+
 FAKE_DIM = 4
 
 
@@ -62,6 +77,7 @@ def db(tmp_path: Path) -> MmDatabase:
 # ---------------------------------------------------------------------------
 
 
+@requires_gemini
 class TestPartConstructors:
     def test_text_part(self):
         from google.genai import types
@@ -113,6 +129,7 @@ class TestPartConstructors:
 # ---------------------------------------------------------------------------
 
 
+@requires_gemini
 class TestEmbedParts:
     def test_embed_parts_sends_correct_request(self, mock_server: MagicMock):
         parts = [text_part("one"), text_part("two")]
@@ -144,6 +161,7 @@ class TestEmbedParts:
 # ---------------------------------------------------------------------------
 
 
+@requires_gemini
 class TestEmbedFileChunks:
     @requires_sqlite_vec
     def test_embeds_chunks_after_l2(self, db: MmDatabase, mock_server: MagicMock):

@@ -7,7 +7,9 @@ develop:
 build:
 	uv run maturin build --release
 
-test: test-rust test-python
+test: test-rust test-python ## Fast unit tests only (excludes slow/benchmark/integration)
+
+test-all: test-rust test-python-all ## All tests including slow, benchmarks, and integration
 
 test-rust:
 	cargo test --workspace

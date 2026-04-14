@@ -3,7 +3,7 @@
 Detects scene changes in video files and provides uniform sampling
 of scene midpoints for mosaic extraction.
 
-Install: pip install mm[extract]
+scenedetect is included in the default ``mm`` install.
 """
 
 from __future__ import annotations
