@@ -232,19 +232,24 @@ def _find_table(
         emit_rows(fmt, rows)
         return
 
-    elif fmt in ("tsv", "csv"):
+    elif fmt == "csv":
         import csv
         import io
 
         display_cols = cols or table.column_names
         buf = io.StringIO()
-        sep = "\t" if fmt == "tsv" else ","
-        writer = csv.writer(buf, delimiter=sep)
+        writer = csv.writer(buf)
         writer.writerow(display_cols)
         n = table.num_rows if limit is None else min(limit, table.num_rows)
         for i in range(n):
             writer.writerow(str(table.column(c)[i].as_py()) for c in display_cols)
         print(buf.getvalue(), end="")
+    elif fmt == "tsv":
+        display_cols = cols or table.column_names
+        n = table.num_rows if limit is None else min(limit, table.num_rows)
+        print("\t".join(display_cols))
+        for i in range(n):
+            print("\t".join(str(table.column(c)[i].as_py()) for c in display_cols))
     else:
         from mm.display import arrow_table_to_rich, output_console
 

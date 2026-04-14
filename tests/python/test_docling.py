@@ -82,7 +82,7 @@ class TestConvertToMarkdown:
             # Need to patch at import time
             import mm.docling_extract as de
 
-            original = de.convert_to_markdown
+            _ = de.convert_to_markdown  # noqa: F841
 
             # Directly test the mock path
             result = DoclingResult(

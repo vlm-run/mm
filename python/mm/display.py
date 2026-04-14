@@ -115,18 +115,12 @@ def resolve_format(fmt: str | None) -> str:
 
 def emit_tsv(rows: list[dict], columns: list[str] | None = None) -> None:
     """Print rows as TSV with a header line."""
-    import csv
-    import io
-
     if not rows:
         return
     cols = columns or list(rows[0].keys())
-    buf = io.StringIO()
-    writer = csv.writer(buf, delimiter="\t")
-    writer.writerow(cols)
+    print("\t".join(cols))
     for row in rows:
-        writer.writerow(str(row.get(c, "")) for c in cols)
-    print(buf.getvalue(), end="")
+        print("\t".join(str(row.get(c, "")) for c in cols))
 
 
 def emit_csv(rows: list[dict], columns: list[str] | None = None) -> None:
@@ -443,18 +437,46 @@ def info_panel(stats: dict[str, Any], title: str = "mm"):
     )
 
 
-def display_elapsed(start_time: float) -> None:
-    """display elapsed time since start_time in a human-friendly format.
+def display_elapsed(start_time: float, total_bytes: int = 0, cached: bool = False) -> None:
+    """display elapsed time since start_time with throughput metrics.
 
     Only prints when the command completed successfully.
 
     Args:
         start_time: start time in seconds (from time.perf_counter())
+        total_bytes: total bytes processed (for throughput calculation)
+        cached: whether the result was served from cache
     """
     assert start_time > 0
     elapsed_ms = (perf_counter() - start_time) * 1000
-    elapsed_value = f"{elapsed_ms:.0f}ms" if elapsed_ms < 1000 else f"{elapsed_ms / 1000:.1f}s"
-    console.print(f"[dim]completed in {elapsed_value} [/dim]")
+    elapsed_s = elapsed_ms / 1000.0
+
+    elapsed_value = f"{elapsed_ms:,.0f}ms"
+
+    output_parts: list[str] = []
+    if cached:
+        output_parts.append("cached")
+    output_parts.append(elapsed_value)
+
+    if total_bytes > 0:
+        size_str = format_size(total_bytes)
+        output_parts.append(size_str)
+
+        throughput_bytes_s = total_bytes / elapsed_s if elapsed_s > 0 else 0
+
+        if throughput_bytes_s < 1024:
+            throughput_str = f"{throughput_bytes_s:.1f} B/s"
+        elif throughput_bytes_s < 1024 * 1024:
+            throughput_str = f"{throughput_bytes_s / 1024:.1f} KB/s"
+        elif throughput_bytes_s < 1024 * 1024 * 1024:
+            throughput_str = f"{throughput_bytes_s / (1024 * 1024):.1f} MB/s"
+        else:
+            throughput_str = f"{throughput_bytes_s / (1024 * 1024 * 1024):.1f} GB/s"
+
+        output_parts.append(throughput_str)
+
+    output_text = " \u2022 ".join(output_parts)
+    output_console.print(f"[dim]{output_text}[/dim]")
 
 
 def display_elapsed_wrapper(start_time: float):
@@ -468,6 +490,16 @@ def display_elapsed_wrapper(start_time: float):
 
     def display_if_successful():
         if successful[0]:
-            display_elapsed(start_time)
+            total_bytes = 0
+            cached = False
+            try:
+                from mm.commands import cat as cat_module
+
+                total_bytes = getattr(cat_module, "_total_bytes_processed", 0)
+                cached = getattr(cat_module, "_was_cached", False)
+            except (ImportError, AttributeError):
+                pass
+
+            display_elapsed(start_time, total_bytes, cached=cached)
 
     return check_exit, display_if_successful

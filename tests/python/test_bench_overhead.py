@@ -1,9 +1,17 @@
-"""Benchmarks for Python import time and CLI cold-start overhead."""
+"""Benchmarks for Python import time and CLI cold-start overhead.
+
+These spawn many subprocesses and are part of the ``slow`` tier.
+Run with ``make test-python-full`` or ``pytest -m slow`` locally.
+"""
 
 from __future__ import annotations
 
 import subprocess
 import sys
+
+import pytest
+
+pytestmark = pytest.mark.slow
 
 # ---------------------------------------------------------------------------
 # (a) Import overhead

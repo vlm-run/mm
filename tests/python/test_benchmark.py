@@ -1,10 +1,17 @@
-"""Performance benchmarks for mm Python API."""
+"""Performance benchmarks for mm Python API.
+
+These are part of the ``slow`` tier — deselected by default so
+``make test-python`` stays fast. Run with ``make test-python-full``
+or ``pytest -m slow`` locally.
+"""
 
 from __future__ import annotations
 
 from pathlib import Path
 
 import pytest
+
+pytestmark = pytest.mark.slow
 
 
 # ---------------------------------------------------------------------------
@@ -80,7 +87,11 @@ def test_bench_l1_code_batch(benchmark, mixed_1k_tree: Path):
     scanner = Scanner(str(mixed_1k_tree))
     scanner.scan()
 
-    code_files = [f"src/file_{i}.py" for i in range(0, 800, 10) if (mixed_1k_tree / f"src/file_{i}.py").exists()][:20]
+    code_files = [
+        f"src/file_{i}.py"
+        for i in range(0, 800, 10)
+        if (mixed_1k_tree / f"src/file_{i}.py").exists()
+    ][:20]
 
     def extract_batch():
         for f in code_files:

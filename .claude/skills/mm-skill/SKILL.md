@@ -29,11 +29,11 @@ curl -LsSf https://vlm-run.github.io/mm/install/install.sh | sh
 | Command   | Purpose                                                                     |
 | --------- | --------------------------------------------------------------------------- |
 | `find`    | Locate/list files by name/kind/ext/size, tabular listing, tree view, schema |
-| `cat`     | Content extraction (auto-detected by file type × level)                     |
-| `grep`    | Content search — text (L0/L1) and semantic (L2 via embeddings)              |
-| `sql`     | SQL on files, L2 results, and chunks (auto-routed)                          |
+| `cat`     | Content extraction (auto-detected by file type × mode)                      |
+| `grep`    | Content search — text and semantic (via embeddings)                         |
+| `sql`     | SQL on files, results, and chunks (auto-routed)                             |
 | `wc`      | Count files, bytes, lines, tokens                                           |
-| `bench`   | Benchmark suite (L0/L1/L2) with statistical analysis                        |
+| `bench`   | Benchmark suite with statistical analysis                                   |
 | `config`  | Extraction mode settings (show, init, set, reset-db)                        |
 | `profile` | Manage LLM provider profiles (list, add, update, use, remove)               |
 
@@ -43,7 +43,7 @@ curl -LsSf https://vlm-run.github.io/mm/install/install.sh | sh
 2. Use `mm wc <dir> --by-kind` to estimate token counts for LLM context budgeting.
 3. Use `mm find <dir> --schema` to see available columns before writing SQL.
 4. Explore with `find`, `sql`, `grep`, `cat` as needed.
-5. Use `mm cat <file> -l 2` for LLM-powered descriptions (auto-generates mosaics for video).
+5. Use `mm cat <file> -m accurate` for LLM-powered descriptions.
 
 ## find — locate files, tabular listing, tree view, schema
 
@@ -98,46 +98,270 @@ Columns in the `files` table:
 | width     | uint32    | Pixel width (images only, null otherwise)                                        |
 | height    | uint32    | Pixel height (images only, null otherwise)                                       |
 
-## cat — content extraction (auto-detected)
+## cat — content extraction (pipeline-driven)
 
-Behaviour is auto-detected from (file type × processing level). No mode flags needed.
+Behaviour is auto-detected from file type. Default `--mode fast` runs local extraction (no LLM). Use `-m accurate` for LLM-powered descriptions.
 
 ```bash
-# Text/metadata extraction (L1 default, <100ms for media)
-mm cat <file>                                       # L1 extracted content
-mm cat <file> --level 0                             # raw file content
-mm cat <file> --level 2                             # LLM caption (needs configured profile)
-mm cat <file> -l 2 --detail                         # ~80-word LLM description
-mm cat <file> -l 2                                  # basic LLM caption (default)
-mm cat <file> -l 2 --mode fast                       # fast extraction (10 words + 5 tags)
-mm cat <file> -l 2 --mode accurate                   # detailed extraction (200 words + 10 tags)
-mm cat <file> -l 2 --no-cache                       # bypass cache, force fresh LLM call
+# Fast mode (default) — local extraction, no LLM
+mm cat <file>                                       # text/metadata extraction
+mm cat photo.png                                    # image metadata (dims, MIME, hash, EXIF)
+mm cat video.mp4                                    # video metadata (resolution, duration, codecs)
+mm cat paper.pdf                                    # text extraction via pypdfium2
+
+# Accurate mode — LLM-powered descriptions
+mm cat photo.png -m accurate                        # VLM caption
+mm cat video.mp4 -m accurate                        # mosaic → VLM description
+mm cat audio.mp3 -m accurate                        # transcript → LLM summary
+mm cat paper.pdf -m accurate                        # text → LLM summary
 
 # Head / tail
 mm cat <file> -n 20                                 # first 20 lines
 mm cat <file> -n -10                                # last 10 lines
 
-# Video L2 (auto-generates keyframe mosaics → LLM description)
-mm cat <video.mp4> -l 2                             # keyframe mosaic → LLM description
-mm cat <video.mp4> -l 2 --video-mosaic-strategy scene  # scene-change mosaics
-mm cat <video.mp4> -l 2 --video-mosaic-count 4       # 4 mosaic grids
-mm cat <video.mp4> -l 2 --output-dir ./mosaics       # save mosaics to specific dir
+# Cache control
+mm cat <file> --no-cache                            # bypass cache, force fresh run
 
-# PDF L2
-mm cat <file.pdf> -l 2 --max-pages 8                # limit rendered pages
-
-# Output
+# Output formats
 mm cat <file> --format json                          # JSON output
 ```
 
-Level 1 behavior by file type (<100ms target):
+Fast mode behavior by file type (<100ms target):
 
 - **PDF** (.pdf): text extraction via pypdfium2. Scanned/image-only PDFs return empty.
-- **Document** (.docx, .pptx): markdown extraction via docling at L2.
+- **Document** (.docx, .pptx): text extraction.
 - **Image** (.png/.jpg/.webp/.gif/.bmp/.tiff/.svg): dimensions, MIME, xxh3 hash, EXIF data.
 - **Video** (.mp4/.mkv/.webm/.avi/.mov): resolution, duration, FPS, codecs (metadata only, no ffmpeg).
 - **Audio** (.mp3/.wav/.flac/.aac/.ogg/.m4a): duration, codec, bitrate (metadata only).
-- **Code/text/config**: raw content passthrough.
+
+## cat -p — named encoders and pipeline YAMLs
+
+The `-p` / `--pipeline` flag accepts either a registered encoder name or a YAML file path.
+
+```bash
+# Named encoder (encodes media into VLM-ready JSON messages)
+mm cat photo.png -p image-resize              # Fit to 1024px, base64 encode
+mm cat photo.png -p image-tile                # Resized overview + all tiles in one Message
+mm cat video.mp4 -p video-frame-sample        # Extract frames at 1fps
+mm cat video.mp4 -p video-chunk               # Chunk into 60s segments
+mm cat doc.pdf  -p document-rasterize         # Render pages as images
+mm cat doc.pdf  -p document-rasterize-text    # Rasterize + extract text
+
+# YAML pipeline file
+mm cat photo.png -p custom-pipeline.yaml
+
+# Multiple pipelines (dispatched by kind field in YAML)
+mm cat *.jpg *.mp4 -p image.yaml -p video.yaml
+
+# List available encoders and pipelines
+mm cat --list-pipelines
+```
+
+### Built-in encoders
+
+Use either the bare name or the kind-prefixed display name.
+
+| Name | Media | Description |
+|------|-------|-------------|
+| `image-resize` | image | **Default.** Fit to 1024px bounding box |
+| `image-tile` | image | Resized overview + tile crops in one Message |
+| `video-frame-sample` | video | Extract frames at *fps* (requires ffmpeg) |
+| `video-frames-transcript` | video | Frames + Whisper transcript (accurate mode default) |
+| `video-chunk` | video | Chunk into time-based segments with overlap |
+| `video-mosaic` | video | Build mosaic grids from sampled frames |
+| `video-shot-frames` | video | Scene detection → representative frames per shot |
+| `video-shot-mosaic` | video | Scene detection → mosaic grid per shot |
+| `video-gemini` | video | Pass video file as a Gemini Part |
+| `video-gemini-chunked` | video | Chunk video into Gemini Parts |
+| `audio-transcribe` | audio | Transcribe audio via Whisper (fast/accurate default) |
+| `audio-gemini` | audio | Pass audio file as a Gemini Part |
+| `document-page-text` | document | Extract text per page from PDF/DOCX/PPTX |
+| `document-rasterize` | document | Render PDF pages as images (requires pypdfium2) |
+| `document-rasterize-text` | document | Rasterize + extract text, interleaved |
+| `document-gemini` | document | Pass document file as a Gemini Part |
+
+### Writing custom encoders
+
+Create a `.py` file in `python/mm/encoders/image/`, `python/mm/encoders/video/` (auto-discovered) or `~/.config/mm/encoders/`. The `name` is optional — it defaults to the function name with underscores replaced by hyphens:
+
+```python
+from pathlib import Path
+from mm.encoders import register_encoder
+
+@register_encoder(media_types=("image",))
+def my_custom(path: Path, **kw):
+    """Registered as 'my-custom' (auto-named from function)."""
+    import base64, io
+    from PIL import Image
+    img = Image.open(path)
+    img.thumbnail((1024, 1024))
+    buf = io.BytesIO()
+    img.save(buf, "JPEG", quality=90)
+    b64 = base64.b64encode(buf.getvalue()).decode()
+    yield {"role": "user", "content": [
+        {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{b64}"}}
+    ]}
+```
+
+### Python API
+
+```python
+from mm import process_image, process_image_tiled, process_video, process_document
+from pathlib import Path
+
+msg = process_image(Path("photo.png"), max_width=1024)       # Single Message dict
+tiles = list(process_image_tiled(Path("scan.png"), tile_size=1024))  # Multiple Messages
+chunks = list(process_video(Path("video.mp4")))               # Multiple Messages
+pages = list(process_document(Path("doc.pdf")))               # Multiple Messages
+
+# Via Context
+from mm import Context
+ctx = Context("~/data")
+messages = ctx.encode("photo.png", strategy="resize")
+```
+
+## cat — pipeline overrides
+
+Pipelines are 2-stage YAMLs: **encode** (convert to LLM-ready parts) → **generate** (LLM call). Key parameters can be overridden from the CLI.
+
+### Encode overrides (--encode.*)
+
+```bash
+mm cat photo.png -m accurate --encode.strategy image-tile      # override encoder
+mm cat photo.png -m accurate --encode.pyfunc ~/my_filter.py    # custom transform
+```
+
+### Generate overrides (--generate.*)
+
+```bash
+mm cat photo.png -m accurate --generate.max-tokens 1024          # increase token limit
+mm cat photo.png -m accurate --generate.temperature 0.5           # higher temperature
+mm cat photo.png -m accurate --generate.prompt "List 3 main objects in this image."
+mm cat photo.png -m accurate --generate.json-mode true            # request JSON response
+```
+
+### Combining overrides
+
+```bash
+mm cat photo.png -m accurate \
+  --encode.strategy image-tile \
+  --generate.max-tokens 512 \
+  --generate.prompt "Analyze this architecture diagram."
+```
+
+## cat -p — explicit pipeline YAML
+
+Load custom pipeline configurations from YAML files. The YAML's `kind` field dispatches the pipeline to the correct media type. The `generate` field is optional — omit it for encode-only pipelines.
+
+### Single pipeline
+
+```yaml
+# custom-image.yaml
+kind: image
+mode: accurate
+encode:
+  strategy: resize
+  max_width: 512
+generate:
+  prompt: "What is in this image? One sentence only."
+  max_tokens: 64
+```
+
+```bash
+mm cat photo.png -p custom-image.yaml
+```
+
+### Encode-only pipeline (no LLM)
+
+```yaml
+# encode-only.yaml
+kind: document
+mode: fast
+encode:
+  strategy: null
+# generate omitted = encode-only, no LLM call
+```
+
+### Multi-document YAML
+
+```yaml
+kind: image
+mode: accurate
+encode:
+  strategy: image-tile
+  max_width: 2048
+generate:
+  prompt: "Describe this image in detail."
+  max_tokens: 512
+---
+kind: video
+mode: accurate
+encode:
+  mosaic_tile: "8x6"
+  mosaic_count: 2
+  frame_selection: scene
+generate:
+  prompt: "Summarize this video."
+  max_tokens: 1024
+```
+
+```bash
+mm cat *.jpg *.mp4 -p multi-pipeline.yaml
+```
+
+### CLI overrides layer on top of -p
+
+```bash
+mm cat photo.png -p my-pipeline.yaml --generate.max-tokens 128
+```
+
+### TOML pipeline path overrides
+
+Override default pipeline paths in `~/.config/mm/mm.toml`:
+
+```toml
+[pipelines]
+image.fast = "~/.config/mm/pipelines/image/fast.yaml"
+video.accurate = "/path/to/my-video-accurate.yaml"
+```
+
+## cat — custom Python transforms (pyfunc)
+
+The `--encode.pyfunc` flag runs a custom Python transform on the encoded content parts before they are sent to the LLM.
+
+### File-based pyfunc
+
+```bash
+# my_transform.py:
+# def transform(parts, context):
+#     extra = {"type": "text", "text": "Focus on the data flow."}
+#     return parts + [extra]
+
+mm cat photo.png -m accurate --encode.pyfunc ~/my_transform.py
+```
+
+### Pyfunc in pipeline YAML
+
+```yaml
+kind: image
+mode: accurate
+encode:
+  strategy: resize
+  max_width: 512
+  pyfunc: ~/my_transforms/filter.py
+generate:
+  prompt: "Analyze this image."
+  max_tokens: 128
+```
+
+Inline `def` syntax in YAML:
+
+```yaml
+encode:
+  pyfunc: |
+    def transform(parts, context):
+        return [p for p in parts if p.get("type") == "image_url"]
+```
 
 ## wc — count files, bytes, lines, tokens
 
@@ -153,34 +377,29 @@ Estimates LLM tokens (~chars/4 for text, tile-based for images). ~65ms.
 ## grep — content search (text + semantic)
 
 ```bash
-# Text search (L0/L1 — regex matching)
+# Text search (regex matching)
 mm grep "pattern" <dir>                                # search all files
 mm grep "attention" <dir> --kind document              # search only documents
 mm grep "TODO" <dir> --kind code                       # search code files
 mm grep "invoice" <dir> --kind document --format json  # JSON output
 mm grep "error" <dir> -C 2                             # 2 context lines
 mm grep "invoice" <dir> --count                        # match counts per file
-mm grep "def " <dir> --kind code --level 0             # search raw content (L0)
 
-# Semantic search (L2 — vector similarity via embeddings)
-mm grep "financial projections" <dir> -l 2             # semantic search across all files
-mm grep "patient diagnosis" <dir> -l 2 --kind document # semantic search in documents only
-mm grep "architecture overview" <dir> -l 2 --format json  # JSON output with distances
-mm grep "revenue forecast" <dir> -l 2 --index          # auto-index unindexed files before search
-find <dir> -name * | mm grep "revenue forecast" -l 2  # semantic search piped files
+# Semantic search (vector similarity via embeddings)
+mm grep "financial projections" <dir>                  # semantic search across all files
+mm grep "architecture overview" <dir> --format json    # JSON output with distances
+mm grep "revenue forecast" <dir> --index               # auto-index unindexed files before search
 ```
 
-**Warning**: L0/L1 grep runs extraction on every matching file. On large document directories (500+ PDFs), this can take minutes. Prefer `--kind code` or `--kind text` for fast text searches.
+**Warning**: grep runs extraction on every matching file. On large document directories (500+ PDFs), this can take minutes. Prefer `--kind code` or `--kind text` for fast text searches.
 
-**L2 semantic search** uses embeddings stored in sqlite-vec. Files must be indexed first — use `--index` to auto-index on demand, or manually via `mm cat <file> -l 2`. Returns top-k results ranked by vector distance.
-
-## sql — SQL queries on files, L2 results, and chunks
+## sql — SQL queries on files, results, and chunks
 
 Four tables available. Table is auto-detected from the `FROM` clause:
 
-- `files` — L0+L1 file metadata (via `--dir`, or persistent SQLite)
+- `files` — file metadata (via `--dir`, or persistent SQLite)
 - `l2_results` — LLM-generated summaries (persistent SQLite)
-- `chunks` — chunked L2 content (persistent SQLite)
+- `chunks` — chunked content (persistent SQLite)
 - `chunks_vec` — embedding vectors for semantic search (sqlite-vec virtual table)
 
 ```bash
@@ -188,33 +407,22 @@ Four tables available. Table is auto-detected from the `FROM` clause:
 mm sql "SELECT kind, COUNT(*) as n, ROUND(SUM(size)/1e6,1) as mb FROM files GROUP BY kind ORDER BY mb DESC" --dir <dir>
 mm sql "SELECT * FROM files WHERE kind='document'" --dir <dir> --format json
 
-# L2 results (SQLite direct)
+# LLM results (SQLite direct)
 mm sql "SELECT file_uri, profile, model, summary FROM l2_results LIMIT 10"
 mm sql "SELECT COUNT(*) as n FROM l2_results"
-
-# Chunks and embeddings (SQLite direct)
-mm sql "SELECT file_uri, chunk_idx, LENGTH(chunk_text) as len FROM chunks"
-
-# Pre-index unindexed files before query
-mm sql "SELECT kind, COUNT(*) as n FROM files GROUP BY kind" --dir <dir> --pre-index
 
 # List available tables
 mm sql --list-tables
 ```
 
-Stored table queries: ~100-180ms. Files queries: ~1.2s (includes directory scan).
-
 ## bench — benchmark suite
 
 ```bash
-mm bench <dir>                          # full benchmark (L0 + L1 + L2 fast)
+mm bench <dir>                          # full benchmark
 mm bench <dir> --rounds 5               # more measurement rounds
-mm bench <dir> --mode accurate           # include accurate-mode L2 benchmarks
-mm bench <dir> --mode all                # run both fast and accurate L2
-mm bench <dir> --format json             # JSON output for archival
+mm bench <dir> --mode accurate          # include accurate-mode benchmarks
+mm bench <dir> --format json            # JSON output for archival
 ```
-
-Runs 24 commands (L0×10, L1×8, L2×6) with statistical analysis and bits/s throughput.
 
 ## config — extraction mode settings
 
@@ -224,8 +432,7 @@ mm config init                                  # create config with default pro
 mm config init --force                          # overwrite existing config
 mm config set mode.fast.whisper_model tiny       # set a config value
 mm config set mode.accurate.beam_size 5          # set a config value
-mm config reset-db                              # delete all databases and caches (with confirmation)
-mm config reset-db --yes                        # skip confirmation
+mm config reset-db                              # delete all databases and caches
 ```
 
 ## profile — LLM provider management
@@ -234,20 +441,17 @@ Provider settings are managed through **profiles** stored in `~/.config/mm/mm.to
 
 ```bash
 mm profile list                                            # list all profiles (● = active)
-mm profile list --format json                              # JSON output
-mm profile add openrouter --base-url https://openrouter.ai/api/v1 --model vlm-1  # add (--base-url and --model required)
-mm profile update openrouter --model qwen3-vl:8b           # update fields on existing profile
+mm profile add openrouter --base-url https://openrouter.ai/api/v1 --model vlm-1
+mm profile update openrouter --model gemma4:e2b
 mm profile use openrouter                                  # switch active profile
-mm profile remove openrouter                               # remove (cannot remove active or 'default')
+mm profile remove openrouter
 ```
-
-> Active profile resolved as: `--profile` flag > `MM_PROFILE` env > `active_profile` in config file > `"default"`.
 
 Per-command profile selection:
 
 ```bash
-mm --profile openrouter cat photo.png -l 2       # one-off override
-MM_PROFILE=openrouter mm cat photo.png -l 2      # env override
+mm --profile openrouter cat photo.png -m accurate    # one-off override
+MM_PROFILE=openrouter mm cat photo.png -m accurate   # env override
 ```
 
 ## Output formats
@@ -268,35 +472,18 @@ mm find <dir> --kind document --min-size 10mb | wc -l  # count large PDFs
 mm find <dir> --kind video --format json | jq '.[].name'  # extract video names
 ```
 
-## Processing Levels
-
-| Level | What                                                                | Speed             | How                                                            |
-| ----- | ------------------------------------------------------------------- | ----------------- | -------------------------------------------------------------- |
-| L0    | File metadata (path, size, kind, ext, timestamps, dimensions)       | ~60ms / 700 files | Rust `stat()` + extension classification + image headers       |
-| L1    | Content extraction (text from PDF, image hash/EXIF, video metadata) | <100ms/file       | pypdfium2 (PDF), Rust mmap (images), mp4parse/matroska (video) |
-| L2    | Semantic understanding (captions, descriptions)                     | Varies            | LLM API via active profile                                     |
-
 ## Tips
 
-- All L0 commands (`find`, `wc` with `--format json`) run in ~60ms via the Rust fast path.
+- All metadata commands (`find`, `wc`) run in ~60ms via the Rust fast path.
 - `sql` on stored tables runs in ~100-180ms; `files` queries are ~1.2s (includes scan).
 - Start with `find --tree --depth 1` then `wc --by-kind` for the fastest directory overview.
-- Use `mm find . --tree` to explore project structure.
 - Use `--format json` when you need to parse output programmatically.
 - `find` returns paths only when piped, else it returns full metadata rows.
-- For exhaustive path lists, prefer `mm find <dir> --columns path | tail -n +2` and pipe/redirect as needed.
-- Start with `mm find <dir> --tree --depth 1` then `mm wc <dir> --by-kind` for the fastest directory overview.
-- Use `--format json` when you need to parse output programmatically.
-- `find` returns paths only when piped, full metadata rows in TTY.
-- `sql` is the most powerful command — queries auto-route to in-memory SQLite (`files`) or persistent SQLite (`l2_results`, `chunks`). Use `--list-tables` to see available tables.
-- For PDFs, `cat` extracts text at L1; if empty, the PDF contains scanned images only.
-- For videos, `cat -l 2` auto-generates keyframe mosaics and sends to LLM for description.
-- L2 uses the `openai` Python SDK via the active profile. Temperature defaults to 0.1.
-- Check available profiles with `mm profile list` and set an active profile with `mm profile use <profile_name>`.
-- If `cat -l 2` returns `[LLM error: Connection error.]`, immediately retry with per-command profile override (e.g., `mm --profile gemini cat <file> -l 2 --detail`). If L2 still fails after trying all the available profiles, fallback to L0+L1 output.
-- L2 modes: (default, simple LLM captions), `--mode fast` (10 words + tags), `--mode accurate` (200 words + tags).
-- Use `--mode fast` for quick L2 summaries (10 words), `--mode accurate` for detailed ones (200 words).
-- Use `--no-cache` with `cat -l 2` to force a fresh LLM call.
-- L2 semantic grep (`mm grep "query" <file_path> -l 2`) uses embeddings via sqlite-vec for vector similarity search.
-- Size filters accept human units: `1kb`, `5mb`, `1gb`.
-- Extension matching is case-sensitive: `.pdf` ≠ `.PDF`.
+- `sql` is the most powerful command — queries auto-route to in-memory SQLite (`files`) or persistent SQLite. Use `--list-tables` to see available tables.
+- For PDFs, `cat` extracts text in fast mode; if empty, the PDF contains scanned images only.
+- For videos, `mm cat video.mp4 -m accurate` auto-generates keyframe mosaics and sends to LLM.
+- Use `--mode fast` for quick metadata/text extraction (default), `--mode accurate` for LLM descriptions.
+- Use `--no-cache` with `-m accurate` to force a fresh LLM call.
+- Use `-p` to load custom pipeline YAMLs or named encoders; CLI overrides layer on top.
+- Use `--encode.pyfunc` to inject custom Python transforms.
+- Use `--list-pipelines` to see all available encoders and built-in pipelines.

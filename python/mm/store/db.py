@@ -71,18 +71,24 @@ class MmDatabase:
     def __init__(self, db_path: Path | None = None):
         self._db_path = db_path or self.DB_PATH
         self._conn: sqlite3.Connection | None = None
+        self._vec_available: bool = False
 
     @property
     def _connect(self) -> sqlite3.Connection:
         if self._conn is None:
-            import sqlite_vec
-
             self._db_path.parent.mkdir(parents=True, exist_ok=True)
             self._conn = sqlite3.connect(str(self._db_path))
             self._conn.row_factory = sqlite3.Row
-            self._conn.enable_load_extension(True)
-            sqlite_vec.load(self._conn)
-            self._conn.enable_load_extension(False)
+            self._vec_available = False
+            try:
+                import sqlite_vec
+
+                self._conn.enable_load_extension(True)
+                sqlite_vec.load(self._conn)
+                self._conn.enable_load_extension(False)
+                self._vec_available = True
+            except (AttributeError, ImportError, OSError):
+                pass
             self._conn.execute("PRAGMA journal_mode=WAL")
             self._conn.execute("PRAGMA foreign_keys=ON")
             self._ensure_tables()
@@ -368,6 +374,8 @@ class MmDatabase:
     # -- Embeddings --
 
     def _ensure_vec_table(self, dim: int) -> None:
+        if not self._vec_available:
+            return
         db = self._connect
         # Check if vec table exists
         exists = db.execute(
@@ -385,7 +393,7 @@ class MmDatabase:
         l2_id: str,
         vectors: list[list[float]],
     ) -> None:
-        if not vectors:
+        if not vectors or not self._vec_available:
             return
 
         import struct
@@ -413,6 +421,8 @@ class MmDatabase:
         limit: int = 10,
         where: str | None = None,
     ) -> list[dict[str, Any]]:
+        if not self._vec_available:
+            return []
         db = self._connect
         exists = db.execute(
             "SELECT 1 FROM sqlite_master WHERE type='table' AND name='chunks_vec'"
