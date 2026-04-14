@@ -45,9 +45,10 @@ def benchmark_func(
     **kwargs: P.kwargs,
 ) -> T:
     """Run callback and return (result, elapsed_ms)."""
-    print(f"Benchmarking function: {callback.__name__}", file=sys.stderr)
+    name = getattr(callback, "__name__", repr(callback))
+    print(f"Benchmarking function: {name}", file=sys.stderr)
     result, elapsed_ms = get_elapsed_ms(callback, *args, **kwargs)
-    print(f"Execution time for {callback.__name__}: {elapsed_ms:.2f} ms", file=sys.stderr)
+    print(f"Execution time for {name}: {elapsed_ms:.2f} ms", file=sys.stderr)
 
     return result
 

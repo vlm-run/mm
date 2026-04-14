@@ -14,7 +14,9 @@ def arrow_to_polars(table: pa.Table) -> pl.DataFrame:
     """Convert PyArrow Table to Polars DataFrame (zero-copy)."""
     import polars
 
-    return polars.from_arrow(table)  # type: ignore[return-value]
+    result = polars.from_arrow(table)
+    assert isinstance(result, polars.DataFrame)
+    return result
 
 
 def arrow_to_pandas(table: pa.Table) -> pd.DataFrame:

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Information-theoretic benchmarks for mm multi-modal extraction.
+"""Information-theoretic benchmarks for mm multimodal extraction.
 
 Measures bits/s throughput — how fast we extract semantic information
 from raw media data. Maximize bits/s, minimize latency.
@@ -298,7 +298,7 @@ def main():
     console.print()
     console.print(
         Panel(
-            "[bold]mm multi-modal extraction benchmarks[/bold]\n"
+            "[bold]mm multimodal extraction benchmarks[/bold]\n"
             "[dim]Information-theoretic: maximize bits/s, minimize latency[/dim]",
             border_style="bright_blue",
             box=box.DOUBLE,
