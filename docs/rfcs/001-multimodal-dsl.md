@@ -1,196 +1,44 @@
-# RFC 001: Multimodal DSL Extension
+# RFC 001: mm as a Polars Expression Library
 
-**Status**: Draft
+**Status**: Draft v2
 **Author**: Claude
 **Date**: 2026-04-12
 
-## Motivation
+## The Core Insight
 
-`mm` today is excellent at single-file operations: scan a directory (L0), extract content from one file (L1), generate a description for one file (L2). But real-world multimodal workflows operate on **collections**: "describe all images in this directory", "embed every PDF and find similar ones", "extract structured metadata from 500 product photos".
+> `mm` is really just **a Rust scan function that produces a Polars DataFrame, plus a set of Polars expressions that transform file paths into content, descriptions, embeddings, and structured data.**
 
-The gap is a **DataFrame-native batch processing API** — something that lets you express multimodal pipelines as column transforms on a table of files, with the same ultrafast + devex philosophy mm already has.
+Everything else — `Context`, `cat`, `describe`, `embed`, `generate`, `search`, `grep`, `wc`, `find`, `sql` — is a thin wrapper around Polars primitives. There is no `Context.describe()` method because **that's not DataFrame semantics**. There is only `pl.col("path").mm.cat(level=2)` inside a `with_columns`.
 
-### Current pain
-
-```python
-ctx = Context("~/data")
-images = ctx.filter(kind="image")
-
-# To describe all images today, you must loop:
-for f in images.files:
-    desc = ctx.cat(f.path, level=2, mode="fast")  # sequential, one LLM call at a time
-    print(f.path, desc)
-```
-
-No batching, no parallelism, no DataFrame integration for L2 results.
-
-### Inspiration
-
-- **Daft** (getdaft.io): Distributed DataFrame with native multimodal types (Image, Embedding, URL). Expression namespaces like `.image.resize()`, `.url.download()`. UDFs that operate on typed columns. The vlm-run/vlm-lab Daft pipelines (PR #1525) demonstrate batch VLM processing where each DataFrame row is a file flowing through encode → VLM → structured output.
-- **Polars expressions**: Composable, lazy, zero-copy. mm already depends on Polars and Arrow.
-
-### Design principle
-
-**Don't add Daft as a dependency.** Build the multimodal DSL as a Polars plugin namespace + a thin batch API on `Context`. This keeps the dependency tree lean and leverages mm's existing Arrow foundation.
+This RFC reframes mm's Python API around that insight.
 
 ---
 
-## Proposed Changes
+## The Primitive: `mm.scan(root) -> pl.DataFrame`
 
-### 1. `Context.map()` — Batch multimodal processing
-
-The core primitive. Apply a function to every file in the context, with concurrency control, caching, and DataFrame output.
-
-```python
-ctx = Context("~/products")
-images = ctx.filter(kind="image")
-
-# Batch L2 — describe every image, 8 concurrent LLM calls
-results = images.map(
-    lambda f: f.cat(level=2, mode="fast"),
-    column="description",
-    concurrency=8,
-)
-# results: polars.DataFrame with columns [...L0 columns..., "description"]
-
-# Batch encode — generate VLM-ready messages for every file
-messages = images.map(
-    lambda f: f.encode(strategy="resize", max_width=512),
-    column="messages",
-)
-
-# Batch with structured output (JSON mode)
-metadata = images.map(
-    lambda f: f.generate(
-        prompt="Return JSON: {title, objects: [str], dominant_color}",
-        json_mode=True,
-    ),
-    column="metadata",
-    concurrency=4,
-)
-```
-
-**Implementation sketch:**
-
-```python
-class Context:
-    def map(
-        self,
-        fn: Callable[[FileEntry], Any],
-        *,
-        column: str = "result",
-        concurrency: int = 4,
-        cache: bool = True,
-        progress: bool = True,
-    ) -> pl.DataFrame:
-        """Apply fn to every file in parallel, return DataFrame with new column."""
-        import concurrent.futures
-        from rich.progress import Progress
-
-        df = self.to_polars()
-        results = [None] * len(df)
-
-        with concurrent.futures.ThreadPoolExecutor(max_workers=concurrency) as pool:
-            futures = {}
-            for i, f in enumerate(self.files):
-                futures[pool.submit(fn, f)] = i
-
-            with Progress(disable=not progress) as prog:
-                task = prog.add_task("Processing", total=len(futures))
-                for future in concurrent.futures.as_completed(futures):
-                    idx = futures[future]
-                    results[idx] = future.result()
-                    prog.advance(task)
-
-        return df.with_columns(pl.Series(column, results))
-```
-
-Key properties:
-- **Concurrency-safe**: ThreadPool for I/O-bound LLM calls (not CPU — Rust handles that)
-- **Progress bar**: Rich progress by default (disable with `progress=False`)
-- **Cache-aware**: L2 calls reuse mm's existing content-hash cache
-- **Returns Polars**: Zero-copy DataFrame, ready for further transforms
-
-### 2. `FileEntry` gains `.cat()`, `.encode()`, `.generate()`
-
-Currently `FileEntry` is a thin dict wrapper. Upgrade it to support content operations:
-
-```python
-class FileEntry:
-    def cat(self, *, level=1, mode=None) -> str:
-        """Read content at the given level."""
-        return self._ctx.cat(self.path, level=level, mode=mode)
-
-    def encode(self, *, strategy=None, **kwargs) -> list[dict]:
-        """Encode for VLM consumption."""
-        return self._ctx.encode(self.path, strategy=strategy, **kwargs)
-
-    def generate(self, *, prompt, json_mode=False, mode="fast", **kwargs) -> str:
-        """One-shot VLM generation with a custom prompt."""
-        ...
-```
-
-This makes `FileEntry` a self-contained handle for single-file operations within `map()`.
-
-### 3. `Context.describe()` / `Context.embed()` — High-level batch operations
-
-Sugar for the most common batch workflows:
-
-```python
-# Describe all files — returns DataFrame with "description" column
-df = ctx.filter(kind="image").describe(mode="fast", concurrency=8)
-
-# Embed all files — returns DataFrame with "embedding" column
-df = ctx.filter(kind="image").embed(concurrency=4)
-
-# Describe + embed in one pass (avoids double-encoding)
-df = ctx.filter(kind="image").describe(mode="fast", embed=True)
-```
-
-**`describe()`** is `map(lambda f: f.cat(level=2, mode=mode), column="description")` with smart defaults.
-
-**`embed()`** calls the Gemini embedding API (existing `store/embed.py`) in batch, returning vectors as a list column.
-
-### 4. Polars Expression Namespace: `col.mm.*`
-
-Register a Polars plugin namespace so multimodal operations compose with standard Polars expressions:
+The Rust core already produces an Arrow table. Convert it directly to Polars and return it — no `Context` class, no `FileEntry` wrapper.
 
 ```python
 import polars as pl
-import mm.expr  # registers the namespace
+import mm  # registers expression + dataframe namespaces on import
 
-df = ctx.to_polars()
-
-# Use mm expressions in standard Polars chains
-result = (
-    df
-    .filter(pl.col("kind") == "image")
-    .filter(pl.col("size") > 100_000)
-    .with_columns(
-        pl.col("path").mm.cat(level=1).alias("content"),
-        pl.col("path").mm.tokens().alias("est_tokens"),
-    )
-    .with_columns(
-        pl.col("content").str.extract(r"(\d+x\d+)").alias("dimensions"),
-    )
-    .sort("est_tokens", descending=True)
-)
+df = mm.scan("~/data")
+# pl.DataFrame with columns: path, name, stem, ext, size, modified, created,
+#                            mime, kind, is_binary, depth, parent, width, height
 ```
 
-The `mm` namespace maps to:
+That's it. `mm.scan()` is a one-shot function. The returned DataFrame *is* the context. Everything else is standard Polars.
 
-| Expression | Returns | Description |
-|-----------|---------|-------------|
-| `col.mm.cat(level=1)` | `Utf8` | Content extraction (L0/L1) |
-| `col.mm.describe(mode="fast")` | `Utf8` | L2 VLM description |
-| `col.mm.encode(strategy="resize")` | `List(Struct)` | VLM-ready messages |
-| `col.mm.embed()` | `List(Float64)` | Embedding vector |
-| `col.mm.tokens()` | `UInt64` | Estimated token count |
-| `col.mm.mime()` | `Utf8` | MIME type |
-| `col.mm.kind()` | `Utf8` | File kind |
-| `col.mm.hash()` | `Utf8` | Content hash (xxh3) |
+```python
+# Lazy variant for streaming huge directories
+lf = mm.scan_lazy("~/data")  # pl.LazyFrame
+```
 
-**Implementation**: Polars custom namespaces via `pl.api.register_expr_namespace("mm")`. The namespace methods call into mm's Rust core (L0/L1) or Python (L2) under the hood.
+---
+
+## All Operations as Column Expressions
+
+Every mm operation becomes a method on the `col.mm` namespace, registered via `pl.api.register_expr_namespace("mm")`. Under the hood each one uses `map_batches` with a ThreadPool for I/O-bound work and Rust for CPU-bound work.
 
 ```python
 @pl.api.register_expr_namespace("mm")
@@ -198,278 +46,464 @@ class MmExpr:
     def __init__(self, expr: pl.Expr):
         self._expr = expr
 
-    def cat(self, *, level: int = 1, root: str = ".") -> pl.Expr:
-        return self._expr.map_elements(
-            lambda path: _cat_single(path, level=level, root=root),
+    def hash(self) -> pl.Expr:
+        """xxh3 content hash (Rust fast path, Rayon-parallel)."""
+        return self._expr.map_batches(_batch_hash, return_dtype=pl.Utf8)
+
+    def cat(self, *, level: int = 1, mode: str | None = None,
+            concurrency: int = 8) -> pl.Expr:
+        """Extract content at L0/L1/L2.
+
+        - level=0: raw bytes as string
+        - level=1: extracted content (PDF text, image metadata, etc.)
+        - level=2: VLM description (auto-caches by content hash)
+        """
+        return self._expr.map_batches(
+            lambda s: _batch_cat(s, level=level, mode=mode, concurrency=concurrency),
             return_dtype=pl.Utf8,
         )
 
-    def tokens(self) -> pl.Expr:
-        """Estimate tokens from file content (chars / 4)."""
-        return self._expr.mm.cat(level=1).str.len_chars() // 4
+    def encode(self, *, strategy: str | None = None, **kwargs) -> pl.Expr:
+        """Encode for VLM consumption. Returns List(Struct) of messages."""
+        ...
 
-    def embed(self) -> pl.Expr:
-        # This is better as a batch operation, see §6
+    def embed(self, *, concurrency: int = 4) -> pl.Expr:
+        """Generate embedding vectors. Returns List(Float64)."""
+        return self._expr.map_batches(
+            lambda s: _batch_embed(s, concurrency=concurrency),
+            return_dtype=pl.List(pl.Float64),
+        )
+
+    def extract(self, prompt: str, schema: dict[str, pl.DataType],
+                *, mode: str = "fast", concurrency: int = 8) -> pl.Expr:
+        """Structured VLM extraction. Returns Struct with `schema` fields.
+
+        Use with .unnest() to spread fields into named columns.
+        """
+        return self._expr.map_batches(
+            lambda s: _batch_extract(s, prompt, schema, mode, concurrency),
+            return_dtype=pl.Struct(schema),
+        )
+
+    def tokens(self) -> pl.Expr:
+        """Estimated token count (Rust)."""
+        return self._expr.map_batches(_batch_tokens, return_dtype=pl.UInt64)
+
+    def kind(self) -> pl.Expr:
+        """File kind classification."""
+        return self._expr.map_batches(_batch_kind, return_dtype=pl.Utf8)
+
+    def mime(self) -> pl.Expr:
+        return self._expr.map_batches(_batch_mime, return_dtype=pl.Utf8)
+```
+
+### The full rewrite example
+
+```python
+import polars as pl
+import mm
+
+# Scan + filter + L1 + L2 + embed + sort + save, in one Polars chain:
+result = (
+    mm.scan("~/products")
+    .filter(pl.col("kind") == "image")
+    .filter(pl.col("size") > 100_000)
+    .with_columns(
+        pl.col("path").mm.hash().alias("content_hash"),
+        pl.col("path").mm.cat(level=1).alias("l1_content"),
+        pl.col("path").mm.tokens().alias("tok_est"),
+    )
+    .with_columns(
+        pl.col("path").mm.cat(level=2, mode="fast").alias("description"),
+    )
+    .with_columns(
+        pl.col("description").mm.embed().alias("embedding"),
+    )
+    .sort("tok_est", descending=True)
+)
+result.mm.save()           # persist to SQLite (via dataframe namespace)
+result.write_parquet("out.parquet")  # or export to parquet
+```
+
+No `Context`, no `.describe()`, no `.generate()`, no custom chain methods. Just Polars.
+
+---
+
+## Structured Extraction via `Struct + unnest`
+
+This is the elegant replacement for `Context.generate(schema=...)`. The VLM returns JSON, the UDF parses it into a Polars `Struct`, then `unnest` spreads it into columns. That's pure DataFrame semantics.
+
+```python
+schema = {
+    "title": pl.Utf8,
+    "objects": pl.List(pl.Utf8),
+    "scene_type": pl.Utf8,
+    "quality_score": pl.Float64,
+}
+
+df = (
+    mm.scan("~/products")
+    .filter(pl.col("kind") == "image")
+    .with_columns(
+        pl.col("path").mm.extract(
+            prompt="Return JSON: {title, objects: [str], scene_type, quality_score: float}",
+            schema=schema,
+            mode="fast",
+        ).alias("meta")
+    )
+    .unnest("meta")   # ← spreads meta.title → column "title", etc.
+)
+# df columns: path, name, size, kind, ..., title, objects, scene_type, quality_score
+
+# Now it's just a regular DataFrame — filter, aggregate, join as usual:
+hi_quality = df.filter(pl.col("quality_score") > 0.8)
+by_scene = df.group_by("scene_type").agg(pl.len(), pl.col("quality_score").mean())
+```
+
+This is how Daft does it, and it's how mm should work.
+
+---
+
+## Search as a DataFrame Namespace
+
+Vector search is a DataFrame-level operation (it joins across all rows), so it belongs in a DataFrame namespace, not an expression namespace. Register via `pl.api.register_dataframe_namespace("mm")`.
+
+```python
+@pl.api.register_dataframe_namespace("mm")
+class MmDF:
+    def __init__(self, df: pl.DataFrame):
+        self._df = df
+
+    def save(self, *, root: str | None = None) -> None:
+        """Persist L0/L1/L2/embeddings to the global SQLite store."""
+        from mm.store import MmDatabase
+        MmDatabase().ingest(self._df, root=root)
+
+    def search(self, query: str | bytes | Path, *,
+               k: int = 10, column: str = "embedding") -> pl.DataFrame:
+        """Cross-modal similarity search. `query` is text, image path, or bytes."""
+        query_vec = _embed_query(query)
+        return (
+            self._df
+            .with_columns(
+                pl.col(column).mm.similarity(query_vec).alias("score")
+            )
+            .sort("score", descending=True)
+            .head(k)
+        )
+
+    def show(self, *, limit: int = 50) -> None:
+        """Rich table display."""
+        ...
+
+    def info(self) -> None:
+        """Rich summary panel."""
         ...
 ```
 
-### 5. Structured VLM Output → DataFrame Columns
-
-The killer feature for data workflows: VLM calls that return structured JSON, automatically unpacked into typed DataFrame columns.
+Usage:
 
 ```python
-# Define output schema
-schema = {
-    "title": str,
-    "objects": list[str],
-    "scene_type": str,
-    "quality_score": float,
-}
-
-# Batch structured extraction
+# Embed everything, then search across the DataFrame
 df = (
-    ctx.filter(kind="image")
-    .generate(
-        prompt="Analyze this product image. Return JSON with: title, objects (list), scene_type, quality_score (0-1).",
-        schema=schema,
-        mode="fast",
-        concurrency=8,
-    )
-)
-# df has columns: path, name, size, kind, ..., title, objects, scene_type, quality_score
-```
-
-**How it works:**
-1. Pipeline runs with `json_mode=True`
-2. JSON response is parsed per-row
-3. Schema dict maps keys → Polars dtypes
-4. Result is unpacked into named columns
-
-This is what makes Daft pipelines powerful: VLM outputs become first-class DataFrame columns you can filter, join, and aggregate on.
-
-### 6. Batch Embedding with Vector Search
-
-Extend the existing `store/embed.py` to work as a DataFrame operation:
-
-```python
-# Embed all images, store vectors
-df = ctx.filter(kind="image").embed(concurrency=4)
-# df now has an "embedding" column (list[float64], dim=768)
-
-# Similarity search from text
-results = ctx.search("red sports car on mountain road", limit=10)
-# Returns DataFrame sorted by cosine similarity
-
-# Cross-modal: find images similar to a specific image
-results = ctx.search(reference="photo_001.jpg", limit=5)
-
-# Cluster by embedding
-from sklearn.cluster import KMeans
-embeddings = df["embedding"].to_list()
-df = df.with_columns(pl.Series("cluster", KMeans(n_clusters=5).fit_predict(embeddings)))
-```
-
-### 7. Pipeline Composition (Declarative YAML)
-
-Extend the existing YAML pipeline system to support multi-step DAGs, not just single encode→generate:
-
-```yaml
-# pipelines/product-catalog.yaml
-kind: image
-mode: custom
-
-steps:
-  - name: resize
-    type: encode
-    strategy: resize
-    max_width: 1024
-
-  - name: describe
-    type: generate
-    prompt: "Describe this product image in one sentence."
-    max_tokens: 128
-    output: description
-
-  - name: extract_metadata
-    type: generate
-    prompt: "Extract: {title, category, color, material}. Return JSON."
-    json_mode: true
-    max_tokens: 256
-    output:
-      title: str
-      category: str
-      color: str
-      material: str
-
-  - name: embed
-    type: embed
-    input: description  # embed the description, not the image
-    output: embedding
-```
-
-```python
-# Run the multi-step pipeline
-df = ctx.filter(kind="image").run_pipeline("product-catalog", concurrency=8)
-# df has: ...L0..., description, title, category, color, material, embedding
-```
-
-### 8. `mm pipe` CLI Command — Streaming Batch Processing
-
-A new CLI command for batch operations, composable with Unix pipes:
-
-```bash
-# Describe all images in a directory
-mm find ~/products --kind image | mm pipe describe --mode fast --concurrency 8
-
-# Structured extraction to CSV
-mm find ~/products --kind image | mm pipe generate \
-  --prompt "Return JSON: {title, category, price_range}" \
-  --json --format csv > catalog.csv
-
-# Embed and export
-mm find ~/docs --kind document | mm pipe embed --format parquet > embeddings.parquet
-
-# Chain: describe, then embed the descriptions
-mm find ~/photos --kind image \
-  | mm pipe describe --mode fast \
-  | mm pipe embed --input description \
-  --format json > photo_index.json
-```
-
-`mm pipe` reads a TSV file list from stdin (output of `mm find`), processes each file through the specified operation, and outputs a table with the new column(s).
-
----
-
-## Prioritized Implementation Plan
-
-### Phase 1: Core batch primitives (highest impact, smallest surface)
-
-1. **Upgrade `FileEntry`** — add `.cat()`, `.encode()`, `.generate()` methods with back-reference to Context
-2. **`Context.map()`** — ThreadPool-based parallel map with Rich progress
-3. **`Context.describe()`** — sugar for batch L2
-4. **`mm pipe describe`** CLI command — batch descriptions from stdin
-
-### Phase 2: Structured output + Polars namespace
-
-5. **`Context.generate()`** — structured JSON output → DataFrame columns
-6. **`mm.expr` Polars namespace** — `col.mm.cat()`, `col.mm.tokens()`, `col.mm.kind()`
-7. **`mm pipe generate --json`** — structured extraction CLI
-
-### Phase 3: Embeddings + search
-
-8. **`Context.embed()`** — batch embedding with vector column
-9. **`Context.search()`** — text-to-file and file-to-file similarity
-10. **`mm pipe embed`** CLI command
-
-### Phase 4: Pipeline composition
-
-11. **Multi-step YAML pipelines** — extend `PipelineSpec` with `steps` array
-12. **`Context.run_pipeline()`** — execute named multi-step pipeline
-13. **`mm pipe run <pipeline-name>`** — CLI entry point
-
----
-
-## Design Decisions
-
-### Why Polars, not Daft?
-
-| | Polars | Daft |
-|---|---|---|
-| Already a dependency | Yes | No |
-| Arrow-native | Yes | Yes |
-| Custom expression namespace | `register_expr_namespace` | Custom UDFs |
-| Distribution | Single-machine (fine for mm's use case) | Ray/distributed |
-| Startup time | ~10ms | ~200ms+ |
-| Multimodal types | No (but we add via namespace) | Native Image/Embedding types |
-
-mm is a **local CLI tool**, not a distributed pipeline. Polars is already in the dep tree, starts fast, and supports custom namespaces. Daft's distributed scheduler is overkill here.
-
-If mm ever needs distributed processing (100K+ files), Daft could be an optional backend behind the same API:
-
-```python
-# Future: optional Daft backend
-ctx.describe(mode="fast", backend="daft")  # uses Daft Ray cluster
-ctx.describe(mode="fast", backend="polars")  # default, local ThreadPool
-```
-
-### Why ThreadPool, not asyncio?
-
-- LLM calls are HTTP I/O bound → threads are fine
-- `openai` SDK is synchronous by default
-- ThreadPool is simpler, debuggable, no colored-function problem
-- Rust core stays in threads via `rayon` anyway
-
-### Why not just add columns to the Arrow table?
-
-The L0 Arrow table from Rust is immutable and columnar. L2 results are inherently per-file and require I/O. The cleanest design is:
-
-1. L0 scan → Arrow (Rust, fast, immutable)
-2. `map()`/`describe()` → Polars DataFrame (Python, mutable, new columns)
-3. `save()` → SQLite (persistence, vector search)
-
-This keeps the Rust core focused on what it's fast at (scanning, hashing, extraction) and Python focused on orchestration.
-
----
-
-## API Summary
-
-```python
-from mm import Context
-
-ctx = Context("~/data")
-
-# ── Batch operations ──
-df = ctx.filter(kind="image").describe(mode="fast", concurrency=8)
-df = ctx.filter(kind="video").describe(mode="accurate", concurrency=2)
-df = ctx.filter(kind="document").embed(concurrency=4)
-
-# ── Structured extraction ──
-df = ctx.filter(kind="image").generate(
-    prompt="Return JSON: {title, objects: [str], mood}",
-    schema={"title": str, "objects": list, "mood": str},
-    concurrency=8,
-)
-
-# ── Custom map ──
-df = ctx.map(lambda f: len(f.cat(level=1).split()), column="word_count")
-
-# ── Polars integration ──
-import mm.expr
-df = (
-    ctx.to_polars()
+    mm.scan("~/photos")
     .filter(pl.col("kind") == "image")
-    .with_columns(pl.col("path").mm.tokens().alias("est_tokens"))
-    .sort("est_tokens", descending=True)
+    .with_columns(pl.col("path").mm.embed().alias("embedding"))
 )
 
-# ── Search ──
-results = ctx.search("sunset over ocean", limit=10)
-
-# ── Pipeline ──
-df = ctx.filter(kind="image").run_pipeline("product-catalog", concurrency=8)
-
-# ── Persistence ──
-df.write_parquet("output.parquet")
-ctx.save()  # upsert to SQLite
+hits = df.mm.search("red sports car on mountain road", k=10)
+hits = df.mm.search(Path("ref.jpg"), k=5)
 ```
+
+`pl.col(...).mm.similarity(vec)` is an expression that computes cosine similarity row-by-row. Since embeddings are `List(Float64)`, this is a simple dot-product UDF (or a native Rust expression once we write one).
+
+---
+
+## Rewriting Every mm Command in Polars
+
+Here is how each existing CLI command collapses to a Polars chain. The CLI becomes a very thin argparse shell over these chains.
+
+### `mm find`
+
+```python
+def find_cmd(root, *, kind=None, ext=None, min_size=None, max_size=None,
+             name=None, sort=None, limit=None, format="rich"):
+    df = mm.scan(root)
+    if kind:     df = df.filter(pl.col("kind") == kind)
+    if ext:      df = df.filter(pl.col("ext").is_in(ext))
+    if min_size: df = df.filter(pl.col("size") >= _parse_size(min_size))
+    if max_size: df = df.filter(pl.col("size") <= _parse_size(max_size))
+    if name:     df = df.filter(pl.col("name").str.contains(name))
+    if sort:     df = df.sort(sort)
+    if limit:    df = df.head(limit)
+    _write(df, format)
+```
+
+### `mm cat`
+
+```python
+def cat_cmd(path, *, level=1, mode=None):
+    df = (
+        mm.scan(Path(path).parent)
+        .filter(pl.col("name") == Path(path).name)
+        .with_columns(pl.col("path").mm.cat(level=level, mode=mode).alias("content"))
+    )
+    print(df["content"][0])
+```
+
+### `mm grep`
+
+```python
+def grep_cmd(pattern, root, *, kind=None, context=0):
+    df = (
+        mm.scan(root)
+        .filter(pl.col("kind") == kind) if kind else mm.scan(root)
+    )
+    return (
+        df
+        .with_columns(pl.col("path").mm.cat(level=1).alias("content"))
+        .filter(pl.col("content").str.contains(pattern))
+        .select("path", "content")
+    )
+```
+
+No custom grep implementation needed. `str.contains` is a Polars native.
+
+### `mm wc`
+
+```python
+def wc_cmd(root, *, by_kind=False):
+    df = mm.scan(root)
+    if by_kind:
+        return df.group_by("kind").agg(
+            pl.len().alias("files"),
+            pl.col("size").sum().alias("bytes"),
+            pl.col("path").mm.tokens().sum().alias("tokens"),
+        )
+    return df.select(
+        pl.len().alias("files"),
+        pl.col("size").sum().alias("bytes"),
+        pl.col("path").mm.tokens().sum().alias("tokens"),
+    )
+```
+
+`wc` is one `group_by().agg()` away. The "estimated tokens" column comes from `col.mm.tokens()` which is a Rust fast-path.
+
+### `mm sql`
+
+```python
+def sql_cmd(query, root):
+    df = mm.scan(root)
+    return pl.SQLContext(files=df).execute(query).collect()
+```
+
+Polars has **native SQL support** via `pl.SQLContext`. Drop `python/mm/query.py` entirely (the in-memory SQLite hack). SQL now composes with expressions: you can write SQL that *uses* `mm.cat()` via registered Polars UDFs.
+
+### `mm cat video.mp4 -l 2` (the hot path)
+
+```python
+# Equivalent Polars chain:
+(
+    mm.scan(Path("video.mp4").parent)
+    .filter(pl.col("name") == "video.mp4")
+    .with_columns(pl.col("path").mm.cat(level=2, mode="fast").alias("desc"))
+    ["desc"][0]
+)
+```
+
+The L2 cache is still keyed by content hash — `mm.cat(level=2)` internally calls `content_hash → lookup → hit/miss → LLM`. The caching is invisible to the user but still O(1).
+
+---
+
+## What Goes Away
+
+| Deleted | Replaced By |
+|---|---|
+| `python/mm/context.py` (360 LOC) | `mm.scan()` + Polars namespaces |
+| `python/mm/query.py` (64 LOC) | `pl.SQLContext` |
+| `python/mm/df.py` (23 LOC) | `mm.scan` returns `pl.DataFrame` directly |
+| `FileEntry` class | Polars `row(i, named=True)` |
+| `Context.filter()` | `pl.DataFrame.filter()` |
+| `Context.map()` | `pl.DataFrame.with_columns(pl.col.map_batches(...))` |
+| `Context.describe()` | `.with_columns(pl.col("path").mm.cat(level=2))` |
+| `Context.embed()` | `.with_columns(pl.col("path").mm.embed())` |
+| `Context.generate()` | `.with_columns(pl.col("path").mm.extract(...)).unnest(...)` |
+| `Context.grep()` | `.filter(pl.col("content").str.contains(...))` |
+| `Context.show()` / `.info()` | `df.mm.show()` / `df.mm.info()` |
+| `Context.save()` | `df.mm.save()` |
+
+Net deletion: ~500+ LOC of Python, replaced by a much smaller namespace module and two registration calls.
+
+---
+
+## Concurrency Model
+
+The tricky part is making `map_batches` parallel for I/O-bound operations (LLM calls) without breaking Polars' semantics. The rule:
+
+- **CPU-bound ops** (hash, tokens, kind, mime, L1 extraction): implemented in Rust, parallelized via Rayon inside `map_batches`. Zero Python overhead.
+- **I/O-bound ops** (L2 cat, embed, extract): use a ThreadPool inside `map_batches`. The UDF receives a Series, spawns N workers, and returns a Series of the same length.
+
+```python
+def _batch_cat_l2(paths: pl.Series, *, mode: str, concurrency: int) -> pl.Series:
+    from concurrent.futures import ThreadPoolExecutor
+    from mm.store import MmDatabase
+    db = MmDatabase()
+
+    def _one(p: str) -> str:
+        # Hash → cache lookup → LLM → cache write
+        h = _content_hash(p)
+        cached = db.get_l2_by_hash(h, mode=mode)
+        if cached is not None:
+            return cached
+        parts = _encode(p, mode=mode)
+        result = _llm_generate(parts, mode=mode)
+        db.put_l2(p, h, result, mode=mode)
+        return result
+
+    with ThreadPoolExecutor(max_workers=concurrency) as pool:
+        return pl.Series(list(pool.map(_one, paths.to_list())), dtype=pl.Utf8)
+```
+
+Polars sees this as a single batch operation — query optimization still works across other expressions. Cache hits skip the LLM entirely, so re-running the chain is idempotent and fast.
+
+### Why not `pl.col().map_elements()` row-at-a-time?
+
+`map_elements` runs the function per row with GIL overhead. `map_batches` gets the whole Series at once, so we control batching, concurrency, and pooling ourselves. 100 files through `map_elements` = 100 GIL trips + 100 sequential LLM calls. Through `map_batches` = 1 GIL trip + N concurrent LLM calls.
+
+---
+
+## Lazy Evaluation
+
+Because every operation is a Polars expression, the whole pipeline becomes lazy via `mm.scan_lazy`:
+
+```python
+lf = (
+    mm.scan_lazy("~/big-dataset")
+    .filter(pl.col("kind") == "image")
+    .filter(pl.col("size") > 100_000)
+    .with_columns(pl.col("path").mm.cat(level=2).alias("desc"))
+    .with_columns(pl.col("desc").mm.embed().alias("emb"))
+)
+
+# Nothing runs until .collect() or .sink_parquet()
+lf.sink_parquet("index.parquet")  # streams results to disk
+```
+
+`map_batches` works in LazyFrames. Polars can push the size filter through the scan, so we never run L2 on files filtered out upstream. That's free optimization we get for zero design effort.
+
+---
+
+## `mm pipe` — the CLI shape
+
+Unix-composable batch processing becomes a single command that applies a Polars expression chain to stdin:
 
 ```bash
-# ── CLI ──
-mm find ~/data --kind image | mm pipe describe --mode fast -j 8 --format csv
-mm find ~/data --kind image | mm pipe generate --prompt "..." --json --format tsv
-mm find ~/data --kind document | mm pipe embed --format parquet
+# Describe every image
+mm find ~/data --kind image \
+  | mm pipe 'with_columns(col.path.mm.cat(level=2).alias("desc"))'
+
+# Structured extraction
+mm find ~/data --kind image \
+  | mm pipe 'with_columns(col.path.mm.extract("Return JSON: {title, mood}",
+               {"title": Utf8, "mood": Utf8}).alias("meta")).unnest("meta")' \
+  --format csv > catalog.csv
+
+# Embed + export
+mm find ~/data --kind document \
+  | mm pipe 'with_columns(col.path.mm.embed().alias("emb"))' \
+  --format parquet > index.parquet
 ```
+
+The argument to `mm pipe` is a restricted Polars expression string (parsed and validated, not `eval`'d). This is powerful enough to replace `mm describe`, `mm embed`, `mm extract`, etc., without adding N new CLI commands.
+
+For convenience, common chains get aliases:
+
+```bash
+mm pipe describe     # = mm pipe 'with_columns(col.path.mm.cat(level=2).alias("desc"))'
+mm pipe embed        # = mm pipe 'with_columns(col.path.mm.embed().alias("embedding"))'
+mm pipe extract ...  # = mm pipe 'with_columns(col.path.mm.extract(...)).unnest(...)'
+```
+
+---
+
+## Migration Path
+
+### Stage 1 — Add without breaking
+
+1. Add `mm.scan()` that returns a `pl.DataFrame` (wraps the existing Rust `Scanner`).
+2. Register `col.mm.*` and `df.mm.*` namespaces on `import mm`.
+3. Implement the expression namespace (`cat`, `hash`, `tokens`, `kind`, `mime`, `embed`, `extract`, `encode`).
+4. Implement the DataFrame namespace (`save`, `search`, `show`, `info`).
+5. Keep `Context` as a compatibility shim that internally calls the new API.
+
+### Stage 2 — Delete
+
+1. Mark `Context` deprecated, re-route its methods to the new API.
+2. Delete `query.py`, `df.py`, most of `context.py`.
+3. Rewrite CLI commands as thin wrappers over Polars chains (`find_cmd`, `cat_cmd`, `grep_cmd`, `wc_cmd`, `sql_cmd` ~5 lines each).
+4. Drop `FileEntry`.
+
+### Stage 3 — Polish
+
+1. Move the hot L1 paths (hash, tokens, kind) to Rust-native Polars expressions via `pyo3-polars` for zero-copy, no-GIL batch execution. These currently use `map_batches` with a Python loop around a Rust call; a native plugin eliminates the Python trip entirely.
+2. Add `mm.scan_lazy()` for streaming over huge trees.
+3. Ship `mm pipe` with restricted expression parsing.
+
+---
+
+## Why This Is Actually Elegant
+
+1. **Zero new concepts.** If you know Polars, you know mm. If you know mm, you know Polars. There is no separate mm API to learn.
+2. **Composability is free.** Filter → extract → embed → sort → group_by all compose because they're all Polars operations.
+3. **Lazy evaluation is free.** `mm.scan_lazy()` works for the full pipeline because everything is an expression.
+4. **SQL is free.** `pl.SQLContext` already executes SQL over DataFrames, and mm expressions become UDFs inside SQL.
+5. **Parquet/Arrow export is free.** `df.write_parquet()` just works. The L2 + embedding columns round-trip losslessly.
+6. **Interop is free.** Anything that consumes Polars (Ibis, DuckDB, pandas, XGBoost, datasets) now consumes mm output.
+7. **Tests are trivial.** Every operation is a pure function over a Series. No mocking `Context`, no fixture plumbing — just `assert expected == pl.Series([...]).mm.cat(level=1)`.
+8. **Deletes more than it adds.** `~500 LOC out, ~300 LOC in` is the right direction.
+
+---
+
+## API Summary (the whole surface)
+
+```python
+# Module level
+mm.scan(root) -> pl.DataFrame
+mm.scan_lazy(root) -> pl.LazyFrame
+mm.embed_text(text) -> list[float]              # used by df.mm.search
+
+# Expression namespace (on any path-typed column)
+col.mm.hash() -> pl.Utf8
+col.mm.kind() -> pl.Utf8
+col.mm.mime() -> pl.Utf8
+col.mm.tokens() -> pl.UInt64
+col.mm.cat(level, mode, concurrency) -> pl.Utf8
+col.mm.encode(strategy, **kwargs) -> pl.List(pl.Struct)
+col.mm.embed(concurrency) -> pl.List(pl.Float64)
+col.mm.extract(prompt, schema, mode, concurrency) -> pl.Struct
+col.mm.similarity(query_vec) -> pl.Float64   # for embedding columns
+
+# DataFrame namespace
+df.mm.save(root)
+df.mm.search(query, k, column)
+df.mm.show(limit)
+df.mm.info()
+```
+
+That is the *entire* Python API. `Context`, `FileEntry`, `process_image`, `process_video`, `process_document`, `Context.cat/filter/map/describe/embed/generate/grep/sql/show/info/save` all collapse into these ~14 callables.
 
 ---
 
 ## Open Questions
 
-1. **Should `map()` return a new `Context` or a plain `pl.DataFrame`?** Returning Context enables chaining (`ctx.filter().describe().embed()`), but a DataFrame is more interoperable. Proposed: return DataFrame by default, with `as_context=True` option.
+1. **Should `mm.scan` resolve to absolute paths in the `path` column?** Current Rust scanner returns relative paths. Expressions that call `col.path.mm.cat()` need to know the root. Options: (a) scanner returns absolute paths, (b) `mm.scan` stores root in DataFrame metadata and expressions read it, (c) pass root explicitly as `col.mm.cat(level=2, root=...)`. Proposed: (a) for simplicity.
 
-2. **How to handle VLM rate limits?** Options: (a) simple semaphore in ThreadPool, (b) token-bucket rate limiter, (c) configurable `requests_per_second` param. Start with (a), add (b) if needed.
+2. **Native Polars plugin via `pyo3-polars`?** Would eliminate the Python trip for L1 ops (hash, kind, tokens) and give zero-copy batch execution. Significant win for large scans. Candidate for Stage 3.
 
-3. **Should embeddings live in the Polars DataFrame or only in SQLite?** Proposed: both. `embed()` returns a DataFrame with a `List(Float64)` column. `save()` persists to SQLite for `search()`.
+3. **How to express "fail fast" vs "continue on error" in batch UDFs?** A single bad file currently poisons a Polars chain. Proposed: all batch UDFs accept `errors="null"|"raise"` and default to `"null"` (failed rows become null, pipeline continues).
 
-4. **Parquet output for embeddings?** Polars can write `List(Float64)` to Parquet natively. This enables: `ctx.filter(kind="image").embed().write_parquet("index.parquet")` — a one-liner to build a vector index file.
+4. **Rate limiting for LLM calls.** Concurrency is per-`map_batches` call, but an HTTP server may need a global budget. Proposed: module-level `mm.config.llm_concurrency = 8` as a default ceiling, overridden by the `concurrency` kwarg.
 
-5. **Should `mm pipe` be a new top-level command or a subcommand of `cat`?** Proposed: new command. `cat` is single-file; `pipe` is batch. Different mental models.
+5. **Should `extract` support Pydantic models instead of dict schemas?** `col.mm.extract(prompt, MyPydanticModel)` is nicer ergonomically, and we already depend on Pydantic. Dict stays as an escape hatch.
+
+6. **Should `mm pipe`'s expression argument be Polars SQL or Polars expressions?** SQL is more familiar but can't express `unnest`. Expressions are more powerful. Proposed: both — `mm pipe --sql '...'` and `mm pipe --expr '...'`.
