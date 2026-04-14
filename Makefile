@@ -1,4 +1,4 @@
-.PHONY: develop build test test-rust test-python bench clean lint lint-rust lint-python typecheck fmt
+.PHONY: develop build test test-rust test-python test-python-fast test-python-full bench clean lint lint-rust lint-python typecheck fmt
 
 develop:
 	uv run maturin develop --release
@@ -11,8 +11,19 @@ test: test-rust test-python
 test-rust:
 	cargo test --workspace
 
-test-python: develop
+# Fast tier — mocked unit tests only. Used by CI on every PR / push.
+# Skips pytest-benchmark suites, subprocess cold-start benchmarks, and
+# integration tests that need an external inference server.
+test-python: test-python-fast
+
+test-python-fast: develop
 	uv run pytest tests/python -v
+
+# Full tier — fast + slow + integration. Used by CI when the project
+# version changes (release-track runs) and by developers before a
+# release.
+test-python-full: develop
+	uv run pytest tests/python -v -m ""
 
 bench:
 	cargo bench --workspace

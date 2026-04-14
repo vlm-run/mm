@@ -5,11 +5,16 @@ Measures estimated token counts for:
 - 1 minute of video
 - 1 minute of audio
 - 10 pages of PDF
+
+Part of the ``slow`` tier — deselected by default. Run with
+``make test-python-full`` or ``pytest -m slow`` locally.
 """
 
 from __future__ import annotations
 
 import pytest
+
+pytestmark = pytest.mark.slow
 
 # ---------------------------------------------------------------------------
 # Token estimation helpers
