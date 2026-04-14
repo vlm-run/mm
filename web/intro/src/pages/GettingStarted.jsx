@@ -64,7 +64,7 @@ export default function GettingStarted() {
       {/* Installation */}
       <Section title="Installation">
         <P>Install mm via the pre-built wheels:</P>
-        
+
         <P>macOS / Linux:</P>
         <Code>
           <span className="prompt">$ </span>
