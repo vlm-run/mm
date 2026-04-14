@@ -225,13 +225,11 @@ class LlmBackend:
         if reasoning_effort != "none":
             extra_body["reasoning_effort"] = reasoning_effort
 
-        try:
-            response = (
-                self.client.chat.completions.create(**kwargs, extra_body=extra_body)
-                if extra_body
-                else self.client.chat.completions.create(**kwargs)
-            )
+        if extra_body:
+            kwargs["extra_body"] = extra_body
 
+        try:
+            response = self.client.chat.completions.create(**kwargs)
             if response.usage:
                 self.last_usage = LlmUsage(
                     prompt_tokens=response.usage.prompt_tokens or 0,
