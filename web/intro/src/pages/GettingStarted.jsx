@@ -291,6 +291,9 @@ export default function GettingStarted() {
             <span className="prompt">$ </span>hyperfine --warmup 3 'grep -R TODO
             python' "mm grep 'TODO' python"
           </Code>
+
+          <div className="my-6"></div>
+
           <P>Or run the built-in benchmark suite:</P>
           <Code>
             <span className="prompt">$ </span>mm bench ~/data/mmbench-mini
