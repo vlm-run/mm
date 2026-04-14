@@ -4,7 +4,7 @@ Converts PDF, DOCX, and PPTX files to clean markdown using the
 docling library. Falls back to pypdfium2 for PDFs when docling
 is not installed.
 
-Install: pip install mm[extract]
+Install: pip install mm[document]
 """
 
 from __future__ import annotations
@@ -79,7 +79,7 @@ def convert_to_markdown(doc_path: str | Path) -> DoclingResult:
         if ext == ".pdf":
             return _fallback_pdf(doc_path)
         return DoclingResult(
-            markdown=f"[docling not installed — pip install mm[extract] for {ext} support]",
+            markdown=f"[docling not installed — pip install mm[document] for {ext} support]",
         )
 
     t0 = time.monotonic()

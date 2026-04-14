@@ -168,7 +168,7 @@ def _emit_dataset_hf(rows: list[dict], output_dir: str = "mm_dataset") -> None:
 
     Saves to *output_dir* and prints the path to stderr.
 
-    Install: pip install mm[dataset]
+    Install: pip install mm[datasets]
     """
     from pathlib import Path
 
@@ -179,7 +179,7 @@ def _emit_dataset_hf(rows: list[dict], output_dir: str = "mm_dataset") -> None:
 
         print(
             "Error: 'datasets' package required for --format dataset-hf. "
-            "`datasets` not installed — pip install mm[dataset]",
+            "`datasets` not installed — pip install mm[datasets]",
             file=sys.stderr,
         )
         raise SystemExit(1)

@@ -64,7 +64,7 @@ class AudioTranscribe:
                 [
                     {
                         "type": "text",
-                        "text": "[whisper not installed — pip install mm[extract]]",
+                        "text": "[whisper not installed — pip install mm[audio]]",
                     }
                 ]
             )

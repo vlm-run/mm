@@ -6,7 +6,7 @@ Backends (checked in order, first available wins):
 
 Models cached lazily — first call loads, subsequent calls reuse.
 
-Install: pip install mm[extract] or pip install mm[extract,mlx] for MLX support on Apple Silicon.
+Install: pip install mm[audio] or pip install mm[audio,mlx] for MLX support on Apple Silicon.
 """
 
 from __future__ import annotations
@@ -274,7 +274,7 @@ def transcribe(
 
     if backend is None:
         return TranscriptionResult(
-            text="[whisper not installed — pip install mm[extract] or pip install mm[extract,mlx] for MLX support on Apple Silicon]",
+            text="[whisper not installed — pip install mm[audio] or pip install mm[audio,mlx] for MLX support on Apple Silicon]",
             model_size=model_size,
         )
 

@@ -15,33 +15,52 @@ dependencies = [
     "pandas>=2.0",
     "pyarrow>=15.0",
     "sqlite-vec>=0.1.9",
-    "pypdfium2>=4.0",
     "Pillow>=10.0",
     "openai>=1.0",
-    "tomli>=1.0; python_version < '3.11'",
-    "python-docx==1.2.0",
-    "python-pptx>=1.0.2",
     "google-genai>=1.0",
     "pyyaml>=6.0",
+    "tomli>=1.0; python_version < '3.11'",
 ]
 
 [project.scripts]
 mm = "mm.cli:app"
 
 [project.optional-dependencies]
-extract = [
-    "torch>=2.0",
+# Modality extras — install only what you need.
+#   pip install mm[audio]      # whisper transcription
+#   pip install mm[video]      # scene detection
+#   pip install mm[document]   # pdf / docx / pptx / docling
+#   pip install mm[mlx]        # apple-silicon whisper
+audio = [
     "faster-whisper>=1.0",
-    "scenedetect[opencv]>=0.6",
-    "docling>=2.0",
     "ctranslate2>=2.0",
 ]
-dataset = [
-    "datasets>=2.0",
+video = [
+    "scenedetect[opencv]>=0.6",
+]
+document = [
+    "pypdfium2>=4.0",
+    "python-docx==1.2.0",
+    "python-pptx>=1.0.2",
+    "docling>=2.0",
+    "torch>=2.0",
 ]
 mlx = [
     "mlx>=0.31.1",
     "lightning-whisper-mlx>=0.0.10",
+]
+datasets = [
+    "datasets>=2.0",
+]
+all = [
+    "faster-whisper>=1.0",
+    "ctranslate2>=2.0",
+    "scenedetect[opencv]>=0.6",
+    "pypdfium2>=4.0",
+    "python-docx==1.2.0",
+    "python-pptx>=1.0.2",
+    "docling>=2.0",
+    "torch>=2.0",
 ]
 dev = [
     "pytest>=8.0",

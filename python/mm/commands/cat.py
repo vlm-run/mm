@@ -992,8 +992,8 @@ def _accurate_audio(path: Path, spec: PipelineSpec, opts: _CatOpts) -> str:
 
     if not whisper_available():
         return (
-            "[whisper not installed — pip install mm[extract] "
-            "or pip install mm[extract,mlx] for MLX support on Apple Silicon]"
+            "[whisper not installed — pip install mm[audio] "
+            "or pip install mm[audio,mlx] for MLX support on Apple Silicon]"
         )
 
     if spec.generate is None:

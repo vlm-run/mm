@@ -11,7 +11,7 @@ Two strategies for processing videos shot-by-shot:
 Both strategies yield Messages sequentially (one shot at a time) to
 avoid OOM when combined with ``-l 2`` multi-chunk generation.
 
-Requires: ``pip install mm[extract]`` (for scenedetect + opencv)
+Requires: ``pip install mm[video]`` (for scenedetect + opencv)
 """
 
 from __future__ import annotations
@@ -35,7 +35,7 @@ def _detect_shots(video_path: Path, threshold: float) -> list[tuple[float, float
 
     if not scenedetect_available():
         raise ImportError(
-            "scenedetect is required for shot-based encoders. Install with: pip install mm[extract]"
+            "scenedetect is required for shot-based encoders. Install with: pip install mm[video]"
         )
 
     result = detect_scenes(video_path, threshold=threshold)
