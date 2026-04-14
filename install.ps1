@@ -208,7 +208,7 @@ Install-Mm
 Test-Installation
 
 Write-Host ""
-Write-Info "get started:"
+Write-Info "Get started:"
 Write-Info "  mm --help"
 Write-Info "  mm find . --tree"
 Write-Host ""

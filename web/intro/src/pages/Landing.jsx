@@ -374,9 +374,12 @@ export default function Landing() {
       </div>
 
       {/* Install */}
-      <div className="font-mono text-[12px] text-[var(--text-muted)]">
+      <div className="font-mono text-[12px] text-[var(--text-muted)] flex flex-col items-center gap-1">
         <code className="bg-[var(--panel)] border border-[var(--border)] rounded-sm px-2 py-1 text-[var(--text-secondary)]">
           curl -LsSf https://vlm-run.github.io/mm/install/install.sh | sh
+        </code>
+        <code className="border border-[var(--border)] rounded-sm px-2 py-1 text-[var(--text-secondary)]">
+          irm https://vlm-run.github.io/mm/install/install.ps1 | iex
         </code>
       </div>
     </div>

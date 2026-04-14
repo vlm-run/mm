@@ -267,7 +267,7 @@ main() {
     verify_install
 
     printf "\n"
-    info "get started:"
+    info "Get started:"
     info "  mm --help"
     info "  mm find . --tree"
     printf "\n"
