@@ -24,6 +24,32 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  check-version:
+    runs-on: ubuntu-latest
+    outputs:
+      changed: ${{ steps.version_check.outputs.changed }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - name: Check if version changed
+        id: version_check
+        run: |
+          CURRENT=$(python3 -c "import re, pathlib; print(re.search(r'version\s*=\s*\"([^\"]+)\"', pathlib.Path('pyproject.toml').read_text()).group(1))")
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            BASE_REF="origin/${{ github.event.pull_request.base.ref }}"
+          else
+            BASE_REF="HEAD~1"
+          fi
+          BASE=$(git show "${BASE_REF}:pyproject.toml" 2>/dev/null | python3 -c "import re,sys; m=re.search(r'version\s*=\s*\"([^\"]+)\"', sys.stdin.read()); print(m.group(1) if m else '')" || echo '')
+          if [ "$CURRENT" != "$BASE" ]; then
+            echo "changed=true" >> $GITHUB_OUTPUT
+            echo "Version changed: $BASE -> $CURRENT"
+          else
+            echo "changed=false" >> $GITHUB_OUTPUT
+            echo "Version unchanged: $CURRENT"
+          fi
+
   test-rust:
     runs-on: ubuntu-latest
     steps:
@@ -56,7 +82,8 @@ jobs:
       - run: make test-python
 
   benchmark:
-    if: github.event_name == 'pull_request'
+    needs: check-version
+    if: github.event_name == 'pull_request' && needs.check-version.outputs.changed == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -107,7 +134,8 @@ jobs:
           alert-comment-cc-users: "@nwaughachukwuma"
 
   benchmark-pages:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: check-version
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.check-version.outputs.changed == 'true'
     runs-on: ubuntu-latest
     permissions:
       deployments: write
