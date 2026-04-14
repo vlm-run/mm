@@ -46,7 +46,7 @@ Rust core for speed, Python for developer experience, Unix philosophy for compos
 
 ## Libraries
 
-**Python:**
+**Python (core):**
 - openai — chat/completions SDK (any OpenAI-compatible API: Ollama, vLLM, OpenAI)
 - typer — CLI framework
 - rich — terminal formatting (tables, panels, trees, syntax highlighting)
@@ -54,12 +54,26 @@ Rust core for speed, Python for developer experience, Unix philosophy for compos
 - pandas — DataFrame export
 - sqlite-vec — SQLite + vector search (global DB at ~/.local/share/mm/mm.db)
 - pyarrow — Arrow IPC deserialization (Rust → Python data transfer)
-- google-genai — Gemini embedding generation (text, image, audio, video, document)
 - pypdfium2 — PDF text extraction and page rendering
 - Pillow — image mosaic tiling
 - tomli — TOML config parsing (Python <3.11)
-- pydantic — schema validation for YAML generation templates
 - pyyaml — YAML template parsing
+- faster-whisper — Whisper transcription (CTranslate2 backend)
+- scenedetect[opencv] — shot/scene boundary detection
+- docling — document-to-markdown (PDF, DOCX, PPTX)
+- ctranslate2 — CTranslate2 inference runtime (for faster-whisper)
+- python-docx — DOCX text extraction
+- python-pptx — PPTX text extraction
+
+**Python (mm[gemini]):**
+- google-genai — Gemini embedding generation (text, image, audio, video, document)
+
+**Python (mm[mlx]):**
+- mlx — Apple Metal GPU acceleration
+- lightning-whisper-mlx — MLX Whisper backend (~3-4x faster on Apple Silicon)
+
+**Python (mm[experimental]):**
+- datasets — HuggingFace Datasets export
 
 **Rust (mm-core):**
 - arrow / parquet — Arrow RecordBatch + Parquet I/O

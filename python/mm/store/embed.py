@@ -9,6 +9,8 @@ Supported content types:
   - Audio: MP3, WAV (max 80s)
   - Video: MP4, MOV (max 120s — longer videos are chunked)
   - Document: PDF (max 6 pages)
+
+Requires: pip install mm[gemini]
 """
 
 from __future__ import annotations
@@ -16,7 +18,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-# Gemini embedding limits
+from mm.deps import try_import_or_raise
+
 _VIDEO_MAX_SECONDS = 120
 _VIDEO_OVERLAP_SECONDS = 10
 _AUDIO_MAX_SECONDS = 80
@@ -24,22 +27,20 @@ _AUDIO_OVERLAP_SECONDS = 5
 _EMBEDDINGS_PATH = "/embeddings"
 
 
-# ---------------------------------------------------------------------------
-# Part constructors — return validated google.genai types.Part dicts
-# ---------------------------------------------------------------------------
+def importimport_genai_types():
+    """Lazy-load ``google.genai.types``, raising if the gemini extra is missing."""
+    return try_import_or_raise("google.genai.types", extra="gemini", package="google-genai")
 
 
 def text_part(text: str) -> dict[str, Any]:
     """Construct a text Part."""
-    from google.genai import types
-
+    types = import_genai_types()
     return types.Part(text=text).to_json_dict()
 
 
 def image_part(path: Path) -> dict[str, Any]:
     """Construct an image Part from a file path."""
-    from google.genai import types
-
+    types = import_genai_types()
     return types.Part.from_bytes(
         data=path.read_bytes(),
         mime_type=_mime_for(path, fallback="image/png"),
@@ -48,8 +49,7 @@ def image_part(path: Path) -> dict[str, Any]:
 
 def _audio_part(path: Path) -> dict[str, Any]:
     """Construct an audio Part from a file path (max 80s)."""
-    from google.genai import types
-
+    types = import_genai_types()
     return types.Part.from_bytes(
         data=path.read_bytes(),
         mime_type=_mime_for(path, fallback="audio/mpeg"),
@@ -82,8 +82,7 @@ def audio_parts(path: Path) -> list[dict[str, Any]]:
 
 def document_part(path: Path) -> dict[str, Any]:
     """Construct a document Part from a PDF (max 6 pages)."""
-    from google.genai import types
-
+    types = import_genai_types()
     return types.Part.from_bytes(
         data=path.read_bytes(),
         mime_type="application/pdf",
@@ -92,8 +91,7 @@ def document_part(path: Path) -> dict[str, Any]:
 
 def _video_part(path: Path) -> dict[str, Any]:
     """Construct a video Part from a file (max 120s)."""
-    from google.genai import types
-
+    types = import_genai_types()
     return types.Part.from_bytes(
         data=path.read_bytes(),
         mime_type=_mime_for(path, fallback="video/mp4"),

@@ -6,7 +6,8 @@ Backends (checked in order, first available wins):
 
 Models cached lazily — first call loads, subsequent calls reuse.
 
-Install: pip install mm[extract] or pip install mm[extract,mlx] for MLX support on Apple Silicon.
+faster-whisper and ctranslate2 are included in the default ``mm`` install.
+For MLX support on Apple Silicon: pip install mm[mlx]
 """
 
 from __future__ import annotations
@@ -176,7 +177,12 @@ def _get_mlx_model(model_size: str, batch_size: int) -> Any:
     if key in _MODEL_CACHE:
         return _MODEL_CACHE[key]
 
-    from lightning_whisper_mlx import LightningWhisperMLX
+    from mm.deps import try_import_or_raise
+
+    lwm = try_import_or_raise(
+        "lightning_whisper_mlx", extra="mlx", package="lightning-whisper-mlx"
+    )
+    LightningWhisperMLX = lwm.LightningWhisperMLX
 
     model = LightningWhisperMLX(model=model_size, batch_size=batch_size, quant=None)
     _MODEL_CACHE[key] = model
@@ -266,7 +272,8 @@ def transcribe(
 
     if backend is None:
         return TranscriptionResult(
-            text="[whisper not installed — pip install mm[extract] or pip install mm[extract,mlx] for MLX support on Apple Silicon]",
+            text="[whisper not available — faster-whisper should be included in core mm install. "
+            "For MLX on Apple Silicon: pip install mm[mlx]]",
             model_size=model_size,
         )
 

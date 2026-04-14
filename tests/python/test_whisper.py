@@ -34,7 +34,7 @@ def test_transcribe_without_whisper():
 
     with patch("mm.whisper._detect_backend", return_value=None):
         result = transcribe("/tmp/test.wav", model_size="tiny")
-        assert "not installed" in result.text
+        assert "not available" in result.text
         assert result.model_size == "tiny"
 
 
