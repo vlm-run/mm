@@ -43,7 +43,6 @@ jobs:
   # Build wheels for each platform
   build:
     needs:
-      - prepare
       - integration-test
     strategy:
       fail-fast: false
@@ -65,8 +64,8 @@ jobs:
           - os: windows-latest
             target: x86_64-pc-windows-msvc
           # Windows aarch64
-          # - os: windows-latest
-          #   target: aarch64-pc-windows-msvc
+          - os: windows-latest
+            target: aarch64-pc-windows-msvc
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
     steps:
@@ -80,6 +79,8 @@ jobs:
           target: ${{ matrix.target }}
           args: --release --out dist
           manylinux: auto
+        env:
+          PYO3_CROSS_PYTHON_VERSION: "3.10"
 
       - name: Upload wheels
         uses: actions/upload-artifact@v4
@@ -90,7 +91,6 @@ jobs:
   # Build source distribution
   sdist:
     needs:
-      - prepare
       - integration-test
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -222,9 +222,6 @@ jobs:
 
   # Deploy metrics dashboard to GitHub Pages at /dev/metrics
   deploy-metrics:
-    needs:
-      - build
-      - sdist
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -303,9 +300,6 @@ jobs:
 
   # Deploy intro docs site to GitHub Pages at /intro
   deploy-intro:
-    needs:
-      - build
-      - sdist
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -335,7 +329,6 @@ jobs:
   deploy-simple-index:
     needs:
       - prepare
-      - build
       - deploy-installer
     runs-on: ubuntu-latest
     env:
