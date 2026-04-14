@@ -225,8 +225,7 @@ jobs:
   # Deploy metrics dashboard to GitHub Pages at /dev/metrics
   deploy-metrics:
     needs:
-      - build
-      - sdist
+      - prepare
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -306,8 +305,7 @@ jobs:
   # Deploy intro docs site to GitHub Pages at /intro
   deploy-intro:
     needs:
-      - build
-      - sdist
+      - prepare
     runs-on: ubuntu-latest
     permissions:
       contents: write
