@@ -79,7 +79,7 @@ def convert_to_markdown(doc_path: str | Path) -> DoclingResult:
         if ext == ".pdf":
             return _fallback_pdf(doc_path)
         return DoclingResult(
-            markdown=f"[docling not installed — check your mm installation]",
+            markdown="[docling not installed — check your mm installation]",
         )
 
     t0 = time.monotonic()

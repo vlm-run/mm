@@ -24,7 +24,7 @@ dependencies = [
     "pyyaml>=6.0",
     "faster-whisper>=1.0",
     "scenedetect[opencv]>=0.6",
-    "docling>=2.0",
+    "docling>=2.0; python_version >= '3.11'",
     "ctranslate2>=2.0",
 ]
 

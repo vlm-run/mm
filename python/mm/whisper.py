@@ -179,9 +179,7 @@ def _get_mlx_model(model_size: str, batch_size: int) -> Any:
 
     from mm.deps import try_import_or_raise
 
-    lwm = try_import_or_raise(
-        "lightning_whisper_mlx", extra="mlx", package="lightning-whisper-mlx"
-    )
+    lwm = try_import_or_raise("lightning_whisper_mlx", extra="mlx", package="lightning-whisper-mlx")
     LightningWhisperMLX = lwm.LightningWhisperMLX
 
     model = LightningWhisperMLX(model=model_size, batch_size=batch_size, quant=None)

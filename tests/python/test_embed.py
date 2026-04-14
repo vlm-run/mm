@@ -27,6 +27,7 @@ from .test_utils import ensure_l1, get_hash
 def _genai_available() -> bool:
     try:
         import google.genai  # noqa: F401
+
         return True
     except ImportError:
         return False
