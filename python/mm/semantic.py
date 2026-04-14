@@ -1,6 +1,6 @@
 """Semantic search — check indexing status, index on demand, then KNN query.
 
-Used by `mm grep -l 2` to search inside files using vector similarity
+Used by `mm grep --level|-l 2` to search inside files using vector similarity
 over the persisted chunks table.
 """
 
@@ -177,7 +177,7 @@ def handle_missing(
         cmd_parts.append(f"--kind {kind}")
     if ext:
         cmd_parts.append(f"--ext {ext}")
-    cmd_parts.append("-l 2 --index")
+    cmd_parts.append("--level 2 --index")
 
     console.print(f"[yellow]Warning:[/yellow] {len(missing)} of {len(uris)} files are not indexed.")
     if not indexed:

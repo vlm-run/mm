@@ -38,7 +38,7 @@ class FileEntry:
 
 
 class Context:
-    """Multi-modal context for a directory.
+    """Multimodal context for a directory.
 
     Scanning (L0) is performed on construction. L1 extraction is on-demand.
     """
@@ -48,16 +48,18 @@ class Context:
         root: str | Path,
         *,
         n_threads: int | None = None,
+        no_ignore: bool = False,
         llm_base_url: str | None = None,
         llm_api_key: str | None = None,
     ):
         self.root = Path(root).resolve()
+        self._no_ignore = no_ignore
         self._llm_base_url = llm_base_url
         self._llm_api_key = llm_api_key
 
         from mm._mm import Scanner
 
-        self._scanner = Scanner(str(self.root), n_threads)
+        self._scanner = Scanner(str(self.root), n_threads, no_ignore=no_ignore)
         self._scanner.scan()
 
         self._table = self._scanner.to_arrow()  # pa.Table
@@ -158,6 +160,7 @@ class Context:
         new_ctx._scanner = self._scanner
         new_ctx._table = filtered
         new_ctx._db = self._db
+        new_ctx._no_ignore = self._no_ignore
         return new_ctx
 
     # --- Content access ---
@@ -171,7 +174,6 @@ class Context:
         """
         full_path = self.root / path
         from mm.commands.cat import _run_l1
-
         from mm.utils import file_kind
 
         kind = file_kind(full_path)

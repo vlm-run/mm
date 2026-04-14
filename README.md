@@ -1,6 +1,6 @@
 # mm
 
-High-performance multi-modal context management library + CLI.
+High-performance multimodal context management library + CLI.
 
 Rust core for speed. Python for developer experience. Unix philosophy for composability.
 
@@ -16,7 +16,7 @@ uv run maturin develop --release
 
 ## CLI
 
-Commands that mirror familiar Unix tools but operate on multi-modal semantics.
+Commands that mirror familiar Unix tools but operate on multimodal semantics.
 Indexing is implicit — every command auto-builds a metadata index on first use.
 
 Metadata commands (`find`, `wc` with `--format json`) run in **~60ms** on 700 files via the Rust fast path.
@@ -39,9 +39,9 @@ mm cat photo.png -p resize                   # use named encoder
 
 | Command | Purpose | Key flags |
 |---------|---------|-----------|
-| `find`  | Find/list files, tree view, schema | `--name`, `--kind`, `--ext`, `--min-size`, `--max-size`, `--sort`, `--reverse`, `--columns`, `--tree`, `--depth`, `--schema`, `--limit`, `--format` |
-| `cat` | Content extraction (auto-detected by file type × mode) | `--mode fast/accurate`, `-p` (pipeline), `-n`, `--encode.*`, `--generate.*`, `--format` |
-| `grep` | Content search across files | `--kind`, `--ext`, `-C`, `--count`, `--format` |
+| `find`  | Find/list files, tree view, schema | `--name`, `--kind`, `--ext`, `--min-size`, `--max-size`, `--sort`, `--reverse`, `--columns`, `--tree`, `--depth`, `--schema`, `--limit`, `--no-ignore`, `--format` |
+| `cat` | Content extraction (auto-detected by file type × mode) | `--mode fast/accurate`, `-p` (pipeline), `-n`, `--no-cache`, `-v`, `--encode.*`, `--generate.*`, `--list-pipelines`, `--list-encoders`, `--format` |
+| `grep` | Content search across files | `--kind`, `--ext`, `-C`, `--count`, `-i`, `--no-ignore`, `--format` |
 | `sql` | SQL queries on file index, results, chunks, and embeddings | `--dir`, `--pre-index`, `--format`, `--list-tables` |
 | `wc` | Count files, size, lines (est.), tokens (est.) | `--kind`, `--by-kind`, `--format` |
 | `bench` | Benchmark suite | `--format`, `--rounds` |
@@ -64,6 +64,7 @@ mm find ~/data --tree --depth 2                        # hierarchical tree view
 mm find ~/data --tree --kind video                     # tree filtered to videos
 mm find ~/data --schema                                # column names, types, descriptions
 mm find ~/data --format json                           # full metadata JSON
+mm find ~/data --no-ignore                             # include gitignored files
 ```
 
 ### cat — content extraction
@@ -78,7 +79,10 @@ mm cat video.mp4 -m accurate                   # mosaic → LLM description
 mm cat photo.png -m accurate                   # LLM caption
 mm cat photo.png -p resize                     # use named encoder
 mm cat photo.png -p my-pipeline.yaml           # custom pipeline YAML
+mm cat video.mp4 -m accurate --no-cache        # force fresh LLM call
+mm cat photo.png -m accurate -v                # verbose (shows pipeline tree)
 mm cat --list-pipelines                        # list registered pipelines
+mm cat --list-encoders                         # list registered encoders
 ```
 
 ### wc — count files, size, tokens
@@ -94,6 +98,7 @@ mm wc ~/data --by-kind --format json
 mm grep "attention" ~/data --kind document
 mm grep "TODO" ~/data --kind code
 mm grep "invoice" ~/data --count               # match counts per file
+mm grep "Quantum Phase" ~/data -i              # case-insensitive search
 ```
 
 ### sql — query the index
@@ -117,8 +122,19 @@ mm sql --list-tables                              # show available tables
 - **TTY**: Rich formatted tables/panels
 - **Piped**: plain TSV/text (machine-readable, no ANSI)
 - **`--format json`**: JSON output on any command that supports it
+- **`--format csv`**: Comma-separated values
 - **`--format dataset-jsonl`**: JSONL for dataset export
-- **`--format dataset-hf`**: HuggingFace Datasets format
+- **`--format dataset-hf`**: HuggingFace Datasets format (requires `--output-dir`)
+
+### Verbose mode (`--verbose` / `-v`)
+
+`mm cat <file> [OPTIONS] --verbose` shows the pipeline execution tree after content:
+
+```
+pipeline
+  ├─ encode: resize · 0.0s → 1 parts (1 image)
+  └─ generate: ollama · 2.3s · 354→195 tokens
+```
 
 ## Python API
 

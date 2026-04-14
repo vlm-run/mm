@@ -1,4 +1,4 @@
-"""mm CLI -- Unix-philosophy multi-modal context management."""
+"""mm CLI -- Unix-philosophy multimodal context management."""
 
 from __future__ import annotations
 
@@ -30,10 +30,62 @@ from mm.commands import bench, cat, find, grep, sql, wc
 from mm.commands.config import config_app
 from mm.commands.profile import profile_app
 
+_ART = [
+    "███╗   ███╗███╗   ███╗",
+    "████╗ ████║████╗ ████║",
+    "██╔████╔██║██╔████╔██║",
+    "██║╚██╔╝██║██║╚██╔╝██║",
+    "██║ ╚═╝ ██║██║ ╚═╝ ██║",
+    "╚═╝     ╚═╝╚═╝     ╚═╝",
+]
+
+_STEEL_BLUE = "#4682B4"
+
+
+def _print_banner() -> None:
+    """Print the mm banner with a silver-to-steel-blue gradient."""
+    from rich.console import Console
+    from rich.text import Text
+
+    console = Console(stderr=True)
+    console.print()
+
+    if console.width >= 50:
+        # Right-side labels aligned to art lines 1–4
+        _right = {
+            1: "  ◈ pdf · ⬡ image · ▶ video",
+            2: "  ♫ audio · ⟨/⟩ code",
+            3: "  ≡ data · T text",
+        }
+        art_width = max(len(line) for line in _ART)
+
+        # Silver (#C0D0E8) → Steel blue (#4682B4)
+        n = len(_ART)
+        s, e = (0xC0, 0xD0, 0xE8), (0x46, 0x82, 0xB4)
+        for i, line in enumerate(_ART):
+            t = i / max(n - 1, 1)
+            r = int(s[0] + (e[0] - s[0]) * t)
+            g = int(s[1] + (e[1] - s[1]) * t)
+            b = int(s[2] + (e[2] - s[2]) * t)
+            padded = line.ljust(art_width)
+            row = Text(f"  {padded}", style=f"#{r:02x}{g:02x}{b:02x}")
+            if i in _right:
+                row.append_text(Text(_right[i], style="dim"))
+            console.print(row)
+
+        console.print(
+            f"  [bold {_STEEL_BLUE}]mm (v{__version__})[/bold {_STEEL_BLUE}]"
+            " [dim]— High-performance multimodal context management[/dim]"
+        )
+    else:
+        console.print(f"  [bold {_STEEL_BLUE}]mm (v{__version__})[/bold {_STEEL_BLUE}]")
+
+    console.print()
+
+
 app = typer.Typer(
     name="mm",
-    help=f"High-performance multi-modal context management - v{__version__}.",
-    no_args_is_help=True,
+    no_args_is_help=False,
     pretty_exceptions_enable=False,
 )
 
@@ -42,6 +94,7 @@ _TIMED_COMMANDS = {"find", "cat", "grep", "sql", "wc"}
 
 @app.callback(invoke_without_command=True)
 def _main(
+    ctx: typer.Context,
     profile: Annotated[
         Optional[str],
         typer.Option("--profile", "-p", help="Config profile to use (see: mm profile list)"),
@@ -51,9 +104,14 @@ def _main(
     ] = "auto",
     version: Annotated[bool, typer.Option("--version", "-v", help="Show version and exit")] = False,
 ) -> None:
-    """High-performance multi-modal context management."""
+    """High-performance multimodal context management."""
     if version:
         typer.echo(f"mm v{__version__}")
+        raise typer.Exit()
+
+    if ctx.invoked_subcommand is None:
+        _print_banner()
+        typer.echo(ctx.get_help())
         raise typer.Exit()
 
     start_time = perf_counter()

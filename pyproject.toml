@@ -4,8 +4,8 @@ build-backend = "maturin"
 
 [project]
 name = "mm"
-version = "0.4.0"
-description = "High-performance multi-modal context management library"
+version = "0.5.0"
+description = "High-performance multimodal context management library"
 requires-python = ">=3.10"
 license = { text = "MIT" }
 dependencies = [
@@ -65,10 +65,12 @@ include = [
 [tool.pytest.ini_options]
 testpaths = ["tests/python"]
 markers = [
-    "slow: benchmarks, integration, and accurate-mode tests (deselect with '-m not slow')",
-    "integration: integration tests that need external services",
+    "integration: slow integration tests that need external services (deselect with '-m not integration')",
+    "slow: resource-intensive tests such as pytest-benchmark suites (deselect with '-m not slow')",
 ]
-addopts = "-m 'not slow'"
+# Default CI run executes only the fast tier. Run the full suite with
+# `pytest -m ''` or `make test-python-full`.
+addopts = "-m 'not integration and not slow'"
 
 [tool.ruff]
 target-version = "py310"

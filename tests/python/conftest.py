@@ -54,6 +54,20 @@ def small_tree(tmp_path: Path) -> Path:
 
 
 @pytest.fixture
+def gitignored_tree(tmp_path: Path) -> Path:
+    """Directory with a .gitignore that excludes some files."""
+    root = tmp_path / "gi"
+    root.mkdir()
+    (root / ".git").mkdir()
+    (root / ".gitignore").write_text("*.log\ndata/\n")
+    (root / "keep.py").write_text("x = 1\n")
+    (root / "skip.log").write_text("log line\n")
+    (root / "data").mkdir()
+    (root / "data" / "file.csv").write_text("a,b,c\n")
+    return root
+
+
+@pytest.fixture
 def large_tree(tmp_path: Path) -> Path:
     """Create a larger directory tree for benchmarking."""
     extensions = [".py", ".rs", ".js", ".md", ".toml", ".json", ".txt", ".yaml"]

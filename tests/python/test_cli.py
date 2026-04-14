@@ -68,6 +68,22 @@ class TestFind:
         for line in lines:
             json.loads(line)
 
+    def test_no_ignore_includes_gitignored(self, gitignored_tree: Path):
+        """--no-ignore should include files that .gitignore would exclude."""
+        # Without --no-ignore: gitignored files are excluded
+        r = runner.invoke(app, ["find", str(gitignored_tree), "--format", "json"])
+        assert r.exit_code == 0
+        paths = {row["path"] for row in json.loads(r.output)}
+        assert not any("skip.log" in p for p in paths)
+        assert not any("data/" in p for p in paths)
+
+        # With --no-ignore: gitignored files are included
+        r = runner.invoke(app, ["find", str(gitignored_tree), "--no-ignore", "--format", "json"])
+        assert r.exit_code == 0
+        paths = {row["path"] for row in json.loads(r.output)}
+        assert any("skip.log" in p for p in paths)
+        assert any("file.csv" in p for p in paths)
+
 
 # ── find (table, tree, schema) ────────────────────────────────────────
 
@@ -104,6 +120,18 @@ class TestFindTable:
         data = json.loads(r.output)
         assert isinstance(data, list)
         assert len(data) > 0
+
+    def test_no_ignore_tree(self, gitignored_tree: Path):
+        """--no-ignore should include gitignored files in tree mode."""
+        r = runner.invoke(app, ["find", str(gitignored_tree), "--tree", "--no-ignore"])
+        assert r.exit_code == 0
+        assert "skip.log" in r.output
+        assert "data" in r.output
+
+    def test_no_ignore_schema(self, gitignored_tree: Path):
+        """--no-ignore should work with schema mode."""
+        r = runner.invoke(app, ["find", str(gitignored_tree), "--schema", "--no-ignore"])
+        assert r.exit_code == 0
 
 
 # ── cat ──────────────────────────────────────────────────────────────
@@ -227,6 +255,37 @@ class TestGrep:
     def test_no_match(self, small_tree: Path):
         r = runner.invoke(app, ["grep", "zzz_nonexistent_zzz", str(small_tree)])
         assert r.exit_code == 1  # exit 1 on no match (grep/rg convention)
+
+    def test_ignore_case(self, small_tree: Path):
+        """--ignore-case / -i should match regardless of casing."""
+        # "HELLO" doesn't match "hello" case-sensitively
+        r = runner.invoke(app, ["grep", "HELLO", str(small_tree)])
+        assert r.exit_code == 1
+
+        # With -i it should match
+        r = runner.invoke(app, ["grep", "HELLO", str(small_tree), "-i"])
+        assert r.exit_code == 0
+        assert "hello" in r.output.lower()
+
+    def test_ignore_case_json(self, small_tree: Path):
+        """--ignore-case should work with JSON output."""
+        r = runner.invoke(app, ["grep", "HELLO", str(small_tree), "-i", "--format", "json"])
+        assert r.exit_code == 0
+        data = json.loads(r.output)
+        assert len(data) > 0
+        assert any("hello" in m["line"].lower() for m in data)
+
+    def test_no_ignore(self, gitignored_tree: Path):
+        """--no-ignore should search inside gitignored files."""
+        # The gitignored_tree has skip.log with "log line" and data/file.csv with "a,b,c"
+        # Without --no-ignore: gitignored files are not searched
+        r = runner.invoke(app, ["grep", "log line", str(gitignored_tree)])
+        assert r.exit_code == 1
+
+        # With --no-ignore: gitignored files are included in the search
+        r = runner.invoke(app, ["grep", "log line", str(gitignored_tree), "--no-ignore"])
+        assert r.exit_code == 0
+        assert "skip.log" in r.output
 
     def test_dataset_jsonl(self, small_tree: Path):
         r = runner.invoke(app, ["grep", "hello", str(small_tree), "--format", "dataset-jsonl"])

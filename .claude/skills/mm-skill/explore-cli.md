@@ -17,10 +17,10 @@ Systematic walkthrough of the `mm` CLI surface. The goal is coverage and a repro
 
 Cover each top-level command at least once, biasing toward flags shown in FIXTURES.md:
 
-- `find` — default table, `--tree --depth 1`, `--schema`, `--columns`, `--kind`, `--name`, `--min-size --sort --reverse`, `--format json`
+- `find` — default table, `--tree --depth 1`, `--schema`, `--columns`, `--kind`, `--name`, `--min-size --sort --reverse`, `--no-ignore`, `--format json`
 - `wc` — default totals, `--by-kind`, `--kind <k> --format json`
 - `cat` — one image, one video, one PDF with `-n`, one audio. Note that `cat` without `-m fast` may trigger accurate-mode pipelines against the active profile; that's expected coverage, not a bug.
-- `grep` — a literal term scoped by `--kind document`
+- `grep` — a literal term scoped by `--kind document`, `-i` (case-insensitive)
 - `sql` — at minimum `--list-tables`. Ad-hoc `SELECT ... FROM files --dir <path>` needs `--pre-index` on an unindexed directory; mention this in the log rather than fighting it.
 - `profile list`, `config show`
 

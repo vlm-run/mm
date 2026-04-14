@@ -4,7 +4,7 @@ Unified content extraction. Behaviour driven by **file type × mode × pipeline*
 
 ## Input
 
-- **Multi-modal**: auto-detects kind from extension → image, video, audio, document, text
+- **Multimodal**: auto-detects kind from extension → image, video, audio, document, text
 - **Multi-file**: `mm cat a.jpg b.pdf c.mp4` — processes each sequentially
 - **Stdin**: `find . -name '*.pdf' | mm cat` — reads newline-delimited paths from stdin
 - **Head/tail**: `-n 20` (first 20 lines), `-n -20` (last 20 lines)
@@ -61,7 +61,7 @@ Unified L2 cache (SQLite at `~/.local/share/mm/mm.db`) for **both** fast and acc
 - Cache hit indicator: footer shows `cached • 36ms • 412.8 KB • 7.0 MB/s`
 - Embedding: on cache miss with accurate mode, `embed_file_chunks` auto-generates Gemini embeddings
 
-## Verbose (`-v` / `--verbose`)
+## Verbose (`--verbose`/ `-v`)
 
 Pipeline execution tree shown after content:
 

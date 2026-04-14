@@ -1,4 +1,9 @@
-"""Performance benchmarks for mm Python API."""
+"""Performance benchmarks for mm Python API.
+
+These are part of the ``slow`` tier — deselected by default so
+``make test-python`` stays fast. Run with ``make test-python-full``
+or ``pytest -m slow`` locally.
+"""
 
 from __future__ import annotations
 

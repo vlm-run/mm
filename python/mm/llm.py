@@ -219,11 +219,17 @@ class LlmBackend:
         if json_mode:
             kwargs["response_format"] = {"type": "json_object"}
 
-        extra_body: dict[str, Any] = {"think": think, "reasoning_effort": reasoning_effort}
+        extra_body: dict[str, Any] = {}
+        if think:
+            extra_body["think"] = True
+        if reasoning_effort != "none":
+            extra_body["reasoning_effort"] = reasoning_effort
+
+        if extra_body:
+            kwargs["extra_body"] = extra_body
 
         try:
-            response = self.client.chat.completions.create(**kwargs, extra_body=extra_body)
-
+            response = self.client.chat.completions.create(**kwargs)
             if response.usage:
                 self.last_usage = LlmUsage(
                     prompt_tokens=response.usage.prompt_tokens or 0,

@@ -21,8 +21,8 @@ profile_app = typer.Typer(
         "  mm profile update ollama --model qwen3.5:0.8\n"
         "  mm profile add openai --base-url https://api.openai.com/v1 --model gpt-4o\n"
         "  mm profile remove openai\n\n"
-        "Select a profile per-command with:  mm --profile openrouter cat photo.png -l 2\n"
-        "Or via environment variable:        MM_PROFILE=ollama mm cat photo.png -l 2\n"
+        "Select a profile per-command with:  mm --profile openrouter cat photo.png -m accurate\n"
+        "Or via environment variable:        MM_PROFILE=ollama mm cat photo.png -m accurate\n"
         "Resolution order: CLI --profile > MM_PROFILE env > active_profile > 'default'"
     ),
     no_args_is_help=True,

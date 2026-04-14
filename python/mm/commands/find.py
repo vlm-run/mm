@@ -82,6 +82,9 @@ def find_cmd(
         ),
     ] = None,
     limit: Annotated[Optional[int], typer.Option("--limit", help="Max results")] = None,
+    no_ignore: Annotated[
+        bool, typer.Option("--no-ignore", help="Don't respect .gitignore rules")
+    ] = False,
 ) -> None:
     """Find files matching criteria (like fd/find).
 
@@ -100,19 +103,32 @@ def find_cmd(
       mm find ~/data --min-size 1mb --sort size -r          # large files
       mm find ~/data --name "test_.*\\.py"                  # regex name match
       mm find ~/data -n config                              # substring name match
+      mm find ~/data --no-ignore                            # include gitignored files
     """
     from mm.display import resolve_format
 
     fmt = resolve_format(format.value if format else None)
     if tree:
-        _find_tree(directory, kind, name, depth, size, fmt)
+        _find_tree(directory, kind, name, depth, size, fmt, no_ignore=no_ignore)
         return
     if schema:
-        _find_schema(directory, fmt)
+        _find_schema(directory, fmt, no_ignore=no_ignore)
         return
 
     _find_table(
-        directory, kind, ext, min_size, max_size, name, depth, sort, reverse, columns, limit, fmt
+        directory,
+        kind,
+        ext,
+        min_size,
+        max_size,
+        name,
+        depth,
+        sort,
+        reverse,
+        columns,
+        limit,
+        fmt,
+        no_ignore=no_ignore,
     )
 
 
@@ -142,6 +158,8 @@ def _find_table(
     columns: str | None,
     limit: int | None,
     fmt: str,
+    *,
+    no_ignore: bool = False,
 ) -> None:
     """Default tabular listing."""
     from mm.pipe import read_paths_from_stdin, resolve_piped_paths
@@ -151,7 +169,7 @@ def _find_table(
     if fmt != "rich" and not stdin_paths and not columns and depth is None:
         from mm._mm import Scanner
 
-        scanner = Scanner(str(Path(directory).resolve()))
+        scanner = Scanner(str(Path(directory).resolve()), None, no_ignore=no_ignore)
         scanner.scan()
 
         min_bytes = _parse_size(min_size) if min_size else None
@@ -184,7 +202,7 @@ def _find_table(
 
     from mm.context import Context
 
-    ctx = Context(directory)
+    ctx = Context(directory, no_ignore=no_ignore)
     if kind or ext or min_size or max_size:
         ctx = ctx.filter(kind=kind, ext=ext, min_size=min_size, max_size=max_size)
 
@@ -364,10 +382,12 @@ def _find_tree(
     depth: int | None,
     show_size: bool,
     fmt: str,
+    *,
+    no_ignore: bool = False,
 ) -> None:
     from mm._mm import Scanner
 
-    scanner = Scanner(str(Path(directory).resolve()))
+    scanner = Scanner(str(Path(directory).resolve()), no_ignore=no_ignore)
     scanner.scan()
 
     raw = json_mod.loads(scanner.to_json_fast(kind=kind, name=name))
@@ -431,10 +451,10 @@ def _find_tree(
 # ---------------------------------------------------------------------------
 
 
-def _find_schema(directory: Path, fmt: str) -> None:
+def _find_schema(directory: Path, fmt: str, *, no_ignore: bool = False) -> None:
     from mm.context import Context
 
-    ctx = Context(directory)
+    ctx = Context(directory, no_ignore=no_ignore)
     table = ctx.to_arrow()
 
     from mm.display import format_size

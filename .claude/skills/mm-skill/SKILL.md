@@ -1,7 +1,7 @@
 ---
 name: mm-skill
 description: >
-  Use the mm CLI to index, explore, query, and extract content from multi-modal directories
+  Use the mm CLI to index, explore, query, and extract content from multimodal directories
   containing images, videos, PDFs, code, and other files. Triggers: exploring a directory's contents,
   listing/finding files by type or size, extracting text from PDFs, getting image metadata, running SQL
   analytics on file metadata, searching across file contents, counting tokens, viewing directory trees,
@@ -12,7 +12,7 @@ description: >
 
 # mm CLI
 
-`mm` is a high-performance multi-modal context management CLI. It indexes directories instantly (~60ms for 700 files), then exposes Unix-style commands for exploring, querying, and extracting content from images, videos, PDFs, code, and other files.
+`mm` is a high-performance multimodal context management CLI. It indexes directories instantly (~60ms for 700 files), then exposes Unix-style commands for exploring, querying, and extracting content from images, videos, PDFs, code, and other files.
 
 Always use `--format json` for machine-readable output when parsing results programmatically.
 
@@ -21,7 +21,11 @@ Always use `--format json` for machine-readable output when parsing results prog
 ```bash
 # First run `mm --help` or `mm --version` to confirm mm isn't already installed
 
+# macOS / Linux
 curl -LsSf https://vlm-run.github.io/mm/install/install.sh | sh
+
+# Windows (PowerShell)
+irm https://vlm-run.github.io/mm/install/install.ps1 | iex
 ```
 
 ## Commands
@@ -77,6 +81,11 @@ mm find <dir> --tree --format json                    # JSON tree structure
 # Schema inspection
 mm find <dir> --schema                                # Rich table with column docs
 mm find <dir> --schema --format json                  # machine-readable
+
+# Include gitignored files
+mm find <dir> --no-ignore                             # bypass .gitignore rules
+mm find <dir> --no-ignore --kind video                # gitignored videos
+mm find <dir> --no-ignore --tree                      # tree including ignored dirs
 ```
 
 Columns in the `files` table:
@@ -161,24 +170,24 @@ mm cat --list-pipelines
 
 Use either the bare name or the kind-prefixed display name.
 
-| Name | Media | Description |
-|------|-------|-------------|
-| `image-resize` | image | **Default.** Fit to 1024px bounding box |
-| `image-tile` | image | Resized overview + tile crops in one Message |
-| `video-frame-sample` | video | Extract frames at *fps* (requires ffmpeg) |
-| `video-frames-transcript` | video | Frames + Whisper transcript (accurate mode default) |
-| `video-chunk` | video | Chunk into time-based segments with overlap |
-| `video-mosaic` | video | Build mosaic grids from sampled frames |
-| `video-shot-frames` | video | Scene detection → representative frames per shot |
-| `video-shot-mosaic` | video | Scene detection → mosaic grid per shot |
-| `video-gemini` | video | Pass video file as a Gemini Part |
-| `video-gemini-chunked` | video | Chunk video into Gemini Parts |
-| `audio-transcribe` | audio | Transcribe audio via Whisper (fast/accurate default) |
-| `audio-gemini` | audio | Pass audio file as a Gemini Part |
-| `document-page-text` | document | Extract text per page from PDF/DOCX/PPTX |
-| `document-rasterize` | document | Render PDF pages as images (requires pypdfium2) |
-| `document-rasterize-text` | document | Rasterize + extract text, interleaved |
-| `document-gemini` | document | Pass document file as a Gemini Part |
+| Name                      | Media    | Description                                          |
+| ------------------------- | -------- | ---------------------------------------------------- |
+| `image-resize`            | image    | **Default.** Fit to 1024px bounding box              |
+| `image-tile`              | image    | Resized overview + tile crops in one Message         |
+| `video-frame-sample`      | video    | Extract frames at _fps_ (requires ffmpeg)            |
+| `video-frames-transcript` | video    | Frames + Whisper transcript (accurate mode default)  |
+| `video-chunk`             | video    | Chunk into time-based segments with overlap          |
+| `video-mosaic`            | video    | Build mosaic grids from sampled frames               |
+| `video-shot-frames`       | video    | Scene detection → representative frames per shot     |
+| `video-shot-mosaic`       | video    | Scene detection → mosaic grid per shot               |
+| `video-gemini`            | video    | Pass video file as a Gemini Part                     |
+| `video-gemini-chunked`    | video    | Chunk video into Gemini Parts                        |
+| `audio-transcribe`        | audio    | Transcribe audio via Whisper (fast/accurate default) |
+| `audio-gemini`            | audio    | Pass audio file as a Gemini Part                     |
+| `document-page-text`      | document | Extract text per page from PDF/DOCX/PPTX             |
+| `document-rasterize`      | document | Render PDF pages as images (requires pypdfium2)      |
+| `document-rasterize-text` | document | Rasterize + extract text, interleaved                |
+| `document-gemini`         | document | Pass document file as a Gemini Part                  |
 
 ### Writing custom encoders
 
@@ -224,14 +233,14 @@ messages = ctx.encode("photo.png", strategy="resize")
 
 Pipelines are 2-stage YAMLs: **encode** (convert to LLM-ready parts) → **generate** (LLM call). Key parameters can be overridden from the CLI.
 
-### Encode overrides (--encode.*)
+### Encode overrides (--encode.\*)
 
 ```bash
 mm cat photo.png -m accurate --encode.strategy image-tile      # override encoder
 mm cat photo.png -m accurate --encode.pyfunc ~/my_filter.py    # custom transform
 ```
 
-### Generate overrides (--generate.*)
+### Generate overrides (--generate.\*)
 
 ```bash
 mm cat photo.png -m accurate --generate.max-tokens 1024          # increase token limit
@@ -384,6 +393,9 @@ mm grep "TODO" <dir> --kind code                       # search code files
 mm grep "invoice" <dir> --kind document --format json  # JSON output
 mm grep "error" <dir> -C 2                             # 2 context lines
 mm grep "invoice" <dir> --count                        # match counts per file
+mm grep "Quantum Phase" <dir> -i                       # case-insensitive search
+mm grep "TODO" <dir> --ignore-case --kind code         # case-insensitive in code
+mm grep "secret" <dir> --no-ignore                     # search gitignored files too
 
 # Semantic search (vector similarity via embeddings)
 mm grep "financial projections" <dir>                  # semantic search across all files

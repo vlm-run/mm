@@ -26,6 +26,12 @@ def grep_cmd(
     index: Annotated[
         bool, typer.Option("--index", help="Index unindexed files before semantic search (max 50)")
     ] = False,
+    ignore_case: Annotated[
+        bool, typer.Option("--ignore-case", "-i", help="Case-insensitive matching")
+    ] = False,
+    no_ignore: Annotated[
+        bool, typer.Option("--no-ignore", help="Don't respect .gitignore rules")
+    ] = False,
     format: Annotated[
         Optional[Format],
         typer.Option(
@@ -39,10 +45,12 @@ def grep_cmd(
     Examples:
       mm grep "TODO" ~/project                          # search all files
       mm grep "import.*torch" ~/project --kind code     # code files only
-      mm grep "attention" ~/papers --ext .pdf --level 1 # search PDF text
+      mm grep "attention" ~/papers --ext .pdf           # search PDF text
       mm grep "error|warn" ~/logs -C 2                  # context lines
-      mm grep "neural network" ~/data --level 2         # semantic search
+      mm grep "neural network" ~/data --level 2         # semantic (vector) search
       mm grep "def main" ~/src --count                  # match counts only
+      mm grep "Quantum" ~/docs -i                       # case-insensitive
+      mm grep "secret" ~/docs --no-ignore               # ignore .gitignore
     """
 
     from mm.context import FileEntry
@@ -64,11 +72,13 @@ def grep_cmd(
             limit=5,
             stdin_paths=stdin_paths,
             do_index=index,
+            no_ignore=no_ignore,
         )
         return
 
+    re_flags = re.IGNORECASE if ignore_case else 0
     try:
-        regex = re.compile(pattern)
+        regex = re.compile(pattern, re_flags)
     except re.error as e:
         typer.echo(f"Invalid regex: {e}", err=True)
         raise typer.Exit(1)
@@ -82,7 +92,7 @@ def grep_cmd(
     if directory:
         from mm.context import Context
 
-        ctx = Context(_directory)
+        ctx = Context(_directory, no_ignore=no_ignore)
         if kind:
             ctx = ctx.filter(kind=kind)
         if ext:
@@ -258,6 +268,7 @@ def _grep_semantic(
     limit: int,
     stdin_paths: list[str] | None = None,
     do_index=False,
+    no_ignore: bool = False,
 ) -> None:
     """Semantic search: check indexing status, optionally index, then KNN search."""
     from mm.context import Context
@@ -272,7 +283,7 @@ def _grep_semantic(
     elif is_file:
         uris = [str(path)]
     else:
-        ctx = Context(directory)
+        ctx = Context(directory, no_ignore=no_ignore)
         if kind:
             ctx = ctx.filter(kind=kind)
         if ext:

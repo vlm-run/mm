@@ -43,7 +43,6 @@ jobs:
   # Build wheels for each platform
   build:
     needs:
-      - prepare
       - integration-test
     strategy:
       fail-fast: false
@@ -61,6 +60,12 @@ jobs:
           # macOS Apple Silicon
           - os: macos-latest
             target: aarch64-apple-darwin
+          # Windows x86_64
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+          # Windows aarch64
+          - os: windows-latest
+            target: aarch64-pc-windows-msvc
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
     steps:
@@ -74,6 +79,8 @@ jobs:
           target: ${{ matrix.target }}
           args: --release --out dist
           manylinux: auto
+        env:
+          PYO3_CROSS_PYTHON_VERSION: "3.10"
 
       - name: Upload wheels
         uses: actions/upload-artifact@v4
@@ -84,7 +91,6 @@ jobs:
   # Build source distribution
   sdist:
     needs:
-      - prepare
       - integration-test
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -148,7 +154,7 @@ jobs:
                   "type": "section",
                   "text": {
                     "type": "mrkdwn",
-                    "text": ":white_check_mark: :python: *mm-ctx v${{ env.VERSION }} Published to PyPI*\n\n*Version:* `v${{ env.VERSION }}`\n*Platforms:* linux (x86_64, aarch64), macOS (x86_64, arm64)\n*Commit:* <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ github.sha }}>"
+                    "text": ":white_check_mark: :python: *mm-ctx v${{ env.VERSION }} Published to PyPI*\n\n*Version:* `v${{ env.VERSION }}`\n*Platforms:* linux (x86_64, aarch64), macOS (x86_64, arm64), Windows (x86_64, arm64)\n*Commit:* <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ github.sha }}>"
                   }
                 }
               ]
@@ -216,9 +222,6 @@ jobs:
 
   # Deploy metrics dashboard to GitHub Pages at /dev/metrics
   deploy-metrics:
-    needs:
-      - build
-      - sdist
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -228,10 +231,10 @@ jobs:
         with:
           node-version: "22"
       - name: Install dependencies
-        working-directory: metrics
+        working-directory: web/metrics
         run: npm ci
       - name: Build metrics dashboard
-        working-directory: metrics
+        working-directory: web/metrics
         env:
           VITE_BASE_PATH: /mm/dev/metrics/
         run: npm run build
@@ -239,7 +242,7 @@ jobs:
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./metrics/dist
+          publish_dir: ./web/metrics/dist
           destination_dir: dev/metrics
           keep_files: true
 
@@ -283,8 +286,9 @@ jobs:
           cp _pages/${VERSION}/*.whl _pages/latest/
           cp _pages/${VERSION}/SHA256SUMS _pages/latest/
 
-          # Place install.sh at the root
+          # Place install scripts at the root
           cp install.sh _pages/install.sh
+          cp install.ps1 _pages/install.ps1
 
       - name: Deploy installer to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
@@ -294,12 +298,37 @@ jobs:
           destination_dir: install
           keep_files: true
 
+  # Deploy intro docs site to GitHub Pages at /intro
+  deploy-intro:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install dependencies
+        working-directory: web/intro
+        run: npm ci
+      - name: Build intro site
+        working-directory: web/intro
+        env:
+          VITE_BASE_PATH: /mm/intro/
+        run: npm run build
+      - name: Deploy intro to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./web/intro/dist
+          destination_dir: intro
+          keep_files: true
+
   # Deploy PEP 503 simple repository index for `uv tool install mm`
   # Usage: uv tool install mm --index-url https://vlm-run.github.io/mm/install/simple/
   deploy-simple-index:
     needs:
       - prepare
-      - build
       - deploy-installer
     runs-on: ubuntu-latest
     env:

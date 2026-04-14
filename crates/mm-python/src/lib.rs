@@ -17,6 +17,7 @@ use mm_core::meta::FileKind;
 struct Scanner {
     root: PathBuf,
     n_threads: Option<usize>,
+    no_ignore: bool,
     entries: Vec<mm_core::FileEntry>,
     batch: Option<RecordBatch>,
 }
@@ -24,18 +25,19 @@ struct Scanner {
 #[pymethods]
 impl Scanner {
     #[new]
-    #[pyo3(signature = (root, n_threads=None))]
-    fn new(root: String, n_threads: Option<usize>) -> Self {
+    #[pyo3(signature = (root, n_threads=None, no_ignore=false))]
+    fn new(root: String, n_threads: Option<usize>, no_ignore: bool) -> Self {
         Scanner {
             root: PathBuf::from(root),
             n_threads,
+            no_ignore,
             entries: Vec::new(),
             batch: None,
         }
     }
 
     fn scan(&mut self) -> PyResult<usize> {
-        self.entries = mm_core::scan_directory(&self.root, self.n_threads);
+        self.entries = mm_core::scan_directory(&self.root, self.n_threads, self.no_ignore);
         mm_core::enrich_image_dimensions(&mut self.entries, &self.root);
         let count = self.entries.len();
         let batch = mm_core::build_l0_record_batch(&self.entries)
@@ -348,9 +350,8 @@ fn perceptual_hash(path: String) -> PyResult<Option<u64>> {
 #[pyo3(signature = (path, max_width, quality=85))]
 fn resize_image(py: Python<'_>, path: String, max_width: u32, quality: u8) -> PyResult<PyObject> {
     let p = std::path::Path::new(&path);
-    let result =
-        mm_core::serde::image::resize_and_encode_with_quality(p, max_width, quality)
-            .map_err(pyo3::exceptions::PyRuntimeError::new_err)?;
+    let result = mm_core::serde::image::resize_and_encode_with_quality(p, max_width, quality)
+        .map_err(pyo3::exceptions::PyRuntimeError::new_err)?;
     let dict = pyo3::types::PyDict::new(py);
     dict.set_item("base64", &result.base64)?;
     dict.set_item("mime", &result.mime)?;
@@ -389,8 +390,7 @@ fn tile_image(py: Python<'_>, path: String, tile_size: u32, quality: u8) -> PyRe
 #[pyfunction]
 fn gemini_image_part(path: String) -> PyResult<String> {
     let p = std::path::Path::new(&path);
-    mm_core::serde::gemini::image_part_json(p)
-        .map_err(pyo3::exceptions::PyRuntimeError::new_err)
+    mm_core::serde::gemini::image_part_json(p).map_err(pyo3::exceptions::PyRuntimeError::new_err)
 }
 
 /// Serialize video as Gemini inline_data Part JSON strings (with chunking).
@@ -406,8 +406,7 @@ fn gemini_video_parts(path: String, max_seconds: u32, overlap: u32) -> PyResult<
 #[pyfunction]
 fn gemini_document_part(path: String) -> PyResult<String> {
     let p = std::path::Path::new(&path);
-    mm_core::serde::gemini::document_part_json(p)
-        .map_err(pyo3::exceptions::PyRuntimeError::new_err)
+    mm_core::serde::gemini::document_part_json(p).map_err(pyo3::exceptions::PyRuntimeError::new_err)
 }
 
 #[pymodule]
