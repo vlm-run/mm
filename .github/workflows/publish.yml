@@ -43,7 +43,6 @@ jobs:
   # Build wheels for each platform
   build:
     needs:
-      - prepare
       - integration-test
     strategy:
       fail-fast: false
@@ -92,7 +91,6 @@ jobs:
   # Build source distribution
   sdist:
     needs:
-      - prepare
       - integration-test
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -224,8 +222,6 @@ jobs:
 
   # Deploy metrics dashboard to GitHub Pages at /dev/metrics
   deploy-metrics:
-    needs:
-      - prepare
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -304,8 +300,6 @@ jobs:
 
   # Deploy intro docs site to GitHub Pages at /intro
   deploy-intro:
-    needs:
-      - prepare
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -335,7 +329,6 @@ jobs:
   deploy-simple-index:
     needs:
       - prepare
-      - build
       - deploy-installer
     runs-on: ubuntu-latest
     env:
