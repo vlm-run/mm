@@ -99,13 +99,6 @@ def _get_device() -> tuple[str, str]:
       - CPU: ("cpu", "int8")
     """
     try:
-        import torch
-
-        if torch.cuda.is_available():
-            return "cuda", "float16"
-    except ImportError:
-        pass
-    try:
         import ctranslate2
 
         if "cuda" in ctranslate2.get_supported_compute_types("cuda"):

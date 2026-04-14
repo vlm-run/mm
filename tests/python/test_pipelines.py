@@ -278,6 +278,10 @@ class TestRenderPrompt:
 class TestRunPyfunc:
     """Tests for run_pyfunc — inline Python transforms."""
 
+    @pytest.fixture(autouse=True)
+    def _allow_pyfunc(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setenv("MM_ALLOW_PYFUNC", "1")
+
     def test_no_pyfunc_passthrough(self):
         spec = TemplateSpec.from_dict(
             {
@@ -532,6 +536,10 @@ class TestLoadFile:
 
 class TestPyfuncFileRef:
     """Tests for file-path pyfunc references in run_pyfunc."""
+
+    @pytest.fixture(autouse=True)
+    def _allow_pyfunc(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setenv("MM_ALLOW_PYFUNC", "1")
 
     def test_file_pyfunc(self, tmp_path: Path):
         py_file = tmp_path / "my_transform.py"

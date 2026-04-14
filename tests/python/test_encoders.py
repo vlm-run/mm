@@ -380,7 +380,7 @@ class TestDocumentRasterize:
         fake_pages = [(base64.b64encode(b"\xff").decode(), "image/jpeg")] * 10
 
         strat = get("rasterize")
-        with patch("mm.encoders.document._rasterize_pages", return_value=fake_pages):
+        with patch("mm.encoders.document._rasterize_pages", return_value=iter(fake_pages)):
             messages = list(strat.encode(doc, pages_per_message=4))
             assert len(messages) == 3
             for msg in messages:
@@ -399,7 +399,7 @@ class TestDocumentRasterizeText:
 
         strat = get("rasterize-text")
         with (
-            patch("mm.encoders.document._rasterize_pages", return_value=fake_pages),
+            patch("mm.encoders.document._rasterize_pages", return_value=iter(fake_pages)),
             patch("mm.encoders.document._extract_page_texts", return_value=fake_texts),
         ):
             messages = list(strat.encode(doc, pages_per_message=4))
