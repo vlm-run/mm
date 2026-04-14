@@ -131,11 +131,8 @@ class _ImportBlocker:
     def __init__(self, blocked: tuple[str, ...]):
         self.blocked = blocked
 
-    def find_module(self, fullname, path=None):
+    def find_spec(self, fullname, path=None, target=None):
         for b in self.blocked:
             if fullname == b or fullname.startswith(b + "."):
-                return self
+                raise ImportError(f"Blocked by test: {fullname}")
         return None
-
-    def load_module(self, fullname):
-        raise ImportError(f"Blocked by test: {fullname}")

@@ -27,7 +27,7 @@ _AUDIO_OVERLAP_SECONDS = 5
 _EMBEDDINGS_PATH = "/embeddings"
 
 
-def importimport_genai_types():
+def import_genai_types():
     """Lazy-load ``google.genai.types``, raising if the gemini extra is missing."""
     return try_import_or_raise("google.genai.types", extra="gemini", package="google-genai")
 
