@@ -111,17 +111,31 @@ Returns matching images and videos (via keyframe analysis).
 ### File inspection and extraction
 
 ```bash
-mm cat report.pdf    # text summary + page count + embedded image count
-mm cat image.jpg     # description + tags + EXIF metadata
-mm cat video.mp4     # scene summary + transcript snippet + keyframe grid
+mm cat report.pdf              # text extraction from PDF (fast mode)
+mm cat image.jpg               # image dimensions, MIME, hash, EXIF
+mm cat video.mp4               # video resolution, duration, codecs (<100ms)
+mm cat image.jpg -m accurate   # LLM-powered caption
+mm cat video.mp4 -m accurate   # keyframe mosaic → LLM description
+mm cat audio.mp3 -m accurate   # transcript → LLM summary
+```
+
+### Pipeline customization
+
+```bash
+mm cat photo.png -p image-tile                   # use named encoder
+mm cat photo.png -p my-pipeline.yaml             # custom pipeline YAML
+mm cat photo.png -m accurate --encode.strategy image-tile  # override encoder
+mm cat photo.png -m accurate --generate.max-tokens 1024    # override generation
+mm cat --list-encoders                           # list all registered encoders
 ```
 
 ### Batch operations
 
 ```bash
-mm wc ~/docs              # file count, bytes, lines, token estimate
-mm find ~/videos              # list with tags, duration, resolution
-mm cat -m accurate video.mp4  # full context: transcript + scenes + metadata
+mm wc ~/docs                   # file count, bytes, lines, token estimate
+mm find ~/videos               # list with tags, duration, resolution
+mm cat -m accurate video.mp4   # full context: transcript + scenes
+mm find ~/images --kind image | mm cat -m accurate --format json  # batch captioning
 ```
 
 ### Agentic integration
@@ -132,15 +146,15 @@ Use mm directly as a tool or as a skill for any coding assistants:
 - *"Clip the first scene from video.mp4"*
 - *"Extract all faces from ~/events/wedding"*
 
-### Auto-labeling (Planned)
+### Auto-labeling
 
 Use mm as a labeling CLI for VLMs:
 
-- Override provider with `--base-url` and `--model` for any OpenAI-compatible endpoint
-- `--output-format dataset-jsonl` — outputs image (base64) + completion pairs for fine-tuning (OpenAI/Fireworks format)
-- `--output-format dataset-hf` — builds HuggingFace datasets from input directories
+- Select provider with `--profile` or `MM_PROFILE` env for any OpenAI-compatible endpoint
+- `--format dataset-jsonl` — outputs image (base64) + completion pairs for fine-tuning (OpenAI/Fireworks format)
+- `--format dataset-hf` — builds HuggingFace datasets from input directories (requires `--output-dir`)
 
-Pipeline: unlabeled media &#8594; `mm` auto-label (JSONL) &#8594; fine-tuning
+Pipeline: unlabeled media &#8594; `mm cat -m accurate --format dataset-jsonl` &#8594; fine-tuning
 
 ### Other examples
 

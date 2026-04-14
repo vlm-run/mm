@@ -6,7 +6,7 @@ from raw media data. Maximize bits/s, minimize latency.
 
 Usage:
     python benchmarks/bench_modes.py [data_dir]
-    mm cat benchmarks/bench_modes.py -l 0  # or just run directly
+    mm cat benchmarks/bench_modes.py        # or just run directly
 """
 
 from __future__ import annotations
@@ -110,7 +110,7 @@ def _probe_image(path: Path) -> tuple[str, int]:
     """Get image dimensions via mm L1."""
     try:
         r = subprocess.run(
-            ["mm", "cat", str(path), "-l", "1"],
+            ["mm", "cat", str(path)],
             capture_output=True,
             text=True,
             timeout=10,
@@ -130,7 +130,7 @@ def _probe_video(path: Path) -> tuple[str, float, float]:
     """Get video resolution, duration, fps via mm L1."""
     try:
         r = subprocess.run(
-            ["mm", "cat", str(path), "-l", "1"],
+            ["mm", "cat", str(path)],
             capture_output=True,
             text=True,
             timeout=10,
@@ -171,9 +171,7 @@ def bench_image(path: Path, runs: int = 3) -> list[BenchResult]:
     results = []
     for mode in ("fast", "accurate"):
         console.print(f"  [dim]Benchmarking image {mode}...[/dim]", end="\r")
-        t = _run_bench(
-            ["mm", "cat", str(path), "-l", "2", "--mode", mode, "--format", "json"], runs
-        )
+        t = _run_bench(["mm", "cat", str(path), "--mode", mode, "--format", "json"], runs)
         results.append(
             BenchResult(
                 label=f"image/{mode}",
@@ -193,9 +191,7 @@ def bench_video(path: Path, runs: int = 2) -> list[BenchResult]:
     results = []
     for mode in ("fast", "accurate"):
         console.print(f"  [dim]Benchmarking video {mode}...[/dim]", end="\r")
-        t = _run_bench(
-            ["mm", "cat", str(path), "-l", "2", "--mode", mode, "--format", "json"], runs
-        )
+        t = _run_bench(["mm", "cat", str(path), "--mode", mode, "--format", "json"], runs)
         results.append(
             BenchResult(
                 label=f"video/{mode}",
@@ -213,15 +209,15 @@ def bench_video(path: Path, runs: int = 2) -> list[BenchResult]:
 
 def bench_pdf(path: Path, runs: int = 5) -> list[BenchResult]:
     pages = _probe_pdf_pages(path)
-    console.print("  [dim]Benchmarking PDF L1...[/dim]", end="\r")
-    t = _run_bench(["mm", "cat", str(path), "-l", "1", "--format", "json"], runs)
+    console.print("  [dim]Benchmarking PDF fast...[/dim]", end="\r")
+    t = _run_bench(["mm", "cat", str(path), "--format", "json"], runs)
     return [
         BenchResult(
-            label="document/L1",
+            label="document/fast",
             file=path.name,
             file_bytes=path.stat().st_size,
             wall_s=t,
-            mode="L1",
+            mode="fast",
             pages=pages,
         )
     ]

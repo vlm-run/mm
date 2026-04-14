@@ -81,10 +81,9 @@ def _detect_backend() -> str | None:
 
         _BACKEND = "ctranslate2"
         return _BACKEND
-    except ImportError:
+    except Exception:
         pass
 
-    _BACKEND = ""
     return None
 
 

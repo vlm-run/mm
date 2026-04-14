@@ -45,9 +45,9 @@ def grep_cmd(
     Examples:
       mm grep "TODO" ~/project                          # search all files
       mm grep "import.*torch" ~/project --kind code     # code files only
-      mm grep "attention" ~/papers --ext .pdf --level 1 # search PDF text
+      mm grep "attention" ~/papers --ext .pdf           # search PDF text
       mm grep "error|warn" ~/logs -C 2                  # context lines
-      mm grep "neural network" ~/data --level 2         # semantic search
+      mm grep "neural network" ~/data --level 2         # semantic (vector) search
       mm grep "def main" ~/src --count                  # match counts only
       mm grep "Quantum" ~/docs -i                       # case-insensitive
       mm grep "secret" ~/docs --no-ignore               # ignore .gitignore

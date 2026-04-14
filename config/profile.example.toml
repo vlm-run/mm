@@ -6,8 +6,8 @@
 
 # ── Active profile ──────────────────────────────────────────────────
 # Switch with:  mm profile use <name>
-# Per-command:  mm --profile openrouter cat photo.png -l 2
-# Env var:      MM_PROFILE=ollama mm cat photo.png -l 2
+# Per-command:  mm --profile openrouter cat photo.png -m accurate
+# Env var:      MM_PROFILE=ollama mm cat photo.png -m accurate
 active_profile = "default"
 
 # ── Profiles (LLM API configs) ─────────────────────────────────────

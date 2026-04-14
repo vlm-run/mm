@@ -123,18 +123,30 @@ height     uint32          Pixel height (images/videos)`,
     examples: [
       {
         cmd: "mm cat ~/data/mmbench-tiny/1-vqa-car.jpg",
-        comment: "Image → VLM caption",
-        output: `"Vintage car parked in front of a yellow building.
- Tags: car, vintage, classic, automobile, architecture"
+        comment: "Image → metadata (fast mode)",
+        output: `Dimensions: 640x480
+MIME:       image/jpeg
+Hash:       a1b2c3d4e5f67890
+61ms · 38.2 KB · 626.2 KB/s`,
+      },
+      {
+        cmd: "mm cat ~/data/mmbench-tiny/1-vqa-car.jpg -m accurate",
+        comment: "Image → VLM caption (accurate mode)",
+        output: `Vintage car parked in front of a yellow building.
+Tags: car, vintage, classic, automobile, architecture
 2.6s · 38.2 KB · 14.5 KB/s`,
       },
       {
         cmd: "mm cat ~/data/mmbench-tiny/bakery.mp4",
-        comment: "Video → keyframe mosaic + VLM description",
-        output: `"A scene depicting the interior and exterior of a bakery, showing bakers
- working with dough, arranging baked goods, and interacting with customers
- in a retail setting. tags: bakery, baking, shop, workers"
-9.2s · 28.0 MB · 3.0 MB/s`,
+        comment: "Video → metadata + mosaic (fast mode)",
+        output: `Resolution: 1280x720
+Duration:   4m 12.7s
+FPS:        23.974
+Video:      h264
+Audio:      aac
+Frames:     48 (uniform)
+Mosaic:     /tmp/mm_.../bakery_mosaic_1.jpg
+836ms · 28.0 MB · 33.5 MB/s`,
       },
       {
         cmd: "mm cat ~/data/mmbench-tiny/BillDownload-8pg.pdf -n 20",
