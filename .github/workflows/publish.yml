@@ -294,6 +294,24 @@ jobs:
           destination_dir: install
           keep_files: true
 
+  # Deploy intro landing page to GitHub Pages at /intro
+  deploy-intro:
+    needs:
+      - build
+      - sdist
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+      - name: Deploy intro to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./docs/intro
+          destination_dir: intro
+          keep_files: true
+
   # Deploy PEP 503 simple repository index for `uv tool install mm`
   # Usage: uv tool install mm --index-url https://vlm-run.github.io/mm/install/simple/
   deploy-simple-index:
