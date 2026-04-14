@@ -118,4 +118,28 @@ mod tests {
         assert!(names.contains(&"keep.py"));
         assert!(!names.contains(&"skip.log"));
     }
+
+    #[test]
+    fn test_no_ignore_bypasses_gitignore() {
+        let dir = TempDir::new().unwrap();
+        fs::create_dir(dir.path().join(".git")).unwrap();
+        fs::write(dir.path().join(".gitignore"), "*.log\ndata/\n").unwrap();
+        fs::write(dir.path().join("keep.py"), "x = 1").unwrap();
+        fs::write(dir.path().join("skip.log"), "log data").unwrap();
+        fs::create_dir(dir.path().join("data")).unwrap();
+        fs::write(dir.path().join("data/file.csv"), "a,b,c").unwrap();
+
+        // With no_ignore=false, gitignored files are excluded
+        let entries = scan_directory(dir.path(), None, false);
+        let names: Vec<&str> = entries.iter().map(|e| e.name.as_str()).collect();
+        assert!(!names.contains(&"skip.log"));
+        assert!(!names.contains(&"file.csv"));
+
+        // With no_ignore=true, gitignored files are included
+        let entries = scan_directory(dir.path(), None, true);
+        let names: Vec<&str> = entries.iter().map(|e| e.name.as_str()).collect();
+        assert!(names.contains(&"keep.py"));
+        assert!(names.contains(&"skip.log"));
+        assert!(names.contains(&"file.csv"));
+    }
 }
