@@ -20,6 +20,7 @@ from mm.store.embed import (
     text_part,
 )
 
+from .conftest import requires_sqlite_vec
 from .test_utils import ensure_l1, get_hash
 
 FAKE_DIM = 4
@@ -144,6 +145,7 @@ class TestEmbedParts:
 
 
 class TestEmbedFileChunks:
+    @requires_sqlite_vec
     def test_embeds_chunks_after_l2(self, db: MmDatabase, mock_server: MagicMock):
         uri = "/test/data/doc.txt"
         ensure_l1(db, uri)
@@ -161,6 +163,7 @@ class TestEmbedFileChunks:
         assert n == 0
         mock_server.assert_not_called()
 
+    @requires_sqlite_vec
     def test_vectors_stored_in_db(self, db: MmDatabase, mock_server: MagicMock):
         uri = "/test/data/doc.txt"
         ensure_l1(db, uri)
@@ -174,6 +177,7 @@ class TestEmbedFileChunks:
         assert len(results) > 0
         assert "chunk_text" in results[0]
 
+    @requires_sqlite_vec
     def test_content_preserved_after_embedding(self, db: MmDatabase, mock_server: MagicMock):
         uri = "/test/data/doc.txt"
         ensure_l1(db, uri)

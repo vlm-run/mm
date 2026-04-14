@@ -14,6 +14,7 @@ from mm.store.schema import (
 )
 from mm.store.util import get_l2_id
 
+from .conftest import requires_sqlite_vec
 from .test_utils import ROOT, ensure_l0, ensure_l1, get_hash, scanner_table
 
 # ---------------------------------------------------------------------------
@@ -441,6 +442,7 @@ class TestChunks:
 
 
 class TestEmbeddings:
+    @requires_sqlite_vec
     def test_upsert_and_search(self, db: MmDatabase):
         uri = "/test/data/doc.txt"
         ensure_l1(db, uri)
@@ -457,6 +459,7 @@ class TestEmbeddings:
         assert len(results) > 0
         assert "chunk_text" in results[0]
 
+    @requires_sqlite_vec
     def test_content_preserved_after_embedding(self, db: MmDatabase):
         uri = "/test/data/doc.txt"
         ensure_l1(db, uri)
@@ -470,6 +473,7 @@ class TestEmbeddings:
         full = db.get_full_content(uri, content_hash, "default", "qwen")
         assert full == content
 
+    @requires_sqlite_vec
     def test_search_returns_empty_without_embeddings(self, db: MmDatabase):
         results = db.search_similar([0.1, 0.2])
         assert len(results) == 0

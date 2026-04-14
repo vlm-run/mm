@@ -30,7 +30,6 @@ mm = "mm.cli:app"
 
 [project.optional-dependencies]
 extract = [
-    "torch>=2.0",
     "faster-whisper>=1.0",
     "scenedetect[opencv]>=0.6",
     "docling>=2.0",
