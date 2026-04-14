@@ -55,6 +55,12 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: rust-stable
+          cache-on-failure: true
       - run: make lint-rust
       - run: make test-rust
 
@@ -72,6 +78,22 @@ jobs:
           python-version: ${{ matrix.python-version }}
 
       - uses: astral-sh/setup-uv@v4
+        with:
+          enable-cache: true
+          cache-dependency-glob: "pyproject.toml"
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: rust-stable
+          cache-on-failure: true
+
+      - name: Restore pytest cache
+        uses: actions/cache@v4
+        with:
+          path: .pytest_cache
+          key: pytest-${{ runner.os }}-py${{ matrix.python-version }}-${{ hashFiles('pyproject.toml') }}
+          restore-keys: |
+            pytest-${{ runner.os }}-py${{ matrix.python-version }}-
 
       - name: Install dependencies and build Rust extension
         run: |
@@ -91,6 +113,10 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: rust-bench
+          cache-on-failure: true
 
       - run: cargo bench --workspace
 
@@ -143,6 +169,10 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: rust-bench
+          cache-on-failure: true
       - run: cargo bench --workspace
       - name: Extract benchmark results from Criterion JSON
         run: |
