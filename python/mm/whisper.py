@@ -97,14 +97,10 @@ def _get_device() -> tuple[str, str]:
     Returns (device, compute_type):
       - CUDA GPU: ("cuda", "float16")
       - CPU: ("cpu", "int8")
-    """
-    try:
-        import torch
 
-        if torch.cuda.is_available():
-            return "cuda", "float16"
-    except ImportError:
-        pass
+    ctranslate2 ships its own CUDA detection so we avoid a hard
+    dependency on torch just to probe for a GPU.
+    """
     try:
         import ctranslate2
 

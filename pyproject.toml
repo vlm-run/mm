@@ -19,6 +19,9 @@ dependencies = [
     "openai>=1.0",
     "google-genai>=1.0",
     "pyyaml>=6.0",
+    "pypdfium2>=4.0",
+    "opencv-python>=4.8",
+    "ffmpeg-python>=0.2",
     "tomli>=1.0; python_version < '3.11'",
 ]
 
@@ -29,21 +32,17 @@ mm = "mm.cli:app"
 # Modality extras — install only what you need.
 #   pip install mm[audio]      # whisper transcription
 #   pip install mm[video]      # scene detection
-#   pip install mm[document]   # pdf / docx / pptx / docling
+#   pip install mm[document]   # docling (PDF + DOCX + PPTX to markdown)
 #   pip install mm[mlx]        # apple-silicon whisper
 audio = [
     "faster-whisper>=1.0",
     "ctranslate2>=2.0",
 ]
 video = [
-    "scenedetect[opencv]>=0.6",
+    "scenedetect>=0.6",
 ]
 document = [
-    "pypdfium2>=4.0",
-    "python-docx==1.2.0",
-    "python-pptx>=1.0.2",
     "docling>=2.0",
-    "torch>=2.0",
 ]
 mlx = [
     "mlx>=0.31.1",
@@ -55,12 +54,8 @@ datasets = [
 all = [
     "faster-whisper>=1.0",
     "ctranslate2>=2.0",
-    "scenedetect[opencv]>=0.6",
-    "pypdfium2>=4.0",
-    "python-docx==1.2.0",
-    "python-pptx>=1.0.2",
+    "scenedetect>=0.6",
     "docling>=2.0",
-    "torch>=2.0",
 ]
 dev = [
     "pytest>=8.0",

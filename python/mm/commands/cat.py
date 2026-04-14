@@ -1195,12 +1195,13 @@ def _l1_document(path: Path) -> str:
     if ext == ".pdf":
         return _l1_pdf(path)
 
+    # DOCX / PPTX / other docling-supported formats route through the
+    # single docling-backed extractor.
     try:
-        from mm.docs_extract import extract_docx, extract_pptx
+        from mm.docling_extract import convert_to_markdown
 
-        if ext == ".pptx":
-            return extract_pptx(str(path))
-        return extract_docx(str(path))
+        result = convert_to_markdown(path)
+        return result.markdown
     except Exception as e:
         return f"[Document extraction failed for {path.name}: {e}]"
 

@@ -1,7 +1,7 @@
 """Document page-text encoder: structured text extraction per page.
 
-Extracts text from PDF pages via pypdfium2 (or DOCX/PPTX via
-python-docx/python-pptx) and yields it as structured text messages.
+Extracts text from PDF pages via pypdfium2 (fast, no ML) and from
+DOCX / PPTX via docling, yielding it as structured text messages.
 No rasterization — much lighter than ``rasterize`` or ``rasterize-text``.
 
 This is the default document encoder for fast mode.
@@ -23,11 +23,12 @@ def _to_message(parts: list[dict[str, Any]]) -> Message:
 
 
 class DocumentPageText:
-    """Extract text per page from PDF/DOCX/PPTX, yield as text messages.
+    """Extract text per page from PDF and full text from DOCX/PPTX.
 
     For PDFs, uses pypdfium2 to extract text page by page, batching
-    ``pages_per_message`` pages into each Message.  For DOCX/PPTX,
-    uses python-docx/python-pptx and yields the full text.
+    ``pages_per_message`` pages into each Message. For DOCX/PPTX,
+    routes through docling (via :mod:`mm.docling_extract`) and yields
+    the full converted markdown.
 
     Kwargs:
         pages_per_message: Pages per Message for PDFs (default 4).
@@ -45,10 +46,8 @@ class DocumentPageText:
 
         if ext == ".pdf":
             yield from self._encode_pdf(path, pages_per_message, max_pages)
-        elif ext == ".docx":
-            yield from self._encode_docx(path)
-        elif ext == ".pptx":
-            yield from self._encode_pptx(path)
+        elif ext in (".docx", ".pptx"):
+            yield from self._encode_docling(path)
         else:
             try:
                 text = path.read_text(errors="replace")
@@ -142,27 +141,40 @@ class DocumentPageText:
         finally:
             pdf.close()
 
-    def _encode_docx(self, path: Path) -> Iterable[Message]:
+    def _encode_docling(self, path: Path) -> Iterable[Message]:
+        """Convert a DOCX/PPTX to markdown via docling and yield one Message."""
         try:
-            from mm.docs_extract import extract_docx
-
-            text = extract_docx(str(path))
+            from mm.docling_extract import convert_to_markdown, docling_available
         except ImportError:
             yield _to_message(
                 [
                     {
                         "type": "text",
-                        "text": "[python-docx not installed — pip install python-docx]",
+                        "text": "[docling not installed — pip install mm[document]]",
                     }
                 ]
             )
             return
+
+        if not docling_available():
+            yield _to_message(
+                [
+                    {
+                        "type": "text",
+                        "text": f"[docling not installed — pip install mm[document] for {path.suffix} support]",
+                    }
+                ]
+            )
+            return
+
+        try:
+            result = convert_to_markdown(path)
         except Exception as e:
             yield _to_message(
                 [
                     {
                         "type": "text",
-                        "text": f"[DOCX extraction failed for {path.name}: {e}]",
+                        "text": f"[{path.suffix.upper()} extraction failed for {path.name}: {e}]",
                     }
                 ]
             )
@@ -172,42 +184,7 @@ class DocumentPageText:
             [
                 {
                     "type": "text",
-                    "text": f"Document {path.name}:\n\n{text}",
-                }
-            ]
-        )
-
-    def _encode_pptx(self, path: Path) -> Iterable[Message]:
-        try:
-            from mm.docs_extract import extract_pptx
-
-            text = extract_pptx(str(path))
-        except ImportError:
-            yield _to_message(
-                [
-                    {
-                        "type": "text",
-                        "text": "[python-pptx not installed — pip install python-pptx]",
-                    }
-                ]
-            )
-            return
-        except Exception as e:
-            yield _to_message(
-                [
-                    {
-                        "type": "text",
-                        "text": f"[PPTX extraction failed for {path.name}: {e}]",
-                    }
-                ]
-            )
-            return
-
-        yield _to_message(
-            [
-                {
-                    "type": "text",
-                    "text": f"Document {path.name}:\n\n{text}",
+                    "text": f"Document {path.name}:\n\n{result.markdown}",
                 }
             ]
         )
