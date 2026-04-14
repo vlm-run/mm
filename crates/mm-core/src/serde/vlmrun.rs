@@ -39,9 +39,11 @@ mod tests {
         let json_str = encode_image(&path, 1024).unwrap();
         let parsed: serde_json::Value = serde_json::from_str(&json_str).unwrap();
         assert_eq!(parsed["type"], "image_url");
-        assert!(parsed["image_url"]["url"]
-            .as_str()
-            .unwrap()
-            .starts_with("data:image/png;base64,"));
+        assert!(
+            parsed["image_url"]["url"]
+                .as_str()
+                .unwrap()
+                .starts_with("data:image/png;base64,")
+        );
     }
 }

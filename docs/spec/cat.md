@@ -4,7 +4,7 @@ Unified content extraction. Behaviour driven by **file type × mode × pipeline*
 
 ## Input
 
-- **Multi-modal**: auto-detects kind from extension → image, video, audio, document, text
+- **Multimodal**: auto-detects kind from extension → image, video, audio, document, text
 - **Multi-file**: `mm cat a.jpg b.pdf c.mp4` — processes each sequentially
 - **Stdin**: `find . -name '*.pdf' | mm cat` — reads newline-delimited paths from stdin
 - **Head/tail**: `-n 20` (first 20 lines), `-n -20` (last 20 lines)

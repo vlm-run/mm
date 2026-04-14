@@ -38,7 +38,7 @@ class FileEntry:
 
 
 class Context:
-    """Multi-modal context for a directory.
+    """Multimodal context for a directory.
 
     Scanning (L0) is performed on construction. L1 extraction is on-demand.
     """

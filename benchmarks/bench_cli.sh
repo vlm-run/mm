@@ -11,7 +11,7 @@ LARGE_VIDEO="${YOUTUBE_DIR}/CnxzrX9tNoc.mp4"
 echo "=== mm CLI Benchmarks ==="
 echo ""
 
-# L0 commands on real multi-modal data (249 files)
+# L0 commands on real multimodal data (249 files)
 echo "--- L0: find on ${DEMO_DIR} ---"
 hyperfine --warmup 2 --min-runs 10 \
   "mm find ${DEMO_DIR}" \

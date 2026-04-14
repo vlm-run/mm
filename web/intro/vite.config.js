@@ -4,7 +4,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 const pyproject = readFileSync(
-  resolve(__dirname, "../pyproject.toml"),
+  resolve(__dirname, "../../pyproject.toml"),
   "utf-8",
 );
 const version = pyproject.match(/^version\s*=\s*"(.+)"/m)?.[1] ?? "0.0.0";
@@ -14,5 +14,5 @@ export default defineConfig({
   define: {
     __MM_VERSION__: JSON.stringify(version),
   },
-  server: { port: 9090 },
+  server: { port: 9091 },
 });

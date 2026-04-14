@@ -1,4 +1,4 @@
-"""mm CLI -- Unix-philosophy multi-modal context management."""
+"""mm CLI -- Unix-philosophy multimodal context management."""
 
 from __future__ import annotations
 
@@ -75,7 +75,7 @@ def _print_banner() -> None:
 
         console.print(
             f"  [bold {_STEEL_BLUE}]mm (v{__version__})[/bold {_STEEL_BLUE}]"
-            " [dim]— High-performance multi-modal context management[/dim]"
+            " [dim]— High-performance multimodal context management[/dim]"
         )
     else:
         console.print(f"  [bold {_STEEL_BLUE}]mm (v{__version__})[/bold {_STEEL_BLUE}]")
@@ -104,7 +104,7 @@ def _main(
     ] = "auto",
     version: Annotated[bool, typer.Option("--version", "-v", help="Show version and exit")] = False,
 ) -> None:
-    """High-performance multi-modal context management."""
+    """High-performance multimodal context management."""
     if version:
         typer.echo(f"mm v{__version__}")
         raise typer.Exit()

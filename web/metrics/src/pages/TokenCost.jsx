@@ -261,7 +261,7 @@ export default function TokenCost() {
       <div className="mb-6">
         <h2 className="text-[18px] font-semibold text-[var(--text-primary)]">Token Cost Calculator</h2>
         <p className="text-[12px] font-mono text-[var(--text-muted)] mt-1">
-          Multi-modal context cost estimates by provider and modality
+          Multimodal context cost estimates by provider and modality
         </p>
       </div>
 

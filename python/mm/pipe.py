@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import sys
 from pathlib import Path
+from typing import Any, cast
 
 
 def is_piped_input() -> bool:
@@ -109,10 +110,10 @@ def resolve_piped_paths(paths: list[str]) -> list[str]:
 def _paths_from_json(data: object) -> list[str]:
     """Extract paths from parsed JSON (array of objects or strings)."""
     if isinstance(data, dict):
-        # Single object — look for a path key
+        d = cast(dict[str, Any], data)
         for key in ("path", "uri", "name"):
-            if key in data and isinstance(data[key], str):
-                return [data[key]]
+            if key in d and isinstance(d[key], str):
+                return [d[key]]
         return []
     if not isinstance(data, list) or not data:
         return []
@@ -120,8 +121,12 @@ def _paths_from_json(data: object) -> list[str]:
     if isinstance(first, str):
         return [s for s in data if isinstance(s, str)]
     if isinstance(first, dict):
-        # Find the best path key
+        f = cast(dict[str, Any], first)
         for key in ("path", "uri", "name"):
-            if key in first:
-                return [row[key] for row in data if isinstance(row, dict) and key in row]
+            if key in f:
+                return [
+                    cast(dict[str, Any], row)[key]
+                    for row in data
+                    if isinstance(row, dict) and key in row
+                ]
     return []

@@ -1,6 +1,6 @@
 # mm
 
-High-performance multi-modal context management library + CLI.
+High-performance multimodal context management library + CLI.
 
 Rust core for speed. Python for developer experience. Unix philosophy for composability.
 
@@ -16,7 +16,7 @@ uv run maturin develop --release
 
 ## CLI
 
-Commands that mirror familiar Unix tools but operate on multi-modal semantics.
+Commands that mirror familiar Unix tools but operate on multimodal semantics.
 Indexing is implicit — every command auto-builds a metadata index on first use.
 
 Metadata commands (`find`, `wc` with `--format json`) run in **~60ms** on 700 files via the Rust fast path.

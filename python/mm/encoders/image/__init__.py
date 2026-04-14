@@ -274,7 +274,7 @@ class ImageResize:
         except (ImportError, RuntimeError):
             result = _pillow_resize(path, max_width)
 
-        part = _image_part(result["base64"], result["mime"], provider)
+        part = _image_part(str(result["base64"]), str(result["mime"]), provider)
         yield _to_message([part])
 
 

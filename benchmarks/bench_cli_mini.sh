@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# mm CLI benchmarks (mini dataset) — ~249 files, ~1.4GB multi-modal
+# mm CLI benchmarks (mini dataset) — ~249 files, ~1.4GB multimodal
 # Usage: ./benchmarks/bench_cli_mini.sh
 set -euo pipefail
 

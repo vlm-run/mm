@@ -1,6 +1,6 @@
 # mm Spec
 
-> High-performance multi-modal context management. Rust core, Python API, Unix CLI.
+> High-performance multimodal context management. Rust core, Python API, Unix CLI.
 
 Legend: `[x]` implemented, `[ ]` roadmap, `[~]` partial/stubbed
 
