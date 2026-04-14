@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import base64
 import logging
-from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Any, Iterable
 
@@ -17,25 +16,6 @@ from mm.encoders import Message, _resolve_provider, register
 from mm.encoders.image import _image_part, _to_message
 
 logger = logging.getLogger(__name__)
-
-
-def _read_frames_b64(paths: list[Path]) -> list[str]:
-    """Read frame files and base64-encode them in parallel.
-
-    Frame files live on a temp dir; reads are short but dominated by
-    disk I/O. A thread pool parallelises both the read and the base64
-    encode (which releases the GIL for the C codec).
-    """
-    if not paths:
-        return []
-    if len(paths) == 1:
-        return [base64.b64encode(paths[0].read_bytes()).decode()]
-
-    def _one(p: Path) -> str:
-        return base64.b64encode(p.read_bytes()).decode()
-
-    with ThreadPoolExecutor(max_workers=min(len(paths), 8)) as ex:
-        return list(ex.map(_one, paths))
 
 
 class VideoFrameSample:
@@ -116,7 +96,8 @@ class VideoFrameSample:
                     }
                 )
 
-                for b64 in _read_frames_b64(batch):
+                for frame_path in batch:
+                    b64: str = base64.b64encode(frame_path.read_bytes()).decode()
                     parts.append(_image_part(b64, "image/jpeg", provider))
 
                 yield _to_message(parts)
@@ -202,9 +183,9 @@ class VideoChunk:
                         "text": f"Video chunk {chunk_idx} ({start:.0f}s - {end:.0f}s) of {path.name}:",
                     }
                 ]
-                for b64 in _read_frames_b64(frame_paths):
-                    parts.append(_image_part(b64, "image/jpeg", provider))
                 for fp in frame_paths:
+                    b64: str = base64.b64encode(fp.read_bytes()).decode()
+                    parts.append(_image_part(b64, "image/jpeg", provider))
                     try:
                         fp.unlink(missing_ok=True)
                     except OSError:
