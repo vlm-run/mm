@@ -9,7 +9,7 @@ Two strategies for processing videos shot-by-shot:
   per shot mosaic.
 
 Both strategies yield Messages sequentially (one shot at a time) to
-avoid OOM when combined with ``-l 2`` multi-chunk generation.
+avoid Out Of Memory when combined with ``-m accurate`` multi-chunk generation.
 
 Requires: ``pip install mm[extract]`` (for scenedetect + opencv)
 """

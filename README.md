@@ -40,7 +40,7 @@ mm cat photo.png -p resize                   # use named encoder
 | Command | Purpose | Key flags |
 |---------|---------|-----------|
 | `find`  | Find/list files, tree view, schema | `--name`, `--kind`, `--ext`, `--min-size`, `--max-size`, `--sort`, `--reverse`, `--columns`, `--tree`, `--depth`, `--schema`, `--limit`, `--no-ignore`, `--format` |
-| `cat` | Content extraction (auto-detected by file type × mode) | `--mode fast/accurate`, `-p` (pipeline), `-n`, `--encode.*`, `--generate.*`, `--format` |
+| `cat` | Content extraction (auto-detected by file type × mode) | `--mode fast/accurate`, `-p` (pipeline), `-n`, `--no-cache`, `-v`, `--encode.*`, `--generate.*`, `--list-pipelines`, `--list-encoders`, `--format` |
 | `grep` | Content search across files | `--kind`, `--ext`, `-C`, `--count`, `-i`, `--no-ignore`, `--format` |
 | `sql` | SQL queries on file index, results, chunks, and embeddings | `--dir`, `--pre-index`, `--format`, `--list-tables` |
 | `wc` | Count files, size, lines (est.), tokens (est.) | `--kind`, `--by-kind`, `--format` |
@@ -79,7 +79,10 @@ mm cat video.mp4 -m accurate                   # mosaic → LLM description
 mm cat photo.png -m accurate                   # LLM caption
 mm cat photo.png -p resize                     # use named encoder
 mm cat photo.png -p my-pipeline.yaml           # custom pipeline YAML
+mm cat video.mp4 -m accurate --no-cache        # force fresh LLM call
+mm cat photo.png -m accurate -v                # verbose (shows pipeline tree)
 mm cat --list-pipelines                        # list registered pipelines
+mm cat --list-encoders                         # list registered encoders
 ```
 
 ### wc — count files, size, tokens
@@ -119,8 +122,19 @@ mm sql --list-tables                              # show available tables
 - **TTY**: Rich formatted tables/panels
 - **Piped**: plain TSV/text (machine-readable, no ANSI)
 - **`--format json`**: JSON output on any command that supports it
+- **`--format csv`**: Comma-separated values
 - **`--format dataset-jsonl`**: JSONL for dataset export
-- **`--format dataset-hf`**: HuggingFace Datasets format
+- **`--format dataset-hf`**: HuggingFace Datasets format (requires `--output-dir`)
+
+### Verbose mode (`--verbose` / `-v`)
+
+`mm cat <file> [OPTIONS] --verbose` shows the pipeline execution tree after content:
+
+```
+pipeline
+  ├─ encode: resize · 0.0s → 1 parts (1 image)
+  └─ generate: ollama · 2.3s · 354→195 tokens
+```
 
 ## Python API
 

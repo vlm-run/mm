@@ -10,17 +10,17 @@
 
 <details><summary>1. Inventory NVR exports by camera and timestamp</summary>
 
-`mm find ~/nvr-export --kind video --sort modified` lists recordings chronologically. `mm cat -l 1` on each extracts resolution, duration, codec, and frame rate — all from native MP4/MKV parsing in Rust, no ffmpeg, <100ms per file.
+`mm find ~/nvr-export --kind video --sort modified` lists recordings chronologically. `mm cat` on each extracts resolution, duration, codec, and frame rate — all from native MP4/MKV parsing in Rust, no ffmpeg, <100ms per file.
 </details>
 
 <details><summary>2. Verify footage integrity after evidence transfer</summary>
 
-`mm cat evidence.mp4 -l 1` returns the xxh3 content hash. Hash both sides of a transfer to confirm bit-for-bit integrity without re-watching hours of footage.
+`mm cat evidence.mp4` returns the xxh3 content hash. Hash both sides of a transfer to confirm bit-for-bit integrity without re-watching hours of footage.
 </details>
 
 <details><summary>3. Identify which recordings are HD vs SD</summary>
 
-`mm find ~/footage --kind video | mm cat -l 1 --format json` extracts resolution per file. Filter in jq or SQL: `mm sql "SELECT name, width, height FROM files WHERE kind='video'" --dir ~/footage` (after L1 populates dimensions).
+`mm find ~/footage --kind video | mm cat --format json` extracts resolution per file. Filter in jq or SQL: `mm sql "SELECT name, width, height FROM files WHERE kind='video'" --dir ~/footage`.
 </details>
 
 <details><summary>4. Estimate storage cost before archiving to S3</summary>
@@ -32,46 +32,46 @@
 
 <details><summary>5. Catalog a YouTube download folder without playback</summary>
 
-`mm find ~/youtube --kind video | mm cat -l 1` extracts resolution, duration, codec, and audio track info for every file. No ffprobe installation needed — mm's Rust L1 parses MP4 and MKV natively.
+`mm find ~/youtube --kind video | mm cat` extracts resolution, duration, codec, and audio track info for every file. No ffprobe installation needed — mm's Rust core parses MP4 and MKV natively.
 </details>
 
 <details><summary>6. Generate keyframe mosaic thumbnails</summary>
 
-`mm cat lecture.mp4 -l 2` extracts keyframes into a tiled grid image. Useful for creating visual previews of long recordings — one glance shows the content arc without watching.
+`mm cat lecture.mp4` generates mosaic grids of keyframes in fast mode. Useful for creating visual previews of long recordings — one glance shows the content arc without watching.
 </details>
 
 <details><summary>7. Produce alt-text for a product demo</summary>
 
-`mm cat demo.mp4 -l 2` generates an LLM scene-by-scene description from keyframes. Pipe to clipboard: `mm cat demo.mp4 -l 2 | pbcopy`.
+`mm cat demo.mp4 -m accurate` generates an LLM scene-by-scene description from keyframes. Pipe to clipboard: `mm cat demo.mp4 -m accurate | pbcopy`.
 </details>
 
 <details><summary>8. Compare codec and container usage across a library</summary>
 
-`mm find ~/videos --kind video | mm cat -l 1 --format json` gives per-file codec info. Aggregate to see h264 vs h265 vs av1 distribution — useful before batch analysis and transcoding decisions, i.e., Iterate: `for f in ~/videos/*.mp4; do mm cat "$f" -l 1; done`.
+`mm find ~/videos --kind video | mm cat --format json` gives per-file codec info. Aggregate to see h264 vs h265 vs av1 distribution — useful before batch analysis and transcoding decisions, i.e., Iterate: `for f in ~/videos/*.mp4; do mm cat "$f"; done`.
 </details>
 
 ### Education
 
 <details><summary>9. Build a lecture schedule from recording durations</summary>
 
-`mm find ~/lectures --kind video | mm cat -l 1 --format json` returns duration in seconds per file. Sum by folder to estimate total course hours, plan viewing schedules, or allocate transcription budgets.
+`mm find ~/lectures --kind video | mm cat --format json` returns duration in seconds per file. Sum by folder to estimate total course hours, plan viewing schedules, or allocate transcription budgets.
 </details>
 
 <details><summary>10. Estimate transcription cost for a video library</summary>
 
-`mm find ~/training --kind video | mm cat -l 1 --format json` gives total duration. At known $/minute rates (Whisper, Rev, etc.), calculate the total transcription budget in one pipeline.
+`mm find ~/training --kind video | mm cat --format json` gives total duration. At known $/minute rates (Whisper, Rev, etc.), calculate the total transcription budget in one pipeline.
 </details>
 
 <details><summary>11. Generate accessibility descriptions for course videos</summary>
 
-`mm find ~/course --kind video | mm cat -l 2` produces LLM-generated scene descriptions. These can serve as content summaries for students who can't watch the videos.
+`mm find ~/course --kind video | mm cat -m accurate` produces LLM-generated scene descriptions. These can serve as content summaries for students who can't watch the videos.
 </details>
 
 ### Media management
 
 <details><summary>12. Detect duplicate videos across volumes</summary>
 
-Run `mm find /Volumes/Drive1 --kind video | mm cat -l 1 --format json` on each volume. Compare xxh3 hashes to find exact duplicates without byte-by-byte comparison. Hash computation uses mmap — fast even on large files.
+Run `mm find /Volumes/Drive1 --kind video | mm cat --format json` on each volume. Compare xxh3 hashes to find exact duplicates without byte-by-byte comparison. Hash computation uses mmap — fast even on large files.
 </details>
 
 <details><summary>13. Assess a GoPro/drone SD card before import</summary>
@@ -81,7 +81,7 @@ Run `mm find /Volumes/Drive1 --kind video | mm cat -l 1 --format json` on each v
 
 <details><summary>14. Find the longest and shortest recordings</summary>
 
-`mm find ~/recordings --kind video | mm cat -l 1 --format json` gives actual duration per file. Sort client-side or via SQL after L1 extraction populates the metadata.
+`mm find ~/recordings --kind video | mm cat --format json` gives actual duration per file. Sort client-side or via SQL.
 </details>
 
 ### Compliance
@@ -93,29 +93,29 @@ Run `mm find /Volumes/Drive1 --kind video | mm cat -l 1 --format json` on each v
 
 <details><summary>16. Estimate LLM token cost before processing video evidence</summary>
 
-`mm cat bodycam.mp4 -l 1 --format json` gives duration and resolution.
+`mm cat bodycam.mp4 --format json` gives duration and resolution.
 </details>
 
 ### Pipelines
 
 <details><summary>17. Build a video metadata table for a media asset manager</summary>
 
-`mm find ~/dam --kind video | mm cat -l 1 --format json > video_l1.json` — structured metadata (resolution, duration, codec, fps, hash) for every video, ready for database import.
+`mm find ~/dam --kind video | mm cat --format json > video_metadata.json` — structured metadata (resolution, duration, codec, fps, hash) for every video, ready for database import.
 </details>
 
-<details><summary>18. Pre-screen videos by size before expensive L2 processing</summary>
+<details><summary>18. Pre-screen videos by size before expensive accurate-mode processing</summary>
 
-`mm find ~/inbox --kind video --max-size 100mb` filters to small files first. Run `mm cat -l 2` only on the filtered set to control LLM costs.
+`mm find ~/inbox --kind video --max-size 100mb` filters to small files first. Run `mm cat -m accurate` only on the filtered set to control LLM costs.
 </details>
 
 <details><summary>19. Generate a searchable video index with scene descriptions</summary>
 
-`mm find ~/archive --kind video | mm cat -l 2 --format json > scenes.json` — each entry has keyframe-based scene descriptions. Load into a search index for text-based video retrieval.
+`mm find ~/archive --kind video | mm cat -m accurate --format json > scenes.json` — each entry has keyframe-based scene descriptions. Load into a search index for text-based video retrieval.
 </details>
 
 <details><summary>20. Audit a video archive for codec migration planning</summary>
 
-`mm find ~/archive --kind video | mm cat -l 1 --format json` reveals which files use legacy codecs (h264 baseline) vs modern (h265, av1). Prioritize transcoding by file size × codec age.
+`mm find ~/archive --kind video | mm cat --format json` reveals which files use legacy codecs (h264 baseline) vs modern (h265, av1). Prioritize transcoding by file size × codec age.
 </details>
 
 ---
@@ -134,12 +134,12 @@ Run `mm find /Volumes/Drive1 --kind video | mm cat -l 1 --format json` on each v
 
 <details><summary>23. Identify scanned (image-only) PDFs that need OCR</summary>
 
-`mm cat scanned.pdf -l 1` returns `[No extractable text — this PDF may contain scanned images only]` for image-only PDFs. Batch-check: run across all PDFs and flag empty text responses.
+`mm cat scanned.pdf` returns `[No extractable text — this PDF may contain scanned images only]` for image-only PDFs. Batch-check: run across all PDFs and flag empty text responses.
 </details>
 
 <details><summary>24. Extract text from a large PDF for RAG chunking</summary>
 
-`mm cat report.pdf -l 1` extracts full text via pypdfium2. Pipe directly to a chunker or embedding pipeline. Works on 500+ page documents.
+`mm cat report.pdf` extracts full text via pypdfium2. Pipe directly to a chunker or embedding pipeline. Works on 500+ page documents.
 </details>
 
 <details><summary>25. Compare document volume across directory groups</summary>
@@ -154,7 +154,7 @@ Run `mm find /Volumes/Drive1 --kind video | mm cat -l 1 --format json` on each v
 
 <details><summary>27. Semantic search across documents</summary>
 
-`mm grep "revenue forecast" ~/reports -l 2 --kind document` — vector similarity search across embedded document chunks. Finds conceptually related content, not just keyword matches.
+`mm grep "revenue forecast" ~/reports --level 2 --kind document` — vector similarity search across embedded document chunks. Finds conceptually related content, not just keyword matches.
 </details>
 
 <details><summary>28. Audit file formats in a document archive</summary>
@@ -168,7 +168,7 @@ Run `mm find /Volumes/Drive1 --kind video | mm cat -l 1 --format json` on each v
 
 <details><summary>29. Extract EXIF metadata for photo organization</summary>
 
-`mm find ~/photos --kind image | mm cat -l 1 --format json` returns dimensions, MIME, hash, and EXIF fields (camera, date, GPS) per file. Use for sorting into date/location folders.
+`mm find ~/photos --kind image | mm cat --format json` returns dimensions, MIME, hash, and EXIF fields (camera, date, GPS) per file. Use for sorting into date/location folders.
 </details>
 
 <details><summary>30. Find print-quality images by resolution</summary>
@@ -178,7 +178,7 @@ Run `mm find /Volumes/Drive1 --kind video | mm cat -l 1 --format json` on each v
 
 <details><summary>31. Caption images for fine-tuning datasets</summary>
 
-`mm find ~/unlabeled --kind image | mm cat -l 2 --format json` — LLM-generated descriptions for each image. Each entry is an image-caption pair, directly usable as JSONL training data.
+`mm find ~/unlabeled --kind image | mm cat -m accurate --format json` — LLM-generated descriptions for each image. Each entry is an image-caption pair, directly usable as JSONL training data.
 </details>
 
 <details><summary>32. Detect near-duplicate images</summary>
@@ -193,17 +193,17 @@ mm computes perceptual hashes (pHash) via DCT in Rust. Two images with hamming d
 
 <details><summary>34. Estimate token cost for batch image processing</summary>
 
-Image token cost depends on resolution (tile-based). `mm find ~/products --kind image | mm cat -l 1 --format json` gives per-image dimensions.
+Image token cost depends on resolution (tile-based). `mm find ~/products --kind image | mm cat --format json` gives per-image dimensions.
 </details>
 
 <details><summary>35. Separate photos from screenshots and synthetic images</summary>
 
-`mm find ~/photos --kind image | mm cat -l 1 --format json` — images without camera/date/GPS EXIF fields are likely screenshots, downloads, or synthetic. Useful for separating real photos from non-photo images.
+`mm find ~/photos --kind image | mm cat --format json` — images without camera/date/GPS EXIF fields are likely screenshots, downloads, or synthetic. Useful for separating real photos from non-photo images.
 </details>
 
 <details><summary>36. Semantic search across images</summary>
 
-`mm grep "sunset over ocean" ~/photos -l 2` — vector similarity search over image embeddings. Returns images whose LLM-generated captions are semantically close to the query.
+`mm grep "sunset over ocean" ~/photos --level 2` — vector similarity search over image embeddings. Returns images whose LLM-generated captions are semantically close to the query.
 </details>
 
 ---
@@ -212,22 +212,22 @@ Image token cost depends on resolution (tile-based). `mm find ~/products --kind 
 
 <details><summary>37. Catalog a podcast archive by duration</summary>
 
-`mm find ~/podcasts --kind audio | mm cat -l 1 --format json` extracts duration, codec, and sample rate per file. Sort by duration to find the longest episodes or estimate total listening time.
+`mm find ~/podcasts --kind audio | mm cat --format json` extracts duration, codec, and sample rate per file. Sort by duration to find the longest episodes or estimate total listening time.
 </details>
 
 <details><summary>38. Estimate transcription cost</summary>
 
-`mm find ~/audio --kind audio | mm cat -l 1 --format json` gives per-file duration. Sum durations and multiply by $/minute for Whisper, Rev, or Deepgram pricing.
+`mm find ~/audio --kind audio | mm cat --format json` gives per-file duration. Sum durations and multiply by $/minute for Whisper, Rev, or Deepgram pricing.
 </details>
 
 <details><summary>39. Find long recordings that need chunking</summary>
 
-Audio files over 80 seconds exceed Gemini's single-part embedding limit. `mm find ~/recordings --kind audio | mm cat -l 1 --format json` identifies files that need `audio_parts()` chunking before embedding.
+Audio files over 80 seconds exceed Gemini's single-part embedding limit. `mm find ~/recordings --kind audio | mm cat --format json` identifies files that need `audio_parts()` chunking before embedding.
 </details>
 
 <details><summary>40. Summarize a meeting recording</summary>
 
-`mm cat meeting.mp3 -l 2` runs the full pipeline: audio extraction, transcription, and LLM summarization. Returns a structured summary without manual transcription.
+`mm cat meeting.mp3 -m accurate` runs the full pipeline: audio extraction, transcription, and LLM summarization. Returns a structured summary without manual transcription.
 </details>
 
 <details><summary>41. Assess a field recording SD card</summary>
@@ -275,17 +275,17 @@ Audio files over 80 seconds exceed Gemini's single-part embedding limit. `mm fin
 
 <details><summary>48. Semantic search across all media types simultaneously</summary>
 
-`mm grep "quarterly revenue" ~/shared -l 2` searches PDFs (extracted text), images (via LLM captions), and video (via keyframe descriptions) in a single query using vector similarity.
+`mm grep "quarterly revenue" ~/shared --level 2` searches PDFs (extracted text), images (via LLM captions), and video (via keyframe descriptions) in a single query using vector similarity.
 </details>
 
 <details><summary>49. Build a multimodal evidence package</summary>
 
-For a construction project with permits (PDF), site photos (JPEG), and walkthrough video (MP4): `mm find ~/project --tree` shows everything, `mm wc --by-kind` quantifies it, and `mm cat -l 1` on each file gives structured metadata. One directory becomes a queryable index across all media types.
+For a construction project with permits (PDF), site photos (JPEG), and walkthrough video (MP4): `mm find ~/project --tree` shows everything, `mm wc --by-kind` quantifies it, and `mm cat` on each file gives structured metadata. One directory becomes a queryable index across all media types.
 </details>
 
 <details><summary>50. Create an invoice summary from mixed document formats</summary>
 
-`mm find ~/invoices --kind document | mm cat -l 2 --format json` — the LLM extracts amounts, dates, and vendor names from PDFs, DOCX, and scanned documents. Output is structured JSON ready for aggregation.
+`mm find ~/invoices --kind document | mm cat -m accurate --format json` — the LLM extracts amounts, dates, and vendor names from PDFs, DOCX, and scanned documents. Output is structured JSON ready for aggregation.
 </details>
 
 <details><summary>51. Estimate total LLM cost for a mixed-media directory</summary>
@@ -300,5 +300,5 @@ For a construction project with permits (PDF), site photos (JPEG), and walkthrou
 
 <details><summary>53. Batch-extract metadata for a digital asset manager</summary>
 
-`mm find ~/dam --format json > l0.json` for file-level metadata. `mm find ~/dam | mm cat -l 1 --format json > l1.json` for content metadata (text, dimensions, duration, hash, EXIF). Both are database-ready — one L0 scan at ~0.02ms/file, one L1 pass for richer extraction.
+`mm find ~/dam --format json > metadata.json` for file-level metadata. `mm find ~/dam | mm cat --format json > content.json` for content metadata (text, dimensions, duration, hash, EXIF). Both are database-ready — one scan at ~0.02ms/file, one fast-mode pass for richer extraction.
 </details>

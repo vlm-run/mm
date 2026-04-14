@@ -27,29 +27,29 @@ hyperfine --warmup 2 --min-runs 10 \
   "mm sql 'SELECT ext, SUM(size) as total FROM files GROUP BY ext ORDER BY total DESC LIMIT 10' --dir ${DEMO_DIR}"
 
 echo ""
-echo "--- L1: cat --level 1 on video files ---"
+echo "--- L1: cat on video files ---"
 if [ -f "${SMALL_VIDEO}" ]; then
   hyperfine --warmup 1 --min-runs 5 \
-    "mm cat '${SMALL_VIDEO}' --level 1"
+    "mm cat '${SMALL_VIDEO}'"
 fi
 
 echo ""
 echo "--- Keyframe mosaic extraction ---"
 if [ -f "${SMALL_VIDEO}" ]; then
   hyperfine --warmup 1 --min-runs 5 \
-    "mm cat '${SMALL_VIDEO}' -l 2 --mosaic-tile 8x8"
+    "mm cat '${SMALL_VIDEO}' -m accurate"
 fi
 
 if [ -f "${LARGE_VIDEO}" ]; then
   hyperfine --warmup 1 --min-runs 3 \
-    "mm cat '${LARGE_VIDEO}' -l 2 --mosaic-tile 16x16"
+    "mm cat '${LARGE_VIDEO}' -m accurate"
 fi
 
 echo ""
 echo "--- Audio extraction (2x speed) ---"
 if [ -f "${SMALL_VIDEO}" ]; then
   hyperfine --warmup 1 --min-runs 5 \
-    "mm cat '${SMALL_VIDEO}' --audio-speed 2.0"
+    "mm cat '${SMALL_VIDEO}' -m accurate"
 fi
 
 echo ""
