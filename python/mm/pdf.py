@@ -6,8 +6,10 @@ reusing the same visual format as video keyframe mosaics.
 
 from __future__ import annotations
 
+import os
 import tempfile
 import time
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -85,15 +87,21 @@ def extract_pdf_mosaics(
 
     from PIL import Image
 
-    thumbnails: list[Image.Image] = []
-
-    for idx in page_indices:
+    def _render_page(idx: int) -> Image.Image:
         page = doc[idx]
-        pw, ph = page.get_size()
+        pw, _ = page.get_size()
         scale = thumb_width / pw if pw > 0 else 1.0
         bitmap = page.render(scale=scale)
-        pil_img = bitmap.to_pil()
-        thumbnails.append(pil_img)
+        return bitmap.to_pil()
+
+    # pypdfium2 releases the GIL during render; use a thread pool for
+    # multi-core speedups without the overhead of separate processes.
+    max_workers = min(len(page_indices), (os.cpu_count() or 2))
+    if max_workers > 1:
+        with ThreadPoolExecutor(max_workers=max_workers) as ex:
+            thumbnails: list[Image.Image] = list(ex.map(_render_page, page_indices))
+    else:
+        thumbnails = [_render_page(idx) for idx in page_indices]
 
     doc.close()
 
