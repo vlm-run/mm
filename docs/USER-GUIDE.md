@@ -12,7 +12,13 @@ Rust core for speed. Python for developer experience. Unix philosophy for compos
 Install mm via the pre-built wheels published to GitHub Pages:
 
 ```bash
+# macOS / Linux
 curl -LsSf https://vlm-run.github.io/mm/install/install.sh | sh
+```
+
+```powershell
+# Windows (PowerShell)
+irm https://vlm-run.github.io/mm/install/install.ps1 | iex
 ```
 
 ### VLM access

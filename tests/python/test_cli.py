@@ -275,6 +275,18 @@ class TestGrep:
         assert len(data) > 0
         assert any("hello" in m["line"].lower() for m in data)
 
+    def test_no_ignore(self, gitignored_tree: Path):
+        """--no-ignore should search inside gitignored files."""
+        # The gitignored_tree has skip.log with "log line" and data/file.csv with "a,b,c"
+        # Without --no-ignore: gitignored files are not searched
+        r = runner.invoke(app, ["grep", "log line", str(gitignored_tree)])
+        assert r.exit_code == 1
+
+        # With --no-ignore: gitignored files are included in the search
+        r = runner.invoke(app, ["grep", "log line", str(gitignored_tree), "--no-ignore"])
+        assert r.exit_code == 0
+        assert "skip.log" in r.output
+
     def test_dataset_jsonl(self, small_tree: Path):
         r = runner.invoke(app, ["grep", "hello", str(small_tree), "--format", "dataset-jsonl"])
         assert r.exit_code == 0

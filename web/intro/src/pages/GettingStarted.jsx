@@ -63,10 +63,20 @@ export default function GettingStarted() {
 
       {/* Installation */}
       <Section title="Installation">
-        <P>Install mm via the pre-built wheels published to GitHub Pages:</P>
+        <P>Install mm via the pre-built wheels:</P>
+
+        <P>macOS / Linux:</P>
         <Code>
           <span className="prompt">$ </span>
           curl -LsSf https://vlm-run.github.io/mm/install/install.sh | sh
+        </Code>
+
+        <div className="my-5"></div>
+
+        <P>Windows (PowerShell):</P>
+        <Code>
+          <span className="prompt">&gt; </span>
+          irm https://vlm-run.github.io/mm/install/install.ps1 | iex
         </Code>
       </Section>
 

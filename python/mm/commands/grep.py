@@ -29,6 +29,9 @@ def grep_cmd(
     ignore_case: Annotated[
         bool, typer.Option("--ignore-case", "-i", help="Case-insensitive matching")
     ] = False,
+    no_ignore: Annotated[
+        bool, typer.Option("--no-ignore", help="Don't respect .gitignore rules")
+    ] = False,
     format: Annotated[
         Optional[Format],
         typer.Option(
@@ -47,6 +50,7 @@ def grep_cmd(
       mm grep "neural network" ~/data --level 2         # semantic search
       mm grep "def main" ~/src --count                  # match counts only
       mm grep "Quantum" ~/docs -i                       # case-insensitive
+      mm grep "secret" ~/docs --no-ignore               # ignore .gitignore
     """
 
     from mm.context import FileEntry
@@ -68,6 +72,7 @@ def grep_cmd(
             limit=5,
             stdin_paths=stdin_paths,
             do_index=index,
+            no_ignore=no_ignore,
         )
         return
 
@@ -87,7 +92,7 @@ def grep_cmd(
     if directory:
         from mm.context import Context
 
-        ctx = Context(_directory)
+        ctx = Context(_directory, no_ignore=no_ignore)
         if kind:
             ctx = ctx.filter(kind=kind)
         if ext:
@@ -263,6 +268,7 @@ def _grep_semantic(
     limit: int,
     stdin_paths: list[str] | None = None,
     do_index=False,
+    no_ignore: bool = False,
 ) -> None:
     """Semantic search: check indexing status, optionally index, then KNN search."""
     from mm.context import Context
@@ -277,7 +283,7 @@ def _grep_semantic(
     elif is_file:
         uris = [str(path)]
     else:
-        ctx = Context(directory)
+        ctx = Context(directory, no_ignore=no_ignore)
         if kind:
             ctx = ctx.filter(kind=kind)
         if ext:

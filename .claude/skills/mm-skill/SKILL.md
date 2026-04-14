@@ -21,7 +21,11 @@ Always use `--format json` for machine-readable output when parsing results prog
 ```bash
 # First run `mm --help` or `mm --version` to confirm mm isn't already installed
 
+# macOS / Linux
 curl -LsSf https://vlm-run.github.io/mm/install/install.sh | sh
+
+# Windows (PowerShell)
+irm https://vlm-run.github.io/mm/install/install.ps1 | iex
 ```
 
 ## Commands
@@ -391,6 +395,7 @@ mm grep "error" <dir> -C 2                             # 2 context lines
 mm grep "invoice" <dir> --count                        # match counts per file
 mm grep "Quantum Phase" <dir> -i                       # case-insensitive search
 mm grep "TODO" <dir> --ignore-case --kind code         # case-insensitive in code
+mm grep "secret" <dir> --no-ignore                     # search gitignored files too
 
 # Semantic search (vector similarity via embeddings)
 mm grep "financial projections" <dir>                  # semantic search across all files
