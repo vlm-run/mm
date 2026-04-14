@@ -6,6 +6,8 @@ from pathlib import Path
 
 import pytest
 
+pytestmark = pytest.mark.slow
+
 
 # ---------------------------------------------------------------------------
 # L0 benchmarks

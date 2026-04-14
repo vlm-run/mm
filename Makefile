@@ -1,4 +1,4 @@
-.PHONY: develop build test test-rust test-python bench clean lint lint-rust lint-python typecheck fmt
+.PHONY: develop build test test-all test-rust test-python bench clean lint lint-rust lint-python typecheck fmt
 
 develop:
 	uv run maturin develop --release
@@ -6,13 +6,18 @@ develop:
 build:
 	uv run maturin build --release
 
-test: test-rust test-python
+test: test-rust test-python ## Fast unit tests only (excludes slow/benchmark/integration)
+
+test-all: test-rust test-python-all ## All tests including slow, benchmarks, and integration
 
 test-rust:
 	cargo test --workspace
 
 test-python: develop
 	uv run pytest tests/python -v
+
+test-python-all: develop
+	uv run pytest tests/python -v --override-ini="addopts="
 
 bench:
 	cargo bench --workspace

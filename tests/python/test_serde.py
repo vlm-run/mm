@@ -317,6 +317,7 @@ class TestRustParity:
 # ---------------------------------------------------------------------------
 
 
+@pytest.mark.slow
 class TestSerdeBenchmarks:
     """Serde strategy benchmarks."""
 

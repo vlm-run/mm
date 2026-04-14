@@ -64,8 +64,11 @@ include = [
 
 [tool.pytest.ini_options]
 testpaths = ["tests/python"]
-markers = ["integration: slow integration tests (deselect with '-m not integration')"]
-addopts = "-m 'not integration'"
+markers = [
+    "slow: benchmarks, integration, and accurate-mode tests (deselect with '-m not slow')",
+    "integration: integration tests that need external services",
+]
+addopts = "-m 'not slow'"
 
 [tool.ruff]
 target-version = "py310"

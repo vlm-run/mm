@@ -12,7 +12,7 @@ from typer.testing import CliRunner
 runner = CliRunner()
 
 
-@pytest.mark.integration
+@pytest.mark.slow
 class TestBenchCommand:
     """Tests for mm bench."""
 
@@ -222,7 +222,6 @@ class TestBenchCommand:
         assert "mean_ms" in header
 
 
-@pytest.mark.integration
 class TestBenchResult:
     """Tests for BenchResult dataclass."""
 
@@ -270,7 +269,6 @@ class TestBenchResult:
         assert len(d["timings_ms"]) == 3
 
 
-@pytest.mark.integration
 class TestBenchCommands:
     """Tests for bench_commands registry."""
 
@@ -301,7 +299,6 @@ class TestBenchCommands:
             assert cmd.cmd_template
 
 
-@pytest.mark.integration
 class TestFmtMs:
     """Tests for _fmt_ms formatting."""
 
