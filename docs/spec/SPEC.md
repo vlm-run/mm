@@ -166,19 +166,19 @@ mm
 ```
 
 
-For each modality (image, video, documents like PDFs), I’d like to have a few different strategies to extract metadata/semantics with varying degrees of detail/mode. For example: 
-- image: 
-    - mode=fast -> describe the image in 10 words or less, and extract 5-keyword tags 
+For each modality (image, video, documents like PDFs), I’d like to have a few different strategies to extract metadata/semantics with varying degrees of detail/mode. For example:
+- image:
+    - mode=fast -> describe the image in 10 words or less, and extract 5-keyword tags
     - mode=accurate -> describe the image in detail (200 words) + extract up to 10-keyword tags + extract up to 10-objects/people/faces/logos in the image
 - documents: (PDFs, Word documents, etc.)
     - simply consider using docling pdf/docx/pptx -> markdown for now
     - ignore image/video/audio as we have other ways to extract metadata/semantics for them (detailed extraction is not needed)
-- audio: 
+- audio:
     - mode=fast
         - Audio transcription collected via ffmpeg + whisper tiny (with audio sped up by 2x)
     - mode=accurate
         - Audio transcription collected via ffmpeg + whisper medium (no speed up)
-- video: 
+- video:
     - mode=fast
         - If video is <5min: no shot detection, simply sample 16 keyframes uniformly across the video, create a single image mosaic (4x4) grid as an image and make a request with audio transcription collected via ffmpeg + whisper tiny (audio sped up by 2x)
         - 1hr: shot detection with pyscenedetect, uniformly sample 16 shots from the entire video, create a single image mosaic (4x4) + ffmpeg and whisper tiny based audio transcription (at 2x speed)

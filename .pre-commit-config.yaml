@@ -1,0 +1,30 @@
+ci:
+  autofix_prs: true
+  autoupdate_commit_msg: '[pre-commit.ci] pre-commit autofix suggestions'
+
+repos:
+  - repo: https://github.com/charliermarsh/ruff-pre-commit
+    rev: 'v0.11.6'
+    hooks:
+    - id: ruff
+      args: ['--fix', '--exit-non-zero-on-fix']
+    - id: ruff-format
+
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+    - id: check-ast
+    - id: check-docstring-first
+      exclude: ^python/mm/(constants|encoders/__init__)\.py$
+    - id: check-json
+      exclude: ^tests/
+    - id: check-merge-conflict
+    - id: debug-statements
+    - id: detect-private-key
+    - id: end-of-file-fixer
+      exclude: ^tests/
+    - id: trailing-whitespace
+      exclude: ^tests/
+    - id: check-added-large-files
+      args: ['--maxkb=100']
+      exclude: ^tests/

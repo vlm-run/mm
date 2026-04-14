@@ -1,4 +1,4 @@
-.PHONY: develop build test test-rust test-python bench clean lint fmt
+.PHONY: develop build test test-rust test-python bench clean lint lint-rust lint-python typecheck fmt
 
 develop:
 	uv run maturin develop --release
@@ -21,17 +21,18 @@ clean:
 	cargo clean
 	rm -rf target/ dist/ *.egg-info .mm/
 
-lint:
-	cargo clippy --workspace -- -D warnings
-	uv run ruff check python/
-	uv run mypy python/mm/
+lint: ## Format and lint all code
+	pre-commit run --all-files
 
 lint-rust:
 	cargo clippy --workspace -- -D warnings
 
 lint-python:
 	uv run ruff check python/
-	uv run mypy python/mm/
+	uv run ruff format --check python/
+
+typecheck: ## Run ty type checker on Python source
+	uv run ty check python/mm/
 
 fmt:
 	cargo fmt --all

@@ -187,7 +187,10 @@ uv run maturin develop --release
 # Or use the Makefile shortcuts
 make develop     # uv run maturin develop --release
 make test        # cargo test + uv run pytest
-make lint        # clippy + ruff + mypy
+make lint        # pre-commit (ruff lint + ruff format + hooks)
+make typecheck   # ty type checker
+make lint-rust   # clippy
+make lint-python # ruff check + ruff format --check
 make bench       # cargo bench
 make fmt         # cargo fmt + ruff format
 ```
