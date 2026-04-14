@@ -349,7 +349,7 @@ def _resolve_pipeline(opts: _CatOpts, kind: str) -> PipelineSpec:
         if spec is not None:
             return spec
         encoder_spec = opts.pipelines.get("_encoder")
-        if encoder_spec is not None:
+        if encoder_spec is not None and encoder_spec.encode.strategy:
             from mm.encoders import get
 
             enc = get(encoder_spec.encode.strategy)
