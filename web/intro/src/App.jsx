@@ -81,7 +81,7 @@ export default function App() {
             mm — multimodal context for humans & agents
           </span>
           <span className="font-mono text-[10px] tracking-[0.1em] text-[var(--text-muted)]">
-            Rust + Python · Apache 2.0
+            Rust + Python · MIT
           </span>
         </div>
       </footer>
