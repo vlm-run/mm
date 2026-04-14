@@ -2,6 +2,7 @@
 
 develop:
 	uv run maturin develop --release
+	@uv run pre-commit install --install-hooks >/dev/null 2>&1 || true
 
 build:
 	uv run maturin build --release
