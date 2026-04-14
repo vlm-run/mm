@@ -284,21 +284,31 @@ export default function GettingStarted() {
           </ul>
         </Section>
 
-        {/* Benchmarks */}
-        <Section title="Benchmarks">
-          <P>Benchmark mm against native Unix commands with hyperfine:</P>
+        {/* Benchmark */}
+        <Section title="Benchmark">
           <Code>
-            <span className="prompt">$ </span>hyperfine --warmup 3 'grep -R TODO
-            python' "mm grep 'TODO' python"
+            <span className="prompt">$ </span>mm bench ~/data/mmbench-mini --format rich
           </Code>
-
-          <div className="my-6"></div>
-
-          <P>Or run the built-in benchmark suite:</P>
-          <Code>
-            <span className="prompt">$ </span>mm bench ~/data/mmbench-mini
-            --format rich
-          </Code>
+          <div className="overflow-x-auto mt-3">
+            <pre className="font-mono text-[11px] leading-[1.5] text-[var(--text-secondary)] whitespace-pre">{
+`┌────────────┬────────────────────────────┬─────────┬────────┬─────────┬───────┬─────────────┐
+│ Group      │ Command                    │    Mean │   ±Std │   Speed │  MB/s │         bps │
+├────────────┼────────────────────────────┼─────────┼────────┼─────────┼───────┼─────────────┤
+│ L0         │ mm find .                  │   344ms │ 0.35ms │  11.6x  │ 121.9 │   1.02 Gbps │
+│ L0         │ mm wc .                    │   399ms │ 8.36ms │  10.0x  │ 105.3 │ 883.43 Mbps │
+│ L0         │ mm sql 'GROUP BY kind'     │   663ms │ 4.57ms │  6.03x  │  63.3 │ 531.34 Mbps │
+│ L0         │ mm find --kind image       │   382ms │ 30.4ms │  10.5x  │ 109.9 │ 922.26 Mbps │
+├────────────┼────────────────────────────┼─────────┼────────┼─────────┼───────┼─────────────┤
+│ L1         │ mm cat <image>             │   7.37s │  257ms │  0.14x  │   0.0 │   1.00 Mbps │
+│ L1         │ mm cat <video>             │  34.18s │  1.39s │  7.39x  │   0.8 │   3.92 Gbps │
+│ L1         │ mm cat <pdf>               │   4.15s │  497ms │  0.24x  │   0.1 │ 672.78 kbps │
+│ L1         │ mm grep /pattern/          │   660ms │ 7.57ms │  6.06x  │  63.6 │ 533.38 Mbps │
+├────────────┼────────────────────────────┼─────────┼────────┼─────────┼───────┼─────────────┤
+│ L2         │ mm cat <image> --mode fast │   7.29s │  1.26s │  0.14x  │   0.0 │   1.01 Mbps │
+│ L2         │ mm cat <video> --mode fast │  41.29s │  5.68s │  6.12x  │   0.7 │   3.25 Gbps │
+└────────────┴────────────────────────────┴─────────┴────────┴─────────┴───────┴─────────────┘`
+            }</pre>
+          </div>
         </Section>
       </div>
     </div>
