@@ -9,7 +9,7 @@ license = "MIT"
 authors = ["Sudeep"]
 
 [workspace.dependencies]
-pyo3 = { version = "0.23", features = ["extension-module", "generate-import-lib"] }
+pyo3 = { version = "0.26", features = ["extension-module", "generate-import-lib"] }
 arrow = { version = "54", features = ["ffi"] }
 parquet = { version = "54", features = ["arrow"] }
 rayon = "1.10"

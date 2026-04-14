@@ -63,7 +63,7 @@ jobs:
           # Windows x86_64
           - os: windows-latest
             target: x86_64-pc-windows-msvc
-          # Windows aarch64
+          # Windows aarch64 (cross-compiled, requires PyO3 ≥0.26 for abi3 fix)
           - os: windows-latest
             target: aarch64-pc-windows-msvc
     runs-on: ${{ matrix.os }}
@@ -79,8 +79,6 @@ jobs:
           target: ${{ matrix.target }}
           args: --release --out dist
           manylinux: auto
-        env:
-          PYO3_CROSS_PYTHON_VERSION: "3.10"
 
       - name: Upload wheels
         uses: actions/upload-artifact@v4
