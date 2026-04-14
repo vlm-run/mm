@@ -293,11 +293,11 @@ export default function Cookbook() {
             const ext = f.split(".").pop();
             const kindColor =
               {
-                jpg: "#FF8C69",
-                pdf: "#F4D35E",
+                jpg: "#C9623E",
+                pdf: "#B8960F",
                 mp4: "#1A3C2B",
-                mp3: "#9EFFBF",
-                wav: "#9EFFBF",
+                mp3: "#2D8659",
+                wav: "#2D8659",
               }[ext] || "var(--text-muted)";
             return (
               <span
