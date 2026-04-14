@@ -193,19 +193,19 @@ export default function GettingStarted() {
           <span className="prompt">$ </span>mm cat report.pdf
           {"    "}
           <span className="comment">
-            # text summary + page count + embedded image count
+            # text extraction from PDF
           </span>
           {"\n"}
           <span className="prompt">$ </span>mm cat image.jpg
           {"    "}
           <span className="comment">
-            # description + tags + EXIF metadata
+            # dimensions + MIME + hash + EXIF
           </span>
           {"\n"}
           <span className="prompt">$ </span>mm cat video.mp4
           {"    "}
           <span className="comment">
-            # scene summary + transcript + keyframe grid
+            # resolution + duration + codecs
           </span>
         </Code>
 
@@ -216,19 +216,19 @@ export default function GettingStarted() {
           <span className="prompt">$ </span>mm wc ~/docs
           {"              "}
           <span className="comment">
-            # file count, bytes, lines, token estimate
+            # file count, bytes, lines, tokens
           </span>
           {"\n"}
           <span className="prompt">$ </span>mm find ~/videos
           {"          "}
           <span className="comment">
-            # list with tags, duration, resolution
+            # list files with kind, size, ext
           </span>
           {"\n"}
           <span className="prompt">$ </span>mm cat -m accurate video.mp4
           {"  "}
           <span className="comment">
-            # full context: transcript + scenes
+            # mosaic + transcript → LLM description
           </span>
         </Code>
 

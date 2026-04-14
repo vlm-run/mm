@@ -49,6 +49,10 @@ def preload_media_libs() -> None:
         return
     _PRELOADED = True
 
+    # Prevent OpenMP abort when multiple copies of libiomp5 are loaded
+    # (e.g. cv2 + torch/ctranslate2 each bundle their own copy).
+    os.environ.setdefault("KMP_DUPLICATE_LIB_OK", "TRUE")
+
     if sys.platform != "darwin":
         _do_imports()
         return
