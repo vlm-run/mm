@@ -22,9 +22,7 @@ repos:
     - id: debug-statements
     - id: detect-private-key
     - id: end-of-file-fixer
-      exclude: ^tests/
     - id: trailing-whitespace
-      exclude: ^tests/
     - id: check-added-large-files
       args: ['--maxkb=100']
       exclude: ^tests/
