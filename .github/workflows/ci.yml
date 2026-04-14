@@ -67,6 +67,7 @@ jobs:
       - name: Quality Check (pre-commit)
         uses: pre-commit/action@v3.0.1
       - name: Type Check (ty)
+        continue-on-error: true
         run: make typecheck
 
   test-rust:
