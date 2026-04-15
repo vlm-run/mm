@@ -147,6 +147,7 @@ jobs:
     needs:
       - prepare
       - build
+      - publish
     runs-on: ubuntu-latest
     env:
       VERSION: ${{ needs.prepare.outputs.version }}
@@ -192,6 +193,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
+          cache: npm
+          cache-dependency-path: web/metrics/package-lock.json
       - name: Install dependencies
         working-directory: web/metrics
         run: npm ci
@@ -212,6 +215,7 @@ jobs:
     needs:
       - prepare
       - build
+      - publish
     runs-on: ubuntu-latest
     env:
       VERSION: ${{ needs.prepare.outputs.version }}
@@ -230,7 +234,6 @@ jobs:
         run: |
           mkdir -p _pages/${VERSION}
           mkdir -p _pages/latest
-          mkdir -p _pages/simple/mm
 
           # Copy wheels into versioned directory
           cp dist/*.whl _pages/${VERSION}/
@@ -268,6 +271,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
+          cache: npm
+          cache-dependency-path: web/intro/package-lock.json
       - name: Install dependencies
         working-directory: web/intro
         run: npm ci
@@ -282,52 +287,4 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./web/intro/dist
           destination_dir: intro
-          keep_files: true
-
-  # Deploy PEP 503 simple repository index for `uv tool install mm`
-  # Usage: uv tool install mm --index-url https://vlm-run.github.io/mm/install/simple/
-  deploy-simple-index:
-    needs:
-      - prepare
-      - deploy-installer
-    runs-on: ubuntu-latest
-    env:
-      VERSION: ${{ needs.prepare.outputs.version }}
-    permissions:
-      contents: write
-    steps:
-      - name: Download all wheel artifacts
-        uses: actions/download-artifact@v4
-        with:
-          pattern: wheels-*
-          path: dist
-          merge-multiple: true
-
-      - name: Generate PEP 503 simple index
-        run: |
-          BASE="https://vlm-run.github.io/mm/install"
-          mkdir -p _simple/mm
-
-          echo '<!DOCTYPE html><html><body><a href="mm/">mm</a></body></html>' > _simple/index.html
-
-          {
-            echo '<!DOCTYPE html>'
-            echo '<html><body>'
-            for whl in dist/*.whl; do
-              FNAME="$(basename "$whl")"
-              HASH="$(sha256sum "$whl" | cut -d' ' -f1)"
-              echo "  <a href=\"${BASE}/${VERSION}/${FNAME}#sha256=${HASH}\">${FNAME}</a>"
-            done
-            echo '</body></html>'
-          } > _simple/mm/index.html
-
-          echo "── PEP 503 index ──"
-          cat _simple/mm/index.html
-
-      - name: Deploy simple index to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v4
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./_simple
-          destination_dir: install/simple
           keep_files: true

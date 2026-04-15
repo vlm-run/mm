@@ -11,9 +11,8 @@ import importlib
 from types import ModuleType
 
 _EXTRA_INSTALL_HINTS: dict[str, str] = {
-    "gemini": "pip install mm[gemini]",
-    "mlx": "pip install mm[mlx]",
-    "experimental": "pip install mm[experimental]",
+    "mlx": "pip install mm-ctx[mlx]",
+    "experimental": "pip install mm-ctx[experimental]",
 }
 
 
@@ -40,7 +39,7 @@ def try_import_or_raise(
     try:
         return importlib.import_module(module_name)
     except ImportError:
-        hint = _EXTRA_INSTALL_HINTS.get(extra, f"pip install mm[{extra}]")
+        hint = _EXTRA_INSTALL_HINTS.get(extra, f"pip install mm-ctx[{extra}]")
         pkg = package or module_name
         raise ImportError(
             f"{pkg} is required but not installed. Install it with:  {hint}"

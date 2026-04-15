@@ -9,10 +9,14 @@ Rust core for speed. Python for developer experience. Unix philosophy for compos
 
 ### Installation
 
-Install mm via the pre-built wheels published to GitHub Pages:
+```bash
+pip install mm-ctx
+```
+
+Alternative methods:
 
 ```bash
-# macOS / Linux
+# macOS / Linux (shell installer)
 curl -LsSf https://vlm-run.github.io/mm/install/install.sh | sh
 ```
 
