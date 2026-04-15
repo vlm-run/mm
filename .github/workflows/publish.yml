@@ -32,18 +32,22 @@ jobs:
         with:
           python-version: "3.11"
       - uses: astral-sh/setup-uv@v4
+        with:
+          enable-cache: true
+          cache-dependency-glob: "pyproject.toml"
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: rust-stable
+          cache-on-failure: true
       - name: Install dependencies and build Rust extension
         run: |
           uv venv --python 3.11
           uv pip install -e ".[dev]"
-          uv run maturin develop --release
       - name: Run integration tests
         run: uv run pytest tests/python -m integration -v
 
-  # Build wheels for each platform
+  # Build wheels for each platform (parallel with integration-test)
   build:
-    needs:
-      - integration-test
     strategy:
       fail-fast: false
       matrix:
@@ -86,10 +90,8 @@ jobs:
           name: wheels-${{ matrix.target }}
           path: dist/*.whl
 
-  # Build source distribution
+  # Build source distribution (parallel with integration-test)
   sdist:
-    needs:
-      - integration-test
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -110,6 +112,7 @@ jobs:
     if: false
     needs:
       - prepare
+      - integration-test
       - build
       - sdist
     runs-on: ubuntu-latest
@@ -181,6 +184,7 @@ jobs:
   create-release:
     needs:
       - prepare
+      - integration-test
       - build
       - sdist
     runs-on: ubuntu-latest
@@ -228,6 +232,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
+          cache: npm
+          cache-dependency-path: web/metrics/package-lock.json
       - name: Install dependencies
         working-directory: web/metrics
         run: npm ci
@@ -306,6 +312,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
+          cache: npm
+          cache-dependency-path: web/intro/package-lock.json
       - name: Install dependencies
         working-directory: web/intro
         run: npm ci
