@@ -147,33 +147,6 @@ pipeline
   └─ generate: ollama · 2.3s · 354→195 tokens
 ```
 
-## Python API
-
-```python
-from mm import Context
-
-ctx = Context("~/data/domains")
-print(ctx)  # Context(root='/Users/.../domains', files=702)
-
-# DataFrame export
-df = ctx.to_polars()         # polars.DataFrame (zero-copy)
-df = ctx.to_pandas()         # pandas.DataFrame
-
-# SQL via SQLite
-result = ctx.sql("SELECT kind, COUNT(*) as n FROM files GROUP BY kind ORDER BY n DESC")
-
-# Chainable filtering
-big_images = ctx.filter(kind="image", min_size="1MB")
-
-# Content access
-text  = ctx.cat("paper.pdf")
-hits  = ctx.grep("revenue", kind="document")
-
-# Display
-ctx.show()    # Rich table
-ctx.info()    # Rich summary panel
-```
-
 ## Processing Modes
 
 
