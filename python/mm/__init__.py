@@ -3,7 +3,7 @@
 from importlib.metadata import version
 
 __all__ = ["Context"]
-__version__ = version("mm")
+__version__ = version("mm-ctx")
 
 _LAZY_IMPORTS = {
     "Context": ("mm.context", "Context"),

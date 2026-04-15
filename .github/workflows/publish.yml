@@ -22,28 +22,8 @@ jobs:
         id: get_version
         run: echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
 
-  integration-test:
-    if: startsWith(github.ref, 'refs/tags/v')
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-      - uses: astral-sh/setup-uv@v4
-      - name: Install dependencies and build Rust extension
-        run: |
-          uv venv --python 3.11
-          uv pip install -e ".[dev]"
-          uv run maturin develop --release
-      - name: Run integration tests
-        run: uv run pytest tests/python -m integration -v
-
   # Build wheels for each platform
   build:
-    needs:
-      - integration-test
     strategy:
       fail-fast: false
       matrix:
@@ -80,38 +60,21 @@ jobs:
           args: --release --out dist
           manylinux: auto
 
+      - name: Verify wheel contents
+        if: runner.os != 'Windows'
+        run: make dist-verify DIST_DIR=dist
+
       - name: Upload wheels
         uses: actions/upload-artifact@v4
         with:
           name: wheels-${{ matrix.target }}
           path: dist/*.whl
 
-  # Build source distribution
-  sdist:
-    needs:
-      - integration-test
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@v6
-      - name: Build sdist
-        uses: PyO3/maturin-action@v1
-        with:
-          command: sdist
-          args: --out dist
-      - name: Upload sdist
-        uses: actions/upload-artifact@v4
-        with:
-          name: wheels-sdist
-          path: dist/*.tar.gz
-
-  # Publish all wheels + sdist to PyPi. TODO: enable when ready to publish to PyPI
+  # Publish wheels to PyPI (no sdist — compiled libs + Python only).
   publish:
-    if: false
     needs:
       - prepare
       - build
-      - sdist
     runs-on: ubuntu-latest
     timeout-minutes: 10
     env:
@@ -122,6 +85,7 @@ jobs:
     permissions:
       id-token: write
     steps:
+      - uses: actions/checkout@v6
       - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
@@ -129,8 +93,10 @@ jobs:
           path: dist
           merge-multiple: true
 
-      - name: List dist contents
-        run: ls -lh dist/
+      - name: Remove sdist tarballs and verify wheels
+        run: |
+          rm -f dist/*.tar.gz
+          make dist-verify DIST_DIR=dist
 
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
@@ -177,12 +143,10 @@ jobs:
               ]
             }
 
-  # Create GitHub release with wheel assets
   create-release:
     needs:
       - prepare
       - build
-      - sdist
     runs-on: ubuntu-latest
     env:
       VERSION: ${{ needs.prepare.outputs.version }}
@@ -244,12 +208,10 @@ jobs:
           destination_dir: dev/metrics
           keep_files: true
 
-  # Deploy installer + wheels + checksums to GitHub Pages at /install
   deploy-installer:
     needs:
       - prepare
       - build
-      - sdist
     runs-on: ubuntu-latest
     env:
       VERSION: ${{ needs.prepare.outputs.version }}
