@@ -2,7 +2,8 @@ name: Release to PyPI
 
 # Triggers on version bumps landing on main. Pattern mirrors
 # vlm-run/vlmrun-python-sdk: detect version change → run full integration
-# tests + benchmarks → tag → build wheels → publish to PyPI → cut GitHub release.
+# tests → tag → build wheels → publish to PyPI → cut GitHub release.
+# Benchmarks run independently in benchmark.yml and do not gate the release.
 
 on:
   push:
@@ -79,26 +80,10 @@ jobs:
       - run: make test-rust
       - run: make test-python-full
 
-  # Rust benchmark suite. Gate on version bumps to catch perf regressions
-  # before we ship a release.
-  benchmark:
-    needs: check-version
-    if: needs.check-version.outputs.changed == 'true'
-    runs-on: ubuntu-latest
-    timeout-minutes: 45
-    steps:
-      - uses: actions/checkout@v6
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@v2
-        with:
-          shared-key: rust-bench
-          cache-on-failure: true
-      - run: cargo bench --workspace
-
-  # Create and push the version tag once all gates pass. Everything
+  # Create and push the version tag once tests pass. Everything
   # downstream (build / publish / release) keys off this tag.
   tag:
-    needs: [check-version, test-full, benchmark]
+    needs: [check-version, test-full]
     if: needs.check-version.outputs.changed == 'true'
     runs-on: ubuntu-latest
     permissions:
