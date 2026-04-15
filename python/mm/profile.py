@@ -10,7 +10,7 @@ Use ``mm profile add|update|remove`` to manage profiles, and
 
 Profiles allow multiple LLM provider configurations in a single config file.
 Each profile stores base_url, api_key, and model. One profile is active at a
-time, resolved via: CLI --profile > MM_PROFILE env > active_profile in file > ollama (default)".
+time, resolved via: CLI --profile > MM_PROFILE env > active_profile in file > ollama (default).
 
 TOML layout:
 
