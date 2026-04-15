@@ -1,7 +1,7 @@
 """Profile management for mm.
 
 Profile resolution order:
-    --profile CLI flag > MM_PROFILE env > active_profile in file > ollama (default)"
+    --profile CLI flag > MM_PROFILE env > active_profile in file > ollama (default)
 
 Profiles allow multiple model/API configurations in a single config file.
 Each profile stores name, base_url, api_key, and model.
