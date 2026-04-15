@@ -342,7 +342,7 @@ The `-i` / `--ignore-case` flag makes the regex match case-insensitive, matching
 ### Semantic search (vector similarity)
 
 ```bash
-$ mm grep "financial projections" ~/data/domains --level 2
+$ mm grep "financial projections" ~/data/domains -s
 ```
 
 ```
@@ -352,7 +352,7 @@ document.invoice/sample-invoice.pdf                      0      0.3012    Invoic
 ```
 
 ```bash
-$ mm grep "patient diagnosis" ~/data/domains --level 2 --kind document --format json
+$ mm grep "patient diagnosis" ~/data/domains -s --kind document --format json
 ```
 
 ```json

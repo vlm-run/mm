@@ -397,10 +397,10 @@ mm grep "Quantum Phase" <dir> -i                       # case-insensitive search
 mm grep "TODO" <dir> --ignore-case --kind code         # case-insensitive in code
 mm grep "secret" <dir> --no-ignore                     # search gitignored files too
 
-# Semantic search (vector similarity via embeddings, requires --level 2)
-mm grep "financial projections" <dir> --level 2        # semantic search across all files
-mm grep "architecture overview" <dir> --level 2 --format json  # JSON with distances
-mm grep "revenue forecast" <dir> --level 2 --index     # auto-index unindexed files before search
+# Semantic search (vector similarity via embeddings)
+mm grep "financial projections" <dir> -s               # semantic search across all files
+mm grep "architecture overview" <dir> -s --format json # JSON with distances
+mm grep "revenue forecast" <dir> -s --index            # auto-index unindexed files before search
 ```
 
 **Warning**: grep runs extraction on every matching file. On large document directories (500+ PDFs), this can take minutes. Prefer `--kind code` or `--kind text` for fast text searches.

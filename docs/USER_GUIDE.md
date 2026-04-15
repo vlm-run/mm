@@ -103,12 +103,12 @@ Use mm directly or through a CLI assistant (e.g. `claude "Organize ~/Downloads u
 ### Semantic search
 
 ```bash
-mm grep "photo of me and my dog in a park" ~/photos --level 2
-mm grep "revenue forecast" ~/reports --level 2 --kind document
-mm grep "architecture overview" ~/docs --level 2 --index   # auto-index unindexed files
+mm grep "photo of me and my dog in a park" ~/photos -s
+mm grep "revenue forecast" ~/reports -s --kind document
+mm grep "architecture overview" ~/docs -s --index   # auto-index unindexed files
 ```
 
-Returns matching files via vector similarity (embeddings). Use `--level 2` for semantic search, `--index` to auto-index unindexed files before searching.
+Returns matching files via vector similarity (embeddings). Use `--semantic/-s` for semantic search, `--index` to auto-index unindexed files before searching.
 
 ### File inspection and extraction
 
