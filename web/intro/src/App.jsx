@@ -79,7 +79,8 @@ export default function App() {
         <div className="max-w-6xl mx-auto px-6 py-2.5 flex items-center justify-between">
           <span className="font-mono text-[10px] tracking-[0.1em] text-[var(--text-muted)]">
             {/* mm - context from every file */}
-            mm — multimodal context for humans & agents
+            {/* mm — multimodal context for humans & agents */}
+            Fast, multi-modal file intelligence for agents
           </span>
           <span className="font-mono text-[10px] tracking-[0.1em] text-[var(--text-muted)]">
             Rust + Python · MIT · powered by{" "}

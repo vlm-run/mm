@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use arrow::array::RecordBatch;
 use arrow::ipc::writer::StreamWriter;
 use pyo3::prelude::*;
-use pyo3::types::PyBytes;
+use pyo3::types::{PyAny, PyBytes};
 
 use mm_core::extract::ContentExtractor;
 use mm_core::extract::L1Record;
@@ -50,7 +50,7 @@ impl Scanner {
         self.entries.len()
     }
 
-    fn to_arrow(&self, py: Python<'_>) -> PyResult<PyObject> {
+    fn to_arrow(&self, py: Python<'_>) -> PyResult<Py<PyAny>> {
         let batch = self
             .batch
             .as_ref()
@@ -291,7 +291,7 @@ impl L1Result {
     }
 }
 
-fn export_batch_to_pyarrow(py: Python<'_>, batch: &RecordBatch) -> PyResult<PyObject> {
+fn export_batch_to_pyarrow(py: Python<'_>, batch: &RecordBatch) -> PyResult<Py<PyAny>> {
     let mut buf = Vec::new();
     {
         let mut writer = StreamWriter::try_new(&mut buf, &batch.schema())
@@ -348,7 +348,7 @@ fn perceptual_hash(path: String) -> PyResult<Option<u64>> {
 /// JPEG quality defaults to 85; pass `quality` to override.
 #[pyfunction]
 #[pyo3(signature = (path, max_width, quality=85))]
-fn resize_image(py: Python<'_>, path: String, max_width: u32, quality: u8) -> PyResult<PyObject> {
+fn resize_image(py: Python<'_>, path: String, max_width: u32, quality: u8) -> PyResult<Py<PyAny>> {
     let p = std::path::Path::new(&path);
     let result = mm_core::serde::image::resize_and_encode_with_quality(p, max_width, quality)
         .map_err(pyo3::exceptions::PyRuntimeError::new_err)?;
@@ -366,7 +366,7 @@ fn resize_image(py: Python<'_>, path: String, max_width: u32, quality: u8) -> Py
 /// JPEG quality defaults to 85; pass `quality` to override.
 #[pyfunction]
 #[pyo3(signature = (path, tile_size, quality=85))]
-fn tile_image(py: Python<'_>, path: String, tile_size: u32, quality: u8) -> PyResult<PyObject> {
+fn tile_image(py: Python<'_>, path: String, tile_size: u32, quality: u8) -> PyResult<Py<PyAny>> {
     let p = std::path::Path::new(&path);
     let tiles = mm_core::serde::image::tile_and_encode_with_quality(p, tile_size, quality)
         .map_err(pyo3::exceptions::PyRuntimeError::new_err)?;

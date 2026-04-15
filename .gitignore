@@ -18,6 +18,7 @@ venv/
 .pytest_cache/
 .benchmarks/
 benchmarks/data/
+benchmarks/criterion/
 htmlcov/
 .coverage
 
@@ -38,4 +39,3 @@ mlx_models/
 .cowork/
 sample_files/
 remotion-videos/
-web/
