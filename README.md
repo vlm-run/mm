@@ -1,14 +1,32 @@
-# mm
+<div align="center">
+<p align="center" style="width: 100%;">
+    <img src="https://raw.githubusercontent.com/vlm-run/.github/refs/heads/main/profile/assets/vlm-black.svg" alt="VLM Run Logo" width="80" style="margin-bottom: -5px; color: #2e3138; vertical-align: middle; padding-right: 5px;"><br>
+</p>
+<h2>mm</h2>
+<i>Fast, multi-modal context for agents.</i>
+<p align="center"><a href="https://docs.vlm.run"><b>Website</b></a> | <a href="https://app.vlm.run/"><b>Platform</b></a> | <a href="https://docs.vlm.run/"><b>Docs</b></a> | <a href="https://docs.vlm.run/blog"><b>Blog</b></a> | <a href="https://discord.gg/AMApC2UzVY"><b>Discord</b></a>
+</p>
+<p align="center">
+<a href="https://github.com/vlm-run/mm/blob/main/LICENSE"><img alt="License" src="https://img.shields.io/github/license/vlm-run/mm.svg"></a>
+<a href="https://discord.gg/AMApC2UzVY"><img alt="Discord" src="https://img.shields.io/badge/discord-chat-purple?color=%235765F2&label=discord&logo=discord"></a>
+<a href="https://twitter.com/vlmrun"><img alt="Twitter Follow" src="https://img.shields.io/twitter/follow/vlmrun.svg?style=social&logo=twitter"></a>
+</p>
+</div>
+Fast, multi-modal context for agents.
 
-High-performance multimodal context management library + CLI.
+> Familiar UNIX tools like `find`, `grep`, `cat` with unfamiliar multi-modal powers.
 
-Rust core for speed. Python for developer experience. Unix philosophy for composability.
+## Core ideology
+
+- Rust core for speed.
+- Python for dev-ex.
+- UNIX philosophy for composability.
 
 ## Installation
 
 ```bash
 # Development install (requires Rust toolchain + uv)
-git clone <repo-url> && cd mm
+git clone https://github.com/vlm-run/mm && cd mm
 uv venv --python 3.12 && source .venv/bin/activate
 uv pip install -e ".[dev]"
 uv run maturin develop --release

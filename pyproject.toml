@@ -71,6 +71,7 @@ testpaths = ["tests/python"]
 markers = [
     "integration: slow integration tests that need external services (deselect with '-m not integration')",
     "slow: resource-intensive tests such as pytest-benchmark suites (deselect with '-m not slow')",
+    "perf: runtime budget / regression guard tests (run with '-m perf')",
 ]
 # Default CI run executes only the fast tier. Run the full suite with
 # `pytest -m ''` or `make test-python-full`.

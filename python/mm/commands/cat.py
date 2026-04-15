@@ -18,6 +18,8 @@ File-type behaviour:
 
 from __future__ import annotations
 
+import os
+import sys
 from pathlib import Path
 from typing import Annotated, Any, Optional
 
@@ -36,6 +38,40 @@ _was_cached = False
 def _collect_overrides(**kwargs: str | None) -> dict[str, str]:
     """Collect non-None CLI overrides into a ``{field: value}`` dict."""
     return {k: v for k, v in kwargs.items() if v is not None}
+
+
+def _cat_batch_confirm_threshold() -> int:
+    raw = os.environ.get("MM_CAT_BATCH_CONFIRM_THRESHOLD", "9")
+    try:
+        n = int(raw)
+    except ValueError:
+        return 9
+    return max(1, n)
+
+
+def _maybe_confirm_large_cat_batch(n_paths: int, *, assume_yes: bool) -> None:
+    """Prompt or require ``--yes`` when ``cat`` is given many paths at once."""
+    threshold = _cat_batch_confirm_threshold()
+    if n_paths < threshold:
+        return
+    if assume_yes:
+        return
+    if sys.stdin.isatty():
+        if not typer.confirm(
+            f"You are about to run cat on {n_paths} files "
+            f"(confirmation required for {threshold}+ files). "
+            "This may take a long time. Continue?",
+            default=False,
+        ):
+            raise typer.Abort()
+        return
+    typer.echo(
+        f"Error: cat on {n_paths} files requires confirmation. "
+        f"Pass --yes (-y) to proceed in non-interactive mode, or pass at most "
+        f"{threshold - 1} paths without -y.",
+        err=True,
+    )
+    raise typer.Exit(1)
 
 
 def _build_pipeline_help() -> str:
@@ -119,6 +155,14 @@ def cat_cmd(
     ] = None,
     # -- Utility --
     verbose: Annotated[bool, typer.Option("--verbose", "-v", help="Show progress bars")] = False,
+    yes: Annotated[
+        bool,
+        typer.Option(
+            "--yes",
+            "-y",
+            help="Confirm when path count ≥ threshold (default 9; env MM_CAT_BATCH_CONFIRM_THRESHOLD)",
+        ),
+    ] = False,
 ) -> None:
     """Extract and describe file content.
 
@@ -159,6 +203,8 @@ def cat_cmd(
     if not paths:
         typer.echo("Error: No files specified.", err=True)
         raise typer.Exit(1)
+
+    _maybe_confirm_large_cat_batch(len(paths), assume_yes=yes)
 
     if mode not in ("fast", "accurate"):
         typer.echo(f"Error: Unknown mode {mode!r}. Use 'fast' or 'accurate'.", err=True)
