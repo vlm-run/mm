@@ -342,7 +342,7 @@ The `-i` / `--ignore-case` flag makes the regex match case-insensitive, matching
 ### Semantic search (vector similarity)
 
 ```bash
-$ mm grep "financial projections" ~/data/domains
+$ mm grep "financial projections" ~/data/domains --level 2
 ```
 
 ```
@@ -352,7 +352,7 @@ document.invoice/sample-invoice.pdf                      0      0.3012    Invoic
 ```
 
 ```bash
-$ mm grep "patient diagnosis" ~/data/domains --kind document --format json
+$ mm grep "patient diagnosis" ~/data/domains --level 2 --kind document --format json
 ```
 
 ```json
@@ -428,13 +428,13 @@ $ mm profile add openai     --base-url https://api.openai.com/v1   --api-key sk-
 
 $ mm profile list
               Profiles
-╭────┬────────────┬──────────────────────────────┬─────────────────╮
-│    │ profile    │ base_url                     │ model           │
-├────┼────────────┼──────────────────────────────┼─────────────────┤
-│ ●  │ default    │ https://api.vlm.run/v1       │ vlm-1           │
-│    │ ollama     │ http://localhost:11434       │ qwen3-vl:2b     │
-│    │ openrouter │ https://openrouter.ai/api/v1 │ qwen/qwen3.5-9b │
-╰────┴────────────┴──────────────────────────────┴─────────────────╯
+╭────┬────────────┬──────────────────────────────┬───────────────────────────────╮
+│    │ profile    │ base_url                     │ model                         │
+├────┼────────────┼──────────────────────────────┼───────────────────────────────┤
+│    │ gemini     │ https://openrouter.ai/api/v1 │ google/gemini-2.5-flash-lite  │
+│ ●  │ ollama     │ http://localhost:11434        │ qwen3.5:0.8                   │
+│    │ vlmrun     │ https://mm-ctx.ngrok.io/v1   │ Qwen/Qwen3.5-0.8B            │
+╰────┴────────────┴──────────────────────────────┴───────────────────────────────╯
 
 $ mm profile use openrouter
 $ mm --profile openrouter cat photo.png -m accurate

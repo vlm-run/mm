@@ -41,12 +41,12 @@ mm cat photo.png -p resize                   # use named encoder
 |---------|---------|-----------|
 | `find`  | Find/list files, tree view, schema | `--name`, `--kind`, `--ext`, `--min-size`, `--max-size`, `--sort`, `--reverse`, `--columns`, `--tree`, `--depth`, `--schema`, `--limit`, `--no-ignore`, `--format` |
 | `cat` | Content extraction (auto-detected by file type × mode) | `--mode fast/accurate`, `-p` (pipeline), `-n`, `--no-cache`, `-v`, `--encode.*`, `--generate.*`, `--list-pipelines`, `--list-encoders`, `--format` |
-| `grep` | Content search across files | `--kind`, `--ext`, `-C`, `--count`, `-i`, `--no-ignore`, `--format` |
+| `grep` | Content search across files | `--kind`, `--ext`, `-C`, `--count`, `-i`, `--level`, `--index`, `--no-ignore`, `--format` |
 | `sql` | SQL queries on file index, results, chunks, and embeddings | `--dir`, `--pre-index`, `--format`, `--list-tables` |
 | `wc` | Count files, size, lines (est.), tokens (est.) | `--kind`, `--by-kind`, `--format` |
-| `bench` | Benchmark suite | `--format`, `--rounds` |
+| `bench` | Benchmark suite | `--rounds`, `--warmup`, `--mode`, `--format` |
 | `config` | Extraction mode settings | `show`, `init`, `set`, `reset-db`, `reset-profiles`, `reset` |
-| `profile` | Manage LLM provider profiles | `list`, `add`, `update`, `use`, `remove` |
+| `profile` | Manage LLM provider profiles | `list`, `add`, `update`, `use`, `remove`, `--format` |
 
 ### find — locate/list, tree, and schema
 
@@ -99,6 +99,9 @@ mm grep "attention" ~/data --kind document
 mm grep "TODO" ~/data --kind code
 mm grep "invoice" ~/data --count               # match counts per file
 mm grep "Quantum Phase" ~/data -i              # case-insensitive search
+mm grep "secret" ~/data --no-ignore            # search gitignored files
+mm grep "revenue forecast" ~/data --level 2    # semantic (vector) search
+mm grep "architecture" ~/data --level 2 --index  # auto-index before search
 ```
 
 ### sql — query the index
@@ -249,10 +252,12 @@ mm config show                # show resolved config with sources
 Each profile stores `base_url`, `api_key`, and `model`. You can have as many as you need — one per provider, one per use-case, etc.
 
 ```bash
-# Add profiles for different providers
+# Add custom profiles
 mm profile add openai --base-url https://api.openai.com/v1 --api-key sk-... --model gpt-4o
-mm profile add openrouter --base-url  https://openrouter.ai/api/v1 --model qwen/qwen3.5-27b
-mm profile add ollama --base-url http://localhost:11434 --model qwen3.5:9B
+mm profile add openrouter --base-url https://openrouter.ai/api/v1 --model qwen/qwen3.5-27b
+
+# Update reserved profiles (ollama, gemini, vlmrun)
+mm profile update ollama --base-url http://localhost:11434 --model qwen3.5:9B
 
 # List all profiles (● = active)
 mm profile list
@@ -284,24 +289,29 @@ Provider settings (base_url, api_key, model) come from the active profile, falli
 The active profile is resolved as:
 
 ```
---profile flag  >  MM_PROFILE env  >  active_profile in config file  >  "default"
+--profile flag  >  MM_PROFILE env  >  active_profile in config file  >  "ollama"
 ```
 
 ### Config file format
 
 ```toml
 # ~/.config/mm/mm.toml
-active_profile = "default"
+active_profile = "ollama"
 
 [profile.ollama]
 base_url = "http://localhost:11434"
 api_key = ""
-model = "qwen3.5:0.8b"
+model = "qwen3.5:0.8"
 
-[profile.openrouter]
-base_url = " https://openrouter.ai/api/v1"
+[profile.gemini]
+base_url = "https://openrouter.ai/api/v1"
 api_key = ""
-model = "qwen/qwen3.5-27b"
+model = "google/gemini-2.5-flash-lite"
+
+[profile.vlmrun]
+base_url = "https://mm-ctx.ngrok.io/v1"
+api_key = ""
+model = "Qwen/Qwen3.5-0.8B"
 ```
 
 ## License

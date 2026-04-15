@@ -103,10 +103,12 @@ Use mm directly or through a CLI assistant (e.g. `claude "Organize ~/Downloads u
 ### Semantic search
 
 ```bash
-mm grep "photo of me and my dog in a park" ~/photos
+mm grep "photo of me and my dog in a park" ~/photos --level 2
+mm grep "revenue forecast" ~/reports --level 2 --kind document
+mm grep "architecture overview" ~/docs --level 2 --index   # auto-index unindexed files
 ```
 
-Returns matching images and videos (via keyframe analysis).
+Returns matching files via vector similarity (embeddings). Use `--level 2` for semantic search, `--index` to auto-index unindexed files before searching.
 
 ### File inspection and extraction
 
@@ -127,6 +129,7 @@ mm cat photo.png -p my-pipeline.yaml             # custom pipeline YAML
 mm cat photo.png -m accurate --encode.strategy image-tile  # override encoder
 mm cat photo.png -m accurate --generate.max-tokens 1024    # override generation
 mm cat --list-encoders                           # list all registered encoders
+mm cat --list-pipelines                          # list built-in pipelines
 ```
 
 ### Batch operations

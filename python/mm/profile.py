@@ -1,7 +1,7 @@
 """Profile management for mm.
 
 Profile resolution order:
-    --profile CLI flag > MM_PROFILE env > active_profile in file > <default>"
+    --profile CLI flag > MM_PROFILE env > active_profile in file > ollama (default)"
 
 Profiles allow multiple model/API configurations in a single config file.
 Each profile stores name, base_url, api_key, and model.
@@ -10,7 +10,7 @@ Use ``mm profile add|update|remove`` to manage profiles, and
 
 Profiles allow multiple LLM provider configurations in a single config file.
 Each profile stores base_url, api_key, and model. One profile is active at a
-time, resolved via: CLI --profile > MM_PROFILE env > active_profile in file > <default>".
+time, resolved via: CLI --profile > MM_PROFILE env > active_profile in file > ollama (default)".
 
 TOML layout:
 
@@ -150,7 +150,7 @@ def load_profile_config() -> ConfigData:
 
 
 def get_active_profile_name() -> str:
-    """Resolve active profile: CLI --profile > MM_PROFILE env > active_profile > 'default'."""
+    """Resolve active profile: CLI --profile > MM_PROFILE env > active_profile > 'ollama'."""
     if _cli_overrides.profile:
         return _cli_overrides.profile
     if env_profile := os.environ.get(ENV_PROFILE):

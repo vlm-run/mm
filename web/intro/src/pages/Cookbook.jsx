@@ -224,11 +224,9 @@ vlmrun           https://mm-ctx.ngrok.io/v1     Qwen/Qwen3.5-0.8B`,
       },
       {
         cmd: "mm config show",
-        output: `key                            value
-mode.fast.whisper_model        tiny
-mode.fast.audio_speed          2.0
-mode.accurate.whisper_model    medium
-mode.accurate.audio_speed      1.0`,
+        output: `mode     whisper_model  audio_speed  beam_size
+fast     tiny           2.0          1
+accurate medium         1.0          5`,
       },
     ],
   },

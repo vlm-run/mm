@@ -257,7 +257,7 @@ export default function GettingStarted() {
             {"          "}
             <span className="comment"># list files with kind, size, ext</span>
             {"\n"}
-            <span className="prompt">$ </span>mm cat -m accurate video.mp4
+            <span className="prompt">$ </span>mm cat video.mp4 -m accurate
             {"  "}
             <span className="comment">
               # mosaic + transcript → LLM description

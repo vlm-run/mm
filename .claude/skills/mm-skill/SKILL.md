@@ -38,7 +38,7 @@ irm https://vlm-run.github.io/mm/install/install.ps1 | iex
 | `sql`     | SQL on files, results, and chunks (auto-routed)                             |
 | `wc`      | Count files, bytes, lines, tokens                                           |
 | `bench`   | Benchmark suite with statistical analysis                                   |
-| `config`  | Extraction mode settings (show, init, set, reset-db)                        |
+| `config`  | Extraction mode settings (show, init, set, reset-db, reset-profiles, reset) |
 | `profile` | Manage LLM provider profiles (list, add, update, use, remove)               |
 
 ## Workflow
@@ -104,8 +104,8 @@ Columns in the `files` table:
 | is_binary | bool      | Whether file is binary                                                           |
 | depth     | uint16    | Directory depth (0 = top-level)                                                  |
 | parent    | string    | Parent directory path                                                            |
-| width     | uint32    | Pixel width (images only, null otherwise)                                        |
-| height    | uint32    | Pixel height (images only, null otherwise)                                       |
+| width     | uint32    | Pixel width (images from header, videos via native parsing). Null for non-media. |
+| height    | uint32    | Pixel height (images from header, videos via native parsing). Null for non-media.|
 
 ## cat — content extraction (pipeline-driven)
 
@@ -397,10 +397,10 @@ mm grep "Quantum Phase" <dir> -i                       # case-insensitive search
 mm grep "TODO" <dir> --ignore-case --kind code         # case-insensitive in code
 mm grep "secret" <dir> --no-ignore                     # search gitignored files too
 
-# Semantic search (vector similarity via embeddings)
-mm grep "financial projections" <dir>                  # semantic search across all files
-mm grep "architecture overview" <dir> --format json    # JSON output with distances
-mm grep "revenue forecast" <dir> --index               # auto-index unindexed files before search
+# Semantic search (vector similarity via embeddings, requires --level 2)
+mm grep "financial projections" <dir> --level 2        # semantic search across all files
+mm grep "architecture overview" <dir> --level 2 --format json  # JSON with distances
+mm grep "revenue forecast" <dir> --level 2 --index     # auto-index unindexed files before search
 ```
 
 **Warning**: grep runs extraction on every matching file. On large document directories (500+ PDFs), this can take minutes. Prefer `--kind code` or `--kind text` for fast text searches.
@@ -418,6 +418,7 @@ Four tables available. Table is auto-detected from the `FROM` clause:
 # File metadata (scan + SQLite)
 mm sql "SELECT kind, COUNT(*) as n, ROUND(SUM(size)/1e6,1) as mb FROM files GROUP BY kind ORDER BY mb DESC" --dir <dir>
 mm sql "SELECT * FROM files WHERE kind='document'" --dir <dir> --format json
+mm sql "SELECT * FROM files WHERE kind='image'" --dir <dir> --pre-index  # index before query
 
 # LLM results (SQLite direct)
 mm sql "SELECT file_uri, profile, model, summary FROM l2_results LIMIT 10"
@@ -445,6 +446,8 @@ mm config init --force                          # overwrite existing config
 mm config set mode.fast.whisper_model tiny       # set a config value
 mm config set mode.accurate.beam_size 5          # set a config value
 mm config reset-db                              # delete all databases and caches
+mm config reset-profiles                        # restore profiles to defaults
+mm config reset                                 # reset everything (db + profiles)
 ```
 
 ## profile — LLM provider management
@@ -491,7 +494,7 @@ mm find <dir> --kind video --format json | jq '.[].name'  # extract video names
 - Start with `find --tree --depth 1` then `wc --by-kind` for the fastest directory overview.
 - Use `--format json` when you need to parse output programmatically.
 - `find` returns paths only when piped, else it returns full metadata rows.
-- `sql` is the most powerful command — queries auto-route to in-memory SQLite (`files`) or persistent SQLite. Use `--list-tables` to see available tables.
+- `sql` is the most powerful command — queries auto-route to in-memory SQLite (`files`) or persistent SQLite. Use `--list-tables` to see available tables. Use `--pre-index` to index files before querying.
 - For PDFs, `cat` extracts text in fast mode; if empty, the PDF contains scanned images only.
 - For videos, `mm cat video.mp4 -m accurate` auto-generates keyframe mosaics and sends to LLM.
 - Use `--mode fast` for quick metadata/text extraction (default), `--mode accurate` for LLM descriptions.
