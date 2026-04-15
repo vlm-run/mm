@@ -15,7 +15,7 @@ class TestTryImportOrRaise:
         assert hasattr(mod, "dumps")
 
     def test_raises_for_missing_module(self):
-        with pytest.raises(ImportError, match=r"pip install mm\[gemini\]"):
+        with pytest.raises(ImportError, match=r"pip install mm-ctx\[gemini\]"):
             try_import_or_raise("nonexistent_fake_pkg_1234", extra="gemini")
 
     def test_error_mentions_package_name(self):
@@ -27,15 +27,15 @@ class TestTryImportOrRaise:
             )
 
     def test_error_mentions_correct_extra_mlx(self):
-        with pytest.raises(ImportError, match=r"pip install mm\[mlx\]"):
+        with pytest.raises(ImportError, match=r"pip install mm-ctx\[mlx\]"):
             try_import_or_raise("nonexistent_fake_pkg_1234", extra="mlx")
 
     def test_error_mentions_correct_extra_experimental(self):
-        with pytest.raises(ImportError, match=r"pip install mm\[experimental\]"):
+        with pytest.raises(ImportError, match=r"pip install mm-ctx\[experimental\]"):
             try_import_or_raise("nonexistent_fake_pkg_1234", extra="experimental")
 
     def test_unknown_extra_still_works(self):
-        with pytest.raises(ImportError, match=r"pip install mm\[custom\]"):
+        with pytest.raises(ImportError, match=r"pip install mm-ctx\[custom\]"):
             try_import_or_raise("nonexistent_fake_pkg_1234", extra="custom")
 
     def test_returns_module_object(self):
@@ -50,7 +50,7 @@ class TestGeminiGuard:
         with _hide_module("google.genai.types", "google.genai", "google"):
             from mm.store.embed import text_part
 
-            with pytest.raises(ImportError, match=r"pip install mm\[gemini\]"):
+            with pytest.raises(ImportError, match=r"pip install mm-ctx\[gemini\]"):
                 text_part("hello")
 
     def test_image_part_raises_without_genai(self, tmp_path):
@@ -59,7 +59,7 @@ class TestGeminiGuard:
         with _hide_module("google.genai.types", "google.genai", "google"):
             from mm.store.embed import image_part
 
-            with pytest.raises(ImportError, match=r"pip install mm\[gemini\]"):
+            with pytest.raises(ImportError, match=r"pip install mm-ctx\[gemini\]"):
                 image_part(img)
 
     def test_document_part_raises_without_genai(self, tmp_path):
@@ -68,7 +68,7 @@ class TestGeminiGuard:
         with _hide_module("google.genai.types", "google.genai", "google"):
             from mm.store.embed import document_part
 
-            with pytest.raises(ImportError, match=r"pip install mm\[gemini\]"):
+            with pytest.raises(ImportError, match=r"pip install mm-ctx\[gemini\]"):
                 document_part(pdf)
 
 
@@ -80,7 +80,7 @@ class TestMlxGuard:
             from mm.whisper import _MODEL_CACHE, _get_mlx_model
 
             _MODEL_CACHE.clear()
-            with pytest.raises(ImportError, match=r"pip install mm\[mlx\]"):
+            with pytest.raises(ImportError, match=r"pip install mm-ctx\[mlx\]"):
                 _get_mlx_model("tiny", 12)
 
 
@@ -91,7 +91,7 @@ class TestExperimentalGuard:
         with _hide_module("datasets"):
             from mm.display import _emit_dataset_hf
 
-            with pytest.raises(ImportError, match=r"pip install mm\[experimental\]"):
+            with pytest.raises(ImportError, match=r"pip install mm-ctx\[experimental\]"):
                 _emit_dataset_hf([{"a": 1}])
 
 

@@ -35,7 +35,7 @@ def _genai_available() -> bool:
 
 requires_gemini = pytest.mark.skipif(
     not _genai_available(),
-    reason="google-genai not installed (pip install mm[gemini])",
+    reason="google-genai not installed (pip install mm-ctx[gemini])",
 )
 
 FAKE_DIM = 4

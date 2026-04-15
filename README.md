@@ -25,12 +25,27 @@ Fast, multi-modal context for agents.
 ## Installation
 
 ```bash
+pip install mm-ctx
+```
+
+<details>
+<summary>Alternative methods</summary>
+
+```bash
+# macOS / Linux (shell installer)
+curl -LsSf https://vlm-run.github.io/mm/install/install.sh | sh
+
+# Windows (PowerShell)
+irm https://vlm-run.github.io/mm/install/install.ps1 | iex
+
 # Development install (requires Rust toolchain + uv)
 git clone https://github.com/vlm-run/mm && cd mm
 uv venv --python 3.12 && source .venv/bin/activate
 uv pip install -e ".[dev]"
 uv run maturin develop --release
 ```
+
+</details>
 
 ## CLI
 

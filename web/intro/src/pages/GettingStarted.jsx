@@ -67,51 +67,35 @@ export default function GettingStarted() {
         <div className="px-6 pb-6 space-y-4">
           <div>
             <P>
-              <strong>Global installs</strong>
+              <strong>PyPI</strong>
             </P>
             <Code>
-              <span className="comment"># Shell installer</span>
+              <span className="comment"># pip</span>
+              {"\n"}
+              <span className="prompt">$ </span>pip install mm-ctx{"\n\n"}
+              <span className="comment"># uv</span>
+              {"\n"}
+              <span className="prompt">$ </span>uv pip install mm-ctx{"\n\n"}
+              <span className="comment"># uv tool (global)</span>
+              {"\n"}
+              <span className="prompt">$ </span>uv tool install mm-ctx{"\n\n"}
+              <span className="comment"># uvx (direct use)</span>
+              {"\n"}
+              <span className="prompt">$ </span>uvx mm-ctx find --tree
+            </Code>
+          </div>
+
+          <div>
+            <P>
+              <strong>Shell installer</strong>
+            </P>
+            <Code>
+              <span className="comment"># macOS / Linux</span>
               {"\n"}
               <span className="prompt">$ </span>curl -LsSf
               https://vlm-run.github.io/mm/install/install.sh | sh{"\n\n"}
-              <span className="comment"># Via uv tool</span>
+              <span className="comment"># Windows (PowerShell)</span>
               {"\n"}
-              <span className="prompt">$ </span>uv tool install mm --index-url
-              https://vlm-run.github.io/mm/install/simple/
-            </Code>
-          </div>
-
-          <div>
-            <P>
-              <strong>Project installs</strong>
-            </P>
-            <Code>
-              <span className="comment"># With uv</span>
-              {"\n"}
-              <span className="prompt">$ </span>uv pip install --index-url
-              https://vlm-run.github.io/mm/install/simple/ mm{"\n\n"}
-              <span className="comment"># Without uv</span>
-              {"\n"}
-              <span className="prompt">$ </span>pip install --index-url
-              https://vlm-run.github.io/mm/install/simple/ mm
-            </Code>
-          </div>
-
-          <div>
-            <P>
-              <strong>Direct use with uvx</strong>
-            </P>
-            <Code>
-              <span className="prompt">$ </span>uvx --index-url
-              https://vlm-run.github.io/mm/install/simple/ mm find --tree
-            </Code>
-          </div>
-
-          <div>
-            <P>
-              <strong>Windows (PowerShell)</strong>
-            </P>
-            <Code>
               <span className="prompt">&gt; </span>irm
               https://vlm-run.github.io/mm/install/install.ps1 | iex
             </Code>
