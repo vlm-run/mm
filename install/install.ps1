@@ -15,12 +15,27 @@ $BaseUrl = "https://vlm-run.github.io/mm/install"
 
 function Write-Info  { param($Msg) Write-Host "info: $Msg" -ForegroundColor Green }
 function Write-Warn  { param($Msg) Write-Host "warn: $Msg" -ForegroundColor Yellow }
-function Write-Err   { param($Msg) Write-Host "error: $Msg" -ForegroundColor Red; exit 1 }
+function Write-Err   { param($Msg) Write-Host "error: $Msg" -ForegroundColor Red; throw $Msg }
 
 # ── Platform detection ───────────────────────────────────────────
 
 function Get-Platform {
-    $arch = [System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture
+    $arch = $null
+    # Preferred: .NET RuntimeInformation (available on PS 6+ and some PS 5.1 builds)
+    try {
+        $osArch = [System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture
+        $arch = $osArch.ToString()
+    } catch { }
+    # Fallback: PROCESSOR_ARCHITECTURE env var (always available on Windows)
+    if (-not $arch) {
+        $envArch = $env:PROCESSOR_ARCHITECTURE
+        switch ($envArch) {
+            "AMD64" { $arch = "X64" }
+            "ARM64" { $arch = "Arm64" }
+            "x86"   { $arch = "X86" }
+            default { $arch = $envArch }
+        }
+    }
     switch ($arch) {
         "X64"   { $script:PlatformArch = "x86_64"; $script:WheelPattern = "win_amd64" }
         "Arm64" { $script:PlatformArch = "aarch64"; $script:WheelPattern = "win_arm64" }
