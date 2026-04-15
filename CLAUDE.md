@@ -60,7 +60,6 @@ Rust core for speed, Python for developer experience, Unix philosophy for compos
 - pyyaml — YAML template parsing
 - faster-whisper — Whisper transcription (CTranslate2 backend)
 - scenedetect[opencv] — shot/scene boundary detection
-- docling — document-to-markdown (PDF, DOCX, PPTX)
 - ctranslate2 — CTranslate2 inference runtime (for faster-whisper)
 - python-docx — DOCX text extraction
 - python-pptx — PPTX text extraction

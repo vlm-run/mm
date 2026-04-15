@@ -472,7 +472,7 @@ def _extract(path: Path, opts: _CatOpts) -> str:
             extra=extra,
         )
 
-        if not opts.no_cache:
+        if not opts.no_cache and not opts.verbose:
             value = db.get_l2(l2_id)
             if value is not None:
                 global _was_cached
