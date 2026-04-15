@@ -118,13 +118,14 @@ jobs:
       - run: make lint-python
       - run: make test-python-fast
 
-  # Full Python suite (fast + slow + integration). Runs only when the
-  # project version changes, since the slow tier includes pytest-
-  # benchmark suites and CLI cold-start subprocess benchmarks that add
-  # several minutes per run.
+  # Full Python suite (fast + slow + integration). Runs on PRs when the
+  # project version changes as a pre-merge gate. The slow tier includes
+  # pytest-benchmark suites and CLI cold-start subprocess benchmarks that
+  # add several minutes per run. Post-merge gating is handled by
+  # publish.yml, which re-runs this suite before tagging a release.
   test-python-full:
     needs: check-version
-    if: needs.check-version.outputs.changed == 'true'
+    if: github.event_name == 'pull_request' && needs.check-version.outputs.changed == 'true'
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -205,52 +206,6 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           summary-always: true
           comment-always: true
-          alert-threshold: "150%"
-          comment-on-alert: true
-          alert-comment-cc-users: "@nwaughachukwuma"
-
-  benchmark-pages:
-    needs: check-version
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.check-version.outputs.changed == 'true'
-    runs-on: ubuntu-latest
-    permissions:
-      deployments: write
-      contents: write
-    steps:
-      - uses: actions/checkout@v6
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@v2
-        with:
-          shared-key: rust-bench
-          cache-on-failure: true
-      - run: cargo bench --workspace
-      - name: Extract benchmark results from Criterion JSON
-        run: |
-          python3 -c "
-          import json, pathlib, sys
-          results = []
-          base = pathlib.Path('target/criterion')
-          if not base.exists():
-              print('No target/criterion directory found', file=sys.stderr)
-              sys.exit(1)
-          for est in sorted(base.rglob('new/estimates.json')):
-              data = json.loads(est.read_text())
-              parts = est.relative_to(base).parts
-              name = '/'.join(parts[:-2])  # group/bench
-              median_ns = data['median']['point_estimate']
-              results.append({'name': name, 'unit': 'ns', 'value': median_ns})
-          pathlib.Path('bench_output.json').write_text(json.dumps(results, indent=2))
-          print(f'Extracted {len(results)} benchmark results')
-          "
-
-      - name: Store benchmark result and deploy to GitHub Pages
-        uses: benchmark-action/github-action-benchmark@v1
-        with:
-          name: mm Rust Benchmarks
-          tool: "customSmallerIsBetter"
-          output-file-path: bench_output.json
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          auto-push: true
           alert-threshold: "150%"
           comment-on-alert: true
           alert-comment-cc-users: "@nwaughachukwuma"

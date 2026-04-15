@@ -1,29 +1,116 @@
-name: publish to pypi
+name: Release to PyPI
 
-# TODO: set dependency on publish in `create-release` and `deploy-install-script` jobs once ready to publish to PyPI
+# Triggers on version bumps landing on main. Pattern mirrors
+# vlm-run/vlmrun-python-sdk: detect version change → run full integration
+# tests → tag → build wheels → publish to PyPI → cut GitHub release.
+# Benchmarks run independently in benchmark.yml and do not gate the release.
 
 on:
-  workflow_dispatch:
   push:
-    tags:
-      - "v*"
+    branches: [main]
+    paths:
+      - pyproject.toml
+  workflow_dispatch:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
-  prepare:
+  check-version:
     runs-on: ubuntu-latest
     outputs:
-      version: ${{ steps.get_version.outputs.version }}
+      version: ${{ steps.get.outputs.version }}
+      changed: ${{ steps.get.outputs.changed }}
     steps:
-      - name: Get version from tag
-        id: get_version
-        run: echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
 
-  # Build wheels for each platform
+      - name: Extract version and detect change
+        id: get
+        run: |
+          CURRENT=$(python3 -c "import re, pathlib; print(re.search(r'version\s*=\s*\"([^\"]+)\"', pathlib.Path('pyproject.toml').read_text()).group(1))")
+          echo "version=${CURRENT}" >> $GITHUB_OUTPUT
+          echo "Current version: ${CURRENT}"
+
+          BASE=$(git show HEAD~1:pyproject.toml 2>/dev/null \
+            | python3 -c "import re,sys; m=re.search(r'version\s*=\s*\"([^\"]+)\"', sys.stdin.read()); print(m.group(1) if m else '')" \
+            || echo '')
+          echo "Previous version: ${BASE:-<none>}"
+
+          if git rev-parse "v${CURRENT}" >/dev/null 2>&1; then
+            echo "Tag v${CURRENT} already exists — skipping release"
+            echo "changed=false" >> $GITHUB_OUTPUT
+          elif [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "Manual dispatch — releasing v${CURRENT}"
+            echo "changed=true" >> $GITHUB_OUTPUT
+          elif [ "$CURRENT" != "$BASE" ]; then
+            echo "Version bumped: ${BASE} -> ${CURRENT}"
+            echo "changed=true" >> $GITHUB_OUTPUT
+          else
+            echo "Version unchanged — skipping release"
+            echo "changed=false" >> $GITHUB_OUTPUT
+          fi
+
+  # Full Python suite (fast + slow + integration). Gate on version bumps.
+  test-full:
+    needs: check-version
+    if: needs.check-version.outputs.changed == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v6
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - uses: astral-sh/setup-uv@v4
+        with:
+          enable-cache: true
+          cache-dependency-glob: "pyproject.toml"
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: rust-stable
+          cache-on-failure: true
+      - name: Install dependencies and build Rust extension
+        run: |
+          uv venv --python 3.11
+          uv pip install -e ".[dev]"
+      - run: make test-rust
+      - run: make test-python-full
+
+  # Create and push the version tag once tests pass. Everything
+  # downstream (build / publish / release) keys off this tag.
+  tag:
+    needs: [check-version, test-full]
+    if: needs.check-version.outputs.changed == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      VERSION: ${{ needs.check-version.outputs.version }}
+    outputs:
+      tag: v${{ needs.check-version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - name: Create and push tag
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          if git rev-parse "v${VERSION}" >/dev/null 2>&1; then
+            echo "Tag v${VERSION} already exists — skipping"
+          else
+            git tag -a "v${VERSION}" -m "Release v${VERSION}"
+            git push origin "v${VERSION}"
+          fi
+
+  # Build wheels for each platform.
   build:
+    needs: [check-version, tag]
+    if: needs.check-version.outputs.changed == 'true'
     strategy:
       fail-fast: false
       matrix:
@@ -43,13 +130,12 @@ jobs:
           # Windows x86_64
           - os: windows-latest
             target: x86_64-pc-windows-msvc
-          # Windows aarch64
-          # - os: windows-latest
-          #   target: aarch64-pc-windows-msvc
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v6
+        with:
+          ref: v${{ needs.check-version.outputs.version }}
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
@@ -72,13 +158,12 @@ jobs:
 
   # Publish wheels to PyPI (no sdist — compiled libs + Python only).
   publish:
-    needs:
-      - prepare
-      - build
+    needs: [check-version, build]
+    if: needs.check-version.outputs.changed == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     env:
-      VERSION: ${{ needs.prepare.outputs.version }}
+      VERSION: ${{ needs.check-version.outputs.version }}
     environment:
       name: pypi
       url: https://pypi.org/p/mm-ctx
@@ -86,6 +171,8 @@ jobs:
       id-token: write
     steps:
       - uses: actions/checkout@v6
+        with:
+          ref: v${{ needs.check-version.outputs.version }}
       - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
@@ -118,7 +205,7 @@ jobs:
                   "type": "section",
                   "text": {
                     "type": "mrkdwn",
-                    "text": ":white_check_mark: :python: *mm-ctx v${{ env.VERSION }} Published to PyPI*\n\n*Version:* `v${{ env.VERSION }}`\n*Platforms:* linux (x86_64, aarch64), macOS (x86_64, arm64), Windows (x86_64, arm64)\n*Commit:* <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ github.sha }}>"
+                    "text": ":white_check_mark: :python: *mm-ctx v${{ env.VERSION }} Published to PyPI*\n\n*Version:* `v${{ env.VERSION }}`\n*Platforms:* linux (x86_64, aarch64), macOS (x86_64, arm64), Windows (x86_64)\n*Commit:* <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ github.sha }}>"
                   }
                 }
               ]
@@ -137,26 +224,25 @@ jobs:
                   "type": "section",
                   "text": {
                     "type": "mrkdwn",
-                    "text": ":x: :python: *mm-ctx Publish Failed*\n\n*Tag:* `${{ github.ref_name }}`\n*Workflow:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run>"
+                    "text": ":x: :python: *mm-ctx Publish Failed*\n\n*Version:* `v${{ env.VERSION }}`\n*Workflow:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run>"
                   }
                 }
               ]
             }
 
   create-release:
-    needs:
-      - prepare
-      - build
-      - publish
+    needs: [check-version, publish]
+    if: needs.check-version.outputs.changed == 'true'
     runs-on: ubuntu-latest
     env:
-      VERSION: ${{ needs.prepare.outputs.version }}
+      VERSION: ${{ needs.check-version.outputs.version }}
     permissions:
       contents: write
     steps:
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0
+          ref: v${{ needs.check-version.outputs.version }}
       - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
@@ -167,16 +253,26 @@ jobs:
       - name: Generate changelog
         id: changelog
         run: |
-          PREVIOUS_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+          PREVIOUS_TAG=$(git describe --tags --abbrev=0 "v${VERSION}^" 2>/dev/null || echo "")
           if [ -z "$PREVIOUS_TAG" ]; then
-            git log --pretty=format:"* %s" > RELEASE_NOTES.md
+            git log --pretty=format:"* %s (%h)" > RELEASE_NOTES.md
           else
-            git log --pretty=format:"* %s" $PREVIOUS_TAG..HEAD > RELEASE_NOTES.md
+            echo "## Changes since ${PREVIOUS_TAG}" > RELEASE_NOTES.md
+            echo "" >> RELEASE_NOTES.md
+            git log --pretty=format:"* %s (%h)" "${PREVIOUS_TAG}..v${VERSION}" >> RELEASE_NOTES.md
+          fi
+          echo "" >> RELEASE_NOTES.md
+          echo "" >> RELEASE_NOTES.md
+          if [ -n "$PREVIOUS_TAG" ]; then
+            echo "**Full Changelog**: https://github.com/${{ github.repository }}/compare/${PREVIOUS_TAG}...v${VERSION}" >> RELEASE_NOTES.md
+          else
+            echo "**Full Changelog**: https://github.com/${{ github.repository }}/commits/v${VERSION}" >> RELEASE_NOTES.md
           fi
 
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
+          tag_name: v${{ env.VERSION }}
           name: Release v${{ env.VERSION }}
           body_path: RELEASE_NOTES.md
           draft: false
@@ -185,6 +281,8 @@ jobs:
 
   # Deploy metrics dashboard to GitHub Pages at /dev/metrics
   deploy-metrics:
+    needs: [check-version, publish]
+    if: needs.check-version.outputs.changed == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -212,17 +310,17 @@ jobs:
           keep_files: true
 
   deploy-installer:
-    needs:
-      - prepare
-      - build
-      - publish
+    needs: [check-version, publish]
+    if: needs.check-version.outputs.changed == 'true'
     runs-on: ubuntu-latest
     env:
-      VERSION: ${{ needs.prepare.outputs.version }}
+      VERSION: ${{ needs.check-version.outputs.version }}
     permissions:
       contents: write
     steps:
       - uses: actions/checkout@v6
+        with:
+          ref: v${{ needs.check-version.outputs.version }}
       - name: Download all wheel artifacts
         uses: actions/download-artifact@v4
         with:
@@ -263,6 +361,8 @@ jobs:
 
   # Deploy intro docs site to GitHub Pages at /intro
   deploy-intro:
+    needs: [check-version, publish]
+    if: needs.check-version.outputs.changed == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: write
