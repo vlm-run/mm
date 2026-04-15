@@ -1,35 +1,25 @@
-<div align="center">
-<p align="center" style="width: 100%;">
-    <img src="https://raw.githubusercontent.com/vlm-run/.github/refs/heads/main/profile/assets/vlm-black.svg" alt="VLM Run Logo" width="80" style="margin-bottom: -5px; color: #2e3138; vertical-align: middle; padding-right: 5px;"><br>
-</p>
-<h2>mm</h2>
-<i>Fast, multi-modal context for agents.</i>
-<p align="center"><a href="https://docs.vlm.run"><b>Website</b></a> | <a href="https://app.vlm.run/"><b>Platform</b></a> | <a href="https://docs.vlm.run/"><b>Docs</b></a> | <a href="https://docs.vlm.run/blog"><b>Blog</b></a> | <a href="https://discord.gg/AMApC2UzVY"><b>Discord</b></a>
-</p>
-<p align="center">
-<a href="https://github.com/vlm-run/mm/blob/main/LICENSE"><img alt="License" src="https://img.shields.io/github/license/vlm-run/mm.svg"></a>
-<a href="https://discord.gg/AMApC2UzVY"><img alt="Discord" src="https://img.shields.io/badge/discord-chat-purple?color=%235765F2&label=discord&logo=discord"></a>
-<a href="https://twitter.com/vlmrun"><img alt="Twitter Follow" src="https://img.shields.io/twitter/follow/vlmrun.svg?style=social&logo=twitter"></a>
-</p>
-</div>
-Fast, multi-modal context for agents.
 
-> Familiar UNIX tools like `find`, `grep`, `cat` with unfamiliar multi-modal powers.
 
-## Core ideology
 
-- Rust core for speed.
-- Python for dev-ex.
-- UNIX philosophy for composability.
+# mm
+
+### Fast, multi-modal context (CLI) for agents
+
+---
+
+Familiar UNIX CLI tools like `find`, `grep`, `cat` — with multi-modal powers.
+
+`mm` lets agents understand file types that LLMs can't natively read: images, video, audio, PDFs, and other binary formats. Rust core for speed, Python for dev-ex, UNIX philosophy for composability.
 
 ## Installation
 
 ```bash
-# Development install (requires Rust toolchain + uv)
-git clone https://github.com/vlm-run/mm && cd mm
-uv venv --python 3.12 && source .venv/bin/activate
-uv pip install -e ".[dev]"
-uv run maturin develop --release
+# with pip or uv
+pip install mm-ctx
+uv pip install mm-ctx
+
+# or run directly without installing
+uvx --with "mm-ctx" mm --help
 ```
 
 ## CLI
@@ -55,16 +45,18 @@ mm cat photo.png -p resize                   # use named encoder
 
 ### Command reference
 
-| Command | Purpose | Key flags |
-|---------|---------|-----------|
-| `find`  | Find/list files, tree view, schema | `--name`, `--kind`, `--ext`, `--min-size`, `--max-size`, `--sort`, `--reverse`, `--columns`, `--tree`, `--depth`, `--schema`, `--limit`, `--no-ignore`, `--format` |
-| `cat` | Content extraction (auto-detected by file type × mode) | `--mode fast/accurate`, `-p` (pipeline), `-n`, `--no-cache`, `-v`, `--encode.*`, `--generate.*`, `--list-pipelines`, `--list-encoders`, `--format` |
-| `grep` | Content search across files | `--kind`, `--ext`, `-C`, `--count`, `-i`, `--no-ignore`, `--format` |
-| `sql` | SQL queries on file index, results, chunks, and embeddings | `--dir`, `--pre-index`, `--format`, `--list-tables` |
-| `wc` | Count files, size, lines (est.), tokens (est.) | `--kind`, `--by-kind`, `--format` |
-| `bench` | Benchmark suite | `--format`, `--rounds` |
-| `config` | Extraction mode settings | `show`, `init`, `set`, `reset-db`, `reset-profiles`, `reset` |
-| `profile` | Manage LLM provider profiles | `list`, `add`, `update`, `use`, `remove` |
+
+| Command   | Purpose                                                    | Key flags                                                                                                                                                          |
+| --------- | ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `find`    | Find/list files, tree view, schema                         | `--name`, `--kind`, `--ext`, `--min-size`, `--max-size`, `--sort`, `--reverse`, `--columns`, `--tree`, `--depth`, `--schema`, `--limit`, `--no-ignore`, `--format` |
+| `cat`     | Content extraction (auto-detected by file type × mode)     | `--mode fast/accurate`, `-p` (pipeline), `-n`, `--no-cache`, `-v`, `--encode.*`, `--generate.*`, `--list-pipelines`, `--list-encoders`, `--format`                 |
+| `grep`    | Content search across files                                | `--kind`, `--ext`, `-C`, `--count`, `-i`, `--no-ignore`, `--format`                                                                                                |
+| `sql`     | SQL queries on file index, results, chunks, and embeddings | `--dir`, `--pre-index`, `--format`, `--list-tables`                                                                                                                |
+| `wc`      | Count files, size, lines (est.), tokens (est.)             | `--kind`, `--by-kind`, `--format`                                                                                                                                  |
+| `bench`   | Benchmark suite                                            | `--format`, `--rounds`                                                                                                                                             |
+| `config`  | Extraction mode settings                                   | `show`, `init`, `set`, `reset-db`, `reset-profiles`, `reset`                                                                                                       |
+| `profile` | Manage LLM provider profiles                               | `list`, `add`, `update`, `use`, `remove`                                                                                                                           |
+
 
 ### find — locate/list, tree, and schema
 
@@ -139,10 +131,10 @@ mm sql --list-tables                              # show available tables
 
 - **TTY**: Rich formatted tables/panels
 - **Piped**: plain TSV/text (machine-readable, no ANSI)
-- **`--format json`**: JSON output on any command that supports it
-- **`--format csv`**: Comma-separated values
-- **`--format dataset-jsonl`**: JSONL for dataset export
-- **`--format dataset-hf`**: HuggingFace Datasets format (requires `--output-dir`)
+- `**--format json`**: JSON output on any command that supports it
+- `**--format csv**`: Comma-separated values
+- `**--format dataset-jsonl**`: JSONL for dataset export
+- `**--format dataset-hf**`: HuggingFace Datasets format (requires `--output-dir`)
 
 ### Verbose mode (`--verbose` / `-v`)
 
@@ -183,10 +175,12 @@ ctx.info()    # Rich summary panel
 
 ## Processing Modes
 
-| Mode | What | Speed | How |
-|------|------|-------|-----|
-| **fast** (default) | Local extraction — text from PDF, image hash/EXIF, video metadata | <100ms/file | pypdfium2 (PDF), Rust mmap (images), mp4parse/matroska (video) |
-| **accurate** | LLM-powered semantic understanding (captions, descriptions, summaries) | Varies | LLM API via active profile + pipeline config |
+
+| Mode               | What                                                                   | Speed       | How                                                            |
+| ------------------ | ---------------------------------------------------------------------- | ----------- | -------------------------------------------------------------- |
+| **fast** (default) | Local extraction — text from PDF, image hash/EXIF, video metadata      | <100ms/file | pypdfium2 (PDF), Rust mmap (images), mp4parse/matroska (video) |
+| **accurate**       | LLM-powered semantic understanding (captions, descriptions, summaries) | Varies      | LLM API via active profile + pipeline config                   |
+
 
 Metadata scanning (`find`, `wc`) always uses Rust-native extraction (~60ms / 700 files).
 
@@ -194,39 +188,42 @@ Metadata scanning (`find`, `wc`) always uses Rust-native extraction (~60ms / 700
 
 Benchmarked on Apple Silicon (M-series), 702 files (7.2GB):
 
-| Operation | Latency |
-|-----------|---------|
-| Metadata scan (702 files) | 8ms |
-| CLI cold start (`find --format json`) | 60ms |
-| CLI cold start (`find --schema --format json`) | 109ms |
-| CLI cold start (`sql`) | 300ms |
-| Fast code extraction | ~52ms |
-| Fast image extraction | ~61ms |
-| Fast PDF text extraction | ~220ms |
-| Fast video metadata | <100ms |
-| PDF page mosaic (per page) | ~10ms |
-| Video keyframe mosaic (48 frames) | ~1s |
+
+| Operation                                      | Latency |
+| ---------------------------------------------- | ------- |
+| Metadata scan (702 files)                      | 8ms     |
+| CLI cold start (`find --format json`)          | 60ms    |
+| CLI cold start (`find --schema --format json`) | 109ms   |
+| CLI cold start (`sql`)                         | 300ms   |
+| Fast code extraction                           | ~52ms   |
+| Fast image extraction                          | ~61ms   |
+| Fast PDF text extraction                       | ~220ms  |
+| Fast video metadata                            | <100ms  |
+| PDF page mosaic (per page)                     | ~10ms   |
+| Video keyframe mosaic (48 frames)              | ~1s     |
+
 
 ## Storage
 
 mm uses a global SQLite database at `~/.local/share/mm/mm.db` with sqlite-vec for vector search:
 
-| Table | Contents | Relationship |
-|-------|----------|-------------|
-| `files` | File metadata + content (one row per file, `uri` = absolute path) | — |
-| `l2_results` | LLM-generated summaries (many per file, `file_uri` = FK) | FK → `files.uri` |
-| `chunks` | ~1024-char content chunks (`file_uri` = FK) | FK → `l2_results.id` |
-| `chunks_vec` | Embedding vectors (sqlite-vec virtual table) | FK → `chunks.id` |
-| `cache` | Key-value result cache | — |
+
+| Table        | Contents                                                          | Relationship         |
+| ------------ | ----------------------------------------------------------------- | -------------------- |
+| `files`      | File metadata + content (one row per file, `uri` = absolute path) | —                    |
+| `l2_results` | LLM-generated summaries (many per file, `file_uri` = FK)          | FK → `files.uri`     |
+| `chunks`     | ~1024-char content chunks (`file_uri` = FK)                       | FK → `l2_results.id` |
+| `chunks_vec` | Embedding vectors (sqlite-vec virtual table)                      | FK → `chunks.id`     |
+| `cache`      | Key-value result cache                                            | —                    |
+
 
 The `files` table includes metadata columns (path, size, kind, etc.) and content columns (content_hash, text_preview, line_count, duration_s, exif_*, video_codec, etc.).
 
 Use `mm config reset-db` to clear all databases and caches.
 
-
 ### Pipelines — encode + generate
 
-Pipelines are YAML configs under `pipelines/{kind}/{mode}.yaml` that pair an **encoder** with optional LLM **generation** parameters. When `generate` is `null`, the pipeline is encode-only (no LLM call). Encoders are Python classes under `encoders/` that convert media files into VLM-ready Messages. See [`docs/PIPELINES.md`](docs/PIPELINES.md) and [`docs/ENCODERS.md`](docs/ENCODERS.md) for the full pipeline and encoder reference.
+Pipelines are YAML configs under `pipelines/{kind}/{mode}.yaml` that pair an **encoder** with optional LLM **generation** parameters. When `generate` is `null`, the pipeline is encode-only (no LLM call). Encoders are Python classes under `encoders/` that convert media files into VLM-ready Messages. See `[docs/PIPELINES.md](docs/PIPELINES.md)` and `[docs/ENCODERS.md](docs/ENCODERS.md)` for the full pipeline and encoder reference.
 
 Pipeline fields can be overridden from the CLI:
 

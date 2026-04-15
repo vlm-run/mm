@@ -26,15 +26,13 @@ dependencies = [
     "scenedetect[opencv]>=0.6",
     "docling>=2.0; python_version >= '3.11'",
     "ctranslate2>=2.0",
+    "google-genai>=1.0",
 ]
 
 [project.scripts]
 mm = "mm.cli:app"
 
 [project.optional-dependencies]
-gemini = [
-    "google-genai>=1.0",
-]
 mlx = [
     "mlx>=0.31.1",
     "lightning-whisper-mlx>=0.0.10",
@@ -51,7 +49,6 @@ dev = [
     "maturin>=1.7",
 ]
 all = [
-    "mm-ctx[gemini]",
     "mm-ctx[mlx]; sys_platform == 'darwin'",
 ]
 
