@@ -150,3 +150,24 @@ def test_read_empty_pipe(monkeypatch):
 
     paths = read_paths_from_stdin()
     assert paths == []
+
+
+# ---------------------------------------------------------------------------
+# Regression: no select.select() in pipe.py (CLAUDE.md architecture rule)
+# ---------------------------------------------------------------------------
+
+
+def test_pipe_does_not_use_select():
+    """pipe.py must not use select.select() — it races with slow upstream writers.
+
+    See CLAUDE.md: "pipe.py uses isatty() only — no select.select().
+    A zero-timeout select poll races with upstream writers in pipelines
+    (mm find | mm wc) and misses data not yet flushed."
+    """
+    import inspect
+    import mm.pipe
+
+    source = inspect.getsource(mm.pipe)
+    assert "select.select" not in source, (
+        "pipe.py must not use select.select(); use blocking sys.stdin.read() instead"
+    )
