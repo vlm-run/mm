@@ -1,121 +1,171 @@
 name: publish to pypi
 
-# TODO: set dependency on publish in `create-release` and `deploy-install-script` jobs once ready to publish to PyPI
-
 on:
-  workflow_dispatch:
   push:
-    tags:
-      - "v*"
+    branches:
+      - main
+    paths:
+      - "pyproject.toml"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  prepare:
+  check-version:
     runs-on: ubuntu-latest
     outputs:
-      version: ${{ steps.get_version.outputs.version }}
-    steps:
-      - name: Get version from tag
-        id: get_version
-        run: echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
-
-  integration-test:
-    if: startsWith(github.ref, 'refs/tags/v')
-    runs-on: ubuntu-latest
+      changed: ${{ steps.version_check.outputs.changed }}
+      version: ${{ steps.version_check.outputs.version }}
     steps:
       - uses: actions/checkout@v6
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
-      - uses: astral-sh/setup-uv@v4
-      - name: Install dependencies and build Rust extension
+          fetch-depth: 2
+      - name: Check if version changed
+        id: version_check
         run: |
-          uv venv --python 3.11
-          uv pip install -e ".[dev]"
-          uv run maturin develop --release
-      - name: Run integration tests
-        run: uv run pytest tests/python -m integration -v
+          CURRENT=$(python3 -c "import re, pathlib; print(re.search(r'version\s*=\s*\"([^\"]+)\"', pathlib.Path('pyproject.toml').read_text()).group(1))")
+          BASE=$(git show HEAD~1:pyproject.toml 2>/dev/null | python3 -c "import re,sys; m=re.search(r'version\s*=\s*\"([^\"]+)\"', sys.stdin.read()); print(m.group(1) if m else '')" || echo '')
+          if [ "$CURRENT" != "$BASE" ]; then
+            echo "changed=true" >> $GITHUB_OUTPUT
+            echo "version=$CURRENT" >> $GITHUB_OUTPUT
+            echo "Version changed: $BASE -> $CURRENT"
+          else
+            echo "changed=false" >> $GITHUB_OUTPUT
+            echo "version=$CURRENT" >> $GITHUB_OUTPUT
+            echo "Version unchanged: $CURRENT"
+          fi
 
-  # Build wheels for each platform
   build:
-    needs:
-      - integration-test
+    needs: check-version
+    if: needs.check-version.outputs.changed == 'true'
     strategy:
       fail-fast: false
       matrix:
         include:
-          # Linux x86_64
           - os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
-          # Linux aarch64 (cross-compiled)
           - os: ubuntu-latest
             target: aarch64-unknown-linux-gnu
-          # macOS x86_64
           - os: macos-15-intel
             target: x86_64-apple-darwin
-          # macOS Apple Silicon
           - os: macos-latest
             target: aarch64-apple-darwin
-          # Windows x86_64
           - os: windows-latest
             target: x86_64-pc-windows-msvc
-          # Windows aarch64
-          # - os: windows-latest
-          #   target: aarch64-pc-windows-msvc
+          - os: windows-latest
+            target: aarch64-pc-windows-msvc
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: "3.10"
       - name: Build wheels
         uses: PyO3/maturin-action@v1
         with:
           target: ${{ matrix.target }}
           args: --release --out dist
           manylinux: auto
-
       - name: Upload wheels
         uses: actions/upload-artifact@v4
         with:
           name: wheels-${{ matrix.target }}
           path: dist/*.whl
 
-  # Build source distribution
-  sdist:
-    needs:
-      - integration-test
+  verify-wheels:
+    needs: build
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    steps:
+      - name: Download all wheel artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: wheels-*
+          path: dist
+          merge-multiple: true
+
+      - name: Verify no Rust source in wheels
+        run: |
+          echo "Checking wheels for Rust source leaks..."
+          for whl in dist/*.whl; do
+            echo "  Inspecting $(basename "$whl")"
+            if unzip -l "$whl" | grep -qE '\.(rs)$|Cargo\.toml|/crates/'; then
+              echo "ERROR: Rust source found in $whl"
+              unzip -l "$whl" | grep -E '\.(rs)$|Cargo\.toml|/crates/'
+              exit 1
+            fi
+          done
+          echo "All wheels verified: no Rust source found"
+
+  create-tag:
+    needs:
+      - check-version
+      - verify-wheels
+    runs-on: ubuntu-latest
+    outputs:
+      tag: v${{ needs.check-version.outputs.version }}
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v6
-      - name: Build sdist
-        uses: PyO3/maturin-action@v1
-        with:
-          command: sdist
-          args: --out dist
-      - name: Upload sdist
-        uses: actions/upload-artifact@v4
-        with:
-          name: wheels-sdist
-          path: dist/*.tar.gz
+      - name: Create and push tag
+        env:
+          VERSION: ${{ needs.check-version.outputs.version }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag "v${VERSION}" -m "Release v${VERSION}"
+          git push origin "v${VERSION}"
 
-  # Publish all wheels + sdist to PyPi. TODO: enable when ready to publish to PyPI
-  publish:
-    if: false
+  create-release:
     needs:
-      - prepare
-      - build
-      - sdist
+      - check-version
+      - create-tag
+    runs-on: ubuntu-latest
+    env:
+      VERSION: ${{ needs.check-version.outputs.version }}
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: wheels-*
+          path: dist
+          merge-multiple: true
+
+      - name: Generate changelog
+        run: |
+          PREVIOUS_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+          if [ -z "$PREVIOUS_TAG" ]; then
+            git log --pretty=format:"* %s" > RELEASE_NOTES.md
+          else
+            git log --pretty=format:"* %s" $PREVIOUS_TAG..HEAD > RELEASE_NOTES.md
+          fi
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: v${{ env.VERSION }}
+          name: Release v${{ env.VERSION }}
+          body_path: RELEASE_NOTES.md
+          draft: false
+          prerelease: false
+          files: dist/*
+
+  publish:
+    needs:
+      - check-version
+      - verify-wheels
     runs-on: ubuntu-latest
     timeout-minutes: 10
     env:
-      VERSION: ${{ needs.prepare.outputs.version }}
+      VERSION: ${{ needs.check-version.outputs.version }}
     environment:
       name: pypi
       url: https://pypi.org/p/mm-ctx
@@ -171,54 +221,12 @@ jobs:
                   "type": "section",
                   "text": {
                     "type": "mrkdwn",
-                    "text": ":x: :python: *mm-ctx Publish Failed*\n\n*Tag:* `${{ github.ref_name }}`\n*Workflow:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run>"
+                    "text": ":x: :python: *mm-ctx Publish Failed*\n\n*Version:* `v${{ env.VERSION }}`\n*Workflow:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run>"
                   }
                 }
               ]
             }
 
-  # Create GitHub release with wheel assets
-  create-release:
-    needs:
-      - prepare
-      - build
-      - sdist
-    runs-on: ubuntu-latest
-    env:
-      VERSION: ${{ needs.prepare.outputs.version }}
-    permissions:
-      contents: write
-    steps:
-      - uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
-      - name: Download all artifacts
-        uses: actions/download-artifact@v4
-        with:
-          pattern: wheels-*
-          path: dist
-          merge-multiple: true
-
-      - name: Generate changelog
-        id: changelog
-        run: |
-          PREVIOUS_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
-          if [ -z "$PREVIOUS_TAG" ]; then
-            git log --pretty=format:"* %s" > RELEASE_NOTES.md
-          else
-            git log --pretty=format:"* %s" $PREVIOUS_TAG..HEAD > RELEASE_NOTES.md
-          fi
-
-      - name: Create Release
-        uses: softprops/action-gh-release@v1
-        with:
-          name: Release v${{ env.VERSION }}
-          body_path: RELEASE_NOTES.md
-          draft: false
-          prerelease: false
-          files: dist/*
-
-  # Deploy metrics dashboard to GitHub Pages at /dev/metrics
   deploy-metrics:
     runs-on: ubuntu-latest
     permissions:
@@ -244,15 +252,14 @@ jobs:
           destination_dir: dev/metrics
           keep_files: true
 
-  # Deploy installer + wheels + checksums to GitHub Pages at /install
   deploy-installer:
     needs:
-      - prepare
+      - check-version
       - build
-      - sdist
+    if: needs.check-version.outputs.changed == 'true'
     runs-on: ubuntu-latest
     env:
-      VERSION: ${{ needs.prepare.outputs.version }}
+      VERSION: ${{ needs.check-version.outputs.version }}
     permissions:
       contents: write
     steps:
@@ -270,21 +277,17 @@ jobs:
           mkdir -p _pages/latest
           mkdir -p _pages/simple/mm
 
-          # Copy wheels into versioned directory
           cp dist/*.whl _pages/${VERSION}/
 
-          # Generate SHA256 checksums manifest
           cd _pages/${VERSION}
           sha256sum *.whl > SHA256SUMS
           echo "── SHA256SUMS (v${VERSION}) ──"
           cat SHA256SUMS
           cd ../..
 
-          # Copy versioned artifacts to latest/ as well
           cp _pages/${VERSION}/*.whl _pages/latest/
           cp _pages/${VERSION}/SHA256SUMS _pages/latest/
 
-          # Place install scripts at the root
           cp install.sh _pages/install.sh
           cp install.ps1 _pages/install.ps1
 
@@ -296,41 +299,14 @@ jobs:
           destination_dir: install
           keep_files: true
 
-  # Deploy intro docs site to GitHub Pages at /intro
-  deploy-intro:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "22"
-      - name: Install dependencies
-        working-directory: web/intro
-        run: npm ci
-      - name: Build intro site
-        working-directory: web/intro
-        env:
-          VITE_BASE_PATH: /mm/intro/
-        run: npm run build
-      - name: Deploy intro to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v4
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./web/intro/dist
-          destination_dir: intro
-          keep_files: true
-
-  # Deploy PEP 503 simple repository index for `uv tool install mm`
-  # Usage: uv tool install mm --index-url https://vlm-run.github.io/mm/install/simple/
   deploy-simple-index:
     needs:
-      - prepare
+      - check-version
       - deploy-installer
+    if: needs.check-version.outputs.changed == 'true'
     runs-on: ubuntu-latest
     env:
-      VERSION: ${{ needs.prepare.outputs.version }}
+      VERSION: ${{ needs.check-version.outputs.version }}
     permissions:
       contents: write
     steps:
@@ -368,4 +344,29 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./_simple
           destination_dir: install/simple
+          keep_files: true
+
+  deploy-intro:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install dependencies
+        working-directory: web/intro
+        run: npm ci
+      - name: Build intro site
+        working-directory: web/intro
+        env:
+          VITE_BASE_PATH: /mm/intro/
+        run: npm run build
+      - name: Deploy intro to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./web/intro/dist
+          destination_dir: intro
           keep_files: true

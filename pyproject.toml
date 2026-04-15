@@ -3,7 +3,7 @@ requires = ["maturin>=1.7,<2.0"]
 build-backend = "maturin"
 
 [project]
-name = "mm"
+name = "mm-ctx"
 version = "0.5.1"
 description = "High-performance multimodal context management library"
 requires-python = ">=3.11"
@@ -51,8 +51,8 @@ dev = [
     "maturin>=1.7",
 ]
 all = [
-    "mm[gemini]",
-    "mm[mlx]; sys_platform == 'darwin'",
+    "mm-ctx[gemini]",
+    "mm-ctx[mlx]; sys_platform == 'darwin'",
 ]
 
 [tool.maturin]
@@ -61,7 +61,7 @@ module-name = "mm._mm"
 manifest-path = "crates/mm-python/Cargo.toml"
 features = ["pyo3/extension-module"]
 # Ship built-in YAML pipelines alongside the Python package so
-# `pip install mm` can load them at runtime without the source tree.
+# `pip install mm-ctx` can load them at runtime without the source tree.
 include = [
     { path = "python/mm/pipelines/**/*.yaml", format = ["sdist", "wheel"] },
 ]
