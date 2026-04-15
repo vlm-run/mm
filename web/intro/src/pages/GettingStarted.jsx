@@ -81,7 +81,7 @@ export default function GettingStarted() {
               <span className="prompt">$ </span>uv tool install mm-ctx{"\n\n"}
               <span className="comment"># uvx (direct use)</span>
               {"\n"}
-              <span className="prompt">$ </span>uvx mm-ctx find --tree
+              <span className="prompt">$ </span>uvx --with mm-ctx find --tree
             </Code>
           </div>
 
