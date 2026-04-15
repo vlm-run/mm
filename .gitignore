@@ -39,3 +39,10 @@ mlx_models/
 sample_files/
 remotion-videos/
 web/
+
+
+# Secrets
+*.env.*
+
+# Local exploration logs
+mm-*-output.txt

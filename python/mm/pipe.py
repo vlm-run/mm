@@ -7,6 +7,8 @@ import sys
 from pathlib import Path
 from typing import Any, cast
 
+_STDIN_POLL_S = 1.0
+
 
 def is_piped_input() -> bool:
     """Check if stdin is being piped (not a TTY)."""
@@ -61,7 +63,20 @@ def read_paths_from_stdin() -> list[str]:
     if not is_piped_input():
         return []
 
-    raw = sys.stdin.read()
+    try:
+        sys.stdin.fileno()
+    except OSError:
+        raw = sys.stdin.read()
+    else:
+        try:
+            import select
+
+            ready, _, _ = select.select([sys.stdin], [], [], _STDIN_POLL_S)
+        except (ValueError, OSError):
+            ready = [sys.stdin]
+        if not ready:
+            return []
+        raw = sys.stdin.read()
     stripped = raw.strip()
     if not stripped:
         return []
