@@ -41,7 +41,7 @@ With all 4 files downloaded, `mm` treats the folder as a multimodal workspace:
 $ mm find mm-samples/ --tree
 ```
 ```
-mm-samples/  (4 files, 3.5 MB)
+mm-samples  (4 files, 3.5 MB)
 ├── Timelapse.mp4  [3.0 MB]
 ├── bench.jpg  [253.8 KB]
 ├── mp3_44100Hz_320kbps_stereo.mp3  [286.0 KB]
@@ -52,13 +52,13 @@ mm-samples/  (4 files, 3.5 MB)
 $ mm wc mm-samples/ --by-kind
 ```
 ```
-kind      files  size      lines (est.)  tokens (est.)
-audio     1      286.0 KB  0             85
-document  1      42.6 KB   29            176
-image     1      253.8 KB  0             425
-video     1      3.0 MB    0             85
+kind      files  size      lines (est.)  tokens (est.)  tok_per_mb
+audio     1      286.0 KB  0             85             304
+document  1      42.6 KB   29            176            4.2K
+image     1      253.8 KB  0             425            1.7K
+video     1      3.0 MB    0             85             29
 —————
-total     4      3.5 MB    29            771
+total     4      3.5 MB    29            771            218
 ```
 
 ```bash
@@ -88,8 +88,9 @@ video     Timelapse.mp4                            3040.1
 $ mm grep "invoice" mm-samples/
 ```
 ```
-wordpress-pdf-invoice-plugin-sample.pdf:2:Payment is due within 30 days from date of invoice.
+wordpress-pdf-invoice-plugin-sample.pdf:2:Payment is due within 30 days from date of invoice. Late payment is subject to fees of 5% per month.
 wordpress-pdf-invoice-plugin-sample.pdf:3:Thanks for choosing DEMO - Sliced Invoices | admin@slicedinvoices.com
+wordpress-pdf-invoice-plugin-sample.pdf:10:admin@slicedinvoices.com
 ```
 
 ### Quick start
