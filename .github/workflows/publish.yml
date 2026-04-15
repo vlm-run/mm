@@ -35,7 +35,7 @@ jobs:
       - name: Install dependencies and build Rust extension
         run: |
           uv venv --python 3.11
-          uv pip install -e ".[dev,gemini]"
+          uv pip install -e ".[dev]"
           uv run maturin develop --release
       - name: Run integration tests
         run: uv run pytest tests/python -m integration -v
