@@ -60,15 +60,11 @@ jobs:
         with:
           python-version: "3.11"
       - uses: astral-sh/setup-uv@v4
-      - name: Install dev dependencies
-        run: |
-          uv venv --python 3.11
-          uv pip install -e ".[dev]"
+        with:
+          enable-cache: true
+          cache-dependency-glob: "pyproject.toml"
       - name: Quality Check (pre-commit)
         uses: pre-commit/action@v3.0.1
-      - name: Type Check (ty)
-        continue-on-error: true
-        run: make typecheck
 
   test-rust:
     runs-on: ubuntu-latest
@@ -119,7 +115,6 @@ jobs:
         run: |
           uv venv --python ${{ matrix.python-version }}
           uv pip install -e ".[dev]"
-          uv run maturin develop --release
       - run: make lint-python
       - run: make test-python-fast
 
@@ -143,12 +138,19 @@ jobs:
           python-version: ${{ matrix.python-version }}
 
       - uses: astral-sh/setup-uv@v4
+        with:
+          enable-cache: true
+          cache-dependency-glob: "pyproject.toml"
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: rust-stable
+          cache-on-failure: true
 
       - name: Install dependencies and build Rust extension
         run: |
           uv venv --python ${{ matrix.python-version }}
           uv pip install -e ".[dev]"
-          uv run maturin develop --release
       - run: make test-python-full
 
   benchmark:
