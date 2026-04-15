@@ -166,15 +166,9 @@ Pipeline: unlabeled media &#8594; `mm cat -m accurate --format dataset-jsonl` &#
 
 ---
 
-## Benchmarks
+## Benchmark
 
-Benchmark mm against native Unix commands with hyperfine:
-
-```bash
-hyperfine --warmup 3 'grep -R TODO python' "mm grep 'TODO' python"
-```
-
-Or run the built-in benchmark suite:
+Run the built-in benchmark suite:
 
 ```bash
 mm bench ~/data/mmbench-mini --format rich

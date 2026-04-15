@@ -43,7 +43,7 @@ export default function Landing() {
               color: "var(--forest)",
             }}
           >
-            Fast, multi-modal file intelligence for agents.
+            Fast, multimodal file intelligence for agents.
           </span>
         </p>
         <p className="mt-1.5 text-[13px] text-[var(--text-secondary)] tracking-wide font-mono">
