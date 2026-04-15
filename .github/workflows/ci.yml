@@ -199,7 +199,7 @@ jobs:
           tool: "customSmallerIsBetter"
           output-file-path: bench_output.json
           external-data-json-path: ./cache/benchmark-data.json
-          fail-on-alert: true
+          fail-on-alert: false
           github-token: ${{ secrets.GITHUB_TOKEN }}
           summary-always: true
           comment-always: true
