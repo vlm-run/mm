@@ -1,26 +1,24 @@
 <div align="center">
 <p align="center" style="width: 100%;">
-    <img src="https://raw.githubusercontent.com/vlm-run/.github/refs/heads/main/profile/assets/vlm-black.svg" alt="VLM Run Logo" width="80" style="margin-bottom: -5px; color: #2e3138; vertical-align: middle; padding-right: 5px;"><br>
+    <img src="https://raw.githubusercontent.com/vlm-run/.github/refs/heads/main/profile/assets/vlm-black.svg" alt="VLM Run Logo" width="80" style="margin-bottom: -5px; color: #2e3138; vertical-align:
+middle; padding-right: 5px;"><br>
 </p>
-<h2>mm</h2>
-<i>Fast, multi-modal context for agents.</i>
-<p align="center"><a href="https://docs.vlm.run"><b>Website</b></a> | <a href="https://app.vlm.run/"><b>Platform</b></a> | <a href="https://docs.vlm.run/"><b>Docs</b></a> | <a href="https://docs.vlm.run/blog"><b>Blog</b></a> | <a href="https://discord.gg/AMApC2UzVY"><b>Discord</b></a>
-</p>
-<p align="center">
-<a href="https://github.com/vlm-run/mm/blob/main/LICENSE"><img alt="License" src="https://img.shields.io/github/license/vlm-run/mm.svg"></a>
-<a href="https://discord.gg/AMApC2UzVY"><img alt="Discord" src="https://img.shields.io/badge/discord-chat-purple?color=%235765F2&label=discord&logo=discord"></a>
-<a href="https://twitter.com/vlmrun"><img alt="Twitter Follow" src="https://img.shields.io/twitter/follow/vlmrun.svg?style=social&logo=twitter"></a>
-</p>
+  <h1>mm</h1>
 </div>
-Fast, multi-modal context for agents.
+<div align="center">
+  <h3>Fast, multi-modal context (CLI) for agents</h3>
+</div>
+<div align="center">
+  <a href="https://github.com/vlm-run/mm/blob/main/LICENSE"><img src="https://img.shields.io/github/license/vlm-run/mm.svg" alt="License"></a>
+  <a href="https://discord.gg/AMApC2UzVY"><img src="https://img.shields.io/badge/discord-chat-purple?color=%235765F2&label=discord&logo=discord" alt="Discord"></a>
+  <a href="https://twitter.com/vlmrun"><img src="https://img.shields.io/twitter/follow/vlmrun.svg?style=social&logo=twitter" alt="Twitter Follow"></a>
+</div>
 
-> Familiar UNIX tools like `find`, `grep`, `cat` with unfamiliar multi-modal powers.
+---
 
-## Core ideology
+Familiar UNIX CLI tools like `find`, `grep`, `cat` — with multi-modal powers.
 
-- Rust core for speed.
-- Python for dev-ex.
-- UNIX philosophy for composability.
+`mm` lets agents understand file types that LLMs can't natively read: images, video, audio, PDFs, and other binary formats. Rust core for speed, Python for dev-ex, UNIX philosophy for composability.
 
 ## Installation
 
