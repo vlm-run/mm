@@ -8,7 +8,7 @@ Rust core for speed. Python for developer experience. Unix philosophy for compos
 
 ```bash
 # Development install (requires Rust toolchain + uv)
-git clone <repo-url> && cd mm
+git clone https://github.com/vlm-run/mm && cd mm
 uv venv --python 3.12 && source .venv/bin/activate
 uv pip install -e ".[dev]"
 uv run maturin develop --release
