@@ -7,6 +7,7 @@ and the --mode flag (fast/accurate).
 
 from __future__ import annotations
 
+import json
 import struct
 import zlib
 from pathlib import Path
@@ -38,6 +39,26 @@ def _write_png(path: Path, width: int, height: int):
     png += _chunk(b"IDAT", compressed)
     png += _chunk(b"IEND", b"")
     path.write_bytes(png)
+
+
+def _minimal_single_page_pdf(path: Path) -> None:
+    """Tiny valid PDF with one (Hello World) text op — same structure as test_integration."""
+    content = (
+        b"%PDF-1.0\n"
+        b"1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n"
+        b"2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj\n"
+        b"3 0 obj<</Type/Page/Parent 2 0 R/MediaBox[0 0 612 792]"
+        b"/Contents 4 0 R/Resources<</Font<</F1<</Type/Font/Subtype/Type1/BaseFont/Helvetica>>>>>>>>endobj\n"
+        b"4 0 obj<</Length 44>>stream\nBT /F1 12 Tf 100 700 Td (Hello World) Tj ET\nendstream\nendobj\n"
+        b"xref\n0 5\n"
+        b"0000000000 65535 f \n"
+        b"0000000009 00000 n \n"
+        b"0000000058 00000 n \n"
+        b"0000000115 00000 n \n"
+        b"0000000306 00000 n \n"
+        b"trailer<</Size 5/Root 1 0 R>>\nstartxref\n406\n%%EOF"
+    )
+    path.write_bytes(content)
 
 
 # ── Fixture: mixed directory ──────────────────────────────────────────
@@ -117,6 +138,23 @@ class TestHeadTail:
         assert r.exit_code == 0
         lines = r.output.strip().splitlines()
         assert len(lines) == 1
+
+
+class TestCatDocumentPdf:
+    """CLI smoke: PDF fast path uses pypdfium2 page text (not mocked)."""
+
+    def test_pdf_fast_json_extracts_text(self, tmp_path: Path):
+        pdf = tmp_path / "hello.pdf"
+        _minimal_single_page_pdf(pdf)
+        r = runner.invoke(
+            app,
+            ["cat", str(pdf), "-m", "fast", "--format", "json"],
+        )
+        assert r.exit_code == 0, r.output
+        data = json.loads(r.output)
+        assert len(data) == 1
+        body = data[0].get("content", "")
+        assert "Hello" in body
 
 
 # ── Error handling ────────────────────────────────────────────────────
