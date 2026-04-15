@@ -1,3 +1,5 @@
+import GettingStarted from "./GettingStarted";
+
 const ASCII = `███╗   ███╗███╗   ███╗
 ████╗ ████║████╗ ████║
 ██╔████╔██║██╔████╔██║
@@ -24,7 +26,7 @@ function FeatureCard({ icon, name, desc }) {
 
 export default function Landing() {
   return (
-    <div className="animate-slide-up flex flex-col items-center gap-8">
+    <div className="animate-slide-up max-w-3xl mx-auto flex flex-col items-center gap-8">
       {/* ASCII + tagline */}
       <div className="text-center">
         <pre
@@ -33,7 +35,7 @@ export default function Landing() {
         >
           {ASCII}
         </pre>
-        <p className="mt-3 text-[15px] text-[var(--text-secondary)] tracking-wide">
+        <p className="mt-3 text-[17px] tracking-wide">
           <span
             className="font-semibold"
             style={{
@@ -41,9 +43,11 @@ export default function Landing() {
               color: "var(--forest)",
             }}
           >
-            High-performance multimodal context
-          </span>{" "}
-          for humans & agents
+            Fast, multi-modal file intelligence for agents.
+          </span>
+        </p>
+        <p className="mt-1.5 text-[13px] text-[var(--text-secondary)] tracking-wide font-mono">
+          find · cat · grep — rebuilt for the multimodal era.
         </p>
       </div>
 
@@ -225,7 +229,7 @@ export default function Landing() {
             fontSize="8.5"
             fontFamily="var(--font-mono)"
           >
-            hash · kind · text · codecs · pages · duration
+            hash · kind · text · pages · duration · dimensions
           </text>
 
           {/* Semantic sub-block */}
@@ -255,35 +259,25 @@ export default function Landing() {
             fontSize="8.5"
             fontFamily="var(--font-mono)"
           >
-            captions · embeddings · analysis · search · encoders
+            captions · embeddings · search · encoders · pipelines
           </text>
 
-          {/* Arrows: mm → Consumers */}
+          {/* Arrow: mm → Agents */}
           <line
             x1="513"
-            y1="100"
+            y1="120"
             x2="560"
-            y2="84"
-            stroke="#1A3C2B"
-            strokeOpacity="0.4"
-            strokeWidth="1.5"
-            markerEnd="url(#arrow)"
-          />
-          <line
-            x1="513"
-            y1="140"
-            x2="560"
-            y2="156"
+            y2="120"
             stroke="#1A3C2B"
             strokeOpacity="0.4"
             strokeWidth="1.5"
             markerEnd="url(#arrow)"
           />
 
-          {/* Consumers */}
+          {/* Agents */}
           <rect
             x="565"
-            y="57"
+            y="93"
             width="115"
             height="54"
             rx="2"
@@ -292,36 +286,7 @@ export default function Landing() {
           />
           <text
             x="622"
-            y="82"
-            textAnchor="middle"
-            fill="#1A3C2B"
-            fontSize="20"
-          >
-            🧑‍💻
-          </text>
-          <text
-            x="622"
-            y="101"
-            textAnchor="middle"
-            fill="#3A3A38"
-            fontSize="9"
-            fontFamily="var(--font-mono)"
-          >
-            Humans
-          </text>
-
-          <rect
-            x="565"
-            y="129"
-            width="115"
-            height="54"
-            rx="2"
-            fill="#ffffff"
-            stroke="rgba(58,58,56,0.2)"
-          />
-          <text
-            x="622"
-            y="154"
+            y="118"
             textAnchor="middle"
             fill="#1A3C2B"
             fontSize="20"
@@ -330,7 +295,7 @@ export default function Landing() {
           </text>
           <text
             x="622"
-            y="173"
+            y="137"
             textAnchor="middle"
             fill="#3A3A38"
             fontSize="9"
@@ -349,7 +314,7 @@ export default function Landing() {
             fill="rgba(58,58,56,0.5)"
             letterSpacing="0.06em"
           >
-            Rust core · Arrow IPC · zero-copy · gitignore-aware · pipe-native
+            Rust + Python · Arrow IPC · pipe-native · agent-ready
           </text>
         </svg>
       </div>
@@ -359,29 +324,28 @@ export default function Landing() {
         <FeatureCard
           icon="⚡"
           name="Fast"
-          desc="Rust core, rayon parallelism. Extremely fast."
+          desc="Index 10K files in <1s. Rust core, zero-copy Arrow."
         />
         <FeatureCard
           icon="🔍"
-          name="Multimodal"
-          desc="Multimodal awareness for find · cat · grep"
+          name="Universal"
+          desc="PDFs, images, video, audio — one interface."
         />
         <FeatureCard
           icon="🔗"
           name="Composable"
-          desc="Pipes, Arrow, DataFrames. CLI + Python API."
+          desc="Pipes to jq. DataFrames in Python. Built for agents."
         />
       </div>
 
-      {/* Install */}
+      {/* Install — curl only */}
       <div className="font-mono text-[12px] text-[var(--text-muted)] flex flex-col items-center gap-1">
         <code className="bg-[var(--panel)] border border-[var(--border)] rounded-sm px-2 py-1 text-[var(--text-secondary)]">
           curl -LsSf https://vlm-run.github.io/mm/install/install.sh | sh
         </code>
-        <code className="border border-[var(--border)] rounded-sm px-2 py-1 text-[var(--text-secondary)]">
-          irm https://vlm-run.github.io/mm/install/install.ps1 | iex
-        </code>
       </div>
+
+      <GettingStarted />
     </div>
   );
 }

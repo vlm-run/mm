@@ -18,6 +18,7 @@ venv/
 .pytest_cache/
 .benchmarks/
 benchmarks/data/
+benchmarks/criterion/
 htmlcov/
 .coverage
 
@@ -39,7 +40,6 @@ mlx_models/
 sample_files/
 remotion-videos/
 web/
-
 
 # Secrets
 *.env.*
