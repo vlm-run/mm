@@ -3,8 +3,8 @@ name: mm-skill
 description: >
   Use the mm CLI to index, explore, query, and extract content from multimodal directories
   containing images, videos, PDFs, code, and other files. Triggers: exploring a directory's contents,
-  listing/finding files by type or size, extracting text from PDFs, getting image metadata, running SQL
-  analytics on file metadata, searching across file contents, counting tokens, viewing directory trees,
+  listing/finding files by type or size, extracting text from PDFs, getting image metadata,
+  searching across file contents, counting tokens, viewing directory trees,
   extracting PDF page mosaics, video keyframe extraction, 'what files are in this folder',
   'find all images', 'show me the PDFs', 'how much storage do videos use', 'extract text from this PDF',
   'search documents for X', 'analyze this directory', 'how many tokens', 'show the tree'.
@@ -35,18 +35,16 @@ irm https://vlm-run.github.io/mm/install/install.ps1 | iex
 | `find`    | Locate/list files by name/kind/ext/size, tabular listing, tree view, schema |
 | `cat`     | Content extraction (auto-detected by file type × mode)                      |
 | `grep`    | Content search — text and semantic (via embeddings)                         |
-| `sql`     | SQL on files, results, and chunks (auto-routed)                             |
 | `wc`      | Count files, bytes, lines, tokens                                           |
 | `bench`   | Benchmark suite with statistical analysis                                   |
-| `config`  | Extraction mode settings (show, init, set, reset-db)                        |
+| `config`  | Extraction mode settings (show, init, set, reset-db, reset-profiles, reset) |
 | `profile` | Manage LLM provider profiles (list, add, update, use, remove)               |
 
 ## Workflow
 
 1. Start with `mm find <dir> --tree --depth 1` to see the directory structure.
 2. Use `mm wc <dir> --by-kind` to estimate token counts for LLM context budgeting.
-3. Use `mm find <dir> --schema` to see available columns before writing SQL.
-4. Explore with `find`, `sql`, `grep`, `cat` as needed.
+3. Explore with `find`, `grep`, `cat` as needed.
 5. Use `mm cat <file> -m accurate` for LLM-powered descriptions.
 
 ## find — locate files, tabular listing, tree view, schema
@@ -104,8 +102,8 @@ Columns in the `files` table:
 | is_binary | bool      | Whether file is binary                                                           |
 | depth     | uint16    | Directory depth (0 = top-level)                                                  |
 | parent    | string    | Parent directory path                                                            |
-| width     | uint32    | Pixel width (images only, null otherwise)                                        |
-| height    | uint32    | Pixel height (images only, null otherwise)                                       |
+| width     | uint32    | Pixel width (images from header, videos via native parsing). Null for non-media. |
+| height    | uint32    | Pixel height (images from header, videos via native parsing). Null for non-media.|
 
 ## cat — content extraction (pipeline-driven)
 
@@ -398,34 +396,12 @@ mm grep "TODO" <dir> --ignore-case --kind code         # case-insensitive in cod
 mm grep "secret" <dir> --no-ignore                     # search gitignored files too
 
 # Semantic search (vector similarity via embeddings)
-mm grep "financial projections" <dir>                  # semantic search across all files
-mm grep "architecture overview" <dir> --format json    # JSON output with distances
-mm grep "revenue forecast" <dir> --index               # auto-index unindexed files before search
+mm grep "financial projections" <dir> -s               # semantic search across all files
+mm grep "architecture overview" <dir> -s --format json # JSON with distances
+mm grep "revenue forecast" <dir> -s --index            # auto-index unindexed files before search
 ```
 
 **Warning**: grep runs extraction on every matching file. On large document directories (500+ PDFs), this can take minutes. Prefer `--kind code` or `--kind text` for fast text searches.
-
-## sql — SQL queries on files, results, and chunks
-
-Four tables available. Table is auto-detected from the `FROM` clause:
-
-- `files` — file metadata (via `--dir`, or persistent SQLite)
-- `l2_results` — LLM-generated summaries (persistent SQLite)
-- `chunks` — chunked content (persistent SQLite)
-- `chunks_vec` — embedding vectors for semantic search (sqlite-vec virtual table)
-
-```bash
-# File metadata (scan + SQLite)
-mm sql "SELECT kind, COUNT(*) as n, ROUND(SUM(size)/1e6,1) as mb FROM files GROUP BY kind ORDER BY mb DESC" --dir <dir>
-mm sql "SELECT * FROM files WHERE kind='document'" --dir <dir> --format json
-
-# LLM results (SQLite direct)
-mm sql "SELECT file_uri, profile, model, summary FROM l2_results LIMIT 10"
-mm sql "SELECT COUNT(*) as n FROM l2_results"
-
-# List available tables
-mm sql --list-tables
-```
 
 ## bench — benchmark suite
 
@@ -445,6 +421,8 @@ mm config init --force                          # overwrite existing config
 mm config set mode.fast.whisper_model tiny       # set a config value
 mm config set mode.accurate.beam_size 5          # set a config value
 mm config reset-db                              # delete all databases and caches
+mm config reset-profiles                        # restore profiles to defaults
+mm config reset                                 # reset everything (db + profiles)
 ```
 
 ## profile — LLM provider management
@@ -487,11 +465,9 @@ mm find <dir> --kind video --format json | jq '.[].name'  # extract video names
 ## Tips
 
 - All metadata commands (`find`, `wc`) run in ~60ms via the Rust fast path.
-- `sql` on stored tables runs in ~100-180ms; `files` queries are ~1.2s (includes scan).
 - Start with `find --tree --depth 1` then `wc --by-kind` for the fastest directory overview.
 - Use `--format json` when you need to parse output programmatically.
 - `find` returns paths only when piped, else it returns full metadata rows.
-- `sql` is the most powerful command — queries auto-route to in-memory SQLite (`files`) or persistent SQLite. Use `--list-tables` to see available tables.
 - For PDFs, `cat` extracts text in fast mode; if empty, the PDF contains scanned images only.
 - For videos, `mm cat video.mp4 -m accurate` auto-generates keyframe mosaics and sends to LLM.
 - Use `--mode fast` for quick metadata/text extraction (default), `--mode accurate` for LLM descriptions.

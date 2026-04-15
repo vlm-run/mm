@@ -6,7 +6,7 @@ build-backend = "maturin"
 name = "mm"
 version = "0.5.1"
 description = "High-performance multimodal context management library"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 license = { text = "MIT" }
 dependencies = [
     "typer>=0.12",
@@ -18,10 +18,10 @@ dependencies = [
     "pypdfium2>=4.0",
     "Pillow>=10.0",
     "openai>=1.0",
-    "tomli>=1.0; python_version < '3.11'",
     "python-docx==1.2.0",
     "python-pptx>=1.0.2",
     "pyyaml>=6.0",
+    "google-genai>=1.0",
     "faster-whisper>=1.0",
     "scenedetect[opencv]>=0.6",
     "docling>=2.0; python_version >= '3.11'",
@@ -78,11 +78,11 @@ markers = [
 addopts = "-m 'not integration and not slow'"
 
 [tool.ruff]
-target-version = "py310"
+target-version = "py311"
 line-length = 100
 
 [tool.ty.environment]
-python-version = "3.10"
+python-version = "3.11"
 
 [tool.ty.rules]
 # Start with warnings for gradual adoption

@@ -332,7 +332,7 @@ ctx.info()   # Rich summary panel
 
 ## LLM configuration
 
-Provider settings (base_url, api_key, model) are configured per-profile. Active profile is resolved as: `--profile` flag > `MM_PROFILE` env > `active_profile` in config file > `"default"`.
+Provider settings (base_url, api_key, model) are configured per-profile. Active profile is resolved as: `--profile` flag > `MM_PROFILE` env > `active_profile` in config file > `"ollama"`.
 
 ```bash
 # Profile management

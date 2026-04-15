@@ -89,7 +89,7 @@ mm
 │   ├── [x] info() — Rich summary panel
 │   └── [x] save() — persist to .mm/index.parquet
 │
-├── CLI Commands (6 + config+profile, Typer, Unix-philosophy composability)
+├── CLI Commands (8 total: 5 core + bench + config + profile. Typer, Unix-philosophy composability)
 │   ├── [x] --version/-v global flag
 │   ├── [x] find     — find/list files, tree view (--tree), schema (--schema), columns (--columns), name filter (--name, string/regex via Rust)
 │   ├── [x] [cat](./cat.md)      — auto-detected content extraction (fast/accurate mode) → [full spec](cat.md)
@@ -107,8 +107,8 @@ mm
 │   ├── [x] grep     — content search with context lines (like rg), --index for on-demand semantic indexing
 │   ├── [x] sql      — SQLite SQL on file index, --pre-index for on-demand metadata indexing before query
 │   ├── [x] wc       — count files, size, lines (est.), tokens (est.)
-│   ├── [x] config   — extraction mode settings (show, init, set)
-│   ├── [x] profile  — LLM profile management (list, add, update, use, remove; default immutable, ollama reserved)
+│   ├── [x] config   — extraction mode settings (show, init, set, reset-db, reset-profiles, reset)
+│   ├── [x] profile  — LLM profile management (list, add, update, use, remove; 3 reserved: default, ollama, gemini)
 │   ├── [x] bench    — 24-command benchmark suite (metadata×10, fast×8, accurate×6) with bits/s throughput
 │   └── [ ] context  — LLM-ready context payload builder (token budgeting)
 │
@@ -117,7 +117,7 @@ mm
 │   ├── [x] Piped stdout → plain TSV/text (machine-readable, no ANSI)
 │   ├── [x] --format=json flag → JSON on any command
 │   ├── [x] Piped stdin → read newline-delimited paths (composability)
-│   ├── [x] Pipe detection via select() (no blocking on empty stdin)
+│   ├── [x] Pipe detection via isatty() (no select.select() — block-reads when stdin is not a TTY)
 │   └── [x] SIGPIPE handling (no BrokenPipeError when piping to head/tail)
 │
 ├── Data Transfer (Rust → Python)

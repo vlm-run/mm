@@ -80,7 +80,7 @@ export default function App() {
           <span className="font-mono text-[10px] tracking-[0.1em] text-[var(--text-muted)]">
             {/* mm - context from every file */}
             {/* mm — multimodal context for humans & agents */}
-            Fast, multi-modal file intelligence for agents
+            Fast, multimodal file intelligence for agents
           </span>
           <span className="font-mono text-[10px] tracking-[0.1em] text-[var(--text-muted)]">
             Rust + Python · MIT · powered by{" "}

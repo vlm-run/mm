@@ -17,13 +17,13 @@ profile_app = typer.Typer(
         "Examples:\n\n"
         "  mm profile list\n"
         "  mm profile use ollama\n"
-        "  mm profile use default\n"
+        "  mm profile use gemini\n"
         "  mm profile update ollama --model qwen3.5:0.8\n"
         "  mm profile add openai --base-url https://api.openai.com/v1 --model gpt-4o\n"
         "  mm profile remove openai\n\n"
         "Select a profile per-command with:  mm --profile openrouter cat photo.png -m accurate\n"
         "Or via environment variable:        MM_PROFILE=ollama mm cat photo.png -m accurate\n"
-        "Resolution order: CLI --profile > MM_PROFILE env > active_profile > 'default'"
+        "Resolution order: CLI --profile > MM_PROFILE env > active_profile > 'ollama'"
     ),
     no_args_is_help=True,
 )
@@ -127,7 +127,7 @@ def profile_use(
     Examples:
       mm profile use openrouter
       mm profile use ollama
-      mm profile use default
+      mm profile use gemini
     """
     from mm.display import output_console
     from mm.profile import set_active_profile
