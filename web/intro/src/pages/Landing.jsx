@@ -262,32 +262,22 @@ export default function Landing() {
             captions · embeddings · search · encoders · pipelines
           </text>
 
-          {/* Arrows: mm → Consumers */}
+          {/* Arrow: mm → Agents */}
           <line
             x1="513"
-            y1="100"
+            y1="120"
             x2="560"
-            y2="84"
-            stroke="#1A3C2B"
-            strokeOpacity="0.4"
-            strokeWidth="1.5"
-            markerEnd="url(#arrow)"
-          />
-          <line
-            x1="513"
-            y1="140"
-            x2="560"
-            y2="156"
+            y2="120"
             stroke="#1A3C2B"
             strokeOpacity="0.4"
             strokeWidth="1.5"
             markerEnd="url(#arrow)"
           />
 
-          {/* Consumers */}
+          {/* Agents */}
           <rect
             x="565"
-            y="57"
+            y="93"
             width="115"
             height="54"
             rx="2"
@@ -296,36 +286,7 @@ export default function Landing() {
           />
           <text
             x="622"
-            y="82"
-            textAnchor="middle"
-            fill="#1A3C2B"
-            fontSize="20"
-          >
-            🧑‍💻
-          </text>
-          <text
-            x="622"
-            y="101"
-            textAnchor="middle"
-            fill="#3A3A38"
-            fontSize="9"
-            fontFamily="var(--font-mono)"
-          >
-            Humans
-          </text>
-
-          <rect
-            x="565"
-            y="129"
-            width="115"
-            height="54"
-            rx="2"
-            fill="#ffffff"
-            stroke="rgba(58,58,56,0.2)"
-          />
-          <text
-            x="622"
-            y="154"
+            y="118"
             textAnchor="middle"
             fill="#1A3C2B"
             fontSize="20"
@@ -334,7 +295,7 @@ export default function Landing() {
           </text>
           <text
             x="622"
-            y="173"
+            y="137"
             textAnchor="middle"
             fill="#3A3A38"
             fontSize="9"
