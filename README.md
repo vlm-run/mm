@@ -28,7 +28,7 @@ pip install mm-ctx
 uv pip install mm-ctx
 
 # or run directly without installing
-uvx --with "mm-ctx" mm --help
+uvx --from mm-ctx mm --help
 ```
 
 <details>
