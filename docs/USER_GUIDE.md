@@ -77,7 +77,7 @@ Install mm-cli-skill globally so any CLI assistant or agentic tool can discover 
 npx skills add vlm-run/skills@mm-cli-skill
 ```
 
-### Other CLI assistants (OpenClaw, NemoClaw, OpenCode, Codex, Gemini CLI)
+### Universal assistants (OpenClaw, NemoClaw, OpenCode, Codex, Gemini CLI)
 
 Install the mm-cli-skill globally first, then start your preferred tool:
 

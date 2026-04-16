@@ -167,7 +167,7 @@ Install mm-cli-skill globally so any CLI assistant or agentic tool can discover 
 npx skills add vlm-run/skills@mm-cli-skill
 ```
 
-### Other CLI assistants (OpenClaw, NemoClaw, OpenCode, Codex, Gemini CLI)
+### Universal assistants (OpenClaw, NemoClaw, OpenCode, Codex, Gemini CLI)
 
 Install the mm-cli-skill globally first, then start your preferred tool:
 
@@ -322,8 +322,8 @@ mm uses a global SQLite database at `~/.local/share/mm/mm.db` with sqlite-vec fo
 | Table        | Contents                                                          | Relationship         |
 | ------------ | ----------------------------------------------------------------- | -------------------- |
 | `files`      | File metadata + content (one row per file, `uri` = absolute path) | —                    |
-| `l2_results` | LLM-generated summaries (many per file, `file_uri` = FK)          | FK → `files.uri`     |
-| `chunks`     | ~1024-char content chunks (`file_uri` = FK)                       | FK → `l2_results.id` |
+| `l2_results` | LLM-generated summaries (many per file)                           | FK → `files.uri`     |
+| `chunks`     | ~2048-char content chunks                                         | FK → `l2_results.id` |
 | `chunks_vec` | Embedding vectors (sqlite-vec virtual table)                      | FK → `chunks.id`     |
 | `cache`      | Key-value result cache                                            | —                    |
 
@@ -361,7 +361,7 @@ video.accurate = "/path/to/my-video-accurate.yaml"
 
 ## LLM Configuration using Profiles
 
-For accurate mode, mm uses the `openai` Python SDK to call any OpenAI-compatible API. Provider settings are managed through **profiles** — named configurations stored in `~/.config/mm/mm.toml`.
+For accurate mode, `mm` uses the `openai` Python SDK to call any OpenAI-compatible API. Provider settings are managed through **profiles** — named configurations stored in `~/.config/mm/mm.toml`.
 
 ### Quick setup
 

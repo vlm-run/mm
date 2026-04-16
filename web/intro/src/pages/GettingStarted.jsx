@@ -167,7 +167,7 @@ export default function GettingStarted() {
           </Code>
 
           <h3 className="text-[14px] font-semibold text-[var(--text-primary)] mt-5 mb-2">
-            Other CLI assistants
+            Universal assistants
           </h3>
           <P>
             Install mm-cli-skill globally so any CLI assistant or agentic tool can
