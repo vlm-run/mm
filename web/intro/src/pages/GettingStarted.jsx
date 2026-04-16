@@ -56,7 +56,7 @@ function InlineCode({ children }) {
 
 export default function GettingStarted() {
   return (
-    <div className="w-full mt-20">
+    <div className="w-full mt-16">
       <h1 className="text-2xl text-center font-bold text-[var(--text-primary)] mb-4">
         Getting Started
       </h1>
