@@ -154,7 +154,7 @@ Run `mm find /Volumes/Drive1 --kind video | mm cat --format json` on each volume
 
 <details><summary>27. Semantic search across documents</summary>
 
-`mm grep "revenue forecast" ~/reports --level 2 --kind document` — vector similarity search across embedded document chunks. Finds conceptually related content, not just keyword matches.
+`mm grep "revenue forecast" ~/reports -s --kind document` — vector similarity search across embedded document chunks. Finds conceptually related content, not just keyword matches.
 </details>
 
 <details><summary>28. Audit file formats in a document archive</summary>
@@ -203,7 +203,7 @@ Image token cost depends on resolution (tile-based). `mm find ~/products --kind 
 
 <details><summary>36. Semantic search across images</summary>
 
-`mm grep "sunset over ocean" ~/photos --level 2` — vector similarity search over image embeddings. Returns images whose LLM-generated captions are semantically close to the query.
+`mm grep "sunset over ocean" ~/photos -s` — vector similarity search over image embeddings. Returns images whose LLM-generated captions are semantically close to the query.
 </details>
 
 ---
@@ -275,7 +275,7 @@ Audio files over 80 seconds exceed Gemini's single-part embedding limit. `mm fin
 
 <details><summary>48. Semantic search across all media types simultaneously</summary>
 
-`mm grep "quarterly revenue" ~/shared --level 2` searches PDFs (extracted text), images (via LLM captions), and video (via keyframe descriptions) in a single query using vector similarity.
+`mm grep "quarterly revenue" ~/shared -s` searches PDFs (extracted text), images (via LLM captions), and video (via keyframe descriptions) in a single query using vector similarity.
 </details>
 
 <details><summary>49. Build a multimodal evidence package</summary>

@@ -229,6 +229,62 @@ class TestCat:
         assert "def main" in row["content"]
 
 
+class TestCatLargeBatch:
+    """Large multi-file ``cat`` prompts or requires ``--yes`` (threshold configurable)."""
+
+    @staticmethod
+    def _write_n_files(base: Path, n: int) -> list[str]:
+        base.mkdir(parents=True, exist_ok=True)
+        paths: list[str] = []
+        for i in range(n):
+            p = base / f"batch_{i}.txt"
+            p.write_text(f"x{i}\n")
+            paths.append(str(p))
+        return paths
+
+    def test_below_threshold_no_flag(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setenv("MM_CAT_BATCH_CONFIRM_THRESHOLD", "9")
+        paths = self._write_n_files(tmp_path, 8)
+        r = runner.invoke(app, ["cat", *paths, "--format", "json"])
+        assert r.exit_code == 0
+
+    def test_at_threshold_blocks_without_yes(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setenv("MM_CAT_BATCH_CONFIRM_THRESHOLD", "9")
+        paths = self._write_n_files(tmp_path, 9)
+        r = runner.invoke(app, ["cat", *paths, "--format", "json"])
+        assert r.exit_code == 1
+        out = r.output + (r.stderr or "")
+        assert "--yes" in out or "-y" in out
+
+    def test_at_threshold_succeeds_with_short_yes(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ):
+        monkeypatch.setenv("MM_CAT_BATCH_CONFIRM_THRESHOLD", "9")
+        paths = self._write_n_files(tmp_path, 9)
+        r = runner.invoke(app, ["cat", *paths, "--format", "json", "-y"])
+        assert r.exit_code == 0
+
+    def test_at_threshold_succeeds_with_long_yes(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ):
+        monkeypatch.setenv("MM_CAT_BATCH_CONFIRM_THRESHOLD", "9")
+        paths = self._write_n_files(tmp_path, 9)
+        r = runner.invoke(app, ["cat", *paths, "--format", "json", "--yes"])
+        assert r.exit_code == 0
+
+    def test_default_threshold_uses_nine_paths(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ):
+        """Without env override, 8 paths OK and 9 paths require -y (non-interactive)."""
+        monkeypatch.delenv("MM_CAT_BATCH_CONFIRM_THRESHOLD", raising=False)
+        paths8 = self._write_n_files(tmp_path / "a", 8)
+        r8 = runner.invoke(app, ["cat", *paths8, "--format", "json"])
+        assert r8.exit_code == 0
+        paths9 = self._write_n_files(tmp_path / "b", 9)
+        r9 = runner.invoke(app, ["cat", *paths9, "--format", "json"])
+        assert r9.exit_code == 1
+
+
 # ── grep ─────────────────────────────────────────────────────────────
 
 

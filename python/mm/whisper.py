@@ -7,7 +7,7 @@ Backends (checked in order, first available wins):
 Models cached lazily — first call loads, subsequent calls reuse.
 
 faster-whisper and ctranslate2 are included in the default ``mm`` install.
-For MLX support on Apple Silicon: pip install mm[mlx]
+For MLX support on Apple Silicon: pip install mm-ctx[mlx]
 """
 
 from __future__ import annotations
@@ -271,7 +271,7 @@ def transcribe(
     if backend is None:
         return TranscriptionResult(
             text="[whisper not available — faster-whisper should be included in core mm install. "
-            "For MLX on Apple Silicon: pip install mm[mlx]]",
+            "For MLX on Apple Silicon: pip install mm-ctx[mlx]]",
             model_size=model_size,
         )
 

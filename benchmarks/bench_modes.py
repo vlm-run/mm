@@ -233,7 +233,6 @@ def _sysinfo_panel() -> Panel:
         f"[bold]CUDA[/bold]         {'[green]yes[/green]' if info.cuda_available else '[dim]no[/dim]'}",
         f"[bold]whisper[/bold]      {'[green]yes[/green]' if info.whisper_available else '[dim]no[/dim]'}",
         f"[bold]scenedetect[/bold]  {'[green]yes[/green]' if info.scenedetect_available else '[dim]no[/dim]'}",
-        f"[bold]docling[/bold]      {'[green]yes[/green]' if info.docling_available else '[dim]no[/dim]'}",
     ]
     return Panel("\n".join(lines), title="[bold]System", border_style="blue", box=box.ROUNDED)
 

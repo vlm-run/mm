@@ -43,7 +43,7 @@ export default function Landing() {
               color: "var(--forest)",
             }}
           >
-            Fast, multi-modal file intelligence for agents.
+            Fast, multimodal file intelligence for agents.
           </span>
         </p>
         <p className="mt-1.5 text-[13px] text-[var(--text-secondary)] tracking-wide font-mono">
@@ -338,10 +338,10 @@ export default function Landing() {
         />
       </div>
 
-      {/* Install — curl only */}
+      {/* Install — pip primary */}
       <div className="font-mono text-[12px] text-[var(--text-muted)] flex flex-col items-center gap-1">
         <code className="bg-[var(--panel)] border border-[var(--border)] rounded-sm px-2 py-1 text-[var(--text-secondary)]">
-          curl -LsSf https://vlm-run.github.io/mm/install/install.sh | sh
+          pip install mm-ctx
         </code>
       </div>
 

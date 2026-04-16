@@ -67,51 +67,35 @@ export default function GettingStarted() {
         <div className="px-6 pb-6 space-y-4">
           <div>
             <P>
-              <strong>Global installs</strong>
+              <strong>PyPI</strong>
             </P>
             <Code>
-              <span className="comment"># Shell installer</span>
+              <span className="comment"># pip</span>
+              {"\n"}
+              <span className="prompt">$ </span>pip install mm-ctx{"\n\n"}
+              <span className="comment"># uv</span>
+              {"\n"}
+              <span className="prompt">$ </span>uv pip install mm-ctx{"\n\n"}
+              <span className="comment"># uv tool (global)</span>
+              {"\n"}
+              <span className="prompt">$ </span>uv tool install mm-ctx{"\n\n"}
+              <span className="comment"># uvx (direct use)</span>
+              {"\n"}
+              <span className="prompt">$ </span>uvx --from mm-ctx mm find --tree
+            </Code>
+          </div>
+
+          <div>
+            <P>
+              <strong>Shell installer</strong>
+            </P>
+            <Code>
+              <span className="comment"># macOS / Linux</span>
               {"\n"}
               <span className="prompt">$ </span>curl -LsSf
               https://vlm-run.github.io/mm/install/install.sh | sh{"\n\n"}
-              <span className="comment"># Via uv tool</span>
+              <span className="comment"># Windows (PowerShell)</span>
               {"\n"}
-              <span className="prompt">$ </span>uv tool install mm --index-url
-              https://vlm-run.github.io/mm/install/simple/
-            </Code>
-          </div>
-
-          <div>
-            <P>
-              <strong>Project installs</strong>
-            </P>
-            <Code>
-              <span className="comment"># With uv</span>
-              {"\n"}
-              <span className="prompt">$ </span>uv pip install --index-url
-              https://vlm-run.github.io/mm/install/simple/ mm{"\n\n"}
-              <span className="comment"># Without uv</span>
-              {"\n"}
-              <span className="prompt">$ </span>pip install --index-url
-              https://vlm-run.github.io/mm/install/simple/ mm
-            </Code>
-          </div>
-
-          <div>
-            <P>
-              <strong>Direct use with uvx</strong>
-            </P>
-            <Code>
-              <span className="prompt">$ </span>uvx --index-url
-              https://vlm-run.github.io/mm/install/simple/ mm find --tree
-            </Code>
-          </div>
-
-          <div>
-            <P>
-              <strong>Windows (PowerShell)</strong>
-            </P>
-            <Code>
               <span className="prompt">&gt; </span>irm
               https://vlm-run.github.io/mm/install/install.ps1 | iex
             </Code>
@@ -171,13 +155,13 @@ export default function GettingStarted() {
           <h3 className="text-[14px] font-semibold text-[var(--text-primary)] mb-2">
             Claude Code
           </h3>
-          <P>Install the mm-skill via the skill marketplace:</P>
+          <P>Install the mm-cli-skill via the skill marketplace:</P>
           <Code>
             <span className="prompt">$ </span>claude{"\n"}
             <span className="prompt">&gt; </span>/plugin marketplace add
             vlm-run/skills{"\n"}
             <span className="prompt">&gt; </span>/plugin install
-            mm-skill@vlm-run/skills{"\n"}
+            mm-cli-skill@vlm-run/skills{"\n"}
             <span className="prompt">&gt; </span>Organize my ~/Downloads folder
             using mm
           </Code>
@@ -186,13 +170,13 @@ export default function GettingStarted() {
             Other CLI assistants
           </h3>
           <P>
-            Install mm-skill globally so any CLI assistant or agentic tool can
+            Install mm-cli-skill globally so any CLI assistant or agentic tool can
             discover it:
           </P>
           <Code>
             <span className="comment"># One-time setup</span>
             {"\n"}
-            <span className="prompt">$ </span>npx skill add vlm-run/mm-skill
+            <span className="prompt">$ </span>npx skills add vlm-run/skills@mm-cli-skill
             {"\n\n"}
             <span className="comment">
               # Then use any CLI assistant — it will discover mm automatically
@@ -257,7 +241,7 @@ export default function GettingStarted() {
             {"          "}
             <span className="comment"># list files with kind, size, ext</span>
             {"\n"}
-            <span className="prompt">$ </span>mm cat -m accurate video.mp4
+            <span className="prompt">$ </span>mm cat video.mp4 -m accurate
             {"  "}
             <span className="comment">
               # mosaic + transcript → LLM description

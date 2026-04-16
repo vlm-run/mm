@@ -1,18 +1,53 @@
-# mm
+<div align="center">
+<p align="center" style="width: 100%;">
+    <img src="https://raw.githubusercontent.com/vlm-run/.github/refs/heads/main/profile/assets/vlm-black.svg" alt="VLM Run Logo" width="80" style="margin-bottom: -5px; color: #2e3138; vertical-align:
+middle; padding-right: 5px;"><br>
+</p>
+  <h1>mm</h1>
+</div>
+<div align="center">
+  <h3>Fast, multi-modal context (CLI) for agents</h3>
+</div>
+<div align="center">
+  <a href="https://github.com/vlm-run/mm/blob/main/LICENSE"><img src="https://img.shields.io/github/license/vlm-run/mm.svg" alt="License"></a>
+  <a href="https://discord.gg/AMApC2UzVY"><img src="https://img.shields.io/badge/discord-chat-purple?color=%235765F2&label=discord&logo=discord" alt="Discord"></a>
+  <a href="https://twitter.com/vlmrun"><img src="https://img.shields.io/twitter/follow/vlmrun.svg?style=social&logo=twitter" alt="Twitter Follow"></a>
+</div>
 
-High-performance multimodal context management library + CLI.
+---
 
-Rust core for speed. Python for developer experience. Unix philosophy for composability.
+Familiar UNIX CLI tools like `find`, `grep`, `cat` — with multi-modal powers.
+
+`mm` lets agents understand file types that LLMs can't natively read: images, video, audio, PDFs, and other binary formats. Rust core for speed, Python for dev-ex, UNIX philosophy for composability.
 
 ## Installation
 
 ```bash
+# with pip or uv
+pip install mm-ctx
+uv pip install mm-ctx
+
+# or run directly without installing
+uvx --from mm-ctx mm --help
+```
+
+<details>
+<summary>Alternative methods</summary>
+
+```bash
+# macOS / Linux (shell installer)
+curl -LsSf https://vlm-run.github.io/mm/install/install.sh | sh
+
+# Windows (PowerShell)
+irm https://vlm-run.github.io/mm/install/install.ps1 | iex
+
 # Development install (requires Rust toolchain + uv)
-git clone <repo-url> && cd mm
+git clone https://github.com/vlm-run/mm && cd mm
 uv venv --python 3.12 && source .venv/bin/activate
 uv pip install -e ".[dev]"
 uv run maturin develop --release
 ```
+</details>
 
 ## CLI
 
@@ -111,18 +146,54 @@ mm cat mp3_44100Hz_320kbps_stereo.mp3 -m accurate               # Whisper transc
 mm cat wordpress-pdf-invoice-plugin-sample.pdf -m accurate      # LLM-structured invoice
 ```
 
+## Integrations
+
+### Claude Code
+
+Install the `mm-cli-skill` via the skill marketplace:
+
+```bash
+claude
+> /plugin marketplace add vlm-run/skills
+> /plugin install mm-cli-skill@vlm-run/skills
+> Organize my ~/Downloads folder using mm
+```
+
+### npx skills
+
+Install mm-cli-skill globally so any CLI assistant or agentic tool can discover it:
+
+```bash
+npx skills add vlm-run/skills@mm-cli-skill
+```
+
+### Other CLI assistants (OpenClaw, NemoClaw, OpenCode, Codex, Gemini CLI)
+
+Install the mm-cli-skill globally first, then start your preferred tool:
+
+```bash
+# One-time setup
+npx skills add vlm-run/skills@mm-cli-skill
+
+# Then use any CLI assistant — it will discover mm automatically
+openclaw "Organize my ~/Downloads folder using mm"
+codex "Find all PDFs in ~/docs and summarize them with mm"
+```
+
+The skill exposes mm's capabilities to any tool that supports the skills protocol.
+
 ### Command reference
 
 | Command | Purpose | Key flags |
 |---------|---------|-----------|
 | `find`  | Find/list files, tree view, schema | `--name`, `--kind`, `--ext`, `--min-size`, `--max-size`, `--sort`, `--reverse`, `--columns`, `--tree`, `--depth`, `--schema`, `--limit`, `--no-ignore`, `--format` |
 | `cat` | Content extraction (auto-detected by file type × mode) | `--mode fast/accurate`, `-p` (pipeline), `-n`, `--no-cache`, `-v`, `--encode.*`, `--generate.*`, `--list-pipelines`, `--list-encoders`, `--format` |
-| `grep` | Content search across files | `--kind`, `--ext`, `-C`, `--count`, `-i`, `--no-ignore`, `--format` |
+| `grep` | Content search across files | `--kind`, `--ext`, `-C`, `--count`, `-i`, `--semantic`, `--index`, `--no-ignore`, `--format` |
 | `sql` | SQL queries on file index, results, chunks, and embeddings | `--dir`, `--pre-index`, `--format`, `--list-tables` |
 | `wc` | Count files, size, lines (est.), tokens (est.) | `--kind`, `--by-kind`, `--format` |
-| `bench` | Benchmark suite | `--format`, `--rounds` |
+| `bench` | Benchmark suite | `--rounds`, `--warmup`, `--mode`, `--format` |
 | `config` | Extraction mode settings | `show`, `init`, `set`, `reset-db`, `reset-profiles`, `reset` |
-| `profile` | Manage LLM provider profiles | `list`, `add`, `update`, `use`, `remove` |
+| `profile` | Manage LLM provider profiles | `list`, `add`, `update`, `use`, `remove`, `--format` |
 
 ### find — locate/list, tree, and schema
 
@@ -173,6 +244,9 @@ mm grep "attention" ~/data --kind document
 mm grep "TODO" ~/data --kind code
 mm grep "invoice" ~/data --count               # match counts per file
 mm grep "Quantum Phase" ~/data -i              # case-insensitive search
+mm grep "secret" ~/data --no-ignore            # search gitignored files
+mm grep "revenue forecast" ~/data -s             # semantic (vector) search
+mm grep "architecture" ~/data -s --index          # auto-index before search
 ```
 
 ### sql — query the index
@@ -195,10 +269,10 @@ mm sql --list-tables                              # show available tables
 
 - **TTY**: Rich formatted tables/panels
 - **Piped**: plain TSV/text (machine-readable, no ANSI)
-- **`--format json`**: JSON output on any command that supports it
-- **`--format csv`**: Comma-separated values
-- **`--format dataset-jsonl`**: JSONL for dataset export
-- **`--format dataset-hf`**: HuggingFace Datasets format (requires `--output-dir`)
+- `**--format json`**: JSON output on any command that supports it
+- `**--format csv**`: Comma-separated values
+- `**--format dataset-jsonl**`: JSONL for dataset export
+- `**--format dataset-hf**`: HuggingFace Datasets format (requires `--output-dir`)
 
 ### Verbose mode (`--verbose` / `-v`)
 
@@ -210,39 +284,14 @@ pipeline
   └─ generate: ollama · 2.3s · 354→195 tokens
 ```
 
-## Python API
-
-```python
-from mm import Context
-
-ctx = Context("~/data/domains")
-print(ctx)  # Context(root='/Users/.../domains', files=702)
-
-# DataFrame export
-df = ctx.to_polars()         # polars.DataFrame (zero-copy)
-df = ctx.to_pandas()         # pandas.DataFrame
-
-# SQL via SQLite
-result = ctx.sql("SELECT kind, COUNT(*) as n FROM files GROUP BY kind ORDER BY n DESC")
-
-# Chainable filtering
-big_images = ctx.filter(kind="image", min_size="1MB")
-
-# Content access
-text  = ctx.cat("wordpress-pdf-invoice-plugin-sample.pdf")
-hits  = ctx.grep("invoice", kind="document")
-
-# Display
-ctx.show()    # Rich table
-ctx.info()    # Rich summary panel
-```
-
 ## Processing Modes
 
-| Mode | What | Speed | How |
-|------|------|-------|-----|
-| **fast** (default) | Local extraction — text from PDF, image hash/EXIF, video metadata | <100ms/file | pypdfium2 (PDF), Rust mmap (images), mp4parse/matroska (video) |
-| **accurate** | LLM-powered semantic understanding (captions, descriptions, summaries) | Varies | LLM API via active profile + pipeline config |
+
+| Mode               | What                                                                   | Speed       | How                                                            |
+| ------------------ | ---------------------------------------------------------------------- | ----------- | -------------------------------------------------------------- |
+| **fast** (default) | Local extraction — text from PDF, image hash/EXIF, video metadata      | <100ms/file | pypdfium2 (PDF), Rust mmap (images), mp4parse/matroska (video) |
+| **accurate**       | LLM-powered semantic understanding (captions, descriptions, summaries) | Varies      | LLM API via active profile + pipeline config                   |
+
 
 Metadata scanning (`find`, `wc`) always uses Rust-native extraction (~60ms / 700 files).
 
@@ -250,39 +299,42 @@ Metadata scanning (`find`, `wc`) always uses Rust-native extraction (~60ms / 700
 
 Benchmarked on Apple Silicon (M-series), 702 files (7.2GB):
 
-| Operation | Latency |
-|-----------|---------|
-| Metadata scan (702 files) | 8ms |
-| CLI cold start (`find --format json`) | 60ms |
-| CLI cold start (`find --schema --format json`) | 109ms |
-| CLI cold start (`sql`) | 300ms |
-| Fast code extraction | ~52ms |
-| Fast image extraction | ~61ms |
-| Fast PDF text extraction | ~220ms |
-| Fast video metadata | <100ms |
-| PDF page mosaic (per page) | ~10ms |
-| Video keyframe mosaic (48 frames) | ~1s |
+
+| Operation                                      | Latency |
+| ---------------------------------------------- | ------- |
+| Metadata scan (702 files)                      | 8ms     |
+| CLI cold start (`find --format json`)          | 60ms    |
+| CLI cold start (`find --schema --format json`) | 109ms   |
+| CLI cold start (`sql`)                         | 300ms   |
+| Fast code extraction                           | ~52ms   |
+| Fast image extraction                          | ~61ms   |
+| Fast PDF text extraction                       | ~220ms  |
+| Fast video metadata                            | <100ms  |
+| PDF page mosaic (per page)                     | ~10ms   |
+| Video keyframe mosaic (48 frames)              | ~1s     |
+
 
 ## Storage
 
 mm uses a global SQLite database at `~/.local/share/mm/mm.db` with sqlite-vec for vector search:
 
-| Table | Contents | Relationship |
-|-------|----------|-------------|
-| `files` | File metadata + content (one row per file, `uri` = absolute path) | — |
-| `l2_results` | LLM-generated summaries (many per file, `file_uri` = FK) | FK → `files.uri` |
-| `chunks` | ~1024-char content chunks (`file_uri` = FK) | FK → `l2_results.id` |
-| `chunks_vec` | Embedding vectors (sqlite-vec virtual table) | FK → `chunks.id` |
-| `cache` | Key-value result cache | — |
+
+| Table        | Contents                                                          | Relationship         |
+| ------------ | ----------------------------------------------------------------- | -------------------- |
+| `files`      | File metadata + content (one row per file, `uri` = absolute path) | —                    |
+| `l2_results` | LLM-generated summaries (many per file, `file_uri` = FK)          | FK → `files.uri`     |
+| `chunks`     | ~1024-char content chunks (`file_uri` = FK)                       | FK → `l2_results.id` |
+| `chunks_vec` | Embedding vectors (sqlite-vec virtual table)                      | FK → `chunks.id`     |
+| `cache`      | Key-value result cache                                            | —                    |
+
 
 The `files` table includes metadata columns (path, size, kind, etc.) and content columns (content_hash, text_preview, line_count, duration_s, exif_*, video_codec, etc.).
 
 Use `mm config reset-db` to clear all databases and caches.
 
-
 ### Pipelines — encode + generate
 
-Pipelines are YAML configs under `pipelines/{kind}/{mode}.yaml` that pair an **encoder** with optional LLM **generation** parameters. When `generate` is `null`, the pipeline is encode-only (no LLM call). Encoders are Python classes under `encoders/` that convert media files into VLM-ready Messages. See [`docs/PIPELINES.md`](docs/PIPELINES.md) and [`docs/ENCODERS.md`](docs/ENCODERS.md) for the full pipeline and encoder reference.
+Pipelines are YAML configs under `pipelines/{kind}/{mode}.yaml` that pair an **encoder** with optional LLM **generation** parameters. When `generate` is `null`, the pipeline is encode-only (no LLM call). Encoders are Python classes under `encoders/` that convert media files into VLM-ready Messages. See `[docs/PIPELINES.md](docs/PIPELINES.md)` and `[docs/ENCODERS.md](docs/ENCODERS.md)` for the full pipeline and encoder reference.
 
 Pipeline fields can be overridden from the CLI:
 
@@ -323,10 +375,12 @@ mm config show                # show resolved config with sources
 Each profile stores `base_url`, `api_key`, and `model`. You can have as many as you need — one per provider, one per use-case, etc.
 
 ```bash
-# Add profiles for different providers
+# Add custom profiles
 mm profile add openai --base-url https://api.openai.com/v1 --api-key sk-... --model gpt-4o
-mm profile add openrouter --base-url  https://openrouter.ai/api/v1 --model qwen/qwen3.5-27b
-mm profile add ollama --base-url http://localhost:11434 --model qwen3.5:9B
+mm profile add openrouter --base-url https://openrouter.ai/api/v1 --model qwen/qwen3.5-27b
+
+# Update reserved profiles (ollama, gemini, vlmrun)
+mm profile update ollama --base-url http://localhost:11434 --model qwen3.5:9B
 
 # List all profiles (● = active)
 mm profile list
@@ -358,24 +412,29 @@ Provider settings (base_url, api_key, model) come from the active profile, falli
 The active profile is resolved as:
 
 ```
---profile flag  >  MM_PROFILE env  >  active_profile in config file  >  "default"
+--profile flag  >  MM_PROFILE env  >  active_profile in config file  >  "ollama"
 ```
 
 ### Config file format
 
 ```toml
 # ~/.config/mm/mm.toml
-active_profile = "default"
+active_profile = "ollama"
 
 [profile.ollama]
 base_url = "http://localhost:11434"
 api_key = ""
-model = "qwen3.5:0.8b"
+model = "qwen3.5:0.8"
 
-[profile.openrouter]
-base_url = " https://openrouter.ai/api/v1"
+[profile.gemini]
+base_url = "https://openrouter.ai/api/v1"
 api_key = ""
-model = "qwen/qwen3.5-27b"
+model = "google/gemini-2.5-flash-lite"
+
+[profile.vlmrun]
+base_url = "https://mm-ctx.ngrok.io/v1"
+api_key = ""
+model = "Qwen/Qwen3.5-0.8B"
 ```
 
 ## License
