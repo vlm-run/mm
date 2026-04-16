@@ -81,7 +81,7 @@ export default function GettingStarted() {
               <span className="prompt">$ </span>uv tool install mm-ctx{"\n\n"}
               <span className="comment"># uvx (direct use)</span>
               {"\n"}
-              <span className="prompt">$ </span>uvx --with mm-ctx find --tree
+              <span className="prompt">$ </span>uvx --from mm-ctx mm find --tree
             </Code>
           </div>
 
@@ -155,13 +155,13 @@ export default function GettingStarted() {
           <h3 className="text-[14px] font-semibold text-[var(--text-primary)] mb-2">
             Claude Code
           </h3>
-          <P>Install the mm-skill via the skill marketplace:</P>
+          <P>Install the mm-cli-skill via the skill marketplace:</P>
           <Code>
             <span className="prompt">$ </span>claude{"\n"}
             <span className="prompt">&gt; </span>/plugin marketplace add
             vlm-run/skills{"\n"}
             <span className="prompt">&gt; </span>/plugin install
-            mm-skill@vlm-run/skills{"\n"}
+            mm-cli-skill@vlm-run/skills{"\n"}
             <span className="prompt">&gt; </span>Organize my ~/Downloads folder
             using mm
           </Code>
@@ -170,13 +170,13 @@ export default function GettingStarted() {
             Other CLI assistants
           </h3>
           <P>
-            Install mm-skill globally so any CLI assistant or agentic tool can
+            Install mm-cli-skill globally so any CLI assistant or agentic tool can
             discover it:
           </P>
           <Code>
             <span className="comment"># One-time setup</span>
             {"\n"}
-            <span className="prompt">$ </span>npx skill add vlm-run/mm-skill
+            <span className="prompt">$ </span>npx skills add vlm-run/skills@mm-cli-skill
             {"\n\n"}
             <span className="comment">
               # Then use any CLI assistant — it will discover mm automatically

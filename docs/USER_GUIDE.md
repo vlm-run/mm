@@ -60,30 +60,30 @@ mm profile use fermi
 
 ### Claude Code
 
-Install the `mm-skill` via the skill marketplace:
+Install the `mm-cli-skill` via the skill marketplace:
 
 ```bash
 claude
 > /plugin marketplace add vlm-run/skills
-> /plugin install mm-skill@vlm-run/skills
+> /plugin install mm-cli-skill@vlm-run/skills
 > Organize my ~/Downloads folder using mm
 ```
 
-### npx skill
+### npx skills
 
-Install mm-skill globally so any CLI assistant or agentic tool can discover it:
+Install mm-cli-skill globally so any CLI assistant or agentic tool can discover it:
 
 ```bash
-npx skill add vlm-run/mm-skill
+npx skills add vlm-run/skills@mm-cli-skill
 ```
 
 ### Other CLI assistants (OpenClaw, NemoClaw, OpenCode, Codex, Gemini CLI)
 
-Install the mm-skill globally first, then start your preferred tool:
+Install the mm-cli-skill globally first, then start your preferred tool:
 
 ```bash
 # One-time setup
-npx skill add vlm-run/mm-skill
+npx skills add vlm-run/skills@mm-cli-skill
 
 # Then use any CLI assistant — it will discover mm automatically
 openclaw "Organize my ~/Downloads folder using mm"
