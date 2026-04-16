@@ -69,7 +69,7 @@ claude
 > Organize my ~/Downloads folder using mm
 ```
 
-### npx skill
+### npx skills
 
 Install mm-cli-skill globally so any CLI assistant or agentic tool can discover it:
 
