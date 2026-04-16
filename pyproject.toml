@@ -27,9 +27,6 @@ dependencies = [
     "ctranslate2>=2.0",
 ]
 
-[project.scripts]
-mm = "mm.cli:app"
-
 [project.optional-dependencies]
 mlx = [
     "mlx>=0.31.1",
@@ -47,14 +44,19 @@ dev = [
     "maturin>=1.7",
 ]
 all = [
+    "mm-ctx[experimental]",
     "mm-ctx[mlx]; sys_platform == 'darwin'",
 ]
+
+[project.scripts]
+mm = "mm.cli:app"
 
 [tool.maturin]
 python-source = "python"
 module-name = "mm._mm"
 manifest-path = "crates/mm-python/Cargo.toml"
 features = ["pyo3/extension-module"]
+
 # Wheel: .py, .pyi, .yaml (pipelines), py.typed, compiled .so/.pyd, and dist-info.
 # Maturin auto-discovers .py/.pyi from python-source; YAMLs need explicit include.
 # Exclude blocks all other file types from leaking into the wheel.
