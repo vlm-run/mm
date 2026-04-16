@@ -541,6 +541,7 @@ def _run_fast(path: Path, kind: str, opts: _CatOpts) -> str:
 
     if spec.generate is not None:
         import time
+
         from mm.llm import LlmBackend
 
         t0 = time.monotonic()

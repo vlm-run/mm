@@ -396,9 +396,9 @@ class TestGrep:
         assert "count" in row
 
     def test_kind_filter_comma_separated(self, small_tree: Path):
-        """--kind code,text should search across both kinds."""
-        # "hello" appears in main.py (code) — search code,text
-        r = runner.invoke(app, ["grep", "hello", str(small_tree), "--kind", "code,text"])
+        """--kind document,code should search across both kinds."""
+        # "hello" appears in main.py (code) — search document,code
+        r = runner.invoke(app, ["grep", "hello", str(small_tree), "--kind", "document,code"])
         assert r.exit_code == 0
         assert "hello" in r.output
 
