@@ -1,4 +1,4 @@
-# Install mm — Fast, multimodal file intelligence for agents CLI
+# Install mm — Fast, multimodal file intelligence for agents
 #
 # Usage:
 #   irm https://vlm-run.github.io/mm/install/install.ps1 | iex
