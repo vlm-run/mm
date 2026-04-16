@@ -70,6 +70,42 @@ mm cat photo.png -m accurate                 # LLM caption
 mm cat photo.png -p resize                   # use named encoder
 ```
 
+## Integrations
+
+### Claude Code
+
+Install the `mm-cli-skill` via the skill marketplace:
+
+```bash
+claude
+> /plugin marketplace add vlm-run/skills
+> /plugin install mm-cli-skill@vlm-run/skills
+> Organize my ~/Downloads folder using mm
+```
+
+### npx skill
+
+Install mm-cli-skill globally so any CLI assistant or agentic tool can discover it:
+
+```bash
+npx skills add vlm-run/skills@mm-cli-skill
+```
+
+### Other CLI assistants (OpenClaw, NemoClaw, OpenCode, Codex, Gemini CLI)
+
+Install the mm-cli-skill globally first, then start your preferred tool:
+
+```bash
+# One-time setup
+npx skills add vlm-run/skills@mm-cli-skill
+
+# Then use any CLI assistant — it will discover mm automatically
+openclaw "Organize my ~/Downloads folder using mm"
+codex "Find all PDFs in ~/docs and summarize them with mm"
+```
+
+The skill exposes mm's capabilities to any tool that supports the skills protocol.
+
 ### Command reference
 
 | Command | Purpose | Key flags |
