@@ -1,4 +1,4 @@
-# Install mm — high-performance multimodal context management CLI
+# Install mm — Fast, multimodal file intelligence for agents CLI
 #
 # Usage:
 #   irm https://vlm-run.github.io/mm/install/install.ps1 | iex
