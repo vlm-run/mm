@@ -19,6 +19,7 @@ venv/
 .benchmarks/
 benchmarks/data/
 benchmarks/criterion/
+benchmarks/universal_cli/run_results
 htmlcov/
 .coverage
 
@@ -40,7 +41,6 @@ mlx_models/
 sample_files/
 remotion-videos/
 web/
-universal_cli
 
 # Secrets
 *.env.*

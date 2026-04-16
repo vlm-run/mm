@@ -1331,6 +1331,7 @@ dependencies = [
 
 [package.optional-dependencies]
 all = [
+    { name = "datasets" },
     { name = "lightning-whisper-mlx", marker = "sys_platform != 'emscripten' and sys_platform != 'win32'" },
     { name = "mlx", marker = "sys_platform != 'emscripten' and sys_platform != 'win32'" },
 ]
@@ -1359,6 +1360,7 @@ requires-dist = [
     { name = "lightning-whisper-mlx", marker = "extra == 'mlx'", specifier = ">=0.0.10" },
     { name = "maturin", marker = "extra == 'dev'", specifier = ">=1.7" },
     { name = "mlx", marker = "extra == 'mlx'", specifier = ">=0.31.1" },
+    { name = "mm-ctx", extras = ["experimental"], marker = "extra == 'all'" },
     { name = "mm-ctx", extras = ["mlx"], marker = "sys_platform == 'darwin' and extra == 'all'" },
     { name = "openai", specifier = ">=1.0" },
     { name = "pandas", specifier = ">=2.0" },

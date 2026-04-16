@@ -24,7 +24,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 DATA_DIR="${SCRIPT_DIR}/data"
 BENCH_DIR="${DATA_DIR}/universal-bench"
-RESULTS_DIR="${SCRIPT_DIR}/universal_cli"
+RESULTS_DIR="${SCRIPT_DIR}/universal_cli/run_results"
 RUNS="${BENCH_RUNS:-3}"
 
 GCS="https://storage.googleapis.com/vlm-data-public-prod"
