@@ -1,3 +1,4 @@
+import { Zap, Search, Link, Bot, FileText, Image, Video, Music, Type } from "lucide-react";
 import GettingStarted from "./GettingStarted";
 
 const ASCII = `███╗   ███╗███╗   ███╗
@@ -10,7 +11,7 @@ const ASCII = `███╗   ███╗███╗   ███╗
 function FeatureCard({ icon, name, desc }) {
   return (
     <div className="panel p-4 text-center">
-      <div className="text-xl mb-1">{icon}</div>
+      <div className="flex justify-center mb-1">{icon}</div>
       <div
         className="font-mono text-[10px] font-semibold uppercase tracking-[0.1em] mb-1"
         style={{ color: "var(--forest)" }}
@@ -113,28 +114,28 @@ export default function Landing() {
             stroke="rgba(58,58,56,0.2)"
           />
           {[
-            ["34", "88", "◈", "PDF"],
-            ["34", "108", "⬡", "Image"],
-            ["34", "128", "▶", "Video"],
-            ["34", "148", "♫", "Audio"],
-            ["34", "168", "T", "Text"],
-          ].map(([x, y, icon, label]) => (
+            [88, FileText, "PDF"],
+            [108, Image, "Image"],
+            [128, Video, "Video"],
+            [148, Music, "Audio"],
+            [168, Type, "Text"],
+          ].map(([y, Icon, label]) => (
             <g key={label}>
-              <text
-                x={x}
-                y={y}
-                fill="#1A3C2B"
-                fontSize="12"
-                fontFamily="var(--font-mono)"
-              >
-                {icon}
-              </text>
+              <foreignObject x="30" y={y - 11} width="14" height="14">
+                <div
+                  xmlns="http://www.w3.org/1999/xhtml"
+                  style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 14, height: 14 }}
+                >
+                  <Icon size={12} color="#1A3C2B" strokeWidth={2} />
+                </div>
+              </foreignObject>
               <text
                 x="50"
                 y={y}
                 fill="#3A3A38"
                 fontSize="10"
                 fontFamily="var(--font-mono)"
+                dominantBaseline="auto"
               >
                 {label}
               </text>
@@ -284,15 +285,14 @@ export default function Landing() {
             fill="#ffffff"
             stroke="rgba(58,58,56,0.2)"
           />
-          <text
-            x="622"
-            y="118"
-            textAnchor="middle"
-            fill="#1A3C2B"
-            fontSize="20"
-          >
-            🤖
-          </text>
+          <foreignObject x="610" y="100" width="24" height="24">
+            <div
+              xmlns="http://www.w3.org/1999/xhtml"
+              style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 24, height: 24 }}
+            >
+              <Bot size={18} color="#1A3C2B" strokeWidth={2} />
+            </div>
+          </foreignObject>
           <text
             x="622"
             y="137"
@@ -322,17 +322,17 @@ export default function Landing() {
       {/* Feature cards */}
       <div className="grid grid-cols-3 gap-3 w-full max-w-[760px]">
         <FeatureCard
-          icon="⚡"
+          icon={<Zap size={20} color="var(--forest)" />}
           name="Fast"
           desc="Index 10K files in <1s. Rust core, zero-copy Arrow."
         />
         <FeatureCard
-          icon="🔍"
+          icon={<Search size={20} color="var(--forest)" />}
           name="Universal"
           desc="PDFs, images, video, audio — one interface."
         />
         <FeatureCard
-          icon="🔗"
+          icon={<Link size={20} color="var(--forest)" />}
           name="Composable"
           desc="Pipes to jq. DataFrames in Python. Built for agents."
         />
