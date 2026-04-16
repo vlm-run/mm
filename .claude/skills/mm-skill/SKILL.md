@@ -12,7 +12,7 @@ description: >
 
 # mm CLI
 
-`mm` is a Fast, multimodal file intelligence for agents. It indexes directories instantly (~60ms for 700 files), then exposes Unix-style commands for exploring, querying, and extracting content from images, videos, PDFs, code, and other files.
+`mm` is a fast, multimodal file intelligence for agents. It indexes directories instantly (~60ms for 700 files), then exposes Unix-style commands for exploring, querying, and extracting content from images, videos, PDFs, code, and other files.
 
 Always use `--format json` for machine-readable output when parsing results programmatically.
 
