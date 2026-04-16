@@ -179,10 +179,10 @@ def cat_cmd(
 
     \b
     Examples:
-      mm cat paper.pdf                    # text extraction (fast)
-      mm cat photo.png -m accurate        # VLM description
-      mm cat video.mp4 -m accurate        # mosaic → VLM
-      mm cat photo.png -p tile            # use named encoder
+      mm cat paper.pdf                      # text extraction (fast)
+      mm cat photo.png -m accurate          # VLM description
+      mm cat video.mp4 -m accurate          # mosaic → VLM
+      mm cat photo.png -p tile              # use named encoder
       mm cat photo.png -p my-pipeline.yaml  # custom pipeline YAML
     """
     if list_pipelines:
