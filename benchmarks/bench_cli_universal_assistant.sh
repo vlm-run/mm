@@ -73,19 +73,40 @@ if ! command -v mm &>/dev/null; then
   exit 1
 fi
 
+# Preflight: probe the assistant by running it on a trivial prompt. Fails fast
+# if the CLI flag shape is wrong (e.g. `codex -q` unsupported) or the backend
+# is unreachable, so we don't waste minutes on doomed hyperfine runs.
+check_assistant() {
+  local name="$1"
+  case "${name}" in
+    claude) claude -p 'hi' </dev/null >/dev/null 2>&1 ;;
+    codex)  codex -q 'hi' </dev/null >/dev/null 2>&1 ;;
+    gemini) gemini -p 'hi' </dev/null >/dev/null 2>&1 ;;
+    *)      return 1 ;;
+  esac
+}
+
 # Detect available assistants
 declare -a ASSISTANTS=()
 for cmd in claude codex gemini; do
   if [ -n "${SELECTED_ASSISTANT}" ] && [ "${cmd}" != "${SELECTED_ASSISTANT}" ]; then
     continue
   fi
-  if command -v "${cmd}" &>/dev/null; then
+  if ! command -v "${cmd}" &>/dev/null; then
+    [ -n "${SELECTED_ASSISTANT}" ] && echo "  ${cmd}: not installed (skipping)"
+    continue
+  fi
+  printf "  %s: probing..." "${cmd}"
+  if check_assistant "${cmd}"; then
+    printf " ok\n"
     ASSISTANTS+=("${cmd}")
+  else
+    printf " unreachable (skipping)\n"
   fi
 done
 
 if [ ${#ASSISTANTS[@]} -eq 0 ]; then
-  echo "Error: no assistants found. Install at least one of: claude, codex, gemini"
+  echo "Error: no reachable assistants. Install and authenticate at least one of: claude, codex, gemini"
   exit 1
 fi
 
@@ -453,15 +474,28 @@ EOF
       --command-name "${asst}" \
       "${without_cmd}" 2>&1 | tail -1 || true
 
-    # Extract timings and append to YAML
+    # Extract timings. hyperfine skips writing the JSON when the command
+    # fails its warmup run, so a missing file means "no measurement" — emit
+    # YAML null rather than a misleading 0.
     local with_mean with_stddev without_mean without_stddev speedup
-    with_mean="$(jq -r '.results[0].mean // 0' "${with_json}" 2>/dev/null || echo 0)"
-    with_stddev="$(jq -r '.results[0].stddev // 0' "${with_json}" 2>/dev/null || echo 0)"
-    without_mean="$(jq -r '.results[0].mean // 0' "${without_json}" 2>/dev/null || echo 0)"
-    without_stddev="$(jq -r '.results[0].stddev // 0' "${without_json}" 2>/dev/null || echo 0)"
+    if [ -f "${with_json}" ]; then
+      with_mean="$(jq -r '.results[0].mean // "null"' "${with_json}")"
+      with_stddev="$(jq -r '.results[0].stddev // "null"' "${with_json}")"
+    else
+      with_mean="null"
+      with_stddev="null"
+    fi
+    if [ -f "${without_json}" ]; then
+      without_mean="$(jq -r '.results[0].mean // "null"' "${without_json}")"
+      without_stddev="$(jq -r '.results[0].stddev // "null"' "${without_json}")"
+    else
+      without_mean="null"
+      without_stddev="null"
+    fi
 
-    if [ "$(echo "${with_mean} > 0" | bc -l 2>/dev/null || echo 0)" = "1" ]; then
-      speedup="$(echo "scale=2; ${without_mean} / ${with_mean}" | bc -l 2>/dev/null || echo "n/a")"
+    if [ "${with_mean}" != "null" ] && [ "${without_mean}" != "null" ] \
+        && [ "$(echo "${with_mean} > 0" | bc -l 2>/dev/null || echo 0)" = "1" ]; then
+      speedup="$(printf '%.2fx' "$(echo "scale=4; ${without_mean} / ${with_mean}" | bc -l)")"
     else
       speedup="n/a"
     fi
@@ -474,7 +508,7 @@ EOF
         without_mm:
           mean_s: ${without_mean}
           stddev_s: ${without_stddev}
-        speedup: "${speedup}x"
+        speedup: "${speedup}"
 EOF
 
     rm -f "${with_json}" "${without_json}"

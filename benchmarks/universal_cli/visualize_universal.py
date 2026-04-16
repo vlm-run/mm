@@ -118,6 +118,24 @@ def parse_speedup(s) -> float:
         return 0.0
 
 
+def task_results(task: dict) -> list:
+    """Return task results list, treating missing/null as empty."""
+    return task.get("results") or []
+
+
+def _num(v) -> float:
+    """Coerce YAML scalar (possibly None) to float; None -> 0.0."""
+    try:
+        return float(v) if v is not None else 0.0
+    except (ValueError, TypeError):
+        return 0.0
+
+
+def _fmt_sec(v) -> str:
+    """Format seconds; return 'n/a' when value is missing."""
+    return f"{v:.1f}s" if isinstance(v, (int, float)) else "n/a"
+
+
 def _desaturate(hex_color: str, factor: float = 0.45) -> str:
     """Blend a hex color toward gray by `factor` (0 = original, 1 = full gray)."""
     r, g, b = int(hex_color[1:3], 16), int(hex_color[3:5], 16), int(hex_color[5:7], 16)
@@ -140,18 +158,20 @@ def build_single_report(data: dict, run_path: Path) -> go.Figure:
 
     rows = []
     for task in tasks:
-        for r in task.get("results", []):
+        for r in task_results(task):
+            with_mm = r.get("with_mm") or {}
+            without_mm = r.get("without_mm") or {}
             rows.append(
                 {
                     "task": task["name"],
                     "label": None,  # filled after y_labels are built
                     "category": category(task["name"]),
                     "assistant": r["assistant"],
-                    "with_mm": r["with_mm"]["mean_s"],
-                    "without_mm": r["without_mm"]["mean_s"],
-                    "with_mm_std": r["with_mm"]["stddev_s"],
-                    "without_mm_std": r["without_mm"]["stddev_s"],
-                    "speedup": parse_speedup(r["speedup"]),
+                    "with_mm": _num(with_mm.get("mean_s")),
+                    "without_mm": _num(without_mm.get("mean_s")),
+                    "with_mm_std": _num(with_mm.get("stddev_s")),
+                    "without_mm_std": _num(without_mm.get("stddev_s")),
+                    "speedup": parse_speedup(r.get("speedup")),
                 }
             )
 
@@ -308,12 +328,19 @@ def build_table_html(data: dict) -> str:
 
     rows_html = []
     for task in tasks:
-        for r in task.get("results", []):
-            sp = parse_speedup(r["speedup"])
-            sp_color = "#059669" if sp >= 1.5 else "#D97706" if sp >= 1.0 else "#EF4444"
+        for r in task_results(task):
+            sp = parse_speedup(r.get("speedup"))
+            if sp <= 0:
+                sp_cell = '<span style="color:#9CA3AF">n/a</span>'
+                sp_color = "#9CA3AF"
+            else:
+                sp_color = "#059669" if sp >= 1.5 else "#D97706" if sp >= 1.0 else "#EF4444"
+                sp_cell = f"{sp:.2f}x"
             cat = category(task["name"])
             cat_color = CATEGORY_COLORS.get(cat, "#6B7280")
             asst_label = ASSISTANT_LABELS.get(r["assistant"], r["assistant"])
+            with_mm = r.get("with_mm") or {}
+            without_mm = r.get("without_mm") or {}
 
             rows_html.append(f"""
             <tr>
@@ -321,15 +348,15 @@ def build_table_html(data: dict) -> str:
                 <td>{label(task["name"])}</td>
                 <td>{asst_label}</td>
                 <td style="text-align:right; font-variant-numeric:tabular-nums">
-                    {r["with_mm"]["mean_s"]:.1f}s
-                    <span style="color:#9CA3AF">± {r["with_mm"]["stddev_s"]:.1f}s</span>
+                    {_fmt_sec(with_mm.get("mean_s"))}
+                    <span style="color:#9CA3AF">± {_fmt_sec(with_mm.get("stddev_s"))}</span>
                 </td>
                 <td style="text-align:right; font-variant-numeric:tabular-nums">
-                    {r["without_mm"]["mean_s"]:.1f}s
-                    <span style="color:#9CA3AF">± {r["without_mm"]["stddev_s"]:.1f}s</span>
+                    {_fmt_sec(without_mm.get("mean_s"))}
+                    <span style="color:#9CA3AF">± {_fmt_sec(without_mm.get("stddev_s"))}</span>
                 </td>
                 <td style="text-align:right; font-weight:700; color:{sp_color}">
-                    {sp:.2f}x
+                    {sp_cell}
                 </td>
             </tr>""")
 
@@ -356,8 +383,10 @@ def build_full_html(fig: go.Figure, data: dict, run_path: Path) -> str:
     tasks = data["tasks"]
     rows = []
     for task in tasks:
-        for r in task.get("results", []):
-            rows.append(parse_speedup(r["speedup"]))
+        for r in task_results(task):
+            sp = parse_speedup(r.get("speedup"))
+            if sp > 0:
+                rows.append(sp)
 
     mean_sp = sum(rows) / len(rows) if rows else 0
     max_sp = max(rows) if rows else 0
@@ -519,9 +548,9 @@ def build_comparison_report(run_paths: list[Path]) -> go.Figure:
         for asst in meta["assistants"]:
             speedups = []
             for task in tasks:
-                for r in task.get("results", []):
+                for r in task_results(task):
                     if r["assistant"] == asst:
-                        speedups.append(parse_speedup(r["speedup"]))
+                        speedups.append(parse_speedup(r.get("speedup")))
             speedups = [s for s in speedups if s > 0]
             if speedups:
                 all_runs.append(
