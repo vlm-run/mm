@@ -54,7 +54,12 @@ def find_cmd(
     name: Annotated[
         Optional[str], typer.Option("--name", "-n", help="Filter by file name (string or regex)")
     ] = None,
-    kind: Annotated[Optional[str], typer.Option("--kind", "-k", help="Filter by kind")] = None,
+    kind: Annotated[
+        Optional[str],
+        typer.Option(
+            "--kind", "-k", help="Filter by kind (supports comma-separated - image,document)"
+        ),
+    ] = None,
     ext: Annotated[
         Optional[str], typer.Option("--ext", "-e", help="Filter by extension(s), comma-separated")
     ] = None,
@@ -97,6 +102,7 @@ def find_cmd(
     \b
     Examples:
       mm find ~/data --kind image                           # images only
+      mm find ~/data --kind image,document                  # images + documents
       mm find ~/data --ext .pdf,.docx --sort size -r        # docs by size
       mm find ~/data --columns name,kind,size --limit 20    # custom columns
       mm find ~/data --tree --kind video                    # video tree

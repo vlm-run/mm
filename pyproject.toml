@@ -5,7 +5,7 @@ build-backend = "maturin"
 [project]
 name = "mm-ctx"
 version = "0.5.3"
-description = "High-performance multimodal context management library"
+description = "Fast, multimodal file intelligence for agents"
 requires-python = ">=3.11"
 license = { text = "MIT" }
 dependencies = [

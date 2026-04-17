@@ -1,4 +1,4 @@
-"""mm -- High-performance multimodal context management library."""
+"""mm -- Fast, multimodal file intelligence for agents."""
 
 from importlib.metadata import version
 

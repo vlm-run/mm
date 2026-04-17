@@ -14,7 +14,14 @@ from mm.utils import Format
 def grep_cmd(
     pattern: Annotated[str, typer.Argument(help="Search pattern (regex)")],
     directory: Annotated[Optional[Path], typer.Argument(help="Directory to search")] = None,
-    kind: Annotated[Optional[str], typer.Option("--kind", "-k", help="Filter by file kind")] = None,
+    kind: Annotated[
+        Optional[str],
+        typer.Option(
+            "--kind",
+            "-k",
+            help="Filter by file kind (supports comma-separated, e.g. image,document)",
+        ),
+    ] = None,
     ext: Annotated[
         Optional[str], typer.Option("--ext", "-e", help="Filter by extension(s)")
     ] = None,
