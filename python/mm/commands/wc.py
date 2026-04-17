@@ -24,7 +24,12 @@ F_TOK_IMG = "tok_per_img"
 
 def wc_cmd(
     directory: Annotated[Path, typer.Argument(help="Directory to count")] = Path("."),
-    kind: Annotated[Optional[str], typer.Option("--kind", "-k", help="Filter by kind")] = None,
+    kind: Annotated[
+        Optional[str],
+        typer.Option(
+            "--kind", "-k", help="Filter by kind (supports comma-separated, e.g. image,document)"
+        ),
+    ] = None,
     by_kind: Annotated[bool, typer.Option("--by-kind", help="Break down by file kind")] = False,
     format: Annotated[
         Optional[Format],
@@ -287,8 +292,12 @@ def _wc_from_paths(
             continue
 
         fkind = file_kind_with_code(p)
-        if kind_filter and kind_filter != fkind:
-            continue
+        if kind_filter:
+            if "," in kind_filter:
+                if fkind not in {k.strip() for k in kind_filter.split(",")}:
+                    continue
+            elif kind_filter != fkind:
+                continue
 
         stat = p.stat()
         fsize = stat.st_size

@@ -1,6 +1,6 @@
 # mm — User Guide
 
-High-performance multimodal context management library + CLI.
+Fast, multimodal file intelligence for agents.
 Rust core for speed. Python for developer experience. Unix philosophy for composability.
 
 ---

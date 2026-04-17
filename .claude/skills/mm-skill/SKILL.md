@@ -12,7 +12,7 @@ description: >
 
 # mm CLI
 
-`mm` is a high-performance multimodal context management CLI. It indexes directories instantly (~60ms for 700 files), then exposes Unix-style commands for exploring, querying, and extracting content from images, videos, PDFs, code, and other files.
+`mm` is a fast, multimodal file intelligence for agents. It indexes directories instantly (~60ms for 700 files), then exposes Unix-style commands for exploring, querying, and extracting content from images, videos, PDFs, code, and other files.
 
 Always use `--format json` for machine-readable output when parsing results programmatically.
 
@@ -47,7 +47,7 @@ irm https://vlm-run.github.io/mm/install/install.ps1 | iex
 1. Start with `mm find <dir> --tree --depth 1` to see the directory structure.
 2. Use `mm wc <dir> --by-kind` to estimate token counts for LLM context budgeting.
 3. Explore with `find`, `grep`, `cat` as needed.
-5. Use `mm cat <file> -m accurate` for LLM-powered descriptions.
+4. Use `mm cat <file> -m accurate` for LLM-powered descriptions.
 
 ## find — locate files, tabular listing, tree view, schema
 
@@ -90,22 +90,22 @@ mm find <dir> --no-ignore --tree                      # tree including ignored d
 
 Columns in the `files` table:
 
-| Column    | Type      | Description                                                                      |
-| --------- | --------- | -------------------------------------------------------------------------------- |
-| path      | string    | Relative path from scan root                                                     |
-| name      | string    | File name with extension                                                         |
-| stem      | string    | File name without extension                                                      |
-| ext       | string    | Extension including dot (`.png`, `.pdf`)                                         |
-| size      | uint64    | File size in bytes                                                               |
-| modified  | timestamp | Last modification time                                                           |
-| created   | timestamp | Creation time                                                                    |
-| mime      | string    | MIME type (`image/png`, `application/pdf`)                                       |
-| kind      | string    | `image`, `video`, `document`, `code`, `audio`, `data`, `config`, `text`, `other` |
-| is_binary | bool      | Whether file is binary                                                           |
-| depth     | uint16    | Directory depth (0 = top-level)                                                  |
-| parent    | string    | Parent directory path                                                            |
-| width     | uint32    | Pixel width (images from header, videos via native parsing). Null for non-media. |
-| height    | uint32    | Pixel height (images from header, videos via native parsing). Null for non-media.|
+| Column    | Type      | Description                                                                       |
+| --------- | --------- | --------------------------------------------------------------------------------- |
+| path      | string    | Relative path from scan root                                                      |
+| name      | string    | File name with extension                                                          |
+| stem      | string    | File name without extension                                                       |
+| ext       | string    | Extension including dot (`.png`, `.pdf`)                                          |
+| size      | uint64    | File size in bytes                                                                |
+| modified  | timestamp | Last modification time                                                            |
+| created   | timestamp | Creation time                                                                     |
+| mime      | string    | MIME type (`image/png`, `application/pdf`)                                        |
+| kind      | string    | `image`, `video`, `document`, `code`, `audio`, `data`, `config`, `text`, `other`  |
+| is_binary | bool      | Whether file is binary                                                            |
+| depth     | uint16    | Directory depth (0 = top-level)                                                   |
+| parent    | string    | Parent directory path                                                             |
+| width     | uint32    | Pixel width (images from header, videos via native parsing). Null for non-media.  |
+| height    | uint32    | Pixel height (images from header, videos via native parsing). Null for non-media. |
 
 ## cat — content extraction (pipeline-driven)
 
