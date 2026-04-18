@@ -87,7 +87,10 @@ mm
 │   ├── [x] grep(pattern, kind) — regex search across file contents
 │   ├── [x] show(limit, columns) — Rich table display
 │   ├── [x] info() — Rich summary panel
-│   └── [x] save() — persist to .mm/index.parquet
+│   ├── [x] save() — persist to .mm/index.parquet
+│   ├── [x] Context(session_id=...) / Context.new_session() — external session id
+│   ├── [x] ref_for(path) / global_ref(path) / refs — kind-prefixed deterministic ref ids
+│   └── [x] Context.resolve("<session_id>/<ref_id>") — global cross-user lookup
 │
 ├── CLI Commands (6 + config+profile, Typer, Unix-philosophy composability)
 │   ├── [x] --version/-v global flag
@@ -110,6 +113,7 @@ mm
 │   ├── [x] config   — extraction mode settings (show, init, set)
 │   ├── [x] profile  — LLM profile management (list, add, update, use, remove; default immutable, ollama reserved)
 │   ├── [x] bench    — 24-command benchmark suite (metadata×10, fast×8, accurate×6) with bits/s throughput
+│   ├── [x] ref      — resolve global '<session_id>/<ref_id>' handles to file rows
 │   └── [ ] context  — LLM-ready context payload builder (token budgeting)
 │
 ├── Output Modes
@@ -151,7 +155,7 @@ mm
 │
 ├── Tests
 │   ├── Rust: 75 tests (meta, walk, detect, schema, table, code, image, video, audio, document, hash)
-│   ├── Python: 271 tests (CLI, Context API, pipe, metadata/fast/accurate, config, whisper, scenes, docling, bench)
+│   ├── Python: 582 tests (CLI, Context API, refs/sessions, pipe, metadata/fast/accurate, config, whisper, scenes, docling, bench)
 │   ├── Criterion benchmarks: l0_walk, l0_index, hash_strategies, l1_extract, find_filter
 │   ├── mm bench: 24 commands (metadata×10, fast×8, accurate×6) with bits/s throughput
 │   └── pytest-benchmark: 11 benchmarks (metadata, fast, ffmpeg, e2e)

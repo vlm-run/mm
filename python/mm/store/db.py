@@ -95,14 +95,58 @@ class MmDatabase:
         return self._conn
 
     def _ensure_tables(self) -> None:
-        from mm.store.schema import CHUNKS_DDL, FILES_DDL, L2_RESULTS_DDL
+        """Create tables, apply additive migrations, then create indexes.
 
-        self._connect.executescript(FILES_DDL + L2_RESULTS_DDL + CHUNKS_DDL)
+        Order matters: indexes can reference newly migrated columns
+        (``session_id``, ``ref_id``) that aren't present in legacy DBs
+        until the migration step runs.
+        """
+        from mm.store.schema import (
+            CHUNKS_DDL,
+            FILES_DDL,
+            FILES_INDEX_DDL,
+            L2_RESULTS_DDL,
+        )
+
+        self._conn.executescript(FILES_DDL + L2_RESULTS_DDL + CHUNKS_DDL)
+        self._migrate_files()
+        self._conn.executescript(FILES_INDEX_DDL)
+
+    def _migrate_files(self) -> None:
+        """Apply additive ``files`` migrations idempotently.
+
+        SQLite's ``ALTER TABLE ADD COLUMN`` does not support ``IF NOT EXISTS``,
+        so we inspect ``PRAGMA table_info`` and skip columns that already
+        exist. Safe to call on every connect.
+        """
+        from mm.store.schema import FILES_MIGRATIONS
+
+        existing = {
+            row["name"] for row in self._conn.execute("PRAGMA table_info(files)").fetchall()
+        }
+        for column, ddl in FILES_MIGRATIONS:
+            if column not in existing:
+                self._conn.execute(ddl)
+        self._conn.commit()
 
     # -- Files (L0 + L1) --
 
-    def upsert_files(self, scanner_table: pa.Table, root: Path) -> int:
-        """Write L0 scan results. Preserves existing L1 columns on re-upsert."""
+    def upsert_files(
+        self,
+        scanner_table: pa.Table,
+        root: Path,
+        *,
+        session_id: str | None = None,
+    ) -> int:
+        """Write L0 scan results. Preserves existing L1 columns on re-upsert.
+
+        When ``session_id`` is provided, every row is tagged with that
+        session and assigned a deterministic ``ref_id`` derived from
+        ``(session_id, uri, kind)`` via :func:`mm.refs.make_ref_id`. The
+        same file re-upserted under the same session keeps its ref_id;
+        re-upserting under a different session yields a new one.
+        """
+        from mm.refs import make_ref_id
         from mm.store.schema import L0_COLUMNS
 
         n = scanner_table.num_rows
@@ -111,16 +155,22 @@ class MmDatabase:
 
         db = self._connect
         now = now_us()
-        # Build SQL once
-        columns = "uri, name, stem, ext, size, modified, created, mime, kind, is_binary, depth, parent, width, height, phash, indexed_at"
-        placeholders = ", ".join("?" * 16)
-        l0_updates = ", ".join(f"{c} = excluded.{c}" for c in L0_COLUMNS if c != "uri")
+        columns = (
+            "uri, name, stem, ext, size, modified, created, mime, kind, is_binary, "
+            "depth, parent, width, height, phash, session_id, ref_id, indexed_at"
+        )
+        placeholders = ", ".join("?" * 18)
+        l0_update_cols = [c for c in L0_COLUMNS if c != "uri"]
+        if session_id is not None:
+            # Refresh session/ref tagging on conflict so a re-save under a new
+            # session migrates the row to that session.
+            l0_update_cols += ["session_id", "ref_id"]
+        l0_updates = ", ".join(f"{c} = excluded.{c}" for c in l0_update_cols)
         sql = (
             f"INSERT INTO files ({columns}) VALUES ({placeholders}) "
             f"ON CONFLICT(uri) DO UPDATE SET {l0_updates}"
         )
 
-        # Columnar conversion — one Arrow call, no per-row dict allocation
         d = scanner_table.to_pydict()
         root_s = str(root)
         paths = d["path"]
@@ -139,31 +189,55 @@ class MmDatabase:
         heights = d.get("height", [None] * n)
         phashes = d.get("phash", [None] * n)
 
-        rows = [
-            (
-                f"{root_s}/{paths[i]}",
-                names[i] or "",
-                stems[i] or "",
-                exts[i] or "",
-                sizes[i] or 0,
-                _to_us(modifieds[i]),
-                _to_us(createds[i]),
-                mimes[i] or "",
-                kinds[i] or "other",
-                int(bool(is_binarys[i])),
-                depths[i] or 0,
-                f"{root_s}/{parents[i]}" if parents[i] else root_s,
-                widths[i],
-                heights[i],
-                f"{phashes[i]:016x}" if phashes[i] is not None else None,
-                now,
+        rows = []
+        for i in range(n):
+            uri = f"{root_s}/{paths[i]}"
+            kind = kinds[i] or "other"
+            ref_id = (
+                make_ref_id(kind, seed=f"{session_id}:{uri}") if session_id is not None else None
             )
-            for i in range(n)
-        ]
+            rows.append(
+                (
+                    uri,
+                    names[i] or "",
+                    stems[i] or "",
+                    exts[i] or "",
+                    sizes[i] or 0,
+                    _to_us(modifieds[i]),
+                    _to_us(createds[i]),
+                    mimes[i] or "",
+                    kind,
+                    int(bool(is_binarys[i])),
+                    depths[i] or 0,
+                    f"{root_s}/{parents[i]}" if parents[i] else root_s,
+                    widths[i],
+                    heights[i],
+                    f"{phashes[i]:016x}" if phashes[i] is not None else None,
+                    session_id,
+                    ref_id,
+                    now,
+                )
+            )
 
         db.executemany(sql, rows)
         db.commit()
         return int(db.execute("SELECT COUNT(*) FROM files").fetchone()[0])
+
+    def get_file_by_ref(self, session_id: str, ref_id: str) -> dict[str, Any] | None:
+        """Resolve a ``<session_id>/<ref_id>`` pair to its ``files`` row."""
+        row = self._connect.execute(
+            "SELECT * FROM files WHERE session_id = ? AND ref_id = ?",
+            (session_id, ref_id),
+        ).fetchone()
+        return dict(row) if row else None
+
+    def list_session_files(self, session_id: str) -> list[dict[str, Any]]:
+        """Return all ``files`` rows tagged with ``session_id`` (ordered by uri)."""
+        rows = self._connect.execute(
+            "SELECT * FROM files WHERE session_id = ? ORDER BY uri",
+            (session_id,),
+        ).fetchall()
+        return [dict(r) for r in rows]
 
     def get_file(self, uri: str) -> dict[str, Any] | None:
         row = self._connect.execute("SELECT * FROM files WHERE uri = ?", (uri,)).fetchone()
