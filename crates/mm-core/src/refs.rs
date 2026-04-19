@@ -374,7 +374,7 @@ impl Context {
                 continue;
             }
             let d = levenshtein(target, rid);
-            if best.map_or(true, |(bd, _)| d < bd) {
+            if best.is_none_or(|(bd, _)| d < bd) {
                 best = Some((d, rid));
             }
         }
