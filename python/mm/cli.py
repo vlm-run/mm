@@ -124,7 +124,7 @@ def _main(
     if color != "auto":
         set_color_mode(color)
 
-    cmd = sys.argv[1] if len(sys.argv) > 1 else ""
+    cmd = ctx.invoked_subcommand or ""
     if cmd in _TIMED_COMMANDS:
         _check_exit, _display_elapsed = display_elapsed_wrapper(start_time)
         sys.exit = _check_exit

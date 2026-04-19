@@ -10,19 +10,28 @@ from typing import Any, ContextManager
 
 @cache
 def configure_logfire(service_name: str = "mm") -> None:
-    """Configure Logfire and instrument the OpenAI SDK. Runs at most once per process."""
+    """Configure Logfire and instrument the OpenAI SDK. Runs at most once per process.
+
+    No-op when ``LOGFIRE_TOKEN`` is unset, ``logfire`` isn't installed, or
+    configuration/instrumentation raises for any reason (version mismatch,
+    missing OTel deps, etc.). Failure is cached so ``LlmBackend`` creation
+    stays fast on subsequent calls.
+    """
+    if not os.getenv("LOGFIRE_TOKEN"):
+        return
     try:
         import logfire
-    except ImportError:
+
+        logfire.configure(
+            send_to_logfire="if-token-present",
+            service_name=service_name,
+            environment=os.getenv("LOGFIRE_ENVIRONMENT", "local"),
+            token=os.getenv("LOGFIRE_TOKEN"),
+            scrubbing=False,
+        )
+        logfire.instrument_openai()
+    except Exception:
         return
-    logfire.configure(
-        send_to_logfire="if-token-present",
-        service_name=service_name,
-        environment=os.getenv("LOGFIRE_ENVIRONMENT", "local"),
-        token=os.getenv("LOGFIRE_TOKEN") or None,
-        scrubbing=False,
-    )
-    logfire.instrument_openai()
 
 
 def cli_span(*, command: str, profile: str, model: str) -> ContextManager[Any]:
