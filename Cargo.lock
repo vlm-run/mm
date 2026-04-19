@@ -1233,8 +1233,10 @@ name = "mm-python"
 version = "0.5.3"
 dependencies = [
  "arrow",
+ "compact_str",
  "mm-core",
  "pyo3",
+ "serde_json",
 ]
 
 [[package]]

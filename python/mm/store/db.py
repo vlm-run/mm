@@ -108,6 +108,7 @@ class MmDatabase:
             L2_RESULTS_DDL,
         )
 
+        assert self._conn is not None, "_ensure_tables called before _connect"
         self._conn.executescript(FILES_DDL + L2_RESULTS_DDL + CHUNKS_DDL)
         self._migrate_files()
         self._conn.executescript(FILES_INDEX_DDL)
@@ -121,6 +122,7 @@ class MmDatabase:
         """
         from mm.store.schema import FILES_MIGRATIONS
 
+        assert self._conn is not None, "_migrate_files called before _connect"
         existing = {
             row["name"] for row in self._conn.execute("PRAGMA table_info(files)").fetchall()
         }

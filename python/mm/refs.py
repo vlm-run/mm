@@ -30,6 +30,30 @@ import re
 import secrets
 import uuid
 from dataclasses import dataclass
+from typing import Annotated
+
+#: Typed alias for a ref id string (``<prefix>_<6 hex>``).
+#:
+#: At runtime this is just :class:`str`; IDEs and type checkers treat it as a
+#: distinct type thanks to :data:`typing.Annotated`. Use this in type hints
+#: where you want to distinguish ref ids from arbitrary strings::
+#:
+#:     img: mm.Ref = ctx.put(Path("photo.jpg"))
+Ref = Annotated[str, "mm.Ref"]
+
+
+try:
+    from mm._mm import RefNotFoundError  # type: ignore[attr-defined]
+except ImportError:  # pragma: no cover - Rust extension should always be present
+
+    class RefNotFoundError(KeyError):  # type: ignore[no-redef]
+        """Raised when a ref id lookup misses.
+
+        Fallback Python implementation used only when the Rust extension
+        fails to import (e.g. during development). The real class is
+        defined in ``_mm/refs.rs`` and inherits from :class:`KeyError`.
+        """
+
 
 KIND_TO_PREFIX: dict[str, str] = {
     "image": "img",
@@ -128,5 +152,39 @@ class GlobalRef:
 
 
 def new_session_id() -> str:
-    """Generate a new external session id (UUIDv4 in canonical hex form)."""
+    """Generate a new external session id (UUIDv4 in canonical hex form).
+
+    Kept for backward compatibility. New code that wants a time-ordered
+    session id should use :func:`uuid7`.
+    """
     return str(uuid.uuid4())
+
+
+def uuid7() -> str:
+    """Generate a UUIDv7 (time-ordered, hyphenated canonical form).
+
+    Python 3.12's :mod:`uuid` module does not include a ``uuid7``
+    helper, so mm ships its own — implemented in Rust (see
+    ``crates/mm-core/src/refs.rs``) and exposed via
+    :func:`mm._mm.uuid7_py`. The format is
+    ``xxxxxxxx-xxxx-7xxx-Nxxx-xxxxxxxxxxxx``: a 48-bit millisecond Unix
+    timestamp + 74 random bits + version/variant nibbles.
+
+    UUIDv7 is the preferred default for new :class:`mm.Context` session
+    ids because ids sort lexicographically in creation order.
+
+    Examples:
+        >>> import mm
+        >>> sid = mm.uuid7()
+        >>> sid.split("-")[2][0]   # version nibble
+        '7'
+
+    Returns:
+        36-character UUIDv7 string.
+    """
+    try:
+        from mm._mm import uuid7_py as _uuid7  # type: ignore[attr-defined]
+    except ImportError:
+        # Pure-Python fallback used only when the Rust extension is missing.
+        return str(uuid.uuid4())
+    return _uuid7()
