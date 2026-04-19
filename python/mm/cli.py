@@ -26,7 +26,7 @@ else:
     sys.excepthook = _quiet_broken_pipe
 
 from mm import __version__
-from mm.commands import bench, cat, find, grep, ref, sql, wc
+from mm.commands import bench, cat, find, grep, sql, wc
 from mm.commands.config import config_app
 from mm.commands.profile import profile_app
 
@@ -136,7 +136,6 @@ app.command(name="cat")(cat.cat_cmd)
 app.command(name="grep")(grep.grep_cmd)
 app.command(name="sql")(sql.sql_cmd)
 app.command(name="wc")(wc.wc_cmd)
-app.command(name="ref")(ref.ref_cmd)
 app.add_typer(config_app, name="config")
 app.add_typer(profile_app, name="profile")
 

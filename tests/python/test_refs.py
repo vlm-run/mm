@@ -10,18 +10,15 @@ Covers:
 * Cross-session refs differ for the same uri
 * Schema migration is idempotent on existing databases
 * End-to-end Context.save -> Context.resolve round-trip
-* CLI ``mm ref`` resolver
 """
 
 from __future__ import annotations
 
-import json
 import sqlite3
 import uuid
 from pathlib import Path
 
 import pytest
-from mm.cli import app
 from mm.context import Context
 from mm.refs import (
     GLOBAL_REF_RE,
@@ -35,9 +32,6 @@ from mm.refs import (
     prefix_for,
 )
 from mm.store.db import MmDatabase
-from typer.testing import CliRunner
-
-runner = CliRunner()
 
 
 @pytest.fixture
@@ -416,40 +410,3 @@ class TestMigration:
         cols = {r["name"] for r in db2._connect.execute("PRAGMA table_info(files)").fetchall()}
         assert "session_id" in cols
         assert "ref_id" in cols
-
-
-# ── CLI: mm ref ───────────────────────────────────────────────────────
-
-
-class TestRefCli:
-    def test_resolve_handle(self, small_tree: Path, isolated_db: Path):
-        ctx = Context(small_tree, session_id="cli-sess")
-        ctx.save()
-        gref = ctx.global_ref("src/main.py")
-
-        r = runner.invoke(app, ["ref", gref, "--format", "json"])
-        assert r.exit_code == 0, r.output
-        data = json.loads(r.output)
-        assert isinstance(data, list) and len(data) == 1
-        assert data[0]["session_id"] == "cli-sess"
-        assert data[0]["uri"].endswith("src/main.py")
-
-    def test_list_session(self, small_tree: Path, isolated_db: Path):
-        Context(small_tree, session_id="cli-sess-2").save()
-        r = runner.invoke(app, ["ref", "--session", "cli-sess-2", "--format", "json"])
-        assert r.exit_code == 0, r.output
-        data = json.loads(r.output)
-        assert len(data) > 0
-        assert all(row["session_id"] == "cli-sess-2" for row in data)
-
-    def test_unknown_ref_exits_nonzero(self, isolated_db: Path):
-        r = runner.invoke(app, ["ref", "missing-sess/img_zzzzzz"])
-        assert r.exit_code != 0
-
-    def test_bad_handle_exits_nonzero(self, isolated_db: Path):
-        r = runner.invoke(app, ["ref", "not-a-ref"])
-        assert r.exit_code != 0
-
-    def test_no_args_exits_nonzero(self, isolated_db: Path):
-        r = runner.invoke(app, ["ref"])
-        assert r.exit_code != 0
