@@ -35,8 +35,8 @@ def cli_span(*, command: str, profile: str, model: str) -> ContextManager[Any]:
         return nullcontext()
     configure_logfire()
     return logfire.span(
-        "mm.cli [command={command}, profile={profile}, model={model}]",
-        _span_name="mm.cli",
+        "mm.cli.{command} [profile={profile}, model={model}]",
+        _span_name=f"mm.cli.{command}",
         command=command,
         profile=profile,
         model=model,
