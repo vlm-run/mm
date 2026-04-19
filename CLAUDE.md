@@ -2,7 +2,7 @@
 
 ## What this is
 
-`mm` is a high-performance multimodal context management library + CLI designed primarily for **AI agents** to understand file types that are not natively understood by LLMs — images, video, audio, PDFs, and other binary/media formats. Text files are already natively understood by LLMs and do not need `mm` processing.
+`mm` is a fast, multimodal file intelligence for **agents** on the CLI, designed to provide multimodal understanding for file types that are not natively understood by LLMs — images, video, audio, PDFs, and other binary/media formats.
 
 Rust core for speed, Python for developer experience, Unix philosophy for composability.
 
@@ -60,7 +60,6 @@ Rust core for speed, Python for developer experience, Unix philosophy for compos
 - pyyaml — YAML template parsing
 - faster-whisper — Whisper transcription (CTranslate2 backend)
 - scenedetect[opencv] — shot/scene boundary detection
-- docling — document-to-markdown (PDF, DOCX, PPTX)
 - ctranslate2 — CTranslate2 inference runtime (for faster-whisper)
 - python-docx — DOCX text extraction
 - python-pptx — PPTX text extraction
@@ -332,7 +331,7 @@ ctx.info()   # Rich summary panel
 
 ## LLM configuration
 
-Provider settings (base_url, api_key, model) are configured per-profile. Active profile is resolved as: `--profile` flag > `MM_PROFILE` env > `active_profile` in config file > `"default"`.
+Provider settings (base_url, api_key, model) are configured per-profile. Active profile is resolved as: `--profile` flag > `MM_PROFILE` env > `active_profile` in config file > `"ollama"`.
 
 ```bash
 # Profile management

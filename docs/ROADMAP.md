@@ -223,7 +223,7 @@ mm roadmap
 │   │
 │   └── Pre-built wheels + Homebrew
 │       ├── CI/CD: maturin build for manylinux, macOS arm64/x86, Windows
-│       ├── PyPI: pip install mm (no Rust toolchain needed)
+│       ├── PyPI: pip install mm-ctx (no Rust toolchain needed)
 │       ├── Homebrew: brew install mm (standalone binary)
 │       └── Docker: ghcr.io/spillai/mm (with ffmpeg pre-installed)
 │

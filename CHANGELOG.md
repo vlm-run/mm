@@ -16,7 +16,7 @@
 - Image: fast (10 words + 5 tags) / accurate (200 words + 10 tags + objects)
 - Video: parallel mosaic (4x4 @ 1500px) + audio transcription → VLM + transcript concat
 - Audio: ffmpeg 2x speed + whisper tiny (MLX Metal GPU on macOS)
-- Document: docling PDF/DOCX/PPTX → markdown with pypdfium2 fallback
+- Document: PDF text extraction via pypdfium2, DOCX/PPTX via python-docx/python-pptx
 - Whisper backend auto-select: MLX Metal GPU > CTranslate2 CPU/CUDA
 - `~/.config/mm/mm.toml` config with `[mode.fast]` / `[mode.accurate]` sections
 - `beam_size` config (fast=1 greedy, accurate=5 beam search)
@@ -24,7 +24,6 @@
 - `mm bench` with 24 commands across metadata, fast, and accurate modes, bits/s throughput
 - `sysinfo.py` — system capability detection (ffmpeg, GPU, optional deps)
 - `scenes.py` — PySceneDetect wrapper with uniform scene sampling
-- `docling_extract.py` — docling document conversion wrapper
 - 271 Python tests (44 new for modal extraction)
 
 ### Changed

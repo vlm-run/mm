@@ -472,7 +472,7 @@ def _extract(path: Path, opts: _CatOpts) -> str:
             extra=extra,
         )
 
-        if not opts.no_cache:
+        if not opts.no_cache and not opts.verbose:
             value = db.get_l2(l2_id)
             if value is not None:
                 global _was_cached
@@ -541,6 +541,7 @@ def _run_fast(path: Path, kind: str, opts: _CatOpts) -> str:
 
     if spec.generate is not None:
         import time
+
         from mm.llm import LlmBackend
 
         t0 = time.monotonic()
@@ -1046,7 +1047,7 @@ def _accurate_audio(path: Path, spec: PipelineSpec, opts: _CatOpts) -> str:
     if not whisper_available():
         return (
             "[whisper not available — faster-whisper should be included in core mm install. "
-            "For MLX on Apple Silicon: pip install mm[mlx]]"
+            "For MLX on Apple Silicon: pip install mm-ctx[mlx]]"
         )
 
     if spec.generate is None:

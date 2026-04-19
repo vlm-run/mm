@@ -248,7 +248,11 @@ class Context:
         conditions: list[str] = []
 
         if kind:
-            conditions.append(f"kind = '{kind}'")
+            if "," in kind:
+                kinds = ", ".join(f"'{k.strip()}'" for k in kind.split(","))
+                conditions.append(f"kind IN ({kinds})")
+            else:
+                conditions.append(f"kind = '{kind}'")
         if ext:
             if isinstance(ext, str):
                 ext = [e.strip() for e in ext.split(",")]

@@ -1,6 +1,6 @@
 # mm — User Guide
 
-High-performance multimodal context management library + CLI.
+Fast, multimodal file intelligence for agents.
 Rust core for speed. Python for developer experience. Unix philosophy for composability.
 
 ---
@@ -9,10 +9,14 @@ Rust core for speed. Python for developer experience. Unix philosophy for compos
 
 ### Installation
 
-Install mm via the pre-built wheels published to GitHub Pages:
+```bash
+pip install mm-ctx
+```
+
+Alternative methods:
 
 ```bash
-# macOS / Linux
+# macOS / Linux (shell installer)
 curl -LsSf https://vlm-run.github.io/mm/install/install.sh | sh
 ```
 
@@ -56,30 +60,30 @@ mm profile use fermi
 
 ### Claude Code
 
-Install the `mm-skill` via the skill marketplace:
+Install the `mm-cli-skill` via the skill marketplace:
 
 ```bash
 claude
 > /plugin marketplace add vlm-run/skills
-> /plugin install mm-skill@vlm-run/skills
+> /plugin install mm-cli-skill@vlm-run/skills
 > Organize my ~/Downloads folder using mm
 ```
 
-### npx skill
+### npx skills
 
-Install mm-skill globally so any CLI assistant or agentic tool can discover it:
+Install mm-cli-skill globally so any CLI assistant or agentic tool can discover it:
 
 ```bash
-npx skill add vlm-run/mm-skill
+npx skills add vlm-run/skills@mm-cli-skill
 ```
 
-### Other CLI assistants (OpenClaw, NemoClaw, OpenCode, Codex, Gemini CLI)
+### Universal assistants (OpenClaw, NemoClaw, OpenCode, Codex, Gemini CLI)
 
-Install the mm-skill globally first, then start your preferred tool:
+Install the mm-cli-skill globally first, then start your preferred tool:
 
 ```bash
 # One-time setup
-npx skill add vlm-run/mm-skill
+npx skills add vlm-run/skills@mm-cli-skill
 
 # Then use any CLI assistant — it will discover mm automatically
 openclaw "Organize my ~/Downloads folder using mm"
@@ -103,10 +107,12 @@ Use mm directly or through a CLI assistant (e.g. `claude "Organize ~/Downloads u
 ### Semantic search
 
 ```bash
-mm grep "photo of me and my dog in a park" ~/photos
+mm grep "photo of me and my dog in a park" ~/photos -s
+mm grep "revenue forecast" ~/reports -s --kind document
+mm grep "architecture overview" ~/docs -s --index   # auto-index unindexed files
 ```
 
-Returns matching images and videos (via keyframe analysis).
+Returns matching files via vector similarity (embeddings). Use `--semantic/-s` for semantic search, `--index` to auto-index unindexed files before searching.
 
 ### File inspection and extraction
 
@@ -127,6 +133,7 @@ mm cat photo.png -p my-pipeline.yaml             # custom pipeline YAML
 mm cat photo.png -m accurate --encode.strategy image-tile  # override encoder
 mm cat photo.png -m accurate --generate.max-tokens 1024    # override generation
 mm cat --list-encoders                           # list all registered encoders
+mm cat --list-pipelines                          # list built-in pipelines
 ```
 
 ### Batch operations
@@ -163,15 +170,9 @@ Pipeline: unlabeled media &#8594; `mm cat -m accurate --format dataset-jsonl` &#
 
 ---
 
-## Benchmarks
+## Benchmark
 
-Benchmark mm against native Unix commands with hyperfine:
-
-```bash
-hyperfine --warmup 3 'grep -R TODO python' "mm grep 'TODO' python"
-```
-
-Or run the built-in benchmark suite:
+Run the built-in benchmark suite:
 
 ```bash
 mm bench ~/data/mmbench-mini --format rich

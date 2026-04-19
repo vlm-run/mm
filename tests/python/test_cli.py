@@ -84,6 +84,37 @@ class TestFind:
         assert any("skip.log" in p for p in paths)
         assert any("file.csv" in p for p in paths)
 
+    def test_kind_filter_comma_separated(self, small_tree: Path):
+        """--kind image,code should return files of both kinds."""
+        r = runner.invoke(
+            app, ["find", str(small_tree), "--kind", "image,code", "--format", "json"]
+        )
+        assert r.exit_code == 0
+        data = json.loads(r.output)
+        kinds = {row["kind"] for row in data}
+        assert "image" in kinds
+        assert "code" in kinds
+        assert kinds <= {"image", "code"}
+
+    def test_kind_filter_comma_separated_with_spaces(self, small_tree: Path):
+        """--kind 'image, code' (with spaces) should still work."""
+        r = runner.invoke(
+            app, ["find", str(small_tree), "--kind", "image, code", "--format", "json"]
+        )
+        assert r.exit_code == 0
+        data = json.loads(r.output)
+        kinds = {row["kind"] for row in data}
+        assert "image" in kinds
+        assert "code" in kinds
+
+    def test_kind_filter_single_still_works(self, small_tree: Path):
+        """Single --kind value should still work after comma-separated support."""
+        r = runner.invoke(app, ["find", str(small_tree), "--kind", "image", "--format", "json"])
+        assert r.exit_code == 0
+        data = json.loads(r.output)
+        assert all(row["kind"] == "image" for row in data)
+        assert len(data) > 0
+
 
 # ── find (table, tree, schema) ────────────────────────────────────────
 
@@ -364,6 +395,19 @@ class TestGrep:
         assert "path" in row
         assert "count" in row
 
+    def test_kind_filter_comma_separated(self, small_tree: Path):
+        """--kind document,code should search across both kinds."""
+        # "hello" appears in main.py (code) — search document,code
+        r = runner.invoke(app, ["grep", "hello", str(small_tree), "--kind", "document,code"])
+        assert r.exit_code == 0
+        assert "hello" in r.output
+
+    def test_kind_filter_comma_separated_excludes_others(self, small_tree: Path):
+        """--kind config,text should not match content only in code files."""
+        # "def main" only appears in main.py which is kind=code
+        r = runner.invoke(app, ["grep", "def main", str(small_tree), "--kind", "config,text"])
+        assert r.exit_code == 1
+
 
 # ── sql ──────────────────────────────────────────────────────────────
 
@@ -484,6 +528,23 @@ class TestWc:
         assert "kind" in row
         assert "files" in row
         assert "tokens (est.)" in row
+
+    def test_kind_filter_comma_separated(self, small_tree: Path):
+        """--kind code,image should count files of both kinds."""
+        r = runner.invoke(app, ["wc", str(small_tree), "--kind", "code,image", "--format", "json"])
+        assert r.exit_code == 0
+        data = json.loads(r.output)
+        assert data["files"] > 0
+
+    def test_kind_filter_comma_separated_subset(self, small_tree: Path):
+        """Comma-separated kind should return fewer files than unfiltered."""
+        r_all = runner.invoke(app, ["wc", str(small_tree), "--format", "json"])
+        r_subset = runner.invoke(
+            app, ["wc", str(small_tree), "--kind", "code,image", "--format", "json"]
+        )
+        all_data = json.loads(r_all.output)
+        subset_data = json.loads(r_subset.output)
+        assert subset_data["files"] < all_data["files"]
 
 
 # ── dataset-hf ──────────────────────────────────────────────────────

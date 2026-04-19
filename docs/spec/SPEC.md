@@ -1,6 +1,6 @@
 # mm Spec
 
-> High-performance multimodal context management. Rust core, Python API, Unix CLI.
+> Fast, multimodal file intelligence for agents. Rust core, Python API, Unix CLI.
 
 Legend: `[x]` implemented, `[ ]` roadmap, `[~]` partial/stubbed
 
@@ -73,7 +73,7 @@ mm
 │   ├── [x] Parallel visual + audio extraction (ThreadPoolExecutor)
 │   ├── [x] Video: mosaic (4x4 @ 1500px) + transcript → LLM markdown
 │   ├── [x] Image: fast (10 words + 5 tags) / accurate (200 words + 10 tags + objects)
-│   ├── [x] Document extraction via docling (PDF/DOCX/PPTX → markdown)
+│   ├── [x] Document extraction via pypdfium2 (PDF) / python-docx (DOCX) / python-pptx (PPTX)
 │   └── [x] Embedding generation via Gemini API (text, image, audio, video, document → chunks_vec)
 │
 ├── Python API (Context class)
@@ -92,7 +92,7 @@ mm
 │   ├── [x] ref_for(path) / global_ref(path) / refs — kind-prefixed deterministic ref ids
 │   └── [x] Context.resolve("<session_id>/<ref_id>") — global cross-user lookup
 │
-├── CLI Commands (6 + config+profile, Typer, Unix-philosophy composability)
+├── CLI Commands (8 total: 5 core + bench + config + profile. Typer, Unix-philosophy composability)
 │   ├── [x] --version/-v global flag
 │   ├── [x] find     — find/list files, tree view (--tree), schema (--schema), columns (--columns), name filter (--name, string/regex via Rust)
 │   ├── [x] [cat](./cat.md)      — auto-detected content extraction (fast/accurate mode) → [full spec](cat.md)
@@ -101,7 +101,7 @@ mm
 │   │   ├── [x] video accurate: parallel mosaic + whisper → LLM (102x realtime)
 │   │   ├── [x] audio accurate: ffmpeg 2x + whisper → LLM transcript summary
 │   │   ├── [x] image accurate: fast (10w+5tags) / accurate (200w+10tags+objects)
-│   │   ├── [x] document accurate: docling PDF/DOCX/PPTX → markdown → LLM
+│   │   ├── [x] document accurate: pypdfium2 PDF → text → LLM
 │   │   ├── [x] --encode.*, --generate.* namespaced flags
 │   │   ├── [x] --no-cache flag bypasses L2 cache (both fast and accurate)
 │   │   ├── [x] unified L2 caching for both fast and accurate modes
@@ -110,8 +110,8 @@ mm
 │   ├── [x] grep     — content search with context lines (like rg), --index for on-demand semantic indexing
 │   ├── [x] sql      — SQLite SQL on file index, --pre-index for on-demand metadata indexing before query
 │   ├── [x] wc       — count files, size, lines (est.), tokens (est.)
-│   ├── [x] config   — extraction mode settings (show, init, set)
-│   ├── [x] profile  — LLM profile management (list, add, update, use, remove; default immutable, ollama reserved)
+│   ├── [x] config   — extraction mode settings (show, init, set, reset-db, reset-profiles, reset)
+│   ├── [x] profile  — LLM profile management (list, add, update, use, remove; 3 reserved: default, ollama, gemini)
 │   ├── [x] bench    — 24-command benchmark suite (metadata×10, fast×8, accurate×6) with bits/s throughput
 │   └── [ ] context  — LLM-ready context payload builder (token budgeting)
 │
@@ -120,7 +120,7 @@ mm
 │   ├── [x] Piped stdout → plain TSV/text (machine-readable, no ANSI)
 │   ├── [x] --format=json flag → JSON on any command
 │   ├── [x] Piped stdin → read newline-delimited paths (composability)
-│   ├── [x] Pipe detection via select() (no blocking on empty stdin)
+│   ├── [x] Pipe detection via isatty() (no select.select() — block-reads when stdin is not a TTY)
 │   └── [x] SIGPIPE handling (no BrokenPipeError when piping to head/tail)
 │
 ├── Data Transfer (Rust → Python)
@@ -174,7 +174,7 @@ For each modality (image, video, documents like PDFs), I’d like to have a few 
     - mode=fast -> describe the image in 10 words or less, and extract 5-keyword tags
     - mode=accurate -> describe the image in detail (200 words) + extract up to 10-keyword tags + extract up to 10-objects/people/faces/logos in the image
 - documents: (PDFs, Word documents, etc.)
-    - simply consider using docling pdf/docx/pptx -> markdown for now
+    - pypdfium2 for PDF text extraction, python-docx/python-pptx for Office formats
     - ignore image/video/audio as we have other ways to extract metadata/semantics for them (detailed extraction is not needed)
 - audio:
     - mode=fast

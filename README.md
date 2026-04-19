@@ -1,36 +1,53 @@
 <div align="center">
 <p align="center" style="width: 100%;">
-    <img src="https://raw.githubusercontent.com/vlm-run/.github/refs/heads/main/profile/assets/vlm-black.svg" alt="VLM Run Logo" width="80" style="margin-bottom: -5px; color: #2e3138; vertical-align: middle; padding-right: 5px;"><br>
+    <img src="https://raw.githubusercontent.com/vlm-run/.github/refs/heads/main/profile/assets/vlm-black.svg" alt="VLM Run Logo" width="80" style="margin-bottom: -5px; color: #2e3138; vertical-align:
+middle; padding-right: 5px;"><br>
 </p>
-<h2>mm</h2>
-<i>Fast, multi-modal context for agents.</i>
-<p align="center"><a href="https://docs.vlm.run"><b>Website</b></a> | <a href="https://app.vlm.run/"><b>Platform</b></a> | <a href="https://docs.vlm.run/"><b>Docs</b></a> | <a href="https://docs.vlm.run/blog"><b>Blog</b></a> | <a href="https://discord.gg/AMApC2UzVY"><b>Discord</b></a>
-</p>
-<p align="center">
-<a href="https://github.com/vlm-run/mm/blob/main/LICENSE"><img alt="License" src="https://img.shields.io/github/license/vlm-run/mm.svg"></a>
-<a href="https://discord.gg/AMApC2UzVY"><img alt="Discord" src="https://img.shields.io/badge/discord-chat-purple?color=%235765F2&label=discord&logo=discord"></a>
-<a href="https://twitter.com/vlmrun"><img alt="Twitter Follow" src="https://img.shields.io/twitter/follow/vlmrun.svg?style=social&logo=twitter"></a>
-</p>
+  <h1>mm</h1>
 </div>
-Fast, multi-modal context for agents.
+<div align="center">
+  <h3>Fast, multi-modal context (CLI) for agents</h3>
+</div>
+<div align="center">
+  <a href="https://github.com/vlm-run/mm/blob/main/LICENSE"><img src="https://img.shields.io/github/license/vlm-run/mm.svg" alt="License"></a>
+  <a href="https://discord.gg/AMApC2UzVY"><img src="https://img.shields.io/badge/discord-chat-purple?color=%235765F2&label=discord&logo=discord" alt="Discord"></a>
+  <a href="https://twitter.com/vlmrun"><img src="https://img.shields.io/twitter/follow/vlmrun.svg?style=social&logo=twitter" alt="Twitter Follow"></a>
+</div>
 
-> Familiar UNIX tools like `find`, `grep`, `cat` with unfamiliar multi-modal powers.
+---
 
-## Core ideology
+Familiar UNIX CLI tools like `find`, `grep`, `cat` — with multi-modal powers.
 
-- Rust core for speed.
-- Python for dev-ex.
-- UNIX philosophy for composability.
+`mm` lets agents understand file types that LLMs can't natively read: images, video, audio, PDFs, and other binary formats. Rust core for speed, Python for dev-ex, UNIX philosophy for composability.
 
 ## Installation
 
 ```bash
+# with pip or uv
+pip install mm-ctx
+uv pip install mm-ctx
+
+# or run directly without installing
+uvx --from mm-ctx mm --help
+```
+
+<details>
+<summary>Alternative methods</summary>
+
+```bash
+# macOS / Linux (shell installer)
+curl -LsSf https://vlm-run.github.io/mm/install/install.sh | sh
+
+# Windows (PowerShell)
+irm https://vlm-run.github.io/mm/install/install.ps1 | iex
+
 # Development install (requires Rust toolchain + uv)
 git clone https://github.com/vlm-run/mm && cd mm
 uv venv --python 3.12 && source .venv/bin/activate
 uv pip install -e ".[dev]"
 uv run maturin develop --release
 ```
+</details>
 
 ## CLI
 
@@ -39,19 +56,131 @@ Indexing is implicit — every command auto-builds a metadata index on first use
 
 Metadata commands (`find`, `wc` with `--format json`) run in **~60ms** on 700 files via the Rust fast path.
 
+### Sample files
+
+Download sample files from vlm.run to try the examples below:
+
+```bash
+mkdir mm-samples && cd mm-samples
+curl -LO https://storage.googleapis.com/vlm-data-public-prod/hub/examples/image.caption/bench.jpg
+curl -LO https://storage.googleapis.com/vlm-data-public-prod/hub/examples/document.invoice/wordpress-pdf-invoice-plugin-sample.pdf
+curl -LO https://storage.googleapis.com/vlm-data-public-prod/hub/examples/video/Timelapse.mp4
+curl -LO https://storage.googleapis.com/vlm-data-public-prod/hub/examples/mixed-files/mp3_44100Hz_320kbps_stereo.mp3
+```
+
+### Multimodal directory
+
+With all 4 files downloaded, `mm` treats the folder as a multimodal workspace:
+
+```bash
+$ mm find mm-samples/ --tree
+```
+```
+mm-samples  (4 files, 3.5 MB)
+├── Timelapse.mp4  [3.0 MB]
+├── bench.jpg  [253.8 KB]
+├── mp3_44100Hz_320kbps_stereo.mp3  [286.0 KB]
+└── wordpress-pdf-invoice-plugin-sample.pdf  [42.6 KB]
+```
+
+```bash
+$ mm wc mm-samples/ --by-kind
+```
+```
+kind      files  size      lines (est.)  tokens (est.)  tok_per_mb
+audio     1      286.0 KB  0             85             304
+document  1      42.6 KB   29            176            4.2K
+image     1      253.8 KB  0             425            1.7K
+video     1      3.0 MB    0             85             29
+—————
+total     4      3.5 MB    29            771            218
+```
+
+```bash
+$ mm find mm-samples/ --columns name,kind,size,ext
+```
+```
+name                                     kind      size     ext
+bench.jpg                                image     259865   .jpg
+Timelapse.mp4                            video     3113073  .mp4
+mp3_44100Hz_320kbps_stereo.mp3           audio     292853   .mp3
+wordpress-pdf-invoice-plugin-sample.pdf  document  43627    .pdf
+```
+
+```bash
+$ mm sql "SELECT kind, name, ROUND(size/1024.0,1) as kb FROM files ORDER BY kind" \
+    --dir mm-samples/ --pre-index
+```
+```
+kind      name                                     kb
+audio     mp3_44100Hz_320kbps_stereo.mp3           286.0
+document  wordpress-pdf-invoice-plugin-sample.pdf  42.6
+image     bench.jpg                                253.8
+video     Timelapse.mp4                            3040.1
+```
+
+```bash
+$ mm grep "invoice" mm-samples/
+```
+```
+wordpress-pdf-invoice-plugin-sample.pdf:2:Payment is due within 30 days from date of invoice. Late payment is subject to fees of 5% per month.
+wordpress-pdf-invoice-plugin-sample.pdf:3:Thanks for choosing DEMO - Sliced Invoices | admin@slicedinvoices.com
+wordpress-pdf-invoice-plugin-sample.pdf:10:admin@slicedinvoices.com
+```
+
 ### Quick start
 
 ```bash
-mm --version                                 # print version
-mm find ~/data --tree --depth 1              # directory overview with sizes
-mm wc ~/data --by-kind                       # file/byte/token counts by kind
-mm find ~/data --kind image --format json    # find all images (60ms)
-mm cat paper.pdf                             # extract text from PDF (fast mode)
-mm cat video.mp4                             # video metadata (<100ms)
-mm cat video.mp4 -m accurate                 # keyframe mosaic → LLM description
-mm cat photo.png -m accurate                 # LLM caption
-mm cat photo.png -p resize                   # use named encoder
+mm --version                                                    # print version
+mm find mm-samples/ --tree --depth 1                            # directory overview with sizes
+mm wc mm-samples/ --by-kind                                     # file/byte/token counts by kind
+
+# PDF — text extraction (no LLM needed)
+mm cat wordpress-pdf-invoice-plugin-sample.pdf                  # extract text
+mm cat wordpress-pdf-invoice-plugin-sample.pdf -n 20            # first 20 lines
+
+# Image / Video / Audio — require a configured LLM profile
+mm cat bench.jpg -m accurate                                    # LLM caption
+mm cat Timelapse.mp4 -m accurate                                # keyframe mosaic → LLM description
+mm cat mp3_44100Hz_320kbps_stereo.mp3 -m accurate               # Whisper transcript → LLM summary
+mm cat wordpress-pdf-invoice-plugin-sample.pdf -m accurate      # LLM-structured invoice
 ```
+
+## Integrations
+
+### Claude Code
+
+Install the `mm-cli-skill` via the skill marketplace:
+
+```bash
+claude
+> /plugin marketplace add vlm-run/skills
+> /plugin install mm-cli-skill@vlm-run/skills
+> Organize my ~/Downloads folder using mm
+```
+
+### npx skills
+
+Install mm-cli-skill globally so any CLI assistant or agentic tool can discover it:
+
+```bash
+npx skills add vlm-run/skills@mm-cli-skill
+```
+
+### Universal assistants (OpenClaw, NemoClaw, OpenCode, Codex, Gemini CLI)
+
+Install the mm-cli-skill globally first, then start your preferred tool:
+
+```bash
+# One-time setup
+npx skills add vlm-run/skills@mm-cli-skill
+
+# Then use any CLI assistant — it will discover mm automatically
+openclaw "Organize my ~/Downloads folder using mm"
+codex "Find all PDFs in ~/docs and summarize them with mm"
+```
+
+The skill exposes mm's capabilities to any tool that supports the skills protocol.
 
 ### Command reference
 
@@ -59,12 +188,12 @@ mm cat photo.png -p resize                   # use named encoder
 |---------|---------|-----------|
 | `find`  | Find/list files, tree view, schema | `--name`, `--kind`, `--ext`, `--min-size`, `--max-size`, `--sort`, `--reverse`, `--columns`, `--tree`, `--depth`, `--schema`, `--limit`, `--no-ignore`, `--format` |
 | `cat` | Content extraction (auto-detected by file type × mode) | `--mode fast/accurate`, `-p` (pipeline), `-n`, `--no-cache`, `-v`, `--encode.*`, `--generate.*`, `--list-pipelines`, `--list-encoders`, `--format` |
-| `grep` | Content search across files | `--kind`, `--ext`, `-C`, `--count`, `-i`, `--no-ignore`, `--format` |
+| `grep` | Content search across files | `--kind`, `--ext`, `-C`, `--count`, `-i`, `--semantic`, `--index`, `--no-ignore`, `--format` |
 | `sql` | SQL queries on file index, results, chunks, and embeddings | `--dir`, `--pre-index`, `--format`, `--list-tables` |
 | `wc` | Count files, size, lines (est.), tokens (est.) | `--kind`, `--by-kind`, `--format` |
-| `bench` | Benchmark suite | `--format`, `--rounds` |
+| `bench` | Benchmark suite | `--rounds`, `--warmup`, `--mode`, `--format` |
 | `config` | Extraction mode settings | `show`, `init`, `set`, `reset-db`, `reset-profiles`, `reset` |
-| `profile` | Manage LLM provider profiles | `list`, `add`, `update`, `use`, `remove` |
+| `profile` | Manage LLM provider profiles | `list`, `add`, `update`, `use`, `remove`, `--format` |
 
 ### find — locate/list, tree, and schema
 
@@ -88,19 +217,17 @@ mm find ~/data --no-ignore                             # include gitignored file
 ### cat — content extraction
 
 ```bash
-mm cat paper.pdf                               # extract text (fast mode, no LLM)
-mm cat paper.pdf -n 20                         # first 20 lines (head)
-mm cat paper.pdf -n -20                        # last 20 lines (tail)
-mm cat photo.png                               # image dims, MIME, hash, EXIF
-mm cat video.mp4                               # resolution, duration, codecs (<100ms)
-mm cat video.mp4 -m accurate                   # mosaic → LLM description
-mm cat photo.png -m accurate                   # LLM caption
-mm cat photo.png -p resize                     # use named encoder
-mm cat photo.png -p my-pipeline.yaml           # custom pipeline YAML
-mm cat video.mp4 -m accurate --no-cache        # force fresh LLM call
-mm cat photo.png -m accurate -v                # verbose (shows pipeline tree)
-mm cat --list-pipelines                        # list registered pipelines
-mm cat --list-encoders                         # list registered encoders
+mm cat wordpress-pdf-invoice-plugin-sample.pdf                  # extract text (no LLM needed)
+mm cat wordpress-pdf-invoice-plugin-sample.pdf -n 20            # first 20 lines (head)
+mm cat wordpress-pdf-invoice-plugin-sample.pdf -n -20           # last 20 lines (tail)
+mm cat bench.jpg -m accurate                                     # LLM caption
+mm cat Timelapse.mp4 -m accurate                                 # mosaic → LLM description
+mm cat bench.jpg -p resize                                       # use named encoder
+mm cat bench.jpg -p my-pipeline.yaml                             # custom pipeline YAML
+mm cat Timelapse.mp4 -m accurate --no-cache                      # force fresh LLM call
+mm cat bench.jpg -m accurate -v                                  # verbose (shows pipeline tree)
+mm cat --list-pipelines                                          # list registered pipelines
+mm cat --list-encoders                                           # list registered encoders
 ```
 
 ### wc — count files, size, tokens
@@ -117,6 +244,9 @@ mm grep "attention" ~/data --kind document
 mm grep "TODO" ~/data --kind code
 mm grep "invoice" ~/data --count               # match counts per file
 mm grep "Quantum Phase" ~/data -i              # case-insensitive search
+mm grep "secret" ~/data --no-ignore            # search gitignored files
+mm grep "revenue forecast" ~/data -s             # semantic (vector) search
+mm grep "architecture" ~/data -s --index          # auto-index before search
 ```
 
 ### sql — query the index
@@ -139,10 +269,10 @@ mm sql --list-tables                              # show available tables
 
 - **TTY**: Rich formatted tables/panels
 - **Piped**: plain TSV/text (machine-readable, no ANSI)
-- **`--format json`**: JSON output on any command that supports it
-- **`--format csv`**: Comma-separated values
-- **`--format dataset-jsonl`**: JSONL for dataset export
-- **`--format dataset-hf`**: HuggingFace Datasets format (requires `--output-dir`)
+- `**--format json`**: JSON output on any command that supports it
+- `**--format csv**`: Comma-separated values
+- `**--format dataset-jsonl**`: JSONL for dataset export
+- `**--format dataset-hf**`: HuggingFace Datasets format (requires `--output-dir`)
 
 ### Verbose mode (`--verbose` / `-v`)
 
@@ -154,39 +284,14 @@ pipeline
   └─ generate: ollama · 2.3s · 354→195 tokens
 ```
 
-## Python API
-
-```python
-from mm import Context
-
-ctx = Context("~/data/domains")
-print(ctx)  # Context(root='/Users/.../domains', files=702)
-
-# DataFrame export
-df = ctx.to_polars()         # polars.DataFrame (zero-copy)
-df = ctx.to_pandas()         # pandas.DataFrame
-
-# SQL via SQLite
-result = ctx.sql("SELECT kind, COUNT(*) as n FROM files GROUP BY kind ORDER BY n DESC")
-
-# Chainable filtering
-big_images = ctx.filter(kind="image", min_size="1MB")
-
-# Content access
-text  = ctx.cat("paper.pdf")
-hits  = ctx.grep("revenue", kind="document")
-
-# Display
-ctx.show()    # Rich table
-ctx.info()    # Rich summary panel
-```
-
 ## Processing Modes
 
-| Mode | What | Speed | How |
-|------|------|-------|-----|
-| **fast** (default) | Local extraction — text from PDF, image hash/EXIF, video metadata | <100ms/file | pypdfium2 (PDF), Rust mmap (images), mp4parse/matroska (video) |
-| **accurate** | LLM-powered semantic understanding (captions, descriptions, summaries) | Varies | LLM API via active profile + pipeline config |
+
+| Mode               | What                                                                   | Speed       | How                                                            |
+| ------------------ | ---------------------------------------------------------------------- | ----------- | -------------------------------------------------------------- |
+| **fast** (default) | Local extraction — text from PDF, image hash/EXIF, video metadata      | <100ms/file | pypdfium2 (PDF), Rust mmap (images), mp4parse/matroska (video) |
+| **accurate**       | LLM-powered semantic understanding (captions, descriptions, summaries) | Varies      | LLM API via active profile + pipeline config                   |
+
 
 Metadata scanning (`find`, `wc`) always uses Rust-native extraction (~60ms / 700 files).
 
@@ -194,39 +299,42 @@ Metadata scanning (`find`, `wc`) always uses Rust-native extraction (~60ms / 700
 
 Benchmarked on Apple Silicon (M-series), 702 files (7.2GB):
 
-| Operation | Latency |
-|-----------|---------|
-| Metadata scan (702 files) | 8ms |
-| CLI cold start (`find --format json`) | 60ms |
-| CLI cold start (`find --schema --format json`) | 109ms |
-| CLI cold start (`sql`) | 300ms |
-| Fast code extraction | ~52ms |
-| Fast image extraction | ~61ms |
-| Fast PDF text extraction | ~220ms |
-| Fast video metadata | <100ms |
-| PDF page mosaic (per page) | ~10ms |
-| Video keyframe mosaic (48 frames) | ~1s |
+
+| Operation                                      | Latency |
+| ---------------------------------------------- | ------- |
+| Metadata scan (702 files)                      | 8ms     |
+| CLI cold start (`find --format json`)          | 60ms    |
+| CLI cold start (`find --schema --format json`) | 109ms   |
+| CLI cold start (`sql`)                         | 300ms   |
+| Fast code extraction                           | ~52ms   |
+| Fast image extraction                          | ~61ms   |
+| Fast PDF text extraction                       | ~220ms  |
+| Fast video metadata                            | <100ms  |
+| PDF page mosaic (per page)                     | ~10ms   |
+| Video keyframe mosaic (48 frames)              | ~1s     |
+
 
 ## Storage
 
 mm uses a global SQLite database at `~/.local/share/mm/mm.db` with sqlite-vec for vector search:
 
-| Table | Contents | Relationship |
-|-------|----------|-------------|
-| `files` | File metadata + content (one row per file, `uri` = absolute path) | — |
-| `l2_results` | LLM-generated summaries (many per file, `file_uri` = FK) | FK → `files.uri` |
-| `chunks` | ~1024-char content chunks (`file_uri` = FK) | FK → `l2_results.id` |
-| `chunks_vec` | Embedding vectors (sqlite-vec virtual table) | FK → `chunks.id` |
-| `cache` | Key-value result cache | — |
+
+| Table        | Contents                                                          | Relationship         |
+| ------------ | ----------------------------------------------------------------- | -------------------- |
+| `files`      | File metadata + content (one row per file, `uri` = absolute path) | —                    |
+| `l2_results` | LLM-generated summaries (many per file)                           | FK → `files.uri`     |
+| `chunks`     | ~2048-char content chunks                                         | FK → `l2_results.id` |
+| `chunks_vec` | Embedding vectors (sqlite-vec virtual table)                      | FK → `chunks.id`     |
+| `cache`      | Key-value result cache                                            | —                    |
+
 
 The `files` table includes metadata columns (path, size, kind, etc.) and content columns (content_hash, text_preview, line_count, duration_s, exif_*, video_codec, etc.).
 
 Use `mm config reset-db` to clear all databases and caches.
 
-
 ### Pipelines — encode + generate
 
-Pipelines are YAML configs under `pipelines/{kind}/{mode}.yaml` that pair an **encoder** with optional LLM **generation** parameters. When `generate` is `null`, the pipeline is encode-only (no LLM call). Encoders are Python classes under `encoders/` that convert media files into VLM-ready Messages. See [`docs/PIPELINES.md`](docs/PIPELINES.md) and [`docs/ENCODERS.md`](docs/ENCODERS.md) for the full pipeline and encoder reference.
+Pipelines are YAML configs under `pipelines/{kind}/{mode}.yaml` that pair an **encoder** with optional LLM **generation** parameters. When `generate` is `null`, the pipeline is encode-only (no LLM call). Encoders are Python classes under `encoders/` that convert media files into VLM-ready Messages. See `[docs/PIPELINES.md](docs/PIPELINES.md)` and `[docs/ENCODERS.md](docs/ENCODERS.md)` for the full pipeline and encoder reference.
 
 Pipeline fields can be overridden from the CLI:
 
@@ -253,7 +361,7 @@ video.accurate = "/path/to/my-video-accurate.yaml"
 
 ## LLM Configuration using Profiles
 
-For accurate mode, mm uses the `openai` Python SDK to call any OpenAI-compatible API. Provider settings are managed through **profiles** — named configurations stored in `~/.config/mm/mm.toml`.
+For accurate mode, `mm` uses the `openai` Python SDK to call any OpenAI-compatible API. Provider settings are managed through **profiles** — named configurations stored in `~/.config/mm/mm.toml`.
 
 ### Quick setup
 
@@ -267,10 +375,12 @@ mm config show                # show resolved config with sources
 Each profile stores `base_url`, `api_key`, and `model`. You can have as many as you need — one per provider, one per use-case, etc.
 
 ```bash
-# Add profiles for different providers
+# Add custom profiles
 mm profile add openai --base-url https://api.openai.com/v1 --api-key sk-... --model gpt-4o
-mm profile add openrouter --base-url  https://openrouter.ai/api/v1 --model qwen/qwen3.5-27b
-mm profile add ollama --base-url http://localhost:11434 --model qwen3.5:9B
+mm profile add openrouter --base-url https://openrouter.ai/api/v1 --model qwen/qwen3.5-27b
+
+# Update reserved profiles (ollama, gemini, vlmrun)
+mm profile update ollama --base-url http://localhost:11434 --model qwen3.5:9B
 
 # List all profiles (● = active)
 mm profile list
@@ -302,24 +412,29 @@ Provider settings (base_url, api_key, model) come from the active profile, falli
 The active profile is resolved as:
 
 ```
---profile flag  >  MM_PROFILE env  >  active_profile in config file  >  "default"
+--profile flag  >  MM_PROFILE env  >  active_profile in config file  >  "ollama"
 ```
 
 ### Config file format
 
 ```toml
 # ~/.config/mm/mm.toml
-active_profile = "default"
+active_profile = "ollama"
 
 [profile.ollama]
 base_url = "http://localhost:11434"
 api_key = ""
-model = "qwen3.5:0.8b"
+model = "qwen3.5:0.8"
 
-[profile.openrouter]
-base_url = " https://openrouter.ai/api/v1"
+[profile.gemini]
+base_url = "https://openrouter.ai/api/v1"
 api_key = ""
-model = "qwen/qwen3.5-27b"
+model = "google/gemini-2.5-flash-lite"
+
+[profile.vlmrun]
+base_url = "https://mm-ctx.ngrok.io/v1"
+api_key = ""
+model = "Qwen/Qwen3.5-0.8B"
 ```
 
 ## License

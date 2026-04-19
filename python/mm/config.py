@@ -11,14 +11,10 @@ for per-mode defaults (whisper model, audio speed, etc.).
 
 from __future__ import annotations
 
+import tomllib
 from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Literal, TypedDict, cast
-
-try:
-    import tomllib
-except ModuleNotFoundError:
-    import tomli as tomllib  # type: ignore[no-redef]
 
 # ── Config paths ────────────────────────────────────────────────────
 

@@ -1,9 +1,10 @@
-"""mm -- High-performance multimodal context management library."""
+"""mm -- Fast, multimodal file intelligence for agents."""
 
 from importlib.metadata import version
 
 __all__ = ["Context", "GlobalRef", "make_ref_id", "new_session_id"]
 __version__ = version("mm")
+
 
 _LAZY_IMPORTS = {
     "Context": ("mm.context", "Context"),

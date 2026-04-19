@@ -168,7 +168,7 @@ def _emit_dataset_hf(rows: list[dict], output_dir: str = "mm_dataset") -> None:
 
     Saves to *output_dir* and prints the path to stderr.
 
-    Requires: pip install mm[experimental]
+    Requires: pip install mm-ctx[experimental]
     """
     from pathlib import Path
 

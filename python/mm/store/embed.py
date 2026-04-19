@@ -9,8 +9,6 @@ Supported content types:
   - Audio: MP3, WAV (max 80s)
   - Video: MP4, MOV (max 120s — longer videos are chunked)
   - Document: PDF (max 6 pages)
-
-Requires: pip install mm[gemini]
 """
 
 from __future__ import annotations

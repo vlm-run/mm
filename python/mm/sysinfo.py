@@ -1,8 +1,8 @@
 """System capability detection for mm.
 
 Detects available hardware (GPU, CUDA) and optional dependencies
-(faster-whisper, scenedetect, docling) for reproducible benchmark
-reporting and adaptive strategy selection.
+(faster-whisper, scenedetect) for reproducible benchmark reporting
+and adaptive strategy selection.
 """
 
 from __future__ import annotations
@@ -23,7 +23,6 @@ class SystemInfo:
     cuda_available: bool = False
     whisper_available: bool = False
     scenedetect_available: bool = False
-    docling_available: bool = False
 
 
 def collect() -> SystemInfo:
@@ -53,13 +52,6 @@ def collect() -> SystemInfo:
         from mm.common.video.shot_detection import scenedetect_available
 
         info.scenedetect_available = scenedetect_available()
-    except Exception:
-        pass
-
-    try:
-        from mm.docling_extract import docling_available
-
-        info.docling_available = docling_available()
     except Exception:
         pass
 

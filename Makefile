@@ -1,4 +1,4 @@
-.PHONY: develop build test test-rust test-python test-python-fast test-python-full bench clean lint lint-rust lint-python typecheck fmt
+.PHONY: develop build test test-rust test-python test-python-fast test-python-full bench clean lint lint-rust lint-python typecheck fmt dist dist-verify dist-test dist-publish dist-publish-test
 
 develop:
 	uv run maturin develop --release
@@ -51,3 +51,48 @@ typecheck: ## Run ty type checker on Python source
 fmt:
 	cargo fmt --all
 	uv run ruff format python/
+
+# --- PyPI release targets ---
+
+DIST_DIR := dist
+
+dist: clean-dist ## Build wheel for current platform
+	uv run maturin build --release --out $(DIST_DIR)
+	@echo "── Built wheels ──"
+	@ls -lh $(DIST_DIR)/*.whl
+
+WHEEL_ALLOWED_EXTS := py|pyi|yaml|so|pyd|typed
+dist-verify: ## Verify wheels contain only whitelisted file types
+	@test -n "$$(ls $(DIST_DIR)/*.whl 2>/dev/null)" || { echo "No wheels found in $(DIST_DIR)/"; exit 1; }
+	@FAIL=0; for whl in $(DIST_DIR)/*.whl; do \
+		echo "── $$(basename $$whl) ──"; \
+		BAD=$$(unzip -l "$$whl" \
+			| awk '/[0-9]{2}-[0-9]{2}-[0-9]{4}/ {print $$NF}' \
+			| grep -v 'dist-info' \
+			| grep -vE '\.($(WHEEL_ALLOWED_EXTS))$$'); \
+		if [ -n "$$BAD" ]; then \
+			echo "ERROR: non-whitelisted files (allowed: .py .pyi .yaml .so .pyd py.typed):"; \
+			echo "$$BAD" | sed 's/^/  /'; \
+			FAIL=1; \
+		fi; \
+	done; \
+	if [ "$$FAIL" = "1" ]; then exit 1; fi
+	@echo "All wheels clean (only .py .pyi .yaml .so .pyd py.typed)"
+	@ls -lh $(DIST_DIR)/*.whl
+
+dist-test: dist dist-verify ## Build, verify, and smoke-test wheel
+	rm -rf /tmp/mm-test-install
+	uv venv --python 3.12 /tmp/mm-test-install
+	VIRTUAL_ENV=/tmp/mm-test-install uv pip install $(DIST_DIR)/*.whl
+	/tmp/mm-test-install/bin/mm --version
+	@echo "── Smoke test passed ──"
+	rm -rf /tmp/mm-test-install
+
+dist-publish-test: dist dist-verify ## Upload wheel to TestPyPI
+	uv run twine upload --repository testpypi $(DIST_DIR)/*.whl
+
+dist-publish: dist dist-verify ## Upload wheel to PyPI (IRREVERSIBLE for this version)
+	uv run twine upload $(DIST_DIR)/*.whl
+
+clean-dist:
+	rm -rf $(DIST_DIR)
