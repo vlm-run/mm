@@ -49,6 +49,7 @@ dev = [
     "ruff>=0.4",
     "pre-commit>=4.0",
     "maturin>=1.7",
+    "logfire>=3.0",
 ]
 all = [
     "mm[gemini]",
