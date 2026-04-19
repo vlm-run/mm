@@ -3,13 +3,13 @@
 Covers:
 
 * Per-kind prefix mapping (mirrors ``vlmrun-python-sdk``'s ``refs.py``)
-* Deterministic ref id generation from a stable seed
-* Format validation (``<prefix>_<6 alnum>``)
+* Random 6-hex ref id generation + format validation (``<prefix>_<6 hex>``)
+* Per-Context ref caching and stability across re-access
 * ``GlobalRef`` parsing + round-trip
 * Uniqueness within a session (collision-free across many files)
-* Cross-session refs differ for the same uri
 * Schema migration is idempotent on existing databases
 * End-to-end Context.save -> Context.resolve round-trip
+* Opt-in ``refs=True`` surfacing on ``to_arrow`` / ``to_polars`` / ``show``
 """
 
 from __future__ import annotations
@@ -90,37 +90,25 @@ class TestPrefixes:
 class TestMakeRefId:
     @pytest.mark.parametrize("kind", ["image", "video", "audio", "document", "code", "text"])
     def test_format(self, kind: str):
-        ref = make_ref_id(kind, seed="seed-1")
+        ref = make_ref_id(kind)
         assert is_valid_ref_id(ref), ref
         m = REF_ID_RE.match(ref)
         assert m is not None
         assert m.group("prefix") == prefix_for(kind)
         assert len(m.group("suffix")) == 6
 
-    def test_deterministic_with_seed(self):
-        a = make_ref_id("image", seed="abc")
-        b = make_ref_id("image", seed="abc")
-        assert a == b
+    def test_random(self):
+        """Every call draws a fresh random hex suffix."""
+        ids = {make_ref_id("image") for _ in range(200)}
+        assert len(ids) >= 199  # ≥2^{-24} collision odds at N=200
 
-    def test_different_seeds_yield_different_ids(self):
-        ids = {make_ref_id("image", seed=f"s-{i}") for i in range(50)}
-        assert len(ids) == 50
+    def test_kind_changes_prefix(self):
+        assert make_ref_id("image").startswith("img_")
+        assert make_ref_id("video").startswith("vid_")
 
-    def test_random_when_seed_omitted(self):
-        ids = {make_ref_id("image") for _ in range(50)}
-        assert len(ids) >= 49
-
-    def test_kind_changes_prefix_only(self):
-        a = make_ref_id("image", seed="x")
-        b = make_ref_id("video", seed="x")
-        assert a.split("_")[0] == "img"
-        assert b.split("_")[0] == "vid"
-
-    def test_suffix_is_alphanumeric_lowercase(self):
-        ref = make_ref_id("image", seed="anything")
-        suffix = ref.split("_", 1)[1]
-        assert suffix.islower() or suffix.isdigit() or all(c.isalnum() for c in suffix)
-        assert all(c in "0123456789abcdefghijklmnopqrstuvwxyz" for c in suffix)
+    def test_suffix_is_lowercase_hex(self):
+        suffix = make_ref_id("image").split("_", 1)[1]
+        assert all(c in "0123456789abcdef" for c in suffix)
 
 
 # ── GlobalRef ─────────────────────────────────────────────────────────
@@ -135,7 +123,7 @@ class TestGlobalRef:
 
     def test_parse_uuid_session(self):
         sid = new_session_id()
-        ref = GlobalRef.parse(f"{sid}/vid_xyz123")
+        ref = GlobalRef.parse(f"{sid}/vid_abc123")
         assert ref.session_id == sid
         assert ref.kind == "video"
 
@@ -191,15 +179,28 @@ class TestContextSession:
         with pytest.raises(ValueError, match="session_id"):
             ctx.ref_for("src/main.py")
 
-    def test_ref_for_is_deterministic(self, small_tree: Path):
-        a = Context(small_tree, session_id="sess-1")
-        b = Context(small_tree, session_id="sess-1")
-        assert a.ref_for("src/main.py") == b.ref_for("src/main.py")
+    def test_ref_stable_within_context(self, small_tree: Path):
+        """Within one Context, repeated ref_for calls return the same id."""
+        ctx = Context(small_tree, session_id="sess-1")
+        a = ctx.ref_for("src/main.py")
+        b = ctx.ref_for("src/main.py")
+        assert a == b
 
-    def test_ref_for_changes_with_session(self, small_tree: Path):
-        a = Context(small_tree, session_id="sess-A").ref_for("src/main.py")
-        b = Context(small_tree, session_id="sess-B").ref_for("src/main.py")
+    def test_refs_random_across_fresh_contexts(self, small_tree: Path, isolated_db: Path):
+        """Without save(), two fresh Contexts draw independent random refs."""
+        a = Context(small_tree, session_id="no-save-1").ref_for("src/main.py")
+        b = Context(small_tree, session_id="no-save-2").ref_for("src/main.py")
         assert a != b
+
+    def test_refs_recovered_from_db(self, small_tree: Path, isolated_db: Path):
+        """After save(), a new Context with the same session_id reuses refs from the DB."""
+        sid = "stable-sess"
+        first = Context(small_tree, session_id=sid)
+        first.save()
+        original = first.refs
+
+        second = Context(small_tree, session_id=sid)
+        assert second.refs == original
 
     def test_global_ref_format(self, small_tree: Path):
         sid = "sess-1"
@@ -252,6 +253,41 @@ class TestContextSession:
             assert f.global_ref == all_refs[f.path]
 
 
+# ── Opt-in refs on data exports ───────────────────────────────────────
+
+
+class TestOptInColumns:
+    def test_to_arrow_no_refs_by_default(self, small_tree: Path):
+        ctx = Context(small_tree, session_id="opt-sess")
+        table = ctx.to_arrow()
+        assert "ref_id" not in table.column_names
+        assert "session_id" not in table.column_names
+
+    def test_to_arrow_with_refs(self, small_tree: Path):
+        ctx = Context(small_tree, session_id="opt-sess")
+        table = ctx.to_arrow(refs=True)
+        assert "ref_id" in table.column_names
+        assert "session_id" in table.column_names
+        for r in table.column("ref_id").to_pylist():
+            assert is_valid_ref_id(r)
+
+    def test_to_polars_opt_in(self, small_tree: Path):
+        pl = pytest.importorskip("polars")  # noqa: F841
+        ctx = Context(small_tree, session_id="opt-sess")
+        assert "ref_id" not in ctx.to_polars().columns
+        assert "ref_id" in ctx.to_polars(refs=True).columns
+
+    def test_to_pandas_opt_in(self, small_tree: Path):
+        pytest.importorskip("pandas")
+        ctx = Context(small_tree, session_id="opt-sess")
+        assert "ref_id" not in list(ctx.to_pandas().columns)
+        assert "ref_id" in list(ctx.to_pandas(refs=True).columns)
+
+    def test_to_arrow_refs_noop_without_session(self, small_tree: Path):
+        ctx = Context(small_tree)
+        assert ctx.to_arrow(refs=True) is ctx.to_arrow()
+
+
 # ── DB persistence + resolver round-trip ──────────────────────────────
 
 
@@ -281,7 +317,7 @@ class TestResolver:
         ctx = Context(small_tree, session_id="sess-r")
         ctx.save()
 
-        row = Context.resolve("sess-r/img_zzzzzz")
+        row = Context.resolve("sess-r/img_deadbe")
         assert row is None
 
     def test_resolve_validates_format(self, isolated_db: Path):

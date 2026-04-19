@@ -5,28 +5,29 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
+from mm.store.db import MmDatabase
+
 if TYPE_CHECKING:
-    from mm.store import MmDatabase
+    pass  # kept for future typing-only imports
 
 
 class FileEntry:
     """Lightweight wrapper for a single file's metadata.
 
     When the entry was produced by a :class:`Context` with a ``session_id``,
-    :attr:`ref_id` is the deterministic per-session reference id and
-    :attr:`global_ref` is the canonical ``<session_id>/<ref_id>`` string.
+    :attr:`ref_id` is the per-session reference id and :attr:`global_ref`
+    is the canonical ``<session_id>/<ref_id>`` string. Ref lookups are
+    lazy: they only materialize the ref cache on first access.
     """
 
     def __init__(
         self,
         row: dict[str, Any],
         *,
-        session_id: str | None = None,
-        root: Path | None = None,
+        context: Context | None = None,
     ):
         self._data = row
-        self._session_id = session_id
-        self._root = root
+        self._context = context
 
     @property
     def kind(self) -> str:
@@ -39,28 +40,29 @@ class FileEntry:
     @property
     def uri(self) -> str:
         """Absolute uri for this entry. Falls back to the relative path."""
-        if self._root is not None:
-            return f"{self._root}/{self.path}"
+        if self._context is not None:
+            return f"{self._context.root}/{self.path}"
         return str(self._data.get("uri") or self.path)
 
     @property
     def session_id(self) -> str | None:
-        return self._session_id
+        if self._context is None:
+            return None
+        return self._context.session_id
 
     @property
     def ref_id(self) -> str | None:
-        """Per-session ref id, or ``None`` if this entry has no session."""
-        if self._session_id is None:
+        """Per-session ref id, or ``None`` if the context has no session."""
+        if self._context is None or self._context.session_id is None:
             return None
-        from mm.refs import make_ref_id
-
-        return make_ref_id(self.kind, seed=f"{self._session_id}:{self.uri}")
+        return self._context._materialize_refs().get(self.path)
 
     @property
     def global_ref(self) -> str | None:
         """Canonical ``<session_id>/<ref_id>`` handle, or ``None``."""
         ref = self.ref_id
-        return f"{self._session_id}/{ref}" if ref else None
+        sid = self.session_id
+        return f"{sid}/{ref}" if ref and sid else None
 
     def __getattr__(self, name: str) -> Any:
         if name.startswith("_"):
@@ -71,11 +73,8 @@ class FileEntry:
             raise AttributeError(f"FileEntry has no attribute '{name}'") from None
 
     def __repr__(self) -> str:
-        ref = self.global_ref
-        ref_part = f", ref='{ref}'" if ref else ""
         return (
-            f"FileEntry(path='{self._data.get('path', '')}', "
-            f"kind='{self._data.get('kind', '')}'{ref_part})"
+            f"FileEntry(path='{self._data.get('path', '')}', kind='{self._data.get('kind', '')}')"
         )
 
 
@@ -126,6 +125,7 @@ class Context:
 
         self._table = self._scanner.to_arrow()
         self._db: MmDatabase | None = None
+        self._refs_cache: dict[str, str] | None = None
 
     @classmethod
     def new_session(
@@ -151,8 +151,6 @@ class Context:
     def db(self) -> MmDatabase:
         """Lazy-initialized global database connection."""
         if self._db is None:
-            from mm.store import MmDatabase
-
             self._db = MmDatabase()
         return self._db
 
@@ -162,31 +160,67 @@ class Context:
 
     @property
     def files(self) -> list[FileEntry]:
-        """Iterate over files as FileEntry objects."""
+        """Iterate files as :class:`FileEntry` objects.
+
+        Entries carry a back-reference to this :class:`Context`, so
+        ``entry.ref_id`` / ``entry.global_ref`` lazily consult the ref
+        cache (triggering materialization if needed) — no extra work
+        when refs aren't used.
+        """
         rows = self._table.to_pydict()
         result = []
         for i in range(self._table.num_rows):
             row = {col: rows[col][i] for col in rows}
-            result.append(FileEntry(row, session_id=self._session_id, root=self.root))
+            result.append(FileEntry(row, context=self))
         return result
 
     # --- DataFrame export ---
 
-    def to_polars(self):
-        """Convert to Polars DataFrame (zero-copy via Arrow)."""
+    def _table_with_refs(self):
+        """Return the Arrow table with ``session_id`` + ``ref_id`` columns appended."""
+        import pyarrow as pa
+
+        table = self._table
+        if self._session_id is None:
+            return table
+        ref_map = self._materialize_refs()
+        paths = table.column("path").to_pylist()
+        ref_ids = [ref_map.get(p) for p in paths]
+        sess_col = pa.array([self._session_id] * len(paths), type=pa.string())
+        ref_col = pa.array(ref_ids, type=pa.string())
+        return table.append_column("session_id", sess_col).append_column("ref_id", ref_col)
+
+    def to_polars(self, *, refs: bool = False):
+        """Convert to Polars DataFrame (zero-copy via Arrow).
+
+        Args:
+            refs: If True, include ``session_id`` and ``ref_id`` columns.
+                Requires :attr:`session_id`; silently no-ops otherwise.
+        """
         from mm.df import arrow_to_polars
 
-        return arrow_to_polars(self._table)
+        table = self._table_with_refs() if refs else self._table
+        return arrow_to_polars(table)
 
-    def to_pandas(self):
-        """Convert to Pandas DataFrame (zero-copy for numeric columns)."""
+    def to_pandas(self, *, refs: bool = False):
+        """Convert to Pandas DataFrame.
+
+        Args:
+            refs: Same semantics as :meth:`to_polars`.
+        """
         from mm.df import arrow_to_pandas
 
-        return arrow_to_pandas(self._table)
+        table = self._table_with_refs() if refs else self._table
+        return arrow_to_pandas(table)
 
-    def to_arrow(self):
-        """Return the underlying PyArrow Table."""
-        return self._table
+    def to_arrow(self, *, refs: bool = False):
+        """Return the underlying PyArrow Table.
+
+        Args:
+            refs: If True, a new table with ``session_id`` and ``ref_id``
+                columns is returned. Requires :attr:`session_id`.
+        """
+        return self._table_with_refs() if refs else self._table
 
     # --- SQL ---
 
@@ -244,6 +278,7 @@ class Context:
         new_ctx._db = self._db
         new_ctx._no_ignore = self._no_ignore
         new_ctx._session_id = self._session_id
+        new_ctx._refs_cache = self._refs_cache
         return new_ctx
 
     # --- Content access ---
@@ -341,11 +376,29 @@ class Context:
 
     # --- Display ---
 
-    def show(self, *, limit: int | None = 50, columns: list[str] | None = None) -> None:
-        """Display the index as a Rich table."""
+    def show(
+        self,
+        *,
+        limit: int | None = 50,
+        columns: list[str] | None = None,
+        refs: bool = False,
+    ) -> None:
+        """Display the index as a Rich table.
+
+        Args:
+            limit: Maximum rows to render.
+            columns: Explicit column list. When ``refs=True`` and no
+                ``columns`` are passed, ``ref_id`` is appended to the
+                default column set.
+            refs: If True, include a ``ref_id`` column. Requires
+                :attr:`session_id`.
+        """
         from mm.display import arrow_table_to_rich, output_console
 
-        rich_table = arrow_table_to_rich(self._table, columns=columns, limit=limit)
+        table = self._table_with_refs() if refs else self._table
+        if refs and columns is None:
+            columns = [c for c in table.column_names if c != "session_id"]
+        rich_table = arrow_table_to_rich(table, columns=columns, limit=limit)
         output_console.print(rich_table)
 
     def info(self) -> None:
@@ -379,44 +432,73 @@ class Context:
         """Build the canonical absolute uri for a relative ``path``."""
         return f"{self.root}/{path.lstrip('/')}"
 
-    def _kind_of(self, path: str) -> str:
-        """Best-effort kind lookup: in-memory table first, fall back to extension."""
-        from mm.utils import file_kind_with_code
-
-        if "path" in self._table.column_names and "kind" in self._table.column_names:
-            paths = self._table.column("path").to_pylist()
-            kinds = self._table.column("kind").to_pylist()
-            for n, k in zip(paths, kinds):
-                if n == path:
-                    return str(k)
-        return file_kind_with_code(Path(path))
-
-    def ref_for(self, path: str) -> str:
-        """Return the ref id for ``path`` within this context.
-
-        Requires :attr:`session_id` to be set. The id is deterministic given
-        ``(session_id, uri)``, so calling :meth:`save` is not required to
-        compute it.
-
-        Raises:
-            ValueError: If the context has no ``session_id``.
-        """
+    def _require_session(self) -> str:
         if self._session_id is None:
             raise ValueError(
                 "Context has no session_id; pass session_id=... to Context() "
                 "or use Context.new_session() to enable refs."
             )
+        return self._session_id
+
+    def _materialize_refs(self) -> dict[str, str]:
+        """Build (or return the cached) ``{path: ref_id}`` mapping.
+
+        For each file: reuse the ``ref_id`` already persisted under this
+        ``session_id`` in the database, otherwise draw a fresh random hex
+        ref. The result is cached on the instance so repeated access
+        (and :meth:`save`) sees stable ids.
+        """
+        if self._refs_cache is not None:
+            return self._refs_cache
+        session_id = self._require_session()
         from mm.refs import make_ref_id
 
-        return make_ref_id(self._kind_of(path), seed=f"{self._session_id}:{self._uri_for(path)}")
+        paths = self._table.column("path").to_pylist()
+        kinds = self._table.column("kind").to_pylist()
+
+        existing: dict[str, str] = {}
+        if self._db is not None or MmDatabase.DB_PATH.exists():
+            try:
+                rows = self.db.list_session_files(session_id)
+                root_s = f"{self.root}/"
+                for r in rows:
+                    uri = str(r.get("uri") or "")
+                    ref = r.get("ref_id")
+                    if ref and uri.startswith(root_s):
+                        existing[uri[len(root_s) :]] = str(ref)
+            except Exception:
+                existing = {}
+
+        out: dict[str, str] = {}
+        for p, k in zip(paths, kinds):
+            out[p] = existing.get(p) or make_ref_id(k or "other")
+        self._refs_cache = out
+        return out
+
+    def ref_for(self, path: str) -> str:
+        """Return the ref id for ``path`` within this context.
+
+        Requires :attr:`session_id` to be set. The id is random on first
+        access and then cached on the :class:`Context` instance — it stays
+        stable across repeated calls and :meth:`save` persists it.
+
+        Raises:
+            ValueError: If the context has no ``session_id`` or ``path`` is
+                not in the scan.
+        """
+        refs = self._materialize_refs()
+        if path not in refs:
+            raise ValueError(f"{path!r} is not in this context")
+        return refs[path]
 
     def global_ref(self, path: str) -> str:
         """Return ``<session_id>/<ref_id>`` for ``path``.
 
         Raises:
-            ValueError: If the context has no ``session_id``.
+            ValueError: If the context has no ``session_id`` or ``path`` is
+                not in the scan.
         """
-        return f"{self._session_id}/{self.ref_for(path)}"
+        return f"{self._require_session()}/{self.ref_for(path)}"
 
     @property
     def refs(self) -> dict[str, str]:
@@ -426,16 +508,8 @@ class Context:
         """
         if self._session_id is None:
             return {}
-        from mm.refs import make_ref_id
-
-        out: dict[str, str] = {}
-        paths = self._table.column("path").to_pylist()
-        kinds = self._table.column("kind").to_pylist()
-        sess = self._session_id
-        for p, k in zip(paths, kinds):
-            uri = self._uri_for(p)
-            out[p] = f"{sess}/{make_ref_id(k or 'other', seed=f'{sess}:{uri}')}"
-        return out
+        local = self._materialize_refs()
+        return {p: f"{self._session_id}/{r}" for p, r in local.items()}
 
     @staticmethod
     def resolve(global_ref: str, *, db: MmDatabase | None = None) -> dict[str, Any] | None:
@@ -466,10 +540,12 @@ class Context:
         """Write the index to the database.
 
         When :attr:`session_id` is set, every row is tagged with the
-        session and gets a deterministic ``ref_id``. Calling ``save``
-        again with the same session is a no-op for refs (idempotent).
+        session and persisted with its :meth:`refs`-cached ``ref_id``.
+        Existing persisted refs for the same ``(session_id, uri)`` are
+        preserved — re-saving is idempotent.
         """
-        self.db.upsert_files(self._table, self.root, session_id=self._session_id)
+        refs = self._materialize_refs() if self._session_id else None
+        self.db.upsert_files(self._table, self.root, session_id=self._session_id, refs=refs)
 
     def __repr__(self) -> str:
         sess = f", session='{self._session_id}'" if self._session_id else ""

@@ -11,22 +11,21 @@ filesystem path that produced it.
 
 Design notes:
 
-- **Deterministic by default.** ``make_ref_id`` derives the 6-char suffix from
-  a stable seed (e.g. ``session_id + uri``). Re-saving the same file under the
-  same session yields the same ``ref_id`` — round-trips are predictable and
-  resolver caches stay warm.
+- **Random suffix.** ``make_ref_id`` draws a 6-character lowercase-hex suffix
+  from ``secrets.token_hex``. Refs are opaque, not derivable from the file
+  path — stability comes from persisting them in the mm SQLite database and
+  caching them on the live :class:`mm.Context` instance, not from a hash.
 - **Kind-aware prefixes.** The prefix encodes the file ``kind`` so refs are
   self-describing (``img_a1b2c3``, ``vid_d4e5f6``). Prefixes are aligned with
   ``vlmrun-python-sdk`` where the kinds overlap; mm-specific kinds (``code``,
   ``data``, ``config``, ``text``, ``other``) get their own short prefixes.
-- **Compatible alphabet.** The suffix uses ``[a-z0-9]`` which is a subset of
+- **Compatible alphabet.** The suffix uses ``[0-9a-f]`` which is a subset of
   the ``\\w`` pattern enforced by ``vlmrun-python-sdk``'s pydantic models,
   so any mm-generated ref is a valid ``vlmrun`` ref.
 """
 
 from __future__ import annotations
 
-import hashlib
 import re
 import secrets
 import uuid
@@ -46,8 +45,8 @@ KIND_TO_PREFIX: dict[str, str] = {
 
 PREFIX_TO_KIND: dict[str, str] = {v: k for k, v in KIND_TO_PREFIX.items()}
 
-REF_ID_RE = re.compile(r"^(?P<prefix>[a-z]{2,5})_(?P<suffix>[a-z0-9]{6})$")
-GLOBAL_REF_RE = re.compile(r"^(?P<session>[A-Za-z0-9_\-]+)/(?P<ref>[a-z]{2,5}_[a-z0-9]{6})$")
+REF_ID_RE = re.compile(r"^(?P<prefix>[a-z]{2,5})_(?P<suffix>[0-9a-f]{6})$")
+GLOBAL_REF_RE = re.compile(r"^(?P<session>[A-Za-z0-9_\-]+)/(?P<ref>[a-z]{2,5}_[0-9a-f]{6})$")
 SUFFIX_LEN = 6
 
 
@@ -64,48 +63,23 @@ def kind_for_prefix(prefix: str) -> str:
     return PREFIX_TO_KIND.get(prefix, "other")
 
 
-def _b36_encode(value: int, length: int) -> str:
-    """Encode a non-negative int as lowercase base-36 of *exactly* ``length`` chars."""
-    alphabet = "0123456789abcdefghijklmnopqrstuvwxyz"
-    out: list[str] = []
-    if value == 0:
-        out.append("0")
-    while value > 0:
-        value, rem = divmod(value, 36)
-        out.append(alphabet[rem])
-    s = "".join(reversed(out))
-    if len(s) >= length:
-        return s[-length:]
-    return s.rjust(length, "0")
-
-
-def make_ref_id(kind: str, *, seed: str | None = None) -> str:
-    """Generate a kind-prefixed reference id.
+def make_ref_id(kind: str) -> str:
+    """Generate a random kind-prefixed reference id.
 
     Args:
         kind: The mm file kind (``image``, ``video``, ``document``,
             ``code``, ``audio``, ``data``, ``config``, ``text``, ``other``).
-        seed: Optional stable string used to deterministically derive the
-            6-character suffix. If ``None``, a cryptographically random
-            suffix is generated. Pass ``f"{session_id}:{uri}"`` for stable
-            per-session refs.
 
     Returns:
-        Ref string of the form ``<prefix>_<6 alphanumeric chars>``.
+        Ref string of the form ``<prefix>_<6 lowercase hex chars>``.
 
     Examples:
-        >>> make_ref_id("image", seed="sess-1:/abs/path/to/file.png")
-        'img_xxxxxx'  # deterministic for that seed
-        >>> make_ref_id("video")  # random
-        'vid_yyyyyy'
+        >>> make_ref_id("image")
+        'img_a1b2c3'  # random
+        >>> make_ref_id("video")
+        'vid_4f7e9c'  # random
     """
-    prefix = prefix_for(kind)
-    if seed is None:
-        suffix = _b36_encode(secrets.randbits(32), SUFFIX_LEN)
-    else:
-        digest = hashlib.blake2b(seed.encode("utf-8"), digest_size=8).digest()
-        suffix = _b36_encode(int.from_bytes(digest, "big"), SUFFIX_LEN)
-    return f"{prefix}_{suffix}"
+    return f"{prefix_for(kind)}_{secrets.token_hex(SUFFIX_LEN // 2)}"
 
 
 def is_valid_ref_id(s: str) -> bool:
