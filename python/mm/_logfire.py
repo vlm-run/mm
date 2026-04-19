@@ -18,6 +18,7 @@ def configure_logfire(service_name: str = "mm") -> None:
     logfire.configure(
         send_to_logfire="if-token-present",
         service_name=service_name,
+        environment=os.getenv("LOGFIRE_ENVIRONMENT", "local"),
         token=os.getenv("LOGFIRE_TOKEN") or None,
         scrubbing=False,
     )
