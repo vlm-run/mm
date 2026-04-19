@@ -1,0 +1,68 @@
+name: deploy web
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "web-v*"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # Deploy intro docs site to GitHub Pages at /intro
+  deploy-intro:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: web/intro/package-lock.json
+      - name: Install dependencies
+        working-directory: web/intro
+        run: npm ci
+      - name: Build intro site
+        working-directory: web/intro
+        env:
+          VITE_BASE_PATH: /mm/intro/
+        run: npm run build
+      - name: Deploy intro to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./web/intro/dist
+          destination_dir: intro
+          keep_files: true
+
+  # Deploy metrics dashboard to GitHub Pages at /dev/metrics
+  deploy-metrics:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: web/metrics/package-lock.json
+      - name: Install dependencies
+        working-directory: web/metrics
+        run: npm ci
+      - name: Build metrics dashboard
+        working-directory: web/metrics
+        env:
+          VITE_BASE_PATH: /mm/dev/metrics/
+        run: npm run build
+      - name: Deploy metrics to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./web/metrics/dist
+          destination_dir: dev/metrics
+          keep_files: true

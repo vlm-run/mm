@@ -1,0 +1,8 @@
+kind: audio
+mode: fast
+
+encode:
+  strategy: transcribe
+  strategy_opts:
+    whisper_model: tiny
+    audio_speed: 2.0
