@@ -25,7 +25,7 @@ def configure_logfire(service_name: str = "mm") -> None:
     logfire.instrument_openai()
 
 
-def cli_span(**attrs: Any) -> ContextManager[Any]:
+def cli_span(*, command: str, profile: str, model: str) -> ContextManager[Any]:
     """Return an ``mm.cli`` Logfire span (or a no-op) wrapping the current command."""
     if not os.getenv("LOGFIRE_TOKEN"):
         return nullcontext()
@@ -34,5 +34,10 @@ def cli_span(**attrs: Any) -> ContextManager[Any]:
     except ImportError:
         return nullcontext()
     configure_logfire()
-    fmt = ", ".join(f"{k}={{{k}}}" for k in attrs)
-    return logfire.span(f"mm.cli [{fmt}]", _span_name="mm.cli", **attrs)
+    return logfire.span(
+        "mm.cli [command={command}, profile={profile}, model={model}]",
+        _span_name="mm.cli",
+        command=command,
+        profile=profile,
+        model=model,
+    )
