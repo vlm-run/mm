@@ -21,7 +21,7 @@ _OPENAI_DEFAULT_ENCODERS: dict[str, str] = {
     "image": "image-resize",
     "video": "video-frame-sample",
     "document": "document-rasterize",
-    "audio": "audio-transcode",
+    "audio": "audio-transcribe",
 }
 
 
