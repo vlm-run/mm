@@ -4,22 +4,16 @@ from importlib.metadata import version
 
 __all__ = [
     "Context",
-    "GlobalRef",
     "Ref",
     "RefNotFoundError",
-    "make_ref_id",
-    "new_session_id",
     "uuid7",
 ]
 __version__ = version("mm-ctx")
 
 _LAZY_IMPORTS = {
     "Context": ("mm.context", "Context"),
-    "GlobalRef": ("mm.refs", "GlobalRef"),
     "Ref": ("mm.refs", "Ref"),
     "RefNotFoundError": ("mm.refs", "RefNotFoundError"),
-    "make_ref_id": ("mm.refs", "make_ref_id"),
-    "new_session_id": ("mm.refs", "new_session_id"),
     "uuid7": ("mm.refs", "uuid7"),
 }
 

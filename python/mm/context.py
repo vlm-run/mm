@@ -11,8 +11,9 @@ Two modes share the same class:
        from PIL import Image
 
        ctx = mm.Context(session_id=mm.uuid7())
-       img  = ctx.put(Path("photo.jpg"), note="hero shot")
-       doc  = ctx.put(Path("paper.pdf"), summary="Attention is all you need")
+       img  = ctx.put(Path("photo.jpg"), metadata={"note": "hero shot"})
+       doc  = ctx.put(Path("paper.pdf"),
+                      metadata={"summary": "Attention is all you need"})
        img2 = ctx.put(Image.open("x.png"))
 
        messages = ctx.to_messages(format="openai")
@@ -171,7 +172,7 @@ class Context:
         Incremental (put-based)::
 
             ctx = Context()
-            ref = ctx.put("photo.jpg", note="hero shot")
+            ref = ctx.put("photo.jpg", metadata={"note": "hero shot"})
             messages = ctx.to_messages(format="openai")
 
         Directory-scan (legacy)::
@@ -262,9 +263,6 @@ class Context:
         self,
         obj: Any,
         *,
-        note: str | None = None,
-        summary: str | None = None,
-        tags: list[str] | None = None,
         metadata: dict[str, Any] | None = None,
     ) -> Ref:
         """Attach an item to the context and return its kind-prefixed ref id.
@@ -275,20 +273,16 @@ class Context:
             - ``bytes`` — MIME-sniffed, held in-memory.
             - URL string (``http://`` / ``https://``) — stored as a remote ref.
 
-        All metadata parameters are optional and flow into
-        :meth:`__repr__`, :meth:`to_md`, :meth:`print_tree`, and
-        :meth:`to_messages` (as a leading text block per item).
-
         Args:
             obj: Source object (see accepted types above).
-            note: Short human-readable note (most common case).
-            summary: Longer caption / summary; doubles as the content
-                fallback in :meth:`to_md` when a ``cat``-extract isn't
-                supplied.
-            tags: List of string tags.
-            metadata: Arbitrary JSON-serialisable dict merged last (user
-                keys override the ``note`` / ``summary`` / ``tags``
-                shortcuts on collision).
+            metadata: Optional JSON-serialisable ``dict`` of extra
+                context for this item (e.g. ``{"note": "hero shot"}``,
+                ``{"summary": "Attention is all you need", "tags":
+                ["nlp"]}``). Stable key order is preserved. The
+                metadata flows into :meth:`__repr__`, :meth:`to_md`,
+                :meth:`print_tree`, and :meth:`to_messages` (emitted as
+                a leading text block per item so the VLM sees it
+                inline).
 
         Returns:
             The generated ref id (``<prefix>_<6 hex>``). The return type
@@ -300,8 +294,7 @@ class Context:
         """
         self._require_pyctx("put")
         kind, source_kind, source_value, byte_len, desc, py_obj = _classify_put_obj(obj)
-        meta_dict = _build_metadata(note=note, summary=summary, tags=tags, metadata=metadata)
-        metadata_json = json.dumps(meta_dict) if meta_dict else None
+        metadata_json = json.dumps(metadata) if metadata else None
 
         ref_id: str = self._pyctx.put(
             kind,
@@ -995,29 +988,3 @@ def _mime_to_kind(mime: str) -> str:
     if mime in ("application/pdf",) or mime.startswith(("application/vnd.openxmlformats",)):
         return "document"
     return "other"
-
-
-def _build_metadata(
-    *,
-    note: str | None,
-    summary: str | None,
-    tags: list[str] | None,
-    metadata: dict[str, Any] | None,
-) -> dict[str, Any]:
-    """Merge the four sugar params into a single ordered dict.
-
-    Preserves a stable key order (``note`` → ``summary`` → ``tags`` →
-    user-provided keys) so tree / markdown rendering is deterministic.
-    User-supplied ``metadata`` keys override the shortcuts on collision.
-    """
-    out: dict[str, Any] = {}
-    if note is not None:
-        out["note"] = note
-    if summary is not None:
-        out["summary"] = summary
-    if tags is not None:
-        out["tags"] = list(tags)
-    if metadata:
-        for k, v in metadata.items():
-            out[k] = v
-    return out

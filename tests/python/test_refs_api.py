@@ -110,14 +110,17 @@ class TestPut:
         with pytest.raises(TypeError):
             ctx.put(12345)
 
-    def test_put_metadata_all_params(self, tiny_png: Path):
+    def test_put_metadata_round_trips(self, tiny_png: Path):
         ctx = mm.Context()
         ref = ctx.put(
             tiny_png,
-            note="product hero",
-            summary="the money shot",
-            tags=["catalog", "hero"],
-            metadata={"scene": 3, "actor": "A"},
+            metadata={
+                "note": "product hero",
+                "summary": "the money shot",
+                "tags": ["catalog", "hero"],
+                "scene": 3,
+                "actor": "A",
+            },
         )
         it = next(i for i in ctx.items() if i["ref_id"] == ref)
         m = it["metadata"]
@@ -127,11 +130,12 @@ class TestPut:
         assert m["scene"] == 3
         assert m["actor"] == "A"
 
-    def test_put_metadata_user_overrides_shortcut(self, tiny_png: Path):
+    def test_put_metadata_accepts_arbitrary_keys(self, tiny_png: Path):
         ctx = mm.Context()
-        ref = ctx.put(tiny_png, note="x", metadata={"note": "y"})
+        ref = ctx.put(tiny_png, metadata={"b": 1, "a": 2, "c": 3})
         it = next(i for i in ctx.items() if i["ref_id"] == ref)
-        assert it["metadata"]["note"] == "y"
+        assert set(it["metadata"].keys()) == {"a", "b", "c"}
+        assert it["metadata"]["a"] == 2
 
     def test_put_no_metadata_empty_dict(self, tiny_png: Path):
         ctx = mm.Context()
@@ -213,7 +217,7 @@ class TestGet:
 class TestToMessages:
     def test_openai_single_user_turn(self, tiny_png: Path):
         ctx = mm.Context()
-        ctx.put(tiny_png, note="ref-a")
+        ctx.put(tiny_png, metadata={"note": "ref-a"})
         msgs = ctx.to_messages(format="openai")
         assert len(msgs) == 1
         assert msgs[0]["role"] == "user"
@@ -224,7 +228,7 @@ class TestToMessages:
 
     def test_metadata_emitted_as_text(self, tiny_png: Path):
         ctx = mm.Context()
-        ref = ctx.put(tiny_png, note="hero")
+        ref = ctx.put(tiny_png, metadata={"note": "hero"})
         msgs = ctx.to_messages(format="openai")
         texts = [p["text"] for p in msgs[0]["content"] if p.get("type") == "text"]
         assert any(f"[ref={ref}]" in t and "hero" in t for t in texts)
@@ -286,8 +290,8 @@ class TestPrintTree:
         import re
 
         ctx = mm.Context(session_id="tree-sess")
-        ctx.put(tiny_png, note="one")
-        ctx.put(Image.new("RGB", (8, 8)), summary="two")
+        ctx.put(tiny_png, metadata={"note": "one"})
+        ctx.put(Image.new("RGB", (8, 8)), metadata={"summary": "two"})
         ctx.print_tree()
         raw = capsys.readouterr().out
         # Strip ANSI control sequences that rich injects.

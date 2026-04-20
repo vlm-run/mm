@@ -84,9 +84,11 @@ def _build_ctx_with_meta(paths: list[Path], n: int) -> mm.Context:
     for i in range(n):
         ctx.put(
             paths[i % len(paths)],
-            note=f"note {i}",
-            summary=f"pre-extracted summary for item {i}",
-            tags=["a", "b", "c"],
+            metadata={
+                "note": f"note {i}",
+                "summary": f"pre-extracted summary for item {i}",
+                "tags": ["a", "b", "c"],
+            },
         )
     return ctx
 

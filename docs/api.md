@@ -21,15 +21,19 @@ from PIL import Image
 ctx = mm.Context(session_id=mm.uuid7())          # or omit; auto-mints a UUIDv7
 
 img:  mm.Ref = ctx.put(Path("photo.jpg"))
-img2: mm.Ref = ctx.put(Image.open("x.png"), note="product hero shot")
+img2: mm.Ref = ctx.put(Image.open("x.png"),
+                       metadata={"note": "product hero shot"})
 doc:  mm.Ref = ctx.put(Path("paper.pdf"),
-                       summary="Attention is all you need",
-                       tags=["nlp", "transformer"])
+                       metadata={"summary": "Attention is all you need",
+                                 "tags": ["nlp", "transformer"]})
 vid:  mm.Ref = ctx.put(Path("clip.mp4"),
                        metadata={"scene": 3, "actor": "A"})
 
-messages = ctx.to_messages(format="openai")      # chat.completions-ready
-messages = ctx.to_messages(format="gemini")      # generate_content-ready
+from openai.types.chat import ChatCompletionMessageParam
+from google.genai import types as genai_types
+
+messages_openai: list[ChatCompletionMessageParam] = ctx.to_messages(format="openai")
+messages_gemini: list[genai_types.ContentDict]    = ctx.to_messages(format="gemini")
 
 obj = ctx.get(img)                               # Path | PIL.Image | bytes | str
 row = mm.Context.get(f"{ctx.session_id}/{img}")  # cross-session DB lookup
@@ -83,7 +87,7 @@ Context(
 - **Directory-scan mode**: pass a `root` path to get the legacy
   Arrow-backed scan surface. Both modes share `session_id` + `refs`.
 
-### `ctx.put(obj, *, note=None, summary=None, tags=None, metadata=None) -> mm.Ref`
+### `ctx.put(obj, *, metadata=None) -> mm.Ref`
 
 Attach an item. Accepted types:
 
@@ -95,24 +99,29 @@ Attach an item. Accepted types:
 | `PIL.Image.Image`    | `ItemSource::InMemory`  | **the exact object**    |
 | `bytes`              | `ItemSource::InMemory`  | the same `bytes`        |
 
-Metadata (all optional):
+`metadata` is a single optional JSON-serialisable `dict` holding any
+extra context you want to ride along with the item. Common keys by
+convention:
 
-- `note` — short human-readable note (the most common case).
+- `note` — short human-readable note.
 - `summary` — longer summary / caption. Used as the "pre-extracted"
   content fallback in `to_md(mode="fast")`.
 - `tags` — free-form list of strings.
-- `metadata` — arbitrary JSON-serialisable dict merged last. User keys
-  override `note` / `summary` / `tags` shortcuts on collision.
+- …plus anything else your pipeline needs (`{"scene": 3, "actor": "A"}`).
+
+The dict is emitted as a leading text block per item in `to_messages`
+so VLMs see it inline, and is also surfaced in `__repr__`, `to_md`,
+and `print_tree`.
 
 Returns the generated ref id (`<prefix>_<6 hex>`), typed as `mm.Ref`.
 
 #### Example
 
 ```python
-img = ctx.put(Path("photo.jpg"), note="hero shot")
+img = ctx.put(Path("photo.jpg"), metadata={"note": "hero shot"})
 doc = ctx.put(Path("paper.pdf"),
-              summary="Attention is all you need",
-              tags=["nlp", "transformer"])
+              metadata={"summary": "Attention is all you need",
+                        "tags": ["nlp", "transformer"]})
 vid = ctx.put(Path("clip.mp4"), metadata={"scene": 3})
 ```
 
@@ -155,7 +164,17 @@ Use this when you have a ref from a persisted context and no live
 
 ### `ctx.to_messages(format="openai", *, encoders=None) -> list[dict]`
 
-Encode every item into a single user-turn message list.
+Encode every item into a single user-turn message list, ready to drop
+into the respective SDK call. The returned shape is a plain Python
+list of dicts, typed to match the target SDK:
+
+```python
+from openai.types.chat import ChatCompletionMessageParam
+from google.genai import types as genai_types
+
+messages_openai: list[ChatCompletionMessageParam] = ctx.to_messages(format="openai")
+messages_gemini: list[genai_types.ContentDict]    = ctx.to_messages(format="gemini")
+```
 
 - `format="openai"` → `[{"role": "user", "content": [{"type": ...}, …]}]`
   — drop directly into `client.chat.completions.create(messages=...)`.
@@ -165,7 +184,7 @@ Encode every item into a single user-turn message list.
 Per-kind encoder overrides:
 
 ```python
-ctx.to_messages(
+messages: list[ChatCompletionMessageParam] = ctx.to_messages(
     format="openai",
     encoders={"image": "tile", "video": "mosaic"},
 )
@@ -380,18 +399,21 @@ and land inside the ~7µs PyO3-boundary budget dominated by the
 ```python
 import mm
 from openai import OpenAI
+from openai.types.chat import ChatCompletionMessageParam
 from pathlib import Path
 
 ctx = mm.Context()
-ctx.put(Path("whiteboard.jpg"), note="meeting notes")
-ctx.put(Path("slides.pdf"), summary="Q3 plan")
+ctx.put(Path("whiteboard.jpg"), metadata={"note": "meeting notes"})
+ctx.put(Path("slides.pdf"), metadata={"summary": "Q3 plan"})
+
+ctx_messages: list[ChatCompletionMessageParam] = ctx.to_messages(format="openai")
 
 client = OpenAI()
 resp = client.chat.completions.create(
     model="gpt-4o",
     messages=[
         {"role": "system", "content": "Summarise the attached context."},
-        *ctx.to_messages(format="openai"),
+        *ctx_messages,
     ],
 )
 print(resp.choices[0].message.content)
@@ -402,12 +424,15 @@ print(resp.choices[0].message.content)
 ```python
 import mm
 import google.generativeai as genai
+from google.genai import types as genai_types
 from pathlib import Path
 
 ctx = mm.Context()
-ctx.put(Path("clip.mp4"), summary="lecture on attention")
+ctx.put(Path("clip.mp4"), metadata={"summary": "lecture on attention"})
+
+contents: list[genai_types.ContentDict] = ctx.to_messages(format="gemini")
 
 model = genai.GenerativeModel("gemini-2.0-pro")
-resp = model.generate_content(contents=ctx.to_messages(format="gemini"))
+resp = model.generate_content(contents=contents)
 print(resp.text)
 ```
