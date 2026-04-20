@@ -482,10 +482,10 @@ def _extract(path: Path, opts: _CatOpts) -> str:
             db.evict_l2(l2_id)
 
     # Dispatch to mode-specific execution.
-    if opts.mode == "fast":
-        result = _run_fast(path, kind, opts)
-    else:
+    if opts.mode == "accurate":
         result = _run_accurate(path, kind, opts)
+    else:
+        result = _run_fast(path, kind, opts)
 
     # Strip verbose decoration before caching (pipeline tree, footer, etc.)
     _pipeline_marker = "\n[dim]pipeline\n"

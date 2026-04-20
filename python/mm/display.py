@@ -430,6 +430,19 @@ def info_panel(stats: dict[str, Any], title: str = "mm"):
     )
 
 
+def _format_elapsed_value(elapsed_ms: float) -> str:
+    """Format elapsed time with adaptive ms/s units"""
+    if elapsed_ms >= 10_000:
+        return f"{elapsed_ms / 1000:,.0f}s"
+    if elapsed_ms >= 1000:
+        return f"{elapsed_ms / 1000:,.1f}s"
+    if elapsed_ms >= 100:
+        return f"{elapsed_ms:,.0f}ms"
+    if elapsed_ms >= 10:
+        return f"{elapsed_ms:.1f}ms"
+    return f"{elapsed_ms:.2f}ms"
+
+
 def display_elapsed(start_time: float, total_bytes: int = 0, cached: bool = False) -> None:
     """display elapsed time since start_time with throughput metrics.
 
@@ -443,8 +456,7 @@ def display_elapsed(start_time: float, total_bytes: int = 0, cached: bool = Fals
     assert start_time > 0
     elapsed_ms = (perf_counter() - start_time) * 1000
     elapsed_s = elapsed_ms / 1000.0
-
-    elapsed_value = f"{elapsed_ms:,.0f}ms"
+    elapsed_value = _format_elapsed_value(elapsed_ms)
 
     output_parts: list[str] = []
     if cached:
