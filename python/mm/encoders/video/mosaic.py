@@ -38,7 +38,7 @@ class VideoMosaic:
         num_frames: Total frames to sample before tiling (default 128).
     """
 
-    name: str = "mosaic"
+    name: str = "video-mosaic"
     media_types: tuple[str, ...] = ("video",)
 
     def encode(self, path: Path, **kwargs: Any) -> Iterable[Message]:
@@ -183,4 +183,31 @@ def _get_timestamps(
         return [i * step for i in range(num_frames)]
 
 
+class VideoMosaicWithTranscript:
+    """Build mosaic grids from video frames with Whisper transcript.
+
+    Yields a transcript Message first, then mosaic grids identical
+    to ``VideoMosaic``.  Falls back to mosaic-only output when Whisper
+    is unavailable.
+
+    Kwargs:
+        tile_cols, tile_rows, thumb_width, num_mosaics, num_frames:
+            Same as ``VideoMosaic``.
+        whisper_model: Whisper model size (default "medium").
+        language: Language code or "auto" (default "auto").
+        audio_speed: Playback speed multiplier (default 1.0).
+    """
+
+    name: str = "video-mosaic-w-transcript"
+    media_types: tuple[str, ...] = ("video",)
+
+    _visual = VideoMosaic()
+
+    def encode(self, path: Path, **kwargs: Any) -> Iterable[Message]:
+        from mm.encoders.video._transcript import encode_with_transcript
+
+        yield from encode_with_transcript(path, self._visual.encode, **kwargs)
+
+
 register(VideoMosaic())
+register(VideoMosaicWithTranscript())

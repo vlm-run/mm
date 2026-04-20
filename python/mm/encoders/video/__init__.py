@@ -141,7 +141,7 @@ class VideoChunk:
         frames_per_chunk: Number of frames to extract per chunk (default 16).
     """
 
-    name: str = "video-chunk"
+    name: str = "video-chunks"
     media_types: tuple[str, ...] = ("video",)
 
     def encode(self, path: Path, **kwargs: Any) -> Iterable[Message]:
@@ -236,3 +236,38 @@ def _uniform_timestamps_range(start: float, end: float, count: int) -> list[floa
 
 register(VideoFrameSample())
 register(VideoChunk())
+
+# ---------------------------------------------------------------------------
+# Backward-compatibility aliases for renamed encoders
+# ---------------------------------------------------------------------------
+from mm.encoders.video import (  # noqa: E402, F401
+    captions,
+    frames,
+    keyframes,
+    mosaic,
+    native,
+    shots,
+    summary,
+    transcript,
+)
+
+_ALIASES: dict[str, str] = {
+    "frame-sample": "video-frames",
+    "video-frames-transcript": "video-frames-w-transcript",
+    "video-chunk": "video-chunks",
+    "mosaic": "video-mosaic",
+    "shot-frames": "video-shots",
+    "shot-mosaic": "video-shot-mosaic",
+}
+
+
+def _register_aliases() -> None:
+    """Register old encoder names as aliases pointing to their replacements."""
+    from mm.encoders import _REGISTRY
+
+    for old_name, new_name in _ALIASES.items():
+        if new_name in _REGISTRY and old_name not in _REGISTRY:
+            _REGISTRY[old_name] = _REGISTRY[new_name]
+
+
+_register_aliases()

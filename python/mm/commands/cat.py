@@ -857,7 +857,13 @@ def _accurate_video(path: Path, spec: PipelineSpec, opts: _CatOpts) -> str:
     # set of strategies. Anything else (e.g. video-gemini, frame-sample)
     # must be routed through the generic encoder runner so we only
     # report stages that actually ran.
-    _VIDEO_NATIVE = {"frames-transcript", "video-frames-transcript", "mosaic", "video-mosaic"}
+    _VIDEO_NATIVE = {
+        "frames-transcript",
+        "video-frames-transcript",
+        "video-frames-w-transcript",
+        "mosaic",
+        "video-mosaic",
+    }
     if spec.encode.strategy and spec.encode.strategy not in _VIDEO_NATIVE:
         return _run_encoder(path, "video", spec, opts)
 
