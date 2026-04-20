@@ -609,7 +609,8 @@ class Context:
         new_ctx._db = self._db
         new_ctx._no_ignore = self._no_ignore
         new_ctx._session_id = self._session_id
-        new_ctx._refs_cache = self._refs_cache
+        new_ctx._refs_cache = None
+
         new_ctx._pyctx = None
         return new_ctx
 
