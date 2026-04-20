@@ -44,8 +44,10 @@ class LlmBackend:
         model: str | None = None,
     ):
         from mm import __version__
+        from mm._logfire import configure_logfire
         from mm.profile import get_profile
 
+        configure_logfire()
         profile = get_profile()
         resolved_base = (base_url or profile.base_url).rstrip("/")
         if not resolved_base.endswith("/v1"):
