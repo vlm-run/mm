@@ -12,3 +12,5 @@ crate-type = ["cdylib"]
 pyo3 = { workspace = true, features = ["abi3-py310"] }
 arrow = { workspace = true }
 mm-core = { path = "../mm-core" }
+compact_str = { workspace = true }
+serde_json = { workspace = true }

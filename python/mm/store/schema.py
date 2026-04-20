@@ -64,6 +64,10 @@ class FileCol(StrEnum):
     HAS_AUDIO = "has_audio"
     PHASH = "phash"
 
+    # Session / global addressing
+    SESSION_ID = "session_id"
+    REF_ID = "ref_id"
+
     # Tracking
     INDEXED_AT = "indexed_at"
     L1_INDEXED_AT = "l1_indexed_at"
@@ -187,14 +191,31 @@ CREATE TABLE IF NOT EXISTS files (
     audio_codec     TEXT,
     has_audio       INTEGER,
     phash           TEXT,
+    session_id      TEXT,
+    ref_id          TEXT,
     indexed_at      INTEGER NOT NULL,
     l1_indexed_at   INTEGER
 );
+"""
+
+FILES_INDEX_DDL = """\
 CREATE INDEX IF NOT EXISTS idx_files_kind ON files (kind);
 CREATE INDEX IF NOT EXISTS idx_files_ext ON files (ext);
 CREATE INDEX IF NOT EXISTS idx_files_content_hash ON files (content_hash);
 CREATE INDEX IF NOT EXISTS idx_files_l1_lookup ON files (content_hash, l1_indexed_at DESC);
+CREATE INDEX IF NOT EXISTS idx_files_session_ref ON files (session_id, ref_id);
+CREATE INDEX IF NOT EXISTS idx_files_session ON files (session_id);
 """
+
+# FILES_MIGRATIONS — idempotent ALTER TABLE statements applied at connection
+# time. Each entry is (column_name, ddl). The DDL is only executed when
+# column_name is missing from PRAGMA table_info(files). This keeps the
+# migration safe to re-run on existing user databases without an Alembic-style
+# migration framework.
+FILES_MIGRATIONS: tuple[tuple[str, str], ...] = (
+    ("session_id", "ALTER TABLE files ADD COLUMN session_id TEXT"),
+    ("ref_id", "ALTER TABLE files ADD COLUMN ref_id TEXT"),
+)
 
 L2_RESULTS_DDL = """\
 CREATE TABLE IF NOT EXISTS l2_results (
