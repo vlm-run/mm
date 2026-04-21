@@ -4,7 +4,7 @@ build-backend = "maturin"
 
 [project]
 name = "mm-ctx"
-version = "0.5.4"
+version = "0.6.0"
 description = "Fast, multimodal context (CLI) for agents"
 readme = "README.md"
 requires-python = ">=3.11"

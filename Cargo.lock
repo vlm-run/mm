@@ -1200,7 +1200,7 @@ dependencies = [
 
 [[package]]
 name = "mm-core"
-version = "0.5.4"
+version = "0.6.0"
 dependencies = [
  "arrow",
  "base64",
@@ -1230,7 +1230,7 @@ dependencies = [
 
 [[package]]
 name = "mm-python"
-version = "0.5.4"
+version = "0.6.0"
 dependencies = [
  "arrow",
  "compact_str",
