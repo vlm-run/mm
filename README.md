@@ -12,7 +12,6 @@ middle; padding-right: 5px;"><br>
   <a href="https://pypi.org/project/mm-ctx/"><img alt="PyPI Version" src="https://img.shields.io/pypi/v/mm-ctx.svg"></a>
   <a href="https://www.pepy.tech/projects/mm-ctx"><img alt="PyPI Downloads" src="https://img.shields.io/pypi/dm/mm-ctx"></a>
   <a href="https://pypi.org/project/mm-ctx/"><img src="https://img.shields.io/pypi/pyversions/mm-ctx.svg" alt="versions"></a>
-  <a href="https://github.com/vlm-run/mm/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/vlm-run/mm/actions/workflows/ci.yml/badge.svg"></a><br>
   <a href="https://pypi.org/project/mm-ctx/"><img src="https://img.shields.io/pypi/l/mm-ctx" alt="License"></a>
   <a href="https://discord.gg/AMApC2UzVY"><img src="https://img.shields.io/badge/discord-chat-purple?color=%235765F2&label=discord&logo=discord" alt="Discord"></a>
   <a href="https://twitter.com/vlmrun"><img src="https://img.shields.io/twitter/follow/vlmrun.svg?style=social&logo=twitter" alt="Twitter Follow"></a>
@@ -108,15 +107,35 @@ wordpress-pdf-invoice-plugin-sample.pdf  document  43627    .pdf
 ```
 
 ```bash
-$ mm sql "SELECT kind, name, ROUND(size/1024.0,1) as kb FROM files ORDER BY kind" \
-    --dir mm-samples/ --pre-index
+$ mm cat mm-samples/wordpress-pdf-invoice-plugin-sample.pdf -n 10
 ```
 ```
-kind      name                                     kb
-audio     mp3_44100Hz_320kbps_stereo.mp3           286.0
-document  wordpress-pdf-invoice-plugin-sample.pdf  42.6
-image     bench.jpg                                253.8
-video     Timelapse.mp4                            3040.1
+wordpress-pdf-invoice-plugin-sample.pdf — pages 1-1 of 1:
+
+--- Page 1 ---
+INVOICE
+Sliced Invoices
+Suite 5a-1204 123 Somewhere Street
+Your City AZ 12345
+admin@slicedinvoices.com
+Invoice Number: INV-3337
+Invoice Date: January 25, 2016
+Due Date: January 31, 2016
+Total Due: $93.50
+0.8s • 42.6 KB • 53.2 KB/s
+```
+
+```bash
+$ mm cat mm-samples/bench.jpg -m accurate
+```
+```
+<description>
+This outdoor daytime photograph captures a peaceful park scene on a sunny day. The primary focus is a modern dark gray metal slat bench  positioned in the foreground on a patch of green grass. The bench is set upon a small concrete pad, and its curved backrest and armrests  create a sleek, contemporary silhouette. Behind the bench, a paved walkway cuts through a well-maintained lawn.
+</description>
+
+Tags: park, bench, outdoors, summer, grass, trees, street, urban, leisure, sunlight
+
+Objects: metal bench, tree, car, white SUV, red car, concrete pad, walkway, grass, street, building
 ```
 
 ```bash
