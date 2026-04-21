@@ -847,15 +847,8 @@ def _accurate_video(path: Path, spec: PipelineSpec, opts: _CatOpts) -> str:
     if spec.generate is None:
         return _run_l1(path, "video", no_cache=opts.no_cache)
 
-    # The hard-coded mosaic+whisper fast path only implements a fixed
-    # set of strategies. Anything else (e.g. video-gemini, frame-sample)
-    # must be routed through the generic encoder runner so we only
-    # report stages that actually ran.
     _VIDEO_NATIVE = {
-        "frames-transcript",
-        "video-frames-transcript",
         "video-frames-w-transcript",
-        "mosaic",
         "video-mosaic",
     }
     if spec.encode.strategy and spec.encode.strategy not in _VIDEO_NATIVE:

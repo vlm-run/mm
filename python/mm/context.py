@@ -206,7 +206,7 @@ class Context:
             path: Relative path within the context root.
             strategy: Registered encoder name (e.g. ``"image-resize"``).
                 If ``None``, defaults to ``image-resize`` for images,
-                ``video-frame-sample`` for video, ``document-rasterize``
+                ``video-frames`` for video, ``document-rasterize``
                 for documents.
             **kwargs: Forwarded to ``encoder.encode()``.
 
@@ -225,7 +225,7 @@ class Context:
         if strategy is None:
             strategy = {
                 "image": "image-resize",
-                "video": "video-frame-sample",
+                "video": "video-frames",
                 "document": "document-rasterize",
             }.get(media_type, "image-resize")
 

@@ -9,6 +9,7 @@ from __future__ import annotations
 import base64
 import io
 
+import pytest
 from PIL import Image
 
 from mm.video import Frame
@@ -71,24 +72,21 @@ class TestEncoderRegistration:
             "video-summary-w-transcript",
             "video-captions",
             "video-transcript",
-            "frame-sample",
-            "shot-frames",
-            "shot-mosaic",
-            "video-frames-transcript",
         ]
         for name in expected:
             enc = get(name)
             assert enc is not None, f"Encoder {name!r} not registered"
             assert hasattr(enc, "encode"), f"Encoder {name!r} has no encode method"
 
-    def test_legacy_aliases_resolve(self):
+    def test_old_names_not_registered(self):
         from mm.encoders import get
 
-        aliases = {
-            "frame-sample": "video-frames",
-            "shot-frames": "video-shots",
-            "shot-mosaic": "video-shot-mosaic",
-        }
-        for old_name, _new_name in aliases.items():
-            enc = get(old_name)
-            assert enc is not None
+        for old_name in [
+            "frame-sample",
+            "shot-frames",
+            "shot-mosaic",
+            "video-frames-transcript",
+            "mosaic",
+        ]:
+            with pytest.raises(KeyError):
+                get(old_name)
