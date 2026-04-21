@@ -4,14 +4,13 @@ Selects a fixed budget of representative frames from a video using
 scene detection (when available) or uniform temporal spread.  Unlike
 ``video-shots`` which returns ALL shots, this targets a compact
 fixed-size output suitable for long videos.
+
+Uses PyAV for in-process frame decoding — no subprocess or temp files.
 """
 
 from __future__ import annotations
 
-import base64
 import logging
-import shutil
-import tempfile
 from pathlib import Path
 from typing import Any, Iterable
 
@@ -75,43 +74,33 @@ class VideoSummary:
         max_width: int = kwargs.get("max_width", 1024)
         provider: str = _resolve_provider()
 
-        from mm.ffmpeg import (
-            extract_frames_at_timestamps,
-            ffmpeg_available,
-            probe_duration,
-        )
+        from mm.video import VideoReader, _pyav_available
 
-        if not ffmpeg_available():
-            yield _to_message([{"type": "text", "text": f"[ffmpeg not available for {path.name}]"}])
+        if not _pyav_available():
+            yield _to_message([{"type": "text", "text": f"[PyAV not available for {path.name}]"}])
             return
 
-        duration: float = probe_duration(path)
-        if duration <= 0:
-            yield _to_message(
-                [{"type": "text", "text": f"[Cannot determine duration for {path.name}]"}]
-            )
-            return
+        with VideoReader(path) as reader:
+            duration = reader.duration
+            if duration <= 0:
+                yield _to_message(
+                    [{"type": "text", "text": f"[Cannot determine duration for {path.name}]"}]
+                )
+                return
 
-        timestamps = _select_summary_timestamps(path, duration, num_frames, use_scene_detection)
+            timestamps = _select_summary_timestamps(path, duration, num_frames, use_scene_detection)
 
-        logger.debug(
-            "video_summary [path=%s, duration=%.1fs, frames=%d, scene_detect=%s]",
-            path.name,
-            duration,
-            len(timestamps),
-            use_scene_detection,
-        )
-
-        out_dir = Path(tempfile.mkdtemp(prefix="mm_summary_"))
-        try:
-            frame_paths = extract_frames_at_timestamps(
-                path,
-                timestamps,
-                thumb_width=max_width,
-                out_dir=out_dir,
+            logger.debug(
+                "video_summary [path=%s, duration=%.1fs, frames=%d, scene_detect=%s]",
+                path.name,
+                duration,
+                len(timestamps),
+                use_scene_detection,
             )
 
-            if not frame_paths:
+            frames = reader.frames(timestamps, width=max_width).collect()
+
+            if not frames:
                 yield _to_message(
                     [{"type": "text", "text": f"[No frames extracted from {path.name}]"}]
                 )
@@ -123,20 +112,17 @@ class VideoSummary:
                     "type": "text",
                     "text": (
                         f"Video summary of {path.name} "
-                        f"({int(mins)}m{secs:.0f}s, {len(frame_paths)} frames):"
+                        f"({int(mins)}m{secs:.0f}s, {len(frames)} frames):"
                     ),
                 }
             ]
 
-            for idx, fp in enumerate(frame_paths):
-                ts = timestamps[idx] if idx < len(timestamps) else 0.0
-                b64 = base64.b64encode(fp.read_bytes()).decode()
-                parts.append({"type": "text", "text": f"[{ts:.1f}s]"})
-                parts.append(_image_part(b64, "image/jpeg", provider))
+            for frame in frames:
+                parts.append({"type": "text", "text": f"[{frame.timestamp:.1f}s]"})
+                b64, mime = frame.encode_jpeg()
+                parts.append(_image_part(b64, mime, provider))
 
             yield _to_message(parts)
-        finally:
-            shutil.rmtree(out_dir, ignore_errors=True)
 
 
 class VideoSummaryWithTranscript:

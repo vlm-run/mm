@@ -31,7 +31,7 @@ def transcript_messages(
     that visual-only output is still produced.
     """
     try:
-        from mm.ffmpeg import extract_audio
+        from mm.video import extract_audio
         from mm.whisper import transcribe, whisper_available
     except ImportError:
         return

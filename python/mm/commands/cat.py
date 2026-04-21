@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import os
 import sys
+import tempfile
 from pathlib import Path
 from typing import Annotated, Any, Optional
 
@@ -837,18 +838,11 @@ def _accurate_video(path: Path, spec: PipelineSpec, opts: _CatOpts) -> str:
     import shutil
     import time
 
-    from mm.ffmpeg import (
-        extract_audio,
-        extract_frames_at_timestamps,
-        extract_uniform_mosaics,
-        ffmpeg_available,
-        probe_duration,
-        tile_frames_to_mosaics,
-    )
+    from mm.video import VideoReader, _pyav_available, extract_audio, probe, tile_to_mosaic
     from mm.llm import LlmBackend, image_part
 
-    if not ffmpeg_available():
-        return f"[ffmpeg not found — cannot process {path.name}]"
+    if not _pyav_available():
+        return f"[PyAV not found — cannot process {path.name}]"
 
     if spec.generate is None:
         return _run_l1(path, "video", no_cache=opts.no_cache)
@@ -870,7 +864,8 @@ def _accurate_video(path: Path, spec: PipelineSpec, opts: _CatOpts) -> str:
     timing: dict[str, float] = {}
     t_total = time.monotonic()
 
-    duration = probe_duration(path)
+    info = probe(path)
+    duration = info.duration
     if duration <= 0:
         return f"[Could not determine duration for {path.name}]"
 
@@ -906,38 +901,40 @@ def _accurate_video(path: Path, spec: PipelineSpec, opts: _CatOpts) -> str:
                     timestamps = sample_uniform_timestamps(duration, num_frames)
             else:
                 timestamps = sample_uniform_timestamps(duration, num_frames)
-
-            frames = extract_frames_at_timestamps(
-                path,
-                timestamps,
-                thumb_width=thumb_width,
-                out_dir=opts.output_dir,
-            )
-            timing["frame_extraction_ms"] = (time.monotonic() - t0) * 1000
-
-            t_tile = time.monotonic()
-            mosaics = tile_frames_to_mosaics(
-                frames,
-                tile_cols=tile_cols,
-                tile_rows=tile_rows,
-                stem=path.stem,
-                out_dir=opts.output_dir,
-            )
-            timing["mosaic_assembly_ms"] = (time.monotonic() - t_tile) * 1000
         else:
-            result = extract_uniform_mosaics(
-                path,
-                out_dir=opts.output_dir,
-                tile_cols=tile_cols,
-                tile_rows=tile_rows,
-                thumb_width=thumb_width,
-                num_mosaics=num_mosaics,
-            )
-            mosaics = result.mosaic_paths
-            timing["frame_extraction_ms"] = result.elapsed_ms
+            step = duration / num_frames if num_frames > 0 else duration
+            timestamps = [i * step for i in range(num_frames)]
 
-        if not mosaics:
-            return mosaics, ""
+        with VideoReader(path) as reader:
+            decoded_frames = reader.frames(timestamps, width=thumb_width).collect()
+        timing["frame_extraction_ms"] = (time.monotonic() - t0) * 1000
+
+        if not decoded_frames:
+            return [], ""
+
+        t_tile = time.monotonic()
+        frames_per_mosaic = tile_cols * tile_rows
+        mosaic_paths: list[Path] = []
+        out_dir = opts.output_dir or Path(tempfile.mkdtemp(prefix="mm_mosaic_"))
+        out_dir.mkdir(parents=True, exist_ok=True)
+
+        for i in range(0, len(decoded_frames), frames_per_mosaic):
+            batch_images = [f.image for f in decoded_frames[i : i + frames_per_mosaic]]
+            mosaic_img = tile_to_mosaic(
+                batch_images,
+                cols=tile_cols,
+                rows=tile_rows,
+                thumb_width=thumb_width,
+            )
+            mosaic_path = out_dir / f"{path.stem}_mosaic_{i // frames_per_mosaic:02d}.jpg"
+            mosaic_img.save(mosaic_path, "JPEG", quality=85)
+            mosaic_paths.append(mosaic_path)
+            if len(mosaic_paths) >= num_mosaics:
+                break
+        timing["mosaic_assembly_ms"] = (time.monotonic() - t_tile) * 1000
+
+        if not mosaic_paths:
+            return mosaic_paths, ""
 
         dur_ctx = ""
         if duration > 0:
@@ -946,7 +943,7 @@ def _accurate_video(path: Path, spec: PipelineSpec, opts: _CatOpts) -> str:
 
         t_vlm = time.monotonic()
         llm = LlmBackend()
-        img_parts = [image_part(mp, mime="image/jpeg") for mp in mosaics]
+        img_parts = [image_part(mp, mime="image/jpeg") for mp in mosaic_paths]
         analysis = llm.generate(
             "video",
             "accurate",
@@ -957,7 +954,7 @@ def _accurate_video(path: Path, spec: PipelineSpec, opts: _CatOpts) -> str:
         timing["vlm_call_ms"] = (time.monotonic() - t_vlm) * 1000
         timing["vlm_prompt_tokens"] = llm.last_usage.prompt_tokens
         timing["vlm_completion_tokens"] = llm.last_usage.completion_tokens
-        return mosaics, analysis
+        return mosaic_paths, analysis
 
     def _extract_audio_transcript() -> str:
         if not ekw.get("transcribe"):
@@ -1043,11 +1040,8 @@ def _accurate_audio(path: Path, spec: PipelineSpec, opts: _CatOpts) -> str:
     """Audio extraction with transcription."""
     import time
 
-    from mm.ffmpeg import extract_audio, ffmpeg_available
+    from mm.video import extract_audio
     from mm.whisper import transcribe, whisper_available
-
-    if not ffmpeg_available():
-        return f"[ffmpeg not found — cannot process {path.name}]"
 
     if not whisper_available():
         return (
