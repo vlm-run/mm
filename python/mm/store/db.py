@@ -273,14 +273,20 @@ class MmDatabase:
         if self.get_file(uri) is not None:
             return
 
-        if not Path(uri).exists():
+        p = Path(uri)
+        if not p.exists():
             return
 
         from mm._mm import Scanner
 
-        scanner = Scanner(str(Path(uri).parent))
+        scanner = Scanner(str(p.parent))
         scanner.scan()
-        self.upsert_files(scanner.to_arrow(), Path(uri).parent)
+        tbl = scanner.to_arrow()
+        try:
+            idx = tbl["path"].to_pylist().index(p.name)
+        except ValueError:
+            return
+        self.upsert_files(tbl.slice(idx, 1), p.parent)
 
     def is_stale(self, uri: str, mtime_us: int, size: int) -> bool:
         row = self._connect.execute(

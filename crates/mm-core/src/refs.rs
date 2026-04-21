@@ -126,11 +126,22 @@ pub fn uuid7() -> String {
 
     format!(
         "{:02x}{:02x}{:02x}{:02x}-{:02x}{:02x}-{:02x}{:02x}-{:02x}{:02x}-{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}",
-        bytes[0], bytes[1], bytes[2], bytes[3],
-        bytes[4], bytes[5],
-        bytes[6], bytes[7],
-        bytes[8], bytes[9],
-        bytes[10], bytes[11], bytes[12], bytes[13], bytes[14], bytes[15],
+        bytes[0],
+        bytes[1],
+        bytes[2],
+        bytes[3],
+        bytes[4],
+        bytes[5],
+        bytes[6],
+        bytes[7],
+        bytes[8],
+        bytes[9],
+        bytes[10],
+        bytes[11],
+        bytes[12],
+        bytes[13],
+        bytes[14],
+        bytes[15],
     )
 }
 
@@ -303,12 +314,7 @@ impl Context {
     ///
     /// The caller is expected to have already classified `kind` and built
     /// the `source` (Python dispatches types to these three variants).
-    pub fn put(
-        &mut self,
-        kind: FileKind,
-        source: ItemSource,
-        metadata: Option<MetaMap>,
-    ) -> RefId {
+    pub fn put(&mut self, kind: FileKind, source: ItemSource, metadata: Option<MetaMap>) -> RefId {
         let mut ref_id = make_ref_id(kind);
         // Collision avoidance — essentially never hits at 2^24 entropy but
         // cheap to be defensive.
@@ -471,7 +477,13 @@ impl Context {
                 for (j, (k, v)) in meta.iter().enumerate() {
                     let last_meta = j + 1 == m;
                     let sub = if last_meta { "└─" } else { "├─" };
-                    out.push_str(&format!("{}      {} {}: {}\n", cont, sub, k, v.render_inline()));
+                    out.push_str(&format!(
+                        "{}      {} {}: {}\n",
+                        cont,
+                        sub,
+                        k,
+                        v.render_inline()
+                    ));
                 }
             }
         }
@@ -524,14 +536,19 @@ mod tests {
             let r = make_ref_id(FileKind::Image);
             assert!(r.starts_with("img_"));
             assert_eq!(r.len(), "img_".len() + REF_SUFFIX_HEX);
-            assert!(r[4..].chars().all(|c| c.is_ascii_hexdigit() && !c.is_ascii_uppercase()));
+            assert!(
+                r[4..]
+                    .chars()
+                    .all(|c| c.is_ascii_hexdigit() && !c.is_ascii_uppercase())
+            );
         }
     }
 
     #[test]
     fn make_ref_id_random() {
-        let ids: std::collections::HashSet<_> =
-            (0..500).map(|_| make_ref_id(FileKind::Video).to_string()).collect();
+        let ids: std::collections::HashSet<_> = (0..500)
+            .map(|_| make_ref_id(FileKind::Video).to_string())
+            .collect();
         assert!(ids.len() >= 498);
     }
 

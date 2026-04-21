@@ -136,13 +136,12 @@ pub fn filter_entries<'a>(
         .iter()
         .filter(|e| {
             kind.is_none_or(|k| {
-                    if k.contains(',') {
-                        k.split(',').any(|part| part.trim() == e.kind.to_string())
-                    } else {
-                        e.kind.to_string() == k
-                    }
-                })
-                && ext.is_none_or(|x| e.ext.as_str() == x)
+                if k.contains(',') {
+                    k.split(',').any(|part| part.trim() == e.kind.to_string())
+                } else {
+                    e.kind.to_string() == k
+                }
+            }) && ext.is_none_or(|x| e.ext.as_str() == x)
                 && min_size.is_none_or(|m| e.size >= m)
                 && max_size.is_none_or(|m| e.size <= m)
                 && matcher.as_ref().is_none_or(|m| m.is_match(e.name.as_str()))
@@ -312,9 +311,7 @@ mod tests {
             path: CompactString::from(name),
             name: CompactString::from(name),
             stem: CompactString::from(name.split('.').next().unwrap_or(name)),
-            ext: CompactString::from(
-                name.rfind('.').map(|i| &name[i..]).unwrap_or(""),
-            ),
+            ext: CompactString::from(name.rfind('.').map(|i| &name[i..]).unwrap_or("")),
             size: 100,
             modified_epoch_us: 0,
             created_epoch_us: 0,
@@ -335,7 +332,17 @@ mod tests {
             make_entry("main.py", FileKind::Code),
             make_entry("doc.pdf", FileKind::Document),
         ];
-        let result = filter_entries(&entries, Some("image"), None, None, None, None, None, None, false);
+        let result = filter_entries(
+            &entries,
+            Some("image"),
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            false,
+        );
         assert_eq!(result.len(), 1);
         assert_eq!(result[0].kind, FileKind::Image);
     }
@@ -348,7 +355,17 @@ mod tests {
             make_entry("doc.pdf", FileKind::Document),
             make_entry("config.toml", FileKind::Config),
         ];
-        let result = filter_entries(&entries, Some("image,document"), None, None, None, None, None, None, false);
+        let result = filter_entries(
+            &entries,
+            Some("image,document"),
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            false,
+        );
         assert_eq!(result.len(), 2);
         let kinds: Vec<FileKind> = result.iter().map(|e| e.kind).collect();
         assert!(kinds.contains(&FileKind::Image));
@@ -362,7 +379,17 @@ mod tests {
             make_entry("main.py", FileKind::Code),
             make_entry("doc.pdf", FileKind::Document),
         ];
-        let result = filter_entries(&entries, Some("image, document"), None, None, None, None, None, None, false);
+        let result = filter_entries(
+            &entries,
+            Some("image, document"),
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            false,
+        );
         assert_eq!(result.len(), 2);
     }
 
