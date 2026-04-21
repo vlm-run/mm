@@ -6,6 +6,9 @@ input natively.
 
 - ``video-clips``: Base64-encode video in uniform-duration chunks.
 - ``video-clips-w-transcript``: Same with Whisper transcript prepended.
+
+Uses PyAV for probing duration and ``mm.video.extract_segment`` for
+stream-copy segment extraction (fastest available method).
 """
 
 from __future__ import annotations
@@ -43,13 +46,14 @@ class VideoClips:
         duration: int = kwargs.get("duration", 0)
         max_size_mb: float | None = kwargs.get("max_size_mb", None)
 
-        from mm.ffmpeg import ffmpeg_available, probe_duration
+        from mm.video import _pyav_available, probe
 
-        if not ffmpeg_available():
-            yield _to_message([{"type": "text", "text": f"[ffmpeg not available for {path.name}]"}])
+        if not _pyav_available():
+            yield _to_message([{"type": "text", "text": f"[PyAV not available for {path.name}]"}])
             return
 
-        video_duration: float = probe_duration(path)
+        info = probe(path)
+        video_duration = info.duration
         if video_duration <= 0:
             yield _to_message(
                 [{"type": "text", "text": f"[Cannot determine duration for {path.name}]"}]
@@ -109,7 +113,7 @@ class VideoClips:
         mime: str,
         max_size_mb: float | None,
     ) -> Iterable[Message]:
-        from mm.ffmpeg import extract_segment
+        from mm.video import extract_segment
 
         start: float = 0.0
         chunk_idx: int = 0
@@ -125,7 +129,7 @@ class VideoClips:
             end: float = min(start + chunk_duration, video_duration)
             seg_path = Path(tempfile.mktemp(suffix=path.suffix))
             try:
-                extract_segment(str(path), str(seg_path), start, end)
+                extract_segment(path, seg_path, start, end)
                 seg_data = seg_path.read_bytes()
             finally:
                 seg_path.unlink(missing_ok=True)

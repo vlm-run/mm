@@ -1,4 +1,4 @@
-"""Scene-aware video strategies using PySceneDetect.
+"""Scene-aware video strategies using PySceneDetect + PyAV.
 
 Four encoders for processing videos shot-by-shot:
 
@@ -8,17 +8,15 @@ Four encoders for processing videos shot-by-shot:
 - ``video-shot-mosaic-w-transcript``: Same with Whisper transcript prepended.
 
 All strategies yield Messages sequentially (one shot at a time) to
-avoid Out Of Memory when combined with ``-m accurate`` multi-chunk generation.
-
-Refactored from the original ``shot.py`` with the ``video-*`` naming convention.
+avoid OOM. Uses PyAV for in-process frame decoding — no subprocess
+or temp files.
 """
 
 from __future__ import annotations
 
 import base64
+import io
 import logging
-import shutil
-import tempfile
 from pathlib import Path
 from typing import Any, Iterable
 
@@ -48,11 +46,11 @@ def _detect_shots(video_path: Path, threshold: float) -> list[tuple[float, float
     )
 
     if not result.scenes:
-        from mm.ffmpeg import probe_duration
+        from mm.video import probe
 
-        duration = probe_duration(video_path)
-        if duration > 0:
-            return [(0.0, duration)]
+        info = probe(video_path)
+        if info.duration > 0:
+            return [(0.0, info.duration)]
         return []
 
     return result.scenes
@@ -92,10 +90,10 @@ class VideoShots:
         max_width: int = kwargs.get("max_width", 1024)
         provider: str = _resolve_provider()
 
-        from mm.ffmpeg import extract_frames_at_timestamps, ffmpeg_available
+        from mm.video import VideoReader, _pyav_available
 
-        if not ffmpeg_available():
-            yield _to_message([{"type": "text", "text": f"[ffmpeg not available for {path.name}]"}])
+        if not _pyav_available():
+            yield _to_message([{"type": "text", "text": f"[PyAV not available for {path.name}]"}])
             return
 
         shots = _detect_shots(path, threshold)
@@ -110,18 +108,12 @@ class VideoShots:
             max_frames_per_shot,
         )
 
-        for shot_idx, (start, end) in enumerate(shots):
-            timestamps = _sample_timestamps_in_range(start, end, max_frames_per_shot)
+        with VideoReader(path) as reader:
+            for shot_idx, (start, end) in enumerate(shots):
+                timestamps = _sample_timestamps_in_range(start, end, max_frames_per_shot)
+                frames = reader.frames(timestamps, width=max_width).collect()
 
-            out_dir = Path(tempfile.mkdtemp(prefix=f"mm_sf_{shot_idx}_"))
-            try:
-                frame_paths = extract_frames_at_timestamps(
-                    path,
-                    timestamps,
-                    thumb_width=max_width,
-                    out_dir=out_dir,
-                )
-                if not frame_paths:
+                if not frames:
                     continue
 
                 parts: list[dict[str, Any]] = [
@@ -133,13 +125,11 @@ class VideoShots:
                         ),
                     }
                 ]
-                for fp in frame_paths:
-                    b64 = base64.b64encode(fp.read_bytes()).decode()
-                    parts.append(_image_part(b64, "image/jpeg", provider))
+                for frame in frames:
+                    b64, mime = frame.encode_jpeg()
+                    parts.append(_image_part(b64, mime, provider))
 
                 yield _to_message(parts)
-            finally:
-                shutil.rmtree(out_dir, ignore_errors=True)
 
 
 class VideoShotsWithTranscript:
@@ -161,8 +151,8 @@ class VideoShotsWithTranscript:
 class VideoShotMosaic:
     """Detect shots via PySceneDetect, build a mosaic per shot.
 
-    Reuses ``tile_frames_to_mosaics`` from ``mm.ffmpeg`` to tile
-    extracted frames into a single mosaic image per shot.
+    Tiles extracted frames into a single mosaic image per shot using
+    ``tile_to_mosaic`` from ``mm.video``.
 
     Kwargs:
         threshold: Scene detection threshold (default 27.0).
@@ -181,14 +171,10 @@ class VideoShotMosaic:
         thumb_width: int = kwargs.get("thumb_width", 160)
         provider: str = _resolve_provider()
 
-        from mm.ffmpeg import (
-            extract_frames_at_timestamps,
-            ffmpeg_available,
-            tile_frames_to_mosaics,
-        )
+        from mm.video import VideoReader, _pyav_available, tile_to_mosaic
 
-        if not ffmpeg_available():
-            yield _to_message([{"type": "text", "text": f"[ffmpeg not available for {path.name}]"}])
+        if not _pyav_available():
+            yield _to_message([{"type": "text", "text": f"[PyAV not available for {path.name}]"}])
             return
 
         shots = _detect_shots(path, threshold)
@@ -206,30 +192,24 @@ class VideoShotMosaic:
             tile_rows,
         )
 
-        for shot_idx, (start, end) in enumerate(shots):
-            timestamps = _sample_timestamps_in_range(start, end, frames_per_mosaic)
+        with VideoReader(path) as reader:
+            for shot_idx, (start, end) in enumerate(shots):
+                timestamps = _sample_timestamps_in_range(start, end, frames_per_mosaic)
+                frames = reader.frames(timestamps, width=thumb_width).collect()
 
-            frame_dir = Path(tempfile.mkdtemp(prefix=f"mm_sm_fr_{shot_idx}_"))
-            mosaic_dir = Path(tempfile.mkdtemp(prefix=f"mm_sm_mo_{shot_idx}_"))
-            try:
-                frame_paths = extract_frames_at_timestamps(
-                    path,
-                    timestamps,
+                if not frames:
+                    continue
+
+                mosaic_img = tile_to_mosaic(
+                    [f.image for f in frames],
+                    cols=tile_cols,
+                    rows=tile_rows,
                     thumb_width=thumb_width,
-                    out_dir=frame_dir,
                 )
-                if not frame_paths:
-                    continue
 
-                mosaic_paths = tile_frames_to_mosaics(
-                    frame_paths,
-                    tile_cols=tile_cols,
-                    tile_rows=tile_rows,
-                    out_dir=mosaic_dir,
-                    stem=f"{path.stem}_shot{shot_idx}",
-                )
-                if not mosaic_paths:
-                    continue
+                buf = io.BytesIO()
+                mosaic_img.save(buf, "JPEG", quality=85)
+                b64 = base64.b64encode(buf.getvalue()).decode()
 
                 parts: list[dict[str, Any]] = [
                     {
@@ -238,16 +218,10 @@ class VideoShotMosaic:
                             f"Shot {shot_idx + 1}/{len(shots)} of {path.name} "
                             f"({start:.1f}s \u2013 {end:.1f}s):"
                         ),
-                    }
+                    },
+                    _image_part(b64, "image/jpeg", provider),
                 ]
-                for mp in mosaic_paths:
-                    b64 = base64.b64encode(mp.read_bytes()).decode()
-                    parts.append(_image_part(b64, "image/jpeg", provider))
-
                 yield _to_message(parts)
-            finally:
-                shutil.rmtree(frame_dir, ignore_errors=True)
-                shutil.rmtree(mosaic_dir, ignore_errors=True)
 
 
 class VideoShotMosaicWithTranscript:

@@ -2,14 +2,12 @@
 
 Provides ``VideoFrameSample`` and ``VideoChunk`` strategies that extract
 visual content from video files and encode it as OpenAI-compatible
-Message dicts.  Both require ``ffmpeg`` on the system PATH.
+Message dicts.  Uses PyAV for in-process decoding.
 """
 
 from __future__ import annotations
 
-import base64
 import logging
-from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Any, Iterable
 
@@ -17,25 +15,6 @@ from mm.encoders import Message, _resolve_provider, register
 from mm.encoders.image import _image_part, _to_message
 
 logger = logging.getLogger(__name__)
-
-
-def _read_frames_b64(paths: list[Path]) -> list[str]:
-    """Read frame files and base64-encode them in parallel.
-
-    Frame files live on a temp dir; reads are short but dominated by
-    disk I/O. A thread pool parallelises both the read and the base64
-    encode (which releases the GIL for the C codec).
-    """
-    if not paths:
-        return []
-    if len(paths) == 1:
-        return [base64.b64encode(paths[0].read_bytes()).decode()]
-
-    def _one(p: Path) -> str:
-        return base64.b64encode(p.read_bytes()).decode()
-
-    with ThreadPoolExecutor(max_workers=min(len(paths), 8)) as ex:
-        return list(ex.map(_one, paths))
 
 
 class VideoFrameSample:
@@ -59,73 +38,49 @@ class VideoFrameSample:
         max_frames_per_message: int = kwargs.get("max_frames_per_message", 16)
         provider: str = _resolve_provider()
 
-        from mm.ffmpeg import (
-            extract_frames_at_timestamps,
-            ffmpeg_available,
-            probe_duration,
-        )
+        from mm.video import VideoReader, _pyav_available
 
-        if not ffmpeg_available():
-            yield _to_message([{"type": "text", "text": f"[ffmpeg not available for {path.name}]"}])
+        if not _pyav_available():
+            yield _to_message([{"type": "text", "text": f"[PyAV not available for {path.name}]"}])
             return
 
-        duration: float = probe_duration(path)
-        if duration <= 0:
-            yield _to_message(
-                [{"type": "text", "text": f"[Cannot determine duration for {path.name}]"}]
+        with VideoReader(path) as reader:
+            duration = reader.duration
+            if duration <= 0:
+                yield _to_message(
+                    [{"type": "text", "text": f"[Cannot determine duration for {path.name}]"}]
+                )
+                return
+
+            timestamps: list[float] = _uniform_timestamps(duration, fps)
+
+            max_total: int = max_frames_per_message * 8
+            if len(timestamps) > max_total:
+                step: int = len(timestamps) // max_total
+                timestamps = timestamps[::step]
+
+            logger.debug(
+                "frame_sample [path=%s, duration=%.1fs, fps=%.1f, frames=%d]",
+                path.name,
+                duration,
+                fps,
+                len(timestamps),
             )
-            return
 
-        timestamps: list[float] = _uniform_timestamps(duration, fps)
-
-        max_total: int = max_frames_per_message * 8
-        if len(timestamps) > max_total:
-            step: int = len(timestamps) // max_total
-            timestamps = timestamps[::step]
-
-        logger.debug(
-            "frame_sample [path=%s, duration=%.1fs, fps=%.1f, frames=%d]",
-            path.name,
-            duration,
-            fps,
-            len(timestamps),
-        )
-
-        frame_paths: list[Path] = extract_frames_at_timestamps(
-            path,
-            timestamps,
-            thumb_width=max_width,
-        )
-
-        if not frame_paths:
-            yield _to_message([{"type": "text", "text": f"[No frames extracted from {path.name}]"}])
-            return
-
-        try:
-            for i in range(0, len(frame_paths), max_frames_per_message):
-                batch: list[Path] = frame_paths[i : i + max_frames_per_message]
+            for batch in reader.frames(timestamps, width=max_width).batched(max_frames_per_message):
                 parts: list[dict[str, Any]] = []
-
-                t_start: float = timestamps[i] if i < len(timestamps) else 0.0
-                t_end_idx: int = min(i + max_frames_per_message, len(timestamps)) - 1
-                t_end: float = timestamps[t_end_idx] if timestamps else 0.0
+                t_start = batch[0].timestamp
+                t_end = batch[-1].timestamp
                 parts.append(
                     {
                         "type": "text",
                         "text": f"Video frames from {path.name} ({t_start:.1f}s - {t_end:.1f}s):",
                     }
                 )
-
-                for b64 in _read_frames_b64(batch):
-                    parts.append(_image_part(b64, "image/jpeg", provider))
-
+                for frame in batch:
+                    b64, mime = frame.encode_jpeg()
+                    parts.append(_image_part(b64, mime, provider))
                 yield _to_message(parts)
-        finally:
-            for fp in frame_paths:
-                try:
-                    fp.unlink(missing_ok=True)
-                except OSError:
-                    pass
 
 
 class VideoChunk:
@@ -151,68 +106,55 @@ class VideoChunk:
         frames_per_chunk: int = kwargs.get("frames_per_chunk", 16)
         provider: str = _resolve_provider()
 
-        from mm.ffmpeg import (
-            extract_frames_at_timestamps,
-            ffmpeg_available,
-            probe_duration,
-        )
+        from mm.video import VideoReader, _pyav_available
 
-        if not ffmpeg_available():
-            yield _to_message([{"type": "text", "text": f"[ffmpeg not available for {path.name}]"}])
+        if not _pyav_available():
+            yield _to_message([{"type": "text", "text": f"[PyAV not available for {path.name}]"}])
             return
 
-        duration: float = probe_duration(path)
-        if duration <= 0:
-            yield _to_message(
-                [{"type": "text", "text": f"[Cannot determine duration for {path.name}]"}]
-            )
-            return
+        with VideoReader(path) as reader:
+            duration = reader.duration
+            if duration <= 0:
+                yield _to_message(
+                    [{"type": "text", "text": f"[Cannot determine duration for {path.name}]"}]
+                )
+                return
 
-        step: int = max(chunk_duration - overlap, 1)
-        start: float = 0.0
-        chunk_idx: int = 0
+            step: int = max(chunk_duration - overlap, 1)
+            start: float = 0.0
+            chunk_idx: int = 0
 
-        logger.debug(
-            "video_chunk [path=%s, duration=%.1fs, chunk=%ds, overlap=%ds]",
-            path.name,
-            duration,
-            chunk_duration,
-            overlap,
-        )
-
-        while start < duration:
-            end: float = min(start + chunk_duration, duration)
-
-            chunk_timestamps: list[float] = _uniform_timestamps_range(
-                start,
-                end,
-                frames_per_chunk,
+            logger.debug(
+                "video_chunk [path=%s, duration=%.1fs, chunk=%ds, overlap=%ds]",
+                path.name,
+                duration,
+                chunk_duration,
+                overlap,
             )
 
-            frame_paths: list[Path] = extract_frames_at_timestamps(
-                path,
-                chunk_timestamps,
-                thumb_width=max_width,
-            )
+            while start < duration:
+                end: float = min(start + chunk_duration, duration)
+                chunk_timestamps: list[float] = _uniform_timestamps_range(
+                    start,
+                    end,
+                    frames_per_chunk,
+                )
+                frames = reader.frames(chunk_timestamps, width=max_width).collect()
 
-            if frame_paths:
-                parts: list[dict[str, Any]] = [
-                    {
-                        "type": "text",
-                        "text": f"Video chunk {chunk_idx} ({start:.0f}s - {end:.0f}s) of {path.name}:",
-                    }
-                ]
-                for b64 in _read_frames_b64(frame_paths):
-                    parts.append(_image_part(b64, "image/jpeg", provider))
-                for fp in frame_paths:
-                    try:
-                        fp.unlink(missing_ok=True)
-                    except OSError:
-                        pass
-                yield _to_message(parts)
+                if frames:
+                    parts: list[dict[str, Any]] = [
+                        {
+                            "type": "text",
+                            "text": f"Video chunk {chunk_idx} ({start:.0f}s - {end:.0f}s) of {path.name}:",
+                        }
+                    ]
+                    for frame in frames:
+                        b64, mime = frame.encode_jpeg()
+                        parts.append(_image_part(b64, mime, provider))
+                    yield _to_message(parts)
 
-            start += step
-            chunk_idx += 1
+                start += step
+                chunk_idx += 1
 
 
 def _uniform_timestamps(duration: float, fps: float) -> list[float]:
@@ -238,7 +180,7 @@ register(VideoFrameSample())
 register(VideoChunk())
 
 # ---------------------------------------------------------------------------
-# Backward-compatibility aliases for renamed encoders
+# Import all encoder submodules to register them
 # ---------------------------------------------------------------------------
 from mm.encoders.video import (  # noqa: E402, F401
     captions,

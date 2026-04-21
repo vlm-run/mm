@@ -1,13 +1,15 @@
 """Embedded subtitle/caption extraction encoder.
 
-Extracts subtitle tracks (SRT/VTT/SSA) from video files via ffprobe
-and ffmpeg.  Falls back to Whisper transcription when no subtitle
-streams are found.
+Extracts subtitle tracks (SRT/VTT/SSA) from video files via PyAV
+stream inspection.  Falls back to Whisper transcription when no
+subtitle streams are found.
+
+Subtitle text extraction still uses ffmpeg CLI (stream copy is
+faster than re-encoding through PyAV for subtitle streams).
 """
 
 from __future__ import annotations
 
-import json
 import logging
 import re
 import subprocess
@@ -21,38 +23,12 @@ from mm.encoders.image import _to_message
 logger = logging.getLogger(__name__)
 
 
-def _probe_subtitle_streams(path: Path) -> list[dict[str, Any]]:
-    """Return metadata for all subtitle streams in a video file."""
-    try:
-        result = subprocess.run(
-            [
-                "ffprobe",
-                "-v",
-                "quiet",
-                "-select_streams",
-                "s",
-                "-show_entries",
-                "stream=index,codec_name,codec_type",
-                "-show_entries",
-                "stream_tags=language,title",
-                "-of",
-                "json",
-                str(path),
-            ],
-            capture_output=True,
-            text=True,
-            timeout=30,
-        )
-        if result.returncode != 0:
-            return []
-        data = json.loads(result.stdout)
-        return data.get("streams", [])
-    except (subprocess.TimeoutExpired, json.JSONDecodeError, FileNotFoundError):
-        return []
-
-
 def _extract_subtitles(path: Path, stream_index: int = 0) -> str | None:
-    """Extract a subtitle stream as SRT text."""
+    """Extract a subtitle stream as SRT text via ffmpeg CLI.
+
+    Kept as subprocess because ffmpeg stream-copy is the most reliable
+    method for subtitle format conversion.
+    """
     with tempfile.NamedTemporaryFile(suffix=".srt", delete=False) as tmp:
         out_path = Path(tmp.name)
 
@@ -103,9 +79,10 @@ def _parse_srt(srt_text: str) -> list[tuple[str, str]]:
 class VideoCaptions:
     """Extract embedded subtitles from video files.
 
-    Probes the video for subtitle streams and extracts the first (or
-    specified) stream as timestamped text.  Falls back to Whisper
-    transcription when no subtitles are found.
+    Probes the video for subtitle streams via PyAV (no ffprobe
+    subprocess) and extracts the first (or specified) stream as
+    timestamped text.  Falls back to Whisper transcription when
+    no subtitles are found.
 
     Kwargs:
         subtitle_stream: Which subtitle stream index to use (default 0).
@@ -122,7 +99,9 @@ class VideoCaptions:
         subtitle_stream: int = kwargs.get("subtitle_stream", 0)
         fallback_to_whisper: bool = kwargs.get("fallback_to_whisper", True)
 
-        streams = _probe_subtitle_streams(path)
+        from mm.video import probe_subtitle_streams
+
+        streams = probe_subtitle_streams(path)
 
         if streams:
             srt_text = _extract_subtitles(path, stream_index=subtitle_stream)

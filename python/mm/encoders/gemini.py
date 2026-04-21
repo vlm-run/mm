@@ -83,20 +83,21 @@ class GeminiVideoChunked:
         max_seconds: int = kwargs.get("max_seconds", 120)
         overlap: int = kwargs.get("overlap", 10)
 
-        from mm.ffmpeg import extract_segment, ffmpeg_available, probe_duration
+        from mm.video import _pyav_available, extract_segment, probe
 
-        if not ffmpeg_available():
+        if not _pyav_available():
             yield _to_gemini_message(
                 [
                     {
                         "type": "text",
-                        "text": f"[ffmpeg not available for {path.name}]",
+                        "text": f"[PyAV not available for {path.name}]",
                     }
                 ]
             )
             return
 
-        duration: float = probe_duration(path)
+        info = probe(path)
+        duration: float = info.duration
         if duration <= max_seconds:
             data: bytes = path.read_bytes()
             mime: str = guess_mime(path.name)
@@ -121,7 +122,7 @@ class GeminiVideoChunked:
             with tempfile.NamedTemporaryFile(suffix=path.suffix, delete=False) as tmp:
                 seg_path = Path(tmp.name)
             try:
-                extract_segment(str(path), str(seg_path), start, end)
+                extract_segment(path, seg_path, start, end)
                 data = seg_path.read_bytes()
             finally:
                 seg_path.unlink(missing_ok=True)
