@@ -1,4 +1,4 @@
-# Install mm — Fast, multimodal file intelligence for agents
+# Install mm — Fast, multimodal context for agents
 #
 # Usage:
 #   irm https://vlm-run.github.io/mm/install/install.ps1 | iex
@@ -95,7 +95,7 @@ Write-Host "  ██║╚██╔╝██║██║╚██╔╝██║
 Write-Host "  ██║ ╚═╝ ██║██║ ╚═╝ ██║" -ForegroundColor Green
 Write-Host "  ╚═╝     ╚═╝╚═╝     ╚═╝" -ForegroundColor Green
 Write-Host ""
-Write-Host "  Fast, multimodal file intelligence for agents"
+Write-Host "  Fast, multimodal context for agents"
 Write-Host ""
 
 Get-Platform

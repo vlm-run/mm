@@ -1,5 +1,5 @@
 #!/bin/sh
-# Install mm — Fast, multimodal file intelligence for agents
+# Install mm — Fast, multimodal context for agents
 #
 # Usage:
 #   curl -LsSf https://vlm-run.github.io/mm/install/install.sh | sh
@@ -126,7 +126,7 @@ main() {
     printf "  ██║ ╚═╝ ██║██║ ╚═╝ ██║\n"
     printf "  ╚═╝     ╚═╝╚═╝     ╚═╝\n"
     printf "${RESET}\n"
-    printf "  Fast, multimodal file intelligence for agents\n"
+    printf "  Fast, multimodal context for agents\n"
     printf "\n"
 
     detect_platform

@@ -1,4 +1,4 @@
-"""mm -- Fast, multimodal file intelligence for agents."""
+"""mm -- Fast, multimodal context for agents."""
 
 from importlib.metadata import version
 
