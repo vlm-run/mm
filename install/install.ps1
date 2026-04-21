@@ -1,4 +1,4 @@
-# Install mm — high-performance multimodal context management CLI
+# Install mm — Fast, multimodal context for agents
 #
 # Usage:
 #   irm https://vlm-run.github.io/mm/install/install.ps1 | iex
@@ -88,9 +88,14 @@ function Test-Installation {
 # ── Main ─────────────────────────────────────────────────────────
 
 Write-Host ""
-Write-Host "  mm installer" -NoNewline
+Write-Host "  ███╗   ███╗███╗   ███╗" -ForegroundColor Green
+Write-Host "  ████╗ ████║████╗ ████║" -ForegroundColor Green
+Write-Host "  ██╔████╔██║██╔████╔██║" -ForegroundColor Green
+Write-Host "  ██║╚██╔╝██║██║╚██╔╝██║" -ForegroundColor Green
+Write-Host "  ██║ ╚═╝ ██║██║ ╚═╝ ██║" -ForegroundColor Green
+Write-Host "  ╚═╝     ╚═╝╚═╝     ╚═╝" -ForegroundColor Green
 Write-Host ""
-Write-Host "  high-performance multimodal context management"
+Write-Host "  Fast, multimodal context for agents"
 Write-Host ""
 
 Get-Platform
@@ -100,6 +105,6 @@ Test-Installation
 
 Write-Host ""
 Write-Info "Get started:"
-Write-Info "  mm --help"
-Write-Info "  mm find . --tree"
+Write-Info "mm --help"
+Write-Info "mm find . --tree"
 Write-Host ""

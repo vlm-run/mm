@@ -1,5 +1,5 @@
 #!/bin/sh
-# Install mm — high-performance multimodal context management CLI
+# Install mm — Fast, multimodal context for agents
 #
 # Usage:
 #   curl -LsSf https://vlm-run.github.io/mm/install/install.sh | sh
@@ -118,8 +118,15 @@ verify_install() {
 
 main() {
     printf "\n"
-    printf "${BOLD}  mm installer${RESET}\n"
-    printf "  high-performance multimodal context management\n"
+    printf "${BOLD}${GREEN}"
+    printf "  ███╗   ███╗███╗   ███╗\n"
+    printf "  ████╗ ████║████╗ ████║\n"
+    printf "  ██╔████╔██║██╔████╔██║\n"
+    printf "  ██║╚██╔╝██║██║╚██╔╝██║\n"
+    printf "  ██║ ╚═╝ ██║██║ ╚═╝ ██║\n"
+    printf "  ╚═╝     ╚═╝╚═╝     ╚═╝\n"
+    printf "${RESET}\n"
+    printf "  Fast, multimodal context for agents\n"
     printf "\n"
 
     detect_platform
@@ -129,8 +136,8 @@ main() {
 
     printf "\n"
     info "Get started:"
-    info "  mm --help"
-    info "  mm find . --tree"
+    info "mm --help"
+    info "mm find . --tree"
     printf "\n"
 }
 
