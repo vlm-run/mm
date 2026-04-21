@@ -6,7 +6,7 @@ middle; padding-right: 5px;"><br>
   <h1>mm</h1>
 </div>
 <div align="center">
-  <h3>Fast, multi-modal context (CLI) for agents</h3>
+  <h3>Fast, multi-modal context (CLI + Python) for agents</h3>
 </div>
 <div align="center">
   <a href="https://github.com/vlm-run/mm/blob/main/LICENSE"><img src="https://img.shields.io/github/license/vlm-run/mm.svg" alt="License"></a>
@@ -16,9 +16,9 @@ middle; padding-right: 5px;"><br>
 
 ---
 
-Familiar UNIX CLI tools like `find`, `grep`, `cat` — with multi-modal powers.
+Multi-modal context for agents — a CLI and a Python API for handing images, video, audio, and PDFs to any VLM.
 
-`mm` lets agents understand file types that LLMs can't natively read: images, video, audio, PDFs, and other binary formats. Rust core for speed, Python for dev-ex, UNIX philosophy for composability.
+UNIX tools (`find`, `grep`, `cat`) extended to binary formats, plus `mm.Context` — put files in, get OpenAI/Gemini messages out. Rust core for speed, Python for DX, UNIX philosophy for composability.
 
 ## Installation
 
@@ -145,6 +145,96 @@ mm cat Timelapse.mp4 -m accurate                                # keyframe mosai
 mm cat mp3_44100Hz_320kbps_stereo.mp3 -m accurate               # Whisper transcript → LLM summary
 mm cat wordpress-pdf-invoice-plugin-sample.pdf -m accurate      # LLM-structured invoice
 ```
+
+## Python API
+
+`mm` is also a library. `mm.Context` is the one class you need to build a multimodal prompt incrementally, then hand the whole thing to a VLM. Backed by a Rust core: O(1) insert/lookup, sub-millisecond render at 10K items.
+
+The public namespace is intentionally tiny:
+
+```python
+import mm
+mm.Context              # the one class you use
+mm.Ref                  # Annotated[str, "mm.Ref"] typed alias for ref ids
+mm.RefNotFoundError     # KeyError subclass raised by ctx.get on miss
+mm.uuid7()              # UUIDv7 helper (time-ordered default session_id)
+```
+
+### Build a prompt
+
+```python
+import mm
+from pathlib import Path
+from PIL import Image
+
+ctx = mm.Context(session_id=mm.uuid7())      # or omit; auto-mints a UUIDv7
+
+img:  mm.Ref = ctx.put(Path("photo.jpg"))
+img2: mm.Ref = ctx.put(Image.open("x.png"),
+                       metadata={"note": "product hero shot"})
+doc:  mm.Ref = ctx.put(Path("paper.pdf"),
+                       metadata={"summary": "Attention is all you need",
+                                 "tags": ["nlp", "transformer"]})
+vid:  mm.Ref = ctx.put(Path("clip.mp4"),
+                       metadata={"scene": 3, "actor": "A"})
+```
+
+`ctx.put(obj, *, metadata=...)` accepts a `pathlib.Path`, a `str` (file path or `http(s)://` URL), `bytes`, or a `PIL.Image.Image`. `metadata` is a single free-form JSON-serialisable `dict` — `note` / `summary` / `tags` are conventional keys used by rendering surfaces; anything else flows through to the VLM as a leading text block per item. Every `put` returns a short kind-prefixed ref id like `img_a1b2c3`, typed as `mm.Ref`.
+
+### Emit VLM-ready messages (OpenAI / Gemini)
+
+```python
+from openai.types.chat import ChatCompletionMessageParam
+from google.genai import types as genai_types
+
+messages_openai: list[ChatCompletionMessageParam] = ctx.to_messages(format="openai")
+messages_gemini: list[genai_types.ContentDict]    = ctx.to_messages(format="gemini")
+```
+
+Drop `messages_openai` directly into `client.chat.completions.create(messages=...)`, or `messages_gemini` into `model.generate_content(contents=...)`. Per-kind encoder overrides:
+
+```python
+messages: list[ChatCompletionMessageParam] = ctx.to_messages(
+    format="openai",
+    encoders={"image": "tile", "video": "mosaic"},
+)
+```
+
+Unspecified kinds fall back to sensible defaults (`image-resize`, `video-frame-sample`, `document-rasterize`).
+
+### Round-trip and resolve
+
+```python
+obj: Path | Image.Image | bytes | str = ctx.get(img)   # instance: returns the stored object
+row: dict | None = mm.Context.get(f"{ctx.session_id}/{img}")  # classmethod: cross-session DB lookup
+```
+
+Instance `ctx.get(ref)` returns the exact Python object you `put` — identity is preserved for in-memory items (no copy, no rehydrate). Classmethod `mm.Context.get("<session>/<ref>")` resolves against the global `~/.local/share/mm/mm.db` when you only have a ref string and no live `Context`.
+
+Missed a ref? `ctx.get("img_a1b2cZ")` raises `mm.RefNotFoundError` (a `KeyError` subclass) with a Levenshtein-based "did you mean" and the full context table inline — agent-friendly by default.
+
+### Render
+
+```python
+ctx.print_tree()                  # insertion-order tree with metadata
+print(ctx.to_md(mode="fast"))     # markdown: ref | kind | source | content
+print(repr(ctx))                  # markdown summary: ref | kind | source
+```
+
+```
+Context(session=019da4…, items=4)
+├── [1] img_a1b2c3  image     /abs/path/photo.jpg
+├── [2] img_9f0e12  image     PIL.Image(RGB, 1024×768)
+│        └─ note: "product hero shot"
+├── [3] doc_d4e5f6  document  /abs/path/paper.pdf
+│        ├─ summary: "Attention is all you need"
+│        └─ tags: [nlp, transformer]
+└── [4] vid_7890ab  video     /abs/path/clip.mp4
+         ├─ scene: 3
+         └─ actor: "A"
+```
+
+`Context("~/data")` continues to support the directory-scan surface (`to_polars`, `to_pandas`, `to_arrow`, `sql`, `show`, `info`). See [`docs/api.md`](docs/api.md) for the full spec — `print_tree` layouts, cross-session resolution, and the deferred `save()` API.
 
 ## Integrations
 
