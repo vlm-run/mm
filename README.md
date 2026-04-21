@@ -17,6 +17,11 @@ middle; padding-right: 5px;"><br>
   <a href="https://twitter.com/vlmrun"><img src="https://img.shields.io/twitter/follow/vlmrun.svg?style=social&logo=twitter" alt="Twitter Follow"></a>
 </div>
 
+<br />
+<p align="center">
+  <img src="docs/assets/mm-terminal-window.png" alt="mm terminal demo" width="880">
+</p>
+
 ---
 
 Familiar UNIX CLI tools like `find`, `grep`, `cat` — with multimodal powers.
