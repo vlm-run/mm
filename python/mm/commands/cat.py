@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import os
 import sys
+import time
 from pathlib import Path
 from typing import Annotated, Any, Optional
 
@@ -540,8 +541,6 @@ def _run_fast(path: Path, kind: str, opts: _CatOpts) -> str:
     content = _run_l1(path, kind, no_cache=opts.no_cache)
 
     if spec.generate is not None:
-        import time
-
         from mm.llm import LlmBackend
 
         t0 = time.monotonic()
@@ -614,21 +613,18 @@ def _accurate_dispatch(path: Path, kind: str, spec: PipelineSpec, opts: _CatOpts
     )
 
 
-def _fmt_ms(ms: float) -> str:
-    """Format milliseconds with comma separators: 238ms, 1,000ms, 34,212ms."""
-    return f"{ms:,.0f}ms"
-
-
 def _format_generate_verbose(
     profile_name: str, elapsed_ms: float, prompt_tokens: int, completion_tokens: int
 ) -> str:
     """Format verbose output for the generate step."""
+    from mm.display import format_time
+
     token_info = (
         f"{prompt_tokens}→{completion_tokens}"
         if (prompt_tokens > 0 or completion_tokens > 0)
         else "no tokens"
     )
-    generate_text = f"generate: {profile_name} • {_fmt_ms(elapsed_ms)} • {token_info} tokens"
+    generate_text = f"generate: {profile_name} • {format_time(elapsed_ms)} • {token_info} tokens"
     return f"[dim]{generate_text}[/dim]"
 
 
@@ -658,12 +654,10 @@ def _format_footer(
     if not verbose:
         return ""
 
-    from mm.display import format_size
+    from mm.display import format_size, format_time
 
     size_str = format_size(path.stat().st_size)
-
-    parts = [_fmt_ms(elapsed_ms), size_str, mode]
-
+    parts = [format_time(elapsed_ms), size_str, mode]
     if mode == "accurate":
         from mm.profile import get_active_profile_name
 
@@ -680,6 +674,8 @@ def _format_footer(
 
 def _format_encode_verbose(strategy: str | None, messages: list[dict], elapsed_ms: float) -> str:
     """Format verbose output for the encode step."""
+    from mm.display import format_time
+
     if not strategy:
         strategy = "unknown"
 
@@ -709,7 +705,7 @@ def _format_encode_verbose(strategy: str | None, messages: list[dict], elapsed_m
 
     part_summary = ", ".join(part_details)
     encode_text = (
-        f"Encode: {strategy} • {_fmt_ms(elapsed_ms)} → {total_parts} parts ({part_summary})"
+        f"Encode: {strategy} • {format_time(elapsed_ms)} → {total_parts} parts ({part_summary})"
     )
 
     return f"[dim]{encode_text}[/dim]"
@@ -717,8 +713,6 @@ def _format_encode_verbose(strategy: str | None, messages: list[dict], elapsed_m
 
 def _run_encoder(path: Path, kind: str, spec: PipelineSpec, opts: _CatOpts) -> str:
     """Run a named encoder strategy and output JSON messages or pipe to LLM."""
-    import time
-
     from mm.encoders import get as get_encoder
 
     assert spec.encode.strategy is not None
@@ -795,8 +789,6 @@ def _run_encoder(path: Path, kind: str, spec: PipelineSpec, opts: _CatOpts) -> s
 
 def _accurate_image(path: Path, spec: PipelineSpec, opts: _CatOpts) -> str:
     """Image extraction with mode-specific LLM prompts."""
-    import time
-
     if spec.encode.strategy:
         return _run_encoder(path, "image", spec, opts)
 
@@ -836,7 +828,6 @@ def _accurate_image(path: Path, spec: PipelineSpec, opts: _CatOpts) -> str:
 def _accurate_video(path: Path, spec: PipelineSpec, opts: _CatOpts) -> str:
     """Video extraction with mode-aware mosaic + whisper + LLM pipeline."""
     import shutil
-    import time
 
     from mm.ffmpeg import (
         extract_audio,
@@ -1036,8 +1027,6 @@ def _accurate_video(path: Path, spec: PipelineSpec, opts: _CatOpts) -> str:
 
 def _accurate_audio(path: Path, spec: PipelineSpec, opts: _CatOpts) -> str:
     """Audio extraction with transcription."""
-    import time
-
     from mm.ffmpeg import extract_audio, ffmpeg_available
     from mm.whisper import transcribe, whisper_available
 
