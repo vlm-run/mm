@@ -112,13 +112,16 @@ def index_missing(missing: list[str]) -> int:
     return indexed
 
 
+SEMANTIC_MAX_DISTANCE = 1.0
+
+
 def search(
     query: str,
     *,
     uri: str | None = None,
     uri_prefix: str | None = None,
     limit=5,
-    max_distance=1.0,
+    max_distance=SEMANTIC_MAX_DISTANCE,
 ) -> list[dict[str, Any]]:
     """Embed query string and run KNN search, scoped by URI or prefix."""
     from mm.store.db import MmDatabase
@@ -145,6 +148,16 @@ def search(
         for r in raw
         if r.get("distance", float("inf")) <= max_distance
     ]
+
+    if raw and not results:
+        from mm.display import console
+
+        closest = min(r.get("distance", float("inf")) for r in raw)
+        console.print(
+            f"[dim]Semantic search: {len(raw)} candidate(s) found but all exceeded "
+            f"the distance cutoff ({max_distance}). Closest was {closest:.3f}.[/dim]"
+        )
+
     results = sorted(results, key=lambda r: r["distance"])
     return results[:limit]
 

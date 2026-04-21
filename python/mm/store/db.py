@@ -71,7 +71,12 @@ class MmDatabase:
     def __init__(self, db_path: Path | None = None):
         self._db_path = db_path or self.DB_PATH
         self._conn: sqlite3.Connection | None = None
-        self._vec_available: bool = False
+        self._vec_loaded: bool = False
+
+    @property
+    def _vec_available(self) -> bool:
+        _ = self._connect
+        return self._vec_loaded
 
     @property
     def _connect(self) -> sqlite3.Connection:
@@ -79,14 +84,14 @@ class MmDatabase:
             self._db_path.parent.mkdir(parents=True, exist_ok=True)
             self._conn = sqlite3.connect(str(self._db_path))
             self._conn.row_factory = sqlite3.Row
-            self._vec_available = False
+            self._vec_loaded = False
             try:
                 import sqlite_vec
 
                 self._conn.enable_load_extension(True)
                 sqlite_vec.load(self._conn)
                 self._conn.enable_load_extension(False)
-                self._vec_available = True
+                self._vec_loaded = True
             except (AttributeError, ImportError, OSError):
                 pass
             self._conn.execute("PRAGMA journal_mode=WAL")
