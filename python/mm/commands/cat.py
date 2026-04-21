@@ -1040,8 +1040,13 @@ def _accurate_audio(path: Path, spec: PipelineSpec, opts: _CatOpts) -> str:
     """Audio extraction with transcription."""
     import time
 
-    from mm.video import extract_audio
+    from mm.video import extract_audio, ffmpeg_available
     from mm.whisper import transcribe, whisper_available
+
+    if not ffmpeg_available():
+        return (
+            "[ffmpeg not found — required for audio extraction. Install via: brew install ffmpeg]"
+        )
 
     if not whisper_available():
         return (

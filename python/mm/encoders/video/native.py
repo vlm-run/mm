@@ -127,7 +127,8 @@ class VideoClips:
 
         while start < video_duration:
             end: float = min(start + chunk_duration, video_duration)
-            seg_path = Path(tempfile.mktemp(suffix=path.suffix))
+            with tempfile.NamedTemporaryFile(suffix=path.suffix, delete=False) as tmp:
+                seg_path = Path(tmp.name)
             try:
                 extract_segment(path, seg_path, start, end)
                 seg_data = seg_path.read_bytes()

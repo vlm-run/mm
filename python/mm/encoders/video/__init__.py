@@ -179,9 +179,6 @@ def _uniform_timestamps_range(start: float, end: float, count: int) -> list[floa
 register(VideoFrameSample())
 register(VideoChunk())
 
-# ---------------------------------------------------------------------------
-# Import all encoder submodules to register them
-# ---------------------------------------------------------------------------
 from mm.encoders.video import (  # noqa: E402, F401
     captions,
     frames,
@@ -204,11 +201,15 @@ _ALIASES: dict[str, str] = {
 
 
 def _register_aliases() -> None:
-    """Register old encoder names as aliases pointing to their replacements."""
+    """Register old encoder names as aliases pointing to their replacements.
+
+    Always overwrites the old name so new implementations take precedence
+    even when the old encoder was already registered under that name.
+    """
     from mm.encoders import _REGISTRY
 
     for old_name, new_name in _ALIASES.items():
-        if new_name in _REGISTRY and old_name not in _REGISTRY:
+        if new_name in _REGISTRY:
             _REGISTRY[old_name] = _REGISTRY[new_name]
 
 
