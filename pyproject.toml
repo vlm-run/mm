@@ -6,6 +6,7 @@ build-backend = "maturin"
 name = "mm-ctx"
 version = "0.5.3"
 description = "Fast, multimodal file intelligence for agents"
+readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "MIT" }
 dependencies = [
@@ -65,7 +66,7 @@ include = [
     { path = "python/mm/pipelines/**/*.yaml", format = ["wheel"] },
 ]
 exclude = [
-    "python/mm/**/*.md",
+    "**/*.md",
 ]
 
 [tool.pytest.ini_options]
