@@ -3,13 +3,17 @@
     <img src="https://raw.githubusercontent.com/vlm-run/.github/refs/heads/main/profile/assets/vlm-black.svg" alt="VLM Run Logo" width="80" style="margin-bottom: -5px; color: #2e3138; vertical-align:
 middle; padding-right: 5px;"><br>
 </p>
-  <h1>mm</h1>
+  <h1>mm-ctx</h1>
 </div>
 <div align="center">
   <h3>Fast, multimodal context for agents</h3>
 </div>
 <div align="center">
-  <a href="https://github.com/vlm-run/mm/blob/main/LICENSE"><img src="https://img.shields.io/github/license/vlm-run/mm.svg" alt="License"></a>
+  <a href="https://pypi.org/project/mm-ctx/"><img alt="PyPI Version" src="https://img.shields.io/pypi/v/mm-ctx.svg"></a>
+  <a href="https://www.pepy.tech/projects/mm-ctx"><img alt="PyPI Downloads" src="https://img.shields.io/pypi/dm/mm-ctx"></a>
+  <a href="https://pypi.org/project/mm-ctx/"><img src="https://img.shields.io/pypi/pyversions/mm-ctx.svg" alt="versions"></a>
+  <a href="https://github.com/vlm-run/mm/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/vlm-run/mm/actions/workflows/ci.yml/badge.svg"></a><br>
+  <a href="https://pypi.org/project/mm-ctx/"><img src="https://img.shields.io/pypi/l/mm-ctx" alt="License"></a>
   <a href="https://discord.gg/AMApC2UzVY"><img src="https://img.shields.io/badge/discord-chat-purple?color=%235765F2&label=discord&logo=discord" alt="Discord"></a>
   <a href="https://twitter.com/vlmrun"><img src="https://img.shields.io/twitter/follow/vlmrun.svg?style=social&logo=twitter" alt="Twitter Follow"></a>
 </div>
@@ -23,8 +27,10 @@ Familiar UNIX CLI tools like `find`, `grep`, `cat` — with multimodal powers.
 ## Installation
 
 ```bash
-# with pip or uv
+# with pip
 pip install mm-ctx
+
+# with uv
 uv pip install mm-ctx
 
 # or run directly without installing
@@ -40,12 +46,6 @@ curl -LsSf https://vlm-run.github.io/mm/install/install.sh | sh
 
 # Windows (PowerShell)
 irm https://vlm-run.github.io/mm/install/install.ps1 | iex
-
-# Development install (requires Rust toolchain + uv)
-git clone https://github.com/vlm-run/mm && cd mm
-uv venv --python 3.12 && source .venv/bin/activate
-uv pip install -e ".[dev]"
-uv run maturin develop --release
 ```
 </details>
 
@@ -518,12 +518,12 @@ model = "qwen3.5:0.8"
 
 [profile.gemini]
 base_url = "https://openrouter.ai/api/v1"
-api_key = ""
+api_key = "<OPENROUTER_API_KEY>"
 model = "google/gemini-2.5-flash-lite"
 
 [profile.vlmrun]
-base_url = "https://mm-ctx.ngrok.io/v1"
-api_key = ""
+base_url = "https://api.vlm.run/v1/openai"
+api_key = "<VLMRUN_API_KEY>"
 model = "Qwen/Qwen3.5-0.8B"
 ```
 
