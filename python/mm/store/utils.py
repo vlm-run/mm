@@ -86,9 +86,8 @@ def prune_missing(
         candidates = list(uris)
     else:
         assert prefix is not None
-        safe = prefix.replace("'", "''")
         rows = db._connect.execute(
-            "SELECT uri FROM files WHERE uri LIKE ?", (f"{safe}/%",)
+            "SELECT uri FROM files WHERE uri LIKE ?", (f"{prefix}/%",)
         ).fetchall()
         candidates = [r[0] for r in rows]
 

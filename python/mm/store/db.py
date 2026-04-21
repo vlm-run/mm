@@ -323,8 +323,9 @@ class MmDatabase:
                     ).fetchall()
                 ]
                 if chunk_ids:
-                    cp = ",".join("?" * len(chunk_ids))
-                    db.execute(f"DELETE FROM chunks_vec WHERE chunk_id IN ({cp})", chunk_ids)
+                    for chunk_batch in batch_array(chunk_ids, 500):
+                        cp = ",".join("?" * len(chunk_batch))
+                        db.execute(f"DELETE FROM chunks_vec WHERE chunk_id IN ({cp})", chunk_batch)
             cur = db.execute(f"DELETE FROM files WHERE uri IN ({ph})", batch)
             deleted += cur.rowcount or 0
         db.commit()

@@ -368,6 +368,7 @@ class TestGrep:
         # Without --no-ignore: gitignored files are not searched
         r = runner.invoke(app, ["grep", "log line", str(gitignored_tree)])
         assert r.exit_code == 1
+        assert "skip.log" not in r.output
 
         # With --no-ignore: gitignored files are included in the search
         r = runner.invoke(app, ["grep", "log line", str(gitignored_tree), "--no-ignore"])
@@ -405,8 +406,9 @@ class TestGrep:
     def test_kind_filter_comma_separated_excludes_others(self, small_tree: Path):
         """--kind config,text should not match content only in code files."""
         # "def main" only appears in main.py which is kind=code
-        r = runner.invoke(app, ["grep", "def main", str(small_tree), "--kind", "config,text"])
+        r = runner.invoke(app, ["grep", "def main", str(small_tree), "--kind", "document,text"])
         assert r.exit_code == 1
+        assert "def main" not in r.output
 
 
 # ── sql ──────────────────────────────────────────────────────────────

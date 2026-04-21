@@ -865,11 +865,11 @@ def _accurate_video(path: Path, spec: PipelineSpec, opts: _CatOpts) -> str:
 
     from concurrent.futures import Future, ThreadPoolExecutor
 
-    ekw = spec.encode.strategy_opts
+    ekw = dict(spec.encode.strategy_opts)
     tile_spec = ekw.get("mosaic_tile") or "4x4"
     tile_cols, tile_rows = _parse_tile(tile_spec)
     num_mosaics = ekw.get("mosaic_count") or 8
-    num_frames = 128
+    num_frames = _adaptive_num_frames(path, duration, ekw)
 
     thumb_width = ekw.get("mosaic_image_width") or (1500 // tile_cols)
 
@@ -1366,6 +1366,32 @@ def _extract_llm_parts(msg: dict) -> list[dict]:
     elif isinstance(content, str):
         parts.append({"type": "text", "text": content})
     return parts
+
+
+_VIDEO_HEAVY_DURATION_S = 30 * 60
+_VIDEO_HEAVY_SIZE_B = 500 * 1024 * 1024
+_VIDEO_HEAVY_NUM_FRAMES = 64
+_VIDEO_DEFAULT_NUM_FRAMES = 128
+
+
+def _adaptive_num_frames(path: Path, duration: float, ekw: dict[str, Any]) -> int:
+    """Adapt opts for long or large videos."""
+    is_long = duration > _VIDEO_HEAVY_DURATION_S
+    is_large = path.stat().st_size > _VIDEO_HEAVY_SIZE_B
+    if not (is_long or is_large):
+        return _VIDEO_DEFAULT_NUM_FRAMES
+
+    from mm.display import console
+
+    reasons: list[str] = []
+    if is_long:
+        reasons.append(f"duration {(duration / 60):.0f}min > 30min")
+    if is_large:
+        reasons.append(f"size {(path.stat().st_size / (1024 * 1024)):.0f}MB > 500MB")
+    console.print(
+        f"[dim]Video auto-tune ({', '.join(reasons)}): frames={_VIDEO_HEAVY_NUM_FRAMES}.[/dim]"
+    )
+    return _VIDEO_HEAVY_NUM_FRAMES
 
 
 def _parse_tile(tile: str) -> tuple[int, int]:
