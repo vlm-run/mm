@@ -37,10 +37,10 @@ def _mock_cache_miss():
     mock_profile.name = "test"
     mock_profile.model = "test-model"
     return (
-        patch("mm.store.util.get_content_hash", return_value="fakehash"),
+        patch("mm.store.utils.get_content_hash", return_value="fakehash"),
         patch("mm.store.db.MmDatabase", return_value=mock_db),
         patch("mm.profile.get_profile", return_value=mock_profile),
-        patch("mm.store.util.get_l2_id", return_value="fake_l2_id"),
+        patch("mm.store.utils.get_l2_id", return_value="fake_l2_id"),
     )
 
 
