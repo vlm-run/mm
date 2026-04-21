@@ -110,9 +110,8 @@ def _query_files(query: str, directory: Path, fmt: str, *, pre_index: bool = Fal
 
     resolved = directory.resolve()
     prefix = str(resolved)
+    ctx = Context(directory)
     if pre_index:
-        # DO an L0 before querying
-        ctx = Context(directory)
         ctx.save()
 
     db = MmDatabase()
@@ -121,7 +120,6 @@ def _query_files(query: str, directory: Path, fmt: str, *, pre_index: bool = Fal
     # Uses the directory walk as a hint so only stale candidates get stat'd.
     from mm.store.utils import prune_missing
 
-    ctx = Context(directory)
     disk_uris = {str(resolved / f.path) for f in ctx.files}
     prune_missing(prefix=prefix, disk_uris=disk_uris, db=db)
 
