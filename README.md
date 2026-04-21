@@ -6,7 +6,7 @@ middle; padding-right: 5px;"><br>
   <h1>mm</h1>
 </div>
 <div align="center">
-  <h3>Fast, multi-modal context (CLI) for agents</h3>
+  <h3>Fast, multimodal context (CLI) for agents</h3>
 </div>
 <div align="center">
   <a href="https://github.com/vlm-run/mm/blob/main/LICENSE"><img src="https://img.shields.io/github/license/vlm-run/mm.svg" alt="License"></a>
@@ -16,7 +16,7 @@ middle; padding-right: 5px;"><br>
 
 ---
 
-Familiar UNIX CLI tools like `find`, `grep`, `cat` — with multi-modal powers.
+Familiar UNIX CLI tools like `find`, `grep`, `cat` — with multimodal powers.
 
 `mm` lets agents understand file types that LLMs can't natively read: images, video, audio, PDFs, and other binary formats. Rust core for speed, Python for dev-ex, UNIX philosophy for composability.
 

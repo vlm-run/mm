@@ -368,6 +368,7 @@ class TestGrep:
         # Without --no-ignore: gitignored files are not searched
         r = runner.invoke(app, ["grep", "log line", str(gitignored_tree)])
         assert r.exit_code == 1
+        assert "skip.log" not in r.output
 
         # With --no-ignore: gitignored files are included in the search
         r = runner.invoke(app, ["grep", "log line", str(gitignored_tree), "--no-ignore"])
@@ -405,8 +406,9 @@ class TestGrep:
     def test_kind_filter_comma_separated_excludes_others(self, small_tree: Path):
         """--kind config,text should not match content only in code files."""
         # "def main" only appears in main.py which is kind=code
-        r = runner.invoke(app, ["grep", "def main", str(small_tree), "--kind", "config,text"])
+        r = runner.invoke(app, ["grep", "def main", str(small_tree), "--kind", "document,text"])
         assert r.exit_code == 1
+        assert "def main" not in r.output
 
 
 # ── sql ──────────────────────────────────────────────────────────────
@@ -655,3 +657,109 @@ class TestConfig:
         r = runner.invoke(app, ["config", "init"])
         assert r.exit_code == 0
         assert config_path.exists()
+
+
+# ── prune integration: deleted files are pruned from DB across sql/cat/grep ──
+
+
+@pytest.fixture
+def isolated_db(tmp_path_factory: pytest.TempPathFactory, monkeypatch: pytest.MonkeyPatch) -> Path:
+    """The DB lives outside the test's ``tmp_path`` so its WAL/SHM files aren't
+    picked up by directory scans that the command under test runs.
+    """
+    from mm.store.db import MmDatabase
+
+    db_dir = tmp_path_factory.mktemp("mmdb")
+    db_path = db_dir / "mm.db"
+    monkeypatch.setattr(MmDatabase, "DB_PATH", db_path)
+    monkeypatch.setattr(MmDatabase, "DB_DIR", db_dir)
+    return db_path
+
+
+class TestPruneIntegration:
+    """End-to-end: a file indexed in DB and later deleted from disk must not
+    leak through ``sql``, ``cat``, or ``grep`` output. Verifies the wiring of
+    :func:`mm.store.utils.prune_missing` in each command path.
+    """
+
+    def test_sql_prunes_stale_rows(self, tmp_path: Path, isolated_db: Path):
+        from mm.store.db import MmDatabase
+
+        a, b = tmp_path / "a.txt", tmp_path / "b.txt"
+        a.write_text("hello")
+        b.write_text("world")
+        db = MmDatabase()
+        db.ensure_l0(str(a))
+        db.ensure_l0(str(b))
+        assert len(db.get_files()) == 2
+
+        a.unlink()
+
+        r = runner.invoke(
+            app, ["sql", "SELECT uri FROM files", "--dir", str(tmp_path), "--format", "json"]
+        )
+        assert r.exit_code == 0
+        uris = {row["uri"] for row in json.loads(r.output)}
+        assert str(a) not in uris
+        assert str(b) in uris
+
+        # Row is physically gone from the DB, not just filtered from output.
+        assert db.get_file(str(a)) is None
+        assert db.get_file(str(b)) is not None
+
+    def test_cat_prunes_row_when_path_missing(self, tmp_path: Path, isolated_db: Path):
+        from mm.store.db import MmDatabase
+
+        p = tmp_path / "gone.txt"
+        p.write_text("bye")
+        db = MmDatabase()
+        db.ensure_l0(str(p))
+        assert db.get_file(str(p)) is not None
+
+        p.unlink()
+
+        r = runner.invoke(app, ["cat", str(p)])
+        # cat exits 0 but emits "Error: ... not found." on stderr (mixed).
+        assert "not found" in r.output
+        assert db.get_file(str(p)) is None
+
+    def test_grep_semantic_prunes_stale_rows(
+        self, tmp_path: Path, isolated_db: Path, monkeypatch: pytest.MonkeyPatch
+    ):
+        """``grep -s`` prunes deleted files before querying embeddings.
+
+        Stubs ``search`` so we don't hit the real embedding backend -- the
+        prune happens earlier in ``grep_semantic`` regardless.
+        """
+        from mm.semantic import grep_semantic
+        from mm.store.db import MmDatabase
+
+        a = tmp_path / "a.png"
+        b = tmp_path / "b.png"
+        # Minimal PNG header so ``file_kind`` classifies them as image.
+        png_sig = b"\x89PNG\r\n\x1a\n" + b"\x00" * 32
+        a.write_bytes(png_sig)
+        b.write_bytes(png_sig)
+
+        db = MmDatabase()
+        db.ensure_l0(str(a))
+        db.ensure_l0(str(b))
+        assert {f["name"] for f in db.get_files()} == {"a.png", "b.png"}
+
+        a.unlink()
+
+        # Isolate from the real embedding backend.
+        monkeypatch.setattr("mm.semantic.search", lambda *a, **kw: [])
+
+        grep_semantic(
+            "whatever",
+            tmp_path,
+            kind="image",
+            ext=None,
+            limit=5,
+            do_index=False,
+            quiet=True,
+        )
+
+        assert db.get_file(str(a)) is None
+        assert db.get_file(str(b)) is not None

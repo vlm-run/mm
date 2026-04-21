@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pyarrow as pa
 from mm.store import MmDatabase
-from mm.store.util import get_content_hash
+from mm.store.utils import get_content_hash
 
 ROOT = Path("/test/data")
 

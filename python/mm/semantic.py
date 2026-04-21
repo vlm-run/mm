@@ -53,8 +53,7 @@ def _index_one(uri: str) -> str | None:
     to the ``l2_results`` + ``chunks`` + ``chunks_vec`` tables as a
     side effect of ``_run_accurate``.
     """
-    from mm.commands.cat import _CatOpts, _run_accurate
-    from mm.utils import file_kind
+    from mm.commands.cat import _CatOpts, _extract
 
     path = Path(uri)
     if not path.exists():
@@ -73,7 +72,7 @@ def _index_one(uri: str) -> str | None:
     )
 
     try:
-        result = _run_accurate(path, file_kind(path), opts)
+        result = _extract(path, opts)
         if result and not result.startswith("["):
             return uri
         raise ValueError(f"Accurate extraction failed for {uri}: {result}")
@@ -84,17 +83,17 @@ def _index_one(uri: str) -> str | None:
         return None
 
 
-def index_missing(missing: list[str], *, max_files: int = MAX_INDEX) -> int:
+def index_missing(missing: list[str]) -> int:
     """Index up to *max_files* URIs in parallel. Returns count of successfully indexed files."""
     from mm.display import console
     from mm.encoders import _ensure_discovered
 
     _ensure_discovered()
 
-    to_index = missing[:max_files]
-    if len(missing) > max_files:
+    to_index = missing[:MAX_INDEX]
+    if len(missing) > MAX_INDEX:
         console.print(
-            f"[yellow]Note:[/yellow] Indexing {max_files} of {len(missing)} unindexed files."
+            f"[yellow]Note:[/yellow] Indexing {MAX_INDEX} of {len(missing)} unindexed files."
         )
     else:
         console.print(
@@ -113,13 +112,16 @@ def index_missing(missing: list[str], *, max_files: int = MAX_INDEX) -> int:
     return indexed
 
 
+SEMANTIC_MAX_DISTANCE = 1.0
+
+
 def search(
     query: str,
     *,
     uri: str | None = None,
     uri_prefix: str | None = None,
     limit=5,
-    max_distance=1.0,
+    max_distance=SEMANTIC_MAX_DISTANCE,
 ) -> list[dict[str, Any]]:
     """Embed query string and run KNN search, scoped by URI or prefix."""
     from mm.store.db import MmDatabase
@@ -146,6 +148,16 @@ def search(
         for r in raw
         if r.get("distance", float("inf")) <= max_distance
     ]
+
+    if raw and not results:
+        from mm.display import console
+
+        closest = min(r.get("distance", float("inf")) for r in raw)
+        console.print(
+            f"[dim]Semantic search: {len(raw)} candidate(s) found but all exceeded "
+            f"the distance cutoff ({max_distance}). Closest was {closest:.3f}.[/dim]"
+        )
+
     results = sorted(results, key=lambda r: r["distance"])
     return results[:limit]
 
@@ -168,12 +180,12 @@ def handle_missing(
     Returns:
         True if at least some files are indexed (safe to search), False otherwise.
     """
-    _indexed, missing = check_indexed(uris)
+    _, missing = check_indexed(uris)
     if not missing:
         return True
 
     if do_index:
-        index_missing(missing, max_files=MAX_INDEX)
+        index_missing(missing)
         return True
 
     if not quiet:
@@ -228,7 +240,7 @@ def grep_semantic(
     semantic match dicts (path, index, distance, match).
     """
     from mm.context import Context
-    from mm.utils import is_binary_content, file_kind
+    from mm.utils import file_kind, is_binary_content
 
     path = directory.resolve()
     is_file = path.is_file()
@@ -249,6 +261,14 @@ def grep_semantic(
     if not uris:
         return []
 
+    # Reconcile DB → disk: drop indexed rows whose files no longer exist.
+    from mm.store.utils import prune_missing
+
+    if not is_file:
+        prune_missing(prefix=str(path), disk_uris=set(all_uris))
+    else:
+        prune_missing(uris=[str(path)])
+
     has_indexed = handle_missing(
         uris,
         do_index=do_index,
@@ -261,8 +281,10 @@ def grep_semantic(
     if stdin_paths:
         results: list[dict] = []
         uri_prefixes = [str(Path(p).resolve()) for p in stdin_paths if not Path(p).is_file()]
+
         for uri_prefix in uri_prefixes:
             results.extend(search(pattern, uri_prefix=uri_prefix, limit=limit))
+
         results.sort(key=lambda r: r["distance"])
         results = results[:limit]
     else:
