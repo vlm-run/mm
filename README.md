@@ -9,9 +9,10 @@ middle; padding-right: 5px;"><br>
   <h3>Fast, multimodal context for agents</h3>
 </div>
 <div align="center">
-  <a href="https://pypi.org/project/mm-ctx/"><img alt="PyPI Version" src="https://badge.fury.io/py/mm-ctx.svg"></a>
+  <a href="https://pypi.org/project/mm-ctx/"><img alt="PyPI Version" src="https://img.shields.io/pypi/v/mm-ctx.svg"></a>
   <a href="https://www.pepy.tech/projects/mm-ctx"><img alt="PyPI Downloads" src="https://img.shields.io/pypi/dm/mm-ctx"></a>
-  <a href="https://pypi.org/project/mm-ctx/"><img src="https://img.shields.io/pypi/pyversions/mm-ctx.svg" alt="versions"></a><br>
+  <a href="https://pypi.org/project/mm-ctx/"><img src="https://img.shields.io/pypi/pyversions/mm-ctx.svg" alt="versions"></a>
+  <a href="https://github.com/vlm-run/mm/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/vlm-run/mm/actions/workflows/ci.yml/badge.svg"></a><br>
   <a href="https://pypi.org/project/mm-ctx/"><img src="https://img.shields.io/pypi/l/mm-ctx" alt="License"></a>
   <a href="https://discord.gg/AMApC2UzVY"><img src="https://img.shields.io/badge/discord-chat-purple?color=%235765F2&label=discord&logo=discord" alt="Discord"></a>
   <a href="https://twitter.com/vlmrun"><img src="https://img.shields.io/twitter/follow/vlmrun.svg?style=social&logo=twitter" alt="Twitter Follow"></a>
