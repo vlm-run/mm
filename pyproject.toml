@@ -4,7 +4,7 @@ build-backend = "maturin"
 
 [project]
 name = "mm-ctx"
-version = "0.7.0"
+version = "0.7.1"
 description = "Fast, multimodal context for agents."
 readme = "README.md"
 requires-python = ">=3.11,<3.14"
@@ -115,7 +115,7 @@ Documentation = "https://github.com/vlm-run/mm#readme"
 Repository = "https://github.com/vlm-run/mm"
 Issues = "https://github.com/vlm-run/mm/issues"
 Changelog = "https://github.com/vlm-run/mm/blob/main/CHANGELOG.md"
-Discord = "https://discord.gg/AMApC2UzVY"
+Discord = "https://discord.gg/6aqcyvPF79"
 
 [project.scripts]
 mm = "mm.cli:app"
