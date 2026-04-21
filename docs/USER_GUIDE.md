@@ -1,6 +1,6 @@
 # mm — User Guide
 
-Fast, multimodal file intelligence for agents.
+Fast, multimodal context for agents.
 Rust core for speed. Python for developer experience. Unix philosophy for composability.
 
 ---

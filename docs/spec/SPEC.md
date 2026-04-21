@@ -1,6 +1,6 @@
 # mm Spec
 
-> Fast, multimodal file intelligence for agents. Rust core, Python API, Unix CLI.
+> Fast, multimodal context for agents. Rust core, Python API, Unix CLI.
 
 Legend: `[x]` implemented, `[ ]` roadmap, `[~]` partial/stubbed
 
