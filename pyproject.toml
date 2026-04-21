@@ -4,8 +4,8 @@ build-backend = "maturin"
 
 [project]
 name = "mm-ctx"
-version = "0.6.0"
-description = "Fast, multimodal context for agents — CLI and Python API for images, video, audio, PDFs, and more."
+version = "0.7.0"
+description = "Fast, multimodal context for agents."
 readme = "README.md"
 requires-python = ">=3.11,<3.14"
 license = { text = "MIT" }
