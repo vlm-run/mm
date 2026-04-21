@@ -90,6 +90,20 @@ def find_cmd(
     no_ignore: Annotated[
         bool, typer.Option("--no-ignore", help="Don't respect .gitignore rules")
     ] = False,
+    session: Annotated[
+        Optional[str],
+        typer.Option(
+            "--session",
+            help="Session id to tag results with (enables global <session>/<ref_id> refs)",
+        ),
+    ] = None,
+    refs: Annotated[
+        bool,
+        typer.Option(
+            "--refs",
+            help="Include ref_id column (requires --session; opt-in, hidden by default)",
+        ),
+    ] = False,
 ) -> None:
     """Find files matching criteria (like fd/find).
 
@@ -110,10 +124,13 @@ def find_cmd(
       mm find ~/data --name "test_.*\\.py"                  # regex name match
       mm find ~/data -n config                              # substring name match
       mm find ~/data --no-ignore                            # include gitignored files
+      mm find ~/data --session my-sess --refs               # show <session>/<ref_id>
     """
     from mm.display import resolve_format
 
     fmt = resolve_format(format.value if format else None)
+    if refs and not session:
+        raise typer.BadParameter("--refs requires --session <id>")
     if tree:
         _find_tree(directory, kind, name, depth, size, fmt, no_ignore=no_ignore)
         return
@@ -135,6 +152,8 @@ def find_cmd(
         limit,
         fmt,
         no_ignore=no_ignore,
+        session=session,
+        refs=refs,
     )
 
 
@@ -166,13 +185,17 @@ def _find_table(
     fmt: str,
     *,
     no_ignore: bool = False,
+    session: str | None = None,
+    refs: bool = False,
 ) -> None:
     """Default tabular listing."""
     from mm.pipe import read_paths_from_stdin, resolve_piped_paths
 
     stdin_paths = read_paths_from_stdin()
-    # Fast path: non-rich output without columns/stdin bypasses pyarrow
-    if fmt != "rich" and not stdin_paths and not columns and depth is None:
+    # Fast path: non-rich output without columns/stdin bypasses pyarrow.
+    # --session alone is a no-op for display; only --refs forces the slow
+    # path to attach the ref_id column.
+    if fmt != "rich" and not stdin_paths and not columns and depth is None and not refs:
         from mm._mm import Scanner
 
         scanner = Scanner(str(Path(directory).resolve()), None, no_ignore=no_ignore)
@@ -208,11 +231,11 @@ def _find_table(
 
     from mm.context import Context
 
-    ctx = Context(directory, no_ignore=no_ignore)
+    ctx = Context(directory, no_ignore=no_ignore, session_id=session)
     if kind or ext or min_size or max_size:
         ctx = ctx.filter(kind=kind, ext=ext, min_size=min_size, max_size=max_size)
 
-    table = ctx.to_arrow()
+    table = ctx.to_arrow(refs=refs)
 
     if name:
         import re as re_mod
@@ -280,6 +303,8 @@ def _find_table(
         default_cols = ["path", "kind", "size", "ext"]
         if not cols and _has_media_dimensions(table):
             default_cols = ["path", "kind", "size", "width", "height", "ext"]
+        if not cols and refs and "ref_id" in table.column_names:
+            default_cols = [*default_cols, "ref_id"]
 
         display_cols = cols or default_cols
         rich_table = arrow_table_to_rich(table, columns=display_cols, limit=limit)

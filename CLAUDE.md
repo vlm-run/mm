@@ -294,6 +294,8 @@ Columns (`files`): `uri`, `name`, `stem`, `ext`, `size`, `modified`, `created`, 
 
 ## Python API
 
+See [docs/api.md](docs/api.md) for the incremental put-based `mm.Context` + `mm.Ref` API (VLM prompt building). The snippet below covers the directory-scan mode.
+
 ```python
 from mm import Context
 
