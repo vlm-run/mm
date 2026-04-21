@@ -360,10 +360,7 @@ pub fn kind_for_name(name: &str) -> &'static str {
 
 pub fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyContext>()?;
-    m.add(
-        "RefNotFoundError",
-        m.py().get_type::<RefNotFoundError>(),
-    )?;
+    m.add("RefNotFoundError", m.py().get_type::<RefNotFoundError>())?;
     m.add_function(wrap_pyfunction!(make_ref_id, m)?)?;
     m.add_function(wrap_pyfunction!(uuid7_py, m)?)?;
     m.add_function(wrap_pyfunction!(kind_for_name, m)?)?;

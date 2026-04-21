@@ -29,7 +29,7 @@ import sqlite3
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from mm.store.util import get_l2_id, now_us
+from mm.store.utils import get_l2_id, now_us
 
 if TYPE_CHECKING:
     import pyarrow as pa
@@ -71,7 +71,12 @@ class MmDatabase:
     def __init__(self, db_path: Path | None = None):
         self._db_path = db_path or self.DB_PATH
         self._conn: sqlite3.Connection | None = None
-        self._vec_available: bool = False
+        self._vec_loaded: bool = False
+
+    @property
+    def _vec_available(self) -> bool:
+        _ = self._connect
+        return self._vec_loaded
 
     @property
     def _connect(self) -> sqlite3.Connection:
@@ -79,14 +84,14 @@ class MmDatabase:
             self._db_path.parent.mkdir(parents=True, exist_ok=True)
             self._conn = sqlite3.connect(str(self._db_path))
             self._conn.row_factory = sqlite3.Row
-            self._vec_available = False
+            self._vec_loaded = False
             try:
                 import sqlite_vec
 
                 self._conn.enable_load_extension(True)
                 sqlite_vec.load(self._conn)
                 self._conn.enable_load_extension(False)
-                self._vec_available = True
+                self._vec_loaded = True
             except (AttributeError, ImportError, OSError):
                 pass
             self._conn.execute("PRAGMA journal_mode=WAL")
@@ -273,14 +278,58 @@ class MmDatabase:
         if self.get_file(uri) is not None:
             return
 
-        if not Path(uri).exists():
+        p = Path(uri)
+        if not p.exists():
             return
 
         from mm._mm import Scanner
 
-        scanner = Scanner(str(Path(uri).parent))
+        scanner = Scanner(str(p.parent))
         scanner.scan()
-        self.upsert_files(scanner.to_arrow(), Path(uri).parent)
+        tbl = scanner.to_arrow()
+        try:
+            idx = tbl["path"].to_pylist().index(p.name)
+        except ValueError:
+            return
+        self.upsert_files(tbl.slice(idx, 1), p.parent)
+
+    def delete_files(self, uris: list[str]) -> int:
+        """Delete ``files`` rows by URI, cascading through chunks_vec manually.
+
+        FKs cascade ``files`` → ``l2_results`` → ``chunks``. The ``chunks_vec``
+        virtual table has no FK support, so embeddings are cleaned up explicitly
+        before the cascade fires.
+
+        Returns the number of rows deleted.
+        """
+        from mm.utils import batch_array
+
+        if not uris:
+            return 0
+
+        db = self._connect
+        has_vec = db.execute(
+            "SELECT 1 FROM sqlite_master WHERE type='table' AND name='chunks_vec'"
+        ).fetchone()
+
+        deleted = 0
+        for batch in batch_array(uris, 500):
+            ph = ",".join("?" * len(batch))
+            if has_vec:
+                chunk_ids = [
+                    r[0]
+                    for r in db.execute(
+                        f"SELECT id FROM chunks WHERE file_uri IN ({ph})", batch
+                    ).fetchall()
+                ]
+                if chunk_ids:
+                    for chunk_batch in batch_array(chunk_ids, 500):
+                        cp = ",".join("?" * len(chunk_batch))
+                        db.execute(f"DELETE FROM chunks_vec WHERE chunk_id IN ({cp})", chunk_batch)
+            cur = db.execute(f"DELETE FROM files WHERE uri IN ({ph})", batch)
+            deleted += cur.rowcount or 0
+        db.commit()
+        return deleted
 
     def is_stale(self, uri: str, mtime_us: int, size: int) -> bool:
         row = self._connect.execute(

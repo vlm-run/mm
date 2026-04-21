@@ -40,6 +40,7 @@ mlx_models/
 sample_files/
 remotion-videos/
 web/
+run_results/
 
 # Secrets
 *.env.*

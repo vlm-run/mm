@@ -126,7 +126,8 @@ def _main(
 
     cmd = ctx.invoked_subcommand or ""
     if cmd in _TIMED_COMMANDS:
-        _check_exit, _display_elapsed = display_elapsed_wrapper(start_time)
+        prefix = "took" if cmd == "grep" else None
+        _check_exit, _display_elapsed = display_elapsed_wrapper(start_time, prefix)
         sys.exit = _check_exit
         atexit.register(_display_elapsed)
 
