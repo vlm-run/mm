@@ -45,8 +45,19 @@ class AudioTranscribe:
         language: str = kwargs.get("language", "auto")
         audio_speed: float = kwargs.get("audio_speed", 1.0)
 
-        from mm.video import extract_audio
+        from mm.video import extract_audio, ffmpeg_available
         from mm.whisper import transcribe, whisper_available
+
+        if not ffmpeg_available():
+            yield _to_message(
+                [
+                    {
+                        "type": "text",
+                        "text": "[ffmpeg not available — required for audio extraction]",
+                    }
+                ]
+            )
+            return
 
         if not whisper_available():
             yield _to_message(

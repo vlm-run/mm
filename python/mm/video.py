@@ -150,6 +150,23 @@ def _pyav_available() -> bool:
         return False
 
 
+def ffmpeg_available() -> bool:
+    """Check if the ffmpeg CLI is on ``$PATH``.
+
+    Used to guard callers that still rely on ffmpeg subprocess
+    (audio extraction, segment stream-copy).
+    """
+    try:
+        subprocess.run(
+            ["ffmpeg", "-version"],
+            capture_output=True,
+            timeout=5,
+        )
+        return True
+    except (FileNotFoundError, subprocess.TimeoutExpired):
+        return False
+
+
 def probe(path: str | Path) -> VideoInfo:
     """Read video metadata via PyAV. ~7ms vs ~58ms for ffprobe subprocess."""
     import av

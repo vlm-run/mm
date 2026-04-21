@@ -285,8 +285,9 @@ def _register_builtins() -> None:
     from mm.encoders import audio, document, gemini, image, video  # noqa: F401
     from mm.encoders.document import page_text  # noqa: F401
     from mm.encoders.video import (  # noqa: F401
+        _frame_sample_transcript,
+        _shot,
         captions,
-        frame_sample_transcript,
         frames,
         keyframes,
         mosaic,
