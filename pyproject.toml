@@ -5,7 +5,7 @@ build-backend = "maturin"
 [project]
 name = "mm-ctx"
 version = "0.5.3"
-description = "Fast, multi-modal context (CLI) for agents"
+description = "Fast, multimodal context (CLI) for agents"
 readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "MIT" }
@@ -48,6 +48,11 @@ dev = [
 all = [
     "mm-ctx[experimental]",
     "mm-ctx[mlx]; sys_platform == 'darwin'",
+]
+
+[tool.uv]
+override-dependencies = [
+    "onnxruntime<1.24; sys_platform == 'darwin' and platform_machine == 'x86_64'"
 ]
 
 [project.scripts]

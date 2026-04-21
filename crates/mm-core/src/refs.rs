@@ -272,7 +272,7 @@ impl Item {
     }
 }
 
-/// Incremental multi-modal context — the main Rust-side structure.
+/// Incremental multimodal context — the main Rust-side structure.
 ///
 /// Items are appended in insertion order. `by_ref` gives O(1) ref→index
 /// lookup for [`Context::get_index`].
