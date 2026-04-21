@@ -142,9 +142,10 @@ Objects: metal bench, tree, car, white SUV, red car, concrete pad, walkway, gras
 $ mm grep "invoice" mm-samples/
 ```
 ```
-wordpress-pdf-invoice-plugin-sample.pdf:2:Payment is due within 30 days from date of invoice. Late payment is subject to fees of 5% per month.
-wordpress-pdf-invoice-plugin-sample.pdf:3:Thanks for choosing DEMO - Sliced Invoices | admin@slicedinvoices.com
-wordpress-pdf-invoice-plugin-sample.pdf:10:admin@slicedinvoices.com
+wordpress-pdf-invoice-plugin-sample.pdf
+    2 Payment is due within 30 days from date of invoice. Late payment is subject to fees of 5% per month.
+    3 Thanks for choosing DEMO - Sliced Invoices | admin@slicedinvoices.com
+   10 admin@slicedinvoices.com
 ```
 
 ### Quick start
