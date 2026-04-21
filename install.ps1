@@ -95,7 +95,7 @@ Write-Host "  ██║╚██╔╝██║██║╚██╔╝██║
 Write-Host "  ██║ ╚═╝ ██║██║ ╚═╝ ██║" -ForegroundColor Green
 Write-Host "  ╚═╝     ╚═╝╚═╝     ╚═╝" -ForegroundColor Green
 Write-Host ""
-Write-Host "  Fast, multimodal context for agents"
+Write-Host "  Fast, multimodal file intelligence for agents"
 Write-Host ""
 
 Get-Platform

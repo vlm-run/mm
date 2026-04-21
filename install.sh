@@ -126,7 +126,7 @@ main() {
     printf "  ██║ ╚═╝ ██║██║ ╚═╝ ██║\n"
     printf "  ╚═╝     ╚═╝╚═╝     ╚═╝\n"
     printf "${RESET}\n"
-    printf "  Fast, multimodal context for agents\n"
+    printf "  Fast, multimodal file intelligence for agents\n"
     printf "\n"
 
     detect_platform
