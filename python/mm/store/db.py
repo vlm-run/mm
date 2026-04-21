@@ -29,7 +29,7 @@ import sqlite3
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from mm.store.util import get_l2_id, now_us
+from mm.store.utils import get_l2_id, now_us
 
 if TYPE_CHECKING:
     import pyarrow as pa
@@ -287,6 +287,43 @@ class MmDatabase:
         except ValueError:
             return
         self.upsert_files(tbl.slice(idx, 1), p.parent)
+
+    def delete_files(self, uris: list[str]) -> int:
+        """Delete ``files`` rows by URI, cascading through chunks_vec manually.
+
+        FKs cascade ``files`` → ``l2_results`` → ``chunks``. The ``chunks_vec``
+        virtual table has no FK support, so embeddings are cleaned up explicitly
+        before the cascade fires.
+
+        Returns the number of rows deleted.
+        """
+        from mm.utils import batch_array
+
+        if not uris:
+            return 0
+
+        db = self._connect
+        has_vec = db.execute(
+            "SELECT 1 FROM sqlite_master WHERE type='table' AND name='chunks_vec'"
+        ).fetchone()
+
+        deleted = 0
+        for batch in batch_array(uris, 500):
+            ph = ",".join("?" * len(batch))
+            if has_vec:
+                chunk_ids = [
+                    r[0]
+                    for r in db.execute(
+                        f"SELECT id FROM chunks WHERE file_uri IN ({ph})", batch
+                    ).fetchall()
+                ]
+                if chunk_ids:
+                    cp = ",".join("?" * len(chunk_ids))
+                    db.execute(f"DELETE FROM chunks_vec WHERE chunk_id IN ({cp})", chunk_ids)
+            cur = db.execute(f"DELETE FROM files WHERE uri IN ({ph})", batch)
+            deleted += cur.rowcount or 0
+        db.commit()
+        return deleted
 
     def is_stale(self, uri: str, mtime_us: int, size: int) -> bool:
         row = self._connect.execute(

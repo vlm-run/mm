@@ -248,6 +248,14 @@ def grep_semantic(
     if not uris:
         return []
 
+    # Reconcile DB → disk: drop indexed rows whose files no longer exist.
+    from mm.store.utils import prune_missing
+
+    if not is_file:
+        prune_missing(prefix=str(path), disk_uris=set(all_uris))
+    else:
+        prune_missing(uris=[str(path)])
+
     has_indexed = handle_missing(
         uris,
         do_index=do_index,

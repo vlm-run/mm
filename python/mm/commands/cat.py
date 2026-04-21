@@ -255,6 +255,9 @@ def cat_cmd(
         p = Path(file_path)
         if not p.exists():
             typer.echo(f"Error: {file_path} not found.", err=True)
+            from mm.store.utils import prune_missing
+
+            prune_missing(uris=[str(p.resolve())])
             continue
 
         # Track bytes for throughput calculation
@@ -442,7 +445,7 @@ def _extract(path: Path, opts: _CatOpts) -> str:
 
     from mm.profile import get_profile
     from mm.store.db import MmDatabase
-    from mm.store.util import get_content_hash
+    from mm.store.utils import get_content_hash
 
     db = MmDatabase()
     profile = get_profile()
@@ -462,7 +465,7 @@ def _extract(path: Path, opts: _CatOpts) -> str:
 
     l2_id: str | None = None
     if content_hash:
-        from mm.store.util import get_l2_id
+        from mm.store.utils import get_l2_id
 
         l2_id = get_l2_id(
             content_hash,
@@ -1119,7 +1122,7 @@ def _run_l1(path: Path, kind: str, *, no_cache: bool = False) -> str:
     metadata, video metadata, PDF text, or raw text passthrough.
     """
     from mm.store.db import MmDatabase
-    from mm.store.util import get_content_hash
+    from mm.store.utils import get_content_hash
 
     content_hash = get_content_hash(path)
     if not no_cache and content_hash:

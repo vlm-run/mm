@@ -12,7 +12,7 @@ from mm.store.schema import (
     FileCol,
     L2Col,
 )
-from mm.store.util import get_l2_id
+from mm.store.utils import get_l2_id
 
 from .conftest import requires_sqlite_vec
 from .test_utils import ROOT, ensure_l0, ensure_l1, get_hash, scanner_table
@@ -505,3 +505,216 @@ class TestSQL:
         db.put_l2(uri, get_hash(uri), "default", "qwen", "hello")
         _, rows = db.sql("SELECT COUNT(*) as n FROM l2_results", table_name="l2_results")
         assert rows[0][0] == 1
+
+
+# ---------------------------------------------------------------------------
+# ensure_l0 — single-URI guarantee (must not pull in sibling files)
+# ---------------------------------------------------------------------------
+
+
+class TestEnsureL0:
+    """``MmDatabase.ensure_l0(uri)`` must insert exactly one row for *uri*.
+
+    Regression: an earlier version scanned the parent directory and
+    upserted every sibling, so indexing a single file polluted the DB
+    with N rows. See the ``ensure_l0`` filter on ``tbl["path"]``.
+    """
+
+    def test_inserts_only_requested_file(self, tmp_path: Path):
+        for name in ("a.txt", "b.txt", "c.txt"):
+            (tmp_path / name).write_text("x")
+        db = MmDatabase(db_path=tmp_path / "test.db")
+
+        db.ensure_l0(str(tmp_path / "a.txt"))
+
+        rows = db.get_files()
+        assert len(rows) == 1
+        assert rows[0]["uri"] == str(tmp_path / "a.txt")
+
+    def test_siblings_not_inserted_across_calls(self, tmp_path: Path):
+        """Each ensure_l0 inserts only its own URI, never a sibling."""
+        for name in ("a.txt", "b.txt", "c.txt", "d.txt"):
+            (tmp_path / name).write_text("x")
+        db = MmDatabase(db_path=tmp_path / "test.db")
+
+        db.ensure_l0(str(tmp_path / "b.txt"))
+        assert {r["name"] for r in db.get_files()} == {"b.txt"}
+
+        db.ensure_l0(str(tmp_path / "d.txt"))
+        assert {r["name"] for r in db.get_files()} == {"b.txt", "d.txt"}
+
+    def test_noop_when_row_exists(self, tmp_path: Path):
+        (tmp_path / "a.txt").write_text("x")
+        db = MmDatabase(db_path=tmp_path / "test.db")
+        db.ensure_l0(str(tmp_path / "a.txt"))
+        db.ensure_l0(str(tmp_path / "a.txt"))
+        assert len(db.get_files()) == 1
+
+    def test_noop_when_file_missing(self, tmp_path: Path):
+        db = MmDatabase(db_path=tmp_path / "test.db")
+        db.ensure_l0(str(tmp_path / "missing.txt"))
+        assert db.get_files() == []
+
+
+# ---------------------------------------------------------------------------
+# prune_missing — reconcile DB rows against disk (one-way only)
+# ---------------------------------------------------------------------------
+
+
+class TestPruneMissing:
+    """``prune_missing`` deletes DB rows whose files no longer exist on disk.
+
+    Strictly one-way: files on disk that aren't in the DB stay untouched
+    (the normal "unindexed" state). The *disk_uris* hint short-circuits
+    stat calls for files the caller already knows exist.
+    """
+
+    def test_requires_prefix_or_uris(self, db: MmDatabase):
+        from mm.store.utils import prune_missing
+
+        with pytest.raises(ValueError, match="requires either prefix or uris"):
+            prune_missing(db=db)
+
+    def test_prune_by_uri_list_deletes_only_missing(self, tmp_path: Path):
+        from mm.store.utils import prune_missing
+
+        (tmp_path / "a.txt").write_text("x")
+        (tmp_path / "b.txt").write_text("x")
+        db = MmDatabase(db_path=tmp_path / "test.db")
+        db.ensure_l0(str(tmp_path / "a.txt"))
+        db.ensure_l0(str(tmp_path / "b.txt"))
+
+        (tmp_path / "a.txt").unlink()
+        deleted = prune_missing(
+            uris=[str(tmp_path / "a.txt"), str(tmp_path / "b.txt")],
+            db=db,
+        )
+
+        assert deleted == 1
+        assert {r["name"] for r in db.get_files()} == {"b.txt"}
+
+    def test_prune_by_prefix(self, tmp_path: Path):
+        from mm.store.utils import prune_missing
+
+        for name in ("a.txt", "b.txt", "c.txt"):
+            (tmp_path / name).write_text("x")
+        db = MmDatabase(db_path=tmp_path / "test.db")
+        for name in ("a.txt", "b.txt", "c.txt"):
+            db.ensure_l0(str(tmp_path / name))
+
+        (tmp_path / "b.txt").unlink()
+        deleted = prune_missing(prefix=str(tmp_path), db=db)
+
+        assert deleted == 1
+        assert {r["name"] for r in db.get_files()} == {"a.txt", "c.txt"}
+
+    def test_prune_is_scoped_to_prefix(self, tmp_path: Path):
+        """Rows outside the prefix are never touched, even if their files are gone."""
+        from mm.store.utils import prune_missing
+
+        d1, d2 = tmp_path / "d1", tmp_path / "d2"
+        d1.mkdir()
+        d2.mkdir()
+        (d1 / "a.txt").write_text("x")
+        (d2 / "b.txt").write_text("x")
+        db = MmDatabase(db_path=tmp_path / "test.db")
+        db.ensure_l0(str(d1 / "a.txt"))
+        db.ensure_l0(str(d2 / "b.txt"))
+
+        (d1 / "a.txt").unlink()
+        (d2 / "b.txt").unlink()
+        deleted = prune_missing(prefix=str(d1), db=db)
+
+        assert deleted == 1
+        assert [r["uri"] for r in db.get_files()] == [str(d2 / "b.txt")]
+
+    def test_noop_when_nothing_missing(self, tmp_path: Path):
+        from mm.store.utils import prune_missing
+
+        (tmp_path / "a.txt").write_text("x")
+        db = MmDatabase(db_path=tmp_path / "test.db")
+        db.ensure_l0(str(tmp_path / "a.txt"))
+
+        deleted = prune_missing(prefix=str(tmp_path), db=db)
+        assert deleted == 0
+        assert len(db.get_files()) == 1
+
+    def test_on_disk_files_never_pruned(self, tmp_path: Path):
+        """One-way guarantee: files absent from *disk_uris* but present on disk must survive.
+
+        Simulates a caller whose scan excluded a file (gitignored, filtered
+        by ``--kind``, etc.). The stat fallback must save it.
+        """
+        from mm.store.utils import prune_missing
+
+        (tmp_path / "a.txt").write_text("x")
+        (tmp_path / "b.txt").write_text("x")
+        db = MmDatabase(db_path=tmp_path / "test.db")
+        db.ensure_l0(str(tmp_path / "a.txt"))
+        db.ensure_l0(str(tmp_path / "b.txt"))
+
+        # Caller's scan only saw a.txt (e.g. b.txt was gitignored).
+        disk_uris = {str(tmp_path / "a.txt")}
+        deleted = prune_missing(prefix=str(tmp_path), disk_uris=disk_uris, db=db)
+
+        assert deleted == 0
+        assert {r["name"] for r in db.get_files()} == {"a.txt", "b.txt"}
+
+    def test_disk_uris_hint_short_circuits_stat(self, tmp_path: Path):
+        """A URI in *disk_uris* is trusted and never stat'd.
+
+        If the hint is stale (claims a deleted file still exists), the row
+        survives this call — it'll be pruned on the next call with a fresh
+        hint. This is the intentional tradeoff for avoiding the stat.
+        """
+        from mm.store.utils import prune_missing
+
+        (tmp_path / "a.txt").write_text("x")
+        (tmp_path / "b.txt").write_text("x")
+        db = MmDatabase(db_path=tmp_path / "test.db")
+        db.ensure_l0(str(tmp_path / "a.txt"))
+        db.ensure_l0(str(tmp_path / "b.txt"))
+
+        (tmp_path / "b.txt").unlink()
+        stale_hint = {str(tmp_path / "a.txt"), str(tmp_path / "b.txt")}
+        assert prune_missing(prefix=str(tmp_path), disk_uris=stale_hint, db=db) == 0
+
+        assert prune_missing(prefix=str(tmp_path), db=db) == 1
+        assert {r["name"] for r in db.get_files()} == {"a.txt"}
+
+    def test_prune_cascades_to_l2_and_chunks(self, tmp_path: Path):
+        """Deleting a files row cascades to l2_results and chunks."""
+        from mm.store.utils import prune_missing
+
+        p = tmp_path / "a.txt"
+        p.write_text("hello world")
+        db = MmDatabase(db_path=tmp_path / "test.db")
+        uri = str(p)
+        db.ensure_l0(uri)
+        content_hash = get_hash(p)
+        db.put_l1(uri, content_hash, "L1 content")
+        l2_id = db.put_l2(uri, content_hash, "default", "qwen", "L2 summary")
+
+        assert db.get_l2(l2_id) is not None
+        assert len(db.get_chunks(l2_id)) > 0
+
+        p.unlink()
+        deleted = prune_missing(uris=[uri], db=db)
+
+        assert deleted == 1
+        assert db.get_file(uri) is None
+        assert db.get_l2(l2_id) is None
+        assert db.get_chunks(l2_id) == []
+
+    def test_delete_files_is_idempotent(self, tmp_path: Path):
+        """``delete_files`` returns 0 on no-op inputs and is safe to call twice."""
+        (tmp_path / "a.txt").write_text("x")
+        db = MmDatabase(db_path=tmp_path / "test.db")
+        db.ensure_l0(str(tmp_path / "a.txt"))
+
+        assert db.delete_files([]) == 0
+        assert db.delete_files(["/nonexistent/path"]) == 0
+
+        uri = str(tmp_path / "a.txt")
+        assert db.delete_files([uri]) == 1
+        assert db.delete_files([uri]) == 0

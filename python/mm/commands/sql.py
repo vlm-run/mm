@@ -115,8 +115,17 @@ def _query_files(query: str, directory: Path, fmt: str, *, pre_index: bool = Fal
         ctx = Context(directory)
         ctx.save()
 
-    # Query indexed files scoped to this directory from the persistent store
     db = MmDatabase()
+
+    # Reconcile: drop rows under *prefix* whose files no longer exist on disk.
+    # Uses the directory walk as a hint so only stale candidates get stat'd.
+    from mm.store.utils import prune_missing
+
+    ctx = Context(directory)
+    disk_uris = {str(resolved / f.path) for f in ctx.files}
+    prune_missing(prefix=prefix, disk_uris=disk_uris, db=db)
+
+    # Query indexed files scoped to this directory from the persistent store
     safe_prefix = prefix.replace("'", "''")
     indexed_rows = db.get_files(where=f"uri LIKE '{safe_prefix}/%'")
 
@@ -134,8 +143,6 @@ def _query_files(query: str, directory: Path, fmt: str, *, pre_index: bool = Fal
 
     # Compute diff: files on disk but not in DB (when NOT pre-indexing)
     if not pre_index:
-        ctx = Context(directory)
-        disk_uris = {str(resolved / f.path) for f in ctx.files}
         db_uris_rows = db._connect.execute(
             "SELECT uri FROM files WHERE uri LIKE ?", (f"{prefix}/%",)
         ).fetchall()

@@ -243,10 +243,10 @@ class TestCatEmbedIntegration:
 
         with (
             patch("mm.commands.cat._run_accurate", return_value="LLM generated text."),
-            patch("mm.store.util.get_content_hash", return_value="fakehash"),
+            patch("mm.store.utils.get_content_hash", return_value="fakehash"),
             patch("mm.store.db.MmDatabase", return_value=mock_db),
             patch("mm.profile.get_profile") as mock_profile,
-            patch("mm.store.util.get_l2_id", return_value="fake_l2_id"),
+            patch("mm.store.utils.get_l2_id", return_value="fake_l2_id"),
             patch("mm.store.embed.embed_file_chunks") as mock_embed,
         ):
             mock_profile.return_value.name = "default"
