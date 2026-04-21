@@ -9,7 +9,7 @@ middle; padding-right: 5px;"><br>
   <h3>Fast, multimodal context for agents</h3>
 </div>
 <div align="center">
-  <a href="https://pypi.org/project/mm-ctx/"><img alt="PyPI Version" src="https://badge.fury.io/py/vlmrun.svg"></a>
+  <a href="https://pypi.org/project/mm-ctx/"><img alt="PyPI Version" src="https://badge.fury.io/py/mm-ctx.svg"></a>
   <a href="https://www.pepy.tech/projects/mm-ctx"><img alt="PyPI Downloads" src="https://img.shields.io/pypi/dm/mm-ctx"></a>
   <a href="https://pypi.org/project/mm-ctx/"><img src="https://img.shields.io/pypi/pyversions/mm-ctx.svg" alt="versions"></a><br>
   <a href="https://pypi.org/project/mm-ctx/"><img src="https://img.shields.io/pypi/l/mm-ctx" alt="License"></a>
