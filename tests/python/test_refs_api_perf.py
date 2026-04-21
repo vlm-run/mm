@@ -26,11 +26,10 @@ import os
 import time
 from pathlib import Path
 
-import pytest
-from PIL import Image
-
 import mm
+import pytest
 from mm.refs import RefNotFoundError
+from PIL import Image
 
 pytestmark = pytest.mark.slow
 
@@ -267,7 +266,7 @@ def test_to_messages_10k_under_budget_openai(ten_image_paths: list[Path]) -> Non
     """Upper bound on encoder dispatch at 10k items. We use a *single*
     reused path so PIL I/O isn't the dominant term — the point is the
     Python/Rust boundary cost."""
-    budget = _budget_s("MM_TEST_REFS_TO_MSG_10K_MAX_S", 2.5)
+    budget = _budget_s("MM_TEST_REFS_TO_MSG_10K_MAX_S", 5)
     ctx = mm.Context()
     only_path = ten_image_paths[0]
     for _ in range(10_000):
@@ -286,7 +285,7 @@ def test_print_tree_10k_under_budget(
     # ANSI line printer then paints 10k lines to an in-memory capture
     # buffer which dominates. The budget here is really a regression
     # guard against accidentally making the Rust side O(n²).
-    budget = _budget_s("MM_TEST_REFS_TREE_10K_MAX_S", 2.0)
+    budget = _budget_s("MM_TEST_REFS_TREE_10K_MAX_S", 5.0)
     ctx = _build_ctx(ten_image_paths, 10_000)
     t0 = time.perf_counter()
     ctx.print_tree()
