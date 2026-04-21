@@ -16,9 +16,9 @@ middle; padding-right: 5px;"><br>
 
 ---
 
-Multi-modal context for agents — a CLI and a Python API for handing images, video, audio, and PDFs to any VLM.
+Familiar UNIX CLI tools like `find`, `grep`, `cat` — with multi-modal powers.
 
-UNIX tools (`find`, `grep`, `cat`) extended to binary formats, plus `mm.Context` — put files in, get OpenAI/Gemini messages out. Rust core for speed, Python for DX, UNIX philosophy for composability.
+`mm` offers both a CLI and a Python API that let agents work with file types LLMs can't natively read: images, video, audio, PDFs, and other binary formats. Rust core for speed, Python for dev-ex, UNIX philosophy for composability.
 
 ## Installation
 
