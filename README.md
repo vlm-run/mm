@@ -6,7 +6,7 @@ middle; padding-right: 5px;"><br>
   <h1>mm</h1>
 </div>
 <div align="center">
-  <h3>Fast, multi-modal context (CLI + Python) for agents</h3>
+  <h3>Fast, multi-modal context for agents</h3>
 </div>
 <div align="center">
   <a href="https://github.com/vlm-run/mm/blob/main/LICENSE"><img src="https://img.shields.io/github/license/vlm-run/mm.svg" alt="License"></a>
