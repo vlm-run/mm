@@ -11,6 +11,12 @@ Rust core for speed. Python for developer experience. Unix philosophy for compos
 
 ```bash
 pip install mm-ctx
+
+# with uv
+uv pip install mm-ctx
+
+# or run directly without installing
+uvx --from mm-ctx mm --help
 ```
 
 Alternative methods:
@@ -31,7 +37,7 @@ mm requires access to a VLM on a live server for accurate-mode (LLM-powered) ope
 
 | Provider | Models |
 |----------|--------|
-| Qwen     | `qwen3vl-2b\|4b\|8b\|32b`, `qwen3.5:0.8b\|2b\|9b\|27b` |
+| Qwen     | `qwen3vl-2b\|4b\|8b\|32b`, `qwen3.5:2b\|9b\|27b` |
 | Gemini   | `gemini-2.5-flash-lite`, `gemini-3.1-flash-lite-preview` |
 
 ### Profile setup

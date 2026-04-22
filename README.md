@@ -19,7 +19,7 @@ middle; padding-right: 5px;"><br>
 
 <br />
 <p align="center">
-  <img src="docs/assets/mm-terminal-window.png" alt="mm terminal demo" width="880">
+  <img src="docs/assets/mm-terminal-window.png" alt="mm terminal demo" width="880" style="border-radius: 12px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);">
 </p>
 
 ---
