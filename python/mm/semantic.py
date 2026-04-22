@@ -139,8 +139,8 @@ def search(
     elif uri_prefix:
         where = f"c.file_uri LIKE '{uri_prefix.replace(chr(39), chr(39) * 2)}%'"
 
-    fetch_multiplier = 5 if (kind or ext) else 2
-    raw = MmDatabase().search_similar(vectors[0], limit=limit * fetch_multiplier, where=where)
+    fetch_limit = max(limit * 10, 100) if (kind or ext) else limit * 2
+    raw = MmDatabase().search_similar(vectors[0], limit=fetch_limit, where=where)
     results = [
         {
             "path": r["file_uri"],
