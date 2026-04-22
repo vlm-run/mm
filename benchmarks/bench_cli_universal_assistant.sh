@@ -12,13 +12,19 @@
 #   ./benchmarks/bench_cli_universal_assistant.sh --mode full            # all 20 tasks
 #   ./benchmarks/bench_cli_universal_assistant.sh --tasks 10             # first N tasks
 #   ./benchmarks/bench_cli_universal_assistant.sh --assistant claude     # single assistant
+#   ./benchmarks/bench_cli_universal_assistant.sh --timeout 60           # per-attempt cap in seconds
 #   BENCH_RUNS=5 ./benchmarks/bench_cli_universal_assistant.sh          # custom run count
+#   BENCH_TIMEOUT=60 ./benchmarks/bench_cli_universal_assistant.sh      # per-attempt cap (env)
 #
 # Modes:
 #   fast  — 5 tasks, one per category (cross-modal, document, image, video, audio). ~5 min.
 #   full  — all 20 tasks across all categories. ~20 min.
 #
 # --tasks N overrides --mode. --mode fast is equivalent to --tasks 5.
+#
+# Timeout: each assistant attempt (with or without mm) is capped at --timeout
+# seconds. The cap is also surfaced in the prompt so the assistant self-paces
+# instead of exploring indefinitely. Default: 120s.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -26,6 +32,7 @@ DATA_DIR="${SCRIPT_DIR}/data"
 BENCH_DIR="${DATA_DIR}/universal-bench"
 RESULTS_DIR="${SCRIPT_DIR}/universal_cli/run_results"
 RUNS="${BENCH_RUNS:-3}"
+TIMEOUT_SEC="${BENCH_TIMEOUT:-120}"
 
 GCS="https://storage.googleapis.com/vlm-data-public-prod"
 TINY_URL="${GCS}/mmbench/mmbench-tiny.tar.gz"
@@ -39,9 +46,15 @@ while [ $# -gt 0 ]; do
     --assistant) SELECTED_ASSISTANT="${2:?--assistant requires a value (claude, codex, gemini)}"; shift 2 ;;
     --mode)      MODE="${2:?--mode requires a value (fast, full)}"; shift 2 ;;
     --tasks)     TASK_COUNT="${2:?--tasks requires a number}"; shift 2 ;;
+    --timeout)   TIMEOUT_SEC="${2:?--timeout requires seconds}"; shift 2 ;;
     *)           echo "Unknown flag: $1"; exit 1 ;;
   esac
 done
+
+if ! [[ "${TIMEOUT_SEC}" =~ ^[0-9]+$ ]] || [ "${TIMEOUT_SEC}" -lt 1 ]; then
+  echo "Error: --timeout must be a positive integer (seconds), got '${TIMEOUT_SEC}'"
+  exit 1
+fi
 
 TOTAL_TASKS=20
 if [ -n "${TASK_COUNT}" ]; then
@@ -70,6 +83,15 @@ fi
 
 if ! command -v mm &>/dev/null; then
   echo "Error: mm not found. Install with: uv pip install mm-ctx"
+  exit 1
+fi
+
+if command -v timeout &>/dev/null; then
+  TIMEOUT_CMD="timeout"
+elif command -v gtimeout &>/dev/null; then
+  TIMEOUT_CMD="gtimeout"
+else
+  echo "Error: timeout (or gtimeout) not found. On macOS: brew install coreutils"
   exit 1
 fi
 
@@ -119,42 +141,46 @@ assistant_cmd() {
   local name="$1"
   local prompt="$2"
   local context="${3:-}"  # optional stdin context
+  local tcap="${TIMEOUT_CMD} ${TIMEOUT_SEC}s"
 
   case "${name}" in
     claude)
       if [ -n "${context}" ]; then
-        echo "echo '${context}' | claude -p '${prompt}'"
+        echo "echo '${context}' | ${tcap} claude -p '${prompt}'"
       else
-        echo "claude -p '${prompt}'"
+        echo "${tcap} claude -p '${prompt}'"
       fi
       ;;
     codex)
       if [ -n "${context}" ]; then
-        echo "echo '${context}' | codex -q '${prompt}'"
+        echo "echo '${context}' | ${tcap} codex -q '${prompt}'"
       else
-        echo "codex -q '${prompt}'"
+        echo "${tcap} codex -q '${prompt}'"
       fi
       ;;
     gemini)
       if [ -n "${context}" ]; then
-        echo "echo '${context}' | gemini -p '${prompt}'"
+        echo "echo '${context}' | ${tcap} gemini -p '${prompt}'"
       else
-        echo "gemini -p '${prompt}'"
+        echo "${tcap} gemini -p '${prompt}'"
       fi
       ;;
   esac
 }
 
-# Build the hyperfine command for a task (stdin piped context)
+# Build the hyperfine command for a task (stdin piped context). Only the
+# assistant call is wrapped in timeout — mm itself is always fast and we want
+# to cap exploration time, not pre-extraction time.
 assistant_pipe_cmd() {
   local name="$1"
   local mm_cmd="$2"
   local prompt="$3"
+  local tcap="${TIMEOUT_CMD} ${TIMEOUT_SEC}s"
 
   case "${name}" in
-    claude) echo "${mm_cmd} | claude -p '${prompt}'" ;;
-    codex)  echo "${mm_cmd} | codex -q '${prompt}'" ;;
-    gemini) echo "${mm_cmd} | gemini -p '${prompt}'" ;;
+    claude) echo "${mm_cmd} | ${tcap} claude -p '${prompt}'" ;;
+    codex)  echo "${mm_cmd} | ${tcap} codex -q '${prompt}'" ;;
+    gemini) echo "${mm_cmd} | ${tcap} gemini -p '${prompt}'" ;;
   esac
 }
 
@@ -256,6 +282,7 @@ run_benchmarks() {
   echo "Data: ${BENCH_DIR}"
   echo "Assistants: ${ASSISTANTS[*]}"
   echo "Runs per command: ${RUNS}"
+  echo "Timeout per attempt: ${TIMEOUT_SEC}s"
   echo "Results: ${result_file}"
   echo ""
 
@@ -275,6 +302,7 @@ meta:
   tasks_run: ${MAX_TASKS}
   tasks_total: ${TOTAL_TASKS}
   runs: ${RUNS}
+  timeout_s: ${TIMEOUT_SEC}
   data_dir: "${BENCH_DIR}"
   file_count: $(find "${BENCH_DIR}" -type f ! -name '.ready' ! -name '.DS_Store' | wc -l | tr -d ' ')
   total_size_bytes: $(find "${BENCH_DIR}" -type f ! -name '.ready' ! -name '.DS_Store' -exec stat -f '%z' {} + 2>/dev/null | awk '{s+=$1}END{print s}' || find "${BENCH_DIR}" -type f ! -name '.ready' ! -name '.DS_Store' -exec stat -c '%s' {} + 2>/dev/null | awk '{s+=$1}END{print s}')
@@ -437,11 +465,17 @@ run_task() {
   local result_file="$4"
   local target_file="${5:-}"  # optional specific file for "without mm"
 
+  # Surface the hard cap in the prompt so the assistant self-paces. The shell
+  # `timeout` still enforces it — this just lets the model triage accordingly.
+  local budget_note=" (Time budget: ${TIMEOUT_SEC}s — be concise and do not over-explore.)"
+  local prompt_with_budget="${prompt}${budget_note}"
+
   cat >> "${result_file}" <<EOF
 
   - name: "${task_name}"
     prompt: "$(echo "${prompt}" | sed 's/"/\\"/g')"
     mm_cmd: "$(echo "${mm_cmd}" | sed 's/"/\\"/g')"
+    timeout_s: ${TIMEOUT_SEC}
     results:
 EOF
 
@@ -450,27 +484,27 @@ EOF
 
     # --- With mm ---
     local with_cmd
-    with_cmd="$(assistant_pipe_cmd "${asst}" "${mm_cmd}" "${prompt}")"
+    with_cmd="$(assistant_pipe_cmd "${asst}" "${mm_cmd}" "${prompt_with_budget}")"
 
     local with_json="${RESULTS_DIR}/.tmp_with_${asst}_${task_name}.json"
     echo "    with mm: ${with_cmd}"
-    hyperfine --warmup 1 --min-runs "${RUNS}" --export-json "${with_json}" \
+    hyperfine --ignore-failure --warmup 1 --min-runs "${RUNS}" --export-json "${with_json}" \
       --command-name "${asst}+mm" \
       "${with_cmd}" 2>&1 | tail -1 || true
 
     # --- Without mm ---
     local without_prompt
     if [ -n "${target_file}" ]; then
-      without_prompt="Given the file at ${target_file}: ${prompt}"
+      without_prompt="Given the file at ${target_file}: ${prompt_with_budget}"
     else
-      without_prompt="Given the directory at ${BENCH_DIR}: ${prompt}"
+      without_prompt="Given the directory at ${BENCH_DIR}: ${prompt_with_budget}"
     fi
     local without_cmd
     without_cmd="$(assistant_cmd "${asst}" "${without_prompt}")"
 
     local without_json="${RESULTS_DIR}/.tmp_without_${asst}_${task_name}.json"
     echo "    without mm: ${without_cmd}"
-    hyperfine --warmup 1 --min-runs "${RUNS}" --export-json "${without_json}" \
+    hyperfine --ignore-failure --warmup 1 --min-runs "${RUNS}" --export-json "${without_json}" \
       --command-name "${asst}" \
       "${without_cmd}" 2>&1 | tail -1 || true
 
