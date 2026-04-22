@@ -40,28 +40,32 @@ BRAND = {
 
 FONT_SANS = "Geist, Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
 FONT_MONO = "'Fragment Mono', 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace"
+WITHOUT_MM_STROKE = "#8B9AAF"
 
+# Task labels are the mm command each task exercises, shown in Fragment Mono
+# in both the chart y-axis and the detailed table. Keep them short and
+# command-shaped (``mm <subcmd> <target>``) so they read as code, not prose.
 TASK_LABELS = {
-    "directory_survey": "Directory Survey",
-    "pdf_extraction": "PDF Extraction",
-    "image_metadata": "Image Metadata",
-    "video_metadata": "Video Metadata",
-    "audio_metadata": "Audio Metadata",
-    "token_cost_estimate": "Token Cost Estimate",
-    "recent_files": "Recent Files",
-    "batch_metadata": "Batch Metadata",
-    "evidence_package": "Evidence Package",
-    "document_search": "Document Search",
-    "document_token_cost": "Document Token Cost",
-    "document_volume_by_dir": "Document Volume by Dir",
-    "document_format_audit": "Document Format Audit",
-    "hires_images": "Hi-Res Image Filter",
-    "image_format_audit": "Image Format Audit",
-    "image_token_cost": "Image Token Cost",
-    "video_resolution_check": "Video Resolution Check",
-    "video_codec_audit": "Video Codec Audit",
-    "tree_overview": "Tree Overview",
-    "project_token_budget": "Project Token Budget",
+    "directory_survey": "mm find ./dir/",
+    "pdf_extraction": "mm cat doc.pdf",
+    "image_metadata": "mm cat img.jpg",
+    "video_metadata": "mm cat vid.mp4",
+    "audio_metadata": "mm cat audio.mp3",
+    "token_cost_estimate": "mm wc ./dir/",
+    "recent_files": "mm sql files --recent",
+    "batch_metadata": "mm find ./dir/",
+    "evidence_package": "mm find ./dir/ --hash",
+    "document_search": "mm grep '$' ./docs/",
+    "document_token_cost": "mm wc ./docs/",
+    "document_volume_by_dir": "mm sql docs --by-dir",
+    "document_format_audit": "mm sql docs --by-ext",
+    "hires_images": "mm sql imgs --hires",
+    "image_format_audit": "mm sql imgs --by-ext",
+    "image_token_cost": "mm wc ./imgs/",
+    "video_resolution_check": "mm sql vids --res",
+    "video_codec_audit": "mm find ./vids/",
+    "tree_overview": "mm find ./dir/ --tree",
+    "project_token_budget": "mm wc ./dir/ --by-kind",
 }
 
 TASK_CATEGORIES = {
@@ -87,19 +91,25 @@ TASK_CATEGORIES = {
     "project_token_budget": "Dev",
 }
 
+# Category chips use a vibrant, categorical palette for quick visual scanning
+# across file types. These are intentionally outside the blue brand family —
+# distinct hues are more legible than shades of a single color at chip size.
 CATEGORY_COLORS = {
-    "Cross-modal": "#8B5CF6",
-    "Document": "#EF4444",
-    "Image": "#F59E0B",
-    "Video": "#3B82F6",
-    "Audio": "#10B981",
-    "Dev": "#6B7280",
+    "Cross-modal": "#8B5CF6",  # purple
+    "Document": "#EF4444",  # red
+    "Image": "#F59E0B",  # amber
+    "Video": "#3B82F6",  # blue
+    "Audio": "#10B981",  # green
+    "Dev": "#6B7280",  # gray
 }
 
+# Fixed per-assistant colors — each matches the tool's own brand so the same
+# assistant paints the same color in every visualization mode (latest run,
+# specific run, comparison).
 ASSISTANT_COLORS = {
-    "claude": "#D97706",
-    "codex": "#059669",
-    "gemini": "#2563EB",
+    "claude": "#D97706",  # Anthropic orange
+    "codex": "#059669",  # OpenAI green
+    "gemini": "#2563EB",  # Google blue
 }
 
 ASSISTANT_LABELS = {
@@ -157,18 +167,6 @@ def _fmt_sec(v) -> str:
     return f"{v:.1f}s" if isinstance(v, (int, float)) else "n/a"
 
 
-def _desaturate(hex_color: str, factor: float = 0.45) -> str:
-    """Blend a hex color toward gray by `factor` (0 = original, 1 = full gray)."""
-    r, g, b = int(hex_color[1:3], 16), int(hex_color[3:5], 16), int(hex_color[5:7], 16)
-    gray = int(0.299 * r + 0.587 * g + 0.114 * b)
-
-    def __h(c):
-        # mix = lambda c: int(c + (gray - c) * factor)
-        return int(c + (gray - c) * factor)
-
-    return f"#{__h(r):02x}{__h(g):02x}{__h(b):02x}"
-
-
 def build_single_report(data: dict, run_path: Path) -> go.Figure:
     meta = data["meta"]
     tasks = data["tasks"]
@@ -190,8 +188,6 @@ def build_single_report(data: dict, run_path: Path) -> go.Figure:
                     "assistant": r["assistant"],
                     "with_mm": _num(with_mm.get("mean_s")),
                     "without_mm": _num(without_mm.get("mean_s")),
-                    "with_mm_std": _num(with_mm.get("stddev_s")),
-                    "without_mm_std": _num(without_mm.get("stddev_s")),
                     "speedup": parse_speedup(r.get("speedup")),
                 }
             )
@@ -202,13 +198,16 @@ def build_single_report(data: dict, run_path: Path) -> go.Figure:
 
     fig = go.Figure()
 
-    # Build two-line y-axis labels: category (small, colored) above task name
+    # Build two-line y-axis labels: coloured category chip above the mm
+    # command label from TASK_LABELS, rendered in Fragment Mono so chart and
+    # table agree on the same label source.
     y_labels = []
     for t in tasks:
         cat = category(t["name"])
-        cat_color = CATEGORY_COLORS.get(cat, "#6B7280")
+        cat_color = CATEGORY_COLORS.get(cat, BRAND["text_muted"])
         html_label = (
-            f"<span style='font-size:10px; color:{cat_color}'>{cat}</span><br>{label(t['name'])}"
+            f"<span style='font-size:10px; color:{cat_color}'>{cat}</span>"
+            f"<br><span style='font-family:Fragment Mono,monospace'>{label(t['name'])}</span>"
         )
         y_labels.append(html_label)
         task_to_ylabel[t["name"]] = html_label
@@ -217,25 +216,32 @@ def build_single_report(data: dict, run_path: Path) -> go.Figure:
     for r in rows:
         r["label"] = task_to_ylabel[r["task"]]
 
+    mm_mono = '<span style="font-family:Fragment Mono,monospace;font-weight:500">mm</span>'
+
     # --- Horizontal grouped bar: with_mm vs without_mm ---
     for asst in assistants:
         asst_label = ASSISTANT_LABELS.get(asst, asst)
         asst_rows = [r for r in rows if r["assistant"] == asst]
-        color = ASSISTANT_COLORS.get(asst, "#6B7280")
-        color_desat = _desaturate(color, 0.55)
+        color = ASSISTANT_COLORS.get(asst, BRAND["text_muted"])
 
         # "no mm" bars — desaturated color + diagonal stripe pattern
         fig.add_trace(
             go.Bar(
-                name=f"{asst_label}  \u2014  without mm",
+                name=f"Without {mm_mono}",
                 y=[r["label"] for r in asst_rows],
                 x=[r["without_mm"] for r in asst_rows],
                 orientation="h",
                 marker=dict(
-                    color=color_desat,
-                    opacity=0.85,
-                    pattern=dict(shape="/", fgcolor="rgba(255,255,255,0.5)", size=6),
-                    line=dict(color=color_desat, width=1),
+                    color=BRAND["surface"],
+                    opacity=1.0,
+                    cornerradius=3,
+                    pattern=dict(
+                        shape="/",
+                        fgcolor=WITHOUT_MM_STROKE,
+                        bgcolor=BRAND["surface"],
+                        size=6,
+                    ),
+                    line=dict(color=WITHOUT_MM_STROKE, width=1),
                 ),
                 legendgroup=asst,
                 legendgrouptitle_text=asst_label,
@@ -251,13 +257,14 @@ def build_single_report(data: dict, run_path: Path) -> go.Figure:
         # "+ mm" bars — solid, full saturation
         fig.add_trace(
             go.Bar(
-                name=f"{asst_label}  \u2014  with mm",
+                name=f"With {mm_mono}",
                 y=[r["label"] for r in asst_rows],
                 x=[r["with_mm"] for r in asst_rows],
                 orientation="h",
                 marker=dict(
                     color=color,
                     opacity=1.0,
+                    cornerradius=3,
                     line=dict(color=color, width=1),
                 ),
                 legendgroup=asst,
@@ -267,15 +274,15 @@ def build_single_report(data: dict, run_path: Path) -> go.Figure:
             )
         )
 
-        # Speedup annotations on bars
+        # Speedup annotations
         for r in asst_rows:
             if r["speedup"] > 0:
                 fig.add_annotation(
-                    x=r["without_mm"] + r["without_mm_std"] + 2,
+                    x=max(r["without_mm"], r["with_mm"]) + 2.5,
                     y=r["label"],
                     text=f"<b>{r['speedup']:.1f}x</b>",
                     showarrow=False,
-                    font=dict(size=11, color=color),
+                    font=dict(size=18, color=color),
                     xanchor="left",
                 )
 
@@ -373,7 +380,7 @@ def build_table_html(data: dict) -> str:
             rows_html.append(f"""
             <tr>
                 <td><span style="color:{cat_color}; font-weight:600">{cat}</span></td>
-                <td>{label(task["name"])}</td>
+                <td><code>{label(task["name"])}</code></td>
                 <td>{asst_label}</td>
                 <td style="text-align:right; font-variant-numeric:tabular-nums">
                     {_fmt_sec(with_mm.get("mean_s"))}
@@ -431,7 +438,7 @@ def build_full_html(fig: go.Figure, data: dict, run_path: Path) -> str:
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>mm Benchmark — Universal CLI Assistant · vlm.run</title>
+<title>mm-ctx — CLI Agent Harness Benchmark · VLM Run</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Fragment+Mono&display=swap">
@@ -566,7 +573,7 @@ def build_full_html(fig: go.Figure, data: dict, run_path: Path) -> str:
     .panel td, .panel th {{ padding: 10px 14px; }}
     .panel td {{ border-top: 1px solid var(--border); }}
     .panel thead tr {{
-        background: var(--text) !important;
+        background: var(--text-secondary) !important;
         color: var(--surface);
     }}
     code, .mono {{ font-family: var(--font-mono); }}
@@ -588,13 +595,13 @@ def build_full_html(fig: go.Figure, data: dict, run_path: Path) -> str:
 <div class="container">
     <div class="brand-row">
         <span class="dot"></span>
-        <span>vlm.run</span>
+        <span>VLM Run</span>
         <span style="color: var(--text-muted)">/</span>
         <span style="color: var(--text-secondary)">mm benchmark</span>
     </div>
     <div class="header">
         <div>
-            <h1>mm <span>Universal CLI Assistant Benchmark</span></h1>
+            <h1>mm <span>CLI Agent Harness Benchmark</span></h1>
             <div class="meta">
                 <span>Run <strong class="mono">{ts}</strong></span>
                 <span>Mode <strong>{mode}</strong> ({n_tasks}/{total_tasks} tasks)</span>
@@ -668,7 +675,7 @@ def build_comparison_report(run_paths: list[Path]) -> go.Figure:
     for asst in sorted({r["assistant"] for r in all_runs}):
         asst_data = [r for r in all_runs if r["assistant"] == asst]
         asst_label = ASSISTANT_LABELS.get(asst, asst)
-        color = ASSISTANT_COLORS.get(asst, "#6B7280")
+        color = ASSISTANT_COLORS.get(asst, BRAND["text_muted"])
 
         fig.add_trace(
             go.Scatter(

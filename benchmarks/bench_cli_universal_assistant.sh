@@ -11,7 +11,8 @@
 #   ./benchmarks/bench_cli_universal_assistant.sh                        # default: fast mode (5 tasks)
 #   ./benchmarks/bench_cli_universal_assistant.sh --mode full            # all 20 tasks
 #   ./benchmarks/bench_cli_universal_assistant.sh --tasks 10             # first N tasks
-#   ./benchmarks/bench_cli_universal_assistant.sh --assistant claude     # single assistant
+#   ./benchmarks/bench_cli_universal_assistant.sh --assistant claude           # one assistant
+#   ./benchmarks/bench_cli_universal_assistant.sh --assistant claude,codex     # comma-separated subset
 #   ./benchmarks/bench_cli_universal_assistant.sh --timeout 60           # per-attempt cap in seconds
 #   BENCH_RUNS=5 ./benchmarks/bench_cli_universal_assistant.sh          # custom run count
 #   BENCH_TIMEOUT=60 ./benchmarks/bench_cli_universal_assistant.sh      # per-attempt cap (env)
@@ -43,7 +44,7 @@ TASK_COUNT=""
 
 while [ $# -gt 0 ]; do
   case "$1" in
-    --assistant) SELECTED_ASSISTANT="${2:?--assistant requires a value (claude, codex, gemini)}"; shift 2 ;;
+    --assistant) SELECTED_ASSISTANT="${2:?--assistant requires a value (claude, codex, gemini; comma-separated for multiple)}"; shift 2 ;;
     --mode)      MODE="${2:?--mode requires a value (fast, full)}"; shift 2 ;;
     --tasks)     TASK_COUNT="${2:?--tasks requires a number}"; shift 2 ;;
     --timeout)   TIMEOUT_SEC="${2:?--timeout requires seconds}"; shift 2 ;;
@@ -54,6 +55,20 @@ done
 if ! [[ "${TIMEOUT_SEC}" =~ ^[0-9]+$ ]] || [ "${TIMEOUT_SEC}" -lt 1 ]; then
   echo "Error: --timeout must be a positive integer (seconds), got '${TIMEOUT_SEC}'"
   exit 1
+fi
+
+# Validate --assistant list: each entry must be one of the supported assistants.
+# Accepts "" (all), "claude" (one), or "claude,codex" (subset).
+SUPPORTED_ASSISTANTS="claude codex gemini"
+if [ -n "${SELECTED_ASSISTANT}" ]; then
+  IFS=',' read -r -a _SEL_ARR <<< "${SELECTED_ASSISTANT}"
+  for _name in "${_SEL_ARR[@]}"; do
+    case " ${SUPPORTED_ASSISTANTS} " in
+      *" ${_name} "*) ;;
+      *) echo "Error: --assistant '${_name}' not supported (expected: ${SUPPORTED_ASSISTANTS// /, })"; exit 1 ;;
+    esac
+  done
+  unset _SEL_ARR _name
 fi
 
 TOTAL_TASKS=20
@@ -108,11 +123,15 @@ check_assistant() {
   esac
 }
 
-# Detect available assistants
+# Detect available assistants. SELECTED_ASSISTANT is a comma-separated subset
+# (empty means "all"); membership is tested with a delimited substring match.
 declare -a ASSISTANTS=()
 for cmd in claude codex gemini; do
-  if [ -n "${SELECTED_ASSISTANT}" ] && [ "${cmd}" != "${SELECTED_ASSISTANT}" ]; then
-    continue
+  if [ -n "${SELECTED_ASSISTANT}" ]; then
+    case ",${SELECTED_ASSISTANT}," in
+      *",${cmd},"*) ;;
+      *) continue ;;
+    esac
   fi
   if ! command -v "${cmd}" &>/dev/null; then
     [ -n "${SELECTED_ASSISTANT}" ] && echo "  ${cmd}: not installed (skipping)"
