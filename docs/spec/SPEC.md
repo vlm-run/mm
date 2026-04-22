@@ -1,6 +1,6 @@
 # mm Spec
 
-> Fast, multimodal file intelligence for agents. Rust core, Python API, Unix CLI.
+> Fast, multimodal context for agents. Rust core, Python API, Unix CLI.
 
 Legend: `[x]` implemented, `[ ]` roadmap, `[~]` partial/stubbed
 
@@ -87,7 +87,10 @@ mm
 │   ├── [x] grep(pattern, kind) — regex search across file contents
 │   ├── [x] show(limit, columns) — Rich table display
 │   ├── [x] info() — Rich summary panel
-│   └── [x] save() — persist to .mm/index.parquet
+│   ├── [x] save() — persist to .mm/index.parquet
+│   ├── [x] Context(session_id=...) / Context.new_session() — external session id
+│   ├── [x] ref_for(path) / global_ref(path) / refs — kind-prefixed deterministic ref ids
+│   └── [x] Context.resolve("<session_id>/<ref_id>") — global cross-user lookup
 │
 ├── CLI Commands (8 total: 5 core + bench + config + profile. Typer, Unix-philosophy composability)
 │   ├── [x] --version/-v global flag
@@ -151,7 +154,7 @@ mm
 │
 ├── Tests
 │   ├── Rust: 75 tests (meta, walk, detect, schema, table, code, image, video, audio, document, hash)
-│   ├── Python: 271 tests (CLI, Context API, pipe, metadata/fast/accurate, config, whisper, scenes, bench)
+│   ├── Python: 582 tests (CLI, Context API, refs/sessions, pipe, metadata/fast/accurate, config, whisper, scenes, docling, bench)
 │   ├── Criterion benchmarks: l0_walk, l0_index, hash_strategies, l1_extract, find_filter
 │   ├── mm bench: 24 commands (metadata×10, fast×8, accurate×6) with bits/s throughput
 │   └── pytest-benchmark: 11 benchmarks (metadata, fast, ffmpeg, e2e)

@@ -1,3 +1,5 @@
+mod refs;
+
 use std::path::PathBuf;
 
 use arrow::array::RecordBatch;
@@ -424,5 +426,6 @@ fn mm_module(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(gemini_image_part, m)?)?;
     m.add_function(wrap_pyfunction!(gemini_video_parts, m)?)?;
     m.add_function(wrap_pyfunction!(gemini_document_part, m)?)?;
+    refs::register(m)?;
     Ok(())
 }

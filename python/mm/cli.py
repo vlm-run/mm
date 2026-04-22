@@ -75,7 +75,7 @@ def _print_banner() -> None:
 
         console.print(
             f"  [bold {_STEEL_BLUE}]mm (v{__version__})[/bold {_STEEL_BLUE}]"
-            " [dim]— Fast, multimodal file intelligence for agents[/dim]"
+            " [dim]— Fast, multimodal context for agents[/dim]"
         )
     else:
         console.print(f"  [bold {_STEEL_BLUE}]mm (v{__version__})[/bold {_STEEL_BLUE}]")
@@ -105,7 +105,7 @@ def _main(
     ] = "auto",
     version: Annotated[bool, typer.Option("--version", "-v", help="Show version and exit")] = False,
 ) -> None:
-    """Fast, multimodal file intelligence for agents."""
+    """Fast, multimodal context for agents."""
     if version:
         typer.echo(f"mm v{__version__}")
         raise typer.Exit()
@@ -126,7 +126,8 @@ def _main(
 
     cmd = ctx.invoked_subcommand or ""
     if cmd in _TIMED_COMMANDS:
-        _check_exit, _display_elapsed = display_elapsed_wrapper(start_time)
+        prefix = "took" if cmd == "grep" else None
+        _check_exit, _display_elapsed = display_elapsed_wrapper(start_time, prefix)
         sys.exit = _check_exit
         atexit.register(_display_elapsed)
 

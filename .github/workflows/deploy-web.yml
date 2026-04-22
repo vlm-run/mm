@@ -38,7 +38,6 @@ jobs:
           publish_dir: ./web/intro/dist
           destination_dir: intro
           keep_files: true
-
   # Deploy metrics dashboard to GitHub Pages at /dev/metrics
   deploy-metrics:
     runs-on: ubuntu-latest
@@ -65,4 +64,53 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./web/metrics/dist
           destination_dir: dev/metrics
+          keep_files: true
+
+  # Deploy rendered README to GitHub Pages at /readme
+  deploy-readme:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Render README to HTML
+        run: |
+          mkdir -p dist/readme/docs/assets
+          cp -r docs/assets/. dist/readme/docs/assets/
+          npm install --no-save marked@11
+          node <<'EOF'
+          const fs = require('fs');
+          const { marked } = require('marked');
+          const md = fs.readFileSync('README.md', 'utf8');
+          const body = marked.parse(md, { gfm: true, breaks: false });
+          const html = `<!DOCTYPE html>
+          <html lang="en">
+          <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>mm-ctx</title>
+            <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/github-markdown-css@5/github-markdown-light.min.css">
+            <style>
+              html, body { background: #ffffff; margin: 0; }
+              .markdown-body { box-sizing: border-box; min-width: 200px; max-width: 980px; margin: 0 auto; padding: 45px; }
+              @media (max-width: 767px) { .markdown-body { padding: 15px; } }
+            </style>
+          </head>
+          <body>
+            <article class="markdown-body">
+          ${body}
+            </article>
+          </body>
+          </html>`;
+          fs.writeFileSync('dist/readme/index.html', html);
+          EOF
+      - name: Deploy readme to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./dist/readme
+          destination_dir: readme
           keep_files: true

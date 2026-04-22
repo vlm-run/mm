@@ -1,12 +1,20 @@
-"""mm -- Fast, multimodal file intelligence for agents."""
+"""mm -- Fast, multimodal context for agents."""
 
 from importlib.metadata import version
 
-__all__ = ["Context"]
+__all__ = [
+    "Context",
+    "Ref",
+    "RefNotFoundError",
+    "uuid7",
+]
 __version__ = version("mm-ctx")
 
 _LAZY_IMPORTS = {
     "Context": ("mm.context", "Context"),
+    "Ref": ("mm.refs", "Ref"),
+    "RefNotFoundError": ("mm.refs", "RefNotFoundError"),
+    "uuid7": ("mm.refs", "uuid7"),
 }
 
 

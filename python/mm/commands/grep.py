@@ -190,7 +190,11 @@ def grep_cmd(
                 entry = {
                     "path": r["path"],
                     "line_number": r["index"],
-                    "line": match_text,
+                    "line": (
+                        f"{match_text[:90]}...{match_text[-50:]}"
+                        if len(match_text) > 140
+                        else match_text[:140]
+                    ),
                 }
                 all_matches.append(entry)
                 file_counts[r["path"]] = file_counts.get(r["path"], 0) + 1

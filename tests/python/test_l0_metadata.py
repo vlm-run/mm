@@ -364,8 +364,8 @@ class TestDBRoundtrip:
 
         root_str = str(media_tree.resolve()).replace("'", "''")
         rows = ctx.db.get_files(where=f"uri LIKE '{root_str}%'")
-        # 14 L0 + 18 L1 + 2 tracking = 34 columns in DB
-        assert len(rows[0].keys()) == 34
+        # 14 L0 + 18 L1 + 2 session/ref + 2 tracking = 36 columns in DB
+        assert len(rows[0].keys()) == 36
 
 
 # ── CLI Integration ───────────────────────────────────────────────────

@@ -1,5 +1,5 @@
 #!/bin/sh
-# Install mm — Fast, multimodal file intelligence for agents
+# Install mm — Fast, multimodal context for agents
 #
 # Usage:
 #   curl -LsSf https://vlm-run.github.io/mm/install/install.sh | sh
