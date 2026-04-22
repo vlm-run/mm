@@ -218,11 +218,17 @@ def build_single_report(data: dict, run_path: Path) -> go.Figure:
 
     mm_mono = '<span style="font-family:Fragment Mono,monospace;font-weight:500">mm</span>'
 
+    # Single-assistant runs paint in the brand primary blue — reserving the
+    # per-provider palette for when you actually need to tell them apart (≥2).
+    single_assistant = len(assistants) == 1
+
     # --- Horizontal grouped bar: with_mm vs without_mm ---
     for asst in assistants:
         asst_label = ASSISTANT_LABELS.get(asst, asst)
         asst_rows = [r for r in rows if r["assistant"] == asst]
-        color = ASSISTANT_COLORS.get(asst, BRAND["text_muted"])
+        color = (
+            BRAND["accent"] if single_assistant else ASSISTANT_COLORS.get(asst, BRAND["text_muted"])
+        )
 
         # "no mm" bars — desaturated color + diagonal stripe pattern
         fig.add_trace(
@@ -432,6 +438,16 @@ def build_full_html(fig: go.Figure, data: dict, run_path: Path) -> str:
     n_tasks = meta.get("tasks_run", len(tasks))
     total_tasks = meta.get("tasks_total", "?")
 
+    # Profile chip — show --base-url and --model if the bench captured them.
+    # Kept as two compact mono chips so the flags read like the CLI.
+    profile_chips = ""
+    base_url = meta.get("profile_base_url") or ""
+    model = meta.get("profile_model") or ""
+    if base_url:
+        profile_chips += f'<span>--base-url <strong class="mono">{base_url}</strong></span>'
+    if model:
+        profile_chips += f'<span>--model <strong class="mono">{model}</strong></span>'
+
     b = BRAND
     return f"""<!DOCTYPE html>
 <html lang="en">
@@ -608,6 +624,7 @@ def build_full_html(fig: go.Figure, data: dict, run_path: Path) -> str:
                 <span>Data <strong>{meta["file_count"]} files</strong> ({meta.get("total_size_bytes", 0) / 1e6:.0f} MB)</span>
                 <span>Runs <strong>{meta["runs"]}</strong> per command</span>
                 <span>Assistants <strong>{", ".join(ASSISTANT_LABELS.get(a, a) for a in meta["assistants"])}</strong></span>
+                {profile_chips}
             </div>
         </div>
     </div>

@@ -110,6 +110,18 @@ else
   exit 1
 fi
 
+# Capture the active mm profile's --base-url and --model once, up front. The
+# fast-mode commands this bench runs don't consume the profile, but recording
+# it keeps the run self-describing and reproducible.
+PROFILE_JSON="$(mm profile list --format json 2>/dev/null || echo '{}')"
+PROFILE_NAME="$(echo "${PROFILE_JSON}" | jq -r '.active // ""')"
+PROFILE_BASE_URL=""
+PROFILE_MODEL=""
+if [ -n "${PROFILE_NAME}" ]; then
+  PROFILE_BASE_URL="$(echo "${PROFILE_JSON}" | jq -r --arg n "${PROFILE_NAME}" '.profiles[$n].base_url // ""')"
+  PROFILE_MODEL="$(echo "${PROFILE_JSON}" | jq -r --arg n "${PROFILE_NAME}" '.profiles[$n].model // ""')"
+fi
+
 # Preflight: probe the assistant by running it on a trivial prompt. Fails fast
 # if the CLI flag shape is wrong (e.g. `codex -q` unsupported) or the backend
 # is unreachable, so we don't waste minutes on doomed hyperfine runs.
@@ -302,6 +314,7 @@ run_benchmarks() {
   echo "Assistants: ${ASSISTANTS[*]}"
   echo "Runs per command: ${RUNS}"
   echo "Timeout per attempt: ${TIMEOUT_SEC}s"
+  echo "Profile: ${PROFILE_NAME:-<none>} (${PROFILE_BASE_URL:-n/a} / ${PROFILE_MODEL:-n/a})"
   echo "Results: ${result_file}"
   echo ""
 
@@ -322,6 +335,9 @@ meta:
   tasks_total: ${TOTAL_TASKS}
   runs: ${RUNS}
   timeout_s: ${TIMEOUT_SEC}
+  profile_name: "${PROFILE_NAME}"
+  profile_base_url: "${PROFILE_BASE_URL}"
+  profile_model: "${PROFILE_MODEL}"
   data_dir: "${BENCH_DIR}"
   file_count: $(find "${BENCH_DIR}" -type f ! -name '.ready' ! -name '.DS_Store' | wc -l | tr -d ' ')
   total_size_bytes: $(find "${BENCH_DIR}" -type f ! -name '.ready' ! -name '.DS_Store' -exec stat -f '%z' {} + 2>/dev/null | awk '{s+=$1}END{print s}' || find "${BENCH_DIR}" -type f ! -name '.ready' ! -name '.DS_Store' -exec stat -c '%s' {} + 2>/dev/null | awk '{s+=$1}END{print s}')
