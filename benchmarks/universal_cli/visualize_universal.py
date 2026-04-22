@@ -20,6 +20,27 @@ import yaml
 
 RESULTS_DIR = Path(__file__).parent / "run_results"
 
+# vlm.run brand tokens (inferred from vlm.run landing and chat.vlm.run/showdown).
+# Keep these in one place so the chart and HTML shell stay in sync.
+BRAND = {
+    "bg": "#F5FAFF",  # page background — very pale blue
+    "surface": "#FFFFFF",  # cards / panels
+    "surface_tint": "#E6EDFC",  # subtle fill (chips, zebra)
+    "border": "#D5E2F7",
+    "border_strong": "#AAC2EC",
+    "text_primary": "#010917",  # near-black navy
+    "text_secondary": "#596983",
+    "text_muted": "#A29F9F",
+    "accent": "#1E5ACA",  # primary brand blue
+    "accent_deep": "#102955",
+    "accent_hover": "#2756A8",
+    "accent_bright": "#4E8CFF",
+    "accent_soft": "#749ADF",
+}
+
+FONT_SANS = "Geist, Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
+FONT_MONO = "'Fragment Mono', 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace"
+
 TASK_LABELS = {
     "directory_survey": "Directory Survey",
     "pdf_extraction": "PDF Extraction",
@@ -209,9 +230,6 @@ def build_single_report(data: dict, run_path: Path) -> go.Figure:
                 name=f"{asst_label}  \u2014  without mm",
                 y=[r["label"] for r in asst_rows],
                 x=[r["without_mm"] for r in asst_rows],
-                error_x=dict(
-                    type="data", array=[r["without_mm_std"] for r in asst_rows], thickness=1.5
-                ),
                 orientation="h",
                 marker=dict(
                     color=color_desat,
@@ -236,9 +254,6 @@ def build_single_report(data: dict, run_path: Path) -> go.Figure:
                 name=f"{asst_label}  \u2014  with mm",
                 y=[r["label"] for r in asst_rows],
                 x=[r["with_mm"] for r in asst_rows],
-                error_x=dict(
-                    type="data", array=[r["with_mm_std"] for r in asst_rows], thickness=1.5
-                ),
                 orientation="h",
                 marker=dict(
                     color=color,
@@ -273,18 +288,18 @@ def build_single_report(data: dict, run_path: Path) -> go.Figure:
         bargap=0.25,
         height=chart_height,
         template="plotly_white",
-        font=dict(family="Inter, -apple-system, sans-serif", size=13),
+        font=dict(family=FONT_SANS, size=13, color=BRAND["text_primary"]),
         title=dict(
             text=(
                 f"<b>Wall-clock Time per Task</b>"
                 f"<br>"
-                f"<span style='font-size:13px; color:#6B7280'>"
+                f"<span style='font-size:13px; color:{BRAND['text_secondary']}'>"
                 f"Solid = with mm &nbsp; | &nbsp; Striped = without mm"
                 f" &nbsp; | &nbsp; "
-                f"Avg speedup: <b style='color:#059669'>{mean_speedup:.1f}x</b>"
+                f"Avg speedup: <b style='color:{BRAND['accent']}'>{mean_speedup:.1f}x</b>"
                 f"</span>"
             ),
-            font=dict(size=17),
+            font=dict(size=17, color=BRAND["text_primary"]),
             x=0,
             xanchor="left",
             y=0.97,
@@ -292,30 +307,36 @@ def build_single_report(data: dict, run_path: Path) -> go.Figure:
             pad=dict(b=20),
         ),
         xaxis=dict(
-            title=dict(text="Wall-clock time (seconds)", font=dict(size=13)),
-            gridcolor="#E5E7EB",
+            title=dict(
+                text="Wall-clock time (seconds)",
+                font=dict(size=13, color=BRAND["text_secondary"]),
+                standoff=18,
+            ),
+            gridcolor=BRAND["border"],
             zeroline=True,
-            zerolinecolor="#D1D5DB",
+            zerolinecolor=BRAND["border_strong"],
+            tickfont=dict(color=BRAND["text_secondary"]),
         ),
         yaxis=dict(
             autorange="reversed",
-            tickfont=dict(size=12),
+            tickfont=dict(size=12, color=BRAND["text_primary"]),
             categoryorder="array",
             categoryarray=y_labels,
         ),
         legend=dict(
             orientation="h",
             yanchor="top",
-            y=-0.14,
+            y=-0.24,
             xanchor="center",
             x=0.5,
-            font=dict(size=12),
+            font=dict(size=12, color=BRAND["text_primary"]),
             bgcolor="rgba(255,255,255,0.9)",
-            bordercolor="#E5E7EB",
+            bordercolor=BRAND["border"],
             borderwidth=1,
         ),
-        margin=dict(l=200, r=80, t=120, b=140),
-        plot_bgcolor="#FAFAFA",
+        margin=dict(l=200, r=80, t=120, b=190),
+        plot_bgcolor=BRAND["surface"],
+        paper_bgcolor=BRAND["surface"],
     )
 
     return fig
@@ -326,18 +347,25 @@ def build_table_html(data: dict) -> str:
     tasks = data["tasks"]
     # assistants = meta["assistants"]
 
+    muted = BRAND["text_muted"]
     rows_html = []
     for task in tasks:
         for r in task_results(task):
             sp = parse_speedup(r.get("speedup"))
             if sp <= 0:
-                sp_cell = '<span style="color:#9CA3AF">n/a</span>'
-                sp_color = "#9CA3AF"
+                sp_cell = f'<span style="color:{muted}">n/a</span>'
+                sp_color = muted
+            elif sp >= 1.5:
+                sp_color = BRAND["accent"]
+                sp_cell = f"{sp:.2f}x"
+            elif sp >= 1.0:
+                sp_color = BRAND["accent_soft"]
+                sp_cell = f"{sp:.2f}x"
             else:
-                sp_color = "#059669" if sp >= 1.5 else "#D97706" if sp >= 1.0 else "#EF4444"
+                sp_color = BRAND["text_muted"]
                 sp_cell = f"{sp:.2f}x"
             cat = category(task["name"])
-            cat_color = CATEGORY_COLORS.get(cat, "#6B7280")
+            cat_color = CATEGORY_COLORS.get(cat, BRAND["text_secondary"])
             asst_label = ASSISTANT_LABELS.get(r["assistant"], r["assistant"])
             with_mm = r.get("with_mm") or {}
             without_mm = r.get("without_mm") or {}
@@ -349,11 +377,11 @@ def build_table_html(data: dict) -> str:
                 <td>{asst_label}</td>
                 <td style="text-align:right; font-variant-numeric:tabular-nums">
                     {_fmt_sec(with_mm.get("mean_s"))}
-                    <span style="color:#9CA3AF">± {_fmt_sec(with_mm.get("stddev_s"))}</span>
+                    <span style="color:{muted}">± {_fmt_sec(with_mm.get("stddev_s"))}</span>
                 </td>
                 <td style="text-align:right; font-variant-numeric:tabular-nums">
                     {_fmt_sec(without_mm.get("mean_s"))}
-                    <span style="color:#9CA3AF">± {_fmt_sec(without_mm.get("stddev_s"))}</span>
+                    <span style="color:{muted}">± {_fmt_sec(without_mm.get("stddev_s"))}</span>
                 </td>
                 <td style="text-align:right; font-weight:700; color:{sp_color}">
                     {sp_cell}
@@ -361,15 +389,15 @@ def build_table_html(data: dict) -> str:
             </tr>""")
 
     return f"""
-    <table style="width:100%; border-collapse:collapse; font-size:14px; margin-top:24px">
+    <table style="width:100%; border-collapse:collapse; font-size:14px; margin-top:4px">
         <thead>
-            <tr style="background:#1F2937; color:white">
-                <th style="padding:10px 12px; text-align:left">Category</th>
-                <th style="padding:10px 12px; text-align:left">Task</th>
-                <th style="padding:10px 12px; text-align:left">Assistant</th>
-                <th style="padding:10px 12px; text-align:right">With mm</th>
-                <th style="padding:10px 12px; text-align:right">Without mm</th>
-                <th style="padding:10px 12px; text-align:right">Speedup</th>
+            <tr>
+                <th style="padding:12px 14px; text-align:left">Category</th>
+                <th style="padding:12px 14px; text-align:left">Task</th>
+                <th style="padding:12px 14px; text-align:left">Assistant</th>
+                <th style="padding:12px 14px; text-align:right">With mm</th>
+                <th style="padding:12px 14px; text-align:right">Without mm</th>
+                <th style="padding:12px 14px; text-align:right">Speedup</th>
             </tr>
         </thead>
         <tbody>
@@ -397,141 +425,212 @@ def build_full_html(fig: go.Figure, data: dict, run_path: Path) -> str:
     n_tasks = meta.get("tasks_run", len(tasks))
     total_tasks = meta.get("tasks_total", "?")
 
+    b = BRAND
     return f"""<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>mm Benchmark — Universal CLI Assistant</title>
+<title>mm Benchmark — Universal CLI Assistant · vlm.run</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Fragment+Mono&display=swap">
 <style>
+    :root {{
+        --bg: {b["bg"]};
+        --surface: {b["surface"]};
+        --surface-tint: {b["surface_tint"]};
+        --border: {b["border"]};
+        --border-strong: {b["border_strong"]};
+        --text: {b["text_primary"]};
+        --text-secondary: {b["text_secondary"]};
+        --text-muted: {b["text_muted"]};
+        --accent: {b["accent"]};
+        --accent-deep: {b["accent_deep"]};
+        --accent-hover: {b["accent_hover"]};
+        --accent-bright: {b["accent_bright"]};
+        --accent-soft: {b["accent_soft"]};
+        --font-sans: {FONT_SANS};
+        --font-mono: {FONT_MONO};
+    }}
     * {{ margin: 0; padding: 0; box-sizing: border-box; }}
     body {{
-        font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-        background: #F9FAFB;
-        color: #111827;
+        font-family: var(--font-sans);
+        background: var(--bg);
+        color: var(--text);
         line-height: 1.5;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
     }}
-    .container {{ max-width: 1200px; margin: 0 auto; padding: 32px 24px; }}
+    .container {{ max-width: 1200px; margin: 0 auto; padding: 40px 24px; }}
+    .brand-row {{
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-family: var(--font-mono);
+        font-size: 12px;
+        color: var(--accent);
+        letter-spacing: 0.02em;
+        margin-bottom: 16px;
+    }}
+    .brand-row .dot {{
+        width: 6px;
+        height: 6px;
+        background: var(--accent);
+        border-radius: 50%;
+        display: inline-block;
+    }}
     .header {{
         display: flex;
         justify-content: space-between;
         align-items: flex-start;
         margin-bottom: 32px;
         padding-bottom: 24px;
-        border-bottom: 1px solid #E5E7EB;
+        border-bottom: 1px solid var(--border);
     }}
     .header h1 {{
-        font-size: 24px;
-        font-weight: 700;
-        letter-spacing: -0.02em;
+        font-size: 28px;
+        font-weight: 600;
+        letter-spacing: -0.025em;
+        color: var(--text);
     }}
-    .header h1 span {{ color: #6B7280; font-weight: 400; }}
+    .header h1 span {{
+        color: var(--text-secondary);
+        font-weight: 400;
+    }}
     .meta {{
         display: flex;
-        gap: 24px;
+        flex-wrap: wrap;
+        gap: 8px 20px;
         font-size: 13px;
-        color: #6B7280;
-        margin-top: 8px;
+        color: var(--text-secondary);
+        margin-top: 10px;
     }}
-    .meta strong {{ color: #111827; }}
+    .meta strong {{ color: var(--text); font-weight: 500; }}
     .kpi-row {{
-        display: flex;
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
         gap: 16px;
         margin-bottom: 32px;
     }}
     .kpi {{
-        flex: 1;
-        background: white;
-        border: 1px solid #E5E7EB;
-        border-radius: 12px;
-        padding: 20px 24px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        padding: 22px 24px;
+        position: relative;
+        overflow: hidden;
     }}
+    .kpi::before {{
+        content: "";
+        position: absolute;
+        inset: 0 auto 0 0;
+        width: 3px;
+        background: var(--accent);
+    }}
+    .kpi.accent-deep::before {{ background: var(--accent-deep); }}
+    .kpi.accent-soft::before {{ background: var(--accent-soft); }}
     .kpi .value {{
-        font-size: 32px;
-        font-weight: 700;
+        font-size: 34px;
+        font-weight: 600;
         font-variant-numeric: tabular-nums;
-        letter-spacing: -0.02em;
+        letter-spacing: -0.03em;
+        color: var(--accent);
     }}
+    .kpi.accent-deep .value {{ color: var(--accent-deep); }}
+    .kpi.accent-soft .value {{ color: var(--text); }}
     .kpi .label {{
-        font-size: 13px;
-        color: #6B7280;
-        margin-top: 2px;
+        font-size: 12px;
+        color: var(--text-secondary);
+        margin-top: 4px;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        font-weight: 500;
     }}
-    .kpi.green .value {{ color: #059669; }}
-    .kpi.amber .value {{ color: #D97706; }}
-    .kpi.blue .value  {{ color: #2563EB; }}
-    .chart-container {{
-        background: white;
-        border: 1px solid #E5E7EB;
-        border-radius: 12px;
-        padding: 16px;
-        margin-bottom: 32px;
+    .panel {{
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        padding: 20px;
+        margin-bottom: 24px;
     }}
-    .table-container {{
-        background: white;
-        border: 1px solid #E5E7EB;
-        border-radius: 12px;
-        padding: 16px;
-        overflow-x: auto;
+    .panel h3 {{
+        font-size: 15px;
+        font-weight: 600;
+        color: var(--text);
+        margin-bottom: 12px;
+        letter-spacing: -0.01em;
     }}
-    .table-container table {{ font-family: inherit; }}
-    .table-container tr:nth-child(even) {{ background: #F9FAFB; }}
-    .table-container td, .table-container th {{ padding: 8px 12px; }}
-    .table-container td {{ border-top: 1px solid #F3F4F6; }}
+    .panel table {{ font-family: var(--font-sans); }}
+    .panel tr:nth-child(even) {{ background: var(--bg); }}
+    .panel td, .panel th {{ padding: 10px 14px; }}
+    .panel td {{ border-top: 1px solid var(--border); }}
+    .panel thead tr {{
+        background: var(--text) !important;
+        color: var(--surface);
+    }}
+    code, .mono {{ font-family: var(--font-mono); }}
     .footer {{
         margin-top: 32px;
-        padding-top: 16px;
-        border-top: 1px solid #E5E7EB;
+        padding-top: 20px;
+        border-top: 1px solid var(--border);
         font-size: 12px;
-        color: #9CA3AF;
+        color: var(--text-muted);
         display: flex;
         justify-content: space-between;
+        font-family: var(--font-mono);
     }}
-    .footer a {{ color: #6B7280; text-decoration: none; }}
-    .footer a:hover {{ color: #111827; }}
+    .footer a {{ color: var(--accent); text-decoration: none; }}
+    .footer a:hover {{ color: var(--accent-hover); }}
 </style>
 </head>
 <body>
 <div class="container">
+    <div class="brand-row">
+        <span class="dot"></span>
+        <span>vlm.run</span>
+        <span style="color: var(--text-muted)">/</span>
+        <span style="color: var(--text-secondary)">mm benchmark</span>
+    </div>
     <div class="header">
         <div>
             <h1>mm <span>Universal CLI Assistant Benchmark</span></h1>
             <div class="meta">
-                <span>Run: <strong>{ts}</strong></span>
-                <span>Mode: <strong>{mode}</strong> ({n_tasks}/{total_tasks} tasks)</span>
-                <span>Data: <strong>{meta["file_count"]} files</strong> ({meta.get("total_size_bytes", 0) / 1e6:.0f} MB)</span>
-                <span>Runs: <strong>{meta["runs"]}</strong> per command</span>
-                <span>Assistants: <strong>{", ".join(ASSISTANT_LABELS.get(a, a) for a in meta["assistants"])}</strong></span>
+                <span>Run <strong class="mono">{ts}</strong></span>
+                <span>Mode <strong>{mode}</strong> ({n_tasks}/{total_tasks} tasks)</span>
+                <span>Data <strong>{meta["file_count"]} files</strong> ({meta.get("total_size_bytes", 0) / 1e6:.0f} MB)</span>
+                <span>Runs <strong>{meta["runs"]}</strong> per command</span>
+                <span>Assistants <strong>{", ".join(ASSISTANT_LABELS.get(a, a) for a in meta["assistants"])}</strong></span>
             </div>
         </div>
     </div>
 
     <div class="kpi-row">
-        <div class="kpi green">
+        <div class="kpi">
             <div class="value">{mean_sp:.1f}x</div>
             <div class="label">Average speedup with mm</div>
         </div>
-        <div class="kpi amber">
+        <div class="kpi accent-deep">
             <div class="value">{max_sp:.1f}x</div>
             <div class="label">Peak speedup</div>
         </div>
-        <div class="kpi blue">
+        <div class="kpi accent-soft">
             <div class="value">{n_tasks}</div>
             <div class="label">Tasks benchmarked</div>
         </div>
     </div>
 
-    <div class="chart-container">
+    <div class="panel">
         {chart_html}
     </div>
 
-    <div class="table-container">
-        <h3 style="font-size:16px; font-weight:600; margin-bottom:8px">Detailed Results</h3>
+    <div class="panel">
+        <h3>Detailed Results</h3>
         {table_html}
     </div>
 
     <div class="footer">
-        <span>Generated by <a href="https://github.com/nicepkg/mm">mm</a> benchmark suite</span>
+        <span>Generated by <a href="https://vlm.run">vlm.run</a> · mm benchmark suite</span>
         <span>Source: {run_path.name}</span>
     </div>
 </div>
@@ -595,18 +694,25 @@ def build_comparison_report(run_paths: list[Path]) -> go.Figure:
     fig.add_hline(
         y=1.0,
         line_dash="dash",
-        line_color="#D1D5DB",
+        line_color=BRAND["border_strong"],
         annotation_text="1x (no speedup)",
-        annotation_font_color="#9CA3AF",
+        annotation_font_color=BRAND["text_muted"],
     )
 
     fig.update_layout(
-        title=dict(text="<b>Speedup Trend Across Runs</b>", font=dict(size=18)),
+        title=dict(
+            text="<b>Speedup Trend Across Runs</b>",
+            font=dict(size=18, color=BRAND["text_primary"]),
+        ),
         xaxis_title="Run timestamp",
         yaxis_title="Speedup (x)",
         height=500,
         template="plotly_white",
-        font=dict(family="Inter, -apple-system, sans-serif", size=13),
+        font=dict(family=FONT_SANS, size=13, color=BRAND["text_primary"]),
+        plot_bgcolor=BRAND["surface"],
+        paper_bgcolor=BRAND["surface"],
+        xaxis=dict(gridcolor=BRAND["border"]),
+        yaxis=dict(gridcolor=BRAND["border"]),
     )
     return fig
 
