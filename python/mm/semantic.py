@@ -163,10 +163,11 @@ def search(
 
     if kind:
         from mm.utils import file_kind_with_code
-
-        results = [res for res in results if file_kind_with_code(Path(res["path"])) == kind]
+        kinds = {k.strip() for k in kind.split(",")}
+        results = [res for res in results if file_kind_with_code(Path(res["path"])) in kinds]
     if ext:
-        results = [res for res in results if res["path"].endswith(ext)]
+        exts = tuple(e.strip().lower() for e in ext.split(","))
+        results = [res for res in results if res["path"].lower().endswith(exts)]
     results = sorted(results, key=lambda r: r["distance"])
     return results[:limit]
 
