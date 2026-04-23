@@ -8,6 +8,45 @@ from pathlib import Path
 import pytest
 
 
+@pytest.fixture
+def active_profile() -> str:
+    """Name of the LLM profile to pin for the duration of a test.
+
+    Defaults to ``"ollama"`` — the built-in OpenAI-compatible profile.
+    It has no ``"gemini"`` substring, so ``mm.encoders._resolve_provider``
+    resolves to ``"openai"`` and encoders emit OpenAI-shaped content
+    parts, matching what ``LlmBackend`` (OpenAI SDK) and
+    ``refs_messages._adapt_part`` assume.
+
+    Override per-test via indirect parametrization::
+
+        @pytest.mark.parametrize("active_profile", ["gemini"], indirect=True)
+        def test_gemini_workflow(...): ...
+
+    or per-class by redefining the fixture on the test class::
+
+        class TestGeminiStuff:
+            @pytest.fixture
+            def active_profile(self) -> str:
+                return "gemini"
+    """
+    return "ollama"
+
+
+@pytest.fixture(autouse=True)
+def use_active_profile(active_profile: str, monkeypatch) -> None:
+    """Apply the name from ``active_profile`` to ``MM_PROFILE`` for the test.
+
+    ``MM_PROFILE`` wins over the file config in
+    ``mm.profile.get_active_profile_name``, so this isolates every test
+    from the developer's local ``~/.config/mm/config.toml``. Tests that
+    exercise profile resolution itself (``test_profile.py``) clear
+    ``MM_PROFILE`` in their own module-scoped fixture, which takes
+    precedence within that module.
+    """
+    monkeypatch.setenv("MM_PROFILE", active_profile)
+
+
 def _sqlite_vec_available() -> bool:
     """Check if sqlite3 supports loading extensions (needed for sqlite-vec)."""
     try:
