@@ -246,7 +246,7 @@ codex &quot;Find all PDFs in ~/docs and summarize them with mm&quot;
 <tbody><tr>
 <td><code>find</code></td>
 <td>Find/list files, tree view, schema</td>
-<td><code>--name</code>, <code>--kind</code>, <code>--ext</code>, <code>--min-size</code>, <code>--max-size</code>, <code>--sort</code>, <code>--reverse</code>, <code>--columns</code>, <code>--tree</code>, <code>--depth</code>, <code>--schema</code>, <code>--limit</code>, <code>--no-ignore</code>, <code>--format</code></td>
+<td><code>--name</code>, <code>-i</code> (ignore case), <code>--kind</code>, <code>--ext</code>, <code>--min-size</code>, <code>--max-size</code>, <code>--sort</code>, <code>--reverse</code>, <code>--columns</code>, <code>--tree</code>, <code>--depth</code>, <code>--schema</code>, <code>--limit</code>, <code>--no-ignore</code>, <code>--format</code></td>
 </tr>
 <tr>
 <td><code>cat</code></td>
@@ -291,6 +291,7 @@ mm find ~/data --ext .pdf --min-size 10mb                 # large PDFs
 mm find ~/data --kind image --limit 5 --format json       # JSON output
 mm find ~/data --name &quot;test_.*\.py&quot;                       # regex name match
 mm find ~/data -n config                                  # substring name match
+mm find ~/data -n CONFIG -i                               # case-insensitive (-i)
 
 mm find ~/data --sort size --reverse --limit 20        # tabular listing
 mm find ~/data --kind document --columns name,size,ext
