@@ -163,6 +163,7 @@ def search(
 
     if kind:
         from mm.utils import file_kind_with_code
+
         kinds = {k.strip() for k in kind.split(",")}
         results = [res for res in results if file_kind_with_code(Path(res["path"])) in kinds]
     if ext:
