@@ -58,6 +58,7 @@ mm find <dir> --kind document                        # all PDFs/docs
 mm find <dir> --kind audio                           # audio files
 mm find <dir> --name "test_.*\.py"                   # filter by name (regex)
 mm find <dir> -n config                              # filter by name (substring)
+mm find <dir> -n CONFIG -i                           # case-insensitive name match
 mm find <dir> --ext .png,.webp                       # by extension
 mm find <dir> --min-size 1mb --max-size 10mb         # by size range
 mm find <dir> --kind image --limit 5 --format json   # JSON output, capped

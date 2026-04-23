@@ -301,7 +301,7 @@ The skill exposes mm's capabilities to any tool that supports the skills protoco
 
 | Command | Purpose | Key flags |
 |---------|---------|-----------|
-| `find`  | Find/list files, tree view, schema | `--name`, `--kind`, `--ext`, `--min-size`, `--max-size`, `--sort`, `--reverse`, `--columns`, `--tree`, `--depth`, `--schema`, `--limit`, `--no-ignore`, `--format` |
+| `find`  | Find/list files, tree view, schema | `--name`, `-i` (ignore case), `--kind`, `--ext`, `--min-size`, `--max-size`, `--sort`, `--reverse`, `--columns`, `--tree`, `--depth`, `--schema`, `--limit`, `--no-ignore`, `--format` |
 | `cat` | Content extraction (auto-detected by file type × mode) | `--mode fast/accurate`, `-p` (pipeline), `-n`, `--no-cache`, `-v`, `--encode.*`, `--generate.*`, `--list-pipelines`, `--list-encoders`, `--format` |
 | `grep` | Content search across files | `--kind`, `--ext`, `-C`, `--count`, `-i`, `--semantic`, `--index`, `--no-ignore`, `--format` |
 | `sql` | SQL queries on file index, results, chunks, and embeddings | `--dir`, `--pre-index`, `--format`, `--list-tables` |
@@ -319,6 +319,7 @@ mm find ~/data --ext .pdf --min-size 10mb                 # large PDFs
 mm find ~/data --kind image --limit 5 --format json       # JSON output
 mm find ~/data --name "test_.*\.py"                       # regex name match
 mm find ~/data -n config                                  # substring name match
+mm find ~/data -n CONFIG -i                               # case-insensitive (-i)
 
 mm find ~/data --sort size --reverse --limit 20        # tabular listing
 mm find ~/data --kind document --columns name,size,ext
