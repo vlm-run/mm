@@ -221,14 +221,16 @@ def build_single_report(data: dict, run_path: Path) -> go.Figure:
     # Single-assistant runs paint in the brand primary blue — reserving the
     # per-provider palette for when you actually need to tell them apart (≥2).
     single_assistant = len(assistants) == 1
+    bar_height = max(55, 70 - n_tasks)
 
     # --- Horizontal grouped bar: with_mm vs without_mm ---
-    for asst in assistants:
+    for idx, asst in enumerate(assistants):
         asst_label = ASSISTANT_LABELS.get(asst, asst)
         asst_rows = [r for r in rows if r["assistant"] == asst]
         color = (
             BRAND["accent"] if single_assistant else ASSISTANT_COLORS.get(asst, BRAND["text_muted"])
         )
+        annot_yshift = 0 if single_assistant else ((n_assistants - 1) / 2 - idx) * (bar_height / 2)
 
         # "no mm" bars — desaturated color + diagonal stripe pattern
         fig.add_trace(
@@ -286,13 +288,13 @@ def build_single_report(data: dict, run_path: Path) -> go.Figure:
                 fig.add_annotation(
                     x=max(r["without_mm"], r["with_mm"]) + 2.5,
                     y=r["label"],
+                    yshift=annot_yshift,
                     text=f"<b>{r['speedup']:.1f}x</b>",
                     showarrow=False,
                     font=dict(size=18, color=color),
                     xanchor="left",
                 )
 
-    bar_height = max(55, 70 - n_tasks)
     chart_height = max(550, n_tasks * bar_height * max(n_assistants, 1) + 280)
 
     fig.update_layout(
