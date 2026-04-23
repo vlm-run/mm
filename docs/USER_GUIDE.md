@@ -115,10 +115,10 @@ Use mm directly or through a CLI assistant (e.g. `claude "Organize ~/Downloads u
 ```bash
 mm grep "photo of me and my dog in a park" ~/photos -s
 mm grep "revenue forecast" ~/reports -s --kind document
-mm grep "architecture overview" ~/docs -s --index   # auto-index unindexed files
+mm grep "architecture overview" ~/docs -s --pre-index   # auto-index unindexed files
 ```
 
-Returns matching files via vector similarity (embeddings). Use `--semantic/-s` for semantic search, `--index` to auto-index unindexed files before searching.
+Returns matching files via vector similarity (embeddings). Use `--semantic/-s` for semantic search, `--pre-index` to auto-index unindexed files before searching.
 
 ### File inspection and extraction
 

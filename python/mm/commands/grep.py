@@ -32,8 +32,9 @@ def grep_cmd(
     do_semantic: Annotated[
         bool, typer.Option("--semantic", "-s", help="Do a semantic (vector) search")
     ] = False,
-    index: Annotated[
-        bool, typer.Option("--index", help="Index unindexed files before semantic search (max 50)")
+    pre_index: Annotated[
+        bool,
+        typer.Option("--pre-index", help="Index unindexed files before semantic search (max 50)"),
     ] = False,
     ignore_case: Annotated[
         bool, typer.Option("--ignore-case", "-i", help="Case-insensitive matching")
@@ -61,7 +62,7 @@ def grep_cmd(
       mm grep "attention" ~/papers --ext .pdf           # search PDF text
       mm grep "error|warn" ~/logs -C 2                  # context lines
       mm grep "Quantum Phase" ~/data -s                 # semantic search on binaries
-      mm grep "Quantum Phase" ~/data -s --index         # index first, then semantic search
+      mm grep "Quantum Phase" ~/data -s --pre-index     # index first, then semantic search
       mm grep "def main" ~/src --count                  # match counts only
       mm grep "Quantum" ~/docs -i                       # case-insensitive
       mm grep "secret" ~/docs --no-ignore               # ignore .gitignore
@@ -180,7 +181,7 @@ def grep_cmd(
                 limit=5,
                 stdin_paths=stdin_paths,
                 no_ignore=no_ignore,
-                do_index=index,
+                do_index=pre_index,
                 quiet=fmt not in ("rich",),
                 cmd_hint=build_hint_cmd(pattern, _directory, kind, ext, ignore_case),
             )

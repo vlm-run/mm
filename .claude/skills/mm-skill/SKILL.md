@@ -401,7 +401,7 @@ mm grep "secret" <dir> --no-ignore                     # search gitignored files
 # Semantic search (vector similarity via embeddings)
 mm grep "financial projections" <dir> -s               # semantic search across all files
 mm grep "architecture overview" <dir> -s --format json # JSON with distances
-mm grep "revenue forecast" <dir> -s --index            # auto-index unindexed files before search
+mm grep "revenue forecast" <dir> -s --pre-index        # auto-index unindexed files before search
 ```
 
 **Warning**: grep runs extraction on every matching file. On large document directories (500+ PDFs), this can take minutes. Prefer `--kind code` or `--kind text` for fast text searches.

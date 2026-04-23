@@ -369,7 +369,7 @@ def bench_cmd(
     ] = None,
     format: Annotated[
         Optional[BaseFormat],
-        typer.Option("--format", help="Output format: rich, json"),
+        typer.Option("--format", "-f", help="Output format: rich, json"),
     ] = None,
 ) -> None:
     """Benchmark all subcommands with statistical analysis.

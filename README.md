@@ -303,7 +303,7 @@ The skill exposes mm's capabilities to any tool that supports the skills protoco
 |---------|---------|-----------|
 | `find`  | Find/list files, tree view, schema | `--name`, `-i` (ignore case), `--kind`, `--ext`, `--min-size`, `--max-size`, `--sort`, `--reverse`, `--columns`, `--tree`, `--depth`, `--schema`, `--limit`, `--no-ignore`, `--format` |
 | `cat` | Content extraction (auto-detected by file type × mode) | `--mode fast/accurate`, `-p` (pipeline), `-n`, `--no-cache`, `-v`, `--encode.*`, `--generate.*`, `--list-pipelines`, `--list-encoders`, `--format` |
-| `grep` | Content search across files | `--kind`, `--ext`, `-C`, `--count`, `-i`, `--semantic`, `--index`, `--no-ignore`, `--format` |
+| `grep` | Content search across files | `--kind`, `--ext`, `-C`, `--count`, `-i`, `--semantic`, `--pre-index`, `--no-ignore`, `--format` |
 | `sql` | SQL queries on file index, results, chunks, and embeddings | `--dir`, `--pre-index`, `--format`, `--list-tables` |
 | `wc` | Count files, size, lines (est.), tokens (est.) | `--kind`, `--by-kind`, `--format` |
 | `bench` | Benchmark suite | `--rounds`, `--warmup`, `--mode`, `--format` |
@@ -362,7 +362,7 @@ mm grep "invoice" ~/data --count               # match counts per file
 mm grep "Quantum Phase" ~/data -i              # case-insensitive search
 mm grep "secret" ~/data --no-ignore            # search gitignored files
 mm grep "revenue forecast" ~/data -s             # semantic (vector) search
-mm grep "architecture" ~/data -s --index          # auto-index before search
+mm grep "architecture" ~/data -s --pre-index      # auto-index before search
 ```
 
 ### sql — query the index
