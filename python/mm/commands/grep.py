@@ -185,10 +185,16 @@ def grep_cmd(
                 cmd_hint=build_hint_cmd(pattern, _directory, kind, ext, ignore_case),
             )
             # Merge semantic results into all_matches / file_counts
+            scan_root = _directory.resolve()
             for r in semantic_results:
+                rel_path = r["path"]
+                try:
+                    rel_path = str(Path(rel_path).relative_to(scan_root))
+                except ValueError:
+                    pass
                 match_text = r["match"].replace("\n", " ")
                 entry = {
-                    "path": r["path"],
+                    "path": rel_path,
                     "line_number": r["index"],
                     "line": (
                         f"{match_text[:90]}...{match_text[-50:]}"
@@ -197,7 +203,7 @@ def grep_cmd(
                     ),
                 }
                 all_matches.append(entry)
-                file_counts[r["path"]] = file_counts.get(r["path"], 0) + 1
+                file_counts[rel_path] = file_counts.get(rel_path, 0) + 1
         except (SystemExit, Exception):
             pass
 

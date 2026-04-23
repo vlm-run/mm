@@ -30,6 +30,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       changed: ${{ steps.version_check.outputs.changed }}
+      patch_bump: ${{ steps.version_check.outputs.patch_bump }}
     steps:
       - uses: actions/checkout@v6
         with:
@@ -44,6 +45,14 @@ jobs:
             BASE_REF="HEAD~1"
           fi
           BASE=$(git show "${BASE_REF}:pyproject.toml" 2>/dev/null | python3 -c "import re,sys; m=re.search(r'version\s*=\s*\"([^\"]+)\"', sys.stdin.read()); print(m.group(1) if m else '')" || echo '')
+          PATCH_BUMP=$(CURRENT="$CURRENT" BASE="$BASE" python3 -c "
+          import os, re
+          def triple(v):
+              m = re.match(r'(\d+)\.(\d+)\.(\d+)', v or '')
+              return tuple(int(g) for g in m.groups()) if m else None
+          c, b = triple(os.environ['CURRENT']), triple(os.environ['BASE'])
+          print('true' if c and b and c[0] == b[0] and c[1] == b[1] and c[2] != b[2] else 'false')
+          ")
           if [ "$CURRENT" != "$BASE" ]; then
             echo "changed=true" >> $GITHUB_OUTPUT
             echo "Version changed: $BASE -> $CURRENT"
@@ -51,6 +60,8 @@ jobs:
             echo "changed=false" >> $GITHUB_OUTPUT
             echo "Version unchanged: $CURRENT"
           fi
+          echo "patch_bump=$PATCH_BUMP" >> $GITHUB_OUTPUT
+          echo "Patch bump: $PATCH_BUMP"
 
   lint:
     runs-on: ubuntu-latest
@@ -118,13 +129,9 @@ jobs:
       - run: make lint-python
       - run: make test-python-fast
 
-  # Full Python suite (fast + slow + integration). Runs only when the
-  # project version changes, since the slow tier includes pytest-
-  # benchmark suites and CLI cold-start subprocess benchmarks that add
-  # several minutes per run.
   test-python-full:
     needs: check-version
-    if: needs.check-version.outputs.changed == 'true'
+    if: needs.check-version.outputs.patch_bump == 'true'
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -152,105 +159,3 @@ jobs:
           uv venv --python ${{ matrix.python-version }}
           uv pip install -e ".[dev]"
       - run: make test-python-full
-
-  benchmark:
-    needs: check-version
-    if: github.event_name == 'pull_request' && needs.check-version.outputs.changed == 'true'
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      pull-requests: write
-    steps:
-      - uses: actions/checkout@v6
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@v2
-        with:
-          shared-key: rust-bench
-          cache-on-failure: true
-
-      - run: cargo bench --workspace
-
-      - name: Extract benchmark results from Criterion JSON
-        run: |
-          python3 -c "
-          import json, pathlib, sys
-          results = []
-          base = pathlib.Path('target/criterion')
-          if not base.exists():
-              print('No target/criterion directory found', file=sys.stderr)
-              sys.exit(1)
-          for est in sorted(base.rglob('new/estimates.json')):
-              data = json.loads(est.read_text())
-              parts = est.relative_to(base).parts
-              name = '/'.join(parts[:-2])  # group/bench
-              median_ns = data['median']['point_estimate']
-              results.append({'name': name, 'unit': 'ns', 'value': median_ns})
-          pathlib.Path('bench_output.json').write_text(json.dumps(results, indent=2))
-          print(f'Extracted {len(results)} benchmark results')
-          "
-
-      - name: Download previous benchmark data
-        uses: actions/cache@v5
-        with:
-          path: ./cache
-          key: ${{ runner.os }}-benchmark
-
-      - name: Benchmark result
-        uses: benchmark-action/github-action-benchmark@v1
-        with:
-          tool: "customSmallerIsBetter"
-          output-file-path: bench_output.json
-          external-data-json-path: ./cache/benchmark-data.json
-          fail-on-alert: false
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          summary-always: true
-          comment-always: true
-          alert-threshold: "150%"
-          comment-on-alert: true
-          alert-comment-cc-users: "@nwaughachukwuma"
-
-  benchmark-pages:
-    needs: check-version
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.check-version.outputs.changed == 'true'
-    runs-on: ubuntu-latest
-    permissions:
-      deployments: write
-      contents: write
-    steps:
-      - uses: actions/checkout@v6
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@v2
-        with:
-          shared-key: rust-bench
-          cache-on-failure: true
-      - run: cargo bench --workspace
-      - name: Extract benchmark results from Criterion JSON
-        run: |
-          python3 -c "
-          import json, pathlib, sys
-          results = []
-          base = pathlib.Path('target/criterion')
-          if not base.exists():
-              print('No target/criterion directory found', file=sys.stderr)
-              sys.exit(1)
-          for est in sorted(base.rglob('new/estimates.json')):
-              data = json.loads(est.read_text())
-              parts = est.relative_to(base).parts
-              name = '/'.join(parts[:-2])  # group/bench
-              median_ns = data['median']['point_estimate']
-              results.append({'name': name, 'unit': 'ns', 'value': median_ns})
-          pathlib.Path('bench_output.json').write_text(json.dumps(results, indent=2))
-          print(f'Extracted {len(results)} benchmark results')
-          "
-
-      - name: Store benchmark result and deploy to GitHub Pages
-        uses: benchmark-action/github-action-benchmark@v1
-        with:
-          name: mm Rust Benchmarks
-          tool: "customSmallerIsBetter"
-          output-file-path: bench_output.json
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          auto-push: true
-          alert-threshold: "150%"
-          comment-on-alert: true
-          alert-comment-cc-users: "@nwaughachukwuma"

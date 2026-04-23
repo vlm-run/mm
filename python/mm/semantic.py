@@ -122,6 +122,8 @@ def search(
     uri_prefix: str | None = None,
     limit=5,
     max_distance=SEMANTIC_MAX_DISTANCE,
+    kind: str | None = None,
+    ext: str | None = None,
 ) -> list[dict[str, Any]]:
     """Embed query string and run KNN search, scoped by URI or prefix."""
     from mm.store.db import MmDatabase
@@ -137,7 +139,8 @@ def search(
     elif uri_prefix:
         where = f"c.file_uri LIKE '{uri_prefix.replace(chr(39), chr(39) * 2)}%'"
 
-    raw = MmDatabase().search_similar(vectors[0], limit=limit * 2, where=where)
+    fetch_limit = max(limit * 10, 100) if (kind or ext) else limit * 2
+    raw = MmDatabase().search_similar(vectors[0], limit=fetch_limit, where=where)
     results = [
         {
             "path": r["file_uri"],
@@ -158,6 +161,14 @@ def search(
             f"the distance cutoff ({max_distance}). Closest was {closest:.3f}.[/dim]"
         )
 
+    if kind:
+        from mm.utils import file_kind_with_code
+
+        kinds = {k.strip() for k in kind.split(",")}
+        results = [res for res in results if file_kind_with_code(Path(res["path"])) in kinds]
+    if ext:
+        exts = tuple(e.strip().lower() for e in ext.split(","))
+        results = [res for res in results if res["path"].lower().endswith(exts)]
     results = sorted(results, key=lambda r: r["distance"])
     return results[:limit]
 
@@ -283,7 +294,15 @@ def grep_semantic(
         uri_prefixes = [str(Path(p).resolve()) for p in stdin_paths if not Path(p).is_file()]
 
         for uri_prefix in uri_prefixes:
-            results.extend(search(pattern, uri_prefix=uri_prefix, limit=limit))
+            results.extend(
+                search(
+                    pattern,
+                    uri_prefix=uri_prefix,
+                    limit=limit,
+                    kind=kind,
+                    ext=ext,
+                )
+            )
 
         results.sort(key=lambda r: r["distance"])
         results = results[:limit]
@@ -293,6 +312,8 @@ def grep_semantic(
             uri=str(path) if is_file else None,
             uri_prefix=str(path) if not is_file else None,
             limit=limit,
+            kind=kind,
+            ext=ext,
         )
 
     return results

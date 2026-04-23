@@ -1,0 +1,148 @@
+name: Benchmark
+
+on:
+  pull_request:
+    paths:
+      - "crates/**"
+      - "Cargo.toml"
+      - ".github/workflows/benchmark.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "crates/**"
+      - "Cargo.toml"
+      - ".github/workflows/benchmark.yml"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check-version:
+    runs-on: ubuntu-latest
+    outputs:
+      changed: ${{ steps.version_check.outputs.changed }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - name: Check if version changed
+        id: version_check
+        run: |
+          CURRENT=$(python3 -c "import re, pathlib; print(re.search(r'version\s*=\s*\"([^\"]+)\"', pathlib.Path('pyproject.toml').read_text()).group(1))")
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            BASE_REF="origin/${{ github.event.pull_request.base.ref }}"
+          else
+            BASE_REF="HEAD~1"
+          fi
+          BASE=$(git show "${BASE_REF}:pyproject.toml" 2>/dev/null | python3 -c "import re,sys; m=re.search(r'version\s*=\s*\"([^\"]+)\"', sys.stdin.read()); print(m.group(1) if m else '')" || echo '')
+          if [ "$CURRENT" != "$BASE" ]; then
+            echo "changed=true" >> $GITHUB_OUTPUT
+            echo "Version changed: $BASE -> $CURRENT"
+          else
+            echo "changed=false" >> $GITHUB_OUTPUT
+            echo "Version unchanged: $CURRENT"
+          fi
+
+  benchmark:
+    needs: check-version
+    if: github.event_name == 'pull_request' && needs.check-version.outputs.changed == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v6
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: rust-bench
+          cache-on-failure: true
+
+      - run: cargo bench --workspace
+
+      - name: Extract benchmark results from Criterion JSON
+        run: |
+          python3 -c "
+          import json, pathlib, sys
+          results = []
+          base = pathlib.Path('target/criterion')
+          if not base.exists():
+              print('No target/criterion directory found', file=sys.stderr)
+              sys.exit(1)
+          for est in sorted(base.rglob('new/estimates.json')):
+              data = json.loads(est.read_text())
+              parts = est.relative_to(base).parts
+              name = '/'.join(parts[:-2])  # group/bench
+              median_ns = data['median']['point_estimate']
+              results.append({'name': name, 'unit': 'ns', 'value': median_ns})
+          pathlib.Path('bench_output.json').write_text(json.dumps(results, indent=2))
+          print(f'Extracted {len(results)} benchmark results')
+          "
+
+      - name: Download previous benchmark data
+        uses: actions/cache@v5
+        with:
+          path: ./cache
+          key: ${{ runner.os }}-benchmark
+
+      - name: Benchmark result
+        uses: benchmark-action/github-action-benchmark@v1
+        with:
+          tool: "customSmallerIsBetter"
+          output-file-path: bench_output.json
+          external-data-json-path: ./cache/benchmark-data.json
+          fail-on-alert: false
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          summary-always: true
+          comment-always: true
+          alert-threshold: "150%"
+          comment-on-alert: true
+          alert-comment-cc-users: "@nwaughachukwuma"
+
+  benchmark-pages:
+    needs: check-version
+    if: github.event_name == 'push' && needs.check-version.outputs.changed == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      deployments: write
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: rust-bench
+          cache-on-failure: true
+      - run: cargo bench --workspace
+      - name: Extract benchmark results from Criterion JSON
+        run: |
+          python3 -c "
+          import json, pathlib, sys
+          results = []
+          base = pathlib.Path('target/criterion')
+          if not base.exists():
+              print('No target/criterion directory found', file=sys.stderr)
+              sys.exit(1)
+          for est in sorted(base.rglob('new/estimates.json')):
+              data = json.loads(est.read_text())
+              parts = est.relative_to(base).parts
+              name = '/'.join(parts[:-2])  # group/bench
+              median_ns = data['median']['point_estimate']
+              results.append({'name': name, 'unit': 'ns', 'value': median_ns})
+          pathlib.Path('bench_output.json').write_text(json.dumps(results, indent=2))
+          print(f'Extracted {len(results)} benchmark results')
+          "
+
+      - name: Store benchmark result and deploy to GitHub Pages
+        uses: benchmark-action/github-action-benchmark@v1
+        with:
+          name: mm Rust Benchmarks
+          tool: "customSmallerIsBetter"
+          output-file-path: bench_output.json
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          auto-push: true
+          alert-threshold: "150%"
+          comment-on-alert: true
+          alert-comment-cc-users: "@nwaughachukwuma"
