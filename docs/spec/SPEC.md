@@ -94,7 +94,7 @@ mm
 │
 ├── CLI Commands (8 total: 5 core + bench + config + profile. Typer, Unix-philosophy composability)
 │   ├── [x] --version/-v global flag
-│   ├── [x] find     — find/list files, tree view (--tree), schema (--schema), columns (--columns), name filter (--name, string/regex via Rust)
+│   ├── [x] find     — find/list files, tree view (--tree), schema (--schema), columns (--columns), name filter (--name, string/regex via Rust; -i/--ignore-case for case-insensitive)
 │   ├── [x] [cat](./cat.md)      — auto-detected content extraction (fast/accurate mode) → [full spec](cat.md)
 │   │   ├── [x] head/tail via -n (replaces old head/tail commands)
 │   │   ├── [x] --mode fast|accurate (pipeline-driven modal extraction)

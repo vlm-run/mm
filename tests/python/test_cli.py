@@ -115,6 +115,44 @@ class TestFind:
         assert all(row["kind"] == "image" for row in data)
         assert len(data) > 0
 
+    def test_ignore_case(self, small_tree: Path):
+        """--ignore-case / -i should make --name matching case-insensitive."""
+        # small_tree contains README.md (uppercase) and readme.md (lowercase).
+        # Case-sensitive: "README" only matches README.md.
+        r = runner.invoke(app, ["find", str(small_tree), "-n", "README", "--format", "json"])
+        assert r.exit_code == 0
+        names = {row["name"] for row in json.loads(r.output)}
+        assert "README.md" in names
+        assert "readme.md" not in names
+
+        # With -i: both README.md and readme.md should match.
+        r = runner.invoke(app, ["find", str(small_tree), "-n", "README", "-i", "--format", "json"])
+        assert r.exit_code == 0
+        names = {row["name"] for row in json.loads(r.output)}
+        assert {"README.md", "readme.md"} <= names
+
+    def test_ignore_case_regex(self, small_tree: Path):
+        """-i should combine with regex patterns (fast path via Rust)."""
+        r = runner.invoke(
+            app,
+            ["find", str(small_tree), "-n", r"^MAIN\.PY$", "-i", "--format", "json"],
+        )
+        assert r.exit_code == 0
+        names = {row["name"] for row in json.loads(r.output)}
+        assert "main.py" in names
+
+    def test_ignore_case_requires_name(self, small_tree: Path):
+        """--ignore-case without --name should error."""
+        r = runner.invoke(app, ["find", str(small_tree), "-i"])
+        assert r.exit_code != 0
+
+    def test_ignore_case_tree(self, small_tree: Path):
+        """-i should work with --tree mode."""
+        r = runner.invoke(app, ["find", str(small_tree), "--tree", "-n", "README", "-i"])
+        assert r.exit_code == 0
+        assert "README.md" in r.output
+        assert "readme.md" in r.output
+
 
 # ── find (table, tree, schema) ────────────────────────────────────────
 

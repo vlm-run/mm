@@ -39,6 +39,13 @@ KIND_TREE_STYLES: dict[str, str] = {
 }
 
 
+def _apply_ignore_case(pattern: str | None, ignore_case: bool) -> str | None:
+    """Prepend the regex ``(?i)`` flag when case-insensitive matching is requested - supports both py and rs"""
+    if pattern is None or not ignore_case:
+        return pattern
+    return f"(?i){pattern}"
+
+
 def _parse_size(size_str: str) -> int:
     size_str = size_str.strip().upper()
     multipliers = {"B": 1, "KB": 1024, "MB": 1024**2, "GB": 1024**3, "TB": 1024**4}
@@ -54,6 +61,10 @@ def find_cmd(
     name: Annotated[
         Optional[str], typer.Option("--name", "-n", help="Filter by file name (string or regex)")
     ] = None,
+    ignore_case: Annotated[
+        bool,
+        typer.Option("--ignore-case", "-i", help="Case-insensitive name matching"),
+    ] = False,
     kind: Annotated[
         Optional[str],
         typer.Option(
@@ -123,6 +134,7 @@ def find_cmd(
       mm find ~/data --min-size 1mb --sort size -r          # large files
       mm find ~/data --name "test_.*\\.py"                  # regex name match
       mm find ~/data -n config                              # substring name match
+      mm find ~/data -n CONFIG -i                           # case-insensitive match
       mm find ~/data --no-ignore                            # include gitignored files
       mm find ~/data --session my-sess --refs               # show <session>/<ref_id>
     """
@@ -131,8 +143,12 @@ def find_cmd(
     fmt = resolve_format(format.value if format else None)
     if refs and not session:
         raise typer.BadParameter("--refs requires --session <id>")
+    if ignore_case and not name:
+        raise typer.BadParameter("--ignore-case requires --name/-n <pattern>")
     if tree:
-        _find_tree(directory, kind, name, depth, size, fmt, no_ignore=no_ignore)
+        _find_tree(
+            directory, kind, name, depth, size, fmt, no_ignore=no_ignore, ignore_case=ignore_case
+        )
         return
     if schema:
         _find_schema(directory, fmt, no_ignore=no_ignore)
@@ -154,6 +170,7 @@ def find_cmd(
         no_ignore=no_ignore,
         session=session,
         refs=refs,
+        ignore_case=ignore_case,
     )
 
 
@@ -187,6 +204,7 @@ def _find_table(
     no_ignore: bool = False,
     session: str | None = None,
     refs: bool = False,
+    ignore_case: bool = False,
 ) -> None:
     """Default tabular listing."""
     from mm.pipe import read_paths_from_stdin, resolve_piped_paths
@@ -209,7 +227,7 @@ def _find_table(
             ext=ext,
             min_size=min_bytes,
             max_size=max_bytes,
-            name=name,
+            name=_apply_ignore_case(name, ignore_case),
             limit=limit,
             sort_by=sort,
             descending=reverse,
@@ -240,8 +258,9 @@ def _find_table(
     if name:
         import re as re_mod
 
+        flags = re_mod.IGNORECASE if ignore_case else 0
         try:
-            pattern = re_mod.compile(name)
+            pattern = re_mod.compile(name, flags)
             mask = [bool(pattern.search(str(n))) for n in table.column("name").to_pylist()]
         except re_mod.error:
             lower = name.lower()
@@ -415,13 +434,16 @@ def _find_tree(
     fmt: str,
     *,
     no_ignore: bool = False,
+    ignore_case: bool = False,
 ) -> None:
     from mm._mm import Scanner
 
     scanner = Scanner(str(Path(directory).resolve()), no_ignore=no_ignore)
     scanner.scan()
 
-    raw = json_mod.loads(scanner.to_json_fast(kind=kind, name=name))
+    raw = json_mod.loads(
+        scanner.to_json_fast(kind=kind, name=_apply_ignore_case(name, ignore_case))
+    )
     tree_data = _build_tree(raw)
     total_files, total_bytes = _count_subtree(tree_data)
 
