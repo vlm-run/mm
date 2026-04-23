@@ -107,7 +107,7 @@ mm
 │   │   ├── [x] unified L2 caching for both fast and accurate modes
 │   │   ├── [x] verbose pipeline tree (-v): encode/generate timing + token counts
 │   │   ├── [x] -p pipeline.yaml / -p encoder_name for custom pipelines
-│   ├── [x] grep     — content search with context lines (like rg), --index for on-demand semantic indexing
+│   ├── [x] grep     — content search with context lines (like rg), --pre-index for on-demand semantic indexing
 │   ├── [x] sql      — SQLite SQL on file index, --pre-index for on-demand metadata indexing before query
 │   ├── [x] wc       — count files, size, lines (est.), tokens (est.)
 │   ├── [x] config   — extraction mode settings (show, init, set, reset-db, reset-profiles, reset)
