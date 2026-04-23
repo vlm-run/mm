@@ -91,25 +91,27 @@ def index_missing(missing: list[str]) -> int:
     _ensure_discovered()
 
     to_index = missing[:MAX_INDEX]
+    total = len(to_index)
     if len(missing) > MAX_INDEX:
         console.print(
-            f"[yellow]Note:[/yellow] Indexing {MAX_INDEX} of {len(missing)} unindexed files."
+            f"[yellow]Note:[/yellow] {MAX_INDEX} of {len(missing)} unindexed files will be indexed."
         )
-    else:
-        console.print(
-            f"[dim]Indexing {len(to_index)} file{'s' if len(to_index) != 1 else ''}...[/dim]"
-        )
+    console.print(f"[dim]Indexing {total} file{'s' if total != 1 else ''}...[/dim]")
 
-    workers = min(4, len(to_index))
-    indexed = 0
+    workers = min(4, total)
+    successful = 0
+    completed = 0
+
     with ThreadPoolExecutor(max_workers=workers) as pool:
         futures = {pool.submit(_index_one, uri): uri for uri in to_index}
         for fut in as_completed(futures):
             if fut.result() is not None:
-                indexed += 1
+                successful += 1
+            completed += 1
+            console.print(f"[dim]  {completed}/{total} done...[/dim]")
 
-    console.print(f"[green]Indexed {indexed} file{'s' if indexed != 1 else ''}.[/green]")
-    return indexed
+    console.print(f"[green]Indexed {successful} file{'s' if successful != 1 else ''}.[/green]")
+    return successful
 
 
 SEMANTIC_MAX_DISTANCE = 1.0
@@ -218,7 +220,7 @@ def build_hint_cmd(
     ext: str | None,
     ignore_case: bool = False,
 ) -> str:
-    """Reconstruct the user's grep command with ``-s --index`` appended."""
+    """Reconstruct the user's grep command with ``-s --pre-index`` appended."""
     parts = ["mm grep", f'"{pattern}"', str(directory)]
     if kind:
         parts.append(f"--kind {kind}")
@@ -226,7 +228,7 @@ def build_hint_cmd(
         parts.append(f"--ext {ext}")
     if ignore_case:
         parts.append("--ignore-case")
-    parts.append("-s --index")
+    parts.append("-s --pre-index")
     return " ".join(parts)
 
 
