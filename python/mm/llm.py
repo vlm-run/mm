@@ -50,8 +50,8 @@ class LlmBackend:
         configure_logfire()
         profile = get_profile()
         resolved_base = (base_url or profile.base_url).rstrip("/")
-        if not resolved_base.endswith("/v1"):
-            resolved_base = f"{resolved_base}/v1"
+        # if not resolved_base.endswith("/v1"):
+        #     resolved_base = f"{resolved_base}/v1"
 
         self.api_key = api_key or profile.api_key or "no-key"
         self.model = model or profile.model
