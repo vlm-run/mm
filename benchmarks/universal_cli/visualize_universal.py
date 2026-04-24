@@ -53,19 +53,44 @@ TASK_LABELS = {
     "audio_metadata": "mm cat audio.mp3",
     "token_cost_estimate": "mm wc ./dir/",
     "recent_files": "mm sql files --recent",
-    "batch_metadata": "mm find ./dir/",
+    "batch_metadata": "mm find ./dir/ (batch)",
     "evidence_package": "mm find ./dir/ --hash",
     "document_search": "mm grep '$' ./docs/",
     "document_token_cost": "mm wc ./docs/",
     "document_volume_by_dir": "mm sql docs --by-dir",
     "document_format_audit": "mm sql docs --by-ext",
-    "hires_images": "mm sql imgs --hires",
+    "hires_images": "mm sql ./dir/ --hires",
     "image_format_audit": "mm sql imgs --by-ext",
-    "image_token_cost": "mm wc ./imgs/",
+    "image_token_cost": "mm wc ./dir/ --kind image",
     "video_resolution_check": "mm sql vids --res",
     "video_codec_audit": "mm find ./vids/",
     "tree_overview": "mm find ./dir/ --tree",
     "project_token_budget": "mm wc ./dir/ --by-kind",
+    # Image-bench tasks (bench_cli_universal_assistant_image.sh)
+    "image_cat_fast_single": "mm cat img.png (A)",
+    "image_cat_fast_large": "mm cat img-large.png",
+    "image_cat_fast_head": "mm cat -n 10 ./imgs/",
+    "image_cat_fast_screenshot_audit": "mm cat ./imgs/ --exif",
+    "image_cat_fast_hash_inventory": "mm find ./imgs/ --hash",
+    "image_cat_fast_dimension_inventory": "mm find ./imgs/ --dims",
+    "image_cat_fast_third": "mm cat img.png (B)",
+    "image_cat_fast_aspect_ratio": "mm find ./imgs/ --aspect",
+    "image_cat_fast_batch": "mm find | mm cat ./imgs/",
+    "image_cat_accurate_batch": "mm find | mm cat ./imgs/ -m accurate",
+    "image_cat_accurate_single": "mm cat img.png -m accurate (caption A)",
+    "image_cat_accurate_large": "mm cat img-large.png -m accurate",
+    "image_cat_accurate_third": "mm cat img.png -m accurate (caption B)",
+    "image_cat_accurate_objects": "mm cat img.png -m accurate (objects)",
+    "image_cat_accurate_text": "mm cat img.png -m accurate (text)",
+    "image_cat_accurate_tags": "mm cat img.png -m accurate (tags)",
+    "image_cat_accurate_scene": "mm cat img.png -m accurate (scene)",
+    "image_cat_accurate_finetune_jsonl": "mm cat ./imgs/ -m accurate",
+    "image_cat_accurate_safety": "mm cat img.png -m accurate (safety)",
+    "image_grep_semantic_people": "mm grep '...' -s (A)",
+    "image_grep_semantic_outdoor": "mm grep '...' -s (B)",
+    "image_find_tree": "mm find ./imgs/ --tree",
+    "image_wc_token_cost": "mm wc ./imgs/",
+    "image_sql_hires": "mm sql ./imgs/ --hires",
 }
 
 TASK_CATEGORIES = {
@@ -89,6 +114,31 @@ TASK_CATEGORIES = {
     "audio_metadata": "Audio",
     "tree_overview": "Dev",
     "project_token_budget": "Dev",
+    # Image-bench tasks — all categorized as Image so the chart chip is consistent.
+    "image_cat_fast_single": "Image",
+    "image_cat_fast_large": "Image",
+    "image_cat_fast_head": "Image",
+    "image_cat_fast_screenshot_audit": "Image",
+    "image_cat_fast_hash_inventory": "Image",
+    "image_cat_fast_dimension_inventory": "Image",
+    "image_cat_fast_third": "Image",
+    "image_cat_fast_aspect_ratio": "Image",
+    "image_cat_fast_batch": "Image",
+    "image_cat_accurate_batch": "Image",
+    "image_cat_accurate_single": "Image",
+    "image_cat_accurate_large": "Image",
+    "image_cat_accurate_third": "Image",
+    "image_cat_accurate_objects": "Image",
+    "image_cat_accurate_text": "Image",
+    "image_cat_accurate_tags": "Image",
+    "image_cat_accurate_scene": "Image",
+    "image_cat_accurate_finetune_jsonl": "Image",
+    "image_cat_accurate_safety": "Image",
+    "image_grep_semantic_people": "Image",
+    "image_grep_semantic_outdoor": "Image",
+    "image_find_tree": "Image",
+    "image_wc_token_cost": "Image",
+    "image_sql_hires": "Image",
 }
 
 # Category chips use a vibrant, categorical palette for quick visual scanning
@@ -231,6 +281,7 @@ def build_single_report(data: dict, run_path: Path) -> go.Figure:
             BRAND["accent"] if single_assistant else ASSISTANT_COLORS.get(asst, BRAND["text_muted"])
         )
         annot_yshift = 0 if single_assistant else ((n_assistants - 1) / 2 - idx) * (bar_height / 2)
+        task_hover = [r["task"].replace("_", " ") for r in asst_rows]
 
         # "no mm" bars — desaturated color + diagonal stripe pattern
         fig.add_trace(
@@ -238,6 +289,7 @@ def build_single_report(data: dict, run_path: Path) -> go.Figure:
                 name=f"Without {mm_mono}",
                 y=[r["label"] for r in asst_rows],
                 x=[r["without_mm"] for r in asst_rows],
+                customdata=task_hover,
                 orientation="h",
                 marker=dict(
                     color=BRAND["surface"],
@@ -257,6 +309,7 @@ def build_single_report(data: dict, run_path: Path) -> go.Figure:
                     "<b>%{y}</b><br>"
                     f"{asst_label} without mm<br>"
                     "Time: %{x:.1f}s<br>"
+                    "Task: %{customdata}"
                     "<extra></extra>"
                 ),
             )
@@ -268,6 +321,7 @@ def build_single_report(data: dict, run_path: Path) -> go.Figure:
                 name=f"With {mm_mono}",
                 y=[r["label"] for r in asst_rows],
                 x=[r["with_mm"] for r in asst_rows],
+                customdata=task_hover,
                 orientation="h",
                 marker=dict(
                     color=color,
@@ -277,7 +331,10 @@ def build_single_report(data: dict, run_path: Path) -> go.Figure:
                 ),
                 legendgroup=asst,
                 hovertemplate=(
-                    f"<b>%{{y}}</b><br>{asst_label} + mm<br>Time: %{{x:.1f}}s<br><extra></extra>"
+                    f"<b>%{{y}}</b><br>{asst_label} + mm<br>"
+                    "Time: %{x:.1f}s<br>"
+                    "Task: %{customdata}"
+                    "<extra></extra>"
                 ),
             )
         )
