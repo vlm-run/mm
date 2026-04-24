@@ -36,6 +36,21 @@ _total_bytes_processed = 0
 _was_cached = False
 
 
+def _coerce_opt_value(raw: str) -> Any:
+    """Coerce a CLI ``KEY=VALUE`` string into int/float/bool/str"""
+    if raw.lower() in ("true", "false"):
+        return raw.lower() == "true"
+    try:
+        return int(raw)
+    except ValueError:
+        pass
+    try:
+        return float(raw)
+    except ValueError:
+        pass
+    return raw
+
+
 def _collect_overrides(**kwargs: str | None) -> dict[str, str]:
     """Collect non-None CLI overrides into a ``{field: value}`` dict."""
     return {k: v for k, v in kwargs.items() if v is not None}
@@ -109,6 +124,14 @@ def cat_cmd(
         bool,
         typer.Option("--list-encoders", help="List registered encoders and exit"),
     ] = False,
+    print_pipeline: Annotated[
+        Optional[str],
+        typer.Option(
+            "--print-pipeline",
+            metavar="PIPELINE",
+            help="Print the YAML for a pipeline and exit. Takes '<kind>/<mode>' (e.g. 'image/accurate').",
+        ),
+    ] = None,
     # -- Positional argument --
     files: Annotated[Optional[list[Path]], typer.Argument(help="Files to display")] = None,
     n: Annotated[
@@ -136,6 +159,18 @@ def cat_cmd(
     encode_pyfunc: Annotated[
         Optional[str],
         typer.Option("--encode.pyfunc", help="Custom Python transform (.py file or inline code)"),
+    ] = None,
+    encode_strategy_opts: Annotated[
+        Optional[list[str]],
+        typer.Option(
+            "--encode.strategy_opts",
+            metavar="KEY=VALUE",
+            help=(
+                "Override entries in encode.strategy_opts. Repeatable. "
+                "Values are coerced to int/float/bool when possible. "
+                "e.g. --encode.strategy_opts max_width=768 --encode.strategy_opts fps=5"
+            ),
+        ),
     ] = None,
     # -- Surviving generate overrides --
     generate_prompt: Annotated[
@@ -185,12 +220,19 @@ def cat_cmd(
       mm cat video.mp4 -m accurate          # mosaic → VLM
       mm cat photo.png -p tile              # use named encoder
       mm cat photo.png -p my-pipeline.yaml  # custom pipeline YAML
+      mm cat photo.png -m accurate --encode.strategy_opts max_width=768
+                                            # override a single strategy_opts entry
+      mm cat --print-pipeline image/accurate
+                                            # inspect the pipeline YAML source
     """
     if list_pipelines:
         _do_list_pipelines()
         return
     if list_encoders:
         _do_list_encoders()
+        return
+    if print_pipeline is not None:
+        _do_print_pipeline(print_pipeline)
         return
 
     paths: list[str] = []
@@ -211,10 +253,21 @@ def cat_cmd(
         typer.echo(f"Error: Unknown mode {mode!r}. Use 'fast' or 'accurate'.", err=True)
         raise typer.Exit(1)
 
-    enc_overrides = _collect_overrides(
+    enc_overrides: dict[str, Any] = _collect_overrides(
         strategy=encode_strategy,
         pyfunc=encode_pyfunc,
     )
+    if encode_strategy_opts:
+        for opt_entry in encode_strategy_opts:
+            key, sep, val = opt_entry.partition("=")
+            if not sep or not key:
+                typer.echo(
+                    f"Error: --encode.strategy_opts expects KEY=VALUE, got {opt_entry!r}.",
+                    err=True,
+                )
+                raise typer.Exit(1)
+            enc_overrides[key] = _coerce_opt_value(val)
+
     gen_overrides = _collect_overrides(
         prompt=generate_prompt,
         max_tokens=generate_max_tokens,
@@ -339,7 +392,7 @@ class _CatOpts:
     mode: str
     no_cache: bool
     format: str
-    encode_overrides: dict[str, str]
+    encode_overrides: dict[str, Any]
     generate_overrides: dict[str, str]
     pipelines: dict[str, PipelineSpec]
     verbose: bool
@@ -1403,6 +1456,36 @@ def _parse_tile(tile: str) -> tuple[int, int]:
 
 
 _KIND_ORDER = ("image", "video", "audio", "document")
+
+
+def _do_print_pipeline(pipeline_ref: str) -> None:
+    """Print the raw YAML source of a ``<kind>/<mode>`` pipeline and exit"""
+    kind, _, mode = pipeline_ref.partition("/")
+    if not mode or kind not in _KIND_ORDER or mode not in ("fast", "accurate"):
+        typer.echo(
+            f"Error: --print-pipeline expects '<kind>/<mode>' "
+            f"(kind in {list(_KIND_ORDER)}, mode in ['fast', 'accurate']). Got: {pipeline_ref!r}",
+            err=True,
+        )
+        raise typer.Exit(1)
+
+    from mm.config import get_pipeline_path
+    from mm.pipelines import _PIPELINES_DIR, _user_pipelines_dir
+
+    toml_path_str = get_pipeline_path(kind, mode)
+    if toml_path_str and Path(toml_path_str).is_file():
+        src = Path(toml_path_str)
+    else:
+        rel = f"{kind}/{mode}.yaml"
+        user_path = _user_pipelines_dir() / rel
+        src = user_path if user_path.is_file() else _PIPELINES_DIR / rel
+
+    if not src.is_file():
+        typer.echo(f"Error: pipeline file not found: {src}", err=True)
+        raise typer.Exit(1)
+
+    typer.echo(f"# {src}")
+    typer.echo(src.read_text().rstrip())
 
 
 def _do_list_pipelines() -> None:
