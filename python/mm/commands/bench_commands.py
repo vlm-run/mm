@@ -4,7 +4,8 @@ Each benchmark is a declarative shell command template. The runner resolves
 placeholders ({dir}, {file}, {files}) from a pre-scan, then executes via
 subprocess for true end-to-end measurement.
 
-Add new benchmarks by appending to L0_COMMANDS, L1_COMMANDS, or L2_COMMANDS.
+Add new benchmarks by appending to METADATA_COMMANDS, FAST_COMMANDS, or
+ACCURATE_COMMANDS.
 """
 
 from __future__ import annotations
@@ -29,7 +30,7 @@ class BenchCommand:
 
     Attributes:
         name:          Display name shown in output.
-        group:         Grouping label (``L0``, ``L1``, ``L2``).
+        group:         Grouping label (``metadata``, ``fast``, ``accurate``).
         cmd_template:  Shell command with placeholders.
         requires_kind: File kind needed for {file}/{files}. None = directory-only.
         batch:         Number of files for {files} (0 = single {file}).
@@ -79,16 +80,24 @@ def _pick_files(files: list[FileEntry], kind: str, limit: int) -> list[str]:
 
 @dataclass
 class MediaInfo:
-    """Media properties extracted via L1 for throughput calculations."""
+    """Media properties extracted via fast extraction for throughput calculations.
+
+    ``pixel_bits`` is the total uncompressed raw-pixel bit count for the
+    benchmark target — ``W*H*24`` for a single image, ``W*H*24*fps*duration``
+    for video, and the **sum** over all picked files in a batch. It gives a
+    consistent throughput metric independent of compression ratio, so batch
+    and single-file image benchmarks can be compared directly.
+    """
 
     duration_s: float = 0.0
     width: int = 0
     height: int = 0
     fps: float = 0.0
+    pixel_bits: float = 0.0
 
 
 def _get_media_info(directory: Path, rel_path: str) -> MediaInfo:
-    """Get media properties via Rust L1 extraction."""
+    """Get media properties via Rust fast extraction."""
     try:
         from mm._mm import Scanner
 
@@ -100,11 +109,20 @@ def _get_media_info(directory: Path, rel_path: str) -> MediaInfo:
             parts = r.dimensions.split("x")
             if len(parts) == 2:
                 w, h = int(parts[0]), int(parts[1])
+
+        duration = r.duration_s or 0.0
+        fps = r.fps or 0.0
+        if w > 0 and h > 0:
+            base = float(w * h * 24)
+            pixel_bits = base * fps * duration if (duration > 0 and fps > 0) else base
+        else:
+            pixel_bits = 0.0
         return MediaInfo(
-            duration_s=r.duration_s or 0.0,
+            duration_s=duration,
             width=w,
             height=h,
-            fps=r.fps or 0.0,
+            fps=fps,
+            pixel_bits=pixel_bits,
         )
     except Exception:
         return MediaInfo()
@@ -141,6 +159,15 @@ def resolve_command(
                 for p in picked
                 if (directory.resolve() / p).exists()
             )
+            # Accumulate pixel_bits across the batch so the throughput metric
+            # matches the single-file semantics (raw uncompressed bits / sec).
+            if cmd.requires_kind in _MEDIA_KINDS:
+                total_pixel_bits = 0.0
+                for p in picked:
+                    info = _get_media_info(directory, p)
+                    total_pixel_bits += info.pixel_bits
+                if total_pixel_bits > 0:
+                    media = MediaInfo(pixel_bits=total_pixel_bits)
         elif "{file}" in template:
             if cmd.smallest:
                 picked_one = _pick_smallest(files, cmd.requires_kind, directory)
@@ -191,51 +218,51 @@ OVERHEAD_COMMANDS: list[BenchCommand] = [
     BenchCommand("mm --version", "overhead", "mm --version"),
 ]
 
-L0_COMMANDS: list[BenchCommand] = [
-    BenchCommand("mm find .", "L0", "mm find {dir} --format json"),
-    BenchCommand("mm find . (table)", "L0", "mm find {dir} --format tsv"),
-    BenchCommand("mm wc .", "L0", "mm wc {dir} --format json"),
+METADATA_COMMANDS: list[BenchCommand] = [
+    BenchCommand("mm find .", "metadata", "mm find {dir} --format json"),
+    BenchCommand("mm find . (table)", "metadata", "mm find {dir} --format tsv"),
+    BenchCommand("mm wc .", "metadata", "mm wc {dir} --format json"),
     BenchCommand(
         "mm sql 'GROUP BY kind'",
-        "L0",
+        "metadata",
         "mm sql 'SELECT kind, COUNT(*) as n FROM files GROUP BY kind' --dir {dir} --format json",
     ),
     BenchCommand(
         "mm sql 'SUM(size) BY kind'",
-        "L0",
+        "metadata",
         "mm sql 'SELECT kind, COUNT(*) as n, SUM(size) as total_bytes, ROUND(AVG(size)) as avg_bytes FROM files GROUP BY kind ORDER BY total_bytes DESC' --dir {dir} --format json",
     ),
     BenchCommand(
         "mm sql 'TOP 10 largest'",
-        "L0",
+        "metadata",
         "mm sql 'SELECT name, kind, size FROM files ORDER BY size DESC LIMIT 10' --dir {dir} --format json",
     ),
     BenchCommand(
         "mm sql 'GROUP BY ext'",
-        "L0",
+        "metadata",
         "mm sql 'SELECT ext, COUNT(*) as n, SUM(size) as total_bytes FROM files GROUP BY ext ORDER BY n DESC' --dir {dir} --format json",
     ),
-    BenchCommand("mm find --kind image", "L0", "mm find {dir} --kind image --format json"),
+    BenchCommand("mm find --kind image", "metadata", "mm find {dir} --kind image --format json"),
     BenchCommand(
         "mm find --kind audio",
-        "L0",
+        "metadata",
         "mm find {dir} --kind audio --format json",
         requires_kind="audio",
         skip_reason="no audio files",
     ),
     BenchCommand(
         "mm find --kind document",
-        "L0",
+        "metadata",
         "mm find {dir} --kind document --format json",
         requires_kind="document",
         skip_reason="no document files",
     ),
 ]
 
-L1_COMMANDS: list[BenchCommand] = [
+FAST_COMMANDS: list[BenchCommand] = [
     BenchCommand(
         "mm cat <code> (x20)",
-        "L1",
+        "fast",
         "mm cat {files} --no-cache --format json",
         requires_kind="code",
         batch=20,
@@ -243,14 +270,14 @@ L1_COMMANDS: list[BenchCommand] = [
     ),
     BenchCommand(
         "mm cat <image>",
-        "L1",
+        "fast",
         "mm cat {file} --no-cache --format json",
         requires_kind="image",
         skip_reason="no image files",
     ),
     BenchCommand(
         "mm cat <image> (x20)",
-        "L1",
+        "fast",
         "mm cat {files} --no-cache --format json",
         requires_kind="image",
         batch=20,
@@ -258,81 +285,63 @@ L1_COMMANDS: list[BenchCommand] = [
     ),
     BenchCommand(
         "mm cat <audio>",
-        "L1",
+        "fast",
         "mm cat {file} --no-cache --format json",
         requires_kind="audio",
         skip_reason="no audio files",
     ),
     BenchCommand(
         "mm cat <video>",
-        "L1",
+        "fast",
         "mm cat {file} --no-cache --format json",
         requires_kind="video",
         skip_reason="no video files",
     ),
     BenchCommand(
         "mm cat <pdf>",
-        "L1",
+        "fast",
         "mm cat {file} --no-cache --format json",
         requires_kind="document",
         skip_reason="no PDF files",
     ),
     BenchCommand(
         "mm cat <pdf> (x10)",
-        "L1",
+        "fast",
         "mm cat {files} --no-cache --format json",
         requires_kind="document",
         batch=10,
         skip_reason="no PDF files",
     ),
-    BenchCommand("mm grep /pattern/", "L1", "mm grep 'import|include|require' {dir} --format json"),
+    BenchCommand(
+        "mm grep /pattern/", "fast", "mm grep 'import|include|require' {dir} --format json"
+    ),
 ]
 
-L2_COMMANDS: list[BenchCommand] = [
+ACCURATE_COMMANDS: list[BenchCommand] = [
     BenchCommand(
-        "mm cat <image> --mode fast",
-        "L2",
-        "mm cat {file} --mode fast --no-cache --format json",
-        requires_kind="image",
-        skip_reason="no image files",
-    ),
-    BenchCommand(
-        "mm cat <image> --mode accurate",
-        "L2",
+        "mm cat <image>",
+        "accurate",
         "mm cat {file} --mode accurate --no-cache --format json",
         requires_kind="image",
         skip_reason="no image files",
     ),
     BenchCommand(
-        "mm cat <audio> --mode fast",
-        "L2",
-        "mm cat {file} --mode fast --no-cache --format json",
-        requires_kind="audio",
-        smallest=True,
-        skip_reason="no audio files",
-    ),
-    BenchCommand(
-        "mm cat <audio> --mode accurate",
-        "L2",
+        "mm cat <audio>",
+        "accurate",
         "mm cat {file} --mode accurate --no-cache --format json",
         requires_kind="audio",
         smallest=True,
         skip_reason="no audio files",
     ),
     BenchCommand(
-        "mm cat <video> --mode fast",
-        "L2",
-        "mm cat {file} --mode fast --no-cache --format json",
-        requires_kind="video",
-        skip_reason="no video files",
-    ),
-    BenchCommand(
-        "mm cat <video> --mode accurate",
-        "L2",
+        "mm cat <video>",
+        "accurate",
         "mm cat {file} --mode accurate --no-cache --format json",
         requires_kind="video",
         skip_reason="no video files",
     ),
 ]
 
-ALL_COMMANDS: list[BenchCommand] = OVERHEAD_COMMANDS + L0_COMMANDS + L1_COMMANDS + L2_COMMANDS
+ALL_COMMANDS: list[BenchCommand] = (
+    OVERHEAD_COMMANDS + METADATA_COMMANDS + FAST_COMMANDS + ACCURATE_COMMANDS
+)
