@@ -12,7 +12,7 @@ from typing import Any
 
 from mm.utils import batch_array
 
-MAX_INDEX = 50
+MAX_INDEX = 25
 
 
 def check_indexed(uris: list[str]) -> tuple[set[str], list[str]]:

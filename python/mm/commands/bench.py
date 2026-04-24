@@ -23,7 +23,7 @@ class BenchResult:
     """Timing results for a single benchmark."""
 
     name: str
-    group: str  # "L0", "L1", "L2"
+    group: str  # "metadata", "fast", "accurate"
     timings_ms: list[float] = field(default_factory=list)
     files_count: int = 0
     total_bytes: int = 0
@@ -34,6 +34,7 @@ class BenchResult:
     media_width: int = 0
     media_height: int = 0
     media_fps: float = 0.0
+    media_pixel_bits: float = 0.0
     prompt_tokens: int = 0
     completion_tokens: int = 0
 
@@ -93,17 +94,12 @@ class BenchResult:
     def uncompressed_bits(self) -> float:
         """Total uncompressed bits for the benchmark target.
 
-        Images:  width × height × 24 (RGB)
-        Video:   width × height × 24 × fps × duration
-        Other:   file size × 8
+        Images:  width × height × 24 (RGB), summed over batch.
+        Video:   width × height × 24 × fps × duration.
+        Other:   file size × 8.
         """
-        if self.media_width > 0 and self.media_height > 0:
-            pixel_bits = self.media_width * self.media_height * 24
-            if self.media_duration_s > 0 and self.media_fps > 0:
-                # Video: full uncompressed frame stream
-                return pixel_bits * self.media_fps * self.media_duration_s
-            # Image: single frame
-            return float(pixel_bits)
+        if self.media_pixel_bits > 0:
+            return self.media_pixel_bits
         return self.total_bytes * 8
 
     @property
@@ -239,6 +235,7 @@ def _run_benchmarks(
             media_width=media.width,
             media_height=media.height,
             media_fps=media.fps,
+            media_pixel_bits=media.pixel_bits,
             preview_lines=preview,
         )
         r.timings_ms = _time_cmd(argv, rounds, warmup)
@@ -266,9 +263,9 @@ def _fmt_ms(ms: float) -> str:
 # Latency thresholds (ms) per group: (green_cutoff, yellow_cutoff).
 _LATENCY_THRESHOLDS: dict[str, tuple[float, float]] = {
     "overhead": (80.0, 200.0),  # import/startup overhead
-    "L0": (100.0, 500.0),  # metadata: includes CLI startup (~60ms)
-    "L1": (200.0, 1000.0),  # extraction: includes CLI startup
-    "L2": (2000.0, 10000.0),  # semantic/LLM
+    "metadata": (100.0, 500.0),  # includes CLI startup (~60ms)
+    "fast": (200.0, 1000.0),  # fast extractions
+    "accurate": (2000.0, 10000.0),  # accurate extractions
 }
 
 
@@ -365,7 +362,11 @@ def bench_cmd(
     warmup: Annotated[int, typer.Option("--warmup", "-w", help="Warmup rounds")] = 1,
     mode: Annotated[
         Optional[str],
-        typer.Option("--mode", "-m", help="L2 modes to bench: fast (default), accurate, all"),
+        typer.Option(
+            "--mode",
+            "-m",
+            help="Groups to bench: fast (default), accurate, all",
+        ),
     ] = None,
     format: Annotated[
         Optional[BaseFormat],
@@ -375,32 +376,44 @@ def bench_cmd(
     """Benchmark all subcommands with statistical analysis.
 
     \b
-    By default, only L2 --mode fast benchmarks run. Use --mode accurate
-    or --mode all to include accurate-mode benchmarks.
+    ``--mode`` picks which extraction group joins it:
+      fast (default)  metadata + fast
+      accurate        metadata + accurate
+      all             metadata + fast + accurate
 
     \b
     Examples:
-      mm bench ~/data                              # full benchmark (L0+L1+L2)
+      mm bench ~/data                              # metadata + fast
+      mm bench ~/data --mode accurate              # metadata + accurate only
+      mm bench ~/data --mode all                   # full suite
       mm bench ~/data --rounds 5                   # more rounds for stability
       mm bench ~/data --format json                # JSON output for archival
-      mm bench ~/data --mode all                   # include accurate-mode L2
-      mm bench ~/data --mode accurate              # accurate-mode L2 only
     """
-    from mm.commands.bench_commands import L0_COMMANDS, L1_COMMANDS, L2_COMMANDS, OVERHEAD_COMMANDS
+    from mm.commands.bench_commands import (
+        ACCURATE_COMMANDS,
+        FAST_COMMANDS,
+        METADATA_COMMANDS,
+        OVERHEAD_COMMANDS,
+    )
     from mm.display import resolve_format
 
     fmt = resolve_format(format.value if format else None)
 
-    # Filter L2 commands by mode
     bench_mode = mode or "fast"
-    if bench_mode == "all":
-        l2 = L2_COMMANDS
+    if bench_mode == "fast":
+        extraction = FAST_COMMANDS
     elif bench_mode == "accurate":
-        l2 = [c for c in L2_COMMANDS if "accurate" in c.cmd_template]
+        extraction = ACCURATE_COMMANDS
+    elif bench_mode == "all":
+        extraction = FAST_COMMANDS + ACCURATE_COMMANDS
     else:
-        l2 = [c for c in L2_COMMANDS if "accurate" not in c.cmd_template]
+        typer.echo(
+            f"Error: Unknown --mode {bench_mode!r}. Use 'fast', 'accurate', or 'all'.",
+            err=True,
+        )
+        raise typer.Exit(code=1)
 
-    commands = OVERHEAD_COMMANDS + L0_COMMANDS + L1_COMMANDS + l2
+    commands = OVERHEAD_COMMANDS + METADATA_COMMANDS + extraction
 
     # Progress callback for rich output
     if fmt == "rich":
