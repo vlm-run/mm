@@ -99,9 +99,28 @@ class TestBenchCommand:
             ],
         )
         assert r.exit_code == 0, f"bench --mode fast failed: {r.output}"
+        # --mode fast skips the accurate group.
+        r2 = runner.invoke(
+            app,
+            [
+                "bench",
+                str(small_tree),
+                "--rounds",
+                "2",
+                "--warmup",
+                "0",
+                "--mode",
+                "fast",
+                "--format",
+                "json",
+            ],
+        )
+        assert r2.exit_code == 0
+        data = json.loads(r2.output)
+        assert not any(res["group"] == "accurate" for res in data["results"])
 
     def test_skips_missing_file_types(self, tmp_path: Path):
-        """L1 benchmarks for missing types are skipped gracefully."""
+        """Fast-group benchmarks for missing types are skipped gracefully."""
         # Directory with only code files — no images, videos, or PDFs
         (tmp_path / "main.py").write_text("print('hello')\n")
         (tmp_path / "lib.py").write_text("def add(a, b): return a + b\n")
@@ -122,10 +141,12 @@ class TestBenchCommand:
         assert r.exit_code == 0
         data = json.loads(r.output)
 
-        skipped_names = {result["name"] for result in data["results"] if result.get("skipped")}
-        assert "mm cat <image>" in skipped_names
-        assert "mm cat <video>" in skipped_names
-        assert "mm cat <pdf>" in skipped_names
+        skipped = {
+            (result["name"], result["group"]) for result in data["results"] if result.get("skipped")
+        }
+        assert ("mm cat <image>", "fast") in skipped
+        assert ("mm cat <video>", "fast") in skipped
+        assert ("mm cat <pdf>", "fast") in skipped
 
     def test_empty_directory(self, tmp_path: Path):
         """Bench handles empty directory gracefully."""
@@ -146,8 +167,8 @@ class TestBenchCommand:
         data = json.loads(r.output)
         assert data["files"] == 0
 
-    def test_l0_benchmarks_always_present(self, small_tree: Path):
-        """L0 benchmarks run regardless of file types present."""
+    def test_metadata_benchmarks_always_present(self, small_tree: Path):
+        """Metadata benchmarks run regardless of file types present."""
         r = runner.invoke(
             app,
             [
@@ -164,16 +185,16 @@ class TestBenchCommand:
         assert r.exit_code == 0
         data = json.loads(r.output)
 
-        l0_names = {
+        metadata_names = {
             result["name"]
             for result in data["results"]
-            if result["group"] == "L0" and not result.get("skipped")
+            if result["group"] == "metadata" and not result.get("skipped")
         }
-        assert "mm find ." in l0_names
-        assert "mm find . (table)" in l0_names
-        assert "mm wc ." in l0_names
-        assert "mm sql 'GROUP BY kind'" in l0_names
-        assert "mm find --kind image" in l0_names
+        assert "mm find ." in metadata_names
+        assert "mm find . (table)" in metadata_names
+        assert "mm wc ." in metadata_names
+        assert "mm sql 'GROUP BY kind'" in metadata_names
+        assert "mm find --kind image" in metadata_names
 
     def test_timings_are_positive(self, small_tree: Path):
         """All timings should be positive numbers."""
@@ -230,7 +251,7 @@ class TestBenchResult:
 
         r = BenchResult(
             name="test",
-            group="L0",
+            group="metadata",
             timings_ms=[10.0, 12.0, 11.0, 13.0, 9.0],
             files_count=100,
             total_bytes=1024 * 1024,
@@ -246,7 +267,7 @@ class TestBenchResult:
     def test_skipped_result(self):
         from mm.commands.bench import BenchResult
 
-        r = BenchResult(name="test", group="L1", skipped=True, skip_reason="no files")
+        r = BenchResult(name="test", group="fast", skipped=True, skip_reason="no files")
         d = r.to_dict()
         assert d["skipped"] is True
         assert d["skip_reason"] == "no files"
@@ -257,16 +278,43 @@ class TestBenchResult:
 
         r = BenchResult(
             name="find .",
-            group="L0",
+            group="metadata",
             timings_ms=[5.0, 6.0, 5.5],
             files_count=50,
             total_bytes=1000,
         )
         d = r.to_dict()
         assert d["name"] == "find ."
-        assert d["group"] == "L0"
+        assert d["group"] == "metadata"
         assert d["mean_ms"] > 0
         assert len(d["timings_ms"]) == 3
+
+    def test_uncompressed_bits_uses_pixel_bits_when_set(self):
+        """media_pixel_bits overrides the fallback to total_bytes*8."""
+        from mm.commands.bench import BenchResult
+
+        r = BenchResult(
+            name="test",
+            group="fast",
+            timings_ms=[100.0],
+            files_count=1,
+            total_bytes=1024,
+            media_pixel_bits=7_372_800.0,  # e.g. 640*480*24
+        )
+        assert r.uncompressed_bits == 7_372_800.0
+
+    def test_uncompressed_bits_falls_back_to_bytes(self):
+        """Without pixel_bits, throughput uses total_bytes * 8."""
+        from mm.commands.bench import BenchResult
+
+        r = BenchResult(
+            name="test",
+            group="fast",
+            timings_ms=[100.0],
+            files_count=1,
+            total_bytes=1024,
+        )
+        assert r.uncompressed_bits == 8192.0
 
 
 class TestBenchCommands:
@@ -274,20 +322,23 @@ class TestBenchCommands:
 
     def test_all_commands_non_empty(self):
         from mm.commands.bench_commands import (
+            ACCURATE_COMMANDS,
             ALL_COMMANDS,
-            L0_COMMANDS,
-            L1_COMMANDS,
-            L2_COMMANDS,
+            FAST_COMMANDS,
+            METADATA_COMMANDS,
             OVERHEAD_COMMANDS,
         )
 
         assert len(ALL_COMMANDS) > 0
         assert len(OVERHEAD_COMMANDS) > 0
-        assert len(L0_COMMANDS) > 0
-        assert len(L1_COMMANDS) > 0
-        assert len(L2_COMMANDS) > 0
+        assert len(METADATA_COMMANDS) > 0
+        assert len(FAST_COMMANDS) > 0
+        assert len(ACCURATE_COMMANDS) > 0
         assert len(ALL_COMMANDS) == (
-            len(OVERHEAD_COMMANDS) + len(L0_COMMANDS) + len(L1_COMMANDS) + len(L2_COMMANDS)
+            len(OVERHEAD_COMMANDS)
+            + len(METADATA_COMMANDS)
+            + len(FAST_COMMANDS)
+            + len(ACCURATE_COMMANDS)
         )
 
     def test_command_has_required_fields(self):
@@ -295,8 +346,18 @@ class TestBenchCommands:
 
         for cmd in ALL_COMMANDS:
             assert cmd.name
-            assert cmd.group in ("overhead", "L0", "L1", "L2")
+            assert cmd.group in ("overhead", "metadata", "fast", "accurate")
             assert cmd.cmd_template
+
+    def test_accurate_group_is_accurate_mode_only(self):
+        """Accurate group contains only --mode accurate commands."""
+        from mm.commands.bench_commands import ACCURATE_COMMANDS
+
+        assert len(ACCURATE_COMMANDS) > 0
+        for cmd in ACCURATE_COMMANDS:
+            assert "--mode accurate" in cmd.cmd_template, (
+                f"accurate group should only contain --mode accurate: {cmd.cmd_template}"
+            )
 
 
 class TestFmtMs:
