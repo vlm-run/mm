@@ -40,6 +40,13 @@ mm cat video.mp4 -p shot-mosaic     # scene-aware video encoder
 mm cat photo.jpg -m accurate --encode.strategy tile
 mm cat photo.jpg -m accurate --generate.max-tokens 1024 --generate.temperature 0.5
 
+# Override individual strategy_opts entries (repeatable, KEY=VALUE form)
+mm cat photo.jpg -m accurate --encode.strategy_opts max_width=768
+mm cat video.mp4 -m accurate --encode.strategy_opts max_width=768 --encode.strategy_opts fps=5
+
+# Inspect the YAML source of a built-in pipeline (use as a template for your own)
+mm cat --print-pipeline image/accurate
+
 # Load explicit pipeline YAML (repeatable, dispatched by kind)
 mm cat photo.jpg -p ~/my-image-pipeline.yaml
 mm cat *.jpg *.mp4 -p image.yaml -p video.yaml

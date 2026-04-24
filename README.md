@@ -302,7 +302,7 @@ The skill exposes mm's capabilities to any tool that supports the skills protoco
 | Command | Purpose | Key flags |
 |---------|---------|-----------|
 | `find`  | Find/list files, tree view, schema | `--name`, `-i` (ignore case), `--kind`, `--ext`, `--min-size`, `--max-size`, `--sort`, `--reverse`, `--columns`, `--tree`, `--depth`, `--schema`, `--limit`, `--no-ignore`, `--format` |
-| `cat` | Content extraction (auto-detected by file type × mode) | `--mode fast/accurate`, `-p` (pipeline), `-n`, `--no-cache`, `-v`, `--encode.*`, `--generate.*`, `--list-pipelines`, `--list-encoders`, `--format` |
+| `cat` | Content extraction (auto-detected by file type × mode) | `--mode fast/accurate`, `-p` (pipeline), `-n`, `--no-cache`, `-v`, `--encode.*` (incl. `--encode.strategy_opts KEY=VALUE`), `--generate.*`, `--list-pipelines`, `--list-encoders`, `--print-pipeline <kind>/<mode>`, `--format` |
 | `grep` | Content search across files | `--kind`, `--ext`, `-C`, `--count`, `-i`, `--semantic`, `--pre-index`, `--no-ignore`, `--format` |
 | `sql` | SQL queries on file index, results, chunks, and embeddings | `--dir`, `--pre-index`, `--format`, `--list-tables` |
 | `wc` | Count files, size, lines (est.), tokens (est.) | `--kind`, `--by-kind`, `--format` |
@@ -344,6 +344,8 @@ mm cat Timelapse.mp4 -m accurate --no-cache                      # force fresh L
 mm cat bench.jpg -m accurate -v                                  # verbose (shows pipeline tree)
 mm cat --list-pipelines                                          # list registered pipelines
 mm cat --list-encoders                                           # list registered encoders
+mm cat --print-pipeline image/accurate                           # print a built-in pipeline's YAML source
+mm cat bench.jpg -m accurate --encode.strategy_opts max_width=768  # override a single strategy_opts entry
 ```
 
 ### wc — count files, size, tokens
@@ -457,6 +459,14 @@ Pipeline fields can be overridden from the CLI:
 ```bash
 mm cat photo.jpg -m accurate --encode.strategy tile --generate.max-tokens 1024
 mm cat photo.jpg -m accurate --generate.temperature 0.5
+
+# Override individual strategy_opts entries (repeatable KEY=VALUE form;
+# values are coerced to int/float/bool when possible).
+mm cat photo.jpg -m accurate --encode.strategy_opts max_width=768
+mm cat video.mp4 -m accurate --encode.strategy_opts max_width=768 --encode.strategy_opts fps=5
+
+# Print a built-in pipeline's YAML as a starting point for your own.
+mm cat --print-pipeline image/accurate
 ```
 
 Load explicit pipeline YAML(s) with `-p` (repeatable, dispatched by `kind` field):

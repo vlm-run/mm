@@ -165,6 +165,10 @@ mm cat *.jpg *.mp4 -p image.yaml -p video.yaml
 
 # List available encoders and pipelines
 mm cat --list-pipelines
+mm cat --list-encoders
+
+# Print a built-in pipeline's YAML source (e.g., as a starting point for a custom pipeline)
+mm cat --print-pipeline image/accurate          # takes <kind>/<mode>
 ```
 
 ### Built-in encoders
@@ -239,6 +243,21 @@ Pipelines are 2-stage YAMLs: **encode** (convert to LLM-ready parts) → **gener
 ```bash
 mm cat photo.png -m accurate --encode.strategy image-tile      # override encoder
 mm cat photo.png -m accurate --encode.pyfunc ~/my_filter.py    # custom transform
+
+# Override individual strategy_opts entries. KEY=VALUE form, repeatable.
+# Values are coerced to int/float/bool when possible (e.g. max_width=768 → int).
+mm cat photo.png -m accurate --encode.strategy_opts max_width=768
+mm cat video.mp4 -m accurate --encode.strategy_opts max_width=768 --encode.strategy_opts fps=5
+```
+
+### Inspecting pipelines (--print-pipeline)
+
+Print the raw YAML of a built-in pipeline to stdout — useful as a starting point
+for a custom pipeline in `~/.config/mm/pipelines/{kind}/{mode}.yaml`.
+
+```bash
+mm cat --print-pipeline image/accurate           # takes <kind>/<mode>
+mm cat --print-pipeline video/fast
 ```
 
 ### Generate overrides (--generate.\*)

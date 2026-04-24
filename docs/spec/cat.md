@@ -120,10 +120,15 @@ generate:                   # optional — omit for encode-only
 Namespaced flags override individual pipeline fields:
 
 - `--encode.strategy resize` — swap encoder
+- `--encode.strategy_opts max_width=768` — override a single `strategy_opts` entry
+  (repeatable; values are coerced to int/float/bool when possible, e.g.
+  `--encode.strategy_opts max_width=768 --encode.strategy_opts fps=5`)
 - `--encode.pyfunc transform.py` — custom Python transform
 - `--generate.prompt "..."` — override prompt
 - `--generate.max-tokens 512` — override token limit
 - `--generate.temperature 0.5` — override temperature
+- `--print-pipeline image/accurate` — print the YAML source of a built-in pipeline
+  (accepts `<kind>/<mode>`, useful as a starting point for a custom pipeline)
 
 ## Output Formats
 
