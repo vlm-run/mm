@@ -18,18 +18,17 @@
 # Output YAML feeds benchmarks/universal_cli/visualize_universal.py — same
 # schema as the multimodal bench, so the report works unchanged.
 #
-# Task budget (full mode, 24 tasks):
-#   19 cat  (~79%) — 9 fast + 10 accurate (1 of the accurate cat tasks is
-#                    batched over the whole directory — included in fast
-#                    mode so we get a real-world picture of per-image VLM
-#                    cost × N images)
-#    2 grep (~8%)  — both --semantic, with different queries (regex grep is
-#                    a no-op on image dirs, since binary kinds are skipped
-#                    unless --semantic is passed)
-#    3 misc (~13%) — 1 find + 1 wc + 1 sql
-#
-# Slipped from the strict 85/10/5 to ensure all of find/wc/sql are
-# represented (1 each).
+# Task budget (full mode, 14 tasks):
+#    9 cat  (~64%) — all --mode fast (accurate-mode cat tasks were removed
+#                    on purpose: every one of them adds a per-call VLM
+#                    round-trip that dominates wall time, which caps the
+#                    measurable with/without-mm speedup. Fast mode is
+#                    where the upper bound lives.)
+#    2 grep (~14%) — both --semantic, with different queries (regex grep
+#                    is a no-op on image dirs, since binary kinds are
+#                    skipped unless --semantic is passed)
+#    3 misc (~21%) — 1 find + 1 wc + 1 sql (wc moved into fast mode so
+#                    the smoke test exercises a bulk-aggregate call)
 
 set -euo pipefail
 
@@ -91,10 +90,11 @@ register_tasks() {
   _pick_samples
 
   # ============================================================
-  # Fast mode (first 5): one representative task per pattern —
-  # cat fast single, cat accurate single, cat fast batch,
-  # cat accurate batch, one grep --semantic. The second grep
-  # --semantic is reserved for full mode.
+  # Fast mode (first 5): cat fast single, cat fast batch, two
+  # --semantic greps, and the wc bulk-aggregate smoke test. Only
+  # fast-mode tasks remain — accurate-mode runs add a per-task
+  # VLM call that dominates wall time and compresses the visible
+  # speedup, so they're excluded from this bench.
   # ============================================================
 
   # 1. cat fast — single image metadata (the canonical "mm cat" call)
@@ -103,26 +103,12 @@ register_tasks() {
     "mm cat '${SAMPLE_SMALL}' --mode fast --format json" \
     "${SAMPLE_SMALL}"
 
-  # 2. cat accurate — single image VLM caption
-  add_task "image_cat_accurate_single" \
-    "Caption this image in 2-3 sentences, describing the main subject and scene." \
-    "mm cat '${SAMPLE_SMALL}' --mode accurate" \
-    "${SAMPLE_SMALL}"
-
-  # 3. cat fast — batch metadata (the bulk pattern)
+  # 2. cat fast — batch metadata (the bulk pattern)
   add_task "image_cat_fast_batch" \
     "Extract metadata for every image in this directory: name, dimensions, format, and size. Return as JSON." \
     "mm find '${BENCH_DIR}' --kind image --format json | mm cat --mode fast --format json -y"
 
-  # 4. cat accurate — batch VLM caption over the whole image directory.
-  #    This is the most interesting mm demo: 200+ VLM calls vs an assistant
-  #    trying to orchestrate them itself. Included in fast mode because it
-  #    is the core "bulk accurate" signal we want on every run.
-  add_task "image_cat_accurate_batch" \
-    "Generate a short VLM caption for every image in this directory. Return {file, caption} as JSON." \
-    "mm find '${BENCH_DIR}' --kind image --format json | mm cat --mode accurate --format json -y"
-
-  # 5. grep --semantic — vector search over image captions (people)
+  # 3. grep --semantic — vector search over image captions (people)
   #    (Plain regex grep is a no-op on image dirs — binary kinds are skipped
   #     unless --semantic is passed, so both grep tasks here exercise the
   #     semantic path with different queries.)
@@ -130,116 +116,65 @@ register_tasks() {
     "Search this image collection for pictures showing a person or people. Return the most relevant matches." \
     "mm grep 'person or people' '${BENCH_DIR}' --kind image --semantic --format json"
 
-  # ============================================================
-  # Full mode (6-24): broader coverage of cat / grep / find / wc / sql.
-  # ============================================================
-
-  # 6. grep --semantic — second query, kept out of fast mode
+  # 4. grep --semantic — vector search over image captions (outdoor scene)
   add_task "image_grep_semantic_outdoor" \
     "Search this image collection for outdoor scenes — landscapes, streets, sky, nature. Return the top matches." \
     "mm grep 'outdoor landscape or street scene' '${BENCH_DIR}' --kind image --semantic --format json"
 
-  # ---- More cat fast (7 more = 9 total fast cat including task #3) ----
+  # 5. wc — bulk token cost estimate for full collection (#34)
+  add_task "image_wc_token_cost" \
+    "How many tokens would it cost to process every image in this directory with a vision LLM? Show counts and total." \
+    "mm wc '${BENCH_DIR}' --kind image --format json"
 
-  # 7. cat fast — different image (stresses cache-cold path)
+  # ============================================================
+  # Full mode (6-14): broader coverage of cat fast + find + sql.
+  # ============================================================
+
+  # 6. cat fast — different image (stresses cache-cold path)
   add_task "image_cat_fast_large" \
     "What are the dimensions, format, and file size of this image?" \
     "mm cat '${SAMPLE_LARGE}' --mode fast --format json" \
     "${SAMPLE_LARGE}"
 
-  # 8. cat fast — head of stdin pipe (#29 EXIF for organization)
+  # 7. cat fast — head of stdin pipe (#29 EXIF for organization)
   add_task "image_cat_fast_head" \
     "Extract EXIF metadata for the first 10 images in this directory: camera, capture date, GPS if present." \
     "mm find '${BENCH_DIR}' --kind image --format json | head -10 | mm cat --mode fast --format json -y"
 
-  # 9. cat fast — screenshots vs photos (#35 — split by EXIF presence)
+  # 8. cat fast — screenshots vs photos (#35 — split by EXIF presence)
   add_task "image_cat_fast_screenshot_audit" \
     "Identify which images in this directory look like screenshots or synthetic images vs real photographs (e.g. by absence of camera EXIF)." \
     "mm find '${BENCH_DIR}' --kind image --format json | mm cat --mode fast --format json -y"
 
-  # 10. cat fast — content hash inventory for dedup pipeline
+  # 9. cat fast — content hash inventory for dedup pipeline
   add_task "image_cat_fast_hash_inventory" \
     "Compute a content hash per image in this directory for a deduplication pipeline. Output filename + hash + size." \
     "mm find '${BENCH_DIR}' --kind image --columns name,size,xxh3 --format json"
 
-  # 11. cat fast — dimensions for VLM token cost estimation (#34)
+  # 10. cat fast — dimensions for VLM token cost estimation (#34)
   add_task "image_cat_fast_dimension_inventory" \
     "Per-image dimensions in this directory, so we can estimate VLM token cost for batch processing." \
     "mm find '${BENCH_DIR}' --kind image --columns name,width,height,size --format json"
 
-  # 12. cat fast — third sample (different file, single)
+  # 11. cat fast — third sample (different file, single)
   add_task "image_cat_fast_third" \
     "Print the dimensions and format of this image as JSON." \
     "mm cat '${SAMPLE_THIRD}' --mode fast --format json" \
     "${SAMPLE_THIRD}"
 
-  # 13. cat fast — aspect-ratio audit
+  # 12. cat fast — aspect-ratio audit
   add_task "image_cat_fast_aspect_ratio" \
     "Group the images in this directory by aspect ratio bucket (landscape, portrait, square)." \
     "mm find '${BENCH_DIR}' --kind image --columns name,width,height --format json"
 
-  # ---- Accurate cat (10 total, including fast-mode batch task #4) ----
+  # ---- Misc: find / sql (wc already in fast mode) ----
 
-  # 14. cat accurate — large image VLM caption
-  add_task "image_cat_accurate_large" \
-    "Describe the contents of this image in detail." \
-    "mm cat '${SAMPLE_LARGE}' --mode accurate" \
-    "${SAMPLE_LARGE}"
-
-  # 15. cat accurate — third sample VLM caption
-  add_task "image_cat_accurate_third" \
-    "What is in this image? Give a one-sentence caption." \
-    "mm cat '${SAMPLE_THIRD}' --mode accurate" \
-    "${SAMPLE_THIRD}"
-
-  # 16. cat accurate — list objects
-  add_task "image_cat_accurate_objects" \
-    "List the distinct objects, people, or text visible in this image." \
-    "mm cat '${SAMPLE_SMALL}' --mode accurate" \
-    "${SAMPLE_SMALL}"
-
-  # 17. cat accurate — extract any text/OCR
-  add_task "image_cat_accurate_text" \
-    "Transcribe any text visible in this image. If there is none, say so." \
-    "mm cat '${SAMPLE_LARGE}' --mode accurate" \
-    "${SAMPLE_LARGE}"
-
-  # 18. cat accurate — short tagging caption
-  add_task "image_cat_accurate_tags" \
-    "Give 3-5 comma-separated tags for this image, suitable for indexing." \
-    "mm cat '${SAMPLE_SMALL}' --mode accurate" \
-    "${SAMPLE_SMALL}"
-
-  # 19. cat accurate — scene description
-  add_task "image_cat_accurate_scene" \
-    "Describe the scene in this image: setting, time of day, mood." \
-    "mm cat '${SAMPLE_THIRD}' --mode accurate" \
-    "${SAMPLE_THIRD}"
-
-  # 20. cat accurate — fine-tuning JSONL prep (#31)
-  add_task "image_cat_accurate_finetune_jsonl" \
-    "For 5 images in this directory, produce {file, caption} pairs as JSONL — usable as training data." \
-    "mm find '${BENCH_DIR}' --kind image --format json | head -5 | mm cat --mode accurate --format json -y"
-
-  # 21. cat accurate — sensitive content check
-  add_task "image_cat_accurate_safety" \
-    "Is this image safe-for-work? Look for any potentially sensitive content." \
-    "mm cat '${SAMPLE_LARGE}' --mode accurate" \
-    "${SAMPLE_LARGE}"
-
-  # ---- Misc: find / wc / sql (1 each) ----
-
-  # 22. find — tree overview for onboarding
+  # 13. find — tree overview for onboarding
   add_task "image_find_tree" \
     "Give me a tree of this image directory showing structure, file types, and sizes." \
     "mm find '${BENCH_DIR}' --tree --depth 2 --format json"
 
-  # 23. wc — bulk token cost estimate for full collection (#34)
-  add_task "image_wc_token_cost" \
-    "How many tokens would it cost to process every image in this directory with a vision LLM? Show counts and total." \
-    "mm wc '${BENCH_DIR}' --kind image --format json"
-
-  # 24. sql — hi-res filter (#30)
+  # 14. sql — hi-res filter (#30)
   add_task "image_sql_hires" \
     "Find every image in this directory with width >= 1000 pixels. Show name, dimensions, and size." \
     "mm sql \"SELECT name, width, height, size FROM files WHERE kind='image' AND width >= 1000 ORDER BY width DESC\" --dir '${BENCH_DIR}' --format json"
