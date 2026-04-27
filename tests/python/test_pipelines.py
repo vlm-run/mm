@@ -7,7 +7,6 @@ from typing import Any
 
 import pytest
 import yaml
-
 from mm.pipelines import apply_overrides, load, render_prompt, run_pyfunc
 from mm.pipelines.schema import Encode, Generate, PipelineSpec, PipelineValidationError
 
@@ -365,7 +364,7 @@ class TestApplyOverrides:
 
     def test_encode_max_width_override(self):
         spec = self._base_spec()
-        result = apply_overrides(spec, encode_overrides={"max_width": "2048"})
+        result = apply_overrides(spec, encode_overrides={"strategy_opts": {"max_width": "2048"}})
         assert result.encode.strategy_opts["max_width"] == "2048"
 
     def test_generate_max_tokens_override(self):
@@ -389,7 +388,7 @@ class TestApplyOverrides:
 
     def test_bool_false_override(self):
         spec = self._base_spec()
-        result = apply_overrides(spec, encode_overrides={"transcribe": "false"})
+        result = apply_overrides(spec, encode_overrides={"strategy_opts": {"transcribe": "false"}})
         assert result.encode.strategy_opts["transcribe"] == "false"
 
     def test_both_overrides_at_once(self):
@@ -404,10 +403,11 @@ class TestApplyOverrides:
         assert result.generate.max_tokens == 512
         assert result.generate.temperature == 0.8
 
-    def test_unknown_encode_field_becomes_strategy_opt(self):
+    def test_unknown_encode_field_no_longer_strategy_opt(self):
         spec = self._base_spec()
         result = apply_overrides(spec, encode_overrides={"custom_param": "val"})
-        assert result.encode.strategy_opts["custom_param"] == "val"
+        with pytest.raises(KeyError):
+            assert result.encode.strategy_opts["custom_param"] == "val"
 
     def test_unknown_generate_field_ignored(self):
         spec = self._base_spec()
@@ -421,14 +421,15 @@ class TestApplyOverrides:
         assert spec.generate is not None
         assert spec.generate.max_tokens == 256
 
-    def test_mosaic_image_width_override(self):
+    def test_strategy_opts_overrides(self):
         spec = self._base_spec()
-        result = apply_overrides(spec, encode_overrides={"mosaic_image_width": "320"})
+        result = apply_overrides(
+            spec,
+            encode_overrides={
+                "strategy_opts": {"mosaic_image_width": "320", "frame_selection": "scene"}
+            },
+        )
         assert result.encode.strategy_opts.get("mosaic_image_width") == "320"
-
-    def test_frame_selection_override(self):
-        spec = self._base_spec()
-        result = apply_overrides(spec, encode_overrides={"frame_selection": "scene"})
         assert result.encode.strategy_opts.get("frame_selection") == "scene"
 
     def test_pyfunc_override(self):

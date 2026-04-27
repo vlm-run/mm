@@ -253,10 +253,12 @@ def cat_cmd(
         typer.echo(f"Error: Unknown mode {mode!r}. Use 'fast' or 'accurate'.", err=True)
         raise typer.Exit(1)
 
-    enc_overrides: dict[str, Any] = _collect_overrides(
-        strategy=encode_strategy,
-        pyfunc=encode_pyfunc,
-    )
+    enc_overrides: dict[str, str | dict[str, str]] = {
+        **_collect_overrides(
+            strategy=encode_strategy,
+            pyfunc=encode_pyfunc,
+        )
+    }
     if encode_strategy_opts:
         for opt_entry in encode_strategy_opts:
             key, sep, val = opt_entry.partition("=")
@@ -266,7 +268,10 @@ def cat_cmd(
                     err=True,
                 )
                 raise typer.Exit(1)
-            enc_overrides[key] = _coerce_opt_value(val)
+            if "strategy_opts" not in enc_overrides:
+                enc_overrides["strategy_opts"] = {}
+            if isinstance(enc_overrides["strategy_opts"], dict):
+                enc_overrides["strategy_opts"][key] = _coerce_opt_value(val)
 
     gen_overrides = _collect_overrides(
         prompt=generate_prompt,
