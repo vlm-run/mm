@@ -68,6 +68,22 @@ requires_sqlite_vec = pytest.mark.skipif(
 
 
 @pytest.fixture
+def isolated_db(tmp_path_factory: pytest.TempPathFactory, monkeypatch: pytest.MonkeyPatch) -> Path:
+    """Point ``MmDatabase`` at a temp directory outside any test's ``tmp_path``.
+
+    Keeping the DB out of ``tmp_path`` ensures its WAL/SHM sidecar files aren't
+    picked up by directory scans the command-under-test runs against ``tmp_path``.
+    """
+    from mm.store.db import MmDatabase
+
+    db_dir = tmp_path_factory.mktemp("mmdb")
+    db_path = db_dir / "mm.db"
+    monkeypatch.setattr(MmDatabase, "DB_PATH", db_path)
+    monkeypatch.setattr(MmDatabase, "DB_DIR", db_dir)
+    return db_path
+
+
+@pytest.fixture
 def small_tree(tmp_path: Path) -> Path:
     """Create a small directory tree with mixed file types."""
     (tmp_path / "src").mkdir()

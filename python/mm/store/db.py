@@ -108,6 +108,7 @@ class MmDatabase:
         """
         from mm.store.schema import (
             CHUNKS_DDL,
+            CHUNKS_FTS_DDL,
             FILES_DDL,
             FILES_INDEX_DDL,
             L2_RESULTS_DDL,
@@ -117,6 +118,20 @@ class MmDatabase:
         self._conn.executescript(FILES_DDL + L2_RESULTS_DDL + CHUNKS_DDL)
         self._migrate_files()
         self._conn.executescript(FILES_INDEX_DDL)
+        # FTS5 is optional — if the SQLite build lacks it, grep degrades silently.
+        try:
+            self._conn.executescript(CHUNKS_FTS_DDL)
+            cnt_chunks = self._conn.execute("SELECT COUNT(*) FROM chunks").fetchone()[0]
+            if cnt_chunks:
+                cnt_fts = self._conn.execute("SELECT COUNT(*) FROM chunks_fts").fetchone()[0]
+                if not cnt_fts:
+                    self._conn.execute(
+                        "INSERT INTO chunks_fts(rowid, chunk_text) "
+                        "SELECT id, chunk_text FROM chunks"
+                    )
+            self._conn.commit()
+        except sqlite3.OperationalError:
+            pass
 
     def _migrate_files(self) -> None:
         """Apply additive ``files`` migrations idempotently.
@@ -556,6 +571,48 @@ class MmDatabase:
             "INSERT OR REPLACE INTO chunks_vec (chunk_id, embedding) VALUES (?, ?)", vec_inserts
         )
         db.commit()
+
+    def search_fts(
+        self,
+        query: str,
+        *,
+        uri: str | None = None,
+        uri_prefix: str | None = None,
+        limit: int = 10,
+    ) -> list[dict[str, Any]]:
+        """Run an FTS5 query over ``chunks_fts``, returning chunk rows + rank.
+
+        ``query`` must be valid FTS5 syntax (callers should sanitize user input).
+        Returns an empty list when ``chunks_fts`` does not exist (e.g. SQLite
+        build without FTS5) or the FTS query is invalid.
+        """
+        db = self._connect
+        exists = db.execute(
+            "SELECT 1 FROM sqlite_master WHERE type='table' AND name='chunks_fts'"
+        ).fetchone()
+        if not exists:
+            return []
+        sql = (
+            "SELECT c.*, chunks_fts.rank, "
+            "snippet(chunks_fts, 0, '', '', ' … ', 24) AS snippet "
+            "FROM chunks_fts "
+            "JOIN chunks c ON c.id = chunks_fts.rowid "
+            "WHERE chunks_fts MATCH ?"
+        )
+        params: list[Any] = [query]
+        if uri:
+            sql += " AND c.file_uri = ?"
+            params.append(uri)
+        elif uri_prefix:
+            sql += " AND c.file_uri LIKE ?"
+            params.append(uri_prefix + "%")
+        sql += " ORDER BY chunks_fts.rank LIMIT ?"
+        params.append(limit)
+        try:
+            rows = db.execute(sql, params).fetchall()
+        except sqlite3.OperationalError:
+            return []
+        return [dict(r) for r in rows]
 
     def search_similar(
         self,

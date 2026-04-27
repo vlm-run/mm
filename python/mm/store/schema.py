@@ -253,6 +253,29 @@ CREATE INDEX IF NOT EXISTS idx_chunks_file_lookup
 ON chunks (file_uri, content_hash, profile, model, level, chunk_idx);
 """
 
+# FTS5 contentless mirror of chunks.chunk_text. Triggers keep it in sync;
+# backfill on first creation is handled in db.py.
+CHUNKS_FTS_DDL = """\
+CREATE VIRTUAL TABLE IF NOT EXISTS chunks_fts USING fts5(
+    chunk_text,
+    content='chunks',
+    content_rowid='id',
+    tokenize='unicode61'
+);
+CREATE TRIGGER IF NOT EXISTS chunks_ai AFTER INSERT ON chunks BEGIN
+    INSERT INTO chunks_fts(rowid, chunk_text) VALUES (new.id, new.chunk_text);
+END;
+CREATE TRIGGER IF NOT EXISTS chunks_ad AFTER DELETE ON chunks BEGIN
+    INSERT INTO chunks_fts(chunks_fts, rowid, chunk_text)
+    VALUES('delete', old.id, old.chunk_text);
+END;
+CREATE TRIGGER IF NOT EXISTS chunks_au AFTER UPDATE ON chunks BEGIN
+    INSERT INTO chunks_fts(chunks_fts, rowid, chunk_text)
+    VALUES('delete', old.id, old.chunk_text);
+    INSERT INTO chunks_fts(rowid, chunk_text) VALUES (new.id, new.chunk_text);
+END;
+"""
+
 # ---------------------------------------------------------------------------
 # Table names
 # ---------------------------------------------------------------------------

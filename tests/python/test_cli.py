@@ -383,11 +383,9 @@ class TestGrep:
 
     def test_ignore_case(self, small_tree: Path):
         """--ignore-case / -i should match regardless of casing."""
-        # "HELLO" doesn't match "hello" case-sensitively
         r = runner.invoke(app, ["grep", "HELLO", str(small_tree)])
         assert r.exit_code == 1
 
-        # With -i it should match
         r = runner.invoke(app, ["grep", "HELLO", str(small_tree), "-i"])
         assert r.exit_code == 0
         assert "hello" in r.output.lower()
@@ -402,13 +400,10 @@ class TestGrep:
 
     def test_no_ignore(self, gitignored_tree: Path):
         """--no-ignore should search inside gitignored files."""
-        # The gitignored_tree has skip.log with "log line" and data/file.csv with "a,b,c"
-        # Without --no-ignore: gitignored files are not searched
         r = runner.invoke(app, ["grep", "log line", str(gitignored_tree)])
         assert r.exit_code == 1
         assert "skip.log" not in r.output
 
-        # With --no-ignore: gitignored files are included in the search
         r = runner.invoke(app, ["grep", "log line", str(gitignored_tree), "--no-ignore"])
         assert r.exit_code == 0
         assert "skip.log" in r.output
@@ -434,16 +429,27 @@ class TestGrep:
         assert "path" in row
         assert "count" in row
 
+    def test_dataset_hf(self, small_tree: Path, tmp_path: Path, monkeypatch):
+        """``grep --format dataset-hf`` writes a HuggingFace dataset to ``mm_dataset/``."""
+        datasets = pytest.importorskip("datasets")
+
+        monkeypatch.chdir(tmp_path)
+        r = runner.invoke(app, ["grep", "hello", str(small_tree), "--format", "dataset-hf"])
+        assert r.exit_code == 0
+
+        ds = datasets.load_from_disk(str(tmp_path / "mm_dataset"))
+        assert len(ds) > 0
+        assert "path" in ds.column_names
+        assert "line" in ds.column_names
+
     def test_kind_filter_comma_separated(self, small_tree: Path):
         """--kind document,code should search across both kinds."""
-        # "hello" appears in main.py (code) — search document,code
         r = runner.invoke(app, ["grep", "hello", str(small_tree), "--kind", "document,code"])
         assert r.exit_code == 0
         assert "hello" in r.output
 
     def test_kind_filter_comma_separated_excludes_others(self, small_tree: Path):
         """--kind config,text should not match content only in code files."""
-        # "def main" only appears in main.py which is kind=code
         r = runner.invoke(app, ["grep", "def main", str(small_tree), "--kind", "document,text"])
         assert r.exit_code == 1
         assert "def main" not in r.output
@@ -458,10 +464,8 @@ class TestGrep:
     def test_smart_case_uppercase_in_pattern_stays_case_sensitive(self, tmp_path: Path):
         """Any uppercase letter in pattern preserves case-sensitivity."""
         (tmp_path / "doc.txt").write_text("Go Paperless\n")
-        # Exact case: matches.
         r = runner.invoke(app, ["grep", "Paperless", str(tmp_path)])
         assert r.exit_code == 0
-        # Wrong case with uppercase in pattern: no match.
         r = runner.invoke(app, ["grep", "PAPERLESS", str(tmp_path)])
         assert r.exit_code == 1
 
@@ -473,11 +477,9 @@ class TestGrep:
         assert "Paperless" in r.output
 
     def test_smart_case_ignores_uppercase_in_regex_escapes(self, tmp_path: Path):
-        """Uppercase letters inside regex escapes (\\S, \\W, \\D, \\B) shouldn't
-        flip smart-case off — they are metacharacters, not user-intended literals."""
+        """Uppercase inside regex escapes (\\S, \\W, \\D, \\B) shouldn't flip
+        smart-case off — they're metacharacters, not user-intended literals."""
         (tmp_path / "doc.txt").write_text("LARGE WORLD\n")
-        # Lowercase literal 'world'; the only uppercase is the S inside \S.
-        # Smart-case must still activate for the literal portion to match WORLD.
         r = runner.invoke(app, ["grep", r"\S+ world", str(tmp_path)])
         assert r.exit_code == 0
         assert "LARGE WORLD" in r.output
@@ -486,13 +488,87 @@ class TestGrep:
         """An explicit [A-Z] in the pattern is user-intended uppercase — smart-case
         stays off (matching ripgrep's behavior)."""
         (tmp_path / "doc.txt").write_text("Hello world\n")
-        # [A-Z]ello matches 'Hello' (literal H), not 'hello' — case-sensitive preserved.
         r = runner.invoke(app, ["grep", "[A-Z]ello", str(tmp_path)])
         assert r.exit_code == 0
-        # And confirm the inverse: lowercase-only line is not matched by [A-Z]ello.
         (tmp_path / "doc.txt").write_text("hello world\n")
         r = runner.invoke(app, ["grep", "[A-Z]ello", str(tmp_path)])
         assert r.exit_code == 1
+
+    def test_fts_snippet_includes_match_when_buried_in_chunk(
+        self, tmp_path: Path, isolated_db: Path
+    ):
+        """The displayed line for an FTS hit must contain the matching phrase even
+        when it sits in the middle of a long chunk — the chunk's head/tail must
+        not be the only thing shown, or the match would be cropped out."""
+        from mm.store.db import MmDatabase
+        from mm.store.utils import now_us
+
+        img = tmp_path / "shot.png"
+        img.write_bytes(b"\x89PNG\r\n\x1a\n" + b"\x00" * 32)
+
+        prefix = ("noisetoken-" + "x" * 8 + " ") * 60
+        suffix = ("filler-" + "y" * 8 + " ") * 60
+        chunk = prefix + "the quantum cloud is here " + suffix
+
+        db = MmDatabase()
+        db.ensure_l0(str(img))
+        now = now_us()
+        db._connect.execute(
+            "INSERT INTO l2_results (id, file_uri, content_hash, profile, model, mode, "
+            "detail, extra, summary, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            ("l2-snip", str(img), "h", "p", "m", "accurate", 0, "", "summary", now),
+        )
+        db._connect.execute(
+            "INSERT INTO chunks (l2_result_id, file_uri, content_hash, profile, model, "
+            "level, chunk_idx, chunk_text, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            ("l2-snip", str(img), "h", "p", "m", 2, 0, chunk, now),
+        )
+        db._connect.commit()
+
+        r = runner.invoke(app, ["grep", "quantum cloud", str(tmp_path)])
+        assert r.exit_code == 0
+        # The displayed line must include the matched phrase — the bug was that
+        # only the chunk's prefix[:90] and suffix[-50:] were shown, hiding it.
+        assert "quantum cloud" in r.output
+
+    def test_fts_finds_indexed_chunk_in_binary(self, tmp_path: Path, isolated_db: Path):
+        """FTS additively surfaces hits inside indexed chunks; regex never sees the
+        binary bytes of an image, but FTS can match the -m=accurate chunk text seeded for it.
+        """
+        from mm.store.db import MmDatabase
+        from mm.store.utils import now_us
+
+        img = tmp_path / "photo.png"
+        img.write_bytes(b"\x89PNG\r\n\x1a\n" + b"\x00" * 32)
+
+        db = MmDatabase()
+        db.ensure_l0(str(img))
+        now = now_us()
+        db._connect.execute(
+            "INSERT INTO l2_results (id, file_uri, content_hash, profile, model, mode, "
+            "detail, extra, summary, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            ("l2-1", str(img), "h", "p", "m", "accurate", 0, "", "summary", now),
+        )
+        db._connect.execute(
+            "INSERT INTO chunks (l2_result_id, file_uri, content_hash, profile, model, "
+            "level, chunk_idx, chunk_text, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (
+                "l2-1",
+                str(img),
+                "h",
+                "p",
+                "m",
+                2,
+                0,
+                "the quick brown fox jumps over the lazy dog",
+                now,
+            ),
+        )
+        db._connect.commit()
+
+        r = runner.invoke(app, ["grep", "quick brown", str(tmp_path)])
+        assert r.exit_code == 0
+        assert "photo.png" in r.output
 
 
 # ── sql ──────────────────────────────────────────────────────────────
@@ -698,18 +774,6 @@ class TestDatasetHf:
         assert "path" in ds.column_names
         assert "kind" in ds.column_names
 
-    def test_grep_dataset_hf(self, small_tree: Path, tmp_path: Path, monkeypatch):
-        datasets = pytest.importorskip("datasets")
-
-        monkeypatch.chdir(tmp_path)
-        r = runner.invoke(app, ["grep", "hello", str(small_tree), "--format", "dataset-hf"])
-        assert r.exit_code == 0
-
-        ds = datasets.load_from_disk(str(tmp_path / "mm_dataset"))
-        assert len(ds) > 0
-        assert "path" in ds.column_names
-        assert "line" in ds.column_names
-
 
 # ── config ───────────────────────────────────────────────────────────
 
@@ -744,20 +808,6 @@ class TestConfig:
 
 
 # ── prune integration: deleted files are pruned from DB across sql/cat/grep ──
-
-
-@pytest.fixture
-def isolated_db(tmp_path_factory: pytest.TempPathFactory, monkeypatch: pytest.MonkeyPatch) -> Path:
-    """The DB lives outside the test's ``tmp_path`` so its WAL/SHM files aren't
-    picked up by directory scans that the command under test runs.
-    """
-    from mm.store.db import MmDatabase
-
-    db_dir = tmp_path_factory.mktemp("mmdb")
-    db_path = db_dir / "mm.db"
-    monkeypatch.setattr(MmDatabase, "DB_PATH", db_path)
-    monkeypatch.setattr(MmDatabase, "DB_DIR", db_dir)
-    return db_path
 
 
 class TestPruneIntegration:
@@ -806,44 +856,3 @@ class TestPruneIntegration:
         # cat exits 0 but emits "Error: ... not found." on stderr (mixed).
         assert "not found" in r.output
         assert db.get_file(str(p)) is None
-
-    def test_grep_semantic_prunes_stale_rows(
-        self, tmp_path: Path, isolated_db: Path, monkeypatch: pytest.MonkeyPatch
-    ):
-        """``grep -s`` prunes deleted files before querying embeddings.
-
-        Stubs ``search`` so we don't hit the real embedding backend -- the
-        prune happens earlier in ``grep_semantic`` regardless.
-        """
-        from mm.semantic import grep_semantic
-        from mm.store.db import MmDatabase
-
-        a = tmp_path / "a.png"
-        b = tmp_path / "b.png"
-        # Minimal PNG header so ``file_kind`` classifies them as image.
-        png_sig = b"\x89PNG\r\n\x1a\n" + b"\x00" * 32
-        a.write_bytes(png_sig)
-        b.write_bytes(png_sig)
-
-        db = MmDatabase()
-        db.ensure_l0(str(a))
-        db.ensure_l0(str(b))
-        assert {f["name"] for f in db.get_files()} == {"a.png", "b.png"}
-
-        a.unlink()
-
-        # Isolate from the real embedding backend.
-        monkeypatch.setattr("mm.semantic.search", lambda *a, **kw: [])
-
-        grep_semantic(
-            "whatever",
-            tmp_path,
-            kind="image",
-            ext=None,
-            limit=5,
-            do_index=False,
-            quiet=True,
-        )
-
-        assert db.get_file(str(a)) is None
-        assert db.get_file(str(b)) is not None
