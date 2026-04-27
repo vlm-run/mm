@@ -448,6 +448,30 @@ class TestGrep:
         assert r.exit_code == 1
         assert "def main" not in r.output
 
+    def test_smart_case_lowercase_pattern_matches_mixed_content(self, tmp_path: Path):
+        """All-lowercase pattern matches mixed-case content (smart-case on)."""
+        (tmp_path / "doc.txt").write_text("Go Paperless, Go Green!\n")
+        r = runner.invoke(app, ["grep", "go paperless", str(tmp_path)])
+        assert r.exit_code == 0
+        assert "Go Paperless" in r.output
+
+    def test_smart_case_uppercase_in_pattern_stays_case_sensitive(self, tmp_path: Path):
+        """Any uppercase letter in pattern preserves case-sensitivity."""
+        (tmp_path / "doc.txt").write_text("Go Paperless\n")
+        # Exact case: matches.
+        r = runner.invoke(app, ["grep", "Paperless", str(tmp_path)])
+        assert r.exit_code == 0
+        # Wrong case with uppercase in pattern: no match.
+        r = runner.invoke(app, ["grep", "PAPERLESS", str(tmp_path)])
+        assert r.exit_code == 1
+
+    def test_smart_case_overridden_by_ignore_case_flag(self, tmp_path: Path):
+        """-i forces case-insensitive even when the pattern contains uppercase."""
+        (tmp_path / "doc.txt").write_text("Go Paperless\n")
+        r = runner.invoke(app, ["grep", "PAPERLESS", str(tmp_path), "-i"])
+        assert r.exit_code == 0
+        assert "Paperless" in r.output
+
 
 # ── sql ──────────────────────────────────────────────────────────────
 
