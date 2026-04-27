@@ -18,6 +18,7 @@ File-type behaviour:
 
 from __future__ import annotations
 
+import json
 import os
 import sys
 import time
@@ -49,6 +50,34 @@ def _coerce_opt_value(raw: str) -> Any:
     except ValueError:
         pass
     return raw
+
+
+def _override_extra(
+    encode_overrides: dict[str, Any] | None,
+    generate_overrides: dict[str, Any] | None,
+    pipelines: dict[str, Any] | None,
+) -> str:
+    """Build the order-independent override string used in the -m=accurate cache key.
+
+    Without this, repeating ``--encode.strategy_opts max_width=768 fps=5`` vs. ``fps=5 max_width=768``
+    would produce two distinct entries and double the LLM cost.
+    """
+
+    def _render(v: Any) -> str:
+        if isinstance(v, dict):
+            return json.dumps(v, sort_keys=True, separators=(",", ":"))
+        return str(v)
+
+    parts: list[str] = []
+    if encode_overrides:
+        for k in sorted(encode_overrides):
+            parts.append(f"{k}={_render(encode_overrides[k])}")
+    if generate_overrides:
+        for k in sorted(generate_overrides):
+            parts.append(f"g.{k}={_render(generate_overrides[k])}")
+    for pk in sorted(pipelines or {}):
+        parts.append(f"p:{pk}")
+    return "|".join(parts)
 
 
 def _collect_overrides(**kwargs: str | None) -> dict[str, str]:
@@ -484,16 +513,16 @@ def _resolve_pipeline(opts: _CatOpts, kind: str) -> PipelineSpec:
 
 
 def _extract(path: Path, opts: _CatOpts) -> str:
-    """Pipeline-driven extraction dispatch with unified L2 caching.
+    """Pipeline-driven extraction dispatch with unified -m=accurate caching.
 
     1. Auto-detect kind from file extension
-    2. Check L2 cache (applies to both fast and accurate modes)
+    2. Check -m=accurate cache (applies to both fast and accurate modes)
     3. Resolve pipeline (explicit -p > toml override > built-in)
     4. Apply CLI overrides
     5. Run encode step (kind-specific L1 extraction)
     6. If generate is not None: run LLM call
     7. If generate is None: output encode result directly
-    8. Store result in L2 cache
+    8. Store result in -m=accurate cache
     """
     kind = file_kind(path)
 
@@ -509,17 +538,11 @@ def _extract(path: Path, opts: _CatOpts) -> str:
     profile = get_profile()
     content_hash = get_content_hash(path)
 
-    extra_parts: list[str] = []
-    if opts.encode_overrides:
-        for k in sorted(opts.encode_overrides):
-            extra_parts.append(f"{k}={opts.encode_overrides[k]}")
-    if opts.generate_overrides:
-        for k in sorted(opts.generate_overrides):
-            extra_parts.append(f"g.{k}={opts.generate_overrides[k]}")
-    if opts.pipelines:
-        for pk in sorted(opts.pipelines):
-            extra_parts.append(f"p:{pk}")
-    extra = "|".join(extra_parts)
+    extra = _override_extra(
+        opts.encode_overrides,
+        opts.generate_overrides,
+        opts.pipelines,
+    )
 
     l2_id: str | None = None
     if content_hash:
