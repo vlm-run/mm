@@ -80,7 +80,8 @@ def grep_cmd(
 
     # Smart-case: default to case-insensitive matching when -i is not passed and the pattern has no uppercase
     # letters. Any uppercase letter in the pattern preserves case-sensitivity
-    smart_case = not ignore_case and not any(c.isupper() for c in pattern)
+    pattern_literals = re.sub(r"\\.", "", pattern, flags=re.DOTALL)
+    smart_case = not ignore_case and not any(c.isupper() for c in pattern_literals)
     re_flags = re.IGNORECASE if (ignore_case or smart_case) else 0
     try:
         regex = re.compile(pattern, re_flags)
