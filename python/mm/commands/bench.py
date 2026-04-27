@@ -372,6 +372,10 @@ def bench_cmd(
         Optional[BaseFormat],
         typer.Option("--format", "-f", help="Output format: rich, json"),
     ] = None,
+    host_info: Annotated[
+        bool,
+        typer.Option("--host-info", help="Show host system info and exit"),
+    ] = False,
 ) -> None:
     """Benchmark all subcommands with statistical analysis.
 
@@ -388,6 +392,8 @@ def bench_cmd(
       mm bench ~/data --mode all                   # full suite
       mm bench ~/data --rounds 5                   # more rounds for stability
       mm bench ~/data --format json                # JSON output for archival
+      mm bench --host-info                         # print host spec and exit
+      mm bench --host-info --format json           # host spec as JSON
     """
     from mm.commands.bench_commands import (
         ACCURATE_COMMANDS,
@@ -398,6 +404,12 @@ def bench_cmd(
     from mm.display import resolve_format
 
     fmt = resolve_format(format.value if format else None)
+
+    if host_info:
+        from mm.bench_utils import do_host_info
+
+        do_host_info(fmt)
+        return
 
     bench_mode = mode or "fast"
     if bench_mode == "fast":
@@ -414,6 +426,10 @@ def bench_cmd(
         raise typer.Exit(code=1)
 
     commands = OVERHEAD_COMMANDS + METADATA_COMMANDS + extraction
+
+    from mm.bench_utils import collect_host_info, render_host_info
+
+    render_host_info(collect_host_info(), to_stderr=True)
 
     # Progress callback for rich output
     if fmt == "rich":
