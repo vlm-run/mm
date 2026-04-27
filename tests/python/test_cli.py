@@ -448,6 +448,52 @@ class TestGrep:
         assert r.exit_code == 1
         assert "def main" not in r.output
 
+    def test_smart_case_lowercase_pattern_matches_mixed_content(self, tmp_path: Path):
+        """All-lowercase pattern matches mixed-case content (smart-case on)."""
+        (tmp_path / "doc.txt").write_text("Go Paperless, Go Green!\n")
+        r = runner.invoke(app, ["grep", "go paperless", str(tmp_path)])
+        assert r.exit_code == 0
+        assert "Go Paperless" in r.output
+
+    def test_smart_case_uppercase_in_pattern_stays_case_sensitive(self, tmp_path: Path):
+        """Any uppercase letter in pattern preserves case-sensitivity."""
+        (tmp_path / "doc.txt").write_text("Go Paperless\n")
+        # Exact case: matches.
+        r = runner.invoke(app, ["grep", "Paperless", str(tmp_path)])
+        assert r.exit_code == 0
+        # Wrong case with uppercase in pattern: no match.
+        r = runner.invoke(app, ["grep", "PAPERLESS", str(tmp_path)])
+        assert r.exit_code == 1
+
+    def test_smart_case_overridden_by_ignore_case_flag(self, tmp_path: Path):
+        """-i forces case-insensitive even when the pattern contains uppercase."""
+        (tmp_path / "doc.txt").write_text("Go Paperless\n")
+        r = runner.invoke(app, ["grep", "PAPERLESS", str(tmp_path), "-i"])
+        assert r.exit_code == 0
+        assert "Paperless" in r.output
+
+    def test_smart_case_ignores_uppercase_in_regex_escapes(self, tmp_path: Path):
+        """Uppercase letters inside regex escapes (\\S, \\W, \\D, \\B) shouldn't
+        flip smart-case off — they are metacharacters, not user-intended literals."""
+        (tmp_path / "doc.txt").write_text("LARGE WORLD\n")
+        # Lowercase literal 'world'; the only uppercase is the S inside \S.
+        # Smart-case must still activate for the literal portion to match WORLD.
+        r = runner.invoke(app, ["grep", r"\S+ world", str(tmp_path)])
+        assert r.exit_code == 0
+        assert "LARGE WORLD" in r.output
+
+    def test_smart_case_explicit_character_class_stays_case_sensitive(self, tmp_path: Path):
+        """An explicit [A-Z] in the pattern is user-intended uppercase — smart-case
+        stays off (matching ripgrep's behavior)."""
+        (tmp_path / "doc.txt").write_text("Hello world\n")
+        # [A-Z]ello matches 'Hello' (literal H), not 'hello' — case-sensitive preserved.
+        r = runner.invoke(app, ["grep", "[A-Z]ello", str(tmp_path)])
+        assert r.exit_code == 0
+        # And confirm the inverse: lowercase-only line is not matched by [A-Z]ello.
+        (tmp_path / "doc.txt").write_text("hello world\n")
+        r = runner.invoke(app, ["grep", "[A-Z]ello", str(tmp_path)])
+        assert r.exit_code == 1
+
 
 # ── sql ──────────────────────────────────────────────────────────────
 

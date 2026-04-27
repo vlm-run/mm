@@ -37,7 +37,8 @@ def grep_cmd(
         typer.Option("--pre-index", help="Index unindexed files before semantic search (max 50)"),
     ] = False,
     ignore_case: Annotated[
-        bool, typer.Option("--ignore-case", "-i", help="Case-insensitive matching")
+        bool,
+        typer.Option("--ignore-case", "-i", help="Force case-insensitive matching"),
     ] = False,
     no_ignore: Annotated[
         bool, typer.Option("--no-ignore", help="Don't respect .gitignore rules")
@@ -77,7 +78,11 @@ def grep_cmd(
     stdin_paths = read_paths_from_stdin()
     _directory = directory or Path("./")
 
-    re_flags = re.IGNORECASE if ignore_case else 0
+    # Smart-case: default to case-insensitive matching when -i is not passed and the pattern has no uppercase
+    # letters. Any uppercase letter in the pattern preserves case-sensitivity
+    pattern_literals = re.sub(r"\\.", "", pattern, flags=re.DOTALL)
+    smart_case = not ignore_case and not any(c.isupper() for c in pattern_literals)
+    re_flags = re.IGNORECASE if (ignore_case or smart_case) else 0
     try:
         regex = re.compile(pattern, re_flags)
     except re.error as e:
