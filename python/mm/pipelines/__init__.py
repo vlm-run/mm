@@ -225,7 +225,7 @@ def apply_overrides(
         for k, v in encode_overrides.items():
             if k == "strategy_opts" and isinstance(v, dict):
                 strategy_opts.update(v)
-            if k in _ENCODE_TOP_LEVEL:
+            elif k in _ENCODE_TOP_LEVEL:
                 encode_section[k] = v
         encode_section["strategy_opts"] = strategy_opts
 
