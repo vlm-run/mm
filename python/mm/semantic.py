@@ -13,6 +13,7 @@ from typing import Any
 from mm.utils import batch_array
 
 MAX_INDEX = 25
+INDEX_TIMEOUT_S = 300
 
 
 def check_indexed(uris: list[str]) -> tuple[set[str], list[str]]:
@@ -96,21 +97,41 @@ def index_missing(missing: list[str]) -> int:
         console.print(
             f"[yellow]Note:[/yellow] {MAX_INDEX} of {len(missing)} unindexed files will be indexed."
         )
-    console.print(f"[dim]Indexing {total} file{'s' if total != 1 else ''}...[/dim]")
+    console.print(
+        f"[dim]Indexing {total} file{'s' if total != 1 else ''} "
+        f"(timeout: {INDEX_TIMEOUT_S}s)...[/dim]"
+    )
 
     workers = min(4, total)
     successful = 0
     completed = 0
+    timed_out = False
 
-    with ThreadPoolExecutor(max_workers=workers) as pool:
+    pool = ThreadPoolExecutor(max_workers=workers)
+    try:
         futures = {pool.submit(_index_one, uri): uri for uri in to_index}
-        for fut in as_completed(futures):
-            if fut.result() is not None:
-                successful += 1
-            completed += 1
-            console.print(f"[dim]  {completed}/{total} done...[/dim]")
+        try:
+            for fut in as_completed(futures, timeout=INDEX_TIMEOUT_S):
+                if fut.result() is not None:
+                    successful += 1
+                completed += 1
+                console.print(f"[dim]  {completed}/{total} done...[/dim]")
+        except TimeoutError:
+            timed_out = True
+            pending = [futures[f] for f in futures if not f.done()]
+            console.print(
+                f"[yellow]Warning:[/yellow] indexing hit the {INDEX_TIMEOUT_S}s timeout; "
+                f"{len(pending)} file{'s' if len(pending) != 1 else ''} did not finish. "
+                f"Continuing the search with {successful} indexed file"
+                f"{'s' if successful != 1 else ''}."
+            )
+            for uri in pending:
+                console.print(f"[dim]  skipped: {uri}[/dim]")
+    finally:
+        pool.shutdown(wait=not timed_out, cancel_futures=True)
 
-    console.print(f"[green]Indexed {successful} file{'s' if successful != 1 else ''}.[/green]")
+    if not timed_out:
+        console.print(f"[green]Indexed {successful} file{'s' if successful != 1 else ''}.[/green]")
     return successful
 
 

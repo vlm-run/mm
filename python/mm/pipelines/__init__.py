@@ -198,19 +198,18 @@ def _coerce_generate(key: str, value: str) -> Any:
     return value
 
 
-_ENCODE_TOP_LEVEL: frozenset[str] = frozenset({"strategy", "pyfunc"})
+_ENCODE_TOP_LEVEL: frozenset[str] = frozenset({"strategy", "strategy_opts", "pyfunc"})
 
 
 def apply_overrides(
     spec: PipelineSpec,
-    encode_overrides: dict[str, str] | None = None,
+    encode_overrides: dict[str, str | dict[str, str]] | None = None,
     generate_overrides: dict[str, str] | None = None,
 ) -> PipelineSpec:
     """Return a new ``PipelineSpec`` with field-level overrides applied.
 
     Encode overrides:
-      * ``strategy`` and ``pyfunc`` replace the top-level fields.
-      * Anything else is merged into ``encode.strategy_opts`` verbatim
+      * ``strategy``, ``strategy_opts`` and ``pyfunc`` replace the top-level fields.
         (the encoder handles its own type coercion).
 
     Generate overrides are coerced to the dataclass field type.
@@ -224,10 +223,10 @@ def apply_overrides(
         encode_section = data.setdefault("encode", {})
         strategy_opts = dict(encode_section.get("strategy_opts") or {})
         for k, v in encode_overrides.items():
-            if k in _ENCODE_TOP_LEVEL:
+            if k == "strategy_opts" and isinstance(v, dict):
+                strategy_opts.update(v)
+            elif k in _ENCODE_TOP_LEVEL:
                 encode_section[k] = v
-            else:
-                strategy_opts[k] = v
         encode_section["strategy_opts"] = strategy_opts
 
     if generate_overrides:
