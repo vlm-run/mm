@@ -578,11 +578,16 @@ class MmDatabase:
         *,
         uri: str | None = None,
         uri_prefix: str | None = None,
+        kind: str | None = None,
+        ext: str | None = None,
         limit: int = 10,
     ) -> list[dict[str, Any]]:
         """Run an FTS5 query over ``chunks_fts``, returning chunk rows + rank.
 
         ``query`` must be valid FTS5 syntax (callers should sanitize user input).
+        ``kind`` and ``ext`` are pushed into SQL via a JOIN on ``files`` so the
+        engine returns ``LIMIT`` rows that already pass the filter.
+
         Returns an empty list when ``chunks_fts`` does not exist (e.g. SQLite
         build without FTS5) or the FTS query is invalid.
         """
@@ -592,21 +597,39 @@ class MmDatabase:
         ).fetchone()
         if not exists:
             return []
+
+        joins: list[str] = ["JOIN chunks c ON c.id = chunks_fts.rowid"]
+        where: list[str] = ["chunks_fts MATCH ?"]
+        params: list[Any] = [query]
+
+        if uri:
+            where.append("c.file_uri = ?")
+            params.append(uri)
+        elif uri_prefix:
+            where.append("c.file_uri LIKE ?")
+            params.append(uri_prefix + "%")
+
+        if kind:
+            joins.append("JOIN files f ON f.uri = c.file_uri")
+            kinds = [k.strip() for k in kind.split(",") if k.strip()]
+            where.append(f"f.kind IN ({','.join('?' * len(kinds))})")
+            params.extend(kinds)
+
+        if ext:
+            exts = [e.strip().lower() for e in ext.split(",") if e.strip()]
+            if exts:
+                where.append("(" + " OR ".join("LOWER(c.file_uri) LIKE ?" for _ in exts) + ")")
+                params.extend(f"%{e}" for e in exts)
+
         sql = (
             "SELECT c.*, chunks_fts.rank, "
             "snippet(chunks_fts, 0, '', '', ' … ', 24) AS snippet "
             "FROM chunks_fts "
-            "JOIN chunks c ON c.id = chunks_fts.rowid "
-            "WHERE chunks_fts MATCH ?"
+            + " ".join(joins)
+            + " WHERE "
+            + " AND ".join(where)
+            + " ORDER BY chunks_fts.rank LIMIT ?"
         )
-        params: list[Any] = [query]
-        if uri:
-            sql += " AND c.file_uri = ?"
-            params.append(uri)
-        elif uri_prefix:
-            sql += " AND c.file_uri LIKE ?"
-            params.append(uri_prefix + "%")
-        sql += " ORDER BY chunks_fts.rank LIMIT ?"
         params.append(limit)
         try:
             rows = db.execute(sql, params).fetchall()

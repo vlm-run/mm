@@ -6,7 +6,6 @@ of the semantic (vector) layer in :mod:`mm.semantic` and not gated by ``-s``.
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import Any
 
 
@@ -22,8 +21,9 @@ def fts_search(
     """Run an FTS5 phrase query over indexed chunks.
 
     Strips regex metacharacters from ``query`` and runs a phrase match.
-    Returns an empty list when the pattern has no usable tokens or the FTS
-    table is unavailable.
+    ``kind`` and ``ext`` are pushed into SQL by ``MmDatabase.search_fts``,
+    so ``limit`` rows come back already filtered. Returns an empty list when
+    the pattern has no usable tokens or the FTS table is unavailable.
     """
     import re as _re
 
@@ -34,9 +34,15 @@ def fts_search(
         return []
     fts_query = '"' + " ".join(tokens) + '"'
 
-    fetch_limit = max(limit * 10, 100) if (kind or ext) else limit * 2
-    raw = MmDatabase().search_fts(fts_query, uri=uri, uri_prefix=uri_prefix, limit=fetch_limit)
-    results = [
+    raw = MmDatabase().search_fts(
+        fts_query,
+        uri=uri,
+        uri_prefix=uri_prefix,
+        kind=kind,
+        ext=ext,
+        limit=limit,
+    )
+    return [
         {
             "path": r["file_uri"],
             "index": r["chunk_idx"],
@@ -46,13 +52,3 @@ def fts_search(
         }
         for r in raw
     ]
-    if kind:
-        from mm.utils import file_kind_with_code
-
-        kinds = {k.strip() for k in kind.split(",")}
-        results = [res for res in results if file_kind_with_code(Path(res["path"])) in kinds]
-    if ext:
-        exts = tuple(e.strip().lower() for e in ext.split(","))
-        results = [res for res in results if res["path"].lower().endswith(exts)]
-
-    return results[:limit]

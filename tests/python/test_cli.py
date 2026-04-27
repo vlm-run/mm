@@ -570,6 +570,41 @@ class TestGrep:
         assert r.exit_code == 0
         assert "photo.png" in r.output
 
+    def test_fts_kind_filter_pushed_into_sql(self, tmp_path: Path, isolated_db: Path):
+        """``--kind`` filters FTS hits via JOIN on ``files``: only matching kinds
+        come back, even when the wrong-kind chunk has the same text."""
+        from mm.store.db import MmDatabase
+        from mm.store.utils import now_us
+
+        img = tmp_path / "photo.png"
+        txt = tmp_path / "notes.txt"
+        img.write_bytes(b"\x89PNG\r\n\x1a\n" + b"\x00" * 32)
+        txt.write_text("placeholder so the file exists\n")
+
+        db = MmDatabase()
+        db.ensure_l0(str(img))
+        db.ensure_l0(str(txt))
+        now = now_us()
+        # Seed identical chunk text under both files so kind alone determines the hit.
+        for idx, (uri, l2_id) in enumerate([(str(img), "l2-img"), (str(txt), "l2-txt")]):
+            db._connect.execute(
+                "INSERT INTO l2_results (id, file_uri, content_hash, profile, model, mode, "
+                "detail, extra, summary, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                (l2_id, uri, "h", "p", "m", "accurate", 0, "", "summary", now),
+            )
+            db._connect.execute(
+                "INSERT INTO chunks (l2_result_id, file_uri, content_hash, profile, model, "
+                "level, chunk_idx, chunk_text, created_at) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                (l2_id, uri, "h", "p", "m", 2, idx, "rare phrase only here", now),
+            )
+        db._connect.commit()
+
+        r = runner.invoke(app, ["grep", "rare phrase", str(tmp_path), "--kind", "image"])
+        assert r.exit_code == 0
+        assert "photo.png" in r.output
+        assert "notes.txt" not in r.output
+
 
 # ── sql ──────────────────────────────────────────────────────────────
 

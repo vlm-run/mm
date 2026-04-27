@@ -22,7 +22,7 @@ def _run(cmd: list[str], timeout: float = 3.0) -> Optional[str]:
         out = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
         if out.returncode == 0 and out.stdout.strip():
             return out.stdout.strip()
-    except (FileNotFoundError, subprocess.TimeoutExpired, Exception):
+    except (FileNotFoundError, subprocess.TimeoutExpired, OSError):
         pass
     return None
 
