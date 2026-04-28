@@ -557,6 +557,54 @@ class MmDatabase:
         )
         db.commit()
 
+    def search_chunks_fts(
+        self,
+        query: str,
+        *,
+        uri: str | None = None,
+        uri_prefix: str | None = None,
+        kind: str | None = None,
+        ext: str | None = None,
+        limit: int = 10,
+    ) -> list[dict[str, Any]]:
+        """Case-insensitive substring search over ``chunks.chunk_text``"""
+        db = self._connect
+        # Escape LIKE metacharacters in user input so 'user_id' and '100%' don't over-match
+        q_esc = query.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        joins: list[str] = []
+        where: list[str] = ["c.chunk_text LIKE ? ESCAPE '\\' COLLATE NOCASE"]
+        params: list[Any] = [f"%{q_esc}%"]
+
+        if uri:
+            where.append("c.file_uri = ?")
+            params.append(uri)
+        elif uri_prefix:
+            prefix_esc = uri_prefix.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+            where.append("c.file_uri LIKE ? ESCAPE '\\'")
+            params.append(prefix_esc + "%")
+
+        if kind:
+            joins.append("JOIN files f ON f.uri = c.file_uri")
+            kinds = [k.strip() for k in kind.split(",") if k.strip()]
+            where.append(f"f.kind IN ({','.join('?' * len(kinds))})")
+            params.extend(kinds)
+
+        if ext:
+            exts = [e.strip().lower() for e in ext.split(",") if e.strip()]
+            if exts:
+                where.append("(" + " OR ".join("LOWER(c.file_uri) LIKE ?" for _ in exts) + ")")
+                params.extend(f"%{e}" for e in exts)
+
+        sql = (
+            "SELECT c.* FROM chunks c "
+            + " ".join(joins)
+            + " WHERE "
+            + " AND ".join(where)
+            + " LIMIT ?"
+        )
+        params.append(limit)
+        return [dict(r) for r in db.execute(sql, params).fetchall()]
+
     def search_similar(
         self,
         vector: list[float],

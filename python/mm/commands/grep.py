@@ -172,44 +172,73 @@ def grep_cmd(
         except Exception:
             continue
 
-    # Detect binary files for automatic semantic search
+    # FTS + semantic both query indexed chunks.
     has_binary = any(is_binary_content(kind=f.kind) for f in files_to_search)
+    scan_root = _directory.resolve()
+    seen_chunk_keys: set[tuple[str, int]] = set()
+
+    def _merge_chunk_hits(hits: list[dict]) -> None:
+        for r in hits:
+            rel_path = r["path"]
+            try:
+                rel_path = str(Path(rel_path).relative_to(scan_root))
+            except ValueError:
+                pass
+            key = (rel_path, r["index"])
+            if key in seen_chunk_keys:
+                continue
+            seen_chunk_keys.add(key)
+            snippet = r.get("snippet")
+            if snippet:
+                line_text = snippet.replace("\n", " ")
+            else:
+                raw = r["match"].replace("\n", " ")
+                match = regex.search(raw)
+                if match:
+                    start = match.start()
+                    context = 40
+                    snippet_start = max(0, start - context)
+                    snippet_end = min(len(raw), start + len(match.group(0)) + context)
+                    line_text = raw[snippet_start:snippet_end]
+                    if snippet_start > 0:
+                        line_text = "..." + line_text
+                    if snippet_end < len(raw):
+                        line_text += "..."
+                else:
+                    line_text = f"{raw[:90]}...{raw[-50:]}" if len(raw) > 140 else raw[:140]
+            all_matches.append({"path": rel_path, "line_number": r["index"], "line": line_text})
+            file_counts[rel_path] = file_counts.get(rel_path, 0) + 1
+
+    # FTS5 token search over indexed chunks — Silent on missing FTS5 / empty index.
+    if has_binary:
+        from mm.fts import fts_search
+
+        try:
+            scope = (
+                {"uri": str(scan_root)} if _directory.is_file() else {"uri_prefix": str(scan_root)}
+            )
+            _merge_chunk_hits(fts_search(pattern, limit=5, kind=kind, ext=ext, **scope))
+        except Exception:
+            pass
+
     if do_semantic and has_binary:
         from mm.semantic import build_hint_cmd, grep_semantic
 
         try:
-            semantic_results = grep_semantic(
-                pattern,
-                _directory,
-                kind,
-                ext,
-                limit=5,
-                stdin_paths=stdin_paths,
-                no_ignore=no_ignore,
-                do_index=pre_index,
-                quiet=fmt not in ("rich",),
-                cmd_hint=build_hint_cmd(pattern, _directory, kind, ext, ignore_case),
+            _merge_chunk_hits(
+                grep_semantic(
+                    pattern,
+                    _directory,
+                    kind,
+                    ext,
+                    limit=5,
+                    stdin_paths=stdin_paths,
+                    no_ignore=no_ignore,
+                    do_index=pre_index,
+                    quiet=fmt not in ("rich",),
+                    cmd_hint=build_hint_cmd(pattern, _directory, kind, ext, ignore_case),
+                )
             )
-            # Merge semantic results into all_matches / file_counts
-            scan_root = _directory.resolve()
-            for r in semantic_results:
-                rel_path = r["path"]
-                try:
-                    rel_path = str(Path(rel_path).relative_to(scan_root))
-                except ValueError:
-                    pass
-                match_text = r["match"].replace("\n", " ")
-                entry = {
-                    "path": rel_path,
-                    "line_number": r["index"],
-                    "line": (
-                        f"{match_text[:90]}...{match_text[-50:]}"
-                        if len(match_text) > 140
-                        else match_text[:140]
-                    ),
-                }
-                all_matches.append(entry)
-                file_counts[rel_path] = file_counts.get(rel_path, 0) + 1
         except (SystemExit, Exception):
             pass
 

@@ -26,7 +26,7 @@ middle; padding-right: 5px;"><br>
 
 Familiar UNIX CLI tools like `find`, `grep`, `cat` — with multimodal powers.
 
-`mm` offers both a CLI and a Python API that let agents work with file types LLMs can't natively read: images, video, audio, PDFs, and other binary formats. Rust core for speed, Python for dev-ex, UNIX philosophy for composability.
+`mm` offers both a CLI and a Python API that enable agents to work with file types that LLMs can't natively read, including images, video, audio, PDFs, and other binary formats. Rust core for speed, Python for dev-ex, UNIX philosophy for composability.
 
 ## Installation
 
