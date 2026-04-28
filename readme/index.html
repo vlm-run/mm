@@ -39,7 +39,7 @@ middle; padding-right: 5px;"><br>
 
 <hr>
 <p>Familiar UNIX CLI tools like <code>find</code>, <code>grep</code>, <code>cat</code> — with multimodal powers.</p>
-<p><code>mm</code> offers both a CLI and a Python API that let agents work with file types LLMs can&#39;t natively read: images, video, audio, PDFs, and other binary formats. Rust core for speed, Python for dev-ex, UNIX philosophy for composability.</p>
+<p><code>mm</code> offers both a CLI and a Python API that enable agents to work with file types that LLMs can&#39;t natively read, including images, video, audio, PDFs, and other binary formats. Rust core for speed, Python for dev-ex, UNIX philosophy for composability.</p>
 <h2>Installation</h2>
 <pre><code class="language-bash"># with pip
 pip install mm-ctx
@@ -251,12 +251,12 @@ codex &quot;Find all PDFs in ~/docs and summarize them with mm&quot;
 <tr>
 <td><code>cat</code></td>
 <td>Content extraction (auto-detected by file type × mode)</td>
-<td><code>--mode fast/accurate</code>, <code>-p</code> (pipeline), <code>-n</code>, <code>--no-cache</code>, <code>-v</code>, <code>--encode.*</code>, <code>--generate.*</code>, <code>--list-pipelines</code>, <code>--list-encoders</code>, <code>--format</code></td>
+<td><code>--mode fast/accurate</code>, <code>-p</code> (pipeline), <code>-n</code>, <code>--no-cache</code>, <code>-v</code>, <code>--encode.*</code> (incl. <code>--encode.strategy_opts KEY=VALUE</code>), <code>--generate.*</code>, <code>--list-pipelines</code>, <code>--list-encoders</code>, <code>--print-pipeline &lt;kind&gt;/&lt;mode&gt;</code>, <code>--format</code></td>
 </tr>
 <tr>
 <td><code>grep</code></td>
 <td>Content search across files</td>
-<td><code>--kind</code>, <code>--ext</code>, <code>-C</code>, <code>--count</code>, <code>-i</code>, <code>--semantic</code>, <code>--index</code>, <code>--no-ignore</code>, <code>--format</code></td>
+<td><code>--kind</code>, <code>--ext</code>, <code>-C</code>, <code>--count</code>, <code>-i</code>, <code>--semantic</code>, <code>--pre-index</code>, <code>--no-ignore</code>, <code>--format</code></td>
 </tr>
 <tr>
 <td><code>sql</code></td>
@@ -313,6 +313,8 @@ mm cat Timelapse.mp4 -m accurate --no-cache                      # force fresh L
 mm cat bench.jpg -m accurate -v                                  # verbose (shows pipeline tree)
 mm cat --list-pipelines                                          # list registered pipelines
 mm cat --list-encoders                                           # list registered encoders
+mm cat --print-pipeline image/accurate                           # print a built-in pipeline&#39;s YAML source
+mm cat bench.jpg -m accurate --encode.strategy_opts max_width=768  # override a single strategy_opts entry
 </code></pre>
 <h3>wc — count files, size, tokens</h3>
 <pre><code class="language-bash">mm wc ~/data --by-kind
@@ -325,7 +327,7 @@ mm grep &quot;invoice&quot; ~/data --count               # match counts per file
 mm grep &quot;Quantum Phase&quot; ~/data -i              # case-insensitive search
 mm grep &quot;secret&quot; ~/data --no-ignore            # search gitignored files
 mm grep &quot;revenue forecast&quot; ~/data -s             # semantic (vector) search
-mm grep &quot;architecture&quot; ~/data -s --index          # auto-index before search
+mm grep &quot;architecture&quot; ~/data -s --pre-index      # auto-index before search
 </code></pre>
 <h3>sql — query the index</h3>
 <p>Queries file metadata via scan + SQLite, or results and chunks from the persistent SQLite store.</p>
@@ -471,6 +473,14 @@ mm sql --list-tables                              # show available tables
 <p>Pipeline fields can be overridden from the CLI:</p>
 <pre><code class="language-bash">mm cat photo.jpg -m accurate --encode.strategy tile --generate.max-tokens 1024
 mm cat photo.jpg -m accurate --generate.temperature 0.5
+
+# Override individual strategy_opts entries (repeatable KEY=VALUE form;
+# values are coerced to int/float/bool when possible).
+mm cat photo.jpg -m accurate --encode.strategy_opts max_width=768
+mm cat video.mp4 -m accurate --encode.strategy_opts max_width=768 --encode.strategy_opts fps=5
+
+# Print a built-in pipeline&#39;s YAML as a starting point for your own.
+mm cat --print-pipeline image/accurate
 </code></pre>
 <p>Load explicit pipeline YAML(s) with <code>-p</code> (repeatable, dispatched by <code>kind</code> field):</p>
 <pre><code class="language-bash">mm cat photo.jpg -p my-image-pipeline.yaml
