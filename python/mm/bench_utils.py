@@ -224,7 +224,7 @@ def collect_host_info() -> dict[str, Any]:
     return info
 
 
-def render_host_info(info: dict[str, Any], *, to_stderr: bool = False) -> None:
+def render_host_info_rich(info: dict[str, Any], *, to_stderr: bool = False) -> None:
     """Render host info as a Rich panel."""
     from rich import box
     from rich.panel import Panel
@@ -277,14 +277,22 @@ def render_host_info(info: dict[str, Any], *, to_stderr: bool = False) -> None:
     target.print(Panel(table, title="mm host info", box=box.ROUNDED, border_style="dim"))
 
 
-def do_host_info(fmt: str) -> None:
+def render_host_info(info: dict[str, Any], *, fmt: str, to_stderr: bool = False) -> None:
     """Print host info and exit. Supports ``rich`` (default) and ``json`` formats."""
-    info = collect_host_info()
+    if fmt != "rich":
+        from mm.display import console, emit_csv, emit_tsv, json_dumps, output_console
 
-    if fmt == "json":
-        from mm.display import json_dumps
+        if fmt == "json":
+            if to_stderr:
+                console.print(json_dumps(info))
+            else:
+                output_console.print(json_dumps(info))
+            return
+        elif fmt == "tsv":
+            emit_tsv([info], stderr=to_stderr)
+            return
+        elif fmt == "csv":
+            emit_csv([info], stderr=to_stderr)
+            return
 
-        print(json_dumps(info))
-        return
-
-    render_host_info(info)
+    render_host_info_rich(info, to_stderr=to_stderr)

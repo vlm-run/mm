@@ -406,9 +406,9 @@ def bench_cmd(
     fmt = resolve_format(format.value if format else None)
 
     if host_info:
-        from mm.bench_utils import do_host_info
+        from mm.bench_utils import collect_host_info, render_host_info
 
-        do_host_info(fmt)
+        render_host_info(collect_host_info(), fmt=fmt)
         return
 
     bench_mode = mode or "fast"
@@ -429,7 +429,7 @@ def bench_cmd(
 
     from mm.bench_utils import collect_host_info, render_host_info
 
-    render_host_info(collect_host_info(), to_stderr=True)
+    render_host_info(collect_host_info(), fmt=fmt, to_stderr=True)
 
     # Progress callback for rich output
     if fmt == "rich":
