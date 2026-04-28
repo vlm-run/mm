@@ -13,8 +13,8 @@ generate:
     Then list up to 10 identifiable objects, people, faces, or logos.
 
     [OUTPUT]
-    {description}
+    {{description}}
 
-    Tags: {10 keyword tags}
-    Objects: {10 identifiable objects, people, faces, or logos}
+    Tags: {{10 keyword tags}}
+    Objects: {{10 identifiable objects, people, faces, or logos}}
   max_tokens: 2048

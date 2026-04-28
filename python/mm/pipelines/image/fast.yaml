@@ -12,7 +12,7 @@ generate:
     Then list exactly 5 keyword tags.
 
     [OUTPUT]
-    {description}
+    {{description}}
 
-    Tags: {up to 5 keyword tags}
+    Tags: {{up to 5 keyword tags}}
   max_tokens: 256

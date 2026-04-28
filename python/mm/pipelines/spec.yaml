@@ -91,7 +91,7 @@ generate:
 
     [OUTPUT]
     ## Description
-    {description}
+    {{description}}
 
     ## Tags
     - tag1

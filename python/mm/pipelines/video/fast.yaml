@@ -16,9 +16,9 @@ generate:
     Do not mention that this is a mosaic, and instead describe the video.
 
     [OUTPUT]
-    {<=50 words description}
+    {{<=50 words description}}
 
-    Tags: {up to 10 tags}
+    Tags: {{up to 10 tags}}
   max_tokens: 512
   think: false # disable thinking (default)
   reasoning_effort: "none" # no reasoning effort (default)
