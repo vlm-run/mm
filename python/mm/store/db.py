@@ -569,16 +569,19 @@ class MmDatabase:
     ) -> list[dict[str, Any]]:
         """Case-insensitive substring search over ``chunks.chunk_text``"""
         db = self._connect
+        # Escape LIKE metacharacters in user input so 'user_id' and '100%' don't over-match
+        q_esc = query.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
         joins: list[str] = []
-        where: list[str] = ["c.chunk_text LIKE ? COLLATE NOCASE"]
-        params: list[Any] = [f"%{query}%"]
+        where: list[str] = ["c.chunk_text LIKE ? ESCAPE '\\' COLLATE NOCASE"]
+        params: list[Any] = [f"%{q_esc}%"]
 
         if uri:
             where.append("c.file_uri = ?")
             params.append(uri)
         elif uri_prefix:
-            where.append("c.file_uri LIKE ?")
-            params.append(uri_prefix + "%")
+            prefix_esc = uri_prefix.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+            where.append("c.file_uri LIKE ? ESCAPE '\\'")
+            params.append(prefix_esc + "%")
 
         if kind:
             joins.append("JOIN files f ON f.uri = c.file_uri")

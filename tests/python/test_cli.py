@@ -690,6 +690,43 @@ class TestGrep:
         assert fts_search("", uri_prefix=str(tmp_path)) == []
         assert fts_search("   ", uri_prefix=str(tmp_path)) == []
 
+    def test_fts_escapes_like_wildcards_in_query(self, tmp_path: Path, isolated_db: Path):
+        """Underscore and percent in the user query must be treated literally."""
+        from mm.fts import fts_search
+        from mm.store.db import MmDatabase
+        from mm.store.utils import now_us
+
+        img = tmp_path / "wild.png"
+        img.write_bytes(b"\x89PNG\r\n\x1a\n" + b"\x00" * 32)
+
+        db = MmDatabase()
+        db.ensure_l0(str(img))
+        now = now_us()
+        db._connect.execute(
+            "INSERT INTO l2_results (id, file_uri, content_hash, profile, model, mode, "
+            "detail, extra, summary, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            ("l2-w", str(img), "h", "p", "m", "accurate", 0, "", "summary", now),
+        )
+        # Three chunks: only chunk 0 contains the literal query strings; the
+        # others would slip past an unescaped LIKE.
+        seeded = [
+            (0, "literal user_id and 100% appear here"),
+            (1, "userxid and 100 percent are decoys"),
+            (2, "user-id and 1000 are also decoys"),
+        ]
+        for idx, text in seeded:
+            db._connect.execute(
+                "INSERT INTO chunks (l2_result_id, file_uri, content_hash, profile, model, "
+                "level, chunk_idx, chunk_text, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                ("l2-w", str(img), "h", "p", "m", 2, idx, text, now),
+            )
+        db._connect.commit()
+
+        for q in ["user_id", "100%"]:
+            hits = fts_search(q, uri_prefix=str(tmp_path), limit=10)
+            assert len(hits) == 1, f"{q!r} must match exactly chunk 0, got {len(hits)}"
+            assert hits[0]["index"] == 0
+
 
 # ── sql ──────────────────────────────────────────────────────────────
 
