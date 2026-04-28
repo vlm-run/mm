@@ -488,6 +488,8 @@ def _resolve_pipeline(opts: _CatOpts, kind: str) -> PipelineSpec:
     overrides for any kind.  Validates that the encoder supports the
     target media kind before applying it.
     """
+    from mm.pipelines import load
+
     if opts.pipelines:
         spec = opts.pipelines.get(kind)
         if spec is not None:
@@ -506,8 +508,13 @@ def _resolve_pipeline(opts: _CatOpts, kind: str) -> PipelineSpec:
                         err=True,
                     )
                 else:
-                    return encoder_spec
-    from mm.pipelines import load
+                    base = load(kind, opts.mode)
+                    return PipelineSpec(
+                        kind=base.kind,
+                        mode=base.mode,
+                        encode=encoder_spec.encode,
+                        generate=base.generate,
+                    )
 
     return load(kind, opts.mode)
 

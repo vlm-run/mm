@@ -13,8 +13,8 @@
 # Required top-level fields
 # ──────────────────────────────────────────────────────────────────────
 
-kind: image                 # Media kind: image | video | audio | document
-mode: fast                  # Processing mode: fast | accurate
+kind: image # Media kind: image | video | audio | document
+mode: fast # Processing mode: fast | accurate
 
 # ──────────────────────────────────────────────────────────────────────
 # encode — how to convert the file into LLM-ready content parts
@@ -89,9 +89,9 @@ generate:
     Describe this image in 10 words or less.
     Then list exactly 5 keyword tags.
 
-    Use this format:
+    [OUTPUT]
     ## Description
-    <description>
+    {{description}}
 
     ## Tags
     - tag1
