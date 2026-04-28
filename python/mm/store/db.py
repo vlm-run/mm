@@ -108,7 +108,6 @@ class MmDatabase:
         """
         from mm.store.schema import (
             CHUNKS_DDL,
-            CHUNKS_FTS_DDL,
             FILES_DDL,
             FILES_INDEX_DDL,
             L2_RESULTS_DDL,
@@ -118,23 +117,6 @@ class MmDatabase:
         self._conn.executescript(FILES_DDL + L2_RESULTS_DDL + CHUNKS_DDL)
         self._migrate_files()
         self._conn.executescript(FILES_INDEX_DDL)
-        # FTS5 is optional — if the SQLite build lacks it, grep degrades silently.
-        try:
-            self._conn.executescript(CHUNKS_FTS_DDL)
-            cnt_chunks = self._conn.execute("SELECT COUNT(*) FROM chunks").fetchone()[0]
-            if cnt_chunks:
-                cnt_fts = self._conn.execute("SELECT COUNT(*) FROM chunks_fts").fetchone()[0]
-                needs_rebuild = cnt_fts == 0
-                if not needs_rebuild:
-                    probe = self._conn.execute(
-                        "SELECT 1 FROM chunks_fts WHERE chunks_fts MATCH 'a*' LIMIT 1"
-                    ).fetchone()
-                    needs_rebuild = probe is None
-                if needs_rebuild:
-                    self._conn.execute("INSERT INTO chunks_fts(chunks_fts) VALUES('rebuild')")
-            self._conn.commit()
-        except sqlite3.OperationalError:
-            pass
 
     def _migrate_files(self) -> None:
         """Apply additive ``files`` migrations idempotently.
@@ -575,7 +557,7 @@ class MmDatabase:
         )
         db.commit()
 
-    def search_fts(
+    def search_chunks_fts(
         self,
         query: str,
         *,
@@ -585,32 +567,21 @@ class MmDatabase:
         ext: str | None = None,
         limit: int = 10,
     ) -> list[dict[str, Any]]:
-        """Run an FTS5 query over ``chunks_fts``, returning chunk rows + rank.
-
-        ``query`` must be valid FTS5 syntax (callers should sanitize user input).
-        ``kind`` and ``ext`` are pushed into SQL via a JOIN on ``files`` so the
-        engine returns ``LIMIT`` rows that already pass the filter.
-
-        Returns an empty list when ``chunks_fts`` does not exist (e.g. SQLite
-        build without FTS5) or the FTS query is invalid.
-        """
+        """Case-insensitive substring search over ``chunks.chunk_text``"""
         db = self._connect
-        exists = db.execute(
-            "SELECT 1 FROM sqlite_master WHERE type='table' AND name='chunks_fts'"
-        ).fetchone()
-        if not exists:
-            return []
-
-        joins: list[str] = ["JOIN chunks c ON c.id = chunks_fts.rowid"]
-        where: list[str] = ["chunks_fts MATCH ?"]
-        params: list[Any] = [query]
+        # Escape LIKE metacharacters in user input so 'user_id' and '100%' don't over-match
+        q_esc = query.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        joins: list[str] = []
+        where: list[str] = ["c.chunk_text LIKE ? ESCAPE '\\' COLLATE NOCASE"]
+        params: list[Any] = [f"%{q_esc}%"]
 
         if uri:
             where.append("c.file_uri = ?")
             params.append(uri)
         elif uri_prefix:
-            where.append("c.file_uri LIKE ?")
-            params.append(uri_prefix + "%")
+            prefix_esc = uri_prefix.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+            where.append("c.file_uri LIKE ? ESCAPE '\\'")
+            params.append(prefix_esc + "%")
 
         if kind:
             joins.append("JOIN files f ON f.uri = c.file_uri")
@@ -625,20 +596,14 @@ class MmDatabase:
                 params.extend(f"%{e}" for e in exts)
 
         sql = (
-            "SELECT c.*, chunks_fts.rank, "
-            "snippet(chunks_fts, 0, '', '', ' … ', 24) AS snippet "
-            "FROM chunks_fts "
+            "SELECT c.* FROM chunks c "
             + " ".join(joins)
             + " WHERE "
             + " AND ".join(where)
-            + " ORDER BY chunks_fts.rank LIMIT ?"
+            + " LIMIT ?"
         )
         params.append(limit)
-        try:
-            rows = db.execute(sql, params).fetchall()
-        except sqlite3.OperationalError:
-            return []
-        return [dict(r) for r in rows]
+        return [dict(r) for r in db.execute(sql, params).fetchall()]
 
     def search_similar(
         self,

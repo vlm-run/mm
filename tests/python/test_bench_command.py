@@ -37,7 +37,8 @@ class TestBenchCommand:
             ],
         )
         assert r.exit_code == 0, f"bench failed: {r.output}"
-        data = json.loads(r.output)
+        assert "CPU" not in r.stdout, "Host-info should not be in bench stdout"
+        data = json.loads(r.stdout)
 
         # Top-level keys
         assert "directory" in data
@@ -77,7 +78,7 @@ class TestBenchCommand:
             ],
         )
         assert r.exit_code == 0
-        data = json.loads(r.output)
+        data = json.loads(r.stdout)
         assert data["rounds"] == rounds
         for result in data["results"]:
             if not result.get("skipped"):
@@ -116,7 +117,7 @@ class TestBenchCommand:
             ],
         )
         assert r2.exit_code == 0
-        data = json.loads(r2.output)
+        data = json.loads(r2.stdout)
         assert not any(res["group"] == "accurate" for res in data["results"])
 
     def test_skips_missing_file_types(self, tmp_path: Path):
@@ -139,7 +140,7 @@ class TestBenchCommand:
             ],
         )
         assert r.exit_code == 0
-        data = json.loads(r.output)
+        data = json.loads(r.stdout)
 
         skipped = {
             (result["name"], result["group"]) for result in data["results"] if result.get("skipped")
@@ -164,7 +165,7 @@ class TestBenchCommand:
             ],
         )
         assert r.exit_code == 0
-        data = json.loads(r.output)
+        data = json.loads(r.stdout)
         assert data["files"] == 0
 
     def test_metadata_benchmarks_always_present(self, small_tree: Path):
@@ -183,7 +184,7 @@ class TestBenchCommand:
             ],
         )
         assert r.exit_code == 0
-        data = json.loads(r.output)
+        data = json.loads(r.stdout)
 
         metadata_names = {
             result["name"]
@@ -212,7 +213,7 @@ class TestBenchCommand:
             ],
         )
         assert r.exit_code == 0
-        data = json.loads(r.output)
+        data = json.loads(r.stdout)
         for result in data["results"]:
             if not result.get("skipped"):
                 assert result["mean_ms"] > 0
@@ -235,7 +236,7 @@ class TestBenchCommand:
             ],
         )
         assert r.exit_code == 0
-        lines = r.output.strip().splitlines()
+        lines = r.stdout.strip().splitlines()
         assert len(lines) >= 2  # header + at least 1 data row
         header = lines[0].split("\t")
         assert "group" in header

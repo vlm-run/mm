@@ -82,6 +82,10 @@ KIND_ICONS: dict[str, str] = {
 }
 
 
+def resolve_stderr(stderr: bool = False):
+    return sys.stderr if stderr else None
+
+
 def json_dumps(obj: Any, *, indent: int | None = None) -> str:
     """Serialize to JSON — compact when piped (saves tokens), pretty in TTY.
 
@@ -113,17 +117,27 @@ def resolve_format(fmt: str | None) -> str:
     return "tsv" if is_piped_output() else "rich"
 
 
-def emit_tsv(rows: list[dict], columns: list[str] | None = None) -> None:
+def emit_tsv(
+    rows: list[dict],
+    columns: list[str] | None = None,
+    *,
+    stderr: bool = False,
+) -> None:
     """Print rows as TSV with a header line."""
     if not rows:
         return
     cols = columns or list(rows[0].keys())
-    print("\t".join(cols))
+    print("\t".join(cols), file=resolve_stderr(stderr))
     for row in rows:
-        print("\t".join(str(row.get(c, "")) for c in cols))
+        print("\t".join(str(row.get(c, "")) for c in cols), file=resolve_stderr(stderr))
 
 
-def emit_csv(rows: list[dict], columns: list[str] | None = None) -> None:
+def emit_csv(
+    rows: list[dict],
+    columns: list[str] | None = None,
+    *,
+    stderr: bool = False,
+) -> None:
     """Print rows as CSV with a header line."""
     import csv
     import io
@@ -136,23 +150,33 @@ def emit_csv(rows: list[dict], columns: list[str] | None = None) -> None:
     writer.writerow(cols)
     for row in rows:
         writer.writerow(str(row.get(c, "")) for c in cols)
-    print(buf.getvalue(), end="")
+    print(buf.getvalue(), end="", file=resolve_stderr(stderr))
 
 
-def emit_rows(fmt: str, rows: list[dict], *, output_dir: str = "mm_dataset") -> None:
+def emit_rows(
+    fmt: str,
+    rows: list[dict],
+    *,
+    output_dir: str = "mm_dataset",
+    stderr: bool = False,
+) -> None:
     """Unified emitter for json, dataset-jsonl, and dataset-hf formats.
 
     Dispatches to the appropriate serializer based on *fmt*.
     """
     if fmt == "json":
-        print(json_dumps(rows))
+        print(json_dumps(rows), file=resolve_stderr(stderr))
     elif fmt == "dataset-jsonl":
-        _emit_dataset_jsonl(rows)
+        _emit_dataset_jsonl(rows, stderr=stderr)
     elif fmt == "dataset-hf":
         _emit_dataset_hf(rows, output_dir=output_dir)
 
 
-def _emit_dataset_jsonl(rows: list[dict]) -> None:
+def _emit_dataset_jsonl(
+    rows: list[dict],
+    *,
+    stderr: bool = False,
+) -> None:
     """Print rows as newline-delimited JSON (one JSON object per line).
 
     Suitable for ``datasets.load_dataset("json", data_files=...)``.
@@ -160,7 +184,7 @@ def _emit_dataset_jsonl(rows: list[dict]) -> None:
     import json
 
     for row in rows:
-        print(json.dumps(row, default=str, ensure_ascii=False))
+        print(json.dumps(row, default=str, ensure_ascii=False), file=resolve_stderr(stderr))
 
 
 def _emit_dataset_hf(rows: list[dict], output_dir: str = "mm_dataset") -> None:
