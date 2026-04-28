@@ -32,7 +32,7 @@ generate:
     ...
 
     ## Scenes
-    - Scene 1: {DESCRIPTION}
-    - Scene 2: {DESCRIPTION}
+    - Scene 1: {description}
+    - Scene 2: {description}
     ...
   max_tokens: 1536
