@@ -1,7 +1,11 @@
-"""FTS5 token search over indexed ``chunks.chunk_text``.
+"""Case-insensitive substring search over indexed ``chunks.chunk_text``.
 
 Used by ``mm grep`` as an additive search layer alongside regex; independent
 of the semantic (vector) layer in :mod:`mm.semantic` and not gated by ``-s``.
+
+Backed by :meth:`mm.store.db.MmDatabase.search_chunks_fts`, which runs a
+single ``LIKE %q% COLLATE NOCASE`` query with ``kind``/``ext``/``uri`` filters
+pushed into SQL. Returns at most ``limit`` rows.
 """
 
 from __future__ import annotations
@@ -18,37 +22,23 @@ def fts_search(
     kind: str | None = None,
     ext: str | None = None,
 ) -> list[dict[str, Any]]:
-    """Run an FTS5 phrase query over indexed chunks.
-
-    Strips regex metacharacters from ``query`` and runs a phrase match.
-    ``kind`` and ``ext`` are pushed into SQL by ``MmDatabase.search_fts``,
-    so ``limit`` rows come back already filtered. Returns an empty list when
-    the pattern has no usable tokens or the FTS table is unavailable.
-    """
-    import re as _re
-
+    """Search indexed chunks for *query* as a case-insensitive substring"""
     from mm.store.db import MmDatabase
 
-    tokens = _re.findall(r"\w+", query)
-    if not tokens:
+    q = query.strip()
+    if not q:
         return []
-    fts_query = '"' + " ".join(tokens) + '"'
 
-    raw = MmDatabase().search_fts(
-        fts_query,
-        uri=uri,
-        uri_prefix=uri_prefix,
-        kind=kind,
-        ext=ext,
-        limit=limit,
+    rows = MmDatabase().search_chunks_fts(
+        q, uri=uri, uri_prefix=uri_prefix, kind=kind, ext=ext, limit=limit
     )
     return [
         {
             "path": r["file_uri"],
             "index": r["chunk_idx"],
-            "rank": round(r["rank"], 4),
+            "rank": 0.0,
             "match": r["chunk_text"],
-            "snippet": r["snippet"],
+            "snippet": None,
         }
-        for r in raw
+        for r in rows
     ]

@@ -570,13 +570,9 @@ class TestGrep:
         assert r.exit_code == 0
         assert "photo.png" in r.output
 
-    def test_fts_rebuilds_when_index_empty_and_matches_case_insensitively(
-        self, tmp_path: Path, isolated_db: Path
-    ):
-        """If chunks_fts is emptied while chunks still exist (a broken state an
-        earlier version of the backfill could leave behind), the next
-        ``MmDatabase`` connect must rebuild the inverted index. Also pins
-        case-insensitive matching: a lowercase pattern hits mixed-case content.
+    def test_fts_matches_substring_inside_token(self, tmp_path: Path, isolated_db: Path):
+        """``fts_search`` must surface hits when the query is a substring of
+        indexed words, not just a token prefix.
         """
         from mm.store.db import MmDatabase
         from mm.store.utils import now_us
@@ -590,34 +586,25 @@ class TestGrep:
         db._connect.execute(
             "INSERT INTO l2_results (id, file_uri, content_hash, profile, model, mode, "
             "detail, extra, summary, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            ("l2-1", str(img), "h", "p", "m", "accurate", 0, "", "summary", now),
+            ("l2-sub", str(img), "h", "p", "m", "accurate", 0, "", "summary", now),
         )
         db._connect.execute(
             "INSERT INTO chunks (l2_result_id, file_uri, content_hash, profile, model, "
             "level, chunk_idx, chunk_text, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            ("l2-1", str(img), "h", "p", "m", 2, 0, "Breaking the Quantum Loop", now),
+            ("l2-sub", str(img), "h", "p", "m", 2, 0, "Breaking the Quantum Loop", now),
         )
         db._connect.commit()
 
-        db._connect.execute("INSERT INTO chunks_fts(chunks_fts) VALUES('delete-all')")
-        db._connect.commit()
-        assert db._connect.execute("SELECT COUNT(*) FROM chunks_fts").fetchone()[0] == 1
-        assert (
-            db._connect.execute(
-                "SELECT COUNT(*) FROM chunks_fts WHERE chunks_fts MATCH 'quantum'"
-            ).fetchone()[0]
-            == 0
-        )
+        from mm.fts import fts_search
 
-        recovered = MmDatabase()
-        assert (
-            recovered._connect.execute(
-                "SELECT COUNT(*) FROM chunks_fts WHERE chunks_fts MATCH 'quantum'"
-            ).fetchone()[0]
-            == 1
-        )
+        # Mid-token substring, mixed case.
+        hits = fts_search("ntum Loop", uri_prefix=str(tmp_path))
+        assert len(hits) == 1
+        # Mid-token substring, uppercase.
+        hits_upper = fts_search("ntum LOOP", uri_prefix=str(tmp_path))
+        assert len(hits_upper) == 1
 
-        r = runner.invoke(app, ["grep", "quantum loop", str(tmp_path)])
+        r = runner.invoke(app, ["grep", "ntum Loop", str(tmp_path), "--kind", "image"])
         assert r.exit_code == 0
         assert "doc.png" in r.output
 
@@ -655,6 +642,53 @@ class TestGrep:
         assert r.exit_code == 0
         assert "photo.png" in r.output
         assert "notes.txt" not in r.output
+
+    def test_fts_preserves_punctuation_in_query(self, tmp_path: Path, isolated_db: Path):
+        """Queries containing apostrophes/hyphens/dots must match content that
+        contains them verbatim. The trigram tokenizer indexes punctuation as
+        regular characters; stripping it on the way in (e.g. ``\\w+`` extraction)
+        would turn ``won't`` into ``won t`` and miss the content.
+        """
+        from mm.fts import fts_search
+        from mm.store.db import MmDatabase
+        from mm.store.utils import now_us
+
+        img = tmp_path / "punct.png"
+        img.write_bytes(b"\x89PNG\r\n\x1a\n" + b"\x00" * 32)
+
+        db = MmDatabase()
+        db.ensure_l0(str(img))
+        now = now_us()
+        db._connect.execute(
+            "INSERT INTO l2_results (id, file_uri, content_hash, profile, model, mode, "
+            "detail, extra, summary, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            ("l2-p", str(img), "h", "p", "m", "accurate", 0, "", "summary", now),
+        )
+        db._connect.execute(
+            "INSERT INTO chunks (l2_result_id, file_uri, content_hash, profile, model, "
+            "level, chunk_idx, chunk_text, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (
+                "l2-p",
+                str(img),
+                "h",
+                "p",
+                "m",
+                2,
+                0,
+                "I won't ship hello-world v1.0 today, it's still WIP.",
+                now,
+            ),
+        )
+        db._connect.commit()
+
+        for q in ["won't", "hello-world", "v1.0", "it's still"]:
+            assert len(fts_search(q, uri_prefix=str(tmp_path))) == 1, (
+                f"punctuation query {q!r} must match"
+            )
+
+        # Empty/whitespace queries short-circuit to [].
+        assert fts_search("", uri_prefix=str(tmp_path)) == []
+        assert fts_search("   ", uri_prefix=str(tmp_path)) == []
 
 
 # ── sql ──────────────────────────────────────────────────────────────
