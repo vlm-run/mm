@@ -280,13 +280,10 @@ def render_host_info_rich(info: dict[str, Any], *, to_stderr: bool = False) -> N
 def render_host_info(info: dict[str, Any], *, fmt: str, to_stderr: bool = False) -> None:
     """Print host info and exit. Supports ``rich`` (default) and ``json`` formats."""
     if fmt != "rich":
-        from mm.display import console, emit_csv, emit_tsv, json_dumps, output_console
+        from mm.display import emit_csv, emit_tsv, json_dumps, resolve_stderr
 
         if fmt == "json":
-            if to_stderr:
-                console.print(json_dumps(info))
-            else:
-                output_console.print(json_dumps(info))
+            print(json_dumps(info), file=resolve_stderr(to_stderr))
             return
         elif fmt == "tsv":
             emit_tsv([info], stderr=to_stderr)

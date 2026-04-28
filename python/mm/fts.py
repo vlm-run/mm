@@ -12,6 +12,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from mm.store.db import MmDatabase
+
 
 def fts_search(
     query: str,
@@ -23,8 +25,6 @@ def fts_search(
     ext: str | None = None,
 ) -> list[dict[str, Any]]:
     """Search indexed chunks for *query* as a case-insensitive substring"""
-    from mm.store.db import MmDatabase
-
     q = query.strip()
     if not q:
         return []
