@@ -193,7 +193,19 @@ def grep_cmd(
                 line_text = snippet.replace("\n", " ")
             else:
                 raw = r["match"].replace("\n", " ")
-                line_text = f"{raw[:90]}...{raw[-50:]}" if len(raw) > 140 else raw[:140]
+                match = regex.search(raw)
+                if match:
+                    start = match.start()
+                    context = 40
+                    snippet_start = max(0, start - context)
+                    snippet_end = min(len(raw), start + len(match.group(0)) + context)
+                    line_text = raw[snippet_start:snippet_end]
+                    if snippet_start > 0:
+                        line_text = "..." + line_text
+                    if snippet_end < len(raw):
+                        line_text += "..."
+                else:
+                    line_text = f"{raw[:90]}...{raw[-50:]}" if len(raw) > 140 else raw[:140]
             all_matches.append({"path": rel_path, "line_number": r["index"], "line": line_text})
             file_counts[rel_path] = file_counts.get(rel_path, 0) + 1
 

@@ -124,11 +124,14 @@ class MmDatabase:
             cnt_chunks = self._conn.execute("SELECT COUNT(*) FROM chunks").fetchone()[0]
             if cnt_chunks:
                 cnt_fts = self._conn.execute("SELECT COUNT(*) FROM chunks_fts").fetchone()[0]
-                if not cnt_fts:
-                    self._conn.execute(
-                        "INSERT INTO chunks_fts(rowid, chunk_text) "
-                        "SELECT id, chunk_text FROM chunks"
-                    )
+                needs_rebuild = cnt_fts == 0
+                if not needs_rebuild:
+                    probe = self._conn.execute(
+                        "SELECT 1 FROM chunks_fts WHERE chunks_fts MATCH 'a*' LIMIT 1"
+                    ).fetchone()
+                    needs_rebuild = probe is None
+                if needs_rebuild:
+                    self._conn.execute("INSERT INTO chunks_fts(chunks_fts) VALUES('rebuild')")
             self._conn.commit()
         except sqlite3.OperationalError:
             pass
