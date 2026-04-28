@@ -15,9 +15,10 @@ generate:
     You are provided with a mosaic of video frames extracted from a video.
     Do not mention that this is a mosaic, and instead describe the video.
 
-    Use this format:
-    <50 words or less description>
-    tags: <tag1>, <tag2>, ...
+    [OUTPUT]
+    {<=50 words description}
+
+    Tags: {up to 10 tags}
   max_tokens: 512
-  think: false              # disable thinking (default)
-  reasoning_effort: "none"  # no reasoning effort (default)
+  think: false # disable thinking (default)
+  reasoning_effort: "none" # no reasoning effort (default)

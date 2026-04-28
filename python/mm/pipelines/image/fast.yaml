@@ -11,7 +11,8 @@ generate:
     Describe this image in 10 words or less.
     Then list exactly 5 keyword tags.
 
-    Use this format:
-    <description>
-    Tags: <tag1>, <tag2>, ...
+    [OUTPUT]
+    {description}
+
+    Tags: {up to 5 keyword tags}
   max_tokens: 256
