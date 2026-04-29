@@ -125,3 +125,44 @@ def coerce_opt_value(raw: str) -> Any:
     except ValueError:
         pass
     return raw
+
+
+def format_generate_verbose(
+    profile_name: str, elapsed_ms: float, prompt_tokens: int, completion_tokens: int
+) -> str:
+    """Format verbose output for the generate step."""
+    from mm.display import format_time
+
+    token_info = (
+        f"{prompt_tokens}→{completion_tokens}"
+        if (prompt_tokens > 0 or completion_tokens > 0)
+        else "no tokens"
+    )
+    generate_text = f"generate: {profile_name} • {format_time(elapsed_ms)} • {token_info} tokens"
+    return f"[dim]{generate_text}[/dim]"
+
+
+def format_footer(
+    path: Path,
+    mode: str,
+    elapsed_ms: float,
+    prompt_tokens: int = 0,
+    completion_tokens: int = 0,
+) -> str:
+    """Format the footer with time, size, mode, profile, and tokens."""
+    from mm.display import format_size, format_time
+
+    size_str = format_size(path.stat().st_size)
+    parts = [format_time(elapsed_ms), size_str, mode]
+    if mode == "accurate":
+        from mm.profile import get_active_profile_name
+
+        profile_name = get_active_profile_name()
+        parts.append(profile_name)
+
+    if prompt_tokens > 0 or completion_tokens > 0:
+        parts.append(f"{prompt_tokens}→{completion_tokens} tokens")
+
+    footer_text = " • ".join(parts)
+    # Use Rich markup for dim styling (will work properly with output console)
+    return f"[dim]{footer_text}[/dim]"

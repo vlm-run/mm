@@ -20,18 +20,22 @@ from __future__ import annotations
 
 import time
 from pathlib import Path
-from typing import Annotated, Any, Optional
+from typing import Annotated, Optional
 
 import typer
 
-from mm.cat_utils.extract_local import extract_local
+from mm.cat_utils.accurate_video import accurate_video
 from mm.cat_utils.base_utils import (
     CatOpts,
     coerce_opt_value,
     collect_overrides,
+    format_footer,
+    format_generate_verbose,
     maybe_confirm_large_cat_batch,
     override_extra,
 )
+from mm.cat_utils.extract_local import extract_local
+from mm.cat_utils.run_encoder import run_encoder
 from mm.encoders.encoders_utils import do_list_encoders
 from mm.pipe import read_paths_from_stdin
 from mm.pipelines.pipelines_utils import (
@@ -452,7 +456,7 @@ def _run_fast(path: Path, kind: FileKind, opts: CatOpts) -> str:
     spec = apply_overrides(spec, opts.encode_overrides or None, opts.generate_overrides or None)
 
     if spec.encode.strategy:
-        return _run_encoder(path, kind, spec, opts)
+        return run_encoder(path, kind, spec, opts)
 
     content = extract_local(path, kind, no_cache=opts.no_cache)
 
@@ -470,10 +474,10 @@ def _run_fast(path: Path, kind: FileKind, opts: CatOpts) -> str:
         )
         elapsed = (time.monotonic() - t0) * 1000
         u = llm.last_usage
-        footer = _format_footer(path, "fast", elapsed, u.prompt_tokens, u.completion_tokens)
+        footer = format_footer(path, "fast", elapsed, u.prompt_tokens, u.completion_tokens)
 
         profile_name = get_active_profile_name()
-        generate_output = _format_generate_verbose(
+        generate_output = format_generate_verbose(
             profile_name, elapsed, u.prompt_tokens, u.completion_tokens
         )
         suffix_parts = [generate_output]
@@ -502,12 +506,12 @@ def _accurate_dispatch(path: Path, kind: BinaryFileKind, spec: PipelineSpec, opt
     if kind == "image":
         return _accurate_image(path, spec, opts)
     if kind == "video":
-        return _accurate_video(path, spec, opts)
+        return accurate_video(path, spec, opts)
     if kind == "audio":
         return _accurate_audio(path, spec, opts)
 
     if spec.encode.strategy:
-        return _run_encoder(path, kind, spec, opts)
+        return run_encoder(path, kind, spec, opts)
 
     content = extract_local(path, kind)
     if spec.generate is None:
@@ -524,168 +528,10 @@ def _accurate_dispatch(path: Path, kind: BinaryFileKind, spec: PipelineSpec, opt
     )
 
 
-def _format_generate_verbose(
-    profile_name: str, elapsed_ms: float, prompt_tokens: int, completion_tokens: int
-) -> str:
-    """Format verbose output for the generate step."""
-    from mm.display import format_time
-
-    token_info = (
-        f"{prompt_tokens}→{completion_tokens}"
-        if (prompt_tokens > 0 or completion_tokens > 0)
-        else "no tokens"
-    )
-    generate_text = f"generate: {profile_name} • {format_time(elapsed_ms)} • {token_info} tokens"
-    return f"[dim]{generate_text}[/dim]"
-
-
-def _format_pipeline_tree(encode_info: str, generate_info: str | None = None) -> str:
-    """Format pipeline steps as a tree structure."""
-    encode_text = (
-        encode_info.replace("[dim]", "").replace("[/dim]", "").replace("Encode: ", "encode: ")
-    )
-
-    if generate_info:
-        generate_text = generate_info.replace("[dim]", "").replace("[/dim]", "")
-        pipeline = f"pipeline\n  ├─ {encode_text}\n  └─ {generate_text}"
-    else:
-        pipeline = f"pipeline\n  └─ {encode_text}"
-    return f"[dim]{pipeline}[/dim]"
-
-
-def _format_footer(
-    path: Path,
-    mode: str,
-    elapsed_ms: float,
-    prompt_tokens: int = 0,
-    completion_tokens: int = 0,
-) -> str:
-    """Format the footer with time, size, mode, profile, and tokens."""
-    from mm.display import format_size, format_time
-
-    size_str = format_size(path.stat().st_size)
-    parts = [format_time(elapsed_ms), size_str, mode]
-    if mode == "accurate":
-        from mm.profile import get_active_profile_name
-
-        profile_name = get_active_profile_name()
-        parts.append(profile_name)
-
-    if prompt_tokens > 0 or completion_tokens > 0:
-        parts.append(f"{prompt_tokens}→{completion_tokens} tokens")
-
-    footer_text = " • ".join(parts)
-    # Use Rich markup for dim styling (will work properly with output console)
-    return f"[dim]{footer_text}[/dim]"
-
-
-def _format_encode_verbose(strategy: str | None, messages: list[dict], elapsed_ms: float) -> str:
-    """Format verbose output for the encode step."""
-    from mm.display import format_time
-
-    if not strategy:
-        strategy = "unknown"
-
-    # Count part types
-    text_count = 0
-    image_count = 0
-    total_parts = 0
-
-    for msg in messages:
-        content = msg.get("content", [])
-        if isinstance(content, list):
-            for part in content:
-                if isinstance(part, dict):
-                    total_parts += 1
-                    part_type = part.get("type", "unknown")
-                    if part_type == "text":
-                        text_count += 1
-                    elif part_type == "image_url" or "inline_data" in part:
-                        image_count += 1
-
-    # Format part summary
-    part_details = []
-    if text_count > 0:
-        part_details.append(f"{text_count} text" if text_count == 1 else f"{text_count} texts")
-    if image_count > 0:
-        part_details.append(f"{image_count} image" if image_count == 1 else f"{image_count} images")
-
-    part_summary = ", ".join(part_details)
-    encode_text = (
-        f"Encode: {strategy} • {format_time(elapsed_ms)} → {total_parts} parts ({part_summary})"
-    )
-
-    return f"[dim]{encode_text}[/dim]"
-
-
-def _run_encoder(path: Path, kind: str, spec: PipelineSpec, opts: CatOpts) -> str:
-    """Run a named encoder strategy and output JSON messages or pipe to LLM."""
-    from mm.encoders import get as get_encoder
-
-    assert spec.encode.strategy is not None
-    t_encode = time.monotonic()
-    strat = get_encoder(spec.encode.strategy)
-    messages = list(strat.encode(path, **spec.encode.strategy_opts))
-    encode_elapsed = (time.monotonic() - t_encode) * 1000
-
-    if spec.generate is None:
-        text_parts: list[str] = []
-        for msg in messages:
-            content = msg.get("content", [])
-            if isinstance(content, list):
-                for part in content:
-                    if isinstance(part, dict) and part.get("type") == "text":
-                        text = part.get("text", "")
-                        if text:
-                            text_parts.append(text)
-            elif isinstance(content, str):
-                if content:
-                    text_parts.append(content)
-
-        result = "\n\n".join(text_parts) if text_parts else ""
-
-        encode_output = _format_encode_verbose(spec.encode.strategy, messages, encode_elapsed)
-        opts._verbose_suffix = _format_pipeline_tree(encode_output)
-        return result
-
-    from mm.llm import LlmBackend
-    from mm.profile import get_active_profile_name
-
-    t0 = time.monotonic()
-    llm = LlmBackend()
-    chunks: list[list[dict]] = []
-    for msg in messages:
-        parts = _extract_llm_parts(msg)
-        if parts:
-            chunks.append(parts)
-
-    if not chunks:
-        return "[No LLM-compatible content parts from encoder]"
-
-    ctx = {"filename": path.name}
-    if len(chunks) == 1:
-        result = llm.generate(kind, opts.mode, context=ctx, parts=chunks[0], pipeline_spec=spec)
-    else:
-        result = llm.generate_chunked(
-            kind, opts.mode, context=ctx, chunks=chunks, pipeline_spec=spec
-        )
-
-    elapsed = (time.monotonic() - t0) * 1000
-    u = llm.last_usage
-
-    encode_output = _format_encode_verbose(spec.encode.strategy, messages, encode_elapsed)
-    profile_name = get_active_profile_name()
-    generate_output = _format_generate_verbose(
-        profile_name, elapsed, u.prompt_tokens, u.completion_tokens
-    )
-    opts._verbose_suffix = _format_pipeline_tree(encode_output, generate_output)
-    return result
-
-
 def _accurate_image(path: Path, spec: PipelineSpec, opts: CatOpts) -> str:
     """Image extraction with mode-specific LLM prompts."""
     if spec.encode.strategy:
-        return _run_encoder(path, "image", spec, opts)
+        return run_encoder(path, "image", spec, opts)
 
     from mm.llm import LlmBackend, image_part
     from mm.profile import get_active_profile_name
@@ -704,213 +550,15 @@ def _accurate_image(path: Path, spec: PipelineSpec, opts: CatOpts) -> str:
     u = llm.last_usage
 
     profile_name = get_active_profile_name()
-    generate_output = _format_generate_verbose(
+    generate_output = format_generate_verbose(
         profile_name, elapsed, u.prompt_tokens, u.completion_tokens
     )
-    footer = _format_footer(path, "accurate", elapsed, u.prompt_tokens, u.completion_tokens)
+    footer = format_footer(path, "accurate", elapsed, u.prompt_tokens, u.completion_tokens)
     suffix_parts = [generate_output]
     if footer:
         suffix_parts.append(footer)
     opts._verbose_suffix = "\n\n".join(suffix_parts)
     return content
-
-
-def _accurate_video(path: Path, spec: PipelineSpec, opts: CatOpts) -> str:
-    """Video extraction with mode-aware mosaic + whisper + LLM pipeline."""
-    import shutil
-
-    from mm.ffmpeg import (
-        extract_audio,
-        extract_frames_at_timestamps,
-        extract_uniform_mosaics,
-        ffmpeg_available,
-        probe_duration,
-        tile_frames_to_mosaics,
-    )
-    from mm.llm import LlmBackend, image_part
-
-    if not ffmpeg_available():
-        return f"[ffmpeg not found — cannot process {path.name}]"
-
-    if spec.generate is None:
-        return extract_local(path, "video", no_cache=opts.no_cache)
-
-    # The hard-coded mosaic+whisper fast path only implements a fixed
-    # set of strategies. Anything else (e.g. video-gemini, frame-sample)
-    # must be routed through the generic encoder runner so we only
-    # report stages that actually ran.
-    _VIDEO_NATIVE = {"frames-transcript", "video-frames-transcript", "mosaic", "video-mosaic"}
-    if spec.encode.strategy and spec.encode.strategy not in _VIDEO_NATIVE:
-        return _run_encoder(path, "video", spec, opts)
-
-    timing: dict[str, float] = {}
-    t_total = time.monotonic()
-
-    duration = probe_duration(path)
-    if duration <= 0:
-        return f"[Could not determine duration for {path.name}]"
-
-    from concurrent.futures import Future, ThreadPoolExecutor
-
-    ekw = dict(spec.encode.strategy_opts)
-    tile_spec = ekw.get("mosaic_tile") or "4x4"
-    tile_cols, tile_rows = _parse_tile(tile_spec)
-    num_mosaics = ekw.get("mosaic_count") or 8
-    num_frames = _adaptive_num_frames(path, duration, ekw)
-
-    thumb_width = ekw.get("mosaic_image_width") or (1500 // tile_cols)
-
-    use_scenes = True
-
-    def _extract_visual_and_vlm() -> tuple[list[Path], str]:
-        t0 = time.monotonic()
-        if use_scenes:
-            from mm.common.video.shot_detection import (
-                detect_scenes,
-                sample_scene_timestamps,
-                sample_uniform_timestamps,
-                scenedetect_available,
-            )
-
-            if scenedetect_available():
-                t_scene = time.monotonic()
-                scene_result = detect_scenes(path)
-                timing["scene_detection_ms"] = (time.monotonic() - t_scene) * 1000
-                if scene_result.scenes:
-                    timestamps = sample_scene_timestamps(scene_result.scenes, num_frames)
-                else:
-                    timestamps = sample_uniform_timestamps(duration, num_frames)
-            else:
-                timestamps = sample_uniform_timestamps(duration, num_frames)
-
-            frames = extract_frames_at_timestamps(
-                path,
-                timestamps,
-                thumb_width=thumb_width,
-                out_dir=opts.output_dir,
-            )
-            timing["frame_extraction_ms"] = (time.monotonic() - t0) * 1000
-
-            t_tile = time.monotonic()
-            mosaics = tile_frames_to_mosaics(
-                frames,
-                tile_cols=tile_cols,
-                tile_rows=tile_rows,
-                stem=path.stem,
-                out_dir=opts.output_dir,
-            )
-            timing["mosaic_assembly_ms"] = (time.monotonic() - t_tile) * 1000
-        else:
-            result = extract_uniform_mosaics(
-                path,
-                out_dir=opts.output_dir,
-                tile_cols=tile_cols,
-                tile_rows=tile_rows,
-                thumb_width=thumb_width,
-                num_mosaics=num_mosaics,
-            )
-            mosaics = result.mosaic_paths
-            timing["frame_extraction_ms"] = result.elapsed_ms
-
-        if not mosaics:
-            return mosaics, ""
-
-        dur_ctx = ""
-        if duration > 0:
-            mins, secs = divmod(duration, 60)
-            dur_ctx = f" Duration: {int(mins)}m{secs:.0f}s."
-
-        t_vlm = time.monotonic()
-        llm = LlmBackend()
-        img_parts = [image_part(mp, mime="image/jpeg") for mp in mosaics]
-        analysis = llm.generate(
-            "video",
-            "accurate",
-            context={"filename": path.name, "duration_ctx": dur_ctx},
-            parts=img_parts,
-            pipeline_spec=spec,
-        )
-        timing["vlm_call_ms"] = (time.monotonic() - t_vlm) * 1000
-        timing["vlm_prompt_tokens"] = llm.last_usage.prompt_tokens
-        timing["vlm_completion_tokens"] = llm.last_usage.completion_tokens
-        return mosaics, analysis
-
-    def _extract_audio_transcript() -> str:
-        if not ekw.get("transcribe"):
-            return ""
-
-        from mm.whisper import whisper_available
-
-        if not whisper_available():
-            return ""
-
-        whisper_model = ekw.get("whisper_model") or "medium"
-        audio_speed = ekw.get("audio_speed") or 1.0
-        beam_size = 5
-
-        t_audio = time.monotonic()
-        audio_result = extract_audio(path, speed=audio_speed)
-        timing["audio_extraction_ms"] = (time.monotonic() - t_audio) * 1000
-
-        from mm.whisper import transcribe
-
-        whisper_result = transcribe(
-            audio_result.path,
-            model_size=whisper_model,
-            beam_size=beam_size,
-            audio_speed=audio_speed,
-        )
-        timing["audio_transcription_ms"] = whisper_result.elapsed_ms
-
-        try:
-            audio_result.path.unlink(missing_ok=True)
-        except Exception:
-            pass
-        return whisper_result.text
-
-    with ThreadPoolExecutor(max_workers=2) as pool:
-        visual_future: Future[tuple[list[Path], str]] = pool.submit(_extract_visual_and_vlm)
-        audio_future: Future[str] = pool.submit(_extract_audio_transcript)
-        mosaic_paths, analysis = visual_future.result()
-        transcript = audio_future.result()
-
-    if not mosaic_paths:
-        return f"[No frames extracted from {path.name}]"
-
-    timing["total_ms"] = (time.monotonic() - t_total) * 1000
-
-    if opts.output_dir is None:
-        for mp in mosaic_paths:
-            try:
-                parent = mp.parent
-                mp.unlink(missing_ok=True)
-                if parent.name.startswith("mm_"):
-                    shutil.rmtree(parent, ignore_errors=True)
-            except Exception:
-                pass
-
-    out_parts: list[str] = [analysis]
-    if transcript:
-        word_count = len(transcript.split())
-        out_parts.append(f"\n## Transcript ({word_count} words)\n{transcript}")
-
-    token_keys = {k: v for k, v in timing.items() if "tokens" in k}
-    prompt_tokens = int(token_keys.get("vlm_prompt_tokens", 0))
-    completion_tokens = int(token_keys.get("vlm_completion_tokens", 0))
-
-    from mm.profile import get_active_profile_name
-
-    profile_name = get_active_profile_name()
-    generate_output = _format_generate_verbose(
-        profile_name, timing["total_ms"], prompt_tokens, completion_tokens
-    )
-    footer = _format_footer(path, "accurate", timing["total_ms"], prompt_tokens, completion_tokens)
-    suffix_parts = [generate_output]
-    if footer:
-        suffix_parts.append(footer)
-    opts._verbose_suffix = "\n\n".join(suffix_parts)
-
-    return "\n".join(out_parts)
 
 
 def _accurate_audio(path: Path, spec: PipelineSpec, opts: CatOpts) -> str:
@@ -935,7 +583,7 @@ def _accurate_audio(path: Path, spec: PipelineSpec, opts: CatOpts) -> str:
     # generic encoder runner so we only report stages that actually ran.
     _AUDIO_NATIVE = {"transcribe", "audio-transcribe"}
     if spec.encode.strategy and spec.encode.strategy not in _AUDIO_NATIVE:
-        return _run_encoder(path, "audio", spec, opts)
+        return run_encoder(path, "audio", spec, opts)
 
     timing: dict[str, float] = {}
     t_total = time.monotonic()
@@ -986,10 +634,10 @@ def _accurate_audio(path: Path, spec: PipelineSpec, opts: CatOpts) -> str:
     from mm.profile import get_active_profile_name
 
     profile_name = get_active_profile_name()
-    generate_output = _format_generate_verbose(
+    generate_output = format_generate_verbose(
         profile_name, timing["total_ms"], u.prompt_tokens, u.completion_tokens
     )
-    footer = _format_footer(
+    footer = format_footer(
         path, "accurate", timing["total_ms"], u.prompt_tokens, u.completion_tokens
     )
     suffix_parts = [generate_output]
@@ -1071,59 +719,3 @@ def _display_rich(
         output_console.print(syntax)
     else:
         output_console.print(content)
-
-
-def _extract_llm_parts(msg: dict) -> list[dict]:
-    """Extract OpenAI-compatible content parts from a Message dict."""
-    parts: list[dict] = []
-    content = msg.get("content", [])
-    if isinstance(content, list):
-        for part in content:
-            if "inline_data" in part:
-                idata = part["inline_data"]
-                mime = idata.get("mime_type", "")
-                b64 = idata.get("data", "")
-                if mime.startswith("video/"):
-                    continue
-                parts.append(
-                    {"type": "image_url", "image_url": {"url": f"data:{mime};base64,{b64}"}}
-                )
-            else:
-                parts.append(part)
-    elif isinstance(content, str):
-        parts.append({"type": "text", "text": content})
-    return parts
-
-
-_VIDEO_HEAVY_DURATION_S = 30 * 60
-_VIDEO_HEAVY_SIZE_B = 500 * 1024 * 1024
-_VIDEO_HEAVY_NUM_FRAMES = 64
-_VIDEO_DEFAULT_NUM_FRAMES = 128
-
-
-def _adaptive_num_frames(path: Path, duration: float, ekw: dict[str, Any]) -> int:
-    """Adapt opts for long or large videos."""
-    is_long = duration > _VIDEO_HEAVY_DURATION_S
-    is_large = path.stat().st_size > _VIDEO_HEAVY_SIZE_B
-    if not (is_long or is_large):
-        return _VIDEO_DEFAULT_NUM_FRAMES
-
-    from mm.display import console
-
-    reasons: list[str] = []
-    if is_long:
-        reasons.append(f"duration {(duration / 60):.0f}min > 30min")
-    if is_large:
-        reasons.append(f"size {(path.stat().st_size / (1024 * 1024)):.0f}MB > 500MB")
-    console.print(
-        f"[dim]Video auto-tune ({', '.join(reasons)}): frames={_VIDEO_HEAVY_NUM_FRAMES}.[/dim]"
-    )
-    return _VIDEO_HEAVY_NUM_FRAMES
-
-
-def _parse_tile(tile: str) -> tuple[int, int]:
-    parts = tile.lower().split("x")
-    if len(parts) == 2:
-        return int(parts[0]), int(parts[1])
-    n = int(parts[0])
-    return n, n
