@@ -48,3 +48,4 @@ run_results/
 
 # Local exploration logs
 mm-*-output.txt
+.claude
