@@ -11,7 +11,7 @@ def resolve_pipeline(opts: CatOpts, kind: str) -> PipelineSpec:
     """Return a PipelineSpec from explicit -p pipelines or auto-resolve.
 
     If -p specified a named encoder (stored under key '_encoder'), that
-    overrides for any kind.  Validates that the encoder supports the
+    overrides for any kind. Validates that the encoder supports the
     target media kind before applying it.
     """
     from mm.pipelines import load

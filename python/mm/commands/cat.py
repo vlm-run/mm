@@ -456,39 +456,41 @@ def _run_fast(path: Path, kind: FileKind, opts: CatOpts) -> str:
 
     spec = resolve_pipeline(opts, kind)
     spec = apply_overrides(spec, opts.encode_overrides or None, opts.generate_overrides or None)
-
     if spec.encode.strategy:
         return run_encoder(path, kind, spec, opts)
 
     content = extract_local(path, kind, no_cache=opts.no_cache)
 
-    if spec.generate is not None:
-        from mm.llm import LlmBackend
-        from mm.profile import get_active_profile_name
+    if spec.generate is None:
+        return content
 
-        t0 = time.monotonic()
-        llm = LlmBackend()
-        result = llm.generate(
-            kind,
-            "fast",
-            context={"filename": path.name, "content": content[:4000]},
-            pipeline_spec=spec,
-        )
-        elapsed = (time.monotonic() - t0) * 1000
-        u = llm.last_usage
-        footer = format_footer(path, "fast", elapsed, u.prompt_tokens, u.completion_tokens)
+    from mm.llm import LlmBackend
+    from mm.profile import get_active_profile_name
 
-        profile_name = get_active_profile_name()
-        generate_output = format_generate_verbose(
-            profile_name, elapsed, u.prompt_tokens, u.completion_tokens
-        )
-        suffix_parts = [generate_output]
-        if footer:
-            suffix_parts.append(footer)
-        opts._verbose_suffix = "\n\n".join(suffix_parts)
-        return result
+    t0 = time.monotonic()
+    llm = LlmBackend()
+    result = llm.generate(
+        kind,
+        "fast",
+        context={"filename": path.name, "content": content[:4000]},
+        pipeline_spec=spec,
+    )
 
-    return content
+    elapsed = (time.monotonic() - t0) * 1000
+    u = llm.last_usage
+    footer = format_footer(path, "fast", elapsed, u.prompt_tokens, u.completion_tokens)
+
+    profile_name = get_active_profile_name()
+    generate_output = format_generate_verbose(
+        profile_name, elapsed, u.prompt_tokens, u.completion_tokens
+    )
+
+    suffix_parts = [generate_output]
+    if footer:
+        suffix_parts.append(footer)
+    opts._verbose_suffix = "\n\n".join(suffix_parts)
+
+    return result
 
 
 def _run_accurate(path: Path, kind: BinaryFileKind, opts: CatOpts) -> str:

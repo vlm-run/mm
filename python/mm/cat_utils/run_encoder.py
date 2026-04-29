@@ -3,6 +3,7 @@ from pathlib import Path
 
 from mm.cat_utils.base_utils import CatOpts, format_generate_verbose
 from mm.pipelines.schema import PipelineSpec
+from mm.utils import BinaryFileKind
 
 
 def _format_pipeline_tree(encode_info: str, generate_info: str | None = None) -> str:
@@ -80,7 +81,7 @@ def _extract_llm_parts(msg: dict) -> list[dict]:
     return parts
 
 
-def run_encoder(path: Path, kind: str, spec: PipelineSpec, opts: CatOpts) -> str:
+def run_encoder(path: Path, kind: BinaryFileKind, spec: PipelineSpec, opts: CatOpts) -> str:
     """Run a named encoder strategy and output JSON messages or pipe to LLM."""
     from mm.encoders import get as get_encoder
 
