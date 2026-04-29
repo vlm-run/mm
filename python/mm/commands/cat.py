@@ -24,6 +24,7 @@ from typing import Annotated, Any, Optional
 
 import typer
 
+from mm.cat_extract_local import extract_local
 from mm.cat_utils import (
     CatOpts,
     coerce_opt_value,
@@ -344,7 +345,7 @@ def _extract(path: Path, opts: CatOpts) -> str:
 
     # Text-like kinds (code, config, plain text) bypass caching — they're passthrough.
     if kind == "text":
-        return _extract_local(path, kind, no_cache=opts.no_cache)
+        return extract_local(path, kind, no_cache=opts.no_cache)
 
     from mm.profile import get_profile
     from mm.store.db import MmDatabase
@@ -400,8 +401,8 @@ def _extract(path: Path, opts: CatOpts) -> str:
     suffix = opts._verbose_suffix
 
     if content_hash and content and not content.startswith("["):
-        # TODO: confirm we actually need to run _extract_local below
-        # _extract_local(path, kind)
+        # TODO: confirm we actually need to run extract_local below
+        # extract_local(path, kind)
         uri = str(path.resolve())
         meta = {"verbose_suffix": suffix} if suffix else None
         try:
@@ -443,7 +444,7 @@ def _run_fast(path: Path, kind: FileKind, opts: CatOpts) -> str:
     stage, a short LLM call.
     """
     if kind == "text":
-        return _extract_local(path, kind, no_cache=opts.no_cache)
+        return extract_local(path, kind, no_cache=opts.no_cache)
 
     from mm.pipelines import apply_overrides
 
@@ -453,7 +454,7 @@ def _run_fast(path: Path, kind: FileKind, opts: CatOpts) -> str:
     if spec.encode.strategy:
         return _run_encoder(path, kind, spec, opts)
 
-    content = _extract_local(path, kind, no_cache=opts.no_cache)
+    content = extract_local(path, kind, no_cache=opts.no_cache)
 
     if spec.generate is not None:
         from mm.llm import LlmBackend
@@ -491,7 +492,7 @@ def _run_accurate(path: Path, kind: BinaryFileKind, opts: CatOpts) -> str:
     spec = resolve_pipeline(opts, kind)
     spec = apply_overrides(spec, opts.encode_overrides or None, opts.generate_overrides or None)
 
-    _extract_local(path, kind)
+    extract_local(path, kind)
 
     return _accurate_dispatch(path, kind, spec, opts)
 
@@ -508,7 +509,7 @@ def _accurate_dispatch(path: Path, kind: BinaryFileKind, spec: PipelineSpec, opt
     if spec.encode.strategy:
         return _run_encoder(path, kind, spec, opts)
 
-    content = _extract_local(path, kind)
+    content = extract_local(path, kind)
     if spec.generate is None:
         return content
 
@@ -732,7 +733,7 @@ def _accurate_video(path: Path, spec: PipelineSpec, opts: CatOpts) -> str:
         return f"[ffmpeg not found — cannot process {path.name}]"
 
     if spec.generate is None:
-        return _extract_local(path, "video", no_cache=opts.no_cache)
+        return extract_local(path, "video", no_cache=opts.no_cache)
 
     # The hard-coded mosaic+whisper fast path only implements a fixed
     # set of strategies. Anything else (e.g. video-gemini, frame-sample)
@@ -927,7 +928,7 @@ def _accurate_audio(path: Path, spec: PipelineSpec, opts: CatOpts) -> str:
         )
 
     if spec.generate is None:
-        return _extract_local(path, "audio", no_cache=opts.no_cache)
+        return extract_local(path, "audio", no_cache=opts.no_cache)
 
     # The hard-coded whisper+LLM fast path only implements `transcribe`.
     # Anything else (e.g. audio-gemini) must be routed through the
@@ -997,164 +998,6 @@ def _accurate_audio(path: Path, spec: PipelineSpec, opts: CatOpts) -> str:
     opts._verbose_suffix = "\n\n".join(suffix_parts)
 
     return result
-
-
-def _extract_local(path: Path, kind: str, *, no_cache: bool = False) -> str:
-    """Run local content extraction (no LLM) with caching.
-
-    Dispatches to the appropriate extractor based on file kind: image
-    metadata, video metadata, PDF text, or raw text passthrough.
-    """
-    from mm.store.db import MmDatabase
-    from mm.store.utils import get_content_hash
-
-    content_hash = get_content_hash(path)
-    if not no_cache and content_hash:
-        cached = MmDatabase().get_fast(content_hash)
-        if cached is not None:
-            return cached
-
-    def _handler() -> str:
-        if kind == "image":
-            return _local_image(path)
-        if kind == "video":
-            return _local_video(path)
-        if kind == "audio":
-            return _local_audio(path)
-        if kind == "document":
-            return _local_document(path)
-        return path.read_text(errors="replace")
-
-    result = _handler()
-    if content_hash and result and not result.startswith("["):
-        MmDatabase().put_fast(str(path.resolve()), content_hash, result)
-    return result
-
-
-def _local_image(path: Path) -> str:
-    try:
-        from mm._mm import Scanner
-        from mm.display import format_size
-
-        scanner = Scanner(str(path.parent))
-        scanner.scan()
-        r = scanner.extract_fast(path.name)
-        parts: list[str] = []
-        if r.dimensions:
-            parts.append(f"Dimensions: {r.dimensions}")
-        if r.magic_mime:
-            parts.append(f"MIME:       {r.magic_mime}")
-        if size_str := format_size(path.stat().st_size):
-            parts.append(f"Size:       {size_str}")
-        if r.content_hash:
-            parts.append(f"Hash:       {r.content_hash}")
-        if r.phash is not None:
-            parts.append(f"pHash:      {r.phash:016x}")
-        if r.exif_camera:
-            parts.append(f"Camera:     {r.exif_camera}")
-        if r.exif_date:
-            parts.append(f"Date:       {r.exif_date}")
-        if r.exif_gps:
-            parts.append(f"GPS:        {r.exif_gps}")
-        if r.exif_orientation:
-            parts.append(f"Orientation: {r.exif_orientation}")
-        return "\n".join(parts) if parts else f"[Image: {path.name}]"
-    except Exception as e:
-        return f"[Image extraction failed: {e}]"
-
-
-def _local_video(path: Path) -> str:
-    """Metadata only — no ffmpeg, <100ms."""
-    try:
-        from mm._mm import Scanner
-        from mm.display import format_size
-
-        scanner = Scanner(str(path.parent))
-        scanner.scan()
-        r = scanner.extract_fast(path.name)
-        parts: list[str] = []
-        if r.dimensions:
-            parts.append(f"Resolution: {r.dimensions}")
-        if r.duration_s is not None:
-            mins, secs = divmod(r.duration_s, 60)
-            parts.append(f"Duration:   {int(mins)}m {secs:.1f}s ({r.duration_s:.2f}s)")
-        if size_str := format_size(path.stat().st_size):
-            parts.append(f"Size:       {size_str}")
-        if r.fps:
-            parts.append(f"FPS:        {r.fps}")
-        if r.video_codec:
-            parts.append(f"Video:      {r.video_codec}")
-        if r.audio_codec:
-            parts.append(f"Audio:      {r.audio_codec}")
-        elif r.has_audio is False:
-            parts.append("Audio:      none")
-        if r.content_hash:
-            parts.append(f"Hash:       {r.content_hash}")
-        return "\n".join(parts) if parts else f"[Video: {path.name}]"
-    except Exception as e:
-        return f"[Video extraction failed: {e}]"
-
-
-def _local_audio(path: Path) -> str:
-    """Metadata only — no ffmpeg, <100ms."""
-    try:
-        from mm._mm import Scanner
-        from mm.display import format_size
-
-        scanner = Scanner(str(path.parent))
-        scanner.scan()
-        r = scanner.extract_fast(path.name)
-        parts: list[str] = []
-        if r.duration_s is not None:
-            mins, secs = divmod(r.duration_s, 60)
-            parts.append(f"Duration: {int(mins)}m {secs:.1f}s ({r.duration_s:.2f}s)")
-        if size_str := format_size(path.stat().st_size):
-            parts.append(f"Size:     {size_str}")
-        if r.audio_codec:
-            parts.append(f"Codec:    {r.audio_codec}")
-        if r.content_hash:
-            parts.append(f"Hash:     {r.content_hash}")
-        return "\n".join(parts) if parts else f"[Audio: {path.name}]"
-    except Exception as e:
-        return f"[Audio extraction failed: {e}]"
-
-
-def _local_document(path: Path) -> str:
-    """Extract document content."""
-    ext = path.suffix.lower()
-    if ext == ".pdf":
-        return _local_pdf(path)
-
-    try:
-        from mm.docs_extract import extract_docx, extract_pptx
-
-        if ext == ".pptx":
-            return extract_pptx(str(path))
-        return extract_docx(str(path))
-    except Exception as e:
-        return f"[Document extraction failed for {path.name}: {e}]"
-
-
-def _local_pdf(path: Path) -> str:
-    """Fallback PDF text extraction via pypdfium2."""
-    try:
-        import pypdfium2 as pdfium
-
-        pdf = pdfium.PdfDocument(str(path))
-        pages_text: list[str] = []
-        for i in range(len(pdf)):
-            page = pdf[i]
-            textpage = page.get_textpage()
-            pages_text.append(textpage.get_text_range())
-            textpage.close()
-            page.close()
-        pdf.close()
-        text = "\n\n".join(pages_text).strip()
-        if not text:
-            return "[No extractable text — this PDF may contain scanned images only]"
-        return text
-    except Exception as e:
-        return f"[PDF extraction failed: {e}]"
 
 
 def _display_rich(
