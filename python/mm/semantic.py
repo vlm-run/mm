@@ -54,8 +54,8 @@ def _index_one(uri: str) -> str | None:
     to the ``extractions`` + ``chunks`` + ``chunks_vec`` tables as a
     side effect of ``_run_accurate``.
     """
-    from mm.commands.cat import _extract
     from mm.cat_utils.base_utils import CatOpts
+    from mm.commands.cat import _extract
 
     path = Path(uri)
     if not path.exists():
@@ -230,7 +230,7 @@ def handle_missing(
             f"[yellow]Warning:[/yellow] {len(missing)} of {len(uris)} files are not indexed."
         )
         if cmd_hint:
-            console.print(f"[dim]To index missing files, run:[/dim]\n  [bold]{cmd_hint}[/bold]")
+            console.print(f"[dim]To index missing files, run:\n  [bold]{cmd_hint}[/bold][/dim]")
 
     return len(missing) < len(uris)
 
