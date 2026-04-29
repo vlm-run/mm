@@ -39,7 +39,7 @@ def scanner_table(
     )
 
 
-def ensure_l0(
+def ensure_metadata(
     db: MmDatabase,
     uris: list[str],
     kinds: list[str] | None = None,
@@ -47,13 +47,13 @@ def ensure_l0(
     return db.upsert_files(scanner_table([Path(uri).name for uri in uris], kinds), ROOT)
 
 
-def ensure_l1(
+def ensure_fast(
     db: MmDatabase,
     uri: str,
-    l1_content="L1 content",
+    fast_content="fast content",
     *,
-    l0_kinds: list[str] | None = None,
+    metadata_kinds: list[str] | None = None,
 ) -> None:
-    """Helper to ensure L1 content exists for a file."""
-    ensure_l0(db, [uri], l0_kinds)
-    db.put_l1(uri, get_hash(uri), l1_content)
+    """Ensure fast (locally extracted) content exists for a file."""
+    ensure_metadata(db, [uri], metadata_kinds)
+    db.put_file_content(uri, get_hash(uri), fast_content)

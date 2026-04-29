@@ -24,7 +24,7 @@ generate:
 
     Use this format:
     ## Summary
-    <detailed analysis>
+    {{detailed analysis}}
 
     ## Tags
     - tag1

@@ -39,7 +39,7 @@ def now_us() -> int:
     return int(time.time() * 1_000_000)
 
 
-def get_l2_id(
+def get_extraction_id(
     content_hash: str,
     profile: str,
     model: str,

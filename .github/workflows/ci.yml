@@ -131,7 +131,7 @@ jobs:
 
   test-python-full:
     needs: check-version
-    if: needs.check-version.outputs.patch_bump == 'true'
+    if: needs.check-version.outputs.changed == 'true'
     runs-on: ubuntu-latest
     strategy:
       matrix:

@@ -24,7 +24,7 @@ Every command supports `--format` for output control:
 ### Image
 
 ```bash
-# Extract images quickly (local encode, no LLM)
+# Extract images via the fast pipeline (short LLM caption)
 uv run mm cat input.png
 # Multi-image extraction (batch=auto)
 uv run mm cat images/*.png
@@ -367,7 +367,7 @@ $ mm grep "patient diagnosis" ~/data/domains -s --kind document --format json
 ## `sql` — SQL analytics on the file index
 
 `mm sql` auto-routes queries: `files` → ephemeral scan + SQLite,
-`l2_results`/`chunks` → persistent SQLite.
+`extractions`/`chunks` → persistent SQLite.
 
 ### Kind breakdown with sizes
 
@@ -411,11 +411,11 @@ bucket     files
 
 ```bash
 $ mm sql --list-tables
-table        source         stored
-files        scan + SQLite  ephemeral
-l2_results   SQLite         2 rows
-chunks       SQLite         2 rows
-chunks_vec   sqlite-vec     2 rows
+table             source         stored
+files             scan + SQLite  ephemeral
+extractions  SQLite         2 rows
+chunks            SQLite         2 rows
+chunks_vec        sqlite-vec     2 rows
 ```
 
 ---
@@ -487,6 +487,6 @@ mm find ~/project --tree --depth 2 | llm -s "Describe this project structure"
 
 1. **Token efficiency** — piped output uses minimal formatting. No borders, no color codes, no padding. Every byte carries information.
 2. **Auto-detection** — `cat` knows a `.jpg` needs EXIF extraction, a `.mp4` needs codec/duration, a `.pdf` needs text extraction. No flags needed.
-3. **Two modes** — fast mode (local extraction, <100ms, no external deps) and accurate mode (LLM pipelines via YAML, requires API).
+3. **Two pipeline modes** — `fast` (kind-specific pipeline; *may* involve a short LLM call, e.g. for images/video) and `accurate` (LLM-heavy pipeline). Both read from the metadata tier (`files.text_preview`), which is locally extracted and never invokes an LLM.
 4. **Composability** — `find` outputs paths → `cat` reads from stdin → `wc` counts tokens. Standard Unix pipes, multimodal awareness.
 5. **Speed** — Rust core with `rayon` parallelism. Metadata scan indexes 249 files in 5 ms. Fast-mode image metadata in <1 ms/file. Video metadata without ffmpeg.

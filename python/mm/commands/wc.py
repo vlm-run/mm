@@ -92,10 +92,10 @@ def wc_cmd(
     if not stdin_paths and "document" in kind_stats and kind_stats["document"].get(F_FILES, 0) > 0:
         doc_entries = json_mod.loads(scanner.to_json_fast(kind="document"))
     if doc_entries:
-        from mm.commands.cat import _l1_document
+        from mm.cat_utils.extract_local import _local_document
 
         for entry in doc_entries:
-            content = _l1_document(root / entry["path"])
+            content = _local_document(root / entry["path"])
             char_len = len(content)
             lines = content.count("\n")
             if content and not content.endswith("\n"):
@@ -306,9 +306,9 @@ def _wc_from_paths(
             flines = content.count("\n") or 1
             ftokens = len(content) // TOKEN_CHARS_RATIO
         elif fkind == "document":
-            from mm.commands.cat import _l1_document
+            from mm.cat_utils.extract_local import _local_document
 
-            content = _l1_document(p)
+            content = _local_document(p)
             flines = max(1, content.count("\n"))
             ftokens = len(content) // TOKEN_CHARS_RATIO
         else:

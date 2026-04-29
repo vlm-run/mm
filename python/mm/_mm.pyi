@@ -45,11 +45,11 @@ class Scanner:
         sort_by: str | None = None,
         descending: bool = False,
     ) -> str: ...
-    def extract_l1(self, path: str) -> L1Result: ...
+    def extract_metadata(self, path: str) -> MetadataResult: ...
     def wc(self, kind: str | None = None) -> str: ...
 
-class L1Result:
-    """Result of L1 content extraction."""
+class MetadataResult:
+    """Locally-extracted file metadata (dimensions, EXIF, codecs, hash, …)."""
 
     content_hash: str | None
     text_preview: str | None

@@ -101,7 +101,8 @@ CODE_EXTS = frozenset(
     }
 )
 
-FileKind = Literal["text", "image", "video", "audio", "document"]
+BinaryFileKind = Literal["image", "video", "audio", "document"]
+FileKind = Literal["text"] | BinaryFileKind
 
 
 def file_kind(path: Path | str) -> FileKind:

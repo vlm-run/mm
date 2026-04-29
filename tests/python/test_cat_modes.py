@@ -5,15 +5,12 @@ from __future__ import annotations
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-from mm.commands.cat import (
-    _CatOpts,
-    _extract,
-    _run_fast,
-)
+from mm.cat_utils.base_utils import CatOpts, RunResult
+from mm.commands.cat import _extract, _run_fast
 from mm.utils import DOCUMENT_EXTS, file_kind
 
 
-def _make_opts(mode: str = "fast", **overrides: object) -> _CatOpts:
+def _make_opts(mode: str = "fast", **overrides: object) -> CatOpts:
     defaults: dict[str, object] = dict(
         n=None,
         output_dir=None,
@@ -26,13 +23,13 @@ def _make_opts(mode: str = "fast", **overrides: object) -> _CatOpts:
         verbose=False,
     )
     defaults.update(overrides)
-    return _CatOpts(**defaults)
+    return CatOpts(**defaults)
 
 
 def _mock_cache_miss():
-    """Context manager stack that mocks the L2 cache infrastructure to always miss."""
+    """Context manager stack that mocks the extractions cache to always miss."""
     mock_db = MagicMock()
-    mock_db.get_l2.return_value = None
+    mock_db.get_extraction.return_value = None
     mock_profile = MagicMock()
     mock_profile.name = "test"
     mock_profile.model = "test-model"
@@ -40,7 +37,7 @@ def _mock_cache_miss():
         patch("mm.store.utils.get_content_hash", return_value="fakehash"),
         patch("mm.store.db.MmDatabase", return_value=mock_db),
         patch("mm.profile.get_profile", return_value=mock_profile),
-        patch("mm.store.utils.get_l2_id", return_value="fake_l2_id"),
+        patch("mm.store.utils.get_extraction_id", return_value="fake_extraction_id"),
     )
 
 
@@ -84,7 +81,7 @@ class TestDocumentExts:
 
 
 class TestCatOptsMode:
-    """Test that _CatOpts carries the mode parameter."""
+    """Test that CatOpts carries the mode parameter."""
 
     def test_mode_fast(self):
         assert _make_opts(mode="fast").mode == "fast"
@@ -107,7 +104,7 @@ class TestExtractDispatch:
         f.write_bytes(b"\xff\xd8\xff" + b"\x00" * 100)
         cm1, cm2, cm3, cm4 = _mock_cache_miss()
         with cm1, cm2, cm3, cm4, patch("mm.commands.cat._run_fast") as mock:
-            mock.return_value = "mocked fast result"
+            mock.return_value = RunResult(content="mocked fast result")
             opts = _make_opts("fast")
             result = _extract(f, opts)
             mock.assert_called_once_with(f, "image", opts)
@@ -118,7 +115,7 @@ class TestExtractDispatch:
         f.write_bytes(b"\xff\xd8\xff" + b"\x00" * 100)
         cm1, cm2, cm3, cm4 = _mock_cache_miss()
         with cm1, cm2, cm3, cm4, patch("mm.commands.cat._run_accurate") as mock:
-            mock.return_value = "mocked accurate result"
+            mock.return_value = RunResult(content="mocked accurate result")
             opts = _make_opts("accurate")
             result = _extract(f, opts)
             mock.assert_called_once_with(f, "image", opts)
@@ -129,7 +126,7 @@ class TestExtractDispatch:
         f.write_bytes(b"%PDF-1.4 fake")
         cm1, cm2, cm3, cm4 = _mock_cache_miss()
         with cm1, cm2, cm3, cm4, patch("mm.commands.cat._run_accurate") as mock:
-            mock.return_value = "summary of document"
+            mock.return_value = RunResult(content="summary of document")
             opts = _make_opts("accurate")
             result = _extract(f, opts)
             mock.assert_called_once_with(f, "document", opts)
@@ -143,4 +140,71 @@ class TestRunFastTextPassthrough:
         f = tmp_path / "test.txt"
         f.write_text("hello world")
         result = _run_fast(f, "text", _make_opts("fast"))
-        assert "hello world" in result
+        assert "hello world" in result.content
+
+
+class TestVerboseCacheReplay:
+    """The headline fix for PR #100: ``--verbose`` no longer invalidates the cache.
+
+    On a cache miss, the rendered verbose suffix is persisted alongside the
+    extraction. On a subsequent cached run with ``verbose=True``, the suffix
+    is read back and appended without re-invoking the underlying pipeline.
+    """
+
+    def _isolated_db(self, tmp_path: Path, monkeypatch):
+        from mm.store.db import MmDatabase
+
+        db_path = tmp_path / "mm.db"
+        monkeypatch.setattr(MmDatabase, "DB_PATH", db_path)
+        monkeypatch.setattr(MmDatabase, "DB_DIR", tmp_path)
+        return db_path
+
+    def test_cached_verbose_replays_suffix_without_rerun(self, tmp_path, monkeypatch):
+        self._isolated_db(tmp_path, monkeypatch)
+
+        f = tmp_path / "photo.jpg"
+        f.write_bytes(b"\xff\xd8\xff" + b"\x00" * 100)
+
+        suffix = "[dim]generate: ollama • 1.2s • 100→50 tokens[/dim]"
+        run_call_count = {"n": 0}
+
+        def fake_run_fast(_path, _kind, _opts):
+            run_call_count["n"] += 1
+            return RunResult(content="cached body", verbose_suffix=suffix)
+
+        # Cold run with verbose=False → populates cache + metadata.
+        with patch("mm.commands.cat._run_fast", side_effect=fake_run_fast):
+            cold = _extract(f, _make_opts("fast", verbose=False))
+        assert cold == "cached body"
+        assert run_call_count["n"] == 1
+
+        # Warm run with verbose=True → cache hit, suffix replayed, no re-run.
+        with patch(
+            "mm.commands.cat._run_fast",
+            side_effect=AssertionError("should not be called on cache hit"),
+        ):
+            warm = _extract(f, _make_opts("fast", verbose=True))
+        assert warm == f"cached body\n\n{suffix}"
+        assert run_call_count["n"] == 1
+
+    def test_cached_non_verbose_omits_suffix(self, tmp_path, monkeypatch):
+        self._isolated_db(tmp_path, monkeypatch)
+
+        f = tmp_path / "photo.jpg"
+        f.write_bytes(b"\xff\xd8\xff" + b"\x00" * 100)
+
+        suffix = "[dim]generate: ollama • 0.5s • 10→5 tokens[/dim]"
+
+        def fake_run_fast(_path, _kind, _opts):
+            return RunResult(content="cached body", verbose_suffix=suffix)
+
+        with patch("mm.commands.cat._run_fast", side_effect=fake_run_fast):
+            _extract(f, _make_opts("fast", verbose=True))
+
+        # Even though metadata was stored, a verbose=False reader gets only content.
+        with patch(
+            "mm.commands.cat._run_fast",
+            side_effect=AssertionError("should not be called on cache hit"),
+        ):
+            warm = _extract(f, _make_opts("fast", verbose=False))
+        assert warm == "cached body"

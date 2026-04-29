@@ -34,8 +34,8 @@ class TestGrepSemantic:
         b.write_bytes(png_sig)
 
         db = MmDatabase()
-        db.ensure_l0(str(a))
-        db.ensure_l0(str(b))
+        db.ensure_metadata(str(a))
+        db.ensure_metadata(str(b))
         assert {f["name"] for f in db.get_files()} == {"a.png", "b.png"}
 
         a.unlink()

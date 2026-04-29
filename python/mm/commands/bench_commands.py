@@ -103,7 +103,7 @@ def _get_media_info(directory: Path, rel_path: str) -> MediaInfo:
 
         scanner = Scanner(str(directory.resolve()))
         scanner.scan()
-        r = scanner.extract_l1(rel_path)
+        r = scanner.extract_metadata(rel_path)
         w, h = 0, 0
         if r.dimensions:
             parts = r.dimensions.split("x")
@@ -257,6 +257,11 @@ METADATA_COMMANDS: list[BenchCommand] = [
         requires_kind="document",
         skip_reason="no document files",
     ),
+    # Plain ``mm grep`` (no --semantic) is a regex pattern search over file
+    # contents — Unix-comparable to ``grep -r``, no LLM.
+    BenchCommand(
+        "mm grep /pattern/", "metadata", "mm grep 'import|include|require' {dir} --format json"
+    ),
 ]
 
 FAST_COMMANDS: list[BenchCommand] = [
@@ -311,9 +316,6 @@ FAST_COMMANDS: list[BenchCommand] = [
         requires_kind="document",
         batch=10,
         skip_reason="no PDF files",
-    ),
-    BenchCommand(
-        "mm grep /pattern/", "fast", "mm grep 'import|include|require' {dir} --format json"
     ),
 ]
 

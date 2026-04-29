@@ -125,11 +125,6 @@ def video_parts(path: Path) -> list[dict[str, Any]]:
     return parts
 
 
-# ---------------------------------------------------------------------------
-# Server communication
-# ---------------------------------------------------------------------------
-
-
 def embed_parts(parts: list[dict[str, Any]]) -> list[list[float]]:
     """Send Parts to the server and return embedding vectors."""
     import httpx
@@ -154,23 +149,18 @@ def embed_texts(texts: list[str]) -> list[list[float]]:
     return embed_parts([text_part(t) for t in texts])
 
 
-# ---------------------------------------------------------------------------
-# High-level: embed L2 chunks for a file
-# ---------------------------------------------------------------------------
-
-
-def embed_file_chunks(l2_id: str) -> int:
-    """Embed all chunks for a file's L2 result. Returns number of chunks embedded."""
+def embed_file_chunks(extraction_id: str) -> int:
+    """Embed all chunks for a file's extraction. Returns number of chunks embedded."""
     from mm.store.db import MmDatabase
 
     db = MmDatabase()
-    chunks = db.get_chunks(l2_id)
+    chunks = db.get_chunks(extraction_id)
     if not chunks:
         return 0
 
     texts = [c["chunk_text"] for c in chunks]
     vectors = embed_texts(texts)
-    db.upsert_embeddings(l2_id=l2_id, vectors=vectors)
+    db.upsert_embeddings(extraction_id=extraction_id, vectors=vectors)
     return len(vectors)
 
 

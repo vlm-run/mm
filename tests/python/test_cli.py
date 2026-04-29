@@ -207,7 +207,7 @@ class TestFindTable:
 
 
 class TestCat:
-    def test_text_file_l1(self, small_tree: Path):
+    def test_text_file_default(self, small_tree: Path):
         r = runner.invoke(app, ["cat", str(small_tree / "src" / "main.py")])
         assert r.exit_code == 0
         assert "main" in r.output
@@ -511,17 +511,17 @@ class TestGrep:
         chunk = prefix + "the quantum cloud is here " + suffix
 
         db = MmDatabase()
-        db.ensure_l0(str(img))
+        db.ensure_metadata(str(img))
         now = now_us()
         db._connect.execute(
-            "INSERT INTO l2_results (id, file_uri, content_hash, profile, model, mode, "
+            "INSERT INTO extractions (id, file_uri, content_hash, profile, model, mode, "
             "detail, extra, summary, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             ("l2-snip", str(img), "h", "p", "m", "accurate", 0, "", "summary", now),
         )
         db._connect.execute(
-            "INSERT INTO chunks (l2_result_id, file_uri, content_hash, profile, model, "
-            "level, chunk_idx, chunk_text, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            ("l2-snip", str(img), "h", "p", "m", 2, 0, chunk, now),
+            "INSERT INTO chunks (extraction_id, file_uri, content_hash, profile, model, "
+            "mode, chunk_idx, chunk_text, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            ("l2-snip", str(img), "h", "p", "m", "accurate", 0, chunk, now),
         )
         db._connect.commit()
 
@@ -542,23 +542,23 @@ class TestGrep:
         img.write_bytes(b"\x89PNG\r\n\x1a\n" + b"\x00" * 32)
 
         db = MmDatabase()
-        db.ensure_l0(str(img))
+        db.ensure_metadata(str(img))
         now = now_us()
         db._connect.execute(
-            "INSERT INTO l2_results (id, file_uri, content_hash, profile, model, mode, "
+            "INSERT INTO extractions (id, file_uri, content_hash, profile, model, mode, "
             "detail, extra, summary, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             ("l2-1", str(img), "h", "p", "m", "accurate", 0, "", "summary", now),
         )
         db._connect.execute(
-            "INSERT INTO chunks (l2_result_id, file_uri, content_hash, profile, model, "
-            "level, chunk_idx, chunk_text, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            "INSERT INTO chunks (extraction_id, file_uri, content_hash, profile, model, "
+            "mode, chunk_idx, chunk_text, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (
                 "l2-1",
                 str(img),
                 "h",
                 "p",
                 "m",
-                2,
+                "accurate",
                 0,
                 "the quick brown fox jumps over the lazy dog",
                 now,
@@ -581,17 +581,17 @@ class TestGrep:
         img.write_bytes(b"\x89PNG\r\n\x1a\n" + b"\x00" * 32)
 
         db = MmDatabase()
-        db.ensure_l0(str(img))
+        db.ensure_metadata(str(img))
         now = now_us()
         db._connect.execute(
-            "INSERT INTO l2_results (id, file_uri, content_hash, profile, model, mode, "
+            "INSERT INTO extractions (id, file_uri, content_hash, profile, model, mode, "
             "detail, extra, summary, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             ("l2-sub", str(img), "h", "p", "m", "accurate", 0, "", "summary", now),
         )
         db._connect.execute(
-            "INSERT INTO chunks (l2_result_id, file_uri, content_hash, profile, model, "
-            "level, chunk_idx, chunk_text, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            ("l2-sub", str(img), "h", "p", "m", 2, 0, "Breaking the Quantum Loop", now),
+            "INSERT INTO chunks (extraction_id, file_uri, content_hash, profile, model, "
+            "mode, chunk_idx, chunk_text, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            ("l2-sub", str(img), "h", "p", "m", "accurate", 0, "Breaking the Quantum Loop", now),
         )
         db._connect.commit()
 
@@ -620,21 +620,21 @@ class TestGrep:
         txt.write_text("placeholder so the file exists\n")
 
         db = MmDatabase()
-        db.ensure_l0(str(img))
-        db.ensure_l0(str(txt))
+        db.ensure_metadata(str(img))
+        db.ensure_metadata(str(txt))
         now = now_us()
         # Seed identical chunk text under both files so kind alone determines the hit.
-        for idx, (uri, l2_id) in enumerate([(str(img), "l2-img"), (str(txt), "l2-txt")]):
+        for idx, (uri, extraction_id) in enumerate([(str(img), "l2-img"), (str(txt), "l2-txt")]):
             db._connect.execute(
-                "INSERT INTO l2_results (id, file_uri, content_hash, profile, model, mode, "
+                "INSERT INTO extractions (id, file_uri, content_hash, profile, model, mode, "
                 "detail, extra, summary, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                (l2_id, uri, "h", "p", "m", "accurate", 0, "", "summary", now),
+                (extraction_id, uri, "h", "p", "m", "accurate", 0, "", "summary", now),
             )
             db._connect.execute(
-                "INSERT INTO chunks (l2_result_id, file_uri, content_hash, profile, model, "
-                "level, chunk_idx, chunk_text, created_at) "
+                "INSERT INTO chunks (extraction_id, file_uri, content_hash, profile, model, "
+                "mode, chunk_idx, chunk_text, created_at) "
                 "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                (l2_id, uri, "h", "p", "m", 2, idx, "rare phrase only here", now),
+                (extraction_id, uri, "h", "p", "m", "accurate", idx, "rare phrase only here", now),
             )
         db._connect.commit()
 
@@ -657,23 +657,23 @@ class TestGrep:
         img.write_bytes(b"\x89PNG\r\n\x1a\n" + b"\x00" * 32)
 
         db = MmDatabase()
-        db.ensure_l0(str(img))
+        db.ensure_metadata(str(img))
         now = now_us()
         db._connect.execute(
-            "INSERT INTO l2_results (id, file_uri, content_hash, profile, model, mode, "
+            "INSERT INTO extractions (id, file_uri, content_hash, profile, model, mode, "
             "detail, extra, summary, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             ("l2-p", str(img), "h", "p", "m", "accurate", 0, "", "summary", now),
         )
         db._connect.execute(
-            "INSERT INTO chunks (l2_result_id, file_uri, content_hash, profile, model, "
-            "level, chunk_idx, chunk_text, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            "INSERT INTO chunks (extraction_id, file_uri, content_hash, profile, model, "
+            "mode, chunk_idx, chunk_text, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (
                 "l2-p",
                 str(img),
                 "h",
                 "p",
                 "m",
-                2,
+                "accurate",
                 0,
                 "I won't ship hello-world v1.0 today, it's still WIP.",
                 now,
@@ -700,10 +700,10 @@ class TestGrep:
         img.write_bytes(b"\x89PNG\r\n\x1a\n" + b"\x00" * 32)
 
         db = MmDatabase()
-        db.ensure_l0(str(img))
+        db.ensure_metadata(str(img))
         now = now_us()
         db._connect.execute(
-            "INSERT INTO l2_results (id, file_uri, content_hash, profile, model, mode, "
+            "INSERT INTO extractions (id, file_uri, content_hash, profile, model, mode, "
             "detail, extra, summary, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             ("l2-w", str(img), "h", "p", "m", "accurate", 0, "", "summary", now),
         )
@@ -716,9 +716,9 @@ class TestGrep:
         ]
         for idx, text in seeded:
             db._connect.execute(
-                "INSERT INTO chunks (l2_result_id, file_uri, content_hash, profile, model, "
-                "level, chunk_idx, chunk_text, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                ("l2-w", str(img), "h", "p", "m", 2, idx, text, now),
+                "INSERT INTO chunks (extraction_id, file_uri, content_hash, profile, model, "
+                "mode, chunk_idx, chunk_text, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                ("l2-w", str(img), "h", "p", "m", "accurate", idx, text, now),
             )
         db._connect.commit()
 
@@ -980,8 +980,8 @@ class TestPruneIntegration:
         a.write_text("hello")
         b.write_text("world")
         db = MmDatabase()
-        db.ensure_l0(str(a))
-        db.ensure_l0(str(b))
+        db.ensure_metadata(str(a))
+        db.ensure_metadata(str(b))
         assert len(db.get_files()) == 2
 
         a.unlink()
@@ -1004,7 +1004,7 @@ class TestPruneIntegration:
         p = tmp_path / "gone.txt"
         p.write_text("bye")
         db = MmDatabase()
-        db.ensure_l0(str(p))
+        db.ensure_metadata(str(p))
         assert db.get_file(str(p)) is not None
 
         p.unlink()

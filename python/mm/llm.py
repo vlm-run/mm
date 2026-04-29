@@ -22,6 +22,9 @@ from typing import Any
 
 from openai import OpenAI
 
+from mm.pipelines.schema import PipelineSpec
+from mm.utils import BinaryFileKind
+
 
 @dataclass
 class LlmUsage:
@@ -67,12 +70,12 @@ class LlmBackend:
 
     def generate(
         self,
-        kind: str,
+        kind: BinaryFileKind,
         mode: str = "fast",
         *,
         context: dict[str, Any] | None = None,
         parts: list[dict[str, Any]] | None = None,
-        pipeline_spec: Any | None = None,
+        pipeline_spec: PipelineSpec | None = None,
     ) -> str:
         """Pipeline-driven MLLM generation.
 
@@ -99,7 +102,6 @@ class LlmBackend:
             return ""
 
         prompt = render_prompt(tpl, ctx)
-
         content_parts: list[dict[str, Any]] = parts or []
         content_parts = run_pyfunc(tpl, content_parts, ctx)
 
@@ -124,7 +126,7 @@ class LlmBackend:
 
     def generate_chunked(
         self,
-        kind: str,
+        kind: BinaryFileKind,
         mode: str = "fast",
         *,
         context: dict[str, Any] | None = None,

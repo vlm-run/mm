@@ -20,7 +20,7 @@ mm
 │   ├── [x] Parquet I/O (ZSTD level 3 compression)
 │   └── [x] Manifest-based incremental cache (mtime + size staleness check)
 │
-├── Fast mode — Content Extraction (Rust extractors + Python ffmpeg)
+├── Metadata tier — Local Content Extraction (Rust extractors + Python ffmpeg; no LLM)
 │   ├── Code / Text / Config
 │   │   ├── [x] Line count, word count
 │   │   ├── [x] Text preview (first 500 chars)
@@ -103,8 +103,8 @@ mm
 │   │   ├── [x] image accurate: fast (10w+5tags) / accurate (200w+10tags+objects)
 │   │   ├── [x] document accurate: pypdfium2 PDF → text → LLM
 │   │   ├── [x] --encode.*, --generate.* namespaced flags
-│   │   ├── [x] --no-cache flag bypasses L2 cache (both fast and accurate)
-│   │   ├── [x] unified L2 caching for both fast and accurate modes
+│   │   ├── [x] --no-cache flag bypasses extractions cache (both fast and accurate modes)
+│   │   ├── [x] unified extractions caching for both fast and accurate modes
 │   │   ├── [x] verbose pipeline tree (-v): encode/generate timing + token counts
 │   │   ├── [x] -p pipeline.yaml / -p encoder_name for custom pipelines
 │   ├── [x] grep     — content search with context lines (like rg), --pre-index for on-demand semantic indexing
@@ -155,7 +155,7 @@ mm
 ├── Tests
 │   ├── Rust: 75 tests (meta, walk, detect, schema, table, code, image, video, audio, document, hash)
 │   ├── Python: 582 tests (CLI, Context API, refs/sessions, pipe, metadata/fast/accurate, config, whisper, scenes, docling, bench)
-│   ├── Criterion benchmarks: l0_walk, l0_index, hash_strategies, l1_extract, find_filter
+│   ├── Criterion benchmarks: metadata_walk, metadata_index, hash_strategies, metadata_extract, find_filter
 │   ├── mm bench: 24 commands (metadata×10, fast×8, accurate×6) with bits/s throughput
 │   └── pytest-benchmark: 11 benchmarks (metadata, fast, ffmpeg, e2e)
 │

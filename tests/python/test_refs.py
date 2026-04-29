@@ -378,8 +378,8 @@ class TestMigration:
     def test_migration_adds_columns_to_legacy_db(self, tmp_path: Path):
         """A pre-existing DB without session_id/ref_id should migrate cleanly.
 
-        Builds a schema that matches mm's pre-refs ``files`` DDL (all L0/L1
-        columns, no session_id/ref_id), seeds a row, then opens via
+        Builds a schema that matches mm's pre-refs ``files`` DDL (all
+        metadata + fast columns, no session_id/ref_id), seeds a row, then opens via
         ``MmDatabase`` and verifies the new columns appear with NULL values.
         """
         legacy_path = tmp_path / "legacy.db"
@@ -420,7 +420,7 @@ class TestMigration:
                 has_audio INTEGER,
                 phash TEXT,
                 indexed_at INTEGER NOT NULL DEFAULT 0,
-                l1_indexed_at INTEGER
+                content_indexed_at INTEGER
             )
             """
         )

@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use crate::extract::{ContentExtractor, ExtractError, L1Record};
+use crate::extract::{ContentExtractor, ExtractError, MetadataRecord};
 use crate::hash;
 
 use super::shared;
@@ -12,7 +12,7 @@ impl ContentExtractor for VideoExtractor {
         kind == "video"
     }
 
-    fn extract(&self, path: &Path) -> Result<L1Record, ExtractError> {
+    fn extract(&self, path: &Path) -> Result<MetadataRecord, ExtractError> {
         let ext = path
             .extension()
             .map(|e| e.to_string_lossy().to_ascii_lowercase())
@@ -23,7 +23,7 @@ impl ContentExtractor for VideoExtractor {
         let mut record = match ext.as_str() {
             "mp4" | "m4v" | "mov" | "3gp" => shared::extract_mp4(path).unwrap_or_default(),
             "mkv" | "webm" => shared::extract_matroska(path).unwrap_or_default(),
-            _ => L1Record::default(),
+            _ => MetadataRecord::default(),
         };
 
         record.content_hash = content_hash;

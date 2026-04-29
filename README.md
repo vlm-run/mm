@@ -377,7 +377,7 @@ mm sql "SELECT kind, COUNT(*) as n, ROUND(SUM(size)/1e6,1) as mb \
   FROM files GROUP BY kind ORDER BY mb DESC" --dir ~/data
 
 # Query stored tables directly (auto-detected from table name)
-mm sql "SELECT file_uri, summary FROM l2_results LIMIT 10"
+mm sql "SELECT file_uri, summary FROM extractions LIMIT 10"
 mm sql "SELECT file_uri, chunk_idx, LENGTH(chunk_text) FROM chunks"
 mm sql "SELECT * FROM files WHERE kind='image'" --dir ~/data --pre-index  # index before query
 mm sql --list-tables                              # show available tables
@@ -402,16 +402,21 @@ pipeline
   └─ generate: ollama · 2.3s · 354→195 tokens
 ```
 
-## Processing Modes
+## Processing tiers
 
+`mm` separates **content tiers** (what's stored) from **pipeline modes** (what runs).
 
-| Mode               | What                                                                   | Speed       | How                                                            |
-| ------------------ | ---------------------------------------------------------------------- | ----------- | -------------------------------------------------------------- |
-| **fast** (default) | Local extraction — text from PDF, image hash/EXIF, video metadata      | <100ms/file | pypdfium2 (PDF), Rust mmap (images), mp4parse/matroska (video) |
-| **accurate**       | LLM-powered semantic understanding (captions, descriptions, summaries) | Varies      | LLM API via active profile + pipeline config                   |
+| Tier         | What                                                                                  | LLM?     |
+| ------------ | ------------------------------------------------------------------------------------- | -------- |
+| **metadata** | Locally-extracted file content — PDF text, image dims/EXIF, video codec, transcript   | never    |
+| **fast**     | Output of the kind's `fast` pipeline                                                  | maybe¹   |
+| **accurate** | Output of the kind's `accurate` pipeline                                              | yes      |
 
+¹ Per-kind fast pipelines: image/video include a short LLM caption stage;
+audio/document/code do not. See `pipelines/{kind}/fast.yaml`.
 
-Metadata scanning (`find`, `wc`) always uses Rust-native extraction (~60ms / 700 files).
+Metadata-tier extraction (used by `find`, `wc`, and as the input for fast/accurate
+pipelines) is Rust-native (~60ms / 700 files).
 
 ## Performance
 
@@ -437,13 +442,13 @@ Benchmarked on Apple Silicon (M-series), 702 files (7.2GB):
 mm uses a global SQLite database at `~/.local/share/mm/mm.db` with sqlite-vec for vector search:
 
 
-| Table        | Contents                                                          | Relationship         |
-| ------------ | ----------------------------------------------------------------- | -------------------- |
-| `files`      | File metadata + content (one row per file, `uri` = absolute path) | —                    |
-| `l2_results` | LLM-generated summaries (many per file)                           | FK → `files.uri`     |
-| `chunks`     | ~2048-char content chunks                                         | FK → `l2_results.id` |
-| `chunks_vec` | Embedding vectors (sqlite-vec virtual table)                      | FK → `chunks.id`     |
-| `cache`      | Key-value result cache                                            | —                    |
+| Table              | Contents                                                          | Relationship                |
+| ------------------ | ----------------------------------------------------------------- | --------------------------- |
+| `files`            | File metadata + content (one row per file, `uri` = absolute path) | —                           |
+| `extractions` | LLM-generated summaries (many per file)                           | FK → `files.uri`            |
+| `chunks`           | ~2048-char content chunks (mode = 'fast' or 'accurate')           | FK → `extractions.id`  |
+| `chunks_vec`       | Embedding vectors (sqlite-vec virtual table)                      | FK → `chunks.id`            |
+| `cache`            | Key-value result cache                                            | —                           |
 
 
 The `files` table includes metadata columns (path, size, kind, etc.) and content columns (content_hash, text_preview, line_count, duration_s, exif_*, video_codec, etc.).
