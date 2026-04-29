@@ -257,6 +257,11 @@ METADATA_COMMANDS: list[BenchCommand] = [
         requires_kind="document",
         skip_reason="no document files",
     ),
+    # Plain ``mm grep`` (no --semantic) is a regex pattern search over file
+    # contents — Unix-comparable to ``grep -r``, no LLM.
+    BenchCommand(
+        "mm grep /pattern/", "metadata", "mm grep 'import|include|require' {dir} --format json"
+    ),
 ]
 
 FAST_COMMANDS: list[BenchCommand] = [
@@ -311,9 +316,6 @@ FAST_COMMANDS: list[BenchCommand] = [
         requires_kind="document",
         batch=10,
         skip_reason="no PDF files",
-    ),
-    BenchCommand(
-        "mm grep /pattern/", "fast", "mm grep 'import|include|require' {dir} --format json"
     ),
 ]
 

@@ -365,7 +365,7 @@ def bench_cmd(
         typer.Option(
             "--mode",
             "-m",
-            help="Groups to bench: fast (default), accurate, all",
+            help="Groups to bench: metadata, fast (default), accurate, all",
         ),
     ] = None,
     format: Annotated[
@@ -380,15 +380,17 @@ def bench_cmd(
     """Benchmark all subcommands with statistical analysis.
 
     \b
-    ``--mode`` picks which extraction group joins it:
-      fast (default)  metadata + fast
-      accurate        metadata + accurate
-      all             metadata + fast + accurate
+    overhead + metadata always run; ``--mode`` picks which extraction tier joins:
+      metadata        overhead + metadata (Unix-comparable: find/wc/sql/grep)
+      fast (default)  overhead + metadata + fast
+      accurate        overhead + metadata + accurate
+      all             overhead + metadata + fast + accurate
 
     \b
     Examples:
-      mm bench ~/data                              # metadata + fast
-      mm bench ~/data --mode accurate              # metadata + accurate only
+      mm bench ~/data                              # overhead + metadata + fast
+      mm bench ~/data --mode metadata              # Unix-comparable subset
+      mm bench ~/data --mode accurate              # overhead + metadata + accurate
       mm bench ~/data --mode all                   # full suite
       mm bench ~/data --rounds 5                   # more rounds for stability
       mm bench ~/data --format json                # JSON output for archival
@@ -412,7 +414,9 @@ def bench_cmd(
         return
 
     bench_mode = mode or "fast"
-    if bench_mode == "fast":
+    if bench_mode == "metadata":
+        extraction: list = []
+    elif bench_mode == "fast":
         extraction = FAST_COMMANDS
     elif bench_mode == "accurate":
         extraction = ACCURATE_COMMANDS
@@ -420,7 +424,7 @@ def bench_cmd(
         extraction = FAST_COMMANDS + ACCURATE_COMMANDS
     else:
         typer.echo(
-            f"Error: Unknown --mode {bench_mode!r}. Use 'fast', 'accurate', or 'all'.",
+            f"Error: Unknown --mode {bench_mode!r}. Use 'metadata', 'fast', 'accurate', or 'all'.",
             err=True,
         )
         raise typer.Exit(code=1)
