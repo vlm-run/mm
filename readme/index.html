@@ -336,7 +336,7 @@ mm sql &quot;SELECT kind, COUNT(*) as n, ROUND(SUM(size)/1e6,1) as mb \
   FROM files GROUP BY kind ORDER BY mb DESC&quot; --dir ~/data
 
 # Query stored tables directly (auto-detected from table name)
-mm sql &quot;SELECT file_uri, summary FROM l2_results LIMIT 10&quot;
+mm sql &quot;SELECT file_uri, summary FROM extractions LIMIT 10&quot;
 mm sql &quot;SELECT file_uri, chunk_idx, LENGTH(chunk_text) FROM chunks&quot;
 mm sql &quot;SELECT * FROM files WHERE kind=&#39;image&#39;&quot; --dir ~/data --pre-index  # index before query
 mm sql --list-tables                              # show available tables
@@ -356,30 +356,36 @@ mm sql --list-tables                              # show available tables
   ├─ encode: resize · 0.0s → 1 parts (1 image)
   └─ generate: ollama · 2.3s · 354→195 tokens
 </code></pre>
-<h2>Processing Modes</h2>
+<h2>Processing tiers</h2>
+<p><code>mm</code> separates <strong>content tiers</strong> (what&#39;s stored) from <strong>pipeline modes</strong> (what runs).</p>
 <table>
 <thead>
 <tr>
-<th>Mode</th>
+<th>Tier</th>
 <th>What</th>
-<th>Speed</th>
-<th>How</th>
+<th>LLM?</th>
 </tr>
 </thead>
 <tbody><tr>
-<td><strong>fast</strong> (default)</td>
-<td>Local extraction — text from PDF, image hash/EXIF, video metadata</td>
-<td>&lt;100ms/file</td>
-<td>pypdfium2 (PDF), Rust mmap (images), mp4parse/matroska (video)</td>
+<td><strong>metadata</strong></td>
+<td>Locally-extracted file content — PDF text, image dims/EXIF, video codec, transcript</td>
+<td>never</td>
+</tr>
+<tr>
+<td><strong>fast</strong></td>
+<td>Output of the kind&#39;s <code>fast</code> pipeline</td>
+<td>maybe¹</td>
 </tr>
 <tr>
 <td><strong>accurate</strong></td>
-<td>LLM-powered semantic understanding (captions, descriptions, summaries)</td>
-<td>Varies</td>
-<td>LLM API via active profile + pipeline config</td>
+<td>Output of the kind&#39;s <code>accurate</code> pipeline</td>
+<td>yes</td>
 </tr>
 </tbody></table>
-<p>Metadata scanning (<code>find</code>, <code>wc</code>) always uses Rust-native extraction (~60ms / 700 files).</p>
+<p>¹ Per-kind fast pipelines: image/video include a short LLM caption stage;
+audio/document/code do not. See <code>pipelines/{kind}/fast.yaml</code>.</p>
+<p>Metadata-tier extraction (used by <code>find</code>, <code>wc</code>, and as the input for fast/accurate
+pipelines) is Rust-native (~60ms / 700 files).</p>
 <h2>Performance</h2>
 <p>Benchmarked on Apple Silicon (M-series), 702 files (7.2GB):</p>
 <table>
@@ -446,14 +452,14 @@ mm sql --list-tables                              # show available tables
 <td>—</td>
 </tr>
 <tr>
-<td><code>l2_results</code></td>
+<td><code>extractions</code></td>
 <td>LLM-generated summaries (many per file)</td>
 <td>FK → <code>files.uri</code></td>
 </tr>
 <tr>
 <td><code>chunks</code></td>
-<td>~2048-char content chunks</td>
-<td>FK → <code>l2_results.id</code></td>
+<td>~2048-char content chunks (mode = &#39;fast&#39; or &#39;accurate&#39;)</td>
+<td>FK → <code>extractions.id</code></td>
 </tr>
 <tr>
 <td><code>chunks_vec</code></td>
