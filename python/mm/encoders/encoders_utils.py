@@ -1,4 +1,4 @@
-from mm.cat_utils import KIND_ORDER
+from mm.cat_utils.base_utils import KIND_ORDER
 
 
 def do_list_encoders() -> None:

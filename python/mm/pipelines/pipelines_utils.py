@@ -3,7 +3,7 @@ from typing import Any
 
 import typer
 
-from mm.cat_utils import KIND_ORDER, CatOpts
+from mm.cat_utils.base_utils import KIND_ORDER, CatOpts
 from mm.pipelines.schema import PipelineSpec
 
 

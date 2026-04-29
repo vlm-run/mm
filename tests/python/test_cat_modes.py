@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-from mm.cat_utils import CatOpts
+from mm.cat_utils.base_utils import CatOpts
 from mm.commands.cat import _extract, _run_fast
 from mm.utils import DOCUMENT_EXTS, file_kind
 

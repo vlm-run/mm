@@ -217,7 +217,7 @@ class TestEmbedFileChunks:
 class TestCatEmbedIntegration:
     def test_run_accurate_triggers_embedding(self, tmp_path: Path, mock_server: MagicMock):
         """After accurate extraction, embed_file_chunks should be called."""
-        from mm.cat_utils import CatOpts
+        from mm.cat_utils.base_utils import CatOpts
         from mm.commands.cat import _extract
 
         # Use a document kind since text kind short-circuits to raw passthrough

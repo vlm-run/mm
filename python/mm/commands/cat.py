@@ -24,8 +24,8 @@ from typing import Annotated, Any, Optional
 
 import typer
 
-from mm.cat_extract_local import extract_local
-from mm.cat_utils import (
+from mm.cat_utils.extract_local import extract_local
+from mm.cat_utils.base_utils import (
     CatOpts,
     coerce_opt_value,
     collect_overrides,

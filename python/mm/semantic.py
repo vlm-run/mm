@@ -55,7 +55,7 @@ def _index_one(uri: str) -> str | None:
     side effect of ``_run_accurate``.
     """
     from mm.commands.cat import _extract
-    from mm.cat_utils import CatOpts
+    from mm.cat_utils.base_utils import CatOpts
 
     path = Path(uri)
     if not path.exists():
