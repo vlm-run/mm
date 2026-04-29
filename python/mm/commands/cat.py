@@ -18,117 +18,28 @@ File-type behaviour:
 
 from __future__ import annotations
 
-import json
-import os
-import sys
 import time
 from pathlib import Path
 from typing import Annotated, Any, Optional
 
 import typer
 
+from mm.cat_utils import (
+    CatOpts,
+    coerce_opt_value,
+    collect_overrides,
+    maybe_confirm_large_cat_batch,
+    override_extra,
+)
 from mm.pipe import read_paths_from_stdin
+from mm.pipelines.pipelines_utils import load_pipeline_args, resolve_pipeline
 from mm.pipelines.schema import PipelineSpec
-from mm.utils import Format, file_kind
+from mm.utils import BinaryFileKind, FileKind, Format, file_kind
 
 # Track total bytes processed for throughput calculation
 _total_bytes_processed = 0
 # Track whether the result was served from cache
 _was_cached = False
-
-
-def _coerce_opt_value(raw: str) -> Any:
-    """Coerce a CLI ``KEY=VALUE`` string into int/float/bool/str"""
-    if raw.lower() in ("true", "false"):
-        return raw.lower() == "true"
-    try:
-        return int(raw)
-    except ValueError:
-        pass
-    try:
-        return float(raw)
-    except ValueError:
-        pass
-    return raw
-
-
-def _override_extra(
-    encode_overrides: dict[str, Any] | None,
-    generate_overrides: dict[str, Any] | None,
-    pipelines: dict[str, Any] | None,
-) -> str:
-    """Build the order-independent override string used in the -m=accurate cache key.
-
-    Without this, repeating ``--encode.strategy_opts max_width=768 fps=5`` vs. ``fps=5 max_width=768``
-    would produce two distinct entries and double the LLM cost.
-    """
-
-    def _render(v: Any) -> str:
-        if isinstance(v, dict):
-            return json.dumps(v, sort_keys=True, separators=(",", ":"))
-        return str(v)
-
-    parts: list[str] = []
-    if encode_overrides:
-        for k in sorted(encode_overrides):
-            parts.append(f"{k}={_render(encode_overrides[k])}")
-    if generate_overrides:
-        for k in sorted(generate_overrides):
-            parts.append(f"g.{k}={_render(generate_overrides[k])}")
-    for pk in sorted(pipelines or {}):
-        parts.append(f"p:{pk}")
-    return "|".join(parts)
-
-
-def _collect_overrides(**kwargs: str | None) -> dict[str, str]:
-    """Collect non-None CLI overrides into a ``{field: value}`` dict."""
-    return {k: v for k, v in kwargs.items() if v is not None}
-
-
-def _cat_batch_confirm_threshold() -> int:
-    raw = os.environ.get("MM_CAT_BATCH_CONFIRM_THRESHOLD", "9")
-    try:
-        n = int(raw)
-    except ValueError:
-        return 9
-    return max(1, n)
-
-
-def _maybe_confirm_large_cat_batch(n_paths: int, *, assume_yes: bool) -> None:
-    """Prompt or require ``--yes`` when ``cat`` is given many paths at once."""
-    threshold = _cat_batch_confirm_threshold()
-    if n_paths < threshold:
-        return
-    if assume_yes:
-        return
-    if sys.stdin.isatty():
-        if not typer.confirm(
-            f"You are about to run cat on {n_paths} files "
-            f"(confirmation required for {threshold}+ files). "
-            "This may take a long time. Continue?",
-            default=False,
-        ):
-            raise typer.Abort()
-        return
-    typer.echo(
-        f"Error: cat on {n_paths} files requires confirmation. "
-        f"Pass --yes (-y) to proceed in non-interactive mode, or pass at most "
-        f"{threshold - 1} paths without -y.",
-        err=True,
-    )
-    raise typer.Exit(1)
-
-
-def _build_pipeline_help() -> str:
-    """Build the --pipeline / -p help string with dynamically discovered encoder names."""
-    try:
-        from mm.encoders import list_strategies
-
-        names = list_strategies()
-        names_str = ", ".join(names) if names else "none discovered"
-    except Exception:
-        names_str = "(run --list-pipelines to see)"
-    return f"Pipeline: YAML path or encoder name ({names_str}). Repeatable."
 
 
 def cat_cmd(
@@ -276,14 +187,14 @@ def cat_cmd(
         typer.echo("Error: No files specified.", err=True)
         raise typer.Exit(1)
 
-    _maybe_confirm_large_cat_batch(len(paths), assume_yes=yes)
+    maybe_confirm_large_cat_batch(len(paths), assume_yes=yes)
 
     if mode not in ("fast", "accurate"):
         typer.echo(f"Error: Unknown mode {mode!r}. Use 'fast' or 'accurate'.", err=True)
         raise typer.Exit(1)
 
     enc_overrides: dict[str, str | dict[str, str]] = {
-        **_collect_overrides(
+        **collect_overrides(
             strategy=encode_strategy,
             pyfunc=encode_pyfunc,
         )
@@ -300,9 +211,9 @@ def cat_cmd(
             if "strategy_opts" not in enc_overrides:
                 enc_overrides["strategy_opts"] = {}
             if isinstance(enc_overrides["strategy_opts"], dict):
-                enc_overrides["strategy_opts"][key] = _coerce_opt_value(val)
+                enc_overrides["strategy_opts"][key] = coerce_opt_value(val)
 
-    gen_overrides = _collect_overrides(
+    gen_overrides = collect_overrides(
         prompt=generate_prompt,
         max_tokens=generate_max_tokens,
         temperature=generate_temperature,
@@ -312,13 +223,13 @@ def cat_cmd(
     # -- Load explicit pipeline/-p args (YAML files or named encoders) keyed by kind --
     pipeline_specs: dict[str, PipelineSpec] = {}
     if pipeline:
-        pipeline_specs = _load_pipeline_args(pipeline)
+        pipeline_specs = load_pipeline_args(pipeline)
 
     from mm.display import resolve_format
 
     fmt = resolve_format(format.value if format else None)
 
-    opts = _CatOpts(
+    opts = CatOpts(
         n=n,
         output_dir=output_dir,
         mode=mode,
@@ -406,124 +317,12 @@ def cat_cmd(
         emit_rows(fmt, results, output_dir=str(output_dir) if output_dir else "mm_dataset")
 
 
-class _CatOpts:
-    """Bag of resolved options threaded through extraction."""
-
-    __slots__ = (
-        "n",
-        "output_dir",
-        "mode",
-        "no_cache",
-        "format",
-        "encode_overrides",
-        "generate_overrides",
-        "pipelines",
-        "verbose",
-        "_verbose_suffix",
-    )
-
-    n: int | None
-    output_dir: Path | None
-    mode: str
-    no_cache: bool
-    format: str
-    encode_overrides: dict[str, Any]
-    generate_overrides: dict[str, str]
-    pipelines: dict[str, PipelineSpec]
-    verbose: bool
-    _verbose_suffix: str | None
-
-    def __init__(self, **kwargs: object) -> None:
-        for k, v in kwargs.items():
-            setattr(self, k, v)
-        if not hasattr(self, "_verbose_suffix"):
-            self._verbose_suffix = None
-
-
 # ---------------------------------------------------------------------------
 # Dispatch
 # ---------------------------------------------------------------------------
 
 
-def _load_pipeline_args(pipeline_args: list[str]) -> dict[str, PipelineSpec]:
-    """Resolve -p arguments into a dict of PipelineSpec keyed by kind.
-
-    Each argument can be:
-    - A YAML file path (loaded, possibly multi-document)
-    - A registered encoder name (wrapped into a PipelineSpec with that strategy)
-    """
-    specs: dict[str, PipelineSpec] = {}
-
-    for arg in pipeline_args:
-        p = Path(arg).expanduser()
-        if p.suffix in (".yaml", ".yml") or p.is_file():
-            from mm.pipelines import load_file
-
-            for spec in load_file(p):
-                specs[spec.kind] = spec
-        else:
-            from mm.encoders import list_strategies
-            from mm.pipelines.schema import Encode
-
-            known = list_strategies()
-            if arg in known:
-                specs["_encoder"] = PipelineSpec(
-                    kind="_encoder",
-                    mode="fast",
-                    encode=Encode(strategy=arg),
-                    generate=None,
-                )
-            else:
-                if p.is_file():
-                    from mm.pipelines import load_file
-
-                    for spec in load_file(p):
-                        specs[spec.kind] = spec
-                else:
-                    typer.echo(f"Warning: '{arg}' is not a known encoder or YAML file.", err=True)
-
-    return specs
-
-
-def _resolve_pipeline(opts: _CatOpts, kind: str) -> PipelineSpec:
-    """Return a PipelineSpec from explicit -p pipelines or auto-resolve.
-
-    If -p specified a named encoder (stored under key '_encoder'), that
-    overrides for any kind.  Validates that the encoder supports the
-    target media kind before applying it.
-    """
-    from mm.pipelines import load
-
-    if opts.pipelines:
-        spec = opts.pipelines.get(kind)
-        if spec is not None:
-            return spec
-        encoder_spec = opts.pipelines.get("_encoder")
-        if encoder_spec is not None and encoder_spec.encode.strategy:
-            from mm.encoders import get
-
-            enc = get(encoder_spec.encode.strategy)
-            if enc is not None:
-                supported = getattr(enc, "media_types", ())
-                if supported and kind not in supported:
-                    typer.echo(
-                        f"Warning: encoder '{encoder_spec.encode.strategy}' "
-                        f"supports {supported}, not '{kind}'. Falling back to default.",
-                        err=True,
-                    )
-                else:
-                    base = load(kind, opts.mode)
-                    return PipelineSpec(
-                        kind=base.kind,
-                        mode=base.mode,
-                        encode=encoder_spec.encode,
-                        generate=base.generate,
-                    )
-
-    return load(kind, opts.mode)
-
-
-def _extract(path: Path, opts: _CatOpts) -> str:
+def _extract(path: Path, opts: CatOpts) -> str:
     """Pipeline-driven extraction dispatch with unified accurate-mode caching.
 
     1. Auto-detect kind from file extension
@@ -549,7 +348,7 @@ def _extract(path: Path, opts: _CatOpts) -> str:
     profile = get_profile()
     content_hash = get_content_hash(path)
 
-    extra = _override_extra(
+    extra = override_extra(
         opts.encode_overrides,
         opts.generate_overrides,
         opts.pipelines,
@@ -595,7 +394,8 @@ def _extract(path: Path, opts: _CatOpts) -> str:
     suffix = opts._verbose_suffix
 
     if content_hash and content and not content.startswith("["):
-        _extract_local(path, kind)
+        # TODO: confirm we actually need to run _extract_local below
+        # _extract_local(path, kind)
         uri = str(path.resolve())
         meta = {"verbose_suffix": suffix} if suffix else None
         try:
@@ -629,7 +429,7 @@ def _with_suffix(content: str, suffix: str | None, verbose: bool) -> str:
     return content
 
 
-def _run_fast(path: Path, kind: str, opts: _CatOpts) -> str:
+def _run_fast(path: Path, kind: FileKind, opts: CatOpts) -> str:
     """Fast mode: local extraction only (no LLM unless pipeline says otherwise).
 
     For image/video/audio/document kinds this loads a YAML pipeline and
@@ -641,7 +441,7 @@ def _run_fast(path: Path, kind: str, opts: _CatOpts) -> str:
 
     from mm.pipelines import apply_overrides
 
-    spec = _resolve_pipeline(opts, kind)
+    spec = resolve_pipeline(opts, kind)
     spec = apply_overrides(spec, opts.encode_overrides or None, opts.generate_overrides or None)
 
     if spec.encode.strategy:
@@ -678,11 +478,11 @@ def _run_fast(path: Path, kind: str, opts: _CatOpts) -> str:
     return content
 
 
-def _run_accurate(path: Path, kind: str, opts: _CatOpts) -> str:
+def _run_accurate(path: Path, kind: BinaryFileKind, opts: CatOpts) -> str:
     """Accurate mode: LLM-powered semantic extraction."""
     from mm.pipelines import apply_overrides
 
-    spec = _resolve_pipeline(opts, kind)
+    spec = resolve_pipeline(opts, kind)
     spec = apply_overrides(spec, opts.encode_overrides or None, opts.generate_overrides or None)
 
     _extract_local(path, kind)
@@ -690,7 +490,7 @@ def _run_accurate(path: Path, kind: str, opts: _CatOpts) -> str:
     return _accurate_dispatch(path, kind, spec, opts)
 
 
-def _accurate_dispatch(path: Path, kind: str, spec: PipelineSpec, opts: _CatOpts) -> str:
+def _accurate_dispatch(path: Path, kind: BinaryFileKind, spec: PipelineSpec, opts: CatOpts) -> str:
     """Dispatch accurate-mode extraction based on file kind."""
     if kind == "image":
         return _accurate_image(path, spec, opts)
@@ -811,7 +611,7 @@ def _format_encode_verbose(strategy: str | None, messages: list[dict], elapsed_m
     return f"[dim]{encode_text}[/dim]"
 
 
-def _run_encoder(path: Path, kind: str, spec: PipelineSpec, opts: _CatOpts) -> str:
+def _run_encoder(path: Path, kind: str, spec: PipelineSpec, opts: CatOpts) -> str:
     """Run a named encoder strategy and output JSON messages or pipe to LLM."""
     from mm.encoders import get as get_encoder
 
@@ -875,7 +675,7 @@ def _run_encoder(path: Path, kind: str, spec: PipelineSpec, opts: _CatOpts) -> s
     return result
 
 
-def _accurate_image(path: Path, spec: PipelineSpec, opts: _CatOpts) -> str:
+def _accurate_image(path: Path, spec: PipelineSpec, opts: CatOpts) -> str:
     """Image extraction with mode-specific LLM prompts."""
     if spec.encode.strategy:
         return _run_encoder(path, "image", spec, opts)
@@ -908,7 +708,7 @@ def _accurate_image(path: Path, spec: PipelineSpec, opts: _CatOpts) -> str:
     return content
 
 
-def _accurate_video(path: Path, spec: PipelineSpec, opts: _CatOpts) -> str:
+def _accurate_video(path: Path, spec: PipelineSpec, opts: CatOpts) -> str:
     """Video extraction with mode-aware mosaic + whisper + LLM pipeline."""
     import shutil
 
@@ -1106,7 +906,7 @@ def _accurate_video(path: Path, spec: PipelineSpec, opts: _CatOpts) -> str:
     return "\n".join(out_parts)
 
 
-def _accurate_audio(path: Path, spec: PipelineSpec, opts: _CatOpts) -> str:
+def _accurate_audio(path: Path, spec: PipelineSpec, opts: CatOpts) -> str:
     """Audio extraction with transcription."""
     from mm.ffmpeg import extract_audio, ffmpeg_available
     from mm.whisper import transcribe, whisper_available

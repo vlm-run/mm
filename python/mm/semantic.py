@@ -54,13 +54,14 @@ def _index_one(uri: str) -> str | None:
     to the ``accurate_results`` + ``chunks`` + ``chunks_vec`` tables as a
     side effect of ``_run_accurate``.
     """
-    from mm.commands.cat import _CatOpts, _extract
+    from mm.commands.cat import _extract
+    from mm.cat_utils import CatOpts
 
     path = Path(uri)
     if not path.exists():
         return None
 
-    opts = _CatOpts(
+    opts = CatOpts(
         n=None,
         output_dir=None,
         mode="accurate",

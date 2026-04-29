@@ -5,15 +5,12 @@ from __future__ import annotations
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-from mm.commands.cat import (
-    _CatOpts,
-    _extract,
-    _run_fast,
-)
+from mm.cat_utils import CatOpts
+from mm.commands.cat import _extract, _run_fast
 from mm.utils import DOCUMENT_EXTS, file_kind
 
 
-def _make_opts(mode: str = "fast", **overrides: object) -> _CatOpts:
+def _make_opts(mode: str = "fast", **overrides: object) -> CatOpts:
     defaults: dict[str, object] = dict(
         n=None,
         output_dir=None,
@@ -26,7 +23,7 @@ def _make_opts(mode: str = "fast", **overrides: object) -> _CatOpts:
         verbose=False,
     )
     defaults.update(overrides)
-    return _CatOpts(**defaults)
+    return CatOpts(**defaults)
 
 
 def _mock_cache_miss():
@@ -84,7 +81,7 @@ class TestDocumentExts:
 
 
 class TestCatOptsMode:
-    """Test that _CatOpts carries the mode parameter."""
+    """Test that CatOpts carries the mode parameter."""
 
     def test_mode_fast(self):
         assert _make_opts(mode="fast").mode == "fast"

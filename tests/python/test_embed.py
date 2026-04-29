@@ -217,14 +217,15 @@ class TestEmbedFileChunks:
 class TestCatEmbedIntegration:
     def test_run_accurate_triggers_embedding(self, tmp_path: Path, mock_server: MagicMock):
         """After accurate extraction, embed_file_chunks should be called."""
-        from mm.commands.cat import _CatOpts, _extract
+        from mm.cat_utils import CatOpts
+        from mm.commands.cat import _extract
 
         # Use a document kind since text kind short-circuits to raw passthrough
         # (no pipeline, no LLM, no cache) and thus never triggers embedding.
         pdf = tmp_path / "test.pdf"
         pdf.write_bytes(b"%PDF-1.4 fake")
 
-        opts = _CatOpts(
+        opts = CatOpts(
             n=None,
             output_dir=None,
             mode="accurate",
