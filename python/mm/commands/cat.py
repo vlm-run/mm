@@ -24,6 +24,8 @@ from typing import Annotated, Optional
 
 import typer
 
+from mm.cat_utils.accurate_audio import accurate_audio
+from mm.cat_utils.accurate_image import accurate_image
 from mm.cat_utils.accurate_video import accurate_video
 from mm.cat_utils.base_utils import (
     CatOpts,
@@ -504,11 +506,11 @@ def _run_accurate(path: Path, kind: BinaryFileKind, opts: CatOpts) -> str:
 def _accurate_dispatch(path: Path, kind: BinaryFileKind, spec: PipelineSpec, opts: CatOpts) -> str:
     """Dispatch accurate-mode extraction based on file kind."""
     if kind == "image":
-        return _accurate_image(path, spec, opts)
+        return accurate_image(path, spec, opts)
     if kind == "video":
         return accurate_video(path, spec, opts)
     if kind == "audio":
-        return _accurate_audio(path, spec, opts)
+        return accurate_audio(path, spec, opts)
 
     if spec.encode.strategy:
         return run_encoder(path, kind, spec, opts)
@@ -526,126 +528,6 @@ def _accurate_dispatch(path: Path, kind: BinaryFileKind, spec: PipelineSpec, opt
         context={"filename": path.name, "content": content[:4000]},
         pipeline_spec=spec,
     )
-
-
-def _accurate_image(path: Path, spec: PipelineSpec, opts: CatOpts) -> str:
-    """Image extraction with mode-specific LLM prompts."""
-    if spec.encode.strategy:
-        return run_encoder(path, "image", spec, opts)
-
-    from mm.llm import LlmBackend, image_part
-    from mm.profile import get_active_profile_name
-
-    t0 = time.monotonic()
-    llm = LlmBackend()
-    parts = [image_part(path)]
-    content = llm.generate(
-        "image",
-        "accurate",
-        context={"filename": path.name},
-        parts=parts,
-        pipeline_spec=spec,
-    )
-    elapsed = (time.monotonic() - t0) * 1000
-    u = llm.last_usage
-
-    profile_name = get_active_profile_name()
-    generate_output = format_generate_verbose(
-        profile_name, elapsed, u.prompt_tokens, u.completion_tokens
-    )
-    footer = format_footer(path, "accurate", elapsed, u.prompt_tokens, u.completion_tokens)
-    suffix_parts = [generate_output]
-    if footer:
-        suffix_parts.append(footer)
-    opts._verbose_suffix = "\n\n".join(suffix_parts)
-    return content
-
-
-def _accurate_audio(path: Path, spec: PipelineSpec, opts: CatOpts) -> str:
-    """Audio extraction with transcription."""
-    from mm.ffmpeg import extract_audio, ffmpeg_available
-    from mm.whisper import transcribe, whisper_available
-
-    if not ffmpeg_available():
-        return f"[ffmpeg not found — cannot process {path.name}]"
-
-    if not whisper_available():
-        return (
-            "[whisper not available — faster-whisper should be included in core mm install. "
-            "For MLX on Apple Silicon: pip install mm-ctx[mlx]]"
-        )
-
-    if spec.generate is None:
-        return extract_local(path, "audio", no_cache=opts.no_cache)
-
-    # The hard-coded whisper+LLM fast path only implements `transcribe`.
-    # Anything else (e.g. audio-gemini) must be routed through the
-    # generic encoder runner so we only report stages that actually ran.
-    _AUDIO_NATIVE = {"transcribe", "audio-transcribe"}
-    if spec.encode.strategy and spec.encode.strategy not in _AUDIO_NATIVE:
-        return run_encoder(path, "audio", spec, opts)
-
-    timing: dict[str, float] = {}
-    t_total = time.monotonic()
-
-    akw = spec.encode.strategy_opts
-    whisper_model = akw.get("whisper_model") or "medium"
-    audio_speed = akw.get("audio_speed") or 1.0
-    beam_size = 5
-
-    t0 = time.monotonic()
-    audio_result = extract_audio(path, speed=audio_speed)
-    timing["audio_extraction_ms"] = (time.monotonic() - t0) * 1000
-
-    whisper_result = transcribe(
-        audio_result.path,
-        model_size=whisper_model,
-        beam_size=beam_size,
-        audio_speed=audio_speed,
-    )
-    timing["audio_transcription_ms"] = whisper_result.elapsed_ms
-    transcript = whisper_result.text
-
-    try:
-        audio_result.path.unlink(missing_ok=True)
-    except Exception:
-        pass
-
-    if not transcript or transcript.startswith("["):
-        return transcript or "[No speech detected]"
-
-    from mm.llm import LlmBackend
-
-    t_llm = time.monotonic()
-    llm = LlmBackend()
-    summary = llm.generate(
-        "audio",
-        "accurate",
-        context={"filename": path.name, "transcript": transcript},
-        pipeline_spec=spec,
-    )
-    timing["llm_call_ms"] = (time.monotonic() - t_llm) * 1000
-    timing["total_ms"] = (time.monotonic() - t_total) * 1000
-    u = llm.last_usage
-
-    word_count = len(transcript.split())
-    result = f"{summary}\n\n[Transcript: {word_count} words]"
-
-    from mm.profile import get_active_profile_name
-
-    profile_name = get_active_profile_name()
-    generate_output = format_generate_verbose(
-        profile_name, timing["total_ms"], u.prompt_tokens, u.completion_tokens
-    )
-    footer = format_footer(
-        path, "accurate", timing["total_ms"], u.prompt_tokens, u.completion_tokens
-    )
-    suffix_parts = [generate_output]
-    if footer:
-        suffix_parts.append(footer)
-    opts._verbose_suffix = "\n\n".join(suffix_parts)
-
-    return result
 
 
 def _display_rich(
