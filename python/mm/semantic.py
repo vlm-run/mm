@@ -51,7 +51,7 @@ def _index_one(uri: str) -> str | None:
 
     Returns the URI on success, or ``None`` on failure (missing file,
     extractor error, or embed failure). Accurate-mode extraction writes
-    to the ``l2_results`` + ``chunks`` + ``chunks_vec`` tables as a
+    to the ``accurate_results`` + ``chunks`` + ``chunks_vec`` tables as a
     side effect of ``_run_accurate``.
     """
     from mm.commands.cat import _CatOpts, _extract

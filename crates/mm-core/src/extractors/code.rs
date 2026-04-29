@@ -1,7 +1,7 @@
 use std::fs;
 use std::path::Path;
 
-use crate::extract::{ContentExtractor, ExtractError, L1Record};
+use crate::extract::{ContentExtractor, ExtractError, FastRecord};
 
 pub struct CodeExtractor;
 
@@ -10,7 +10,7 @@ impl ContentExtractor for CodeExtractor {
         matches!(kind, "code" | "text" | "config")
     }
 
-    fn extract(&self, path: &Path) -> Result<L1Record, ExtractError> {
+    fn extract(&self, path: &Path) -> Result<FastRecord, ExtractError> {
         let content = fs::read_to_string(path).map_err(ExtractError::Io)?;
 
         let line_count = content.lines().count() as u32;
@@ -22,7 +22,7 @@ impl ContentExtractor for CodeExtractor {
 
         let language = detect_language(path);
 
-        Ok(L1Record {
+        Ok(FastRecord {
             content_hash: Some(content_hash),
             text_preview: Some(preview),
             line_count: Some(line_count),

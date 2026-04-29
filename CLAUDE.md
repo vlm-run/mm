@@ -115,8 +115,8 @@ mm/
 │   │   │   ├── hash.rs         # xxh3 hashing strategies (full, partial, mmap, directory_hash)
 │   │   │   ├── cache.rs        # Manifest-based incremental re-indexing
 │   │   │   └── format.rs       # Output formatting helpers
-│   │   └── benches/            # Criterion benchmarks (l0_walk, l0_index, l1_extract, hash)
-│   └── mm-python/          # PyO3 bindings (Scanner, L1Result)
+│   │   └── benches/            # Criterion benchmarks (metadata_walk, metadata_index, fast_extract, hash)
+│   └── mm-python/          # PyO3 bindings (Scanner, FastResult)
 │       └── src/lib.rs          # Arrow IPC transfer to Python
 ├── python/mm/              # Python package source
 │   ├── __init__.py             # Public API re-exports
@@ -178,8 +178,7 @@ mm/
 │       ├── conftest.py
 │       ├── test_context.py
 │       ├── test_cli.py
-│       ├── test_l0_metadata.py
-│       ├── test_l1_extraction.py
+│       ├── test_metadata.py
 │       ├── test_pipe.py
 │       └── test_benchmark.py
 └── benchmarks/
@@ -272,8 +271,8 @@ Use `mm find <dir> --schema` to see all available columns, their Arrow types, de
 
 `mm sql` auto-routes queries based on the table name in the `FROM` clause:
 - `files` → scan directory + SQLite (ephemeral in-memory table)
-- `l2_results` → SQLite direct (LLM-generated summaries)
-- `chunks` → SQLite direct (chunked content + embeddings)
+- `accurate_results` → SQLite direct (LLM-generated summaries)
+- `chunks` → SQLite direct (chunked content + embeddings, mode = 'fast' or 'accurate')
 
 Use `mm sql --list-tables` to see available tables and row counts.
 
@@ -323,9 +322,9 @@ ctx.info()   # Rich summary panel
 - **Rust fast path**: `find --format json`, `wc --format json` bypass pyarrow entirely — serde_json in Rust, ~60ms cold start.
 - **Parallel scanning**: `ignore` crate for gitignore-aware walking + `rayon` for parallelism.
 - **Hashing**: xxh3 via `xxhash-rust` for fast content fingerprinting (full file via mmap). `directory_hash` hashes sorted file listings for SQL cache keys.
-- **Storage**: Global SQLite database at `~/.local/share/mm/mm.db` with tables: `files` (metadata + content), `l2_results` (LLM summaries), `chunks` (content chunks), `chunks_vec` (sqlite-vec embeddings), `cache` (key-value cache). Schema defined in `python/mm/store/schema.py`.
+- **Storage**: Global SQLite database at `~/.local/share/mm/mm.db` with tables: `files` (metadata + content), `accurate_results` (LLM summaries), `chunks` (content chunks; `mode` = 'fast' or 'accurate'), `chunks_vec` (sqlite-vec embeddings), `cache` (key-value cache). Schema defined in `python/mm/store/schema.py`.
 - **Embeddings**: Generated via Gemini embedding API through the mm inference server (`/v1/embeddings`). Supports text, image, audio (chunked at 80s), video (chunked at 120s), and PDF. Stored in `chunks_vec` virtual table (sqlite-vec). Triggered automatically after accurate-mode extraction.
-- **SQL routing**: `mm sql` auto-detects table from `FROM` clause. `files` → scan + in-memory SQLite. `l2_results`/`chunks` → persistent SQLite direct.
+- **SQL routing**: `mm sql` auto-detects table from `FROM` clause. `files` → scan + in-memory SQLite. `accurate_results`/`chunks` → persistent SQLite direct.
 - **Video metadata (fast)**: Native MP4 parsing (mp4parse) and MKV/WebM parsing (matroska) in Rust. No ffmpeg in fast mode — metadata only, <100ms.
 - **PDF text extraction**: `pypdfium2` on the Python CLI side (in `commands/cat.py`). Scanned/image-only PDFs return empty text.
 - **Pipe detection**: `pipe.py` uses `isatty()` only — no `select.select()`. A zero-timeout `select` poll races with upstream writers in pipelines (`mm find | mm wc`) and misses data not yet flushed. Standard Unix tools block-read when stdin is not a TTY; we do the same.

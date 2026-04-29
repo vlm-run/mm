@@ -15,12 +15,12 @@ pytestmark = pytest.mark.slow
 
 
 # ---------------------------------------------------------------------------
-# L0 benchmarks
+# Metadata benchmarks
 # ---------------------------------------------------------------------------
 
 
 def test_bench_context_creation(benchmark, large_tree: Path):
-    """Benchmark Context creation (L0 scan + Arrow build)."""
+    """Benchmark Context creation (metadata scan + Arrow build)."""
     from mm.context import Context
 
     result = benchmark(Context, large_tree)
@@ -28,7 +28,7 @@ def test_bench_context_creation(benchmark, large_tree: Path):
 
 
 def test_bench_context_1k_mixed(benchmark, mixed_1k_tree: Path):
-    """Benchmark L0 scan on 1000 mixed files (code + images)."""
+    """Benchmark metadata scan on 1000 mixed files (code + images)."""
     from mm.context import Context
 
     result = benchmark(Context, mixed_1k_tree)
@@ -76,12 +76,12 @@ def test_bench_filter(benchmark, large_tree: Path):
 
 
 # ---------------------------------------------------------------------------
-# L1 benchmarks
+# Fast benchmarks
 # ---------------------------------------------------------------------------
 
 
-def test_bench_l1_code_batch(benchmark, mixed_1k_tree: Path):
-    """Benchmark L1 extraction on code files."""
+def test_bench_fast_code_batch(benchmark, mixed_1k_tree: Path):
+    """Benchmark fast extraction on code files."""
     from mm._mm import Scanner
 
     scanner = Scanner(str(mixed_1k_tree))
@@ -95,12 +95,12 @@ def test_bench_l1_code_batch(benchmark, mixed_1k_tree: Path):
 
     def extract_batch():
         for f in code_files:
-            scanner.extract_l1(f)
+            scanner.extract_fast(f)
 
     benchmark(extract_batch)
 
 
-def test_bench_l1_video_native(benchmark, youtube_dir):
+def test_bench_fast_video_native(benchmark, youtube_dir):
     """Benchmark native Rust video metadata extraction (vs ffprobe)."""
     if youtube_dir is None:
         pytest.skip("~/data/youtube not available")
@@ -117,7 +117,7 @@ def test_bench_l1_video_native(benchmark, youtube_dir):
     # Use the smaller video for the benchmark
     target = min(mp4s, key=lambda n: (youtube_dir / n).stat().st_size)
 
-    result = benchmark(scanner.extract_l1, target)
+    result = benchmark(scanner.extract_fast, target)
     assert result.dimensions is not None
 
 
@@ -164,7 +164,7 @@ def test_bench_audio_2x(benchmark, youtube_dir):
 
 
 def test_bench_e2e_demo_dir(benchmark, demo_dir):
-    """Benchmark full L0 pipeline on ~/data/1-demo (249 real files)."""
+    """Benchmark full metadata pipeline on ~/data/1-demo (249 real files)."""
     if demo_dir is None:
         pytest.skip("~/data/1-demo not available")
 

@@ -52,7 +52,7 @@ def _mock_servers():
         resp.json.return_value = {"embeddings": [_FAKE_VECTOR] * n}
         return resp
 
-    # Mock OpenAI chat completions (used by test_l2_chat_completion)
+    # Mock OpenAI chat completions (used by test_accurate_chat_completion)
     mock_choice = SimpleNamespace(message=SimpleNamespace(content="Hello"))
     mock_completion = SimpleNamespace(choices=[mock_choice])
 
@@ -144,8 +144,8 @@ class TestServerHealth:
         resp = httpx.get(f"{base_url}/models", headers={**HEADERS}, timeout=5)
         assert resp.status_code == 200
 
-    def test_l2_chat_completion(self, base_url):
-        """Trivial L2 call — send a short prompt, get a response."""
+    def test_accurate_chat_completion(self, base_url):
+        """Trivial accurate-mode call — send a short prompt, get a response."""
         from mm.profile import DEFAULT_PROFILE, RESERVED_DEFAULTS
         from openai import OpenAI
 
@@ -203,15 +203,15 @@ class TestEmbeddings:
 
 
 # ---------------------------------------------------------------------------
-# End-to-end: L2 + chunk embedding
+# End-to-end: accurate result + chunk embedding
 # ---------------------------------------------------------------------------
 
 
 @pytest.mark.slow
 @pytest.mark.integration
 class TestChunkEmbedding:
-    def test_l2_store_and_embed(self, tmp_session: Path):
-        """Write L2 content, chunk it, embed chunks, verify round-trip."""
+    def test_accurate_store_and_embed(self, tmp_session: Path):
+        """Write accurate content, chunk it, embed chunks, verify round-trip."""
         import pyarrow as pa
         from mm.store import MmDatabase
         from mm.store.embed import embed_file_chunks
@@ -239,12 +239,12 @@ class TestChunkEmbedding:
         db.upsert_files(table, root)
 
         uri = "/test/integ/doc.txt"
-        db.put_l1(uri, "h1", "L1 content")
+        db.put_fast(uri, "h1", "fast content")
 
         content = "Machine learning is transforming software engineering. " * 40
-        l2_id = db.put_l2(uri, "h1", "default", "test-model", content)
+        accurate_id = db.put_accurate(uri, "h1", "default", "test-model", content)
         with patch("mm.store.db.MmDatabase", return_value=db):
-            n = embed_file_chunks(l2_id)
+            n = embed_file_chunks(accurate_id)
         assert n > 0
 
         full = db.get_full_content(uri, "h1", "default", "test-model")

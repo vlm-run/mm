@@ -14,16 +14,13 @@ fn create_test_tree(dir: &std::path::Path, count: usize) {
         }
         fs::create_dir_all(&path).unwrap();
         let ext = extensions[i % extensions.len()];
-        fs::write(
-            path.join(format!("file_{}{}", i, ext)),
-            format!("content {}", i),
-        )
-        .unwrap();
+        let filename = format!("file_{}{}", i, ext);
+        fs::write(path.join(filename), format!("content {}", i)).unwrap();
     }
 }
 
-fn bench_l0_full_pipeline(c: &mut Criterion) {
-    let mut group = c.benchmark_group("l0_index");
+fn bench_metadata_walk(c: &mut Criterion) {
+    let mut group = c.benchmark_group("metadata_walk");
 
     for size in [1_000, 10_000] {
         let dir = TempDir::new().unwrap();
@@ -32,8 +29,7 @@ fn bench_l0_full_pipeline(c: &mut Criterion) {
         group.bench_with_input(BenchmarkId::from_parameter(size), &size, |b, _| {
             b.iter(|| {
                 let entries = mm_core::scan_directory(dir.path(), None, false);
-                let batch = mm_core::build_l0_record_batch(&entries).unwrap();
-                assert!(batch.num_rows() > 0);
+                assert!(!entries.is_empty());
             });
         });
     }
@@ -41,5 +37,5 @@ fn bench_l0_full_pipeline(c: &mut Criterion) {
     group.finish();
 }
 
-criterion_group!(benches, bench_l0_full_pipeline);
+criterion_group!(benches, bench_metadata_walk);
 criterion_main!(benches);

@@ -419,6 +419,7 @@ class _CatOpts:
         "generate_overrides",
         "pipelines",
         "verbose",
+        "_verbose_suffix",
     )
 
     n: int | None
@@ -430,10 +431,13 @@ class _CatOpts:
     generate_overrides: dict[str, str]
     pipelines: dict[str, PipelineSpec]
     verbose: bool
+    _verbose_suffix: str | None
 
     def __init__(self, **kwargs: object) -> None:
         for k, v in kwargs.items():
             setattr(self, k, v)
+        if not hasattr(self, "_verbose_suffix"):
+            self._verbose_suffix = None
 
 
 # ---------------------------------------------------------------------------
@@ -520,22 +524,22 @@ def _resolve_pipeline(opts: _CatOpts, kind: str) -> PipelineSpec:
 
 
 def _extract(path: Path, opts: _CatOpts) -> str:
-    """Pipeline-driven extraction dispatch with unified -m=accurate caching.
+    """Pipeline-driven extraction dispatch with unified accurate-mode caching.
 
     1. Auto-detect kind from file extension
-    2. Check -m=accurate cache (applies to both fast and accurate modes)
+    2. Check accurate-result cache (applies to both fast and accurate modes)
     3. Resolve pipeline (explicit -p > toml override > built-in)
     4. Apply CLI overrides
-    5. Run encode step (kind-specific L1 extraction)
+    5. Run encode step (kind-specific local extraction)
     6. If generate is not None: run LLM call
     7. If generate is None: output encode result directly
-    8. Store result in -m=accurate cache
+    8. Store content + verbose metadata in the accurate-result cache
     """
     kind = file_kind(path)
 
     # Text-like kinds (code, config, plain text) bypass caching — they're passthrough.
     if kind == "text":
-        return _run_l1(path, kind, no_cache=opts.no_cache)
+        return _extract_local(path, kind, no_cache=opts.no_cache)
 
     from mm.profile import get_profile
     from mm.store.db import MmDatabase
@@ -551,11 +555,11 @@ def _extract(path: Path, opts: _CatOpts) -> str:
         opts.pipelines,
     )
 
-    l2_id: str | None = None
+    accurate_id: str | None = None
     if content_hash:
-        from mm.store.utils import get_l2_id
+        from mm.store.utils import get_accurate_id
 
-        l2_id = get_l2_id(
+        accurate_id = get_accurate_id(
             content_hash,
             profile.name,
             profile.model,
@@ -564,51 +568,65 @@ def _extract(path: Path, opts: _CatOpts) -> str:
             extra=extra,
         )
 
-        if not opts.no_cache and not opts.verbose:
-            value = db.get_l2(l2_id)
-            if value is not None:
+        if not opts.no_cache:
+            cached = db.get_accurate(accurate_id)
+            if cached is not None:
                 global _was_cached
                 _was_cached = True
-                return value
+                if opts.verbose:
+                    meta = db.get_accurate_metadata(accurate_id)
+                    suffix = (meta or {}).get("verbose_suffix") if meta else None
+                    if suffix:
+                        return f"{cached}\n\n{suffix}"
+                return cached
         else:
-            db.evict_l2(l2_id)
+            db.evict_accurate(accurate_id)
 
-    # Dispatch to mode-specific execution.
+    opts._verbose_suffix = None
+
+    # Dispatch to mode-specific execution. Each branch sets opts._verbose_suffix
+    # to the rendered verbose tail (regardless of opts.verbose) so we can cache
+    # it for replay on a future verbose run.
     if opts.mode == "accurate":
-        result = _run_accurate(path, kind, opts)
+        content = _run_accurate(path, kind, opts)
     else:
-        result = _run_fast(path, kind, opts)
+        content = _run_fast(path, kind, opts)
 
-    # Strip verbose decoration before caching (pipeline tree, footer, etc.)
-    _pipeline_marker = "\n[dim]pipeline\n"
-    cache_content = (
-        result.split(_pipeline_marker)[0].rstrip() if _pipeline_marker in result else result
-    )
+    suffix = opts._verbose_suffix
 
-    if content_hash and cache_content and not cache_content.startswith("["):
-        _run_l1(path, kind)
+    if content_hash and content and not content.startswith("["):
+        _extract_local(path, kind)
         uri = str(path.resolve())
+        meta = {"verbose_suffix": suffix} if suffix else None
         try:
-            db.put_l2(
+            db.put_accurate(
                 uri=uri,
                 content_hash=content_hash,
                 profile=profile.name,
                 model=profile.model,
-                content=cache_content,
+                content=content,
                 mode=opts.mode,
                 detail=False,
                 extra=extra,
+                metadata=meta,
             )
         except RuntimeError:
-            return result
-        if l2_id:
+            return _with_suffix(content, suffix, opts.verbose)
+        if accurate_id:
             try:
                 from mm.store.embed import embed_file_chunks
 
-                embed_file_chunks(l2_id)
+                embed_file_chunks(accurate_id)
             except Exception:
                 pass
-    return result
+    return _with_suffix(content, suffix, opts.verbose)
+
+
+def _with_suffix(content: str, suffix: str | None, verbose: bool) -> str:
+    """Append a cached verbose suffix to ``content`` when *verbose* is set."""
+    if verbose and suffix:
+        return f"{content}\n\n{suffix}"
+    return content
 
 
 def _run_fast(path: Path, kind: str, opts: _CatOpts) -> str:
@@ -619,7 +637,7 @@ def _run_fast(path: Path, kind: str, opts: _CatOpts) -> str:
     stage, a short LLM call.
     """
     if kind == "text":
-        return _run_l1(path, kind, no_cache=opts.no_cache)
+        return _extract_local(path, kind, no_cache=opts.no_cache)
 
     from mm.pipelines import apply_overrides
 
@@ -629,10 +647,11 @@ def _run_fast(path: Path, kind: str, opts: _CatOpts) -> str:
     if spec.encode.strategy:
         return _run_encoder(path, kind, spec, opts)
 
-    content = _run_l1(path, kind, no_cache=opts.no_cache)
+    content = _extract_local(path, kind, no_cache=opts.no_cache)
 
     if spec.generate is not None:
         from mm.llm import LlmBackend
+        from mm.profile import get_active_profile_name
 
         t0 = time.monotonic()
         llm = LlmBackend()
@@ -644,23 +663,17 @@ def _run_fast(path: Path, kind: str, opts: _CatOpts) -> str:
         )
         elapsed = (time.monotonic() - t0) * 1000
         u = llm.last_usage
-        footer = _format_footer(
-            path, "fast", elapsed, u.prompt_tokens, u.completion_tokens, opts.verbose
+        footer = _format_footer(path, "fast", elapsed, u.prompt_tokens, u.completion_tokens)
+
+        profile_name = get_active_profile_name()
+        generate_output = _format_generate_verbose(
+            profile_name, elapsed, u.prompt_tokens, u.completion_tokens
         )
-
-        if opts.verbose:
-            from mm.profile import get_active_profile_name
-
-            profile_name = get_active_profile_name()
-            generate_output = _format_generate_verbose(
-                profile_name, elapsed, u.prompt_tokens, u.completion_tokens
-            )
-            output_parts = [result, "", generate_output]
-            if footer:
-                output_parts.extend(["", footer])
-            return "\n".join(output_parts)
-
-        return f"{result}\n\n{footer}" if footer else result
+        suffix_parts = [generate_output]
+        if footer:
+            suffix_parts.append(footer)
+        opts._verbose_suffix = "\n\n".join(suffix_parts)
+        return result
 
     return content
 
@@ -672,7 +685,7 @@ def _run_accurate(path: Path, kind: str, opts: _CatOpts) -> str:
     spec = _resolve_pipeline(opts, kind)
     spec = apply_overrides(spec, opts.encode_overrides or None, opts.generate_overrides or None)
 
-    _run_l1(path, kind)
+    _extract_local(path, kind)
 
     return _accurate_dispatch(path, kind, spec, opts)
 
@@ -689,7 +702,7 @@ def _accurate_dispatch(path: Path, kind: str, spec: PipelineSpec, opts: _CatOpts
     if spec.encode.strategy:
         return _run_encoder(path, kind, spec, opts)
 
-    content = _run_l1(path, kind)
+    content = _extract_local(path, kind)
     if spec.generate is None:
         return content
 
@@ -739,12 +752,8 @@ def _format_footer(
     elapsed_ms: float,
     prompt_tokens: int = 0,
     completion_tokens: int = 0,
-    verbose: bool = False,
 ) -> str:
     """Format the footer with time, size, mode, profile, and tokens."""
-    if not verbose:
-        return ""
-
     from mm.display import format_size, format_time
 
     size_str = format_size(path.stat().st_size)
@@ -828,14 +837,12 @@ def _run_encoder(path: Path, kind: str, spec: PipelineSpec, opts: _CatOpts) -> s
 
         result = "\n\n".join(text_parts) if text_parts else ""
 
-        if opts.verbose:
-            encode_output = _format_encode_verbose(spec.encode.strategy, messages, encode_elapsed)
-            pipeline_tree = _format_pipeline_tree(encode_output)
-            return f"{result}\n{pipeline_tree}" if result else pipeline_tree
-
+        encode_output = _format_encode_verbose(spec.encode.strategy, messages, encode_elapsed)
+        opts._verbose_suffix = _format_pipeline_tree(encode_output)
         return result
 
     from mm.llm import LlmBackend
+    from mm.profile import get_active_profile_name
 
     t0 = time.monotonic()
     llm = LlmBackend()
@@ -858,24 +865,14 @@ def _run_encoder(path: Path, kind: str, spec: PipelineSpec, opts: _CatOpts) -> s
 
     elapsed = (time.monotonic() - t0) * 1000
     u = llm.last_usage
-    footer = _format_footer(
-        path, opts.mode, elapsed, u.prompt_tokens, u.completion_tokens, opts.verbose
+
+    encode_output = _format_encode_verbose(spec.encode.strategy, messages, encode_elapsed)
+    profile_name = get_active_profile_name()
+    generate_output = _format_generate_verbose(
+        profile_name, elapsed, u.prompt_tokens, u.completion_tokens
     )
-
-    if opts.verbose:
-        from mm.profile import get_active_profile_name
-
-        encode_output = _format_encode_verbose(spec.encode.strategy, messages, encode_elapsed)
-        profile_name = get_active_profile_name()
-        generate_output = _format_generate_verbose(
-            profile_name, elapsed, u.prompt_tokens, u.completion_tokens
-        )
-
-        pipeline_tree = _format_pipeline_tree(encode_output, generate_output)
-        output_parts = [result, pipeline_tree]
-        return "\n".join(output_parts)
-
-    return f"{result}\n\n{footer}" if footer else result
+    opts._verbose_suffix = _format_pipeline_tree(encode_output, generate_output)
+    return result
 
 
 def _accurate_image(path: Path, spec: PipelineSpec, opts: _CatOpts) -> str:
@@ -884,6 +881,7 @@ def _accurate_image(path: Path, spec: PipelineSpec, opts: _CatOpts) -> str:
         return _run_encoder(path, "image", spec, opts)
 
     from mm.llm import LlmBackend, image_part
+    from mm.profile import get_active_profile_name
 
     t0 = time.monotonic()
     llm = LlmBackend()
@@ -897,23 +895,17 @@ def _accurate_image(path: Path, spec: PipelineSpec, opts: _CatOpts) -> str:
     )
     elapsed = (time.monotonic() - t0) * 1000
     u = llm.last_usage
-    footer = _format_footer(
-        path, "accurate", elapsed, u.prompt_tokens, u.completion_tokens, opts.verbose
+
+    profile_name = get_active_profile_name()
+    generate_output = _format_generate_verbose(
+        profile_name, elapsed, u.prompt_tokens, u.completion_tokens
     )
-
-    if opts.verbose:
-        from mm.profile import get_active_profile_name
-
-        profile_name = get_active_profile_name()
-        generate_output = _format_generate_verbose(
-            profile_name, elapsed, u.prompt_tokens, u.completion_tokens
-        )
-        output_parts = [content, "", generate_output]
-        if footer:
-            output_parts.extend(["", footer])
-        return "\n".join(output_parts)
-
-    return f"{content}\n\n{footer}" if footer else content
+    footer = _format_footer(path, "accurate", elapsed, u.prompt_tokens, u.completion_tokens)
+    suffix_parts = [generate_output]
+    if footer:
+        suffix_parts.append(footer)
+    opts._verbose_suffix = "\n\n".join(suffix_parts)
+    return content
 
 
 def _accurate_video(path: Path, spec: PipelineSpec, opts: _CatOpts) -> str:
@@ -934,7 +926,7 @@ def _accurate_video(path: Path, spec: PipelineSpec, opts: _CatOpts) -> str:
         return f"[ffmpeg not found — cannot process {path.name}]"
 
     if spec.generate is None:
-        return _run_l1(path, "video", no_cache=opts.no_cache)
+        return _extract_local(path, "video", no_cache=opts.no_cache)
 
     # The hard-coded mosaic+whisper fast path only implements a fixed
     # set of strategies. Anything else (e.g. video-gemini, frame-sample)
@@ -1098,21 +1090,19 @@ def _accurate_video(path: Path, spec: PipelineSpec, opts: _CatOpts) -> str:
     token_keys = {k: v for k, v in timing.items() if "tokens" in k}
     prompt_tokens = int(token_keys.get("vlm_prompt_tokens", 0))
     completion_tokens = int(token_keys.get("vlm_completion_tokens", 0))
-    footer = _format_footer(
-        path, "accurate", timing["total_ms"], prompt_tokens, completion_tokens, opts.verbose
+
+    from mm.profile import get_active_profile_name
+
+    profile_name = get_active_profile_name()
+    generate_output = _format_generate_verbose(
+        profile_name, timing["total_ms"], prompt_tokens, completion_tokens
     )
-
-    if opts.verbose:
-        from mm.profile import get_active_profile_name
-
-        profile_name = get_active_profile_name()
-        generate_output = _format_generate_verbose(
-            profile_name, timing["total_ms"], prompt_tokens, completion_tokens
-        )
-        out_parts.append(f"\n{generate_output}")
-
+    footer = _format_footer(path, "accurate", timing["total_ms"], prompt_tokens, completion_tokens)
+    suffix_parts = [generate_output]
     if footer:
-        out_parts.append(f"\n{footer}")
+        suffix_parts.append(footer)
+    opts._verbose_suffix = "\n\n".join(suffix_parts)
+
     return "\n".join(out_parts)
 
 
@@ -1131,7 +1121,7 @@ def _accurate_audio(path: Path, spec: PipelineSpec, opts: _CatOpts) -> str:
         )
 
     if spec.generate is None:
-        return _run_l1(path, "audio", no_cache=opts.no_cache)
+        return _extract_local(path, "audio", no_cache=opts.no_cache)
 
     # The hard-coded whisper+LLM fast path only implements `transcribe`.
     # Anything else (e.g. audio-gemini) must be routed through the
@@ -1184,27 +1174,27 @@ def _accurate_audio(path: Path, spec: PipelineSpec, opts: _CatOpts) -> str:
     u = llm.last_usage
 
     word_count = len(transcript.split())
-    footer = _format_footer(
-        path, "accurate", timing["total_ms"], u.prompt_tokens, u.completion_tokens, opts.verbose
-    )
     result = f"{summary}\n\n[Transcript: {word_count} words]"
 
-    if opts.verbose:
-        from mm.profile import get_active_profile_name
+    from mm.profile import get_active_profile_name
 
-        profile_name = get_active_profile_name()
-        generate_output = _format_generate_verbose(
-            profile_name, timing["total_ms"], u.prompt_tokens, u.completion_tokens
-        )
-        result += f"\n\n{generate_output}"
-
+    profile_name = get_active_profile_name()
+    generate_output = _format_generate_verbose(
+        profile_name, timing["total_ms"], u.prompt_tokens, u.completion_tokens
+    )
+    footer = _format_footer(
+        path, "accurate", timing["total_ms"], u.prompt_tokens, u.completion_tokens
+    )
+    suffix_parts = [generate_output]
     if footer:
-        result += f"\n{footer}"
+        suffix_parts.append(footer)
+    opts._verbose_suffix = "\n\n".join(suffix_parts)
+
     return result
 
 
-def _run_l1(path: Path, kind: str, *, no_cache: bool = False) -> str:
-    """Run local content extraction (fast mode) with caching.
+def _extract_local(path: Path, kind: str, *, no_cache: bool = False) -> str:
+    """Run local content extraction (no LLM) with caching.
 
     Dispatches to the appropriate extractor based on file kind: image
     metadata, video metadata, PDF text, or raw text passthrough.
@@ -1214,35 +1204,35 @@ def _run_l1(path: Path, kind: str, *, no_cache: bool = False) -> str:
 
     content_hash = get_content_hash(path)
     if not no_cache and content_hash:
-        cached = MmDatabase().get_l1(content_hash)
+        cached = MmDatabase().get_fast(content_hash)
         if cached is not None:
             return cached
 
     def _handler() -> str:
         if kind == "image":
-            return _l1_image(path)
+            return _local_image(path)
         if kind == "video":
-            return _l1_video(path)
+            return _local_video(path)
         if kind == "audio":
-            return _l1_audio(path)
+            return _local_audio(path)
         if kind == "document":
-            return _l1_document(path)
+            return _local_document(path)
         return path.read_text(errors="replace")
 
     result = _handler()
     if content_hash and result and not result.startswith("["):
-        MmDatabase().put_l1(str(path.resolve()), content_hash, result)
+        MmDatabase().put_fast(str(path.resolve()), content_hash, result)
     return result
 
 
-def _l1_image(path: Path) -> str:
+def _local_image(path: Path) -> str:
     try:
         from mm._mm import Scanner
         from mm.display import format_size
 
         scanner = Scanner(str(path.parent))
         scanner.scan()
-        r = scanner.extract_l1(path.name)
+        r = scanner.extract_fast(path.name)
         parts: list[str] = []
         if r.dimensions:
             parts.append(f"Dimensions: {r.dimensions}")
@@ -1267,7 +1257,7 @@ def _l1_image(path: Path) -> str:
         return f"[Image extraction failed: {e}]"
 
 
-def _l1_video(path: Path) -> str:
+def _local_video(path: Path) -> str:
     """Metadata only — no ffmpeg, <100ms."""
     try:
         from mm._mm import Scanner
@@ -1275,7 +1265,7 @@ def _l1_video(path: Path) -> str:
 
         scanner = Scanner(str(path.parent))
         scanner.scan()
-        r = scanner.extract_l1(path.name)
+        r = scanner.extract_fast(path.name)
         parts: list[str] = []
         if r.dimensions:
             parts.append(f"Resolution: {r.dimensions}")
@@ -1299,7 +1289,7 @@ def _l1_video(path: Path) -> str:
         return f"[Video extraction failed: {e}]"
 
 
-def _l1_audio(path: Path) -> str:
+def _local_audio(path: Path) -> str:
     """Metadata only — no ffmpeg, <100ms."""
     try:
         from mm._mm import Scanner
@@ -1307,7 +1297,7 @@ def _l1_audio(path: Path) -> str:
 
         scanner = Scanner(str(path.parent))
         scanner.scan()
-        r = scanner.extract_l1(path.name)
+        r = scanner.extract_fast(path.name)
         parts: list[str] = []
         if r.duration_s is not None:
             mins, secs = divmod(r.duration_s, 60)
@@ -1323,11 +1313,11 @@ def _l1_audio(path: Path) -> str:
         return f"[Audio extraction failed: {e}]"
 
 
-def _l1_document(path: Path) -> str:
+def _local_document(path: Path) -> str:
     """Extract document content."""
     ext = path.suffix.lower()
     if ext == ".pdf":
-        return _l1_pdf(path)
+        return _local_pdf(path)
 
     try:
         from mm.docs_extract import extract_docx, extract_pptx
@@ -1339,7 +1329,7 @@ def _l1_document(path: Path) -> str:
         return f"[Document extraction failed for {path.name}: {e}]"
 
 
-def _l1_pdf(path: Path) -> str:
+def _local_pdf(path: Path) -> str:
     """Fallback PDF text extraction via pypdfium2."""
     try:
         import pypdfium2 as pdfium

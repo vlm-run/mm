@@ -30,9 +30,9 @@ def _make_opts(mode: str = "fast", **overrides: object) -> _CatOpts:
 
 
 def _mock_cache_miss():
-    """Context manager stack that mocks the L2 cache infrastructure to always miss."""
+    """Context manager stack that mocks the accurate-results cache to always miss."""
     mock_db = MagicMock()
-    mock_db.get_l2.return_value = None
+    mock_db.get_accurate.return_value = None
     mock_profile = MagicMock()
     mock_profile.name = "test"
     mock_profile.model = "test-model"
@@ -40,7 +40,7 @@ def _mock_cache_miss():
         patch("mm.store.utils.get_content_hash", return_value="fakehash"),
         patch("mm.store.db.MmDatabase", return_value=mock_db),
         patch("mm.profile.get_profile", return_value=mock_profile),
-        patch("mm.store.utils.get_l2_id", return_value="fake_l2_id"),
+        patch("mm.store.utils.get_accurate_id", return_value="fake_accurate_id"),
     )
 
 

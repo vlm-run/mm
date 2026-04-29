@@ -1,7 +1,7 @@
 use arrow::datatypes::{DataType, Field, Schema, TimeUnit};
 use std::sync::Arc;
 
-pub fn l0_schema() -> Schema {
+pub fn metadata_schema() -> Schema {
     Schema::new(vec![
         Field::new("path", DataType::Utf8, false),
         Field::new("name", DataType::Utf8, false),
@@ -28,8 +28,8 @@ pub fn l0_schema() -> Schema {
     ])
 }
 
-pub fn l1_schema() -> Schema {
-    let mut fields = l0_schema().fields().to_vec();
+pub fn fast_schema() -> Schema {
+    let mut fields = metadata_schema().fields().to_vec();
     fields.extend(vec![
         Arc::new(Field::new("content_hash", DataType::Utf8, true)),
         Arc::new(Field::new("text_preview", DataType::Utf8, true)),
@@ -58,14 +58,14 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_l0_schema_field_count() {
-        let schema = l0_schema();
+    fn test_metadata_schema_field_count() {
+        let schema = metadata_schema();
         assert_eq!(schema.fields().len(), 14);
     }
 
     #[test]
-    fn test_l0_has_dimension_columns() {
-        let schema = l0_schema();
+    fn test_metadata_has_dimension_columns() {
+        let schema = metadata_schema();
         assert!(schema.field_with_name("width").is_ok());
         assert!(schema.field_with_name("height").is_ok());
         let w = schema.field_with_name("width").unwrap();
@@ -74,28 +74,28 @@ mod tests {
     }
 
     #[test]
-    fn test_l1_schema_extends_l0() {
-        let l0 = l0_schema();
-        let l1 = l1_schema();
-        assert!(l1.fields().len() > l0.fields().len());
-        assert_eq!(l1.fields().len(), 32);
+    fn test_fast_schema_extends_metadata() {
+        let metadata = metadata_schema();
+        let fast = fast_schema();
+        assert!(fast.fields().len() > metadata.fields().len());
+        assert_eq!(fast.fields().len(), 32);
     }
 
     #[test]
-    fn test_l1_has_exif_columns() {
-        let l1 = l1_schema();
-        assert!(l1.field_with_name("exif_camera").is_ok());
-        assert!(l1.field_with_name("exif_date").is_ok());
-        assert!(l1.field_with_name("exif_gps").is_ok());
-        assert!(l1.field_with_name("exif_orientation").is_ok());
+    fn test_fast_has_exif_columns() {
+        let fast = fast_schema();
+        assert!(fast.field_with_name("exif_camera").is_ok());
+        assert!(fast.field_with_name("exif_date").is_ok());
+        assert!(fast.field_with_name("exif_gps").is_ok());
+        assert!(fast.field_with_name("exif_orientation").is_ok());
     }
 
     #[test]
-    fn test_l1_has_video_columns() {
-        let l1 = l1_schema();
-        assert!(l1.field_with_name("video_codec").is_ok());
-        assert!(l1.field_with_name("audio_codec").is_ok());
-        assert!(l1.field_with_name("fps").is_ok());
-        assert!(l1.field_with_name("has_audio").is_ok());
+    fn test_fast_has_video_columns() {
+        let fast = fast_schema();
+        assert!(fast.field_with_name("video_codec").is_ok());
+        assert!(fast.field_with_name("audio_codec").is_ok());
+        assert!(fast.field_with_name("fps").is_ok());
+        assert!(fast.field_with_name("has_audio").is_ok());
     }
 }

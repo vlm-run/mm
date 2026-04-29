@@ -377,7 +377,7 @@ mm sql "SELECT kind, COUNT(*) as n, ROUND(SUM(size)/1e6,1) as mb \
   FROM files GROUP BY kind ORDER BY mb DESC" --dir ~/data
 
 # Query stored tables directly (auto-detected from table name)
-mm sql "SELECT file_uri, summary FROM l2_results LIMIT 10"
+mm sql "SELECT file_uri, summary FROM accurate_results LIMIT 10"
 mm sql "SELECT file_uri, chunk_idx, LENGTH(chunk_text) FROM chunks"
 mm sql "SELECT * FROM files WHERE kind='image'" --dir ~/data --pre-index  # index before query
 mm sql --list-tables                              # show available tables
@@ -437,13 +437,13 @@ Benchmarked on Apple Silicon (M-series), 702 files (7.2GB):
 mm uses a global SQLite database at `~/.local/share/mm/mm.db` with sqlite-vec for vector search:
 
 
-| Table        | Contents                                                          | Relationship         |
-| ------------ | ----------------------------------------------------------------- | -------------------- |
-| `files`      | File metadata + content (one row per file, `uri` = absolute path) | —                    |
-| `l2_results` | LLM-generated summaries (many per file)                           | FK → `files.uri`     |
-| `chunks`     | ~2048-char content chunks                                         | FK → `l2_results.id` |
-| `chunks_vec` | Embedding vectors (sqlite-vec virtual table)                      | FK → `chunks.id`     |
-| `cache`      | Key-value result cache                                            | —                    |
+| Table              | Contents                                                          | Relationship                |
+| ------------------ | ----------------------------------------------------------------- | --------------------------- |
+| `files`            | File metadata + content (one row per file, `uri` = absolute path) | —                           |
+| `accurate_results` | LLM-generated summaries (many per file)                           | FK → `files.uri`            |
+| `chunks`           | ~2048-char content chunks (mode = 'fast' or 'accurate')           | FK → `accurate_results.id`  |
+| `chunks_vec`       | Embedding vectors (sqlite-vec virtual table)                      | FK → `chunks.id`            |
+| `cache`            | Key-value result cache                                            | —                           |
 
 
 The `files` table includes metadata columns (path, size, kind, etc.) and content columns (content_hash, text_preview, line_count, duration_s, exif_*, video_codec, etc.).

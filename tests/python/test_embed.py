@@ -21,7 +21,7 @@ from mm.store.embed import (
 )
 
 from .conftest import requires_sqlite_vec
-from .test_utils import ensure_l1, get_hash
+from .test_utils import ensure_fast, get_hash
 
 
 def _genai_available() -> bool:
@@ -164,14 +164,14 @@ class TestEmbedParts:
 @requires_gemini
 class TestEmbedFileChunks:
     @requires_sqlite_vec
-    def test_embeds_chunks_after_l2(self, db: MmDatabase, mock_server: MagicMock):
+    def test_embeds_chunks_after_accurate(self, db: MmDatabase, mock_server: MagicMock):
         uri = "/test/data/doc.txt"
-        ensure_l1(db, uri)
+        ensure_fast(db, uri)
 
         content = "Test content for embedding. " * 50
-        l2_id = db.put_l2(uri, "hash1", "default", "qwen", content)
+        accurate_id = db.put_accurate(uri, "hash1", "default", "qwen", content)
         with patch("mm.store.db.MmDatabase", return_value=db):
-            n = embed_file_chunks(l2_id)
+            n = embed_file_chunks(accurate_id)
         assert n > 0
         mock_server.assert_called()
 
@@ -184,12 +184,12 @@ class TestEmbedFileChunks:
     @requires_sqlite_vec
     def test_vectors_stored_in_db(self, db: MmDatabase, mock_server: MagicMock):
         uri = "/test/data/doc.txt"
-        ensure_l1(db, uri)
+        ensure_fast(db, uri)
         content_hash = get_hash(uri)
 
-        l2_id = db.put_l2(uri, content_hash, "default", "qwen", "Short text")
+        accurate_id = db.put_accurate(uri, content_hash, "default", "qwen", "Short text")
         with patch("mm.store.db.MmDatabase", return_value=db):
-            embed_file_chunks(l2_id)
+            embed_file_chunks(accurate_id)
 
         results = db.search_similar([1.0] * FAKE_DIM, limit=1)
         assert len(results) > 0
@@ -198,13 +198,13 @@ class TestEmbedFileChunks:
     @requires_sqlite_vec
     def test_content_preserved_after_embedding(self, db: MmDatabase, mock_server: MagicMock):
         uri = "/test/data/doc.txt"
-        ensure_l1(db, uri)
+        ensure_fast(db, uri)
         content_hash = get_hash(uri)
 
         content = "Preserved content. " * 100
-        l2_id = db.put_l2(uri, content_hash, "default", "qwen", content)
+        accurate_id = db.put_accurate(uri, content_hash, "default", "qwen", content)
         with patch("mm.store.db.MmDatabase", return_value=db):
-            embed_file_chunks(l2_id)
+            embed_file_chunks(accurate_id)
         full = db.get_full_content(uri, content_hash, "default", "qwen")
         assert full == content
 
@@ -237,16 +237,16 @@ class TestCatEmbedIntegration:
         )
 
         mock_db = MagicMock()
-        mock_db.get_l2.return_value = None  # cache miss
-        l2_id = "fake_l2_id"
-        mock_db.put_l2.return_value = l2_id
+        mock_db.get_accurate.return_value = None  # cache miss
+        accurate_id = "fake_accurate_id"
+        mock_db.put_accurate.return_value = accurate_id
 
         with (
             patch("mm.commands.cat._run_accurate", return_value="LLM generated text."),
             patch("mm.store.utils.get_content_hash", return_value="fakehash"),
             patch("mm.store.db.MmDatabase", return_value=mock_db),
             patch("mm.profile.get_profile") as mock_profile,
-            patch("mm.store.utils.get_l2_id", return_value="fake_l2_id"),
+            patch("mm.store.utils.get_accurate_id", return_value="fake_accurate_id"),
             patch("mm.store.embed.embed_file_chunks") as mock_embed,
         ):
             mock_profile.return_value.name = "default"
@@ -254,5 +254,5 @@ class TestCatEmbedIntegration:
             result = _extract(pdf, opts)
 
         assert result == "LLM generated text."
-        mock_db.put_l2.assert_called_once()
+        mock_db.put_accurate.assert_called_once()
         mock_embed.assert_called_once()

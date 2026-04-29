@@ -615,17 +615,17 @@ class Context:
         return new_ctx
 
     def cat(self, path: str, *, no_cache: bool = False) -> str:
-        """Read fast-mode content of a file (directory-scan mode)."""
+        """Read locally-extracted content of a file (directory-scan mode)."""
         self._require_table("cat")
         assert self.root is not None
         full_path = self.root / path
-        from mm.commands.cat import _run_l1
+        from mm.commands.cat import _extract_local
         from mm.utils import file_kind
 
         kind = file_kind(full_path)
         if kind == "text":
             return full_path.read_text(errors="replace")
-        return _run_l1(full_path, kind, no_cache=no_cache)
+        return _extract_local(full_path, kind, no_cache=no_cache)
 
     def head(self, path: str, *, n: int = 10) -> str:
         content = self.cat(path)
@@ -800,7 +800,7 @@ class Context:
 
     def _collect_fast_contents(self) -> dict[str, str]:
         """Extract ``cat``-like content for every put-based item (fast mode)."""
-        from mm.commands.cat import _run_l1
+        from mm.commands.cat import _extract_local
         from mm.utils import file_kind
 
         out: dict[str, str] = {}
@@ -817,7 +817,7 @@ class Context:
                     if kind == "text":
                         out[ref_id] = p.read_text(errors="replace")
                     else:
-                        out[ref_id] = _run_l1(p, kind, no_cache=True)
+                        out[ref_id] = _extract_local(p, kind, no_cache=True)
                 except Exception as exc:  # noqa: BLE001
                     out[ref_id] = f"[extract failed: {exc}]"
             # in-memory / url items fall through to the metadata fallback

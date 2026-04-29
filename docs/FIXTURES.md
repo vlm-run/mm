@@ -367,7 +367,7 @@ $ mm grep "patient diagnosis" ~/data/domains -s --kind document --format json
 ## `sql` — SQL analytics on the file index
 
 `mm sql` auto-routes queries: `files` → ephemeral scan + SQLite,
-`l2_results`/`chunks` → persistent SQLite.
+`accurate_results`/`chunks` → persistent SQLite.
 
 ### Kind breakdown with sizes
 
@@ -411,11 +411,11 @@ bucket     files
 
 ```bash
 $ mm sql --list-tables
-table        source         stored
-files        scan + SQLite  ephemeral
-l2_results   SQLite         2 rows
-chunks       SQLite         2 rows
-chunks_vec   sqlite-vec     2 rows
+table             source         stored
+files             scan + SQLite  ephemeral
+accurate_results  SQLite         2 rows
+chunks            SQLite         2 rows
+chunks_vec        sqlite-vec     2 rows
 ```
 
 ---

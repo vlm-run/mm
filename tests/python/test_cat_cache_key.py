@@ -1,6 +1,6 @@
 """Cache-key canonicalisation tests for ``mm cat``.
 
-The L2 cache fragment for `mm cat` is built from the user's overrides. Dict-
+The accurate-result cache fragment for `mm cat` is built from the user's overrides. Dict-
 valued overrides (notably ``strategy_opts``) preserve insertion order in
 their default ``repr``, so without canonicalisation, two CLI invocations
 with the same flags in a different order would produce different cache

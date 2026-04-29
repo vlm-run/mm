@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use crate::extract::{ContentExtractor, ExtractError, L1Record};
+use crate::extract::{ContentExtractor, ExtractError, FastRecord};
 use crate::hash;
 
 pub struct DocumentExtractor;
@@ -10,10 +10,10 @@ impl ContentExtractor for DocumentExtractor {
         kind == "document"
     }
 
-    fn extract(&self, path: &Path) -> Result<L1Record, ExtractError> {
+    fn extract(&self, path: &Path) -> Result<FastRecord, ExtractError> {
         let content_hash = hash::full_hash_mmap(path).map(|h| format!("{:016x}", h));
 
-        Ok(L1Record {
+        Ok(FastRecord {
             content_hash,
             ..Default::default()
         })

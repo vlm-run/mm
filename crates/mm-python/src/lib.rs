@@ -8,7 +8,7 @@ use pyo3::prelude::*;
 use pyo3::types::{PyAny, PyBytes};
 
 use mm_core::extract::ContentExtractor;
-use mm_core::extract::L1Record;
+use mm_core::extract::FastRecord;
 use mm_core::extractors::{
     AudioExtractor, CodeExtractor, DocumentExtractor, ImageExtractor, VideoExtractor,
 };
@@ -42,7 +42,7 @@ impl Scanner {
         self.entries = mm_core::scan_directory(&self.root, self.n_threads, self.no_ignore);
         mm_core::enrich_image_dimensions(&mut self.entries, &self.root);
         let count = self.entries.len();
-        let batch = mm_core::build_l0_record_batch(&self.entries)
+        let batch = mm_core::build_metadata_batch(&self.entries)
             .map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(e.to_string()))?;
         self.batch = Some(batch);
         Ok(count)
@@ -175,7 +175,7 @@ impl Scanner {
         ))
     }
 
-    fn extract_l1(&self, path: String) -> PyResult<L1Result> {
+    fn extract_fast(&self, path: String) -> PyResult<FastResult> {
         let p = PathBuf::from(&path);
 
         let entry = self.entries.iter().find(|e| e.path.as_str() == path);
@@ -189,11 +189,11 @@ impl Scanner {
             FileKind::Video => VideoExtractor.extract(&self.root.join(&p)),
             FileKind::Audio => AudioExtractor.extract(&self.root.join(&p)),
             FileKind::Document => DocumentExtractor.extract(&self.root.join(&p)),
-            _ => Ok(L1Record::default()),
+            _ => Ok(FastRecord::default()),
         }
         .map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(e.to_string()))?;
 
-        Ok(L1Result {
+        Ok(FastResult {
             content_hash: record.content_hash,
             text_preview: record.text_preview,
             line_count: record.line_count,
@@ -244,7 +244,7 @@ impl Scanner {
 
 #[pyclass]
 #[derive(Clone)]
-struct L1Result {
+struct FastResult {
     #[pyo3(get)]
     content_hash: Option<String>,
     #[pyo3(get)]
@@ -284,10 +284,10 @@ struct L1Result {
 }
 
 #[pymethods]
-impl L1Result {
+impl FastResult {
     fn __repr__(&self) -> String {
         format!(
-            "L1Result(hash={:?}, lines={:?}, lang={:?}, dims={:?}, phash={:?})",
+            "FastResult(hash={:?}, lines={:?}, lang={:?}, dims={:?}, phash={:?})",
             self.content_hash, self.line_count, self.language, self.dimensions, self.phash
         )
     }
@@ -415,7 +415,7 @@ fn gemini_document_part(path: String) -> PyResult<String> {
 #[pyo3(name = "_mm")]
 fn mm_module(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<Scanner>()?;
-    m.add_class::<L1Result>()?;
+    m.add_class::<FastResult>()?;
     m.add_function(wrap_pyfunction!(hamming_distance, m)?)?;
     m.add_function(wrap_pyfunction!(content_hash, m)?)?;
     m.add_function(wrap_pyfunction!(directory_hash, m)?)?;

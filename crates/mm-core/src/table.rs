@@ -6,9 +6,9 @@ use arrow::array::{
 };
 
 use crate::meta::FileEntry;
-use crate::schema::l0_schema;
+use crate::schema::metadata_schema;
 
-pub fn build_l0_record_batch(
+pub fn build_metadata_batch(
     entries: &[FileEntry],
 ) -> Result<RecordBatch, arrow::error::ArrowError> {
     let cap = entries.len();
@@ -68,7 +68,7 @@ pub fn build_l0_record_batch(
         Arc::new(height_builder.finish()),
     ];
 
-    RecordBatch::try_new(Arc::new(l0_schema()), columns)
+    RecordBatch::try_new(Arc::new(metadata_schema()), columns)
 }
 
 pub fn write_parquet(
@@ -114,7 +114,7 @@ mod tests {
         fs::write(dir.path().join("lib.rs"), "fn main() {}").unwrap();
 
         let entries = scan_directory(dir.path(), None, false);
-        let batch = build_l0_record_batch(&entries).unwrap();
+        let batch = build_metadata_batch(&entries).unwrap();
 
         assert_eq!(batch.num_rows(), 2);
         assert_eq!(batch.num_columns(), 14);
@@ -126,7 +126,7 @@ mod tests {
         fs::write(dir.path().join("test.py"), "x = 1").unwrap();
 
         let entries = scan_directory(dir.path(), None, false);
-        let batch = build_l0_record_batch(&entries).unwrap();
+        let batch = build_metadata_batch(&entries).unwrap();
 
         let width_col = batch.column_by_name("width").unwrap();
         let height_col = batch.column_by_name("height").unwrap();
@@ -149,7 +149,7 @@ mod tests {
 
         let mut entries = scan_directory(dir.path(), None, false);
         enrich_image_dimensions(&mut entries, dir.path());
-        let batch = build_l0_record_batch(&entries).unwrap();
+        let batch = build_metadata_batch(&entries).unwrap();
 
         let width_col = batch.column_by_name("width").unwrap();
         let height_col = batch.column_by_name("height").unwrap();
@@ -167,7 +167,7 @@ mod tests {
         fs::write(dir.path().join("test.py"), "x = 1").unwrap();
 
         let entries = scan_directory(dir.path(), None, false);
-        let batch = build_l0_record_batch(&entries).unwrap();
+        let batch = build_metadata_batch(&entries).unwrap();
 
         let parquet_path = dir.path().join("index.parquet");
         write_parquet(&batch, &parquet_path).unwrap();
@@ -185,7 +185,7 @@ mod tests {
 
         let mut entries = scan_directory(dir.path(), None, false);
         enrich_image_dimensions(&mut entries, dir.path());
-        let batch = build_l0_record_batch(&entries).unwrap();
+        let batch = build_metadata_batch(&entries).unwrap();
 
         let parquet_path = dir.path().join("index.parquet");
         write_parquet(&batch, &parquet_path).unwrap();

@@ -4,13 +4,13 @@ use std::fs::File;
 use std::io::BufReader;
 use std::path::Path;
 
-use crate::extract::{ExtractError, L1Record};
+use crate::extract::{ExtractError, FastRecord};
 
 // ---------------------------------------------------------------------------
 // Symphonia — MP3, WAV, FLAC, AAC, OGG/Vorbis, Opus
 // ---------------------------------------------------------------------------
 
-pub fn extract_symphonia(path: &Path) -> Result<L1Record, ExtractError> {
+pub fn extract_symphonia(path: &Path) -> Result<FastRecord, ExtractError> {
     use symphonia::core::formats::FormatOptions;
     use symphonia::core::io::MediaSourceStream;
     use symphonia::core::meta::MetadataOptions;
@@ -34,7 +34,7 @@ pub fn extract_symphonia(path: &Path) -> Result<L1Record, ExtractError> {
         .map_err(|e| ExtractError::Unsupported(format!("symphonia: {e}")))?;
 
     let format = probed.format;
-    let mut record = L1Record::default();
+    let mut record = FastRecord::default();
 
     // Find the best (default) audio track
     if let Some(track) = format.default_track() {
@@ -88,12 +88,12 @@ fn symphonia_codec_name(codec: symphonia::core::codecs::CodecType) -> String {
 // MP4 container (mp4parse)
 // ---------------------------------------------------------------------------
 
-pub fn extract_mp4(path: &Path) -> Result<L1Record, ExtractError> {
+pub fn extract_mp4(path: &Path) -> Result<FastRecord, ExtractError> {
     let mut file = File::open(path)?;
     let ctx = mp4parse::read_mp4(&mut file)
         .map_err(|e| ExtractError::Unsupported(format!("mp4parse: {e:?}")))?;
 
-    let mut record = L1Record::default();
+    let mut record = FastRecord::default();
     let mut has_audio = false;
 
     for track in &ctx.tracks {
@@ -166,13 +166,13 @@ pub fn extract_mp4(path: &Path) -> Result<L1Record, ExtractError> {
 // Matroska/WebM container
 // ---------------------------------------------------------------------------
 
-pub fn extract_matroska(path: &Path) -> Result<L1Record, ExtractError> {
+pub fn extract_matroska(path: &Path) -> Result<FastRecord, ExtractError> {
     let file = File::open(path)?;
     let reader = BufReader::new(file);
     let mkv = matroska::Matroska::open(reader)
         .map_err(|e| ExtractError::Unsupported(format!("matroska: {e}")))?;
 
-    let mut record = L1Record::default();
+    let mut record = FastRecord::default();
 
     if let Some(dur) = mkv.info.duration {
         record.duration_s = Some(dur.as_secs_f64());

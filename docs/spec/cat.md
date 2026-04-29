@@ -56,7 +56,7 @@ Passthrough in both modes — raw file content, no pipeline, no LLM.
 
 ## Caching
 
-Unified L2 cache (SQLite at `~/.local/share/mm/mm.db`) for **both** fast and accurate modes.
+Unified accurate-result cache (SQLite at `~/.local/share/mm/mm.db`) for **both** fast and accurate modes.
 
 - Cache key: `content_hash × profile × model × mode × overrides`
   - Same file with different modes/profiles/overrides → separate cache entries
@@ -150,7 +150,7 @@ elapsed • size • throughput
 Examples: `836ms • 38.2 KB • 45.7 KB/s`, `cached • 36ms • 412.8 KB • 7.0 MB/s`
 
 - Throughput auto-scales: B/s → KB/s → MB/s → GB/s
-- `cached` prefix when served from L2 cache
+- `cached` prefix when served from the accurate-result cache
 
 ## Introspection
 
