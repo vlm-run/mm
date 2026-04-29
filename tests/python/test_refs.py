@@ -420,7 +420,7 @@ class TestMigration:
                 has_audio INTEGER,
                 phash TEXT,
                 indexed_at INTEGER NOT NULL DEFAULT 0,
-                fast_indexed_at INTEGER
+                content_indexed_at INTEGER
             )
             """
         )

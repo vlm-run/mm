@@ -200,9 +200,9 @@ User metadata is emitted as a leading text part per item
 ### `ctx.to_md(mode="fast") -> str`
 
 Markdown table with one row per ref: `ref | kind | source | content`.
-`mode="fast"` runs local `cat`-extraction (see
-[`mm.commands.cat`](../python/mm/commands/cat.py)) for non-text kinds;
-raw text for code/text files.
+`mode="fast"` populates each row with the metadata-tier content
+(`files.text_preview` — produced by `extract_local`; no LLM call) for
+non-text kinds, and raw text for code/text files.
 
 `mode="accurate"` is reserved for the LLM-backed pipeline and currently
 raises `NotImplementedError`.

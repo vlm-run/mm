@@ -1,4 +1,4 @@
-"""mm storage — SQLite + sqlite-vec database for file metadata, accurate results, and embeddings."""
+"""mm storage — SQLite + sqlite-vec database for files, extractions, and embeddings."""
 
 __all__ = []
 
@@ -11,10 +11,10 @@ def __getattr__(name: str):
 
     if name in {
         "FileCol",
-        "AccurateCol",
+        "ExtractionCol",
         "ChunkCol",
         "FILES_TABLE",
-        "ACCURATE_RESULTS_TABLE",
+        "EXTRACTIONS_TABLE",
         "CHUNKS_TABLE",
     }:
         from mm.store import schema

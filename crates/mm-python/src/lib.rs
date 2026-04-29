@@ -8,7 +8,7 @@ use pyo3::prelude::*;
 use pyo3::types::{PyAny, PyBytes};
 
 use mm_core::extract::ContentExtractor;
-use mm_core::extract::FastRecord;
+use mm_core::extract::MetadataRecord;
 use mm_core::extractors::{
     AudioExtractor, CodeExtractor, DocumentExtractor, ImageExtractor, VideoExtractor,
 };
@@ -175,7 +175,7 @@ impl Scanner {
         ))
     }
 
-    fn extract_fast(&self, path: String) -> PyResult<FastResult> {
+    fn extract_metadata(&self, path: String) -> PyResult<MetadataResult> {
         let p = PathBuf::from(&path);
 
         let entry = self.entries.iter().find(|e| e.path.as_str() == path);
@@ -189,11 +189,11 @@ impl Scanner {
             FileKind::Video => VideoExtractor.extract(&self.root.join(&p)),
             FileKind::Audio => AudioExtractor.extract(&self.root.join(&p)),
             FileKind::Document => DocumentExtractor.extract(&self.root.join(&p)),
-            _ => Ok(FastRecord::default()),
+            _ => Ok(MetadataRecord::default()),
         }
         .map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(e.to_string()))?;
 
-        Ok(FastResult {
+        Ok(MetadataResult {
             content_hash: record.content_hash,
             text_preview: record.text_preview,
             line_count: record.line_count,
@@ -244,7 +244,7 @@ impl Scanner {
 
 #[pyclass]
 #[derive(Clone)]
-struct FastResult {
+struct MetadataResult {
     #[pyo3(get)]
     content_hash: Option<String>,
     #[pyo3(get)]
@@ -284,10 +284,10 @@ struct FastResult {
 }
 
 #[pymethods]
-impl FastResult {
+impl MetadataResult {
     fn __repr__(&self) -> String {
         format!(
-            "FastResult(hash={:?}, lines={:?}, lang={:?}, dims={:?}, phash={:?})",
+            "MetadataResult(hash={:?}, lines={:?}, lang={:?}, dims={:?}, phash={:?})",
             self.content_hash, self.line_count, self.language, self.dimensions, self.phash
         )
     }
@@ -415,7 +415,7 @@ fn gemini_document_part(path: String) -> PyResult<String> {
 #[pyo3(name = "_mm")]
 fn mm_module(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<Scanner>()?;
-    m.add_class::<FastResult>()?;
+    m.add_class::<MetadataResult>()?;
     m.add_function(wrap_pyfunction!(hamming_distance, m)?)?;
     m.add_function(wrap_pyfunction!(content_hash, m)?)?;
     m.add_function(wrap_pyfunction!(directory_hash, m)?)?;

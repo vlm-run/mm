@@ -1,8 +1,15 @@
 """mm cat -- unified content extraction with pipeline-driven modes.
 
-Behaviour is driven by (file type × pipeline mode). Default is ``--mode fast``
-which runs local extraction (no LLM). Use ``--mode accurate`` for LLM-powered
-descriptions.
+Behaviour is driven by (file type × pipeline mode). Default is ``--mode fast``,
+which runs the kind's fast pipeline — that may be a pure local extraction
+(e.g. PDF text via pypdfium2, code passthrough) or a short LLM call
+(e.g. ``image/fast.yaml``). ``--mode accurate`` runs the LLM-heavy pipeline.
+
+Three content tiers flow through caching:
+  metadata  — locally-extracted file content (``files.text_preview``);
+              never an LLM call.
+  fast      — output of a fast-mode pipeline run (may include LLM output).
+  accurate  — output of an accurate-mode pipeline run.
 """
 
 from __future__ import annotations
@@ -18,6 +25,7 @@ from mm.cat_utils.accurate_image import accurate_image
 from mm.cat_utils.accurate_video import accurate_video
 from mm.cat_utils.base_utils import (
     CatOpts,
+    RunResult,
     coerce_opt_value,
     collect_overrides,
     format_footer,
@@ -145,15 +153,16 @@ def cat_cmd(
     """Extract and describe file content.
 
     \b
-    Behavior auto-detects from file type. Default mode is 'fast' (local
-    extraction). Use '-m accurate' for LLM-powered descriptions.
+    Behavior auto-detects from file type. Default mode is 'fast'; '-m accurate'
+    runs the LLM-heavy pipeline. Whether 'fast' invokes an LLM is per-kind —
+    images/video have a short LLM caption stage; audio/docs/code don't.
 
     \b
-    Images:   fast = metadata.  accurate = VLM caption.
-    Videos:   fast = metadata.  accurate = mosaic → VLM description.
-    Audio:    fast = metadata.  accurate = transcript → LLM summary.
-    Docs:     fast = text extraction.  accurate = LLM summary.
-    Code:     fast = raw text.  accurate = LLM summary.
+    Images:   fast = short VLM caption.       accurate = full VLM caption + tags.
+    Videos:   fast = mosaic → short VLM.      accurate = mosaic + transcript → VLM.
+    Audio:    fast = Whisper transcript.      accurate = transcript → LLM summary.
+    Docs:     fast = text extraction.         accurate = text → LLM summary.
+    Code:     passthrough (no LLM in either mode).
 
     \b
     Examples:
@@ -325,16 +334,16 @@ def cat_cmd(
 
 
 def _extract(path: Path, opts: CatOpts) -> str:
-    """Pipeline-driven extraction dispatch with unified accurate-mode caching.
+    """Pipeline-driven extraction dispatch with unified extraction caching.
 
     1. Auto-detect kind from file extension
-    2. Check accurate-result cache (applies to both fast and accurate modes)
+    2. Check the ``extractions`` cache (applies to both fast and accurate modes)
     3. Resolve pipeline (explicit -p > toml override > built-in)
     4. Apply CLI overrides
-    5. Run encode step (kind-specific local extraction)
+    5. Run encode step (kind-specific metadata extraction or encoder)
     6. If generate is not None: run LLM call
     7. If generate is None: output encode result directly
-    8. Store content + verbose metadata in the accurate-result cache
+    8. Store content + verbose metadata in the extraction cache
     """
     kind = file_kind(path)
 
@@ -356,11 +365,11 @@ def _extract(path: Path, opts: CatOpts) -> str:
         opts.pipelines,
     )
 
-    accurate_id: str | None = None
+    extraction_id: str | None = None
     if content_hash:
-        from mm.store.utils import get_accurate_id
+        from mm.store.utils import get_extraction_id
 
-        accurate_id = get_accurate_id(
+        extraction_id = get_extraction_id(
             content_hash,
             profile.name,
             profile.model,
@@ -370,76 +379,75 @@ def _extract(path: Path, opts: CatOpts) -> str:
         )
 
         if not opts.no_cache:
-            cached = db.get_accurate(accurate_id)
+            cached = db.get_extraction(extraction_id)
             if cached is not None:
                 global _was_cached
                 _was_cached = True
                 if opts.verbose:
-                    meta = db.get_accurate_metadata(accurate_id)
-                    suffix = (meta or {}).get("verbose_suffix") if meta else None
+                    meta = db.get_extraction_metadata(extraction_id)
+                    suffix = meta.get("verbose_suffix") if meta else None
                     if suffix:
                         return f"{cached}\n\n{suffix}"
                 return cached
         else:
-            db.evict_accurate(accurate_id)
+            db.evict_extraction(extraction_id)
 
-    opts._verbose_suffix = None
-
-    # Dispatch to mode-specific execution. Each branch sets opts._verbose_suffix
-    # to the rendered verbose tail (regardless of opts.verbose) so we can cache
-    # it for replay on a future verbose run.
+    # Each branch returns a RunResult carrying the rendered verbose tail
+    # (regardless of opts.verbose) so we can persist it for replay on a
+    # future cached + verbose run.
     if opts.mode == "accurate":
-        content = _run_accurate(path, kind, opts)
+        run = _run_accurate(path, kind, opts)
     else:
-        content = _run_fast(path, kind, opts)
+        run = _run_fast(path, kind, opts)
 
-    suffix = opts._verbose_suffix
-
-    if content_hash and content and not content.startswith("["):
-        # TODO: confirm we actually need to run extract_local below
-        # extract_local(path, kind)
+    if content_hash and run.content and not run.content.startswith("["):
+        # Ensure the file's locally-extracted content is in the files table —
+        # put_extraction reads it via get_file_content for the chunked 'fast'
+        # layer. extract_local is idempotent (cached by content_hash).
+        extract_local(path, kind)
         uri = str(path.resolve())
-        meta = {"verbose_suffix": suffix} if suffix else None
+        meta = {"verbose_suffix": run.verbose_suffix} if run.verbose_suffix else None
         try:
-            db.put_accurate(
+            db.put_extraction(
                 uri=uri,
                 content_hash=content_hash,
                 profile=profile.name,
                 model=profile.model,
-                content=content,
+                content=run.content,
                 mode=opts.mode,
                 detail=False,
                 extra=extra,
                 metadata=meta,
             )
         except RuntimeError:
-            return _with_suffix(content, suffix, opts.verbose)
-        if accurate_id:
+            return _format_run(run, opts.verbose)
+        if extraction_id:
             try:
                 from mm.store.embed import embed_file_chunks
 
-                embed_file_chunks(accurate_id)
+                embed_file_chunks(extraction_id)
             except Exception:
                 pass
-    return _with_suffix(content, suffix, opts.verbose)
+    return _format_run(run, opts.verbose)
 
 
-def _with_suffix(content: str, suffix: str | None, verbose: bool) -> str:
-    """Append a cached verbose suffix to ``content`` when *verbose* is set."""
-    if verbose and suffix:
-        return f"{content}\n\n{suffix}"
-    return content
+def _format_run(run: RunResult, verbose: bool) -> str:
+    """Render a :class:`RunResult` for display, conditionally including the suffix."""
+    if verbose and run.verbose_suffix:
+        return f"{run.content}\n\n{run.verbose_suffix}"
+    return run.content
 
 
-def _run_fast(path: Path, kind: FileKind, opts: CatOpts) -> str:
-    """Fast mode: local extraction only (no LLM unless pipeline says otherwise).
+def _run_fast(path: Path, kind: FileKind, opts: CatOpts) -> RunResult:
+    """Fast mode: run the kind's fast pipeline.
 
-    For image/video/audio/document kinds this loads a YAML pipeline and
-    may invoke an encoder or, if the pipeline defines a ``generate``
-    stage, a short LLM call.
+    Whether this involves an LLM depends on the YAML pipeline — e.g.
+    ``image/fast.yaml`` defines a short LLM caption stage; ``code/text``
+    passes through raw content with no LLM call. The output is tagged
+    ``mode='fast'`` in ``extractions``/``chunks``.
     """
     if kind == "text":
-        return extract_local(path, kind, no_cache=opts.no_cache)
+        return RunResult(content=extract_local(path, kind, no_cache=opts.no_cache))
 
     from mm.pipelines import apply_overrides
 
@@ -451,7 +459,7 @@ def _run_fast(path: Path, kind: FileKind, opts: CatOpts) -> str:
     content = extract_local(path, kind, no_cache=opts.no_cache)
 
     if spec.generate is None:
-        return content
+        return RunResult(content=content)
 
     from mm.llm import LlmBackend
     from mm.profile import get_active_profile_name
@@ -473,16 +481,12 @@ def _run_fast(path: Path, kind: FileKind, opts: CatOpts) -> str:
     generate_output = format_generate_verbose(
         profile_name, elapsed, u.prompt_tokens, u.completion_tokens
     )
+    suffix = "\n\n".join([generate_output, footer])
 
-    suffix_parts = [generate_output]
-    if footer:
-        suffix_parts.append(footer)
-    opts._verbose_suffix = "\n\n".join(suffix_parts)
-
-    return result
+    return RunResult(content=result, verbose_suffix=suffix)
 
 
-def _run_accurate(path: Path, kind: BinaryFileKind, opts: CatOpts) -> str:
+def _run_accurate(path: Path, kind: BinaryFileKind, opts: CatOpts) -> RunResult:
     """Accurate mode: LLM-powered semantic extraction."""
     from mm.pipelines import apply_overrides
 
@@ -494,7 +498,9 @@ def _run_accurate(path: Path, kind: BinaryFileKind, opts: CatOpts) -> str:
     return _accurate_dispatch(path, kind, spec, opts)
 
 
-def _accurate_dispatch(path: Path, kind: BinaryFileKind, spec: PipelineSpec, opts: CatOpts) -> str:
+def _accurate_dispatch(
+    path: Path, kind: BinaryFileKind, spec: PipelineSpec, opts: CatOpts
+) -> RunResult:
     """Dispatch accurate-mode extraction based on file kind."""
     if kind == "image":
         return accurate_image(path, spec, opts)
@@ -508,17 +514,30 @@ def _accurate_dispatch(path: Path, kind: BinaryFileKind, spec: PipelineSpec, opt
 
     content = extract_local(path, kind)
     if spec.generate is None:
-        return content
+        return RunResult(content=content)
 
     from mm.llm import LlmBackend
+    from mm.profile import get_active_profile_name
 
+    t0 = time.monotonic()
     llm = LlmBackend()
-    return llm.generate(
+    result = llm.generate(
         kind,
         "accurate",
         context={"filename": path.name, "content": content[:4000]},
         pipeline_spec=spec,
     )
+    elapsed = (time.monotonic() - t0) * 1000
+    u = llm.last_usage
+
+    profile_name = get_active_profile_name()
+    generate_output = format_generate_verbose(
+        profile_name, elapsed, u.prompt_tokens, u.completion_tokens
+    )
+    footer = format_footer(path, "accurate", elapsed, u.prompt_tokens, u.completion_tokens)
+    suffix = "\n\n".join([generate_output, footer])
+
+    return RunResult(content=result, verbose_suffix=suffix)
 
 
 def _display_rich(

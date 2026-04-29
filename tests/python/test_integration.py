@@ -239,12 +239,12 @@ class TestChunkEmbedding:
         db.upsert_files(table, root)
 
         uri = "/test/integ/doc.txt"
-        db.put_fast(uri, "h1", "fast content")
+        db.put_file_content(uri, "h1", "fast content")
 
         content = "Machine learning is transforming software engineering. " * 40
-        accurate_id = db.put_accurate(uri, "h1", "default", "test-model", content)
+        extraction_id = db.put_extraction(uri, "h1", "default", "test-model", content)
         with patch("mm.store.db.MmDatabase", return_value=db):
-            n = embed_file_chunks(accurate_id)
+            n = embed_file_chunks(extraction_id)
         assert n > 0
 
         full = db.get_full_content(uri, "h1", "default", "test-model")

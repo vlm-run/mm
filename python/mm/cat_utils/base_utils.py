@@ -1,6 +1,7 @@
 import json
 import os
 import sys
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
@@ -24,7 +25,6 @@ class CatOpts:
         "generate_overrides",
         "pipelines",
         "verbose",
-        "_verbose_suffix",
     )
 
     n: int | None
@@ -36,13 +36,22 @@ class CatOpts:
     generate_overrides: dict[str, str]
     pipelines: dict[str, PipelineSpec]
     verbose: bool
-    _verbose_suffix: str | None
 
     def __init__(self, **kwargs: object) -> None:
         for k, v in kwargs.items():
             setattr(self, k, v)
-        if not hasattr(self, "_verbose_suffix"):
-            self._verbose_suffix = None
+
+
+@dataclass(slots=True)
+class RunResult:
+    """Result of a pipeline branch — content plus an optional verbose tail.
+
+    The verbose tail is computed and returned regardless of ``opts.verbose``
+    so the caller can persist it for replay on a future cached + verbose run.
+    """
+
+    content: str
+    verbose_suffix: str | None = None
 
 
 def override_extra(

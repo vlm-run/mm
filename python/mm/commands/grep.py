@@ -142,7 +142,7 @@ def grep_cmd(
                 continue
 
             if f.kind == "document":
-                from mm.commands.cat import _local_document
+                from mm.cat_utils.extract_local import _local_document
 
                 content = _local_document(full_path)
             elif f.is_binary:

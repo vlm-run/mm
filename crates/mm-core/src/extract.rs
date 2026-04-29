@@ -10,7 +10,7 @@ pub enum ExtractError {
 }
 
 #[derive(Debug, Clone, Default)]
-pub struct FastRecord {
+pub struct MetadataRecord {
     pub content_hash: Option<String>,
     pub text_preview: Option<String>,
     pub line_count: Option<u32>,
@@ -32,7 +32,7 @@ pub struct FastRecord {
 }
 
 pub trait ContentExtractor: Send + Sync {
-    fn extract(&self, path: &Path) -> Result<FastRecord, ExtractError>;
+    fn extract(&self, path: &Path) -> Result<MetadataRecord, ExtractError>;
     fn supports(&self, kind: &str) -> bool;
 }
 

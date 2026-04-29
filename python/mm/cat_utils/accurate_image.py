@@ -1,12 +1,12 @@
 import time
 from pathlib import Path
 
-from mm.cat_utils.base_utils import CatOpts, format_footer, format_generate_verbose
+from mm.cat_utils.base_utils import CatOpts, RunResult, format_footer, format_generate_verbose
 from mm.cat_utils.run_encoder import run_encoder
 from mm.pipelines.schema import PipelineSpec
 
 
-def accurate_image(path: Path, spec: PipelineSpec, opts: CatOpts) -> str:
+def accurate_image(path: Path, spec: PipelineSpec, opts: CatOpts) -> RunResult:
     """Image extraction with mode-specific LLM prompts."""
     if spec.encode.strategy:
         return run_encoder(path, "image", spec, opts)
@@ -32,8 +32,5 @@ def accurate_image(path: Path, spec: PipelineSpec, opts: CatOpts) -> str:
         profile_name, elapsed, u.prompt_tokens, u.completion_tokens
     )
     footer = format_footer(path, "accurate", elapsed, u.prompt_tokens, u.completion_tokens)
-    suffix_parts = [generate_output]
-    if footer:
-        suffix_parts.append(footer)
-    opts._verbose_suffix = "\n\n".join(suffix_parts)
-    return content
+    suffix = "\n\n".join([generate_output, footer])
+    return RunResult(content=content, verbose_suffix=suffix)

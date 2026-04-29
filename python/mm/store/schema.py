@@ -1,15 +1,23 @@
 """Schema definitions for the mm SQLite database.
 
 Relationships::
-    files  1 ──→ N  accurate_results  1 ──→ N  chunks
+    files  1 ──→ N  extractions  1 ──→ N  chunks
 
-The naming maps to mm's three processing modes:
-    metadata — file-level data populated on scan (``files`` columns)
-    fast     — local content extraction (text_preview, dimensions, …)
-    accurate — LLM-generated descriptions (``accurate_results`` table)
+Three content tiers carry through the schema:
+
+  ``metadata`` — locally-extracted file content (``files.text_preview``);
+                 never invokes an LLM. Image dimensions, PDF text, video codec
+                 metadata, audio transcript via Whisper, etc. all land here.
+  ``fast``     — output of a fast-mode pipeline run. *May* invoke an LLM with
+                 a short prompt (e.g. ``image/fast.yaml`` does).
+  ``accurate`` — output of an accurate-mode pipeline run. LLM-heavy.
+
+  - ``extractions.mode``  ∈ {fast, accurate} — which pipeline produced this row
+  - ``chunks.mode``       ∈ {metadata, fast, accurate} — which content tier
+                            this chunk belongs to
 
 Usage::
-    from mm.store.schema import FileCol, AccurateCol, ChunkCol
+    from mm.store.schema import FileCol, ExtractionCol, ChunkCol
 """
 
 from __future__ import annotations
@@ -26,9 +34,8 @@ else:
 
 
 class FileCol(StrEnum):
-    """Column names for the ``files`` table (metadata + fast)."""
+    """Column names for the ``files`` table (metadata + locally extracted content)."""
 
-    # metadata — always populated on scan
     URI = "uri"
     NAME = "name"
     STEM = "stem"
@@ -44,7 +51,7 @@ class FileCol(StrEnum):
     WIDTH = "width"
     HEIGHT = "height"
 
-    # fast — nullable, filled on demand
+    # Local content extraction — nullable, filled on demand
     CONTENT_HASH = "content_hash"
     TEXT_PREVIEW = "text_preview"
     LINE_COUNT = "line_count"
@@ -70,11 +77,11 @@ class FileCol(StrEnum):
 
     # Tracking
     INDEXED_AT = "indexed_at"
-    FAST_INDEXED_AT = "fast_indexed_at"
+    CONTENT_INDEXED_AT = "content_indexed_at"
 
 
-class AccurateCol(StrEnum):
-    """Column names for the ``accurate_results`` table."""
+class ExtractionCol(StrEnum):
+    """Column names for the ``extractions`` table."""
 
     ID = "id"
     FILE_URI = "file_uri"
@@ -93,7 +100,7 @@ class ChunkCol(StrEnum):
     """Column names for the ``chunks`` table."""
 
     ID = "id"
-    ACCURATE_RESULT_ID = "accurate_result_id"
+    EXTRACTION_ID = "extraction_id"
     FILE_URI = "file_uri"
     CONTENT_HASH = "content_hash"
     PROFILE = "profile"
@@ -122,7 +129,7 @@ METADATA_COLUMNS: tuple[str, ...] = (
     FileCol.INDEXED_AT,
 )
 
-FAST_COLUMNS: frozenset[str] = frozenset(
+CONTENT_COLUMNS: frozenset[str] = frozenset(
     {
         FileCol.CONTENT_HASH,
         FileCol.TEXT_PREVIEW,
@@ -142,48 +149,48 @@ FAST_COLUMNS: frozenset[str] = frozenset(
         FileCol.AUDIO_CODEC,
         FileCol.HAS_AUDIO,
         FileCol.PHASH,
-        FileCol.FAST_INDEXED_AT,
+        FileCol.CONTENT_INDEXED_AT,
     }
 )
 
 FILES_DDL = """\
 CREATE TABLE IF NOT EXISTS files (
-    uri              TEXT PRIMARY KEY,
-    name             TEXT NOT NULL,
-    stem             TEXT NOT NULL,
-    ext              TEXT NOT NULL,
-    size             INTEGER NOT NULL,
-    modified         INTEGER NOT NULL,
-    created          INTEGER NOT NULL,
-    mime             TEXT NOT NULL,
-    kind             TEXT NOT NULL,
-    is_binary        INTEGER NOT NULL,
-    depth            INTEGER NOT NULL,
-    parent           TEXT NOT NULL,
-    width            INTEGER,
-    height           INTEGER,
-    content_hash     TEXT,
-    text_preview     TEXT,
-    line_count       INTEGER,
-    word_count       INTEGER,
-    language         TEXT,
-    dimensions       TEXT,
-    pages            INTEGER,
-    duration_s       REAL,
-    fps              REAL,
-    magic_mime       TEXT,
-    exif_camera      TEXT,
-    exif_date        TEXT,
-    exif_gps         TEXT,
-    exif_orientation TEXT,
-    video_codec      TEXT,
-    audio_codec      TEXT,
-    has_audio        INTEGER,
-    phash            TEXT,
-    session_id       TEXT,
-    ref_id           TEXT,
-    indexed_at       INTEGER NOT NULL,
-    fast_indexed_at  INTEGER
+    uri                 TEXT PRIMARY KEY,
+    name                TEXT NOT NULL,
+    stem                TEXT NOT NULL,
+    ext                 TEXT NOT NULL,
+    size                INTEGER NOT NULL,
+    modified            INTEGER NOT NULL,
+    created             INTEGER NOT NULL,
+    mime                TEXT NOT NULL,
+    kind                TEXT NOT NULL,
+    is_binary           INTEGER NOT NULL,
+    depth               INTEGER NOT NULL,
+    parent              TEXT NOT NULL,
+    width               INTEGER,
+    height              INTEGER,
+    content_hash        TEXT,
+    text_preview        TEXT,
+    line_count          INTEGER,
+    word_count          INTEGER,
+    language            TEXT,
+    dimensions          TEXT,
+    pages               INTEGER,
+    duration_s          REAL,
+    fps                 REAL,
+    magic_mime          TEXT,
+    exif_camera         TEXT,
+    exif_date           TEXT,
+    exif_gps            TEXT,
+    exif_orientation    TEXT,
+    video_codec         TEXT,
+    audio_codec         TEXT,
+    has_audio           INTEGER,
+    phash               TEXT,
+    session_id          TEXT,
+    ref_id              TEXT,
+    indexed_at          INTEGER NOT NULL,
+    content_indexed_at  INTEGER
 );
 """
 
@@ -191,7 +198,7 @@ FILES_INDEX_DDL = """\
 CREATE INDEX IF NOT EXISTS idx_files_kind ON files (kind);
 CREATE INDEX IF NOT EXISTS idx_files_ext ON files (ext);
 CREATE INDEX IF NOT EXISTS idx_files_content_hash ON files (content_hash);
-CREATE INDEX IF NOT EXISTS idx_files_fast_lookup ON files (content_hash, fast_indexed_at DESC);
+CREATE INDEX IF NOT EXISTS idx_files_content_lookup ON files (content_hash, content_indexed_at DESC);
 CREATE INDEX IF NOT EXISTS idx_files_session_ref ON files (session_id, ref_id);
 CREATE INDEX IF NOT EXISTS idx_files_session ON files (session_id);
 """
@@ -206,43 +213,43 @@ FILES_MIGRATIONS: tuple[tuple[str, str], ...] = (
     ("ref_id", "ALTER TABLE files ADD COLUMN ref_id TEXT"),
 )
 
-ACCURATE_RESULTS_DDL = """\
-CREATE TABLE IF NOT EXISTS accurate_results (
+EXTRACTIONS_DDL = """\
+CREATE TABLE IF NOT EXISTS extractions (
     id           TEXT PRIMARY KEY,
     file_uri     TEXT NOT NULL REFERENCES files(uri) ON DELETE CASCADE,
     content_hash TEXT NOT NULL,
     profile      TEXT NOT NULL,
     model        TEXT NOT NULL,
-    mode         TEXT,
+    mode         TEXT NOT NULL CHECK (mode IN ('fast', 'accurate')),
     detail       INTEGER NOT NULL,
     extra        TEXT NOT NULL DEFAULT '',
     summary      TEXT NOT NULL,
     metadata     TEXT,
     created_at   INTEGER NOT NULL
 );
-CREATE INDEX IF NOT EXISTS idx_accurate_file_uri ON accurate_results (file_uri);
+CREATE INDEX IF NOT EXISTS idx_extractions_file_uri ON extractions (file_uri);
 """
 
 CHUNKS_DDL = """\
 CREATE TABLE IF NOT EXISTS chunks (
-    id                  INTEGER PRIMARY KEY AUTOINCREMENT,
-    accurate_result_id  TEXT NOT NULL REFERENCES accurate_results(id) ON DELETE CASCADE,
-    file_uri            TEXT NOT NULL,
-    content_hash        TEXT NOT NULL,
-    profile             TEXT NOT NULL,
-    model               TEXT NOT NULL,
-    mode                TEXT NOT NULL DEFAULT 'accurate',
-    chunk_idx           INTEGER NOT NULL,
-    chunk_text          TEXT NOT NULL,
-    created_at          INTEGER NOT NULL
+    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    extraction_id TEXT NOT NULL REFERENCES extractions(id) ON DELETE CASCADE,
+    file_uri      TEXT NOT NULL,
+    content_hash  TEXT NOT NULL,
+    profile       TEXT NOT NULL,
+    model         TEXT NOT NULL,
+    mode          TEXT NOT NULL DEFAULT 'metadata' CHECK (mode IN ('metadata', 'fast', 'accurate')),
+    chunk_idx     INTEGER NOT NULL,
+    chunk_text    TEXT NOT NULL,
+    created_at    INTEGER NOT NULL
 );
-CREATE INDEX IF NOT EXISTS idx_chunks_accurate_result_id ON chunks (accurate_result_id);
+CREATE INDEX IF NOT EXISTS idx_chunks_extraction_id ON chunks (extraction_id);
 CREATE INDEX IF NOT EXISTS idx_chunks_reassembly
-ON chunks (accurate_result_id, mode, chunk_idx);
+ON chunks (extraction_id, mode, chunk_idx);
 CREATE INDEX IF NOT EXISTS idx_chunks_file_lookup
 ON chunks (file_uri, content_hash, profile, model, mode, chunk_idx);
 """
 
 FILES_TABLE = "files"
-ACCURATE_RESULTS_TABLE = "accurate_results"
+EXTRACTIONS_TABLE = "extractions"
 CHUNKS_TABLE = "chunks"

@@ -2,7 +2,7 @@ import time
 from pathlib import Path
 from typing import Any
 
-from mm.cat_utils.base_utils import CatOpts, format_footer, format_generate_verbose
+from mm.cat_utils.base_utils import CatOpts, RunResult, format_footer, format_generate_verbose
 from mm.cat_utils.extract_local import extract_local
 from mm.cat_utils.run_encoder import run_encoder
 from mm.pipelines.schema import PipelineSpec
@@ -41,7 +41,7 @@ def _parse_tile(tile: str) -> tuple[int, int]:
     return n, n
 
 
-def accurate_video(path: Path, spec: PipelineSpec, opts: CatOpts) -> str:
+def accurate_video(path: Path, spec: PipelineSpec, opts: CatOpts) -> RunResult:
     """Video extraction with mode-aware mosaic + whisper + LLM pipeline."""
     import shutil
 
@@ -56,10 +56,10 @@ def accurate_video(path: Path, spec: PipelineSpec, opts: CatOpts) -> str:
     from mm.llm import LlmBackend, image_part
 
     if not ffmpeg_available():
-        return f"[ffmpeg not found — cannot process {path.name}]"
+        return RunResult(content=f"[ffmpeg not found — cannot process {path.name}]")
 
     if spec.generate is None:
-        return extract_local(path, "video", no_cache=opts.no_cache)
+        return RunResult(content=extract_local(path, "video", no_cache=opts.no_cache))
 
     # The hard-coded mosaic+whisper fast path only implements a fixed
     # set of strategies. Anything else (e.g. video-gemini, frame-sample)
@@ -74,7 +74,7 @@ def accurate_video(path: Path, spec: PipelineSpec, opts: CatOpts) -> str:
 
     duration = probe_duration(path)
     if duration <= 0:
-        return f"[Could not determine duration for {path.name}]"
+        return RunResult(content=f"[Could not determine duration for {path.name}]")
 
     from concurrent.futures import Future, ThreadPoolExecutor
 
@@ -201,7 +201,7 @@ def accurate_video(path: Path, spec: PipelineSpec, opts: CatOpts) -> str:
         transcript = audio_future.result()
 
     if not mosaic_paths:
-        return f"[No frames extracted from {path.name}]"
+        return RunResult(content=f"[No frames extracted from {path.name}]")
 
     timing["total_ms"] = (time.monotonic() - t_total) * 1000
 
@@ -231,9 +231,6 @@ def accurate_video(path: Path, spec: PipelineSpec, opts: CatOpts) -> str:
         profile_name, timing["total_ms"], prompt_tokens, completion_tokens
     )
     footer = format_footer(path, "accurate", timing["total_ms"], prompt_tokens, completion_tokens)
-    suffix_parts = [generate_output]
-    if footer:
-        suffix_parts.append(footer)
-    opts._verbose_suffix = "\n\n".join(suffix_parts)
+    suffix = "\n\n".join([generate_output, footer])
 
-    return "\n".join(out_parts)
+    return RunResult(content="\n".join(out_parts), verbose_suffix=suffix)

@@ -1,28 +1,30 @@
 import time
 from pathlib import Path
 
-from mm.cat_utils.base_utils import CatOpts, format_footer, format_generate_verbose
+from mm.cat_utils.base_utils import CatOpts, RunResult, format_footer, format_generate_verbose
 from mm.cat_utils.extract_local import extract_local
 from mm.cat_utils.run_encoder import run_encoder
 from mm.pipelines.schema import PipelineSpec
 
 
-def accurate_audio(path: Path, spec: PipelineSpec, opts: CatOpts) -> str:
+def accurate_audio(path: Path, spec: PipelineSpec, opts: CatOpts) -> RunResult:
     """Audio extraction with transcription."""
     from mm.ffmpeg import extract_audio, ffmpeg_available
     from mm.whisper import transcribe, whisper_available
 
     if not ffmpeg_available():
-        return f"[ffmpeg not found — cannot process {path.name}]"
+        return RunResult(content=f"[ffmpeg not found — cannot process {path.name}]")
 
     if not whisper_available():
-        return (
-            "[whisper not available — faster-whisper should be included in core mm install. "
-            "For MLX on Apple Silicon: pip install mm-ctx[mlx]]"
+        return RunResult(
+            content=(
+                "[whisper not available — faster-whisper should be included in core mm install. "
+                "For MLX on Apple Silicon: pip install mm-ctx[mlx]]"
+            )
         )
 
     if spec.generate is None:
-        return extract_local(path, "audio", no_cache=opts.no_cache)
+        return RunResult(content=extract_local(path, "audio", no_cache=opts.no_cache))
 
     # The hard-coded whisper+LLM fast path only implements `transcribe`.
     # Anything else (e.g. audio-gemini) must be routed through the
@@ -58,7 +60,7 @@ def accurate_audio(path: Path, spec: PipelineSpec, opts: CatOpts) -> str:
         pass
 
     if not transcript or transcript.startswith("["):
-        return transcript or "[No speech detected]"
+        return RunResult(content=transcript or "[No speech detected]")
 
     from mm.llm import LlmBackend
 
@@ -75,7 +77,7 @@ def accurate_audio(path: Path, spec: PipelineSpec, opts: CatOpts) -> str:
     u = llm.last_usage
 
     word_count = len(transcript.split())
-    result = f"{summary}\n\n[Transcript: {word_count} words]"
+    content = f"{summary}\n\n[Transcript: {word_count} words]"
 
     from mm.profile import get_active_profile_name
 
@@ -86,9 +88,6 @@ def accurate_audio(path: Path, spec: PipelineSpec, opts: CatOpts) -> str:
     footer = format_footer(
         path, "accurate", timing["total_ms"], u.prompt_tokens, u.completion_tokens
     )
-    suffix_parts = [generate_output]
-    if footer:
-        suffix_parts.append(footer)
-    opts._verbose_suffix = "\n\n".join(suffix_parts)
+    suffix = "\n\n".join([generate_output, footer])
 
-    return result
+    return RunResult(content=content, verbose_suffix=suffix)

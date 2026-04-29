@@ -2,17 +2,20 @@ from pathlib import Path
 
 
 def extract_local(path: Path, kind: str, *, no_cache: bool = False) -> str:
-    """Run local content extraction (no LLM) with caching.
+    """Produce the metadata-tier content for a file (no LLM call) with caching.
 
-    Dispatches to the appropriate extractor based on file kind: image
-    metadata, video metadata, PDF text, or raw text passthrough.
+    This is the ``files.text_preview`` layer — what gets chunked under
+    ``chunks.mode='metadata'``. Distinct from the pipeline-output tiers
+    (``fast``/``accurate``) that live in ``extractions``.
+    Dispatches by kind: image metadata, video metadata, PDF text, raw
+    code/text passthrough, etc.
     """
     from mm.store.db import MmDatabase
     from mm.store.utils import get_content_hash
 
     content_hash = get_content_hash(path)
     if not no_cache and content_hash:
-        cached = MmDatabase().get_fast(content_hash)
+        cached = MmDatabase().get_file_content(content_hash)
         if cached is not None:
             return cached
 
@@ -29,7 +32,7 @@ def extract_local(path: Path, kind: str, *, no_cache: bool = False) -> str:
 
     result = _handler()
     if content_hash and result and not result.startswith("["):
-        MmDatabase().put_fast(str(path.resolve()), content_hash, result)
+        MmDatabase().put_file_content(str(path.resolve()), content_hash, result)
     return result
 
 
@@ -40,7 +43,7 @@ def _local_image(path: Path) -> str:
 
         scanner = Scanner(str(path.parent))
         scanner.scan()
-        r = scanner.extract_fast(path.name)
+        r = scanner.extract_metadata(path.name)
         parts: list[str] = []
         if r.dimensions:
             parts.append(f"Dimensions: {r.dimensions}")
@@ -73,7 +76,7 @@ def _local_video(path: Path) -> str:
 
         scanner = Scanner(str(path.parent))
         scanner.scan()
-        r = scanner.extract_fast(path.name)
+        r = scanner.extract_metadata(path.name)
         parts: list[str] = []
         if r.dimensions:
             parts.append(f"Resolution: {r.dimensions}")
@@ -105,7 +108,7 @@ def _local_audio(path: Path) -> str:
 
         scanner = Scanner(str(path.parent))
         scanner.scan()
-        r = scanner.extract_fast(path.name)
+        r = scanner.extract_metadata(path.name)
         parts: list[str] = []
         if r.duration_s is not None:
             mins, secs = divmod(r.duration_s, 60)

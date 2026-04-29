@@ -19,6 +19,6 @@ pub use refs::{
     Context as RefsContext, Item, ItemSource, MetaMap, MetaValue, RefId, RefNotFound,
     kind_from_name, make_ref_id, prefix_for_kind, uuid7,
 };
-pub use schema::{fast_schema, metadata_schema};
+pub use schema::{metadata_record_schema, metadata_schema};
 pub use table::build_metadata_batch;
 pub use walk::scan_directory;

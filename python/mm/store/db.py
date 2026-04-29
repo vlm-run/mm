@@ -1,11 +1,15 @@
 """SQLite + sqlite-vec storage backend for mm.
 
 Single global database at ~/.local/share/mm/mm.db with tables:
-  - files:             metadata + fast columns (one row per file, uri = absolute path)
-  - accurate_results:  LLM-generated summaries (many per file)
-  - chunks:            chunked content (many per accurate result; mode='fast' or 'accurate')
-  - chunks_vec:        embedding vectors (sqlite-vec virtual table, linked via chunk_id)
-  - cache:             key-value cache for fast/accurate results
+  - files:        file metadata + locally-extracted content columns
+                  (one row per file, uri = absolute path)
+  - extractions:  pipeline outputs beyond the plain ``files`` read
+                  (mode = 'fast' or 'accurate'; many per file)
+  - chunks:       chunked content tagged with one of three tiers
+                  (metadata = files.text_preview;
+                   fast/accurate = extraction output)
+  - chunks_vec:   embedding vectors (sqlite-vec virtual table, linked via chunk_id)
+  - cache:        key-value cache for extraction results
 
 Vector search (ANN/KNN):
   sqlite-vec provides exact KNN via brute-force scan over the vec0 virtual table.
@@ -30,7 +34,7 @@ import sqlite3
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from mm.store.utils import get_accurate_id, now_us
+from mm.store.utils import get_extraction_id, now_us
 
 if TYPE_CHECKING:
     import pyarrow as pa
@@ -98,14 +102,14 @@ class MmDatabase:
         until the migration step runs.
         """
         from mm.store.schema import (
-            ACCURATE_RESULTS_DDL,
             CHUNKS_DDL,
+            EXTRACTIONS_DDL,
             FILES_DDL,
             FILES_INDEX_DDL,
         )
 
         assert self._conn is not None, "_ensure_tables called before _connect"
-        self._conn.executescript(FILES_DDL + ACCURATE_RESULTS_DDL + CHUNKS_DDL)
+        self._conn.executescript(FILES_DDL + EXTRACTIONS_DDL + CHUNKS_DDL)
         self._migrate_files()
         self._conn.executescript(FILES_INDEX_DDL)
 
@@ -127,7 +131,7 @@ class MmDatabase:
                 self._conn.execute(ddl)
         self._conn.commit()
 
-    # -- Files (metadata + fast) --
+    # -- Files (metadata + locally extracted content) --
 
     def upsert_files(
         self,
@@ -137,7 +141,7 @@ class MmDatabase:
         session_id: str | None = None,
         refs: dict[str, str] | None = None,
     ) -> int:
-        """Write metadata scan results. Preserves existing fast columns on re-upsert.
+        """Write metadata scan results. Preserves existing content columns on re-upsert.
 
         When ``session_id`` is provided, every row is tagged with that
         session. ``refs`` supplies the ``{relative_path: ref_id}``
@@ -287,7 +291,7 @@ class MmDatabase:
     def delete_files(self, uris: list[str]) -> int:
         """Delete ``files`` rows by URI, cascading through chunks_vec manually.
 
-        FKs cascade ``files`` → ``accurate_results`` → ``chunks``. The ``chunks_vec``
+        FKs cascade ``files`` → ``extractions`` → ``chunks``. The ``chunks_vec``
         virtual table has no FK support, so embeddings are cleaned up explicitly
         before the cascade fires.
 
@@ -330,48 +334,57 @@ class MmDatabase:
             return True
         return bool(row[0] != mtime_us or row[1] != size)
 
-    def get_fast(self, content_hash: str) -> str | None:
+    def get_file_content(self, content_hash: str) -> str | None:
+        """Read the locally-extracted text preview for a file by content hash."""
         row = self._connect.execute(
             "SELECT text_preview FROM files "
             "WHERE content_hash = ? AND text_preview IS NOT NULL "
-            "ORDER BY fast_indexed_at DESC LIMIT 1",
+            "ORDER BY content_indexed_at DESC LIMIT 1",
             (content_hash,),
         ).fetchone()
         if row is None:
             return None
         return str(row[0]) if row[0] is not None else None
 
-    def update_fast(self, uri: str, data: dict[str, Any]) -> None:
-        """Fill fast columns for a specific file."""
+    def update_file_fields(self, uri: str, data: dict[str, Any]) -> None:
+        """Fill content columns for a specific file."""
         from mm.store.schema import FileCol
 
         self.ensure_metadata(uri)
         if self.get_file(uri) is None:
             return
 
-        data[FileCol.FAST_INDEXED_AT] = now_us()
+        data[FileCol.CONTENT_INDEXED_AT] = now_us()
         sets = ", ".join(f"{k} = ?" for k in data)
         self._connect.execute(f"UPDATE files SET {sets} WHERE uri = ?", (*data.values(), uri))
         self._connect.commit()
 
-    def put_fast(self, uri: str, content_hash: str, content: str) -> None:
+    def put_file_content(self, uri: str, content_hash: str, content: str) -> None:
+        """Store locally-extracted content (``text_preview``) for *uri*."""
         from mm.store.schema import FileCol
 
-        self.update_fast(uri, {FileCol.CONTENT_HASH: content_hash, FileCol.TEXT_PREVIEW: content})
+        self.update_file_fields(
+            uri, {FileCol.CONTENT_HASH: content_hash, FileCol.TEXT_PREVIEW: content}
+        )
 
-    # -- Accurate (LLM-generated) --
+    # -- Extractions --
 
-    def get_accurate(self, accurate_id: str) -> str | None:
-        """Look up a cached accurate result. Returns full content reassembled from chunks."""
+    def get_extraction(self, extraction_id: str) -> str | None:
+        """Look up a cached extraction. Returns full content reassembled from chunks.
+
+        Reads chunks tagged with the extraction's own ``mode`` (``'fast'`` or
+        ``'accurate'``) — i.e. the pipeline output, not the underlying
+        ``'metadata'`` layer. ``chunks.mode='metadata'`` is the locally-extracted
+        tier (``files.text_preview``) that pipelines read from.
+        """
         row = self._connect.execute(
-            "SELECT id FROM accurate_results WHERE id = ?", (accurate_id,)
+            "SELECT mode FROM extractions WHERE id = ?", (extraction_id,)
         ).fetchone()
         if row is None:
             return None
         chunks = self._connect.execute(
-            "SELECT chunk_text FROM chunks "
-            "WHERE accurate_result_id = ? AND mode = 'accurate' ORDER BY chunk_idx",
-            (accurate_id,),
+            "SELECT chunk_text FROM chunks WHERE extraction_id = ? AND mode = ? ORDER BY chunk_idx",
+            (extraction_id, row["mode"]),
         ).fetchall()
         if not chunks:
             return None
@@ -380,10 +393,10 @@ class MmDatabase:
             parts.append(c[0][CHUNK_OVERLAP:])
         return "".join(parts)
 
-    def get_accurate_metadata(self, accurate_id: str) -> dict[str, Any] | None:
-        """Return the JSON-decoded ``metadata`` column for an accurate result."""
+    def get_extraction_metadata(self, extraction_id: str) -> dict[str, Any] | None:
+        """Return the JSON-decoded ``metadata`` column for an extraction."""
         row = self._connect.execute(
-            "SELECT metadata FROM accurate_results WHERE id = ?", (accurate_id,)
+            "SELECT metadata FROM extractions WHERE id = ?", (extraction_id,)
         ).fetchone()
         if row is None or row[0] is None:
             return None
@@ -393,8 +406,8 @@ class MmDatabase:
             return None
         return value if isinstance(value, dict) else None
 
-    def evict_accurate(self, accurate_id: str) -> int:
-        """Delete an accurate result + its chunks/embeddings for the given key.
+    def evict_extraction(self, extraction_id: str) -> int:
+        """Delete an extraction + its chunks/embeddings for the given key.
 
         chunks are cascade-deleted via FK ON DELETE CASCADE.
         chunks_vec (sqlite-vec virtual table) doesn't support FK cascades,
@@ -406,7 +419,7 @@ class MmDatabase:
         chunk_ids = [
             r[0]
             for r in db.execute(
-                "SELECT id FROM chunks WHERE accurate_result_id = ?", (accurate_id,)
+                "SELECT id FROM chunks WHERE extraction_id = ?", (extraction_id,)
             ).fetchall()
         ]
         if chunk_ids:
@@ -417,44 +430,47 @@ class MmDatabase:
             if has_vec:
                 db.execute(f"DELETE FROM chunks_vec WHERE chunk_id IN ({cp})", chunk_ids)
 
-        cursor = db.execute("DELETE FROM accurate_results WHERE id = ?", (accurate_id,))
+        cursor = db.execute("DELETE FROM extractions WHERE id = ?", (extraction_id,))
         db.commit()
 
         return cursor.rowcount
 
-    def put_accurate(
+    def put_extraction(
         self,
         uri: str,
         content_hash: str,
         profile: str,
         model: str,
         content: str,
-        mode: str | None = None,
-        detail=False,
+        mode: str = "accurate",
+        detail: bool = False,
         *,
-        extra="",
+        extra: str = "",
         metadata: dict[str, Any] | None = None,
     ) -> str:
-        """Insert or replace an accurate result, chunk fast+accurate content.
+        """Insert or replace an extraction; chunk file-content + extraction output.
 
-        Returns ``accurate_results.id``.
+        ``mode`` is ``'fast'`` or ``'accurate'`` (default ``'accurate'``).
+        Returns ``extractions.id``.
         """
+        if mode not in ("fast", "accurate"):
+            raise ValueError(f"mode must be 'fast' or 'accurate', got {mode!r}")
         self.ensure_metadata(uri)
 
-        fast_content = self.get_fast(content_hash)
-        if not fast_content:
-            raise RuntimeError("Fast content not found")
+        file_content = self.get_file_content(content_hash)
+        if not file_content:
+            raise RuntimeError("File content not found")
 
-        accurate_id = get_accurate_id(content_hash, profile, model, mode, detail, extra=extra)
+        extraction_id = get_extraction_id(content_hash, profile, model, mode, detail, extra=extra)
         now = now_us()
         summary = content[:500] if len(content) > 500 else content
         metadata_json = json.dumps(metadata, separators=(",", ":")) if metadata else None
         self._connect.execute(
-            "INSERT OR REPLACE INTO accurate_results "
+            "INSERT OR REPLACE INTO extractions "
             "(id, file_uri, content_hash, profile, model, mode, detail, extra, summary, metadata, created_at) "
             "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (
-                accurate_id,
+                extraction_id,
                 uri,
                 content_hash,
                 profile,
@@ -469,14 +485,22 @@ class MmDatabase:
         )
         self._connect.commit()
 
-        # Chunk fast (the local-extracted content) and accurate (the LLM output).
-        self._put_chunks(accurate_id, uri, content_hash, profile, model, fast_content, mode="fast")
-        self._put_chunks(accurate_id, uri, content_hash, profile, model, content, mode="accurate")
-        return accurate_id
+        # ``chunks.mode`` tags the *content tier* the chunk belongs to:
+        #   'metadata' → the file's locally-extracted text (files.text_preview)
+        #                — the input pipelines read from
+        #   <mode>     → the extraction's own pipeline output, tagged with the
+        #                pipeline that produced it (matches extractions.mode)
+        # ``get_extraction`` reads the pipeline-output tier; the metadata tier
+        # is reusable across fast/accurate extractions of the same file.
+        self._put_chunks(
+            extraction_id, uri, content_hash, profile, model, file_content, mode="metadata"
+        )
+        self._put_chunks(extraction_id, uri, content_hash, profile, model, content, mode=mode)
+        return extraction_id
 
     def _put_chunks(
         self,
-        accurate_result_id: str,
+        extraction_id: str,
         uri: str,
         content_hash: str,
         profile: str,
@@ -496,20 +520,18 @@ class MmDatabase:
         db = self._connect
         db.executemany(
             "INSERT INTO chunks "
-            "(accurate_result_id, file_uri, content_hash, profile, model, mode, chunk_idx, chunk_text, created_at) "
+            "(extraction_id, file_uri, content_hash, profile, model, mode, chunk_idx, chunk_text, created_at) "
             "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
             [
-                (accurate_result_id, uri, content_hash, profile, model, mode, idx, text, now)
+                (extraction_id, uri, content_hash, profile, model, mode, idx, text, now)
                 for idx, text in enumerate(texts)
             ],
         )
         db.commit()
 
-    def get_chunks(
-        self, accurate_result_id: str, *, mode: str | None = None
-    ) -> list[dict[str, Any]]:
-        q = "SELECT * FROM chunks WHERE accurate_result_id = ?"
-        params: list[str] = [accurate_result_id]
+    def get_chunks(self, extraction_id: str, *, mode: str | None = None) -> list[dict[str, Any]]:
+        q = "SELECT * FROM chunks WHERE extraction_id = ?"
+        params: list[str] = [extraction_id]
         if mode is not None:
             q += " AND mode = ?"
             params.append(mode)
@@ -556,7 +578,7 @@ class MmDatabase:
     def upsert_embeddings(
         self,
         *,
-        accurate_id: str,
+        extraction_id: str,
         vectors: list[list[float]],
     ) -> None:
         if not vectors or not self._vec_available:
@@ -568,7 +590,7 @@ class MmDatabase:
         dim = len(vectors[0])
         self._ensure_vec_table(dim)
 
-        chunks = self.get_chunks(accurate_id)
+        chunks = self.get_chunks(extraction_id)
         n = min(len(vectors), len(chunks))
 
         vec_inserts = []

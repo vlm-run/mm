@@ -45,7 +45,7 @@ name = "hash_strategies"
 harness = false
 
 [[bench]]
-name = "fast_extract"
+name = "metadata_extract"
 harness = false
 
 [[bench]]

@@ -56,4 +56,4 @@ def ensure_fast(
 ) -> None:
     """Ensure fast (locally extracted) content exists for a file."""
     ensure_metadata(db, [uri], metadata_kinds)
-    db.put_fast(uri, get_hash(uri), fast_content)
+    db.put_file_content(uri, get_hash(uri), fast_content)

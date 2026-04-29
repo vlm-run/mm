@@ -1,7 +1,7 @@
 import time
 from pathlib import Path
 
-from mm.cat_utils.base_utils import CatOpts, format_generate_verbose
+from mm.cat_utils.base_utils import CatOpts, RunResult, format_generate_verbose
 from mm.pipelines.schema import PipelineSpec
 from mm.utils import BinaryFileKind
 
@@ -81,7 +81,7 @@ def _extract_llm_parts(msg: dict) -> list[dict]:
     return parts
 
 
-def run_encoder(path: Path, kind: BinaryFileKind, spec: PipelineSpec, opts: CatOpts) -> str:
+def run_encoder(path: Path, kind: BinaryFileKind, spec: PipelineSpec, opts: CatOpts) -> RunResult:
     """Run a named encoder strategy and output JSON messages or pipe to LLM."""
     from mm.encoders import get as get_encoder
 
@@ -106,10 +106,8 @@ def run_encoder(path: Path, kind: BinaryFileKind, spec: PipelineSpec, opts: CatO
                     text_parts.append(content)
 
         result = "\n\n".join(text_parts) if text_parts else ""
-
         encode_output = _format_encode_verbose(spec.encode.strategy, messages, encode_elapsed)
-        opts._verbose_suffix = _format_pipeline_tree(encode_output)
-        return result
+        return RunResult(content=result, verbose_suffix=_format_pipeline_tree(encode_output))
 
     from mm.llm import LlmBackend
     from mm.profile import get_active_profile_name
@@ -123,7 +121,7 @@ def run_encoder(path: Path, kind: BinaryFileKind, spec: PipelineSpec, opts: CatO
             chunks.append(parts)
 
     if not chunks:
-        return "[No LLM-compatible content parts from encoder]"
+        return RunResult(content="[No LLM-compatible content parts from encoder]")
 
     ctx = {"filename": path.name}
     if len(chunks) == 1:
@@ -141,5 +139,7 @@ def run_encoder(path: Path, kind: BinaryFileKind, spec: PipelineSpec, opts: CatO
     generate_output = format_generate_verbose(
         profile_name, elapsed, u.prompt_tokens, u.completion_tokens
     )
-    opts._verbose_suffix = _format_pipeline_tree(encode_output, generate_output)
-    return result
+    return RunResult(
+        content=result,
+        verbose_suffix=_format_pipeline_tree(encode_output, generate_output),
+    )

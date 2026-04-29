@@ -95,7 +95,7 @@ def test_bench_fast_code_batch(benchmark, mixed_1k_tree: Path):
 
     def extract_batch():
         for f in code_files:
-            scanner.extract_fast(f)
+            scanner.extract_metadata(f)
 
     benchmark(extract_batch)
 
@@ -117,7 +117,7 @@ def test_bench_fast_video_native(benchmark, youtube_dir):
     # Use the smaller video for the benchmark
     target = min(mp4s, key=lambda n: (youtube_dir / n).stat().st_size)
 
-    result = benchmark(scanner.extract_fast, target)
+    result = benchmark(scanner.extract_metadata, target)
     assert result.dimensions is not None
 
 

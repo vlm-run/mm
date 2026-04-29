@@ -12,8 +12,13 @@ Unified content extraction. Behaviour driven by **file type × mode × pipeline*
 
 ## Modes
 
-`--mode fast` (default) — local extraction, no LLM unless pipeline defines a `generate` step.
-`--mode accurate` — LLM-powered descriptions via configured profile.
+`--mode fast` (default) — runs the kind's fast pipeline. Whether an LLM is involved depends on the pipeline's `generate` step (image/fast.yaml has one, document/fast.yaml does not).
+`--mode accurate` — runs the kind's accurate pipeline; always LLM-heavy.
+
+Both modes read from the **metadata tier** — the locally-extracted file content
+(`files.text_preview`, populated by code/PDF text extraction, image dimensions,
+Whisper transcripts, etc.). That tier never invokes an LLM and is reusable
+across both `fast` and `accurate` extractions of the same file.
 
 ### Image
 
@@ -56,7 +61,7 @@ Passthrough in both modes — raw file content, no pipeline, no LLM.
 
 ## Caching
 
-Unified accurate-result cache (SQLite at `~/.local/share/mm/mm.db`) for **both** fast and accurate modes.
+Unified extractions cache (SQLite at `~/.local/share/mm/mm.db`) for **both** fast and accurate modes.
 
 - Cache key: `content_hash × profile × model × mode × overrides`
   - Same file with different modes/profiles/overrides → separate cache entries
@@ -150,7 +155,7 @@ elapsed • size • throughput
 Examples: `836ms • 38.2 KB • 45.7 KB/s`, `cached • 36ms • 412.8 KB • 7.0 MB/s`
 
 - Throughput auto-scales: B/s → KB/s → MB/s → GB/s
-- `cached` prefix when served from the accurate-result cache
+- `cached` prefix when served from the extractions cache
 
 ## Introspection
 

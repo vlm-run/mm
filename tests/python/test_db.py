@@ -10,9 +10,9 @@ from mm.store import MmDatabase
 from mm.store.schema import (
     ChunkCol,
     FileCol,
-    AccurateCol,
+    ExtractionCol,
 )
-from mm.store.utils import get_accurate_id
+from mm.store.utils import get_extraction_id
 
 from .conftest import requires_sqlite_vec
 from .test_utils import ROOT, ensure_metadata, ensure_fast, get_hash, scanner_table
@@ -36,7 +36,7 @@ def db(tmp_path: Path) -> MmDatabase:
 class TestSchema:
     def test_column_enums_are_strings(self):
         assert FileCol.URI == "uri"
-        assert AccurateCol.SUMMARY == "summary"
+        assert ExtractionCol.SUMMARY == "summary"
         assert ChunkCol.CHUNK_TEXT == "chunk_text"
 
 
@@ -112,12 +112,12 @@ class TestUpsertFiles:
         f = db.get_file("/test/data/doc.txt")
         assert f[FileCol.CONTENT_HASH] is None
         assert f[FileCol.TEXT_PREVIEW] is None
-        assert f[FileCol.FAST_INDEXED_AT] is None
+        assert f[FileCol.CONTENT_INDEXED_AT] is None
 
     def test_upsert_preserves_fast_on_rescan(self, db: MmDatabase):
         ensure_metadata(db, ["doc.txt"])
         # Fill fast columns
-        db.update_fast(
+        db.update_file_fields(
             "/test/data/doc.txt",
             {
                 FileCol.CONTENT_HASH: "abc123",
@@ -150,7 +150,7 @@ class TestUpdateFast:
     def test_update_sets_fast_fields(self, db: MmDatabase):
         uri = "/test/data/img.png"
         ensure_metadata(db, [uri], kinds=["image"])
-        db.update_fast(
+        db.update_file_fields(
             uri,
             {
                 FileCol.CONTENT_HASH: "hash_xyz",
@@ -163,11 +163,11 @@ class TestUpdateFast:
         assert f[FileCol.CONTENT_HASH] == "hash_xyz"
         assert f[FileCol.PHASH] == "00ff00ff"
         assert f[FileCol.DIMENSIONS] == "800x600"
-        assert f[FileCol.FAST_INDEXED_AT] is not None
+        assert f[FileCol.CONTENT_INDEXED_AT] is not None
 
     def test_update_fast_noop_for_missing_file(self, db: MmDatabase):
         # Should not raise
-        db.update_fast("/nonexistent", {FileCol.CONTENT_HASH: "abc"})
+        db.update_file_fields("/nonexistent", {FileCol.CONTENT_HASH: "abc"})
 
 
 # ---------------------------------------------------------------------------
@@ -200,14 +200,14 @@ class TestStaleness:
 # ---------------------------------------------------------------------------
 
 
-class TestFastCache:
-    def test_get_fast_miss(self, db: MmDatabase):
-        assert db.get_fast("nonexistent_hash") is None
+class TestFileContentCache:
+    def test_get_file_content_miss(self, db: MmDatabase):
+        assert db.get_file_content("nonexistent_hash") is None
 
-    def test_put_and_get_fast(self, db: MmDatabase):
+    def test_put_and_get_file_content(self, db: MmDatabase):
         ensure_metadata(db, ["/test/data/doc.txt"])
-        db.put_fast("/test/data/doc.txt", "hash_abc", "extracted text content")
-        result = db.get_fast("hash_abc")
+        db.put_file_content("/test/data/doc.txt", "hash_abc", "extracted text content")
+        result = db.get_file_content("hash_abc")
         assert result == "extracted text content"
 
 
@@ -220,9 +220,9 @@ class TestAccurateResults:
     def test_put_accurate_throws_with_missing_fast(self, db: MmDatabase):
         uri = "/test/data/img.png"
         ensure_metadata(db, [uri], kinds=["image"])
-        with pytest.raises(RuntimeError, match="Fast content not found"):
-            db.put_accurate(uri, get_hash(uri), "default", "qwen", "A cat on a mat.")
-            result = db.get_accurate("hash1", "default", "qwen")
+        with pytest.raises(RuntimeError, match="File content not found"):
+            db.put_extraction(uri, get_hash(uri), "default", "qwen", "A cat on a mat.")
+            result = db.get_extraction("hash1", "default", "qwen")
             assert result == "A cat on a mat."
 
     def test_put_and_get_accurate(self, db: MmDatabase):
@@ -230,32 +230,34 @@ class TestAccurateResults:
         ensure_fast(db, uri, "fast content x", metadata_kinds=["image"])
 
         content_hash = get_hash(uri)
-        accurate_id = db.put_accurate(uri, content_hash, "default", "qwen", "A cat on a mat.")
-        result = db.get_accurate(accurate_id)
+        extraction_id = db.put_extraction(uri, content_hash, "default", "qwen", "A cat on a mat.")
+        result = db.get_extraction(extraction_id)
 
         assert result == "A cat on a mat."
-        assert db.get_fast("hash1") == "fast content x"
+        assert db.get_file_content("hash1") == "fast content x"
 
     def test_accurate_miss_wrong_profile(self, db: MmDatabase):
         uri = "/test/data/img.png"
         ensure_fast(db, uri, metadata_kinds=["image"])
 
         content_hash = get_hash(uri)
-        accurate_id = db.put_accurate(uri, content_hash, "default", "qwen", "A cat.")
-        incorrect_accurate_id = get_accurate_id(content_hash, "other_profile", "qwen", None, False)
+        extraction_id = db.put_extraction(uri, content_hash, "default", "qwen", "A cat.")
+        incorrect_extraction_id = get_extraction_id(
+            content_hash, "other_profile", "qwen", None, False
+        )
 
-        assert db.get_accurate(accurate_id) == "A cat."
-        assert db.get_accurate(incorrect_accurate_id) is None
+        assert db.get_extraction(extraction_id) == "A cat."
+        assert db.get_extraction(incorrect_extraction_id) is None
 
     def test_accurate_miss_wrong_model(self, db: MmDatabase):
         uri = "/test/data/img.png"
         ensure_fast(db, uri, metadata_kinds=["image"])
 
         content_hash = get_hash(uri)
-        accurate_id = db.put_accurate(uri, content_hash, "default", "qwen", "A cat.")
-        incorrect_accurate_id = get_accurate_id(content_hash, "default", "gpt-4", None, False)
-        assert db.get_accurate(accurate_id) == "A cat."
-        assert db.get_accurate(incorrect_accurate_id) is None
+        extraction_id = db.put_extraction(uri, content_hash, "default", "qwen", "A cat.")
+        incorrect_extraction_id = get_extraction_id(content_hash, "default", "gpt-4", None, False)
+        assert db.get_extraction(extraction_id) == "A cat."
+        assert db.get_extraction(incorrect_extraction_id) is None
 
     def test_accurate_returns_full_content(self, db: MmDatabase):
         uri = "/test/data/doc.txt"
@@ -263,9 +265,9 @@ class TestAccurateResults:
 
         long_content = "x" * 2000
         content_hash = get_hash(uri)
-        accurate_id = db.put_accurate(uri, content_hash, "default", "qwen", long_content)
+        extraction_id = db.put_extraction(uri, content_hash, "default", "qwen", long_content)
 
-        assert len(db.get_accurate(accurate_id)) == 2000
+        assert len(db.get_extraction(extraction_id)) == 2000
 
     def test_accurate_with_mode_and_detail(self, db: MmDatabase):
         uri = "/test/data/img.png"
@@ -273,18 +275,60 @@ class TestAccurateResults:
 
         content_hash = get_hash(uri)
 
-        id_fast = get_accurate_id(content_hash, "default", "qwen", "fast", False)
-        _id_fast = db.put_accurate(uri, content_hash, "default", "qwen", "fast result", mode="fast")
+        id_fast = get_extraction_id(content_hash, "default", "qwen", "fast", False)
+        _id_fast = db.put_extraction(
+            uri, content_hash, "default", "qwen", "fast result", mode="fast"
+        )
         assert _id_fast == id_fast
-        assert db.get_accurate(id_fast) == "fast result"
+        assert db.get_extraction(id_fast) == "fast result"
 
-        id_detail = get_accurate_id(content_hash, "default", "qwen", None, True)
-        _id_detail = db.put_accurate(uri, content_hash, "default", "qwen", "detailed", detail=True)
+        id_detail = get_extraction_id(content_hash, "default", "qwen", "accurate", True)
+        _id_detail = db.put_extraction(
+            uri, content_hash, "default", "qwen", "detailed", detail=True
+        )
         assert _id_detail == id_detail
-        assert db.get_accurate(_id_detail) == "detailed"
+        assert db.get_extraction(_id_detail) == "detailed"
 
-        id_accurate = get_accurate_id(content_hash, "default", "qwen", "accurate", False)
-        assert db.get_accurate(id_accurate) is None
+        id_accurate = get_extraction_id(content_hash, "default", "qwen", "accurate", False)
+        assert db.get_extraction(id_accurate) is None
+
+
+class TestExtractionMetadata:
+    """``put_extraction(metadata=...)`` round-trips through ``get_extraction_metadata``.
+
+    The verbose-cache fix in ``cat`` relies on this round-trip to replay the
+    rendered verbose suffix on a cached + verbose run without re-invoking the LLM.
+    """
+
+    def test_round_trip(self, db: MmDatabase):
+        uri = "/test/data/img.png"
+        ensure_fast(db, uri, metadata_kinds=["image"])
+        meta = {"verbose_suffix": "[dim]generate: ollama • 1.2s • 100→50 tokens[/dim]"}
+
+        eid = db.put_extraction(uri, get_hash(uri), "default", "qwen", "summary", metadata=meta)
+        assert db.get_extraction_metadata(eid) == meta
+
+    def test_returns_none_when_metadata_omitted(self, db: MmDatabase):
+        uri = "/test/data/img.png"
+        ensure_fast(db, uri, metadata_kinds=["image"])
+
+        eid = db.put_extraction(uri, get_hash(uri), "default", "qwen", "summary")
+        assert db.get_extraction_metadata(eid) is None
+
+    def test_returns_none_for_unknown_id(self, db: MmDatabase):
+        assert db.get_extraction_metadata("does-not-exist") is None
+
+    def test_returns_none_when_json_malformed(self, db: MmDatabase):
+        """Defensively handle hand-edited or corrupt metadata."""
+        uri = "/test/data/img.png"
+        ensure_fast(db, uri, metadata_kinds=["image"])
+        eid = db.put_extraction(
+            uri, get_hash(uri), "default", "qwen", "summary", metadata={"k": "v"}
+        )
+        # Stomp the metadata column with non-JSON text.
+        db._connect.execute("UPDATE extractions SET metadata = ? WHERE id = ?", ("{not json", eid))
+        db._connect.commit()
+        assert db.get_extraction_metadata(eid) is None
 
 
 # ---------------------------------------------------------------------------
@@ -298,23 +342,23 @@ class TestEvictAccurate:
         ensure_fast(db, uri, metadata_kinds=["image"])
         content_hash = get_hash(uri)
 
-        accurate_id = db.put_accurate(uri, content_hash, "default", "qwen", "A cat on a mat.")
-        assert db.get_accurate(accurate_id) is not None
+        extraction_id = db.put_extraction(uri, content_hash, "default", "qwen", "A cat on a mat.")
+        assert db.get_extraction(extraction_id) is not None
 
         # Verify chunks exist
-        chunks = db.get_chunks(accurate_id)
+        chunks = db.get_chunks(extraction_id)
         assert len(chunks) > 0
 
-        evicted = db.evict_accurate(accurate_id)
+        evicted = db.evict_extraction(extraction_id)
         assert evicted == 1
-        assert db.get_accurate(accurate_id) is None
+        assert db.get_extraction(extraction_id) is None
 
         # Chunks should be cascade-deleted
-        chunks_after = db.get_chunks(accurate_id)
+        chunks_after = db.get_chunks(extraction_id)
         assert len(chunks_after) == 0
 
     def test_evict_returns_zero_when_nothing_to_evict(self, db: MmDatabase):
-        assert db.evict_accurate("nonexistent_id") == 0
+        assert db.evict_extraction("nonexistent_id") == 0
 
     def test_evict_only_matching_key(self, db: MmDatabase):
         """Evicting one (profile, model, mode) should not affect others."""
@@ -322,14 +366,16 @@ class TestEvictAccurate:
         ensure_fast(db, uri, metadata_kinds=["image"])
         content_hash = get_hash(uri)
 
-        id_fast = db.put_accurate(uri, content_hash, "default", "qwen", "fast result", mode="fast")
-        id_accurate = db.put_accurate(
+        id_fast = db.put_extraction(
+            uri, content_hash, "default", "qwen", "fast result", mode="fast"
+        )
+        id_accurate = db.put_extraction(
             uri, content_hash, "default", "qwen", "accurate result", mode="accurate"
         )
 
-        db.evict_accurate(id_fast)
-        assert db.get_accurate(id_fast) is None
-        assert db.get_accurate(id_accurate) == "accurate result"
+        db.evict_extraction(id_fast)
+        assert db.get_extraction(id_fast) is None
+        assert db.get_extraction(id_accurate) == "accurate result"
 
     def test_put_overwrites_no_duplicates(self, db: MmDatabase):
         """Repeated put_accurate with same key overwrites via deterministic PK — no duplicates."""
@@ -337,16 +383,16 @@ class TestEvictAccurate:
         ensure_fast(db, uri, metadata_kinds=["image"])
         content_hash = get_hash(uri)
 
-        id_v1 = db.put_accurate(uri, content_hash, "default", "qwen", "version 1")
-        db.put_accurate(uri, content_hash, "default", "qwen", "version 2")
-        db.put_accurate(uri, content_hash, "default", "qwen", "version 3")
+        id_v1 = db.put_extraction(uri, content_hash, "default", "qwen", "version 1")
+        db.put_extraction(uri, content_hash, "default", "qwen", "version 2")
+        db.put_extraction(uri, content_hash, "default", "qwen", "version 3")
 
         # Only the latest content should be retrievable
-        assert db.get_accurate(id_v1) == "version 3"
+        assert db.get_extraction(id_v1) == "version 3"
 
-        # Exactly one accurate_results row for this key
+        # Exactly one extractions row for this key
         row = db._connect.execute(
-            "SELECT COUNT(*) FROM accurate_results WHERE content_hash = ? AND profile = ? AND model = ?",
+            "SELECT COUNT(*) FROM extractions WHERE content_hash = ? AND profile = ? AND model = ?",
             (content_hash, "default", "qwen"),
         ).fetchone()
         assert row[0] == 1
@@ -357,33 +403,33 @@ class TestEvictAccurate:
         ensure_fast(db, uri, metadata_kinds=["image"])
         content_hash = get_hash(uri)
 
-        id1 = db.put_accurate(uri, content_hash, "default", "qwen", "content A")
+        id1 = db.put_extraction(uri, content_hash, "default", "qwen", "content A")
         # Overwrite with different content but same key
-        id2 = db.put_accurate(uri, content_hash, "default", "qwen", "content B")
+        id2 = db.put_extraction(uri, content_hash, "default", "qwen", "content B")
         assert id1 == id2
         assert isinstance(id1, str)
         assert len(id1) == 24
 
         # Different mode → different ID
-        id3 = db.put_accurate(uri, content_hash, "default", "qwen", "fast", mode="fast")
+        id3 = db.put_extraction(uri, content_hash, "default", "qwen", "fast", mode="fast")
         assert id3 != id1
 
     def test_files_cascade_deletes_accurate(self, db: MmDatabase):
-        """Deleting a files row should cascade-delete its accurate_results and chunks."""
+        """Deleting a files row should cascade-delete its extractions and chunks."""
         uri = "/test/data/img.png"
         ensure_fast(db, uri, metadata_kinds=["image"])
         content_hash = get_hash(uri)
 
-        accurate_id = db.put_accurate(uri, content_hash, "default", "qwen", "A cat on a mat.")
-        assert db.get_accurate(accurate_id) is not None
+        extraction_id = db.put_extraction(uri, content_hash, "default", "qwen", "A cat on a mat.")
+        assert db.get_extraction(extraction_id) is not None
 
         # Delete the files row
         db._connect.execute("DELETE FROM files WHERE uri = ?", (uri,))
         db._connect.commit()
 
-        # accurate_results and chunks should be cascade-deleted
-        assert db.get_accurate(accurate_id) is None
-        chunks = db.get_chunks(accurate_id)
+        # extractions and chunks should be cascade-deleted
+        assert db.get_extraction(extraction_id) is None
+        chunks = db.get_chunks(extraction_id)
         assert len(chunks) == 0
 
     def test_evict_then_reinsert(self, db: MmDatabase):
@@ -392,15 +438,15 @@ class TestEvictAccurate:
         ensure_fast(db, uri, metadata_kinds=["image"])
         content_hash = get_hash(uri)
 
-        accurate_id = db.put_accurate(uri, content_hash, "default", "qwen", "stale result")
-        db.evict_accurate(accurate_id)
-        db.put_accurate(uri, content_hash, "default", "qwen", "fresh result")
+        extraction_id = db.put_extraction(uri, content_hash, "default", "qwen", "stale result")
+        db.evict_extraction(extraction_id)
+        db.put_extraction(uri, content_hash, "default", "qwen", "fresh result")
 
-        assert db.get_accurate(accurate_id) == "fresh result"
+        assert db.get_extraction(extraction_id) == "fresh result"
 
-        # Exactly one accurate_results row should exist
+        # Exactly one extractions row should exist
         row = db._connect.execute(
-            "SELECT COUNT(*) FROM accurate_results WHERE content_hash = ? AND profile = ? AND model = ?",
+            "SELECT COUNT(*) FROM extractions WHERE content_hash = ? AND profile = ? AND model = ?",
             (content_hash, "default", "qwen"),
         ).fetchone()
         assert row[0] == 1
@@ -418,7 +464,7 @@ class TestChunks:
 
         content_hash = get_hash(uri)
         content = "Hello world. " * 200  # ~2600 chars → 3 chunks
-        db.put_accurate(uri, content_hash, "default", "qwen", content)
+        db.put_extraction(uri, content_hash, "default", "qwen", content)
 
         full = db.get_full_content(uri, content_hash, "default", "qwen")
         assert full == content
@@ -431,7 +477,7 @@ class TestChunks:
         ensure_fast(db, uri)
 
         content_hash = get_hash(uri)
-        db.put_accurate(uri, content_hash, "default", "qwen", "short")
+        db.put_extraction(uri, content_hash, "default", "qwen", "short")
         full = db.get_full_content(uri, content_hash, "default", "qwen")
         assert full == "short"
 
@@ -449,11 +495,11 @@ class TestEmbeddings:
 
         content_hash = get_hash(uri)
         content = "Machine learning is great. " * 50
-        accurate_id = db.put_accurate(uri, content_hash, "default", "qwen", content)
+        extraction_id = db.put_extraction(uri, content_hash, "default", "qwen", content)
 
         # Embed with fake 4-dim vectors
         vectors = [[0.1, 0.2, 0.3, 0.4], [0.5, 0.6, 0.7, 0.8]]
-        db.upsert_embeddings(accurate_id=accurate_id, vectors=vectors)
+        db.upsert_embeddings(extraction_id=extraction_id, vectors=vectors)
 
         results = db.search_similar([0.1, 0.2, 0.3, 0.4], limit=2)
         assert len(results) > 0
@@ -466,9 +512,9 @@ class TestEmbeddings:
 
         content_hash = get_hash(uri)
         content = "Test content for embedding. " * 50
-        accurate_id = db.put_accurate(uri, content_hash, "default", "qwen", content)
+        extraction_id = db.put_extraction(uri, content_hash, "default", "qwen", content)
 
-        db.upsert_embeddings(accurate_id=accurate_id, vectors=[[1.0, 2.0], [3.0, 4.0]])
+        db.upsert_embeddings(extraction_id=extraction_id, vectors=[[1.0, 2.0], [3.0, 4.0]])
 
         full = db.get_full_content(uri, content_hash, "default", "qwen")
         assert full == content
@@ -502,10 +548,8 @@ class TestSQL:
     def test_sql_on_accurate_table(self, db: MmDatabase):
         uri = f"{ROOT}/a.txt"
         ensure_fast(db, uri)
-        db.put_accurate(uri, get_hash(uri), "default", "qwen", "hello")
-        _, rows = db.sql(
-            "SELECT COUNT(*) as n FROM accurate_results", table_name="accurate_results"
-        )
+        db.put_extraction(uri, get_hash(uri), "default", "qwen", "hello")
+        _, rows = db.sql("SELECT COUNT(*) as n FROM extractions", table_name="extractions")
         assert rows[0][0] == 1
 
 
@@ -685,7 +729,7 @@ class TestPruneMissing:
         assert {r["name"] for r in db.get_files()} == {"a.txt"}
 
     def test_prune_cascades_to_accurate_and_chunks(self, tmp_path: Path):
-        """Deleting a files row cascades to accurate_results and chunks."""
+        """Deleting a files row cascades to extractions and chunks."""
         from mm.store.utils import prune_missing
 
         p = tmp_path / "a.txt"
@@ -694,19 +738,19 @@ class TestPruneMissing:
         uri = str(p)
         db.ensure_metadata(uri)
         content_hash = get_hash(p)
-        db.put_fast(uri, content_hash, "fast content")
-        accurate_id = db.put_accurate(uri, content_hash, "default", "qwen", "accurate summary")
+        db.put_file_content(uri, content_hash, "fast content")
+        extraction_id = db.put_extraction(uri, content_hash, "default", "qwen", "accurate summary")
 
-        assert db.get_accurate(accurate_id) is not None
-        assert len(db.get_chunks(accurate_id)) > 0
+        assert db.get_extraction(extraction_id) is not None
+        assert len(db.get_chunks(extraction_id)) > 0
 
         p.unlink()
         deleted = prune_missing(uris=[uri], db=db)
 
         assert deleted == 1
         assert db.get_file(uri) is None
-        assert db.get_accurate(accurate_id) is None
-        assert db.get_chunks(accurate_id) == []
+        assert db.get_extraction(extraction_id) is None
+        assert db.get_chunks(extraction_id) == []
 
     def test_delete_files_is_idempotent(self, tmp_path: Path):
         """``delete_files`` returns 0 on no-op inputs and is safe to call twice."""

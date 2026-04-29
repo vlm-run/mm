@@ -103,7 +103,7 @@ def _get_media_info(directory: Path, rel_path: str) -> MediaInfo:
 
         scanner = Scanner(str(directory.resolve()))
         scanner.scan()
-        r = scanner.extract_fast(rel_path)
+        r = scanner.extract_metadata(rel_path)
         w, h = 0, 0
         if r.dimensions:
             parts = r.dimensions.split("x")

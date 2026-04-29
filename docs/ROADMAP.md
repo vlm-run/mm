@@ -29,10 +29,10 @@ mm roadmap
 │   │   └── Arrow path preserved for DataFrame/SQL/Rich display use cases
 │   │
 │   ├── Parallel fast-mode batch extraction
-│   │   ├── extract_fast_batch(paths) — rayon parallel across files
+│   │   ├── extract_metadata_batch(paths) — rayon parallel across files
 │   │   ├── All 17 demo videos: 5.1s sequential → <1s parallel
 │   │   ├── 218 images: already fast, but batch hashing benefits from IO overlap
-│   │   └── Return Vec<FastRecord> as Arrow RecordBatch (fast-mode schema)
+│   │   └── Return Vec<MetadataRecord> as Arrow RecordBatch (fast-mode schema)
 │   │
 │   ├── [DONE] mm wc — token counting for LLM budgeting
 │   │   ├── Fast byte-level token estimator (~4 chars/token for text)

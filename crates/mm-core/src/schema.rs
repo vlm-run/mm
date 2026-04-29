@@ -28,7 +28,7 @@ pub fn metadata_schema() -> Schema {
     ])
 }
 
-pub fn fast_schema() -> Schema {
+pub fn metadata_record_schema() -> Schema {
     let mut fields = metadata_schema().fields().to_vec();
     fields.extend(vec![
         Arc::new(Field::new("content_hash", DataType::Utf8, true)),
@@ -74,28 +74,28 @@ mod tests {
     }
 
     #[test]
-    fn test_fast_schema_extends_metadata() {
-        let metadata = metadata_schema();
-        let fast = fast_schema();
-        assert!(fast.fields().len() > metadata.fields().len());
-        assert_eq!(fast.fields().len(), 32);
+    fn test_metadata_record_schema_extends_metadata() {
+        let basic = metadata_schema();
+        let full = metadata_record_schema();
+        assert!(full.fields().len() > basic.fields().len());
+        assert_eq!(full.fields().len(), 32);
     }
 
     #[test]
-    fn test_fast_has_exif_columns() {
-        let fast = fast_schema();
-        assert!(fast.field_with_name("exif_camera").is_ok());
-        assert!(fast.field_with_name("exif_date").is_ok());
-        assert!(fast.field_with_name("exif_gps").is_ok());
-        assert!(fast.field_with_name("exif_orientation").is_ok());
+    fn test_metadata_record_has_exif_columns() {
+        let full = metadata_record_schema();
+        assert!(full.field_with_name("exif_camera").is_ok());
+        assert!(full.field_with_name("exif_date").is_ok());
+        assert!(full.field_with_name("exif_gps").is_ok());
+        assert!(full.field_with_name("exif_orientation").is_ok());
     }
 
     #[test]
-    fn test_fast_has_video_columns() {
-        let fast = fast_schema();
-        assert!(fast.field_with_name("video_codec").is_ok());
-        assert!(fast.field_with_name("audio_codec").is_ok());
-        assert!(fast.field_with_name("fps").is_ok());
-        assert!(fast.field_with_name("has_audio").is_ok());
+    fn test_metadata_record_has_video_columns() {
+        let full = metadata_record_schema();
+        assert!(full.field_with_name("video_codec").is_ok());
+        assert!(full.field_with_name("audio_codec").is_ok());
+        assert!(full.field_with_name("fps").is_ok());
+        assert!(full.field_with_name("has_audio").is_ok());
     }
 }

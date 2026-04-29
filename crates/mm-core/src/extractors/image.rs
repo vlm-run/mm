@@ -1,7 +1,7 @@
 use std::io::{BufReader, Cursor};
 use std::path::Path;
 
-use crate::extract::{ContentExtractor, ExtractError, FastRecord};
+use crate::extract::{ContentExtractor, ExtractError, MetadataRecord};
 
 pub struct ImageExtractor;
 
@@ -10,7 +10,7 @@ impl ContentExtractor for ImageExtractor {
         kind == "image"
     }
 
-    fn extract(&self, path: &Path) -> Result<FastRecord, ExtractError> {
+    fn extract(&self, path: &Path) -> Result<MetadataRecord, ExtractError> {
         let file = std::fs::File::open(path)?;
         let mmap = unsafe { memmap2::Mmap::map(&file) }.map_err(std::io::Error::other)?;
 
@@ -27,7 +27,7 @@ impl ContentExtractor for ImageExtractor {
 
         let exif_data = extract_exif(path);
 
-        Ok(FastRecord {
+        Ok(MetadataRecord {
             content_hash: Some(content_hash),
             dimensions,
             magic_mime,

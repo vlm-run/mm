@@ -514,12 +514,12 @@ class TestGrep:
         db.ensure_metadata(str(img))
         now = now_us()
         db._connect.execute(
-            "INSERT INTO accurate_results (id, file_uri, content_hash, profile, model, mode, "
+            "INSERT INTO extractions (id, file_uri, content_hash, profile, model, mode, "
             "detail, extra, summary, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             ("l2-snip", str(img), "h", "p", "m", "accurate", 0, "", "summary", now),
         )
         db._connect.execute(
-            "INSERT INTO chunks (accurate_result_id, file_uri, content_hash, profile, model, "
+            "INSERT INTO chunks (extraction_id, file_uri, content_hash, profile, model, "
             "mode, chunk_idx, chunk_text, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
             ("l2-snip", str(img), "h", "p", "m", "accurate", 0, chunk, now),
         )
@@ -545,12 +545,12 @@ class TestGrep:
         db.ensure_metadata(str(img))
         now = now_us()
         db._connect.execute(
-            "INSERT INTO accurate_results (id, file_uri, content_hash, profile, model, mode, "
+            "INSERT INTO extractions (id, file_uri, content_hash, profile, model, mode, "
             "detail, extra, summary, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             ("l2-1", str(img), "h", "p", "m", "accurate", 0, "", "summary", now),
         )
         db._connect.execute(
-            "INSERT INTO chunks (accurate_result_id, file_uri, content_hash, profile, model, "
+            "INSERT INTO chunks (extraction_id, file_uri, content_hash, profile, model, "
             "mode, chunk_idx, chunk_text, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (
                 "l2-1",
@@ -558,7 +558,7 @@ class TestGrep:
                 "h",
                 "p",
                 "m",
-                2,
+                "accurate",
                 0,
                 "the quick brown fox jumps over the lazy dog",
                 now,
@@ -584,12 +584,12 @@ class TestGrep:
         db.ensure_metadata(str(img))
         now = now_us()
         db._connect.execute(
-            "INSERT INTO accurate_results (id, file_uri, content_hash, profile, model, mode, "
+            "INSERT INTO extractions (id, file_uri, content_hash, profile, model, mode, "
             "detail, extra, summary, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             ("l2-sub", str(img), "h", "p", "m", "accurate", 0, "", "summary", now),
         )
         db._connect.execute(
-            "INSERT INTO chunks (accurate_result_id, file_uri, content_hash, profile, model, "
+            "INSERT INTO chunks (extraction_id, file_uri, content_hash, profile, model, "
             "mode, chunk_idx, chunk_text, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
             ("l2-sub", str(img), "h", "p", "m", "accurate", 0, "Breaking the Quantum Loop", now),
         )
@@ -624,17 +624,17 @@ class TestGrep:
         db.ensure_metadata(str(txt))
         now = now_us()
         # Seed identical chunk text under both files so kind alone determines the hit.
-        for idx, (uri, accurate_id) in enumerate([(str(img), "l2-img"), (str(txt), "l2-txt")]):
+        for idx, (uri, extraction_id) in enumerate([(str(img), "l2-img"), (str(txt), "l2-txt")]):
             db._connect.execute(
-                "INSERT INTO accurate_results (id, file_uri, content_hash, profile, model, mode, "
+                "INSERT INTO extractions (id, file_uri, content_hash, profile, model, mode, "
                 "detail, extra, summary, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                (accurate_id, uri, "h", "p", "m", "accurate", 0, "", "summary", now),
+                (extraction_id, uri, "h", "p", "m", "accurate", 0, "", "summary", now),
             )
             db._connect.execute(
-                "INSERT INTO chunks (accurate_result_id, file_uri, content_hash, profile, model, "
+                "INSERT INTO chunks (extraction_id, file_uri, content_hash, profile, model, "
                 "mode, chunk_idx, chunk_text, created_at) "
                 "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                (accurate_id, uri, "h", "p", "m", "accurate", idx, "rare phrase only here", now),
+                (extraction_id, uri, "h", "p", "m", "accurate", idx, "rare phrase only here", now),
             )
         db._connect.commit()
 
@@ -660,12 +660,12 @@ class TestGrep:
         db.ensure_metadata(str(img))
         now = now_us()
         db._connect.execute(
-            "INSERT INTO accurate_results (id, file_uri, content_hash, profile, model, mode, "
+            "INSERT INTO extractions (id, file_uri, content_hash, profile, model, mode, "
             "detail, extra, summary, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             ("l2-p", str(img), "h", "p", "m", "accurate", 0, "", "summary", now),
         )
         db._connect.execute(
-            "INSERT INTO chunks (accurate_result_id, file_uri, content_hash, profile, model, "
+            "INSERT INTO chunks (extraction_id, file_uri, content_hash, profile, model, "
             "mode, chunk_idx, chunk_text, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (
                 "l2-p",
@@ -703,7 +703,7 @@ class TestGrep:
         db.ensure_metadata(str(img))
         now = now_us()
         db._connect.execute(
-            "INSERT INTO accurate_results (id, file_uri, content_hash, profile, model, mode, "
+            "INSERT INTO extractions (id, file_uri, content_hash, profile, model, mode, "
             "detail, extra, summary, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             ("l2-w", str(img), "h", "p", "m", "accurate", 0, "", "summary", now),
         )
@@ -716,7 +716,7 @@ class TestGrep:
         ]
         for idx, text in seeded:
             db._connect.execute(
-                "INSERT INTO chunks (accurate_result_id, file_uri, content_hash, profile, model, "
+                "INSERT INTO chunks (extraction_id, file_uri, content_hash, profile, model, "
                 "mode, chunk_idx, chunk_text, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 ("l2-w", str(img), "h", "p", "m", "accurate", idx, text, now),
             )
