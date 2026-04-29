@@ -18,7 +18,7 @@ generate:
     [OUTPUT]
     {{<=50 words description}}
 
-    Tags: {{up to 10 tags}}
+    Tags: {{up to 5 tags}}
   max_tokens: 512
   think: false # disable thinking (default)
   reasoning_effort: "none" # no reasoning effort (default)

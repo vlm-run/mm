@@ -3,17 +3,6 @@
 Behaviour is driven by (file type × pipeline mode). Default is ``--mode fast``
 which runs local extraction (no LLM). Use ``--mode accurate`` for LLM-powered
 descriptions.
-
-File-type behaviour:
-  Images     fast: dimensions, MIME, hash, EXIF metadata.
-             accurate: VLM caption via vision model.
-  Videos     fast: resolution, duration, FPS, codecs (metadata only).
-             accurate: keyframe mosaic → VLM description.
-  Audio      fast: duration, codec, bitrate (metadata only).
-             accurate: transcript → LLM summary.
-  PDFs       fast: text extraction via pypdfium2.
-             accurate: LLM summary of extracted text.
-  Code/text  raw content passthrough (no pipeline, no LLM in either mode).
 """
 
 from __future__ import annotations
