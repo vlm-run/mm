@@ -8,6 +8,8 @@ import typer
 
 from mm.pipelines.schema import PipelineSpec
 
+KIND_ORDER = ("image", "video", "audio", "document")
+
 
 class CatOpts:
     """Bag of resolved options threaded through extraction."""
