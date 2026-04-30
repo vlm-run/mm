@@ -153,6 +153,18 @@ class BenchResult:
         }
 
 
+# ── Pre-ops sanitization ────────────────────────────────────────────
+
+
+def _sanitize_files(files: list) -> list:
+    """Return *files* with filesystem-noise entries removed."""
+
+    def _is_filesystem_noise(name: str) -> bool:
+        return name.startswith("._") or name == ".DS_Store"
+
+    return [f for f in files if not _is_filesystem_noise(Path(f.path).name)]
+
+
 # ── Timing harness ──────────────────────────────────────────────────
 
 
@@ -191,10 +203,9 @@ def _run_benchmarks(
 
     # Pre-scan to get target info and pick representative files.
     ctx = Context(directory)
-    table = ctx.to_arrow()
-    total_bytes = sum(r.as_py() for r in table.column("size")) if table.num_rows > 0 else 0
-    files = ctx.files
-    num_files = ctx.num_files
+    files = _sanitize_files(ctx.files)
+    num_files = len(files)
+    total_bytes = sum(f.size for f in files)
 
     target_info = {
         "directory": str(directory),
