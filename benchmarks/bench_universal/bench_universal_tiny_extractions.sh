@@ -1,16 +1,24 @@
 #!/usr/bin/env bash
-# bench_universal_tiny.sh — universal CLI assistant bench on mmbench-tiny.
+# bench_universal_tiny_extractions.sh — Group-2 (VLM extractions) universal
+# CLI bench on mmbench-tiny.
 #
-# Like bench_universal.sh, but operates directly on the 4-file mmbench-tiny
-# dataset (image / video / PDF / audio) — no synthetic curation step. Differs
-# in three ways from the multimodal bench:
+# Group 2 = the extraction surface of mm: cat (fast/accurate, head/tail,
+# named encoder pipelines) and grep --semantic (incl. --pre-index). These
+# are the VLM-driven paths — every task in this pool either pulls content
+# through a VLM or routes it through a vector index. So this script
+# isolates the *content-extraction* axis of the harness, the counterpart
+# to the Group-1 metadata bench.
 #
-#   1. Random task sampling. There is no fast/full mode — the script picks
-#      `--tasks N` (default 5) tasks uniformly at random from a pool of
-#      tiny-compatible tasks. Effective count is
+# For metadata-only tasks (find, wc, sql, plain grep), see
+# bench_universal_tiny_metadata.sh.
+#
+# Differs from bench_universal.sh in three ways:
+#
+#   1. Random task sampling. The script picks `--tasks N` (default 5) tasks
+#      uniformly at random from a 20-task Group-2 pool. Effective count is
 #          min(available, max(5, --tasks)).
 #   2. Six assistants supported: claude, codex, gemini, openclaw, opencode,
-#      qwencode. Unreachable ones are dropped during preflight.
+#      qwen. Unreachable ones are dropped during preflight.
 #   3. Ad-hoc profile override. Pass --base-url / --model / --api-key to
 #      benchmark against a one-shot profile that is created, activated, used
 #      for the run, then torn down (with the previous active profile
@@ -21,13 +29,13 @@
 # either.
 #
 # Usage:
-#   ./benchmarks/bench_universal/bench_universal_tiny.sh
-#   ./benchmarks/bench_universal/bench_universal_tiny.sh --tasks 10
-#   ./benchmarks/bench_universal/bench_universal_tiny.sh --assistant claude,codex
-#   ./benchmarks/bench_universal/bench_universal_tiny.sh --timeout 60
-#   ./benchmarks/bench_universal/bench_universal_tiny.sh \
+#   ./benchmarks/bench_universal/bench_universal_tiny_extractions.sh
+#   ./benchmarks/bench_universal/bench_universal_tiny_extractions.sh --tasks 10
+#   ./benchmarks/bench_universal/bench_universal_tiny_extractions.sh --assistant claude,codex
+#   ./benchmarks/bench_universal/bench_universal_tiny_extractions.sh --timeout 60
+#   ./benchmarks/bench_universal/bench_universal_tiny_extractions.sh \
 #       --base-url https://openrouter.ai/api/v1 --model qwen3-vl:8b --api-key sk-...
-#   BENCH_RUNS=10 ./benchmarks/bench_universal/bench_universal_tiny.sh
+#   BENCH_RUNS=10 ./benchmarks/bench_universal/bench_universal_tiny_extractions.sh
 set -euo pipefail
 
 # ---------------------------------------------------------------------------
@@ -39,7 +47,7 @@ BENCH_DIR="${DATA_DIR}/mmbench-tiny"
 RESULTS_DIR="${SCRIPT_DIR}/run_results"
 TINY_URL="https://storage.googleapis.com/vlm-data-public-prod/mmbench/mmbench-tiny.tar.gz"
 
-SUPPORTED_ASSISTANTS="claude codex gemini openclaw opencode qwencode"
+SUPPORTED_ASSISTANTS="claude codex gemini openclaw opencode qwen"
 RUNS="${BENCH_RUNS:-1}"
 TIMEOUT_SEC="${BENCH_TIMEOUT:-120}"
 
@@ -214,7 +222,7 @@ capture_profile() {
 
 # ---------------------------------------------------------------------------
 # Assistant probing — six assistants supported. New ones (openclaw, opencode,
-# qwencode) follow Claude's `-p PROMPT` convention until proven otherwise; the
+# qwen) follow Claude's `-p PROMPT` convention until proven otherwise; the
 # probe will mark anything unreachable as skipped.
 # ---------------------------------------------------------------------------
 check_assistant() {
@@ -224,8 +232,8 @@ check_assistant() {
     codex)     codex     -q 'hi' </dev/null >/dev/null 2>&1 ;;
     gemini)    gemini    -p 'hi' </dev/null >/dev/null 2>&1 ;;
     openclaw)  openclaw  -p 'hi' </dev/null >/dev/null 2>&1 ;;
-    opencode)  opencode  -p 'hi' </dev/null >/dev/null 2>&1 ;;
-    qwencode)  qwencode  -p 'hi' </dev/null >/dev/null 2>&1 ;;
+    opencode)  opencode  --prompt 'hi' </dev/null >/dev/null 2>&1 ;;
+    qwen)  qwen      -p 'hi' </dev/null >/dev/null 2>&1 ;;
     *)         return 1 ;;
   esac
 }
@@ -270,8 +278,8 @@ assistant_cmd() {
     codex)    [ -n "${context}" ] && echo "echo '${context}' | ${tcap} codex -q '${prompt}'"    || echo "${tcap} codex -q '${prompt}'" ;;
     gemini)   [ -n "${context}" ] && echo "echo '${context}' | ${tcap} gemini -p '${prompt}'"   || echo "${tcap} gemini -p '${prompt}'" ;;
     openclaw) [ -n "${context}" ] && echo "echo '${context}' | ${tcap} openclaw -p '${prompt}'" || echo "${tcap} openclaw -p '${prompt}'" ;;
-    opencode) [ -n "${context}" ] && echo "echo '${context}' | ${tcap} opencode -p '${prompt}'" || echo "${tcap} opencode -p '${prompt}'" ;;
-    qwencode) [ -n "${context}" ] && echo "echo '${context}' | ${tcap} qwencode -p '${prompt}'" || echo "${tcap} qwencode -p '${prompt}'" ;;
+    opencode) [ -n "${context}" ] && echo "echo '${context}' | ${tcap} opencode --prompt '${prompt}'" || echo "${tcap} opencode --prompt '${prompt}'" ;;
+    qwen) [ -n "${context}" ] && echo "echo '${context}' | ${tcap} qwen -p '${prompt}'" || echo "${tcap} qwen -p '${prompt}'" ;;
   esac
 }
 
@@ -283,8 +291,8 @@ assistant_pipe_cmd() {
     codex)    echo "${mm_cmd} | ${tcap} codex -q '${prompt}'" ;;
     gemini)   echo "${mm_cmd} | ${tcap} gemini -p '${prompt}'" ;;
     openclaw) echo "${mm_cmd} | ${tcap} openclaw -p '${prompt}'" ;;
-    opencode) echo "${mm_cmd} | ${tcap} opencode -p '${prompt}'" ;;
-    qwencode) echo "${mm_cmd} | ${tcap} qwencode -p '${prompt}'" ;;
+    opencode) echo "${mm_cmd} | ${tcap} opencode --prompt '${prompt}'" ;;
+    qwen) echo "${mm_cmd} | ${tcap} qwen -p '${prompt}'" ;;
   esac
 }
 
@@ -306,14 +314,24 @@ setup_data() {
 }
 
 # ---------------------------------------------------------------------------
-# Task pool — 17 tiny-compatible tasks. These mirror the original 20-task
-# multimodal pool, retargeted at the four files in mmbench-tiny:
-#   IMG = 1-vqa-car.jpg
-#   VID = bakery.mp4
-#   PDF = BillDownload-8pg.pdf
-#   AUD = how_to_build_an_mvp.mp3
-# Tasks that referenced subdirs (docs/, media/) in the original pool are
-# omitted, since tiny is a flat directory.
+# Group-2 task pool — 20 tasks exercising the VLM extraction surface of mm:
+#
+#   cat fast      (4): one per modality — image / video / PDF / audio
+#   cat accurate  (4): one per modality — same coverage at LLM-quality
+#   cat -n        (2): head and tail (PDF; head/tail only meaningful for
+#                      text-extracting kinds)
+#   cat -p        (5): named encoder pipelines — image-resize, image-tile,
+#                      document-rasterize, document-page-text, video-mosaic
+#   cat overrides (1): -p image-resize with --encode.strategy_opts max_width
+#   grep -s       (3): semantic search per kind (image, document, audio)
+#   grep -s       (1): + --pre-index to exercise the indexer warm-up path
+#
+# Targets the four files in mmbench-tiny (image / video / PDF / audio).
+# Tasks that depend on a configured profile (cat --mode accurate, the
+# image-resize pipeline) will fail closed when no LLM server is reachable;
+# the bench still records the wall-clock and the harness timing dominates.
+# For metadata-only tasks (find, wc, sql, plain grep), see
+# bench_universal_tiny_metadata.sh.
 # ---------------------------------------------------------------------------
 declare -a TASK_NAMES=()
 declare -a TASK_PROMPTS=()
@@ -333,81 +351,107 @@ register_tasks() {
   local PDF="${BENCH_DIR}/BillDownload-8pg.pdf"
   local AUD="${BENCH_DIR}/how_to_build_an_mvp.mp3"
 
-  add_task "directory_survey" \
-    "List every file in this directory tree with its type, size, and path. Group by file type." \
-    "mm find ${BENCH_DIR} --format json"
-
-  add_task "pdf_extraction" \
-    "Extract the text from this PDF and provide a structured summary of its contents." \
-    "mm cat '${PDF}' --mode fast" \
-    "${PDF}"
-
-  add_task "image_metadata" \
+  # ----- cat fast (4): one per modality -----
+  add_task "cat_image_fast" \
     "Describe what is shown in this image. Include dimensions, format, and any EXIF metadata." \
     "mm cat '${IMG}' --mode fast --format json" \
     "${IMG}"
 
-  add_task "video_metadata" \
-    "Extract metadata from this video: resolution, duration, codec, and file size." \
+  add_task "cat_video_fast" \
+    "Summarise this video at fast quality: resolution, duration, codec, and the gist of the content." \
     "mm cat '${VID}' --mode fast --format json" \
     "${VID}"
 
-  add_task "audio_metadata" \
-    "Extract metadata from this audio file: duration, codec, sample rate, and file size." \
+  add_task "cat_pdf_fast" \
+    "Extract the text from this PDF and provide a structured summary of its contents." \
+    "mm cat '${PDF}' --mode fast --format json" \
+    "${PDF}"
+
+  add_task "cat_audio_fast" \
+    "Transcribe this audio file (fast quality) and return the transcript with rough timestamps." \
     "mm cat '${AUD}' --mode fast --format json" \
     "${AUD}"
 
-  add_task "token_cost_estimate" \
-    "Analyze this directory: how many files per type, total size per type, and which are the largest? Estimate total LLM token cost." \
-    "mm wc ${BENCH_DIR} --by-kind --format json"
+  # ----- cat accurate (4): one per modality at LLM quality -----
+  add_task "cat_image_accurate" \
+    "Generate a high-quality VLM description of this image — what is depicted, fine-grained details, any text visible." \
+    "mm cat '${IMG}' --mode accurate --format json" \
+    "${IMG}"
 
-  add_task "recent_files" \
-    "List all files sorted by modification time (most recent first). Show name, type, size, and date." \
-    "mm sql \"SELECT name, kind, size, modified FROM files ORDER BY modified DESC\" --dir ${BENCH_DIR} --format json"
+  add_task "cat_video_accurate" \
+    "Generate a high-quality description of this video: scenes, what happens, anything spoken." \
+    "mm cat '${VID}' --mode accurate --format json" \
+    "${VID}"
 
-  add_task "batch_metadata" \
-    "Extract structured metadata for every file in this directory: name, type, size, dimensions (if image/video), duration (if audio/video), and content hash." \
-    "mm find ${BENCH_DIR} --format json"
+  add_task "cat_pdf_accurate" \
+    "Extract and structure the contents of this PDF at accurate quality — tables, figures, and key fields." \
+    "mm cat '${PDF}' --mode accurate --format json" \
+    "${PDF}"
 
-  add_task "evidence_package" \
-    "Create an inventory of this directory as an evidence package: list every file with its hash, size, type, and modification date. Flag any files that are unusually large." \
-    "mm find ${BENCH_DIR} --columns name,kind,size,modified --format json"
+  add_task "cat_audio_accurate" \
+    "Transcribe this audio at accurate quality and produce a short structured summary of what was said." \
+    "mm cat '${AUD}' --mode accurate --format json" \
+    "${AUD}"
 
-  add_task "document_search" \
-    "Search all document files for mentions of dollar amounts and list where they appear." \
-    "mm grep '\\\$[0-9]' ${BENCH_DIR} --kind document --format json"
+  # ----- cat -n head/tail (2): line limits on text-extracting kinds -----
+  add_task "cat_pdf_head" \
+    "Extract just the first 10 lines of this PDF — the document header." \
+    "mm cat '${PDF}' -n 10 --format json" \
+    "${PDF}"
 
-  add_task "document_token_cost" \
-    "How many tokens would it cost to ingest all documents in this directory into an LLM? Count files and estimate tokens." \
-    "mm wc ${BENCH_DIR} --kind document --format json"
+  add_task "cat_pdf_tail" \
+    "Extract just the last 10 lines of this PDF — the document footer." \
+    "mm cat '${PDF}' -n -10 --format json" \
+    "${PDF}"
 
-  add_task "document_format_audit" \
-    "What document formats exist in this directory? Show extension, count, and total size for each format." \
-    "mm sql \"SELECT ext, COUNT(*) as n, ROUND(SUM(size)/1e6,1) as mb FROM files WHERE kind='document' GROUP BY ext ORDER BY n DESC\" --dir ${BENCH_DIR} --format json"
+  # ----- cat -p (5): named encoder pipelines, no LLM generate step -----
+  add_task "cat_image_resize" \
+    "Re-encode this image through the image-resize pipeline so a downstream VLM can ingest it within a 1024px bounding box." \
+    "mm cat '${IMG}' -p image-resize --format json" \
+    "${IMG}"
 
-  add_task "hires_images" \
-    "Find all images in this directory with width >= 1000 pixels. Show name, dimensions, and size." \
-    "mm sql \"SELECT name, width, height, size FROM files WHERE kind='image' AND width >= 1000 ORDER BY width DESC\" --dir ${BENCH_DIR} --format json"
+  add_task "cat_image_tile" \
+    "Encode this image as an overview + detail tiles (image-tile pipeline) for fine-grained VLM analysis." \
+    "mm cat '${IMG}' -p image-tile --format json" \
+    "${IMG}"
 
-  add_task "image_format_audit" \
-    "What image formats are used in this directory? Show format, count, and total size." \
-    "mm sql \"SELECT ext, COUNT(*) as n, ROUND(SUM(size)/1e6,1) as mb FROM files WHERE kind='image' GROUP BY ext ORDER BY mb DESC\" --dir ${BENCH_DIR} --format json"
+  add_task "cat_pdf_rasterize" \
+    "Render this PDF page-by-page as images via the document-rasterize pipeline." \
+    "mm cat '${PDF}' -p document-rasterize --format json" \
+    "${PDF}"
 
-  add_task "image_token_cost" \
-    "How many tokens would it cost to process all images in this directory with a vision LLM? List each image with its dimensions and estimated tokens." \
-    "mm wc ${BENCH_DIR} --kind image --format json"
+  add_task "cat_pdf_page_text" \
+    "Extract per-page text from this PDF using the document-page-text pipeline." \
+    "mm cat '${PDF}' -p document-page-text --format json" \
+    "${PDF}"
 
-  add_task "video_resolution_check" \
-    "List all video files and their resolution. Which are HD (>=720p) and which are SD?" \
-    "mm sql \"SELECT name, width, height, size FROM files WHERE kind='video'\" --dir ${BENCH_DIR} --format json"
+  add_task "cat_video_mosaic" \
+    "Build a frame mosaic of this video using the video-mosaic pipeline so a VLM can see the whole video at a glance." \
+    "mm cat '${VID}' -p video-mosaic --format json" \
+    "${VID}"
 
-  add_task "tree_overview" \
-    "Generate a directory tree of this folder showing structure, file types, and sizes at each level." \
-    "mm find ${BENCH_DIR} --tree --depth 3 --format json"
+  # ----- cat with --encode override (1) -----
+  add_task "cat_image_resize_512" \
+    "Encode this image with image-resize but cap the bounding box at 512px so the payload stays small." \
+    "mm cat '${IMG}' -p image-resize --encode.strategy_opts max_width=512 --format json" \
+    "${IMG}"
 
-  add_task "project_token_budget" \
-    "Does the content of this directory fit in a 200K token LLM context window? Show total tokens, breakdown by file type, and list files that are too large to include." \
-    "mm wc ${BENCH_DIR} --by-kind --format json"
+  # ----- grep --semantic (4): vector search across kinds + --pre-index -----
+  add_task "grep_semantic_image" \
+    "Vector-search the images in this directory for a 'car or vehicle' and return the most relevant matches." \
+    "mm grep 'car or vehicle' ${BENCH_DIR} --kind image --semantic --format json"
+
+  add_task "grep_semantic_document" \
+    "Vector-search the documents in this directory for billing-related content and rank the hits." \
+    "mm grep 'billing or payment due' ${BENCH_DIR} --kind document --semantic --format json"
+
+  add_task "grep_semantic_audio" \
+    "Vector-search the audio in this directory for discussion of startups or building a business." \
+    "mm grep 'startup or building a business' ${BENCH_DIR} --kind audio --semantic --format json"
+
+  add_task "grep_semantic_preindex" \
+    "Build the semantic index on the fly (--pre-index) and search every kind for 'invoice or amount due'." \
+    "mm grep 'invoice or amount due' ${BENCH_DIR} --semantic --pre-index --format json"
 }
 
 resolve_task_count() {
@@ -533,7 +577,7 @@ run_benchmarks() {
   sampled_names="${sampled_names%,}"
 
   echo ""
-  echo "=== Universal CLI Assistant Benchmark — Tiny ==="
+  echo "=== Universal CLI Assistant Benchmark — Tiny / Extractions (Group 2) ==="
   echo "Data: ${BENCH_DIR}"
   echo "Tasks: ${MAX_TASKS} of ${TOTAL_TASKS} (random sample)"
   echo "Assistants: ${ASSISTANTS[*]}"
@@ -544,7 +588,7 @@ run_benchmarks() {
   echo ""
 
   cat > "${yaml_file}" <<EOF
-# Universal CLI Assistant Benchmark — Tiny
+# Universal CLI Assistant Benchmark — Tiny / Extractions (Group 2)
 # Generated: $(date -u +%Y-%m-%dT%H:%M:%SZ)
 # Assistants: ${ASSISTANTS[*]}
 # Tasks: ${MAX_TASKS}/${TOTAL_TASKS} (random sample)
@@ -553,7 +597,7 @@ run_benchmarks() {
 ---
 meta:
   timestamp: "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-  bench_label: "Tiny"
+  bench_label: "Tiny / Extractions"
   assistants: [$(printf '"%s",' "${ASSISTANTS[@]}" | sed 's/,$//')]
   mode: "random"
   tasks_run: ${MAX_TASKS}
