@@ -347,3 +347,73 @@ ACCURATE_COMMANDS: list[BenchCommand] = [
 ALL_COMMANDS: list[BenchCommand] = (
     OVERHEAD_COMMANDS + METADATA_COMMANDS + FAST_COMMANDS + ACCURATE_COMMANDS
 )
+
+
+_DEFAULT_STDOUT_KINDS: tuple[str, ...] = ("video", "image", "audio", "document")
+
+
+def build_encoder_cat_commands(
+    files: list[FileEntry],
+    *,
+    kinds: tuple[str, ...] = _DEFAULT_STDOUT_KINDS,
+    mode: str = "fast",
+    no_generate: bool = True,
+) -> list[BenchCommand]:
+    """Synthesise one ``mm cat`` BenchCommand per registered encoder.
+
+    For each registered encoder whose ``media_types`` intersect ``kinds`` and
+    where the directory contains at least one file of that kind, emit a
+    ``mm cat <file> -p <encoder>`` command. The encoder name is used as both
+    the bench name and the trailing ``# encoder`` comment in stdout output.
+
+    Args:
+        files: Files discovered in the bench directory (used purely to filter
+            encoders down to kinds we actually have material for).
+        kinds: Media kinds to include. Defaults to all four binary kinds.
+        mode: ``"fast"`` (default) or ``"accurate"``. Controls the LLM
+            ``--mode`` flag passed through to ``mm cat`` so the same encoder
+            can be sampled at both quality tiers.
+        no_generate: When True (default) appends ``--no-generate`` so each
+            command emits raw encoder text without invoking the LLM. The
+            resulting snapshot is deterministic, fast, and offline-friendly
+            — ideal for ``tests/stdout/cat.md``. Set to False to capture
+            full LLM-rendered output (slow; depends on profile/model).
+
+    Returns:
+        BenchCommand list ordered by ``(kind, encoder name)`` for stable
+        output across runs. Each command is single-file (``batch=0``) and
+        ``smallest=True`` so the snapshot picks the cheapest representative.
+    """
+    from mm.encoders import _ensure_discovered, _REGISTRY
+
+    _ensure_discovered()
+
+    have_kind = {k for k in kinds if any(f.kind == k for f in files)}
+    if not have_kind:
+        return []
+
+    extras = " --no-generate" if no_generate else ""
+
+    cmds: list[BenchCommand] = []
+    for encoder_name in sorted(_REGISTRY):
+        strat = _REGISTRY[encoder_name]
+        for media_type in strat.media_types:
+            if media_type not in have_kind:
+                continue
+            cmds.append(
+                BenchCommand(
+                    name=f"mm cat <{media_type}> -p {encoder_name}",
+                    group=f"snapshot/{media_type}",
+                    cmd_template=(
+                        f"mm cat {{file}} --mode {mode} --pipeline {encoder_name}"
+                        f" --no-cache{extras} --format json"
+                    ),
+                    requires_kind=media_type,
+                    smallest=True,
+                    skip_reason=f"no {media_type} files",
+                )
+            )
+            break
+
+    cmds.sort(key=lambda c: (c.group, c.name))
+    return cmds

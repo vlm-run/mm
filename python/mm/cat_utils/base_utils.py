@@ -20,6 +20,7 @@ class CatOpts:
         "output_dir",
         "mode",
         "no_cache",
+        "no_generate",
         "format",
         "encode_overrides",
         "generate_overrides",
@@ -31,6 +32,7 @@ class CatOpts:
     output_dir: Path | None
     mode: str
     no_cache: bool
+    no_generate: bool
     format: str
     encode_overrides: dict[str, Any]
     generate_overrides: dict[str, str]
