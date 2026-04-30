@@ -41,6 +41,34 @@ def _write_png(path: Path, width: int, height: int):
     path.write_bytes(png)
 
 
+def _write_minimal_mp4(path: Path) -> None:
+    """Encode a 1-frame, 16x16 mp4 PyAV can probe.
+
+    The previous ``b"\\x00" * 200`` placeholder relied on ffprobe being
+    forgiving; the new PyAV-based ``mm.video.probe`` is stricter, so the
+    fixture must be a real (tiny) mp4 file.
+    """
+    import av
+    import numpy as np
+
+    container = av.open(str(path), mode="w")
+    try:
+        stream = container.add_stream("mpeg4", rate=24)
+        stream.width = 16
+        stream.height = 16
+        stream.pix_fmt = "yuv420p"
+        frame = av.VideoFrame.from_ndarray(
+            np.zeros((16, 16, 3), dtype=np.uint8),
+            format="rgb24",
+        )
+        for packet in stream.encode(frame):
+            container.mux(packet)
+        for packet in stream.encode():
+            container.mux(packet)
+    finally:
+        container.close()
+
+
 def _minimal_single_page_pdf(path: Path) -> None:
     """Tiny valid PDF with one (Hello World) text op — same structure as test_integration."""
     content = (
@@ -68,7 +96,7 @@ def _minimal_single_page_pdf(path: Path) -> None:
 def mixed_dir(tmp_path: Path) -> Path:
     """Directory with one file per major type."""
     _write_png(tmp_path / "photo.png", 64, 48)
-    (tmp_path / "clip.mp4").write_bytes(b"\x00" * 200)
+    _write_minimal_mp4(tmp_path / "clip.mp4")
     (tmp_path / "track.mp3").write_bytes(b"\xff\xfb\x90\x00" + b"\x00" * 200)
     (tmp_path / "readme.md").write_text("# Title\n\nHello world.\n")
     (tmp_path / "main.py").write_text("def run():\n    return 42\n")
