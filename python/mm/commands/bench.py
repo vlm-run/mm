@@ -205,11 +205,7 @@ def _run_benchmarks(
     ctx = Context(directory)
     files = _sanitize_files(ctx.files)
     num_files = len(files)
-    total_bytes = sum(
-        (directory.resolve() / f.path).stat().st_size
-        for f in files
-        if (directory.resolve() / f.path).exists()
-    )
+    total_bytes = sum(f.size for f in files)
 
     target_info = {
         "directory": str(directory),
