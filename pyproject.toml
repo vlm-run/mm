@@ -81,6 +81,7 @@ dependencies = [
     "faster-whisper>=1.0",
     "scenedetect[opencv]>=0.6",
     "ctranslate2>=2.0",
+    "cachetools>=5.3",
 ]
 
 [project.optional-dependencies]

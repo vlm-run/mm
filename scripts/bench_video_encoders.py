@@ -110,24 +110,28 @@ def _summarize_messages(messages: list[dict[str, Any]]) -> dict[str, int]:
 
 
 def _clear_caches() -> None:
-    """Drop all process-local mm video caches so each round runs cold."""
-    try:
-        from mm.video import clear_video_cache
+    """Drop all process-local mm video caches so each round runs cold.
 
-        clear_video_cache()
-    except ImportError:
+    Each function decorated with :func:`mm.cache.memoize_file` exposes a
+    ``cache_clear`` attribute; we just call them in turn.
+    """
+    try:
+        from mm.video import probe
+
+        probe.cache_clear()
+    except (ImportError, AttributeError):
         pass
     try:
-        from mm.common.video.shot_detection import clear_scene_cache
+        from mm.common.video.shot_detection import detect_scenes
 
-        clear_scene_cache()
-    except ImportError:
+        detect_scenes.cache_clear()
+    except (ImportError, AttributeError):
         pass
     try:
-        from mm.encoders.video._transcript import clear_transcript_cache
+        from mm.encoders.video._transcript import transcript_messages
 
-        clear_transcript_cache()
-    except ImportError:
+        transcript_messages.cache_clear()
+    except (ImportError, AttributeError):
         pass
 
 

@@ -12,6 +12,8 @@ import time
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from mm.cache import memoize_file
+
 
 @dataclass
 class SceneResult:
@@ -35,43 +37,7 @@ def scenedetect_available() -> bool:
         return False
 
 
-_SCENE_CACHE: dict[tuple[str, float, int, float, int], SceneResult] = {}
-_SCENE_CACHE_MAX = 32
-
-
-def _detect_scenes_uncached(
-    video_path: Path,
-    *,
-    threshold: float,
-    min_scene_len: int,
-) -> SceneResult:
-    """Run PySceneDetect with no caching."""
-    t0 = time.monotonic()
-
-    from scenedetect import ContentDetector, SceneManager, open_video
-
-    video = open_video(str(video_path))
-    scene_manager = SceneManager()
-    scene_manager.add_detector(
-        ContentDetector(
-            threshold=threshold,
-            min_scene_len=min_scene_len,
-        )
-    )
-    scene_manager.detect_scenes(video)
-    scene_list = scene_manager.get_scene_list()
-
-    scenes = [(scene[0].get_seconds(), scene[1].get_seconds()) for scene in scene_list]
-
-    elapsed = (time.monotonic() - t0) * 1000
-
-    return SceneResult(
-        scenes=scenes,
-        elapsed_ms=round(elapsed, 1),
-        num_scenes=len(scenes),
-    )
-
-
+@memoize_file(maxsize=32)
 def detect_scenes(
     video_path: str | Path,
     *,
@@ -80,9 +46,11 @@ def detect_scenes(
 ) -> SceneResult:
     """Detect scene boundaries using PySceneDetect ContentDetector.
 
-    Results are cached per-process keyed by ``(path, mtime, size, threshold,
-    min_scene_len)`` so encoders that need the same boundaries (mosaic,
-    shots, shot-mosaic, summary) share work within a session.
+    Cached per-process via :func:`mm.cache.memoize_file` — keyed on
+    ``(path, mtime, size, threshold, min_scene_len)``.  Encoders that
+    need the same boundaries (``mosaic``, ``shots``, ``shot-mosaic``,
+    ``summary``) share work within a session.  Use
+    ``detect_scenes.cache_clear()`` to drop the cache.
 
     Args:
         video_path: Path to video file.
@@ -95,27 +63,24 @@ def detect_scenes(
     if not scenedetect_available():
         return SceneResult()
 
-    p = Path(video_path)
-    try:
-        st = p.stat()
-        key = (str(p.resolve()), st.st_mtime, st.st_size, threshold, min_scene_len)
-    except OSError:
-        return _detect_scenes_uncached(p, threshold=threshold, min_scene_len=min_scene_len)
+    t0 = time.monotonic()
 
-    cached = _SCENE_CACHE.get(key)
-    if cached is not None:
-        return cached
+    from scenedetect import ContentDetector, SceneManager, open_video
 
-    result = _detect_scenes_uncached(p, threshold=threshold, min_scene_len=min_scene_len)
-    if len(_SCENE_CACHE) >= _SCENE_CACHE_MAX:
-        _SCENE_CACHE.pop(next(iter(_SCENE_CACHE)))
-    _SCENE_CACHE[key] = result
-    return result
+    video = open_video(str(video_path))
+    scene_manager = SceneManager()
+    scene_manager.add_detector(ContentDetector(threshold=threshold, min_scene_len=min_scene_len))
+    scene_manager.detect_scenes(video)
+    scene_list = scene_manager.get_scene_list()
 
+    scenes = [(scene[0].get_seconds(), scene[1].get_seconds()) for scene in scene_list]
+    elapsed = (time.monotonic() - t0) * 1000
 
-def clear_scene_cache() -> None:
-    """Drop all cached scene detection results (process-local)."""
-    _SCENE_CACHE.clear()
+    return SceneResult(
+        scenes=scenes,
+        elapsed_ms=round(elapsed, 1),
+        num_scenes=len(scenes),
+    )
 
 
 def sample_scene_timestamps(

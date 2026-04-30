@@ -26,25 +26,11 @@ from PIL import Image
 
 from mm.common.video.shot_detection import (
     SceneResult,
-    _SCENE_CACHE,
-    clear_scene_cache,
     detect_scenes,
     scenedetect_available,
 )
-from mm.encoders.video._transcript import (
-    _TRANSCRIPT_CACHE,
-    _transcript_messages_cached,
-    clear_transcript_cache,
-    encode_with_transcript,
-)
-from mm.video import (
-    _PROBE_CACHE,
-    Frame,
-    VideoInfo,
-    _resize_to_pil,
-    clear_video_cache,
-    probe,
-)
+from mm.encoders.video._transcript import encode_with_transcript, transcript_messages
+from mm.video import Frame, VideoInfo, _resize_to_pil, probe
 
 BAKERY = Path.home() / "data" / "mmbench-tiny" / "bakery.mp4"
 requires_bakery = pytest.mark.skipif(
@@ -52,17 +38,19 @@ requires_bakery = pytest.mark.skipif(
     reason="bakery.mp4 not found at ~/data/mmbench-tiny/",
 )
 
+# Every memoize_file-wrapped function exposes the same handle surface.
+# Iterating over them keeps test setup/teardown a one-liner.
+_CACHED = (probe, detect_scenes, transcript_messages)
+
 
 @pytest.fixture(autouse=True)
 def _isolate_caches():
-    """Clear all process-local caches before each test for deterministic results."""
-    clear_video_cache()
-    clear_scene_cache()
-    clear_transcript_cache()
+    """Clear every memoize_file cache before/after each test for determinism."""
+    for fn in _CACHED:
+        fn.cache_clear()
     yield
-    clear_video_cache()
-    clear_scene_cache()
-    clear_transcript_cache()
+    for fn in _CACHED:
+        fn.cache_clear()
 
 
 class TestJpegSubsampling:
@@ -191,9 +179,21 @@ class TestProbeCache:
 
     def test_clear_cache_drops_entries(self):
         probe(BAKERY)
-        assert len(_PROBE_CACHE) >= 1
-        clear_video_cache()
-        assert len(_PROBE_CACHE) == 0
+        assert probe.cache_info()["currsize"] >= 1
+        probe.cache_clear()
+        info = probe.cache_info()
+        assert info["currsize"] == 0
+        assert info["hits"] == 0
+        assert info["misses"] == 0
+
+    def test_cache_info_tracks_hits_and_misses(self):
+        probe(BAKERY)
+        probe(BAKERY)
+        probe(BAKERY)
+        info = probe.cache_info()
+        assert info["misses"] == 1
+        assert info["hits"] == 2
+        assert info["currsize"] == 1
 
     def test_mtime_change_invalidates(self, tmp_path):
         # Use a small temp video (or skip if unable to create one).
@@ -215,7 +215,7 @@ class TestProbeCache:
         # Should raise (no caching of failures) — and not poison the cache.
         with pytest.raises(Exception):
             probe("/no/such/video.mp4")
-        assert len(_PROBE_CACHE) == 0
+        assert probe.cache_info()["currsize"] == 0
 
 
 def _write_minimal_mp4(av_module, dest: Path, frames: int = 8) -> None:
@@ -256,7 +256,7 @@ class TestSceneDetectCache:
 
     def test_warm_call_is_much_faster(self):
         # First (cold) call dominates; second (warm) call should be free.
-        clear_scene_cache()
+        detect_scenes.cache_clear()
         t0 = time.monotonic()
         detect_scenes(BAKERY, threshold=27.0, min_scene_len=15)
         cold = time.monotonic() - t0
@@ -276,113 +276,107 @@ class TestSceneDetectCache:
 
     def test_clear_cache_drops_entries(self):
         detect_scenes(BAKERY, threshold=27.0, min_scene_len=15)
-        assert len(_SCENE_CACHE) >= 1
-        clear_scene_cache()
-        assert len(_SCENE_CACHE) == 0
+        assert detect_scenes.cache_info()["currsize"] >= 1
+        detect_scenes.cache_clear()
+        assert detect_scenes.cache_info()["currsize"] == 0
 
 
 class TestTranscriptCache:
-    """P0 #4 — Transcript helper caches by (path, mtime, size, model, language, speed)."""
+    """P0 #4 — Transcript helper caches via ``@memoize_file`` on the public
+    ``transcript_messages`` function.
 
-    def test_cache_key_includes_model(self, tmp_path, monkeypatch):
-        """Different model arguments must produce different cache entries."""
+    The decorator's behaviour itself is exercised in ``test_cache.py``;
+    these tests verify the integration: that ``transcript_messages`` exposes
+    the standard ``cache_info`` / ``cache_clear`` handles and that its
+    cache key includes ``whisper_model``.
+    """
+
+    def test_exposes_cache_handles(self):
+        # Public surface contract — every memoize_file-wrapped function gets these.
+        assert callable(transcript_messages.cache_clear)
+        assert callable(transcript_messages.cache_info)
+
+    @staticmethod
+    def _stub_whisper(monkeypatch, *, available: bool = False) -> None:
+        """Make the transcript body terminate early without touching Whisper.
+
+        The body short-circuits on ``whisper_available() == False`` and returns
+        ``[]`` — that's the cleanest way to keep tests fast while still
+        exercising the real cached function (not a monkeypatched shim).
+        """
+        monkeypatch.setattr("mm.whisper.whisper_available", lambda: available)
+
+    def test_cache_hit_on_repeated_call(self, tmp_path, monkeypatch):
+        self._stub_whisper(monkeypatch)
         clip = tmp_path / "fake.mp4"
         clip.write_bytes(b"\x00\x00\x00\x18ftypisom")
 
-        calls: list[tuple] = []
+        a = transcript_messages(clip, whisper_model="tiny", language="auto", audio_speed=1.0)
+        b = transcript_messages(clip, whisper_model="tiny", language="auto", audio_speed=1.0)
 
-        def fake_build(p, model, lang, speed):
-            calls.append((str(p), model, lang, speed))
-            return [{"role": "user", "content": [{"type": "text", "text": f"t-{model}"}]}]
+        info = transcript_messages.cache_info()
+        assert info["hits"] >= 1
+        assert info["misses"] == 1
+        assert info["currsize"] == 1
+        assert a is b
 
-        monkeypatch.setattr(
-            "mm.encoders.video._transcript._build_transcript_messages",
-            fake_build,
-        )
-        clear_transcript_cache()
-
-        a = _transcript_messages_cached(clip, "tiny", "auto", 1.0)
-        b = _transcript_messages_cached(clip, "medium", "auto", 1.0)
-        # Different models → different builds.
-        assert calls.count(("str", None, None, None)) == 0
-        assert len(calls) == 2
-        assert a is not b
-
-    def test_repeated_call_hits_cache(self, tmp_path, monkeypatch):
+    def test_cache_key_includes_model(self, tmp_path, monkeypatch):
+        self._stub_whisper(monkeypatch)
         clip = tmp_path / "fake2.mp4"
         clip.write_bytes(b"\x00\x00\x00\x18ftypisom")
 
-        calls: list[int] = []
-
-        def fake_build(p, model, lang, speed):
-            calls.append(1)
-            return [{"role": "user", "content": [{"type": "text", "text": "t"}]}]
-
-        monkeypatch.setattr(
-            "mm.encoders.video._transcript._build_transcript_messages",
-            fake_build,
-        )
-        clear_transcript_cache()
-
-        a = _transcript_messages_cached(clip, "tiny", "auto", 1.0)
-        b = _transcript_messages_cached(clip, "tiny", "auto", 1.0)
-        c = _transcript_messages_cached(clip, "tiny", "auto", 1.0)
-        assert len(calls) == 1, f"expected 1 build call, got {len(calls)}"
-        assert a is b is c
+        a = transcript_messages(clip, whisper_model="tiny", language="auto", audio_speed=1.0)
+        b = transcript_messages(clip, whisper_model="medium", language="auto", audio_speed=1.0)
+        # Different models → separate cache entries.
+        assert transcript_messages.cache_info()["currsize"] == 2
+        # Same call should hit, not grow.
+        transcript_messages(clip, whisper_model="tiny", language="auto", audio_speed=1.0)
+        assert transcript_messages.cache_info()["currsize"] == 2
+        # Both empty because Whisper is stubbed unavailable.
+        assert a == b == []
 
     def test_clear_cache_forces_rebuild(self, tmp_path, monkeypatch):
+        self._stub_whisper(monkeypatch)
         clip = tmp_path / "fake3.mp4"
         clip.write_bytes(b"\x00\x00\x00\x18ftypisom")
 
-        calls: list[int] = []
-
-        def fake_build(p, model, lang, speed):
-            calls.append(1)
-            return [{"role": "user", "content": [{"type": "text", "text": "t"}]}]
-
-        monkeypatch.setattr(
-            "mm.encoders.video._transcript._build_transcript_messages",
-            fake_build,
-        )
-        clear_transcript_cache()
-
-        _transcript_messages_cached(clip, "tiny", "auto", 1.0)
-        clear_transcript_cache()
-        _transcript_messages_cached(clip, "tiny", "auto", 1.0)
-        assert len(calls) == 2
-        assert len(_TRANSCRIPT_CACHE) == 1
+        transcript_messages(clip, whisper_model="tiny", language="auto", audio_speed=1.0)
+        assert transcript_messages.cache_info()["currsize"] == 1
+        transcript_messages.cache_clear()
+        assert transcript_messages.cache_info() == {
+            "hits": 0,
+            "misses": 0,
+            "currsize": 0,
+            "maxsize": 16,
+        }
 
     def test_mtime_change_invalidates(self, tmp_path, monkeypatch):
         import os
 
+        self._stub_whisper(monkeypatch)
         clip = tmp_path / "fake4.mp4"
         clip.write_bytes(b"\x00\x00\x00\x18ftypisom")
 
-        calls: list[int] = []
+        transcript_messages(clip, whisper_model="tiny", language="auto", audio_speed=1.0)
+        before = transcript_messages.cache_info()["currsize"]
 
-        def fake_build(p, model, lang, speed):
-            calls.append(1)
-            return [{"role": "user", "content": [{"type": "text", "text": "t"}]}]
-
-        monkeypatch.setattr(
-            "mm.encoders.video._transcript._build_transcript_messages",
-            fake_build,
-        )
-        clear_transcript_cache()
-
-        _transcript_messages_cached(clip, "tiny", "auto", 1.0)
         future = clip.stat().st_mtime + 100.0
         os.utime(clip, (future, future))
-        _transcript_messages_cached(clip, "tiny", "auto", 1.0)
 
-        assert len(calls) == 2
+        transcript_messages(clip, whisper_model="tiny", language="auto", audio_speed=1.0)
+        after = transcript_messages.cache_info()["currsize"]
+
+        # New mtime → new cache entry, old one still present.
+        assert after == before + 1
 
 
 class TestEncodeWithTranscript:
     """P0 #5 — Whisper runs concurrently with the visual encoder.
 
     Visual encoder is faked with a sleep so we can detect concurrency
-    without depending on Whisper being installed.
+    without depending on Whisper being installed.  The transcript helper
+    is monkey-patched at the module level so the wrapped (cached)
+    callable is replaced wholesale.
     """
 
     def test_transcript_first_then_visual(self, tmp_path, monkeypatch):
@@ -390,10 +384,8 @@ class TestEncodeWithTranscript:
         clip.write_bytes(b"\x00\x00\x00\x18ftypisom")
 
         monkeypatch.setattr(
-            "mm.encoders.video._transcript._transcript_messages_cached",
-            lambda p, m, lang, s: [
-                {"role": "user", "content": [{"type": "text", "text": "TRANSCRIPT"}]}
-            ],
+            "mm.encoders.video._transcript.transcript_messages",
+            lambda p, **kw: [{"role": "user", "content": [{"type": "text", "text": "TRANSCRIPT"}]}],
         )
 
         def fake_visual(path, **kwargs):
@@ -411,7 +403,7 @@ class TestEncodeWithTranscript:
         clip = tmp_path / "v2.mp4"
         clip.write_bytes(b"\x00\x00\x00\x18ftypisom")
 
-        def slow_transcript(p, m, lang, s):
+        def slow_transcript(p, **kw):
             time.sleep(0.30)
             return [{"role": "user", "content": [{"type": "text", "text": "T"}]}]
 
@@ -420,7 +412,7 @@ class TestEncodeWithTranscript:
             yield {"role": "user", "content": [{"type": "text", "text": "V"}]}
 
         monkeypatch.setattr(
-            "mm.encoders.video._transcript._transcript_messages_cached",
+            "mm.encoders.video._transcript.transcript_messages",
             slow_transcript,
         )
 
@@ -437,8 +429,8 @@ class TestEncodeWithTranscript:
         clip.write_bytes(b"\x00\x00\x00\x18ftypisom")
 
         monkeypatch.setattr(
-            "mm.encoders.video._transcript._transcript_messages_cached",
-            lambda p, m, lang, s: [],
+            "mm.encoders.video._transcript.transcript_messages",
+            lambda p, **kw: [],
         )
 
         def fake_visual(path, **kwargs):
@@ -551,13 +543,19 @@ class TestCacheCrossEncoderReuse:
         from mm.encoders import get
 
         list(get("video-mosaic").encode(BAKERY, num_mosaics=1))
-        probe_count_after_mosaic = len(_PROBE_CACHE)
-        scene_count_after_mosaic = len(_SCENE_CACHE)
+        probe_after_mosaic = probe.cache_info()["currsize"]
+        scene_after_mosaic = detect_scenes.cache_info()["currsize"]
+        scene_misses_before = detect_scenes.cache_info()["misses"]
 
-        # A second encoder against the same file must NOT add new entries.
+        # A second encoder against the same file must NOT add new entries —
+        # both probe and scene-detect should hit the cache.
         list(get("video-shots").encode(BAKERY, max_frames_per_shot=1))
 
-        assert len(_PROBE_CACHE) == probe_count_after_mosaic
-        assert len(_SCENE_CACHE) == scene_count_after_mosaic
-        assert probe_count_after_mosaic >= 1
-        assert scene_count_after_mosaic >= 1
+        assert probe.cache_info()["currsize"] == probe_after_mosaic
+        assert detect_scenes.cache_info()["currsize"] == scene_after_mosaic
+        # Scene-detect parameters are identical across the two encoders, so
+        # no new misses should have happened.
+        assert detect_scenes.cache_info()["misses"] == scene_misses_before
+        assert probe_after_mosaic >= 1
+        assert scene_after_mosaic >= 1
+        assert probe.cache_info()["hits"] >= 1

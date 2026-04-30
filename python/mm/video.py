@@ -33,6 +33,8 @@ from typing import Any, Callable, Iterator
 
 from PIL import Image
 
+from mm.cache import memoize_file
+
 logger = logging.getLogger(__name__)
 
 _JPEG_QUALITY = 85
@@ -182,17 +184,24 @@ def ffmpeg_available() -> bool:
         return False
 
 
-def _probe_uncached(path: Path) -> VideoInfo:
-    """Read video metadata via PyAV. ~7ms vs ~58ms for ffprobe subprocess."""
+@memoize_file(maxsize=64)
+def probe(path: str | Path) -> VideoInfo:
+    """Read video metadata via PyAV.
+
+    Cached per-process via :func:`mm.cache.memoize_file` — the same path
+    with the same mtime returns instantly on subsequent calls. ~7ms cold,
+    ~0ms warm vs ~58ms for an ``ffprobe`` subprocess.
+    """
     import av
 
-    container = av.open(str(path))
+    p = Path(path)
+    container = av.open(str(p))
     try:
         stream = container.streams.video[0]
         has_audio = len(container.streams.audio) > 0
         duration = container.duration / av.time_base if container.duration else 0.0
         return VideoInfo(
-            path=path,
+            path=p,
             duration=duration,
             fps=float(stream.average_rate) if stream.average_rate else 0.0,
             width=stream.width,
@@ -203,41 +212,6 @@ def _probe_uncached(path: Path) -> VideoInfo:
         )
     finally:
         container.close()
-
-
-_PROBE_CACHE: dict[tuple[str, float, int], VideoInfo] = {}
-_PROBE_CACHE_MAX = 64
-
-
-def probe(path: str | Path) -> VideoInfo:
-    """Read video metadata via PyAV with process-local caching.
-
-    Cache key is ``(absolute_path, mtime, size)``; results are reused across
-    encoders within the same process.  ~7ms cold, ~0ms warm vs ~58ms for
-    ffprobe subprocess.
-    """
-    p = Path(path)
-    try:
-        st = p.stat()
-        key = (str(p.resolve()), st.st_mtime, st.st_size)
-    except OSError:
-        return _probe_uncached(p)
-
-    cached = _PROBE_CACHE.get(key)
-    if cached is not None:
-        return cached
-
-    info = _probe_uncached(p)
-    if len(_PROBE_CACHE) >= _PROBE_CACHE_MAX:
-        # Simple FIFO eviction: drop the oldest entry.
-        _PROBE_CACHE.pop(next(iter(_PROBE_CACHE)))
-    _PROBE_CACHE[key] = info
-    return info
-
-
-def clear_video_cache() -> None:
-    """Clear all process-local video caches (probe, scene detect, transcript)."""
-    _PROBE_CACHE.clear()
 
 
 def _resize_to_pil(frame: Any, width: int | None) -> Image.Image:

@@ -5,10 +5,11 @@ via Whisper and yields a timestamped transcript Message.  All
 ``-w-transcript`` video encoders delegate to this helper so that
 Whisper integration is not duplicated across files.
 
-Transcripts are cached per-process keyed on
-``(path, mtime, size, model, language, audio_speed)`` so that pipelines
+Transcripts are cached per-process via :func:`mm.cache.memoize_file`,
+keyed on ``(path, mtime, size, model, language, audio_speed)``.  Pipelines
 running multiple ``-w-transcript`` encoders against the same file pay
-the Whisper cost only once.
+the Whisper cost only once; ``transcript_messages.cache_clear()`` drops
+all entries.
 """
 
 from __future__ import annotations
@@ -17,31 +18,27 @@ import logging
 from pathlib import Path
 from typing import Any, Iterable
 
+from mm.cache import memoize_file
 from mm.encoders import Message
 from mm.encoders.image import _to_message
 
 logger = logging.getLogger(__name__)
 
 
-_TRANSCRIPT_CACHE: dict[tuple[str, float, int, str, str, float], list[Message]] = {}
-_TRANSCRIPT_CACHE_MAX = 16
-
-
-def clear_transcript_cache() -> None:
-    """Drop all cached transcripts (process-local)."""
-    _TRANSCRIPT_CACHE.clear()
-
-
-def _build_transcript_messages(
+@memoize_file(maxsize=16)
+def transcript_messages(
     path: Path,
-    whisper_model: str,
-    language: str,
-    audio_speed: float,
+    *,
+    whisper_model: str = "medium",
+    language: str = "auto",
+    audio_speed: float = 1.0,
 ) -> list[Message]:
-    """Run Whisper on *path* and return the rendered Message list.
+    """Extract audio and return Whisper transcript Messages.
 
-    Returns an empty list when Whisper is unavailable or no speech is
-    detected, so callers can decide whether to fall back to a placeholder.
+    Cached per-process via :func:`mm.cache.memoize_file` — subsequent
+    calls with the same file + model are instant.  Returns an empty
+    list when Whisper or ffmpeg is unavailable so callers can fall
+    back to visual-only output.
     """
     try:
         from mm.video import extract_audio
@@ -92,46 +89,6 @@ def _build_transcript_messages(
     return [_to_message([{"type": "text", "text": text}])]
 
 
-def _transcript_messages_cached(
-    path: Path,
-    whisper_model: str,
-    language: str,
-    audio_speed: float,
-) -> list[Message]:
-    """Cached wrapper around ``_build_transcript_messages`` keyed by file fingerprint."""
-    try:
-        st = path.stat()
-        key = (str(path.resolve()), st.st_mtime, st.st_size, whisper_model, language, audio_speed)
-    except OSError:
-        return _build_transcript_messages(path, whisper_model, language, audio_speed)
-
-    cached = _TRANSCRIPT_CACHE.get(key)
-    if cached is not None:
-        return cached
-
-    messages = _build_transcript_messages(path, whisper_model, language, audio_speed)
-    if len(_TRANSCRIPT_CACHE) >= _TRANSCRIPT_CACHE_MAX:
-        _TRANSCRIPT_CACHE.pop(next(iter(_TRANSCRIPT_CACHE)))
-    _TRANSCRIPT_CACHE[key] = messages
-    return messages
-
-
-def transcript_messages(
-    path: Path,
-    *,
-    whisper_model: str = "medium",
-    language: str = "auto",
-    audio_speed: float = 1.0,
-) -> Iterable[Message]:
-    """Extract audio and yield a Whisper transcript Message.
-
-    Cached per-process — subsequent calls with the same file + model are
-    instant.  Silently yields nothing when Whisper or ffmpeg is unavailable
-    so that visual-only output is still produced.
-    """
-    yield from _transcript_messages_cached(path, whisper_model, language, audio_speed)
-
-
 def encode_with_transcript(
     path: Path,
     visual_encode_fn: Any,
@@ -156,18 +113,14 @@ def encode_with_transcript(
     """
     from concurrent.futures import ThreadPoolExecutor
 
-    whisper_model: str = kwargs.get("whisper_model", "medium")
-    language: str = kwargs.get("language", "auto")
-    audio_speed: float = kwargs.get("audio_speed", 1.0)
+    transcript_kwargs = {
+        "whisper_model": kwargs.get("whisper_model", "medium"),
+        "language": kwargs.get("language", "auto"),
+        "audio_speed": kwargs.get("audio_speed", 1.0),
+    }
 
     with ThreadPoolExecutor(max_workers=1) as pool:
-        transcript_fut = pool.submit(
-            _transcript_messages_cached,
-            path,
-            whisper_model,
-            language,
-            audio_speed,
-        )
+        transcript_fut = pool.submit(transcript_messages, path, **transcript_kwargs)
 
         # Run the visual encoder while Whisper runs in the background.
         # Materialise the visual output so transcript can be emitted first
