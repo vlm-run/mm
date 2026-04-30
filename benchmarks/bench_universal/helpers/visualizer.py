@@ -1,17 +1,26 @@
 #!/usr/bin/env python3
 """Visualize universal CLI assistant benchmark results.
 
-Reads YAML results from benchmarks/bench_universal/run_results/run_*.yaml and
-generates an interactive HTML report with charts and tables.
+Reads results from benchmarks/bench_universal/run_results/run_*.{json,yaml}
+and generates an interactive HTML report with charts and tables. Both formats
+are accepted; if both formats exist for the same stem the JSON is preferred
+(canonical output of bench_universal_tiny.sh).
+
+The single-run report exposes three tabs:
+    - Combined: per-task wall-clock for each assistant, with vs without mm.
+    - With mm: assistant-vs-assistant comparison using only with-mm timings.
+    - Without mm: assistant-vs-assistant comparison using only without-mm.
 
 Usage:
     uvx --from plotly --with pyyaml python benchmarks/bench_universal/helpers/visualizer.py
+    uvx --from plotly --with pyyaml python benchmarks/bench_universal/helpers/visualizer.py run_20260416_135037.json
     uvx --from plotly --with pyyaml python benchmarks/bench_universal/helpers/visualizer.py run_20260416_135037.yaml
     uvx --from plotly --with pyyaml python benchmarks/bench_universal/helpers/visualizer.py --compare
 """
 
 from __future__ import annotations
 
+import json
 import sys
 from pathlib import Path
 
@@ -152,12 +161,29 @@ ASSISTANT_LABELS = {
 
 
 def load_run(path: Path) -> dict:
+    """Load a benchmark result file. Dispatches on suffix: .json → json,
+    anything else (.yaml/.yml) → YAML."""
     with open(path) as f:
+        if path.suffix.lower() == ".json":
+            return json.load(f)
         return yaml.safe_load(f)
 
 
+def _all_run_paths() -> list[Path]:
+    """Collect runs in both formats. When the same stem exists in both .json
+    and .yaml, prefer .json — the bench script writes JSON as the canonical
+    output and YAML as a human-readable mirror, so they should match, but
+    JSON wins on disagreement."""
+    by_stem: dict[str, Path] = {}
+    for p in list(RESULTS_DIR.glob("run_*.json")) + list(RESULTS_DIR.glob("run_*.yaml")):
+        existing = by_stem.get(p.stem)
+        if existing is None or p.suffix.lower() == ".json":
+            by_stem[p.stem] = p
+    return sorted(by_stem.values(), key=lambda p: p.stem)
+
+
 def find_latest_run() -> Path:
-    runs = sorted(RESULTS_DIR.glob("run_*.yaml"))
+    runs = _all_run_paths()
     if not runs:
         print("No runs found in", RESULTS_DIR)
         sys.exit(1)
@@ -396,6 +422,139 @@ def build_single_report(data: dict, run_path: Path) -> go.Figure:
     return fig
 
 
+def build_assistant_comparison_figure(data: dict, mode_key: str) -> go.Figure:
+    """Per-task wall-clock chart focused on cross-assistant comparison.
+
+    Unlike the combined view (which pairs each assistant's with-mm and
+    without-mm bars), this chart shows one bar per assistant per task using
+    only the timings from ``mode_key`` ("with_mm" or "without_mm"). Bars are
+    grouped horizontally so the eye can compare assistants on the same row.
+    """
+    if mode_key not in ("with_mm", "without_mm"):
+        raise ValueError(f"mode_key must be 'with_mm' or 'without_mm', got {mode_key!r}")
+
+    meta = data["meta"]
+    tasks = data["tasks"]
+    assistants = meta["assistants"]
+
+    # Build the same two-line y-axis labels as the combined view so all three
+    # tabs read consistently.
+    y_labels: list[str] = []
+    task_to_ylabel: dict[str, str] = {}
+    for t in tasks:
+        cat = category(t["name"])
+        cat_color = CATEGORY_COLORS.get(cat, BRAND["text_muted"])
+        html_label = (
+            f"<span style='font-size:10px; color:{cat_color}'>{cat}</span>"
+            f"<br><span style='font-family:Fragment Mono,monospace'>{label(t['name'])}</span>"
+        )
+        y_labels.append(html_label)
+        task_to_ylabel[t["name"]] = html_label
+
+    fig = go.Figure()
+
+    # One trace per assistant — each contributes one bar per task. Tasks are
+    # iterated in the same order as they appear in the result file, which is
+    # the order the bench script ran them.
+    for asst in assistants:
+        asst_label = ASSISTANT_LABELS.get(asst, asst)
+        color = ASSISTANT_COLORS.get(asst, BRAND["text_muted"])
+
+        bar_y: list[str] = []
+        bar_x: list[float] = []
+        bar_hover: list[str] = []
+        for task in tasks:
+            for r in task_results(task):
+                if r["assistant"] != asst:
+                    continue
+                bucket = r.get(mode_key) or {}
+                bar_y.append(task_to_ylabel[task["name"]])
+                bar_x.append(_num(bucket.get("mean_s")))
+                bar_hover.append(task["name"].replace("_", " "))
+                break  # one row per task per assistant
+
+        fig.add_trace(
+            go.Bar(
+                name=asst_label,
+                x=bar_x,
+                y=bar_y,
+                customdata=bar_hover,
+                orientation="h",
+                marker=dict(
+                    color=color,
+                    cornerradius=3,
+                    line=dict(color=color, width=1),
+                ),
+                hovertemplate=(
+                    f"<b>%{{y}}</b><br>{asst_label}<br>"
+                    "Time: %{x:.1f}s<br>"
+                    "Task: %{customdata}<extra></extra>"
+                ),
+            )
+        )
+
+    n_tasks = len(tasks)
+    n_assistants = max(len(assistants), 1)
+    bar_height = max(28, 60 - n_tasks)
+    chart_height = max(520, n_tasks * bar_height * n_assistants + 260)
+
+    title_suffix = "with mm" if mode_key == "with_mm" else "without mm"
+    fig.update_layout(
+        barmode="group",
+        bargroupgap=0.1,
+        bargap=0.25,
+        height=chart_height,
+        template="plotly_white",
+        font=dict(family=FONT_SANS, size=13, color=BRAND["text_primary"]),
+        title=dict(
+            text=(
+                f"<b>Assistant comparison — {title_suffix}</b>"
+                f"<br><span style='font-size:13px; color:{BRAND['text_secondary']}'>"
+                f"Wall-clock time per task, one bar per assistant"
+                f"</span>"
+            ),
+            font=dict(size=17, color=BRAND["text_primary"]),
+            x=0,
+            xanchor="left",
+            y=0.97,
+            yanchor="top",
+            pad=dict(b=20),
+        ),
+        xaxis=dict(
+            title=dict(
+                text="Wall-clock time (seconds)",
+                font=dict(size=13, color=BRAND["text_secondary"]),
+                standoff=18,
+            ),
+            gridcolor=BRAND["border"],
+            zeroline=True,
+            zerolinecolor=BRAND["border_strong"],
+            tickfont=dict(color=BRAND["text_secondary"]),
+        ),
+        yaxis=dict(
+            autorange="reversed",
+            tickfont=dict(size=12, color=BRAND["text_primary"]),
+            categoryorder="array",
+            categoryarray=y_labels,
+        ),
+        legend=dict(
+            orientation="h",
+            yanchor="top",
+            y=-0.18,
+            xanchor="center",
+            x=0.5,
+            font=dict(size=12, color=BRAND["text_primary"]),
+            bgcolor="rgba(255,255,255,0.9)",
+            bordercolor=BRAND["border"],
+            borderwidth=1,
+        ),
+        margin=dict(l=200, r=80, t=120, b=160),
+        plot_bgcolor=BRAND["surface"],
+        paper_bgcolor=BRAND["surface"],
+    )
+    return fig
+
+
 def build_table_html(data: dict) -> str:
     # meta = data["meta"]
     tasks = data["tasks"]
@@ -460,7 +619,13 @@ def build_table_html(data: dict) -> str:
     </table>"""
 
 
-def build_full_html(fig: go.Figure, data: dict, run_path: Path) -> str:
+def build_full_html(
+    fig: go.Figure,
+    fig_with_mm: go.Figure,
+    fig_without_mm: go.Figure,
+    data: dict,
+    run_path: Path,
+) -> str:
     meta = data["meta"]
     tasks = data["tasks"]
     rows = []
@@ -472,7 +637,10 @@ def build_full_html(fig: go.Figure, data: dict, run_path: Path) -> str:
 
     mean_sp = sum(rows) / len(rows) if rows else 0
     max_sp = max(rows) if rows else 0
+    # Only the first figure embeds plotly.js — the other two reuse it inline.
     chart_html = fig.to_html(include_plotlyjs="cdn", full_html=False)
+    chart_with_mm_html = fig_with_mm.to_html(include_plotlyjs=False, full_html=False)
+    chart_without_mm_html = fig_without_mm.to_html(include_plotlyjs=False, full_html=False)
     table_html = build_table_html(data)
     ts = meta["timestamp"]
     mode = meta.get("mode", "n/a")
@@ -634,6 +802,33 @@ def build_full_html(fig: go.Figure, data: dict, run_path: Path) -> str:
         color: var(--surface);
     }}
     code, .mono {{ font-family: var(--font-mono); }}
+    .tabs {{
+        display: flex;
+        gap: 4px;
+        margin-bottom: 16px;
+        border-bottom: 1px solid var(--border);
+    }}
+    .tab {{
+        appearance: none;
+        background: transparent;
+        border: 0;
+        border-bottom: 2px solid transparent;
+        padding: 10px 16px;
+        font-family: var(--font-sans);
+        font-size: 13px;
+        font-weight: 500;
+        color: var(--text-secondary);
+        cursor: pointer;
+        transition: color 120ms ease, border-color 120ms ease;
+        margin-bottom: -1px;
+    }}
+    .tab:hover {{ color: var(--text); }}
+    .tab.active {{
+        color: var(--accent);
+        border-bottom-color: var(--accent);
+    }}
+    .tab-panel {{ display: none; }}
+    .tab-panel.active {{ display: block; }}
     .footer {{
         margin-top: 32px;
         padding-top: 20px;
@@ -686,7 +881,20 @@ def build_full_html(fig: go.Figure, data: dict, run_path: Path) -> str:
     </div>
 
     <div class="panel">
-        {chart_html}
+        <div class="tabs" role="tablist">
+            <button class="tab active" type="button" role="tab" data-target="tab-combined">Combined</button>
+            <button class="tab" type="button" role="tab" data-target="tab-with-mm">With mm only</button>
+            <button class="tab" type="button" role="tab" data-target="tab-without-mm">Without mm only</button>
+        </div>
+        <div class="tab-panel active" id="tab-combined" role="tabpanel">
+            {chart_html}
+        </div>
+        <div class="tab-panel" id="tab-with-mm" role="tabpanel">
+            {chart_with_mm_html}
+        </div>
+        <div class="tab-panel" id="tab-without-mm" role="tabpanel">
+            {chart_without_mm_html}
+        </div>
     </div>
 
     <div class="panel">
@@ -699,6 +907,33 @@ def build_full_html(fig: go.Figure, data: dict, run_path: Path) -> str:
         <span>Source: {run_path.name}</span>
     </div>
 </div>
+<script>
+(function() {{
+    var tabs = document.querySelectorAll('.tab');
+    var panels = document.querySelectorAll('.tab-panel');
+    function relayoutPlotly(panel) {{
+        // Plotly charts rendered while their parent was display:none have a
+        // 0-width canvas. Once visible, ask Plotly to recompute layout for
+        // every plot div inside the panel.
+        if (typeof Plotly === 'undefined') return;
+        panel.querySelectorAll('.js-plotly-plot').forEach(function(div) {{
+            try {{ Plotly.Plots.resize(div); }} catch (_) {{}}
+        }});
+    }}
+    tabs.forEach(function(btn) {{
+        btn.addEventListener('click', function() {{
+            tabs.forEach(function(b) {{ b.classList.remove('active'); }});
+            panels.forEach(function(p) {{ p.classList.remove('active'); }});
+            btn.classList.add('active');
+            var panel = document.getElementById(btn.dataset.target);
+            if (panel) {{
+                panel.classList.add('active');
+                relayoutPlotly(panel);
+            }}
+        }});
+    }});
+}})();
+</script>
 </body>
 </html>"""
 
@@ -787,7 +1022,7 @@ def main():
     args = [a for a in sys.argv[1:] if not a.startswith("--")]
 
     if compare_mode:
-        run_paths = sorted(RESULTS_DIR.glob("run_*.yaml"))
+        run_paths = _all_run_paths()
         if len(run_paths) < 2:
             print("Need at least 2 runs for comparison. Found:", len(run_paths))
             sys.exit(1)
@@ -798,17 +1033,21 @@ def main():
         return
 
     if args:
-        run_path = RESULTS_DIR / args[0]
+        # Allow either bare filename or full path; resolve relative to RESULTS_DIR.
+        candidate = Path(args[0])
+        run_path = candidate if candidate.is_absolute() else RESULTS_DIR / args[0]
     else:
         run_path = find_latest_run()
 
     print(f"Loading: {run_path}")
     data = load_run(run_path)
     fig = build_single_report(data, run_path)
+    fig_with_mm = build_assistant_comparison_figure(data, "with_mm")
+    fig_without_mm = build_assistant_comparison_figure(data, "without_mm")
 
     out = run_path.with_suffix(".html")
     with open(out, "w") as f:
-        f.write(build_full_html(fig, data, run_path))
+        f.write(build_full_html(fig, fig_with_mm, fig_without_mm, data, run_path))
     print(f"Report: {out}")
 
 
