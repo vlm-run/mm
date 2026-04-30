@@ -62,25 +62,29 @@ class VideoMosaic:
                 return
 
             timestamps = _get_timestamps(path, duration, num_frames)
-            frames = reader.frames(timestamps, width=thumb_width).collect()
+            frames_per_mosaic = tile_cols * tile_rows
 
-            if not frames:
+            mosaic_b64s: list[str] = []
+            frames_used = 0
+            for batch in reader.frames(timestamps, width=thumb_width).batched(frames_per_mosaic):
+                if len(mosaic_b64s) >= num_mosaics:
+                    break
+                mosaic_img = tile_to_mosaic(
+                    [f.image for f in batch],
+                    cols=tile_cols,
+                    rows=tile_rows,
+                    thumb_width=thumb_width,
+                )
+                buf = io.BytesIO()
+                mosaic_img.save(buf, "JPEG", quality=85)
+                mosaic_b64s.append(base64.b64encode(buf.getvalue()).decode())
+                frames_used += len(batch)
+
+            if not mosaic_b64s:
                 yield _to_message(
                     [{"type": "text", "text": f"[No frames extracted from {path.name}]"}]
                 )
                 return
-
-            frames_per_mosaic = tile_cols * tile_rows
-            mosaics = []
-            for i in range(0, len(frames), frames_per_mosaic):
-                batch_images = [f.image for f in frames[i : i + frames_per_mosaic]]
-                mosaics.append(
-                    tile_to_mosaic(
-                        batch_images, cols=tile_cols, rows=tile_rows, thumb_width=thumb_width
-                    )
-                )
-                if len(mosaics) >= num_mosaics:
-                    break
 
             mins, secs = divmod(duration, 60)
             dur_str = f"{int(mins)}m{secs:.0f}s"
@@ -89,8 +93,8 @@ class VideoMosaic:
                 "video_mosaic [path=%s, duration=%s, frames=%d, mosaics=%d, grid=%dx%d]",
                 path.name,
                 dur_str,
-                len(frames),
-                len(mosaics),
+                frames_used,
+                len(mosaic_b64s),
                 tile_cols,
                 tile_rows,
             )
@@ -100,16 +104,13 @@ class VideoMosaic:
                     "type": "text",
                     "text": (
                         f"{path.name} ({dur_str}) — "
-                        f"{len(mosaics)} mosaic(s), "
+                        f"{len(mosaic_b64s)} mosaic(s), "
                         f"{tile_cols}x{tile_rows} grid, "
-                        f"{len(frames)} frames:"
+                        f"{frames_used} frames:"
                     ),
                 }
             ]
-            for mosaic_img in mosaics:
-                buf = io.BytesIO()
-                mosaic_img.save(buf, "JPEG", quality=85)
-                b64 = base64.b64encode(buf.getvalue()).decode()
+            for b64 in mosaic_b64s:
                 parts.append(_image_part(b64, "image/jpeg", provider))
 
             yield _to_message(parts)

@@ -3,6 +3,24 @@
 ## [Unreleased]
 
 ### Performance
+- **Video encoders P0 (260429)**: unified speedups across all 17 video encoders.
+  See `benchmark/260429-post-p0-video-encoders.md`.
+  - `Frame.reformat()` (libswscale) replaces `PIL.Image.resize` — 2.9× per-frame.
+  - JPEG default subsampling 4:4:4 → 4:2:0 — 1.7× JPEG encode, ~30% smaller.
+  - `video-mosaic` streams frames via `.batched()`; `video-shots*` bundle per-shot
+    timestamps into one parallel decode pass (single ThreadPoolExecutor for all
+    76 shots, was one per shot).
+  - Process-local LRU caches for `probe()`, `detect_scenes()`, transcript —
+    chained encoders against the same file pay each cost exactly once per process.
+  - Whisper now runs concurrently with visual extraction (Metal GPU + CPU);
+    `-w-transcript` wall time = `max(visual, whisper)` not sum.
+  - Cold-cache median win: visual-only **−18%**, with-transcript **−10%**.
+  - Warm-cache real-pipeline win: chained `-w-transcript` calls drop **>95%**
+    (e.g. `video-keyframes-w-transcript` 80.5s → 1.4s when transcript cached).
+  - Correctness covered by `tests/python/test_video_p0.py` (32 tests covering
+    resize visual fidelity, JPEG subsampling, cache invalidation on mtime
+    change, transcript-first message ordering, parallel-execution timing,
+    and cross-encoder cache reuse).
 - Video fast mode: 203x realtime (17min video in 5.0s) on Apple Silicon
 - 100min Google Next keynote: 235x realtime (25.5s)
 - Whisper MLX Metal: 5.9x faster than CTranslate2 CPU

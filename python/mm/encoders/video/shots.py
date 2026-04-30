@@ -108,28 +108,37 @@ class VideoShots:
             max_frames_per_shot,
         )
 
+        # Bundle timestamps across all shots into one decode pass — avoids
+        # re-spawning a ThreadPoolExecutor per shot (was 76× on bakery.mp4).
+        flat_ts: list[float] = []
+        offsets: list[int] = [0]
+        for start, end in shots:
+            shot_ts = _sample_timestamps_in_range(start, end, max_frames_per_shot)
+            flat_ts.extend(shot_ts)
+            offsets.append(len(flat_ts))
+
         with VideoReader(path) as reader:
-            for shot_idx, (start, end) in enumerate(shots):
-                timestamps = _sample_timestamps_in_range(start, end, max_frames_per_shot)
-                frames = reader.frames(timestamps, width=max_width).collect()
+            all_frames = list(reader.frames(flat_ts, width=max_width))
 
-                if not frames:
-                    continue
+        for shot_idx, (start, end) in enumerate(shots):
+            shot_frames = all_frames[offsets[shot_idx] : offsets[shot_idx + 1]]
+            if not shot_frames:
+                continue
 
-                parts: list[dict[str, Any]] = [
-                    {
-                        "type": "text",
-                        "text": (
-                            f"Shot {shot_idx + 1}/{len(shots)} of {path.name} "
-                            f"({start:.1f}s \u2013 {end:.1f}s):"
-                        ),
-                    }
-                ]
-                for frame in frames:
-                    b64, mime = frame.encode_jpeg()
-                    parts.append(_image_part(b64, mime, provider))
+            parts: list[dict[str, Any]] = [
+                {
+                    "type": "text",
+                    "text": (
+                        f"Shot {shot_idx + 1}/{len(shots)} of {path.name} "
+                        f"({start:.1f}s \u2013 {end:.1f}s):"
+                    ),
+                }
+            ]
+            for frame in shot_frames:
+                b64, mime = frame.encode_jpeg()
+                parts.append(_image_part(b64, mime, provider))
 
-                yield _to_message(parts)
+            yield _to_message(parts)
 
 
 class VideoShotsWithTranscript:
@@ -192,36 +201,44 @@ class VideoShotMosaic:
             tile_rows,
         )
 
+        # Bundle timestamps across all shots into one decode pass.
+        flat_ts: list[float] = []
+        offsets: list[int] = [0]
+        for start, end in shots:
+            shot_ts = _sample_timestamps_in_range(start, end, frames_per_mosaic)
+            flat_ts.extend(shot_ts)
+            offsets.append(len(flat_ts))
+
         with VideoReader(path) as reader:
-            for shot_idx, (start, end) in enumerate(shots):
-                timestamps = _sample_timestamps_in_range(start, end, frames_per_mosaic)
-                frames = reader.frames(timestamps, width=thumb_width).collect()
+            all_frames = list(reader.frames(flat_ts, width=thumb_width))
 
-                if not frames:
-                    continue
+        for shot_idx, (start, end) in enumerate(shots):
+            shot_frames = all_frames[offsets[shot_idx] : offsets[shot_idx + 1]]
+            if not shot_frames:
+                continue
 
-                mosaic_img = tile_to_mosaic(
-                    [f.image for f in frames],
-                    cols=tile_cols,
-                    rows=tile_rows,
-                    thumb_width=thumb_width,
-                )
+            mosaic_img = tile_to_mosaic(
+                [f.image for f in shot_frames],
+                cols=tile_cols,
+                rows=tile_rows,
+                thumb_width=thumb_width,
+            )
 
-                buf = io.BytesIO()
-                mosaic_img.save(buf, "JPEG", quality=85)
-                b64 = base64.b64encode(buf.getvalue()).decode()
+            buf = io.BytesIO()
+            mosaic_img.save(buf, "JPEG", quality=85)
+            b64 = base64.b64encode(buf.getvalue()).decode()
 
-                parts: list[dict[str, Any]] = [
-                    {
-                        "type": "text",
-                        "text": (
-                            f"Shot {shot_idx + 1}/{len(shots)} of {path.name} "
-                            f"({start:.1f}s \u2013 {end:.1f}s):"
-                        ),
-                    },
-                    _image_part(b64, "image/jpeg", provider),
-                ]
-                yield _to_message(parts)
+            parts: list[dict[str, Any]] = [
+                {
+                    "type": "text",
+                    "text": (
+                        f"Shot {shot_idx + 1}/{len(shots)} of {path.name} "
+                        f"({start:.1f}s \u2013 {end:.1f}s):"
+                    ),
+                },
+                _image_part(b64, "image/jpeg", provider),
+            ]
+            yield _to_message(parts)
 
 
 class VideoShotMosaicWithTranscript:
