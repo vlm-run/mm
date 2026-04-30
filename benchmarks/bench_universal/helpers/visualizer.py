@@ -452,13 +452,16 @@ def build_assistant_comparison_figure(data: dict, mode_key: str) -> go.Figure:
         task_to_ylabel[t["name"]] = html_label
 
     fig = go.Figure()
+    single_assistant = len(assistants) == 1
 
     # One trace per assistant — each contributes one bar per task. Tasks are
     # iterated in the same order as they appear in the result file, which is
     # the order the bench script ran them.
     for asst in assistants:
         asst_label = ASSISTANT_LABELS.get(asst, asst)
-        color = ASSISTANT_COLORS.get(asst, BRAND["text_muted"])
+        color = (
+            BRAND["accent"] if single_assistant else ASSISTANT_COLORS.get(asst, BRAND["text_muted"])
+        )
 
         bar_y: list[str] = []
         bar_x: list[float] = []
