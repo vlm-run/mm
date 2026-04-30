@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# bench_cli_universal_assistant.sh — benchmark universal CLI assistants with/without mm
+# bench_universal.sh — benchmark universal CLI assistants with/without mm
 #
 # Measures wall-clock time for AI coding assistants to complete multimodal
 # directory tasks. Compares "with mm" (pre-extracted context piped in) vs
@@ -8,14 +8,14 @@
 # Supported assistants: claude (Claude Code), codex (Codex CLI), gemini (Gemini CLI)
 #
 # Usage:
-#   ./benchmarks/bench_cli_universal_assistant.sh                        # default: fast mode (5 tasks)
-#   ./benchmarks/bench_cli_universal_assistant.sh --mode full            # all 20 tasks
-#   ./benchmarks/bench_cli_universal_assistant.sh --tasks 10             # first N tasks
-#   ./benchmarks/bench_cli_universal_assistant.sh --assistant claude           # one assistant
-#   ./benchmarks/bench_cli_universal_assistant.sh --assistant claude,codex     # comma-separated subset
-#   ./benchmarks/bench_cli_universal_assistant.sh --timeout 60           # per-attempt cap in seconds
-#   BENCH_RUNS=5 ./benchmarks/bench_cli_universal_assistant.sh          # custom run count
-#   BENCH_TIMEOUT=60 ./benchmarks/bench_cli_universal_assistant.sh      # per-attempt cap (env)
+#   ./benchmarks/bench_universal/bench_universal.sh                        # default: fast mode (5 tasks)
+#   ./benchmarks/bench_universal/bench_universal.sh --mode full            # all 20 tasks
+#   ./benchmarks/bench_universal/bench_universal.sh --tasks 10             # first N tasks
+#   ./benchmarks/bench_universal/bench_universal.sh --assistant claude           # one assistant
+#   ./benchmarks/bench_universal/bench_universal.sh --assistant claude,codex     # comma-separated subset
+#   ./benchmarks/bench_universal/bench_universal.sh --timeout 60           # per-attempt cap in seconds
+#   BENCH_RUNS=5 ./benchmarks/bench_universal/bench_universal.sh          # custom run count
+#   BENCH_TIMEOUT=60 ./benchmarks/bench_universal/bench_universal.sh      # per-attempt cap (env)
 #
 # Modes:
 #   fast  — 5 tasks, one per category (cross-modal, document, image, video, audio). ~5 min.
@@ -29,9 +29,9 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-DATA_DIR="${SCRIPT_DIR}/data"
-BENCH_DIR="${DATA_DIR}/universal-bench"
-RESULTS_DIR="${SCRIPT_DIR}/universal_cli/run_results"
+DATA_DIR="$(cd "${SCRIPT_DIR}/../data" && pwd 2>/dev/null || echo "${SCRIPT_DIR}/../data")"
+BENCH_DIR="${DATA_DIR}/mmbench-universal"
+RESULTS_DIR="${SCRIPT_DIR}/run_results"
 RUNS="${BENCH_RUNS:-3}"
 TIMEOUT_SEC="${BENCH_TIMEOUT:-120}"
 

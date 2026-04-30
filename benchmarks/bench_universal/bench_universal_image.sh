@@ -1,21 +1,21 @@
 #!/usr/bin/env bash
-# bench_cli_universal_assistant_image.sh — image-focused universal CLI bench.
+# bench_universal_image.sh — image-focused universal CLI bench.
 #
-# Variant of bench_cli_universal_assistant.sh that targets a large
+# Variant of bench_universal.sh that targets a large
 # image-only directory (~100+ images) drawn from the public HuggingFace
 # dataset vlm-run/FineVision-vlmbench-mini. Tasks are heavily weighted
 # toward `mm cat` (the workhorse), with `mm grep` (incl. --semantic)
 # and a representative `mm find` / `mm wc` / `mm sql` task.
 #
 # Usage:
-#   ./benchmarks/bench_cli_universal_assistant_image.sh                         # fast mode (5 tasks)
-#   ./benchmarks/bench_cli_universal_assistant_image.sh --mode full             # all 22 tasks
-#   ./benchmarks/bench_cli_universal_assistant_image.sh --tasks 10              # first N
-#   ./benchmarks/bench_cli_universal_assistant_image.sh --assistant claude      # one assistant
-#   ./benchmarks/bench_cli_universal_assistant_image.sh --assistant claude,codex
-#   ./benchmarks/bench_cli_universal_assistant_image.sh --timeout 60
+#   ./benchmarks/bench_universal/bench_universal_image.sh                         # fast mode (5 tasks)
+#   ./benchmarks/bench_universal/bench_universal_image.sh --mode full             # all 22 tasks
+#   ./benchmarks/bench_universal/bench_universal_image.sh --tasks 10              # first N
+#   ./benchmarks/bench_universal/bench_universal_image.sh --assistant claude      # one assistant
+#   ./benchmarks/bench_universal/bench_universal_image.sh --assistant claude,codex
+#   ./benchmarks/bench_universal/bench_universal_image.sh --timeout 60
 #
-# Output YAML feeds benchmarks/universal_cli/visualize_universal.py — same
+# Output YAML feeds benchmarks/bench_universal/helpers/visualizer.py — same
 # schema as the multimodal bench, so the report works unchanged.
 #
 # Task budget (full mode, 14 tasks):
@@ -33,14 +33,15 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-LIB_DIR="${SCRIPT_DIR}/universal_cli"
+LIB_DIR="${SCRIPT_DIR}/helpers"
+DATA_DIR="$(cd "${SCRIPT_DIR}/../data" && pwd 2>/dev/null || echo "${SCRIPT_DIR}/../data")"
 
-BENCH_DIR="${SCRIPT_DIR}/data/universal-bench/images"
+BENCH_DIR="${DATA_DIR}/mmbench-universal/images"
 BENCH_LABEL="Image"
 FAST_TASKS=5
 SUPPORTED_ASSISTANTS="claude codex gemini"
 
-# shellcheck source=universal_cli/lib_common.sh
+# shellcheck source=helpers/lib_common.sh
 source "${LIB_DIR}/lib_common.sh"
 
 # Sample images picked dynamically after setup_data — a small jpg, a larger

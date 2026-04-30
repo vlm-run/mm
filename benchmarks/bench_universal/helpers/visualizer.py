@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 """Visualize universal CLI assistant benchmark results.
 
-Reads YAML results from benchmarks/universal_cli/run_results/run_*.yaml and
+Reads YAML results from benchmarks/bench_universal/run_results/run_*.yaml and
 generates an interactive HTML report with charts and tables.
 
 Usage:
-    uvx --from plotly --with pyyaml python benchmarks/universal_cli/visualize_universal.py
-    uvx --from plotly --with pyyaml python benchmarks/universal_cli/visualize_universal.py run_20260416_135037.yaml
-    uvx --from plotly --with pyyaml python benchmarks/universal_cli/visualize_universal.py --compare
+    uvx --from plotly --with pyyaml python benchmarks/bench_universal/helpers/visualizer.py
+    uvx --from plotly --with pyyaml python benchmarks/bench_universal/helpers/visualizer.py run_20260416_135037.yaml
+    uvx --from plotly --with pyyaml python benchmarks/bench_universal/helpers/visualizer.py --compare
 """
 
 from __future__ import annotations
@@ -18,7 +18,9 @@ from pathlib import Path
 import plotly.graph_objects as go
 import yaml
 
-RESULTS_DIR = Path(__file__).parent / "run_results"
+# This file lives at benchmarks/bench_universal/helpers/<this>.py; results
+# are written one level up by the bench scripts (peer to helpers/).
+RESULTS_DIR = Path(__file__).resolve().parent.parent / "run_results"
 
 # vlm.run brand tokens (inferred from vlm.run landing and chat.vlm.run/showdown).
 # Keep these in one place so the chart and HTML shell stay in sync.
@@ -66,7 +68,7 @@ TASK_LABELS = {
     "video_codec_audit": "mm find ./vids/",
     "tree_overview": "mm find ./dir/ --tree",
     "project_token_budget": "mm wc ./dir/ --by-kind",
-    # Image-bench tasks (bench_cli_universal_assistant_image.sh)
+    # Image-bench tasks (bench_universal_image.sh)
     "image_cat_fast_single": "mm cat img.png (A)",
     "image_cat_fast_large": "mm cat img-large.png",
     "image_cat_fast_head": "mm cat -n 10 ./imgs/",

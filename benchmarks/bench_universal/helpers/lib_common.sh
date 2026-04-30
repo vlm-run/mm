@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # lib_common.sh — shared plumbing for universal CLI assistant benchmarks.
 #
-# Sourced by per-media bench scripts (e.g. bench_cli_universal_assistant_image.sh).
+# Sourced by per-media bench scripts (e.g. bench_universal_image.sh).
 # Provides argument parsing, preflight, assistant probing, hyperfine wrappers,
 # and the YAML-emitting run loop. Each caller supplies:
 #
@@ -13,12 +13,12 @@
 #
 # Optional caller-defined globals (defaults supplied here):
 #   - SUPPORTED_ASSISTANTS   space-separated list (default: "claude codex gemini")
-#   - RESULTS_SUBDIR         results subdirectory name under universal_cli (default: run_results)
+#   - RESULTS_SUBDIR         results subdirectory name under bench_universal/ (default: run_results)
 #
 # After sourcing, call:    bench_main "$@"
 #
-# This file deliberately mirrors bench_cli_universal_assistant.sh so the YAML
-# schema stays compatible with visualize_universal.py.
+# This file deliberately mirrors bench_universal.sh so the YAML
+# schema stays compatible with helpers/visualizer.py.
 
 set -euo pipefail
 
@@ -28,7 +28,7 @@ BENCH_ROOT="$(cd "${LIB_DIR}/.." && pwd)"
 : "${SUPPORTED_ASSISTANTS:=claude codex gemini}"
 : "${RESULTS_SUBDIR:=run_results}"
 : "${FAST_TASKS:=5}"
-RESULTS_DIR="${LIB_DIR}/${RESULTS_SUBDIR}"
+RESULTS_DIR="${BENCH_ROOT}/${RESULTS_SUBDIR}"
 
 RUNS="${BENCH_RUNS:-3}"
 TIMEOUT_SEC="${BENCH_TIMEOUT:-120}"
