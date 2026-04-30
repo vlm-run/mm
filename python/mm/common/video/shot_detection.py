@@ -12,7 +12,7 @@ import time
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from mm.cache import memoize_file
+from mm.cache import cache_dir, memoize_file
 
 
 @dataclass
@@ -37,7 +37,7 @@ def scenedetect_available() -> bool:
         return False
 
 
-@memoize_file(maxsize=32)
+@memoize_file(maxsize=32, path=lambda: cache_dir() / "scenes")
 def detect_scenes(
     video_path: str | Path,
     *,
@@ -46,11 +46,17 @@ def detect_scenes(
 ) -> SceneResult:
     """Detect scene boundaries using PySceneDetect ContentDetector.
 
-    Cached per-process via :func:`mm.cache.memoize_file` — keyed on
-    ``(path, mtime, size, threshold, min_scene_len)``.  Encoders that
-    need the same boundaries (``mosaic``, ``shots``, ``shot-mosaic``,
-    ``summary``) share work within a session.  Use
-    ``detect_scenes.cache_clear()`` to drop the cache.
+    Cached **on disk** via :func:`mm.cache.memoize_file` — keyed on
+    ``(path, mtime, size, threshold, min_scene_len)`` and persisted
+    under ``$MM_CACHE_DIR/scenes/``.  Detection takes ~3 s per video,
+    so re-running ``mm cat video.mp4 -m accurate`` (or any other
+    encoder that needs the same scene boundaries) is now near-instant
+    across CLI invocations.  mtime-aware: re-encoding the source
+    invalidates automatically.
+
+    Encoders that need the same boundaries (``mosaic``, ``shots``,
+    ``shot-mosaic``, ``summary``) share the on-disk cache.  Use
+    ``detect_scenes.cache_clear()`` to drop entries.
 
     Args:
         video_path: Path to video file.

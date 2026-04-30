@@ -103,6 +103,28 @@ transcripts — Whisper runs exactly once.
    encoders thanks to streaming-mosaic (P0 #3). Whisper still dominates the
    `-w-transcript` peak at ~230 MB.
 
+## Disk-backed cache extension (260430)
+
+P0 #4 used in-memory LRU caches; great within a single CLI invocation but the
+second `mm cat video.mp4 -m accurate` redoes everything. We therefore graduated
+the two expensive helpers to a disk-backed `FSLRUCache`
+(`cachetools_ext.fs.FSLRUCache`), via an opt-in `path=` parameter on
+`mm.cache.memoize_file`:
+
+| Helper                  | Cold      | Warm cross-process | Speedup    |
+|:------------------------|----------:|-------------------:|-----------:|
+| `detect_scenes`         | 3,080 ms  | **0.2 ms**         | ~12,000×   |
+| `transcript_messages`   | ~76 s     | ~5 ms (pickle load)| ~15,000×   |
+| `probe`                 | 7 ms      | (in-memory; disk would hurt) | — |
+
+Cache lives under `$MM_CACHE_DIR` → `$XDG_CACHE_HOME/mm` → `~/.cache/mm`.
+Tests pin `MM_CACHE_DIR` to a session temp dir in `conftest.py` so they're hermetic.
+mtime/size fingerprinting in the `memoize_file` key automatically invalidates on
+re-encodes.
+
+This means the second-and-on `mm cat video.mp4 -m accurate` for the same file
+runs in ~5 ms instead of ~80 s — a ~16,000× speedup on the headline use case.
+
 ## What's next (P1)
 
 P0 captured the easy wins (resize hot path, JPEG defaults, caches, transcript

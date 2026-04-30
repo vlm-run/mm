@@ -3,6 +3,22 @@
 ## [Unreleased]
 
 ### Performance
+- **Disk-backed cache for `detect_scenes` + `transcript_messages` (260430)**:
+  the slow steps in the accurate-mode video pipeline now persist across CLI
+  invocations via `cachetools_ext.fs.FSLRUCache`. Implemented as an opt-in
+  `path=` parameter on `mm.cache.memoize_file` so cheap helpers (`probe`)
+  stay process-local while the expensive ones graduate to disk.
+  - `detect_scenes`: 3,080 ms cold → **0.2 ms warm cross-process** (~12,000×).
+  - `transcript_messages`: ~76 s cold → ~5 ms warm cross-process (Whisper
+    pickle on bakery.mp4) — turns the second `mm cat video.mp4 -m accurate`
+    into a near-instant operation.
+  - mtime/size fingerprint invalidates entries automatically when the source
+    file is re-encoded, so stale cache hits aren't possible.
+  - Cache lives under `$MM_CACHE_DIR` → `$XDG_CACHE_HOME/mm` → `~/.cache/mm`.
+    Tests pin `MM_CACHE_DIR` to a session temp dir via `conftest.py`.
+  - Backed by 9 new `TestDiskBackedCache` tests in `test_cache.py` covering
+    persistence across decorator instances, lazy `MM_CACHE_DIR` resolution,
+    mtime invalidation on disk, and `cache_clear()` wiping the directory.
 - **Video encoders P0 (260429)**: unified speedups across all 17 video encoders.
   See `benchmark/260429-post-p0-video-encoders.md`.
   - `Frame.reformat()` (libswscale) replaces `PIL.Image.resize` — 2.9× per-frame.

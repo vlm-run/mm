@@ -5,11 +5,16 @@ via Whisper and yields a timestamped transcript Message.  All
 ``-w-transcript`` video encoders delegate to this helper so that
 Whisper integration is not duplicated across files.
 
-Transcripts are cached per-process via :func:`mm.cache.memoize_file`,
-keyed on ``(path, mtime, size, model, language, audio_speed)``.  Pipelines
-running multiple ``-w-transcript`` encoders against the same file pay
-the Whisper cost only once; ``transcript_messages.cache_clear()`` drops
-all entries.
+Transcripts are cached **on disk** via :func:`mm.cache.memoize_file`,
+keyed on ``(path, mtime, size, model, language, audio_speed)``.  Whisper
+is the slowest step in the accurate-mode video pipeline (~76 s for a
+short clip), so persisting the result across CLI invocations turns the
+second ``mm cat video.mp4 -m accurate`` into a near-instant operation.
+Cache lives under ``$MM_CACHE_DIR / transcripts`` (see
+:func:`mm.cache.cache_dir`) and survives mtime-aware invalidation:
+re-encoding the source video automatically retranscribes.
+
+Use ``transcript_messages.cache_clear()`` to wipe the on-disk cache.
 """
 
 from __future__ import annotations
@@ -18,14 +23,14 @@ import logging
 from pathlib import Path
 from typing import Any, Iterable
 
-from mm.cache import memoize_file
+from mm.cache import cache_dir, memoize_file
 from mm.encoders import Message
 from mm.encoders.image import _to_message
 
 logger = logging.getLogger(__name__)
 
 
-@memoize_file(maxsize=16)
+@memoize_file(maxsize=16, path=lambda: cache_dir() / "transcripts")
 def transcript_messages(
     path: Path,
     *,
@@ -35,10 +40,14 @@ def transcript_messages(
 ) -> list[Message]:
     """Extract audio and return Whisper transcript Messages.
 
-    Cached per-process via :func:`mm.cache.memoize_file` — subsequent
-    calls with the same file + model are instant.  Returns an empty
-    list when Whisper or ffmpeg is unavailable so callers can fall
-    back to visual-only output.
+    Cached on disk via :func:`mm.cache.memoize_file` — the second call
+    with the same file + model + language + audio_speed is instant,
+    even across CLI invocations (entries live under
+    ``$MM_CACHE_DIR/transcripts/``).  mtime-aware: re-encoding the
+    source video invalidates automatically.
+
+    Returns an empty list when Whisper or ffmpeg is unavailable so
+    callers can fall back to visual-only output.
     """
     try:
         from mm.video import extract_audio

@@ -82,6 +82,7 @@ dependencies = [
     "scenedetect[opencv]>=0.6",
     "ctranslate2>=2.0",
     "cachetools>=5.3",
+    "cachetools-ext>=0.0.8",
 ]
 
 [project.optional-dependencies]

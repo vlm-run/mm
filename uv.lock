@@ -169,6 +169,15 @@ wheels = [
 ]
 
 [[package]]
+name = "cachetools-ext"
+version = "0.0.8"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/2d/8d/1e115d8cdb521140698b27de6ea0c3197a557257c27d77af5d83f614209c/cachetools_ext-0.0.8.tar.gz", hash = "sha256:b0134478f9b3e5ece00751fd554d1420708a29cb4e52c3f470618a436c5e7f82", size = 5428 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/97/0d/1fa8edc11af200a3ef8e0c6d1bc64059245cc3141286f6d142eef9154a37/cachetools_ext-0.0.8-py3-none-any.whl", hash = "sha256:dd71e67b7ed213501493f9d0013e5cd171bdd6c501e0ac16f4598f5db0daa340", size = 4637 },
+]
+
+[[package]]
 name = "certifi"
 version = "2026.2.25"
 source = { registry = "https://pypi.org/simple" }
@@ -1110,6 +1119,7 @@ source = { editable = "." }
 dependencies = [
     { name = "av" },
     { name = "cachetools" },
+    { name = "cachetools-ext" },
     { name = "ctranslate2" },
     { name = "faster-whisper" },
     { name = "google-genai" },
@@ -1155,6 +1165,7 @@ mlx = [
 requires-dist = [
     { name = "av", specifier = ">=13.0" },
     { name = "cachetools", specifier = ">=5.3" },
+    { name = "cachetools-ext", specifier = ">=0.0.8" },
     { name = "ctranslate2", specifier = ">=2.0" },
     { name = "datasets", marker = "extra == 'experimental'", specifier = ">=2.0" },
     { name = "faster-whisper", specifier = ">=1.0" },

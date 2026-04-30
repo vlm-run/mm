@@ -188,9 +188,16 @@ def ffmpeg_available() -> bool:
 def probe(path: str | Path) -> VideoInfo:
     """Read video metadata via PyAV.
 
-    Cached per-process via :func:`mm.cache.memoize_file` — the same path
-    with the same mtime returns instantly on subsequent calls. ~7ms cold,
-    ~0ms warm vs ~58ms for an ``ffprobe`` subprocess.
+    Cached **in process memory** via :func:`mm.cache.memoize_file` —
+    the same path with the same mtime returns instantly on subsequent
+    calls. ~7 ms cold, ~0 ms warm vs ~58 ms for an ``ffprobe``
+    subprocess.
+
+    Disk caching is intentionally not used here: the in-memory hit is
+    already a few microseconds, while a disk lookup (file open + pickle
+    load) costs ~5 ms — almost the same as the cold compute.  Only the
+    expensive helpers (``detect_scenes`` at ~3 s, ``transcript_messages``
+    at ~76 s) graduate to the disk-backed cache.
     """
     import av
 

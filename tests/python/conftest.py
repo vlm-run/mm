@@ -2,10 +2,25 @@
 
 from __future__ import annotations
 
+import os
 import sqlite3
+import tempfile
 from pathlib import Path
 
 import pytest
+
+# Redirect mm's on-disk caches (FSLRUCache for transcripts/scenes) to a
+# session-scoped temp directory before any ``mm.*`` import runs.  Without
+# this, tests that invoke ``transcript_messages`` or ``detect_scenes``
+# would write pickle entries into the developer's real ``~/.cache/mm/``
+# and pollute it with ephemeral fingerprints from ``tmp_path`` files.
+#
+# Done at module-level (not in a fixture) because pytest imports test
+# modules — which transitively import mm — before any fixture fires.
+# ``mm.cache.cache_dir()`` resolves ``MM_CACHE_DIR`` lazily on first
+# cache access, so setting the env var here is sufficient.
+_MM_CACHE_TMP = tempfile.mkdtemp(prefix="mm-test-cache-")
+os.environ.setdefault("MM_CACHE_DIR", _MM_CACHE_TMP)
 
 
 @pytest.fixture

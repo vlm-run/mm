@@ -248,11 +248,16 @@ class TestSceneDetectCache:
         if not scenedetect_available():
             pytest.skip("PySceneDetect is not installed")
 
-    def test_same_params_returns_same_object(self):
+    def test_same_params_returns_equal_value(self):
+        # ``detect_scenes`` is disk-backed, so the second call unpickles a
+        # fresh object — identity (``is``) no longer holds, but value
+        # equality and the cache_info hit-counter do.
+        detect_scenes.cache_clear()
         a = detect_scenes(BAKERY, threshold=27.0, min_scene_len=15)
         b = detect_scenes(BAKERY, threshold=27.0, min_scene_len=15)
         assert isinstance(a, SceneResult)
-        assert a is b
+        assert a == b
+        assert detect_scenes.cache_info()["hits"] >= 1
 
     def test_warm_call_is_much_faster(self):
         # First (cold) call dominates; second (warm) call should be free.
@@ -270,9 +275,12 @@ class TestSceneDetectCache:
     def test_different_threshold_misses_cache(self):
         a = detect_scenes(BAKERY, threshold=27.0, min_scene_len=15)
         b = detect_scenes(BAKERY, threshold=15.0, min_scene_len=15)
-        assert a is not b
+        # Different thresholds → distinct cache entries → almost
+        # certainly different scene boundaries (and never the same
+        # pickled blob, even if they happened to coincide).
         assert isinstance(a, SceneResult)
         assert isinstance(b, SceneResult)
+        assert detect_scenes.cache_info()["currsize"] >= 2
 
     def test_clear_cache_drops_entries(self):
         detect_scenes(BAKERY, threshold=27.0, min_scene_len=15)
@@ -318,7 +326,9 @@ class TestTranscriptCache:
         assert info["hits"] >= 1
         assert info["misses"] == 1
         assert info["currsize"] == 1
-        assert a is b
+        # Disk-backed cache rehydrates a fresh object — value equality
+        # plus the hit counter is the contract callers can rely on.
+        assert a == b == []
 
     def test_cache_key_includes_model(self, tmp_path, monkeypatch):
         self._stub_whisper(monkeypatch)
