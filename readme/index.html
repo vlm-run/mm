@@ -139,12 +139,18 @@ Objects: metal bench, tree, car, white SUV, red car, concrete pad, walkway, gras
 mm find mm-samples/ --tree --depth 1                            # directory overview with sizes
 mm wc mm-samples/ --by-kind                                     # file/byte/token counts by kind
 
-# PDF — text extraction (no LLM needed)
-mm cat wordpress-pdf-invoice-plugin-sample.pdf                  # extract text
-mm cat wordpress-pdf-invoice-plugin-sample.pdf -n 20            # first 20 lines
+# Default: --mode metadata (no LLM, local extraction only)
+mm cat wordpress-pdf-invoice-plugin-sample.pdf                  # PDF text via pypdfium2
+mm cat bench.jpg                                                # image dimensions, EXIF, hash
+mm cat Timelapse.mp4                                            # video resolution, duration, codecs
+mm cat wordpress-pdf-invoice-plugin-sample.pdf -n 20            # first 20 lines (metadata)
 
-# Image / Video / Audio — require a configured LLM profile
-mm cat bench.jpg -m accurate                                    # LLM caption
+# --mode fast: kind&#39;s fast pipeline (short LLM caption for image/video; passthrough for code)
+mm cat bench.jpg -m fast                                        # short VLM caption
+mm cat Timelapse.mp4 -m fast                                    # mosaic → short VLM description
+
+# --mode accurate: full LLM pipeline (requires a configured profile)
+mm cat bench.jpg -m accurate                                    # LLM caption + tags + objects
 mm cat Timelapse.mp4 -m accurate                                # keyframe mosaic → LLM description
 mm cat mp3_44100Hz_320kbps_stereo.mp3 -m accurate               # Whisper transcript → LLM summary
 mm cat wordpress-pdf-invoice-plugin-sample.pdf -m accurate      # LLM-structured invoice
@@ -197,7 +203,7 @@ row: dict | None = mm.Context.get(f&quot;{ctx.session_id}/{img}&quot;)  # classm
 <p>Missed a ref? <code>ctx.get(&quot;img_a1b2cZ&quot;)</code> raises <code>mm.RefNotFoundError</code> (a <code>KeyError</code> subclass) with a Levenshtein-based &quot;did you mean&quot; and the full context table inline — agent-friendly by default.</p>
 <h3>Render</h3>
 <pre><code class="language-python">ctx.print_tree()                  # insertion-order tree with metadata
-print(ctx.to_md(mode=&quot;fast&quot;))     # markdown: ref | kind | source | content
+print(ctx.to_md(mode=&quot;metadata&quot;)) # markdown: ref | kind | source | content
 print(repr(ctx))                  # markdown summary: ref | kind | source
 </code></pre>
 <pre><code>Context(session=019da4…, items=4)
@@ -251,7 +257,7 @@ codex &quot;Find all PDFs in ~/docs and summarize them with mm&quot;
 <tr>
 <td><code>cat</code></td>
 <td>Content extraction (auto-detected by file type × mode)</td>
-<td><code>--mode fast/accurate</code>, <code>-p</code> (pipeline), <code>-n</code>, <code>--no-cache</code>, <code>-v</code>, <code>--encode.*</code> (incl. <code>--encode.strategy_opts KEY=VALUE</code>), <code>--generate.*</code>, <code>--list-pipelines</code>, <code>--list-encoders</code>, <code>--print-pipeline &lt;kind&gt;/&lt;mode&gt;</code>, <code>--format</code></td>
+<td><code>--mode metadata/fast/accurate</code> (default <code>metadata</code>), <code>-p</code> (pipeline), <code>-n</code>, <code>--no-cache</code>, <code>-v</code>, <code>--encode.*</code> (incl. <code>--encode.strategy_opts KEY=VALUE</code>), <code>--generate.*</code>, <code>--list-pipelines</code>, <code>--list-encoders</code>, <code>--print-pipeline &lt;kind&gt;/&lt;mode&gt;</code>, <code>--format</code></td>
 </tr>
 <tr>
 <td><code>grep</code></td>
@@ -302,13 +308,16 @@ mm find ~/data --format json                           # full metadata JSON
 mm find ~/data --no-ignore                             # include gitignored files
 </code></pre>
 <h3>cat — content extraction</h3>
-<pre><code class="language-bash">mm cat wordpress-pdf-invoice-plugin-sample.pdf                  # extract text (no LLM needed)
+<p><code>--mode</code> is one of <code>metadata</code> (default; local extraction, never an LLM call), <code>fast</code> (kind&#39;s fast pipeline; short LLM call for images/video), or <code>accurate</code> (LLM-heavy pipeline).</p>
+<pre><code class="language-bash">mm cat wordpress-pdf-invoice-plugin-sample.pdf                  # PDF text via pypdfium2 (metadata)
 mm cat wordpress-pdf-invoice-plugin-sample.pdf -n 20            # first 20 lines (head)
 mm cat wordpress-pdf-invoice-plugin-sample.pdf -n -20           # last 20 lines (tail)
-mm cat bench.jpg -m accurate                                     # LLM caption
+mm cat bench.jpg                                                 # image dimensions, EXIF, hash (metadata)
+mm cat bench.jpg -m fast                                         # short VLM caption
+mm cat bench.jpg -m accurate                                     # full LLM caption + tags + objects
 mm cat Timelapse.mp4 -m accurate                                 # mosaic → LLM description
-mm cat bench.jpg -p resize                                       # use named encoder
-mm cat bench.jpg -p my-pipeline.yaml                             # custom pipeline YAML
+mm cat bench.jpg -m fast -p resize                               # use named encoder (requires -m fast/accurate)
+mm cat bench.jpg -m accurate -p my-pipeline.yaml                 # custom pipeline YAML
 mm cat Timelapse.mp4 -m accurate --no-cache                      # force fresh LLM call
 mm cat bench.jpg -m accurate -v                                  # verbose (shows pipeline tree)
 mm cat --list-pipelines                                          # list registered pipelines
@@ -357,7 +366,7 @@ mm sql --list-tables                              # show available tables
   └─ generate: ollama · 2.3s · 354→195 tokens
 </code></pre>
 <h2>Processing tiers</h2>
-<p><code>mm</code> separates <strong>content tiers</strong> (what&#39;s stored) from <strong>pipeline modes</strong> (what runs).</p>
+<p><code>mm</code> separates <strong>content tiers</strong> (what&#39;s stored) from <strong>pipeline modes</strong> (what runs). <code>mm cat</code> accepts <code>--mode metadata|fast|accurate</code> (default <code>metadata</code>).</p>
 <table>
 <thead>
 <tr>
@@ -367,7 +376,7 @@ mm sql --list-tables                              # show available tables
 </tr>
 </thead>
 <tbody><tr>
-<td><strong>metadata</strong></td>
+<td><strong>metadata</strong> (default)</td>
 <td>Locally-extracted file content — PDF text, image dims/EXIF, video codec, transcript</td>
 <td>never</td>
 </tr>
@@ -384,8 +393,8 @@ mm sql --list-tables                              # show available tables
 </tbody></table>
 <p>¹ Per-kind fast pipelines: image/video include a short LLM caption stage;
 audio/document/code do not. See <code>pipelines/{kind}/fast.yaml</code>.</p>
-<p>Metadata-tier extraction (used by <code>find</code>, <code>wc</code>, and as the input for fast/accurate
-pipelines) is Rust-native (~60ms / 700 files).</p>
+<p>Metadata-tier extraction (used by <code>find</code>, <code>wc</code>, the <code>cat</code> default, and as the
+input for fast/accurate pipelines) is Rust-native (~60ms / 700 files).</p>
 <h2>Performance</h2>
 <p>Benchmarked on Apple Silicon (M-series), 702 files (7.2GB):</p>
 <table>
