@@ -620,7 +620,7 @@ class Context:
         self._require_table("cat")
         assert self.root is not None
         full_path = self.root / path
-        from mm.cat_utils.extract_local import extract_local
+        from mm.cat_utils.extract_meta import extract_local
         from mm.utils import file_kind
 
         kind = file_kind(full_path)
@@ -801,7 +801,7 @@ class Context:
 
     def _collect_fast_contents(self) -> dict[str, str]:
         """Extract ``cat``-like content for every put-based item (fast mode)."""
-        from mm.cat_utils.extract_local import extract_local
+        from mm.cat_utils.extract_meta import extract_local
         from mm.utils import file_kind
 
         out: dict[str, str] = {}

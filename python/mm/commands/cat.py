@@ -35,7 +35,7 @@ from mm.cat_utils.base_utils import (
     maybe_confirm_large_cat_batch,
     override_extra,
 )
-from mm.cat_utils.extract_local import extract_local
+from mm.cat_utils.extract_meta import extract_local
 from mm.cat_utils.run_encoder import run_encoder
 from mm.encoders.encoders_utils import do_list_encoders
 from mm.pipe import read_paths_from_stdin

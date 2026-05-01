@@ -3,7 +3,7 @@ from pathlib import Path
 from typing import Any
 
 from mm.cat_utils.base_utils import CatOpts, RunResult, format_footer, format_generate_verbose
-from mm.cat_utils.extract_local import extract_local
+from mm.cat_utils.extract_meta import extract_local
 from mm.cat_utils.run_encoder import run_encoder
 from mm.pipelines.schema import PipelineSpec
 
