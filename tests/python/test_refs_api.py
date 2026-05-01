@@ -284,7 +284,7 @@ class TestToMd:
         ctx.put(tiny_txt)
         assert ctx.to_md() == ctx.to_md(mode="metadata")
 
-    def test_metadata_tier_content_renders(self, tiny_png: Path, tiny_txt: Path):
+    def test_metadata_tier_content_renders(self, tiny_png: Path, tiny_txt: Path, isolated_db: Path):
         """``mode='metadata'`` must surface the metadata tier, not just refs.
 
         ``extract_meta`` produces ``Dimensions: 32x32 …`` for images and

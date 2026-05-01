@@ -131,6 +131,8 @@ class TestBenchCommand:
             [
                 "bench",
                 str(tmp_path),
+                "--mode",
+                "fast",
                 "--rounds",
                 "2",
                 "--warmup",
