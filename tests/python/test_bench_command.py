@@ -350,7 +350,7 @@ class TestBenchCommands:
             assert cmd.group in ("overhead", "metadata", "fast", "accurate")
             assert cmd.cmd_template
 
-    def test_metata_group_includes_cat_meta_benchmarks(self):
+    def test_metadata_group_includes_cat_metadata_benchmarks(self):
         """The metadata group must include `cat --mode metadata` benchmarks alongside find/wc/sql/grep."""
         from mm.commands.bench_commands import METADATA_COMMANDS
 
