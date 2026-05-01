@@ -56,9 +56,9 @@ def _audio_part(path: Path) -> dict[str, Any]:
 
 def audio_parts(path: Path) -> list[dict[str, Any]]:
     """Chunk audio into overlapping segments and return Parts."""
-    from mm.ffmpeg import extract_segment, probe_duration
+    from mm.video import extract_segment, probe
 
-    duration_s = probe_duration(path)
+    duration_s = probe(path).duration
     if duration_s <= _AUDIO_MAX_SECONDS:
         return [_audio_part(path)]
 
@@ -71,7 +71,7 @@ def audio_parts(path: Path) -> list[dict[str, Any]]:
         end = min(start + _AUDIO_MAX_SECONDS, duration_s)
         with tempfile.NamedTemporaryFile(suffix=path.suffix, delete=False) as tmp:
             seg_path = Path(tmp.name)
-        extract_segment(str(path), str(seg_path), start, end)
+        extract_segment(path, seg_path, start, end)
         parts.append(_audio_part(seg_path))
         seg_path.unlink(missing_ok=True)
         start += step
@@ -98,15 +98,13 @@ def _video_part(path: Path) -> dict[str, Any]:
 
 def video_parts(path: Path) -> list[dict[str, Any]]:
     """Chunk a video into overlapping segments and return Parts."""
-    from mm.ffmpeg import probe_duration
+    from mm.video import extract_segment, probe
 
-    duration_s = probe_duration(path)
+    duration_s = probe(path).duration
     if duration_s <= _VIDEO_MAX_SECONDS:
         return [_video_part(path)]
 
     import tempfile
-
-    from mm.ffmpeg import extract_segment
 
     parts: list[dict[str, Any]] = []
     step = _VIDEO_MAX_SECONDS - _VIDEO_OVERLAP_SECONDS
@@ -116,7 +114,7 @@ def video_parts(path: Path) -> list[dict[str, Any]]:
         end = min(start + _VIDEO_MAX_SECONDS, duration_s)
         with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as tmp:
             seg_path = Path(tmp.name)
-        extract_segment(str(path), str(seg_path), start, end)
+        extract_segment(path, seg_path, start, end)
 
         parts.append(_video_part(seg_path))
         seg_path.unlink(missing_ok=True)

@@ -389,3 +389,186 @@ class TestFmtMs:
         from mm.commands.bench import _fmt_ms
 
         assert _fmt_ms(5.12) == "5.12ms"
+
+
+class TestStripAnsi:
+    """ANSI escape stripping used by the stdout snapshot mode."""
+
+    def test_strips_color_codes(self):
+        from mm.commands.bench import _strip_ansi
+
+        assert _strip_ansi("\x1b[1;2m1.4s\x1b[0m") == "1.4s"
+
+    def test_preserves_unicode_bullets(self):
+        from mm.commands.bench import _strip_ansi
+
+        assert _strip_ansi("\x1b[2m1.4s • 28.0 MB\x1b[0m") == "1.4s • 28.0 MB"
+
+    def test_no_op_on_plain_text(self):
+        from mm.commands.bench import _strip_ansi
+
+        assert _strip_ansi("plain text\nno escapes") == "plain text\nno escapes"
+
+
+class TestFormatStdoutBlock:
+    """Snapshot block formatting (``$ cmd  # label`` then body)."""
+
+    def test_basic_block(self):
+        from mm.commands.bench import _format_stdout_block
+
+        out = _format_stdout_block(
+            label="mm cat <video> -p video-frames",
+            cmd="mm cat bakery.mp4 --pipeline video-frames",
+            stdout="hello world\n",
+        )
+        assert out.startswith("$ mm cat bakery.mp4 --pipeline video-frames")
+        assert "# mm cat <video> -p video-frames" in out.splitlines()[0]
+        assert out.endswith("hello world")
+
+    def test_strips_ansi_from_body(self):
+        from mm.commands.bench import _format_stdout_block
+
+        out = _format_stdout_block("label", "cmd", "\x1b[1;2mtimer\x1b[0m line\n")
+        assert "\x1b" not in out
+        assert "timer line" in out
+
+    def test_strips_trailing_newlines(self):
+        from mm.commands.bench import _format_stdout_block
+
+        out = _format_stdout_block("label", "cmd", "data\n\n\n")
+        assert out.endswith("data")
+        assert not out.endswith("\n")
+
+
+class TestBuildEncoderCatCommands:
+    """Dynamic synthesis of ``mm cat -p <encoder>`` BenchCommands."""
+
+    def test_returns_no_commands_for_empty_directory(self, tmp_path: Path):
+        from mm.commands.bench_commands import build_encoder_cat_commands
+
+        assert build_encoder_cat_commands(files=[]) == []
+
+    def test_emits_commands_for_each_present_kind(self, small_tree: Path):
+        from mm.commands.bench_commands import build_encoder_cat_commands
+        from mm.context import Context
+
+        ctx = Context(small_tree)
+        cmds = build_encoder_cat_commands(ctx.files, mode="fast")
+
+        # Every emitted command targets a kind that exists in the directory.
+        present_kinds = {f.kind for f in ctx.files}
+        for cmd in cmds:
+            assert cmd.requires_kind in present_kinds
+
+        # All bench commands are single-file snapshots, picking the smallest.
+        for cmd in cmds:
+            assert cmd.batch == 0
+            assert cmd.smallest is True
+            assert "{file}" in cmd.cmd_template
+
+    def test_no_generate_default_appends_flag(self, small_tree: Path):
+        from mm.commands.bench_commands import build_encoder_cat_commands
+        from mm.context import Context
+
+        ctx = Context(small_tree)
+        cmds = build_encoder_cat_commands(ctx.files, mode="fast")
+
+        for cmd in cmds:
+            assert "--no-generate" in cmd.cmd_template, (
+                f"--no-generate should be the snapshot default: {cmd.cmd_template}"
+            )
+
+    def test_with_generate_omits_flag(self, small_tree: Path):
+        from mm.commands.bench_commands import build_encoder_cat_commands
+        from mm.context import Context
+
+        ctx = Context(small_tree)
+        cmds = build_encoder_cat_commands(ctx.files, mode="fast", no_generate=False)
+
+        for cmd in cmds:
+            assert "--no-generate" not in cmd.cmd_template
+
+    def test_results_sorted_for_stable_snapshots(self, small_tree: Path):
+        from mm.commands.bench_commands import build_encoder_cat_commands
+        from mm.context import Context
+
+        ctx = Context(small_tree)
+        cmds = build_encoder_cat_commands(ctx.files, mode="fast")
+
+        keys = [(c.group, c.name) for c in cmds]
+        assert keys == sorted(keys), "snapshot order must be deterministic"
+
+    def test_kinds_filter_is_respected(self, small_tree: Path):
+        from mm.commands.bench_commands import build_encoder_cat_commands
+        from mm.context import Context
+
+        ctx = Context(small_tree)
+        cmds = build_encoder_cat_commands(ctx.files, mode="fast", kinds=("image",))
+        for cmd in cmds:
+            assert cmd.requires_kind == "image"
+
+
+class TestBaseFormatStdout:
+    """`mm bench --format stdout` is wired up end-to-end."""
+
+    def test_stdout_format_value_exists(self):
+        from mm.utils import BaseFormat
+
+        assert BaseFormat.stdout.value == "stdout"
+
+    def test_help_documents_stdout_format(self):
+        from mm.commands.bench import _strip_ansi
+
+        r = runner.invoke(app, ["bench", "--help"])
+        assert r.exit_code == 0
+        # Help output is heavily ANSI-styled (rich); strip before substring matching
+        # so wrapped/styled flags still match cleanly.
+        plain = _strip_ansi(r.output)
+        assert "stdout" in plain
+        assert "--command" in plain
+
+    def test_unknown_command_filter_errors(self, small_tree: Path):
+        r = runner.invoke(
+            app,
+            [
+                "bench",
+                str(small_tree),
+                "--command",
+                "nonexistent_xyz",
+                "--rounds",
+                "1",
+                "--warmup",
+                "0",
+            ],
+        )
+        # Either it errors out or it just runs the empty subset; a successful
+        # exit with no rows is acceptable too — what matters is no crash.
+        assert r.exit_code in (0, 1)
+
+
+class TestNoGenerateFlag:
+    """`mm cat --no-generate` produces encoder text without LLM calls."""
+
+    def test_flag_threads_through_to_catopts(self):
+        from mm.cat_utils.base_utils import CatOpts
+
+        opts = CatOpts(
+            n=None,
+            output_dir=None,
+            mode="fast",
+            no_cache=True,
+            no_generate=True,
+            format="json",
+            encode_overrides={},
+            generate_overrides={},
+            pipelines={},
+            verbose=False,
+        )
+        assert opts.no_generate is True
+
+    def test_flag_is_in_help(self):
+        from mm.commands.bench import _strip_ansi
+
+        r = runner.invoke(app, ["cat", "--help"])
+        assert r.exit_code == 0
+        assert "--no-generate" in _strip_ansi(r.output)

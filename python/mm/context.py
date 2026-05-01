@@ -646,7 +646,19 @@ class Context:
         strategy: str | None = None,
         **kwargs: Any,
     ) -> list[dict[str, Any]]:
-        """Encode a file into VLM-ready Message dicts (directory-scan)."""
+        """Encode a file into VLM-ready Message dicts (directory-scan).
+
+        Args:
+            path: Relative path within the context root.
+            strategy: Registered encoder name (e.g. ``"image-resize"``).
+                If ``None``, defaults to ``image-resize`` for images,
+                ``video-frames`` for video, ``document-rasterize``
+                for documents.
+            **kwargs: Forwarded to ``encoder.encode()``.
+
+        Returns:
+            List of OpenAI-compatible Message dicts.
+        """
         self._require_table("encode")
         from mm.encoders import get as get_encoder
         from mm.utils import file_kind
@@ -660,7 +672,7 @@ class Context:
         if strategy is None:
             strategy = {
                 "image": "image-resize",
-                "video": "video-frame-sample",
+                "video": "video-frames",
                 "document": "document-rasterize",
             }.get(media_type, "image-resize")
 

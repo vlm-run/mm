@@ -27,7 +27,7 @@ class Encode:
     """Input encoding stage: how to convert a file into LLM-ready parts.
 
     ``strategy`` selects a registered encoder (e.g. ``resize``,
-    ``frame-sample``, ``rasterize``). Encoder-specific parameters live
+    ``video-frames``, ``rasterize``). Encoder-specific parameters live
     nested under ``strategy_opts`` and are forwarded as kwargs to
     ``encoder.encode()``.
 

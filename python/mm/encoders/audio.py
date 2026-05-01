@@ -45,7 +45,7 @@ class AudioTranscribe:
         language: str = kwargs.get("language", "auto")
         audio_speed: float = kwargs.get("audio_speed", 1.0)
 
-        from mm.ffmpeg import extract_audio, ffmpeg_available
+        from mm.video import extract_audio, ffmpeg_available
         from mm.whisper import transcribe, whisper_available
 
         if not ffmpeg_available():
@@ -53,7 +53,7 @@ class AudioTranscribe:
                 [
                     {
                         "type": "text",
-                        "text": f"[ffmpeg not available for {path.name}]",
+                        "text": "[ffmpeg not available — required for audio extraction]",
                     }
                 ]
             )
@@ -154,16 +154,16 @@ class GeminiAudio:
         max_seconds: int = kwargs.get("max_seconds", 120)
         overlap: int = kwargs.get("overlap", 10)
 
-        from mm.ffmpeg import ffmpeg_available, probe_duration
+        from mm.video import _pyav_available, extract_segment, probe
 
-        if not ffmpeg_available():
+        if not _pyav_available():
             data: bytes = path.read_bytes()
             mime: str = guess_mime(path.name)
             b64 = base64.b64encode(data).decode()
             yield _to_message([{"inline_data": {"mime_type": mime, "data": b64}}])
             return
 
-        duration: float = probe_duration(path)
+        duration: float = probe(path).duration
         if duration <= max_seconds:
             data = path.read_bytes()
             mime = guess_mime(path.name)
@@ -173,8 +173,6 @@ class GeminiAudio:
             return
 
         import tempfile
-
-        from mm.ffmpeg import extract_segment
 
         step: int = max(max_seconds - overlap, 1)
         start: float = 0.0
@@ -192,7 +190,7 @@ class GeminiAudio:
             with tempfile.NamedTemporaryFile(suffix=path.suffix, delete=False) as tmp:
                 seg_path = Path(tmp.name)
             try:
-                extract_segment(str(path), str(seg_path), start, end)
+                extract_segment(path, seg_path, start, end)
                 seg_data = seg_path.read_bytes()
             finally:
                 seg_path.unlink(missing_ok=True)

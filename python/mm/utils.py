@@ -15,6 +15,7 @@ class BaseFormat(str, Enum):
     json = "json"
     tsv = "tsv"
     csv = "csv"
+    stdout = "stdout"
 
 
 class Format(str, Enum):

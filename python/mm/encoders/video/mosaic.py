@@ -1,19 +1,17 @@
 """Video mosaic encoder: scene-aware frame extraction + tiled mosaic grids.
 
 Extracts frames via scene detection (PySceneDetect) or uniform sampling,
-then tiles them into mosaic grids using ``tile_frames_to_mosaics``.
+then tiles them into mosaic grids using ``tile_to_mosaic``.
 Each yielded Message contains one or more mosaic JPEG images.
 
-This is the default video encoder for fast mode — it produces a compact
-visual summary without requiring an LLM call.
+Uses PyAV for in-process frame decoding — no subprocess or temp files.
 """
 
 from __future__ import annotations
 
+import io
 import base64
 import logging
-import shutil
-import tempfile
 from pathlib import Path
 from typing import Any, Iterable
 
@@ -38,7 +36,7 @@ class VideoMosaic:
         num_frames: Total frames to sample before tiling (default 128).
     """
 
-    name: str = "mosaic"
+    name: str = "video-mosaic"
     media_types: tuple[str, ...] = ("video",)
 
     def encode(self, path: Path, **kwargs: Any) -> Iterable[Message]:
@@ -49,80 +47,44 @@ class VideoMosaic:
         num_frames: int = kwargs.get("num_frames", 128)
         provider: str = _resolve_provider()
 
-        from mm.ffmpeg import (
-            extract_frames_at_timestamps,
-            ffmpeg_available,
-            probe_duration,
-            tile_frames_to_mosaics,
-        )
+        from mm.video import VideoReader, _pyav_available, tile_to_mosaic
 
-        if not ffmpeg_available():
-            yield _to_message(
-                [
-                    {
-                        "type": "text",
-                        "text": f"[ffmpeg not available for {path.name}]",
-                    }
-                ]
-            )
+        if not _pyav_available():
+            yield _to_message([{"type": "text", "text": f"[PyAV not available for {path.name}]"}])
             return
 
-        duration = probe_duration(path)
-        if duration <= 0:
-            yield _to_message(
-                [
-                    {
-                        "type": "text",
-                        "text": f"[Cannot determine duration for {path.name}]",
-                    }
-                ]
-            )
-            return
-
-        timestamps = _get_timestamps(path, duration, num_frames)
-
-        frame_dir = Path(tempfile.mkdtemp(prefix="mm_mosaic_fr_"))
-        mosaic_dir = Path(tempfile.mkdtemp(prefix="mm_mosaic_mo_"))
-        try:
-            frame_paths = extract_frames_at_timestamps(
-                path,
-                timestamps,
-                thumb_width=thumb_width,
-                out_dir=frame_dir,
-            )
-
-            if not frame_paths:
+        with VideoReader(path) as reader:
+            duration = reader.duration
+            if duration <= 0:
                 yield _to_message(
-                    [
-                        {
-                            "type": "text",
-                            "text": f"[No frames extracted from {path.name}]",
-                        }
-                    ]
+                    [{"type": "text", "text": f"[Cannot determine duration for {path.name}]"}]
                 )
                 return
 
-            mosaic_paths = tile_frames_to_mosaics(
-                frame_paths,
-                tile_cols=tile_cols,
-                tile_rows=tile_rows,
-                out_dir=mosaic_dir,
-                stem=path.stem,
-            )
+            timestamps = _get_timestamps(path, duration, num_frames)
+            frames_per_mosaic = tile_cols * tile_rows
 
-            if not mosaic_paths:
+            mosaic_b64s: list[str] = []
+            frames_used = 0
+            for batch in reader.frames(timestamps, width=thumb_width).batched(frames_per_mosaic):
+                if len(mosaic_b64s) >= num_mosaics:
+                    break
+                mosaic_img = tile_to_mosaic(
+                    [f.image for f in batch],
+                    cols=tile_cols,
+                    rows=tile_rows,
+                    thumb_width=thumb_width,
+                )
+                buf = io.BytesIO()
+                mosaic_img.save(buf, "JPEG", quality=85)
+                mosaic_b64s.append(base64.b64encode(buf.getvalue()).decode())
+                frames_used += len(batch)
+
+            if not mosaic_b64s:
                 yield _to_message(
-                    [
-                        {
-                            "type": "text",
-                            "text": f"[Mosaic assembly failed for {path.name}]",
-                        }
-                    ]
+                    [{"type": "text", "text": f"[No frames extracted from {path.name}]"}]
                 )
                 return
-
-            if len(mosaic_paths) > num_mosaics:
-                mosaic_paths = mosaic_paths[:num_mosaics]
 
             mins, secs = divmod(duration, 60)
             dur_str = f"{int(mins)}m{secs:.0f}s"
@@ -131,8 +93,8 @@ class VideoMosaic:
                 "video_mosaic [path=%s, duration=%s, frames=%d, mosaics=%d, grid=%dx%d]",
                 path.name,
                 dur_str,
-                len(frame_paths),
-                len(mosaic_paths),
+                frames_used,
+                len(mosaic_b64s),
                 tile_cols,
                 tile_rows,
             )
@@ -142,20 +104,16 @@ class VideoMosaic:
                     "type": "text",
                     "text": (
                         f"{path.name} ({dur_str}) — "
-                        f"{len(mosaic_paths)} mosaic(s), "
+                        f"{len(mosaic_b64s)} mosaic(s), "
                         f"{tile_cols}x{tile_rows} grid, "
-                        f"{len(frame_paths)} frames:"
+                        f"{frames_used} frames:"
                     ),
                 }
             ]
-            for mp in mosaic_paths:
-                b64 = base64.b64encode(mp.read_bytes()).decode()
+            for b64 in mosaic_b64s:
                 parts.append(_image_part(b64, "image/jpeg", provider))
 
             yield _to_message(parts)
-        finally:
-            shutil.rmtree(frame_dir, ignore_errors=True)
-            shutil.rmtree(mosaic_dir, ignore_errors=True)
 
 
 def _get_timestamps(
@@ -183,4 +141,31 @@ def _get_timestamps(
         return [i * step for i in range(num_frames)]
 
 
+class VideoMosaicWithTranscript:
+    """Build mosaic grids from video frames with Whisper transcript.
+
+    Yields a transcript Message first, then mosaic grids identical
+    to ``VideoMosaic``.  Falls back to mosaic-only output when Whisper
+    is unavailable.
+
+    Kwargs:
+        tile_cols, tile_rows, thumb_width, num_mosaics, num_frames:
+            Same as ``VideoMosaic``.
+        whisper_model: Whisper model size (default "medium").
+        language: Language code or "auto" (default "auto").
+        audio_speed: Playback speed multiplier (default 1.0).
+    """
+
+    name: str = "video-mosaic-w-transcript"
+    media_types: tuple[str, ...] = ("video",)
+
+    _visual = VideoMosaic()
+
+    def encode(self, path: Path, **kwargs: Any) -> Iterable[Message]:
+        from mm.encoders.video._transcript import encode_with_transcript
+
+        yield from encode_with_transcript(path, self._visual.encode, **kwargs)
+
+
 register(VideoMosaic())
+register(VideoMosaicWithTranscript())

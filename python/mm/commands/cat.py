@@ -99,6 +99,16 @@ def cat_cmd(
     no_cache: Annotated[
         bool, typer.Option("--no-cache", help="Bypass cache, force fresh run")
     ] = False,
+    no_generate: Annotated[
+        bool,
+        typer.Option(
+            "--no-generate",
+            help=(
+                "Skip the generate (LLM) step — emit only the encoder's text "
+                "parts. Useful for snapshotting encoder behaviour and offline tests."
+            ),
+        ),
+    ] = False,
     format: Annotated[
         Optional[Format],
         typer.Option(
@@ -258,6 +268,7 @@ def cat_cmd(
         output_dir=output_dir,
         mode=mode,
         no_cache=no_cache,
+        no_generate=no_generate,
         format=fmt,
         encode_overrides=enc_overrides,
         generate_overrides=gen_overrides,
@@ -463,6 +474,10 @@ def _run_fast(path: Path, kind: FileKind, opts: CatOpts) -> RunResult:
 
     spec = resolve_pipeline(opts, kind)
     spec = apply_overrides(spec, opts.encode_overrides or None, opts.generate_overrides or None)
+    if getattr(opts, "no_generate", False):
+        import dataclasses
+
+        spec = dataclasses.replace(spec, generate=None)
     if spec.encode.strategy:
         return run_encoder(path, kind, spec, opts)
 
@@ -501,6 +516,10 @@ def _run_accurate(path: Path, kind: BinaryFileKind, opts: CatOpts) -> RunResult:
 
     spec = resolve_pipeline(opts, kind)
     spec = apply_overrides(spec, opts.encode_overrides or None, opts.generate_overrides or None)
+    if getattr(opts, "no_generate", False):
+        import dataclasses
+
+        spec = dataclasses.replace(spec, generate=None)
 
     extract_meta(path, kind, no_cache=opts.no_cache)
 
