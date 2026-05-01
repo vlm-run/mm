@@ -7,7 +7,7 @@ Covers:
 - ``get`` round-trip (in-memory PIL objects come back identity-equal)
 - ``RefNotFoundError`` message + "did you mean" suggestions
 - ``to_messages(format=...)`` for both formats
-- ``to_md(mode="fast")`` table
+- ``to_md(mode="metadata")`` table
 - ``print_tree(layout="insertion")`` rendering
 - ``NotImplementedError`` for non-``insertion`` layouts + for
   :meth:`Context.save` on put-based contexts
@@ -21,11 +21,10 @@ from __future__ import annotations
 import uuid
 from pathlib import Path
 
-import pytest
-from PIL import Image
-
 import mm
+import pytest
 from mm.refs import RefNotFoundError
+from PIL import Image
 
 
 @pytest.fixture
@@ -270,16 +269,17 @@ class TestToMd:
         ctx = mm.Context()
         ctx.put(tiny_png)
         ctx.put(tiny_txt)
-        md = ctx.to_md(mode="fast")
+        md = ctx.to_md(mode="metadata")
         assert md.startswith("| ref | kind | source | content |")
         assert "img_" in md
         assert "code_" in md
 
-    def test_accurate_not_implemented(self, tiny_png: Path):
+    @pytest.mark.parametrize("mode", ["fast", "accurate"])
+    def test_unimplemented_modes_raise(self, tiny_png: Path, mode: str):
         ctx = mm.Context()
         ctx.put(tiny_png)
         with pytest.raises(NotImplementedError):
-            ctx.to_md(mode="accurate")
+            ctx.to_md(mode=mode)
 
 
 # ── print_tree ────────────────────────────────────────────────────────

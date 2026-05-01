@@ -248,7 +248,7 @@ Missed a ref? `ctx.get("img_a1b2cZ")` raises `mm.RefNotFoundError` (a `KeyError`
 
 ```python
 ctx.print_tree()                  # insertion-order tree with metadata
-print(ctx.to_md(mode="fast"))     # markdown: ref | kind | source | content
+print(ctx.to_md(mode="metadata")) # markdown: ref | kind | source | content
 print(repr(ctx))                  # markdown summary: ref | kind | source
 ```
 

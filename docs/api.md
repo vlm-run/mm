@@ -39,7 +39,7 @@ obj = ctx.get(img)                               # Path | PIL.Image | bytes | st
 row = mm.Context.get(f"{ctx.session_id}/{img}")  # cross-session DB lookup
 
 ctx.print_tree()                                 # T4 tree with metadata
-print(ctx.to_md(mode="fast"))                    # markdown table w/ cat content
+print(ctx.to_md(mode="metadata"))                # markdown table w/ cat content
 print(repr(ctx))                                 # markdown __repr__
 ```
 
@@ -105,7 +105,7 @@ convention:
 
 - `note` — short human-readable note.
 - `summary` — longer summary / caption. Used as the "pre-extracted"
-  content fallback in `to_md(mode="fast")`.
+  content fallback in `to_md(mode="metadata")`.
 - `tags` — free-form list of strings.
 - …plus anything else your pipeline needs (`{"scene": 3, "actor": "A"}`).
 
@@ -197,18 +197,16 @@ the `mm.encoders` registry — see `--list-encoders`.
 User metadata is emitted as a leading text part per item
 (`[ref=<id>] note: <text>`), so VLMs see your context inline.
 
-### `ctx.to_md(mode="fast") -> str`
+### `ctx.to_md(mode="metadata") -> str`
 
 Markdown table with one row per ref: `ref | kind | source | content`.
-`mode="fast"` populates each row with the metadata-tier content
+`mode="metadata"` populates each row with the metadata-tier content
 (`files.text_preview` — produced by `extract_meta`; no LLM call) for
-non-text kinds, and raw text for code/text files. (Equivalent to the
-CLI's default `mm cat --mode metadata` for binary kinds — there is no
-separate `mode="metadata"` overload here; `to_md` already returns the
-metadata tier when called without arguments.)
+non-text kinds, and raw text for code/text files. (Mirrors the CLI's
+default `mm cat --mode metadata` for binary kinds — same literal value, same behaviour.)
 
-`mode="accurate"` is reserved for the LLM-backed pipeline and currently
-raises `NotImplementedError`.
+`mode="fast"` and `mode="accurate"` are reserved for the LLM-backed
+pipelines and currently raise `NotImplementedError`.
 
 ```python
 print(ctx.to_md())
