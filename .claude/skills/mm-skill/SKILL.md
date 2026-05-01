@@ -110,33 +110,43 @@ Columns in the `files` table:
 
 ## cat — content extraction (pipeline-driven)
 
-Behaviour is auto-detected from file type. Default `--mode fast` runs local extraction (no LLM). Use `-m accurate` for LLM-powered descriptions.
+Behaviour is auto-detected from file type. `--mode` is one of:
+
+- `metadata` (default) — local extraction, never an LLM call.
+- `fast` — kind's fast pipeline (image/video include a short LLM caption stage; audio/document/code are local-only passthrough).
+- `accurate` — LLM-heavy pipeline.
 
 ```bash
-# Fast mode (default) — local extraction, no LLM
+# Metadata mode (default) — local extraction, no LLM
 mm cat <file>                                       # text/metadata extraction
 mm cat photo.png                                    # image metadata (dims, MIME, hash, EXIF)
 mm cat video.mp4                                    # video metadata (resolution, duration, codecs)
 mm cat paper.pdf                                    # text extraction via pypdfium2
 
+# Fast mode — runs the kind's fast pipeline
+mm cat photo.png -m fast                            # short VLM caption
+mm cat video.mp4 -m fast                            # mosaic → short VLM description
+mm cat audio.mp3 -m fast                            # Whisper transcript only (no LLM)
+mm cat paper.pdf -m fast                            # PDF text only (no LLM)
+
 # Accurate mode — LLM-powered descriptions
-mm cat photo.png -m accurate                        # VLM caption
+mm cat photo.png -m accurate                        # VLM caption + tags + objects
 mm cat video.mp4 -m accurate                        # mosaic → VLM description
 mm cat audio.mp3 -m accurate                        # transcript → LLM summary
 mm cat paper.pdf -m accurate                        # text → LLM summary
 
-# Head / tail
+# Head / tail (all modes)
 mm cat <file> -n 20                                 # first 20 lines
 mm cat <file> -n -10                                # last 10 lines
 
-# Cache control
-mm cat <file> --no-cache                            # bypass cache, force fresh run
+# Cache control (applies to fast/accurate; metadata tier always served from `files`)
+mm cat <file> -m accurate --no-cache                # bypass cache, force fresh run
 
 # Output formats
 mm cat <file> --format json                          # JSON output
 ```
 
-Fast mode behavior by file type (<100ms target):
+Metadata mode behavior by file type (<100ms target):
 
 - **PDF** (.pdf): text extraction via pypdfium2. Scanned/image-only PDFs return empty.
 - **Document** (.docx, .pptx): text extraction.
@@ -146,22 +156,22 @@ Fast mode behavior by file type (<100ms target):
 
 ## cat -p — named encoders and pipeline YAMLs
 
-The `-p` / `--pipeline` flag accepts either a registered encoder name or a YAML file path.
+The `-p` / `--pipeline` flag accepts either a registered encoder name or a YAML file path. `-p` only takes effect when `--mode fast` or `--mode accurate` is also passed; the default `--mode metadata` skips the pipeline.
 
 ```bash
 # Named encoder (encodes media into VLM-ready JSON messages)
-mm cat photo.png -p image-resize              # Fit to 1024px, base64 encode
-mm cat photo.png -p image-tile                # Resized overview + all tiles in one Message
-mm cat video.mp4 -p video-frame-sample        # Extract frames at 1fps
-mm cat video.mp4 -p video-chunk               # Chunk into 60s segments
-mm cat doc.pdf  -p document-rasterize         # Render pages as images
-mm cat doc.pdf  -p document-rasterize-text    # Rasterize + extract text
+mm cat photo.png -m fast -p image-resize              # Fit to 1024px, base64 encode
+mm cat photo.png -m accurate -p image-tile            # Resized overview + all tiles in one Message
+mm cat video.mp4 -m fast -p video-frame-sample        # Extract frames at 1fps
+mm cat video.mp4 -m fast -p video-chunk               # Chunk into 60s segments
+mm cat doc.pdf  -m accurate -p document-rasterize     # Render pages as images
+mm cat doc.pdf  -m accurate -p document-rasterize-text # Rasterize + extract text
 
 # YAML pipeline file
-mm cat photo.png -p custom-pipeline.yaml
+mm cat photo.png -m accurate -p custom-pipeline.yaml
 
 # Multiple pipelines (dispatched by kind field in YAML)
-mm cat *.jpg *.mp4 -p image.yaml -p video.yaml
+mm cat *.jpg *.mp4 -m accurate -p image.yaml -p video.yaml
 
 # List available encoders and pipelines
 mm cat --list-pipelines
@@ -239,6 +249,8 @@ messages = ctx.encode("photo.png", strategy="resize")
 Pipelines are 2-stage YAMLs: **encode** (convert to LLM-ready parts) → **generate** (LLM call). Key parameters can be overridden from the CLI.
 
 ### Encode overrides (--encode.\*)
+
+`--encode.*` overrides only apply when `-m fast` or `-m accurate` is also passed; the default `-m metadata` skips the pipeline.
 
 ```bash
 mm cat photo.png -m accurate --encode.strategy image-tile      # override encoder
@@ -492,8 +504,8 @@ mm find <dir> --kind video --format json | jq '.[].name'  # extract video names
 - `find` returns paths only when piped, else it returns full metadata rows.
 - For PDFs, `cat` extracts text in fast mode; if empty, the PDF contains scanned images only.
 - For videos, `mm cat video.mp4 -m accurate` auto-generates keyframe mosaics and sends to LLM.
-- Use `--mode fast` for quick metadata/text extraction (default), `--mode accurate` for LLM descriptions.
-- Use `--no-cache` with `-m accurate` to force a fresh LLM call.
-- Use `-p` to load custom pipeline YAMLs or named encoders; CLI overrides layer on top.
-- Use `--encode.pyfunc` to inject custom Python transforms.
+- `--mode metadata` (default) is the no-LLM local extraction. Use `--mode fast` for the kind's fast pipeline (image/video include a short LLM caption) and `--mode accurate` for the LLM-heavy pipeline.
+- Use `--no-cache` with `-m accurate` (or `-m fast` when the pipeline calls an LLM) to force a fresh LLM call.
+- Use `-p` to load custom pipeline YAMLs or named encoders; combine with `-m fast` or `-m accurate` (default `-m metadata` skips the pipeline). CLI overrides layer on top.
+- Use `--encode.pyfunc` to inject custom Python transforms (also requires `-m fast`/`-m accurate`).
 - Use `--list-pipelines` to see all available encoders and built-in pipelines.

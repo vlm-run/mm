@@ -2,6 +2,8 @@
 
 53 scenarios that leverage mm's multimodal awareness, Rust-speed metadata extraction, token estimation, and semantic search. Each maps to existing CLI commands.
 
+> **Note on `mm cat` modes:** the default is `--mode metadata` (local extraction only — no LLM call). It returns image dims/EXIF/hash, video resolution/duration/codecs, audio metadata, PDF text, and raw text/code. Pass `-m fast` for the kind's fast pipeline (short LLM caption for image/video) or `-m accurate` for the LLM-heavy pipeline. Examples below that need an LLM make the mode explicit.
+
 ---
 
 ## Video (20)
@@ -37,7 +39,7 @@
 
 <details><summary>6. Generate keyframe mosaic thumbnails</summary>
 
-`mm cat lecture.mp4` generates mosaic grids of keyframes in fast mode. Useful for creating visual previews of long recordings — one glance shows the content arc without watching.
+`mm cat lecture.mp4 -m fast` runs the video fast pipeline (`mosaic` encoder → 4×4 keyframe grid + short LLM description). Useful for creating visual previews of long recordings — one glance shows the content arc without watching.
 </details>
 
 <details><summary>7. Produce alt-text for a product demo</summary>
@@ -300,5 +302,5 @@ For a construction project with permits (PDF), site photos (JPEG), and walkthrou
 
 <details><summary>53. Batch-extract metadata for a digital asset manager</summary>
 
-`mm find ~/dam --format json > metadata.json` for file-level metadata. `mm find ~/dam | mm cat --format json > content.json` for content metadata (text, dimensions, duration, hash, EXIF). Both are database-ready — one scan at ~0.02ms/file, one fast-mode pass for richer extraction.
+`mm find ~/dam --format json > metadata.json` for file-level metadata. `mm find ~/dam | mm cat --format json > content.json` for content metadata (text, dimensions, duration, hash, EXIF). Both are database-ready — one scan at ~0.02ms/file, one metadata-mode pass for richer local extraction (no LLM).
 </details>

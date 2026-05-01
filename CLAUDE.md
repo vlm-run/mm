@@ -226,7 +226,7 @@ uv run mm <command> [args]
 | Command   | Purpose | Key flags |
 |-----------|---------|-----------|
 | `find`    | Find/list files, tree view, schema | `--name`, `-i` (ignore case), `--kind`, `--ext`, `--min-size`, `--max-size`, `--sort`, `--columns`, `--tree`, `--depth`, `--schema`, `--limit`, `--no-ignore`, `--format` |
-| `cat`     | Content extraction (auto-detected by file type × mode) | `--mode fast/accurate`, `-p` (pipeline), `-n` (head/tail), `--encode.*`, `--generate.*`, `--format` |
+| `cat`     | Content extraction (auto-detected by file type × mode) | `--mode metadata/fast/accurate` (default `metadata`), `-p` (pipeline), `-n` (head/tail), `--encode.*`, `--generate.*`, `--format` |
 | `grep`    | Content search across files | `--kind`, `--ext`, `-C` (context), `--count`, `-i` (ignore case), `--no-ignore`, `--format` |
 | `sql`     | SQL on files, results, and chunks | `--dir`, `--format`, `--list-tables` |
 | `wc`      | Count files, size, lines (est.), tokens (est.) | `--kind`, `--by-kind`, `--format` |
@@ -257,13 +257,16 @@ The following commands were merged into the 5 core commands:
 
 ### cat modes (auto-detected from file type × mode)
 
-- `mm cat file` — text/metadata extraction (default, fast mode, <100ms)
+`--mode` is one of `metadata` (default; local extraction, never an LLM call), `fast` (kind's fast pipeline; short LLM call for images/video), or `accurate` (LLM-heavy pipeline). Under the default metadata mode, `-p` and `--encode.*`/`--generate.*` overrides are ignored — pass `-m fast` or `-m accurate` to invoke a pipeline.
+
+- `mm cat file` — text/metadata extraction (default, no LLM, <100ms)
 - `mm cat file -n 20` — first 20 lines (head)
 - `mm cat file -n -20` — last 20 lines (tail)
+- `mm cat file -m fast` — kind's fast pipeline (image/video: short LLM caption; doc/audio/code: passthrough)
 - `mm cat file -m accurate` — LLM-generated caption/description
 - `mm cat video.mp4 -m accurate` — auto-generates keyframe mosaic → LLM description
-- `mm cat photo.png -p resize` — encode with named encoder
-- `mm cat photo.png -p my-pipeline.yaml` — custom pipeline YAML
+- `mm cat photo.png -m fast -p resize` — encode with named encoder (requires -m fast/accurate)
+- `mm cat photo.png -m accurate -p my-pipeline.yaml` — custom pipeline YAML
 
 ### Schema and SQL
 
@@ -289,7 +292,8 @@ Columns (`files`): `uri`, `name`, `stem`, `ext`, `size`, `modified`, `created`, 
 
 ## Processing modes
 
-- **fast** (default): runs the kind's fast pipeline. *May* invoke an LLM with a short prompt — images and videos do (short caption / short description). Audio fast = Whisper transcript only. Documents fast = pypdfium2 text only. Code/text = raw passthrough. Pipeline-driven via `pipelines/{kind}/fast.yaml`.
+- **metadata** (default): local extraction only — image dims/EXIF/hash, video resolution/duration/codec, audio duration/codec, PDF text via pypdfium2, code/text passthrough. Never invokes an LLM. Implemented in `mm/cat_utils/extract_local.py` and cached as `files.text_preview`.
+- **fast**: runs the kind's fast pipeline. *May* invoke an LLM with a short prompt — images and videos do (short caption / short description). Audio fast = Whisper transcript only. Documents fast = pypdfium2 text only. Code/text = raw passthrough. Pipeline-driven via `pipelines/{kind}/fast.yaml`.
 - **accurate**: LLM-powered descriptions via OpenAI-compatible API. Images → VLM caption. Videos → mosaic → VLM description. Audio → transcript → LLM summary. Documents → text → LLM structuring. Requires a configured profile (`mm profile add/update`). Pipeline-driven via `pipelines/{kind}/accurate.yaml`.
 
 ## Python API

@@ -1,13 +1,15 @@
 """mm cat -- unified content extraction with pipeline-driven modes.
 
-Behaviour is driven by (file type × pipeline mode). Default is ``--mode fast``,
-which runs the kind's fast pipeline — that may be a pure local extraction
-(e.g. PDF text via pypdfium2, code passthrough) or a short LLM call
-(e.g. ``image/fast.yaml``). ``--mode accurate`` runs the LLM-heavy pipeline.
+Behaviour is driven by (file type × mode). Default is ``--mode metadata``,
+which returns the locally-extracted file content with no LLM call (PDF text
+via pypdfium2, image/video/audio header metadata, code/text passthrough).
+``--mode fast`` runs the kind's fast pipeline — may be a short LLM call
+(e.g. ``image/fast.yaml``) or pure local extraction. ``--mode accurate``
+runs the LLM-heavy pipeline.
 
 Three content tiers flow through caching:
   metadata  — locally-extracted file content (``files.text_preview``);
-              never an LLM call.
+              never an LLM call. Default mode.
   fast      — output of a fast-mode pipeline run (may include LLM output).
   accurate  — output of an accurate-mode pipeline run.
 """
@@ -56,8 +58,10 @@ def cat_cmd(
     # -- Most important options first (Typer renders in declaration order) --
     mode: Annotated[
         str,
-        typer.Option("--mode", "-m", help="Processing mode: fast or accurate [default: fast]"),
-    ] = "fast",
+        typer.Option(
+            "--mode", "-m", help="Processing mode: metadata, fast or accurate [default: metadata]"
+        ),
+    ] = "metadata",
     pipeline: Annotated[
         Optional[list[str]],
         typer.Option(
@@ -153,26 +157,35 @@ def cat_cmd(
     """Extract and describe file content.
 
     \b
-    Behavior auto-detects from file type. Default mode is 'fast'; '-m accurate'
-    runs the LLM-heavy pipeline. Whether 'fast' invokes an LLM is per-kind —
-    images/video have a short LLM caption stage; audio/docs/code don't.
+    Behavior auto-detects from file type. Default mode is 'metadata' — local
+    extraction only, never an LLM call. '-m fast' runs the kind's fast
+    pipeline (a short LLM call for images/video; passthrough for code/text);
+    '-m accurate' runs the LLM-heavy pipeline.
 
     \b
-    Images:   fast = short VLM caption.       accurate = full VLM caption + tags.
-    Videos:   fast = mosaic → short VLM.      accurate = mosaic + transcript → VLM.
-    Audio:    fast = Whisper transcript.      accurate = transcript → LLM summary.
-    Docs:     fast = text extraction.         accurate = text → LLM summary.
-    Code:     passthrough (no LLM in either mode).
+                metadata                     fast                                accurate
+    Images:     dimensions, EXIF, hash       short VLM caption                   full VLM caption + tags
+    Videos:     resolution, duration, codec  mosaic → short VLM                  mosaic + transcript → VLM
+    Audio:      duration, codec, hash        Whisper transcript                  transcript → LLM summary
+    Docs:       PDF/DOCX/PPTX text           text extraction                     text → LLM summary
+    Code/Text:  raw file content             raw file content (no LLM)           raw file content (no LLM)
 
     \b
     Examples:
-      mm cat paper.pdf                      # text extraction (fast)
-      mm cat photo.png -m accurate          # VLM description
+      mm cat document.txt                   # raw text (metadata-only, default)
+      mm cat paper.pdf                      # PDF text via pypdfium2 (metadata)
+      mm cat photo.png                      # image dims/EXIF/hash (metadata)
+      mm cat paper.pdf -m fast              # text extraction (fast pipeline)
+      mm cat photo.png -m fast              # short VLM caption (fast pipeline)
+      mm cat photo.png -m accurate          # full VLM description
       mm cat video.mp4 -m accurate          # mosaic → VLM
-      mm cat photo.png -p tile              # use named encoder
-      mm cat photo.png -p my-pipeline.yaml  # custom pipeline YAML
+      mm cat photo.png -m fast -p tile      # use named encoder (requires -m fast/accurate)
+      mm cat photo.png -m accurate -p my-pipeline.yaml
+                                            # custom pipeline YAML
       mm cat photo.png -m accurate --encode.strategy_opts max_width=768
                                             # override a single strategy_opts entry
+      mm cat photo.png -m accurate --generate.prompt "<new_prompt>"
+                                            # override the default pipeline prompt
       mm cat --print-pipeline image/accurate
                                             # inspect the pipeline YAML source
     """
@@ -200,8 +213,8 @@ def cat_cmd(
 
     maybe_confirm_large_cat_batch(len(paths), assume_yes=yes)
 
-    if mode not in ("fast", "accurate"):
-        typer.echo(f"Error: Unknown mode {mode!r}. Use 'fast' or 'accurate'.", err=True)
+    if mode not in ("metadata", "fast", "accurate"):
+        typer.echo(f"Error: Unknown mode {mode!r}. Use 'metadata', 'fast' or 'accurate'.", err=True)
         raise typer.Exit(1)
 
     enc_overrides: dict[str, str | dict[str, str]] = {
@@ -305,15 +318,18 @@ def cat_cmd(
                 if _emitted > 0:
                     print("\n====")
                 print(f"<{p.name}>")
+
             _dim_prefix = "[dim]"
             lines = content.split("\n")
             plain_lines: list[str] = []
             rich_lines: list[str] = []
+
             for ln in lines:
                 if _dim_prefix in ln:
                     rich_lines.append(ln)
                 else:
                     plain_lines.append(ln)
+
             if plain_lines:
                 print("\n".join(plain_lines))
             if rich_lines:
@@ -337,19 +353,17 @@ def _extract(path: Path, opts: CatOpts) -> str:
     """Pipeline-driven extraction dispatch with unified extraction caching.
 
     1. Auto-detect kind from file extension
-    2. Check the ``extractions`` cache (applies to both fast and accurate modes)
-    3. Resolve pipeline (explicit -p > toml override > built-in)
-    4. Apply CLI overrides
-    5. Run encode step (kind-specific metadata extraction or encoder)
-    6. If generate is not None: run LLM call
-    7. If generate is None: output encode result directly
-    8. Store content + verbose metadata in the extraction cache
+    2. Run ``extract_local`` for the metadata tier (caches into ``files``)
+    3. If mode='metadata' (default) or kind='text': return the metadata tier
+    4. Check the ``extractions`` cache (applies to fast and accurate modes)
+    5. Resolve pipeline (explicit -p > toml override > built-in)
+    6. Apply CLI overrides
+    7. Run encode + (optional) generate step; persist to extractions cache
     """
     kind = file_kind(path)
-
-    # Text-like kinds (code, config, plain text) bypass caching — they're passthrough.
-    if kind == "text":
-        return extract_local(path, kind, no_cache=opts.no_cache)
+    local_extract = extract_local(path, kind)
+    if kind == "text" or opts.mode == "metadata":
+        return local_extract
 
     from mm.profile import get_profile
     from mm.store.db import MmDatabase
@@ -401,10 +415,6 @@ def _extract(path: Path, opts: CatOpts) -> str:
         run = _run_fast(path, kind, opts)
 
     if content_hash and run.content and not run.content.startswith("["):
-        # Ensure the file's locally-extracted content is in the files table —
-        # put_extraction reads it via get_file_content for the chunked 'fast'
-        # layer. extract_local is idempotent (cached by content_hash).
-        extract_local(path, kind)
         uri = str(path.resolve())
         meta = {"verbose_suffix": run.verbose_suffix} if run.verbose_suffix else None
         try:
@@ -447,7 +457,7 @@ def _run_fast(path: Path, kind: FileKind, opts: CatOpts) -> RunResult:
     ``mode='fast'`` in ``extractions``/``chunks``.
     """
     if kind == "text":
-        return RunResult(content=extract_local(path, kind, no_cache=opts.no_cache))
+        return RunResult(content=extract_local(path, kind))
 
     from mm.pipelines import apply_overrides
 
@@ -456,8 +466,7 @@ def _run_fast(path: Path, kind: FileKind, opts: CatOpts) -> RunResult:
     if spec.encode.strategy:
         return run_encoder(path, kind, spec, opts)
 
-    content = extract_local(path, kind, no_cache=opts.no_cache)
-
+    content = extract_local(path, kind)
     if spec.generate is None:
         return RunResult(content=content)
 

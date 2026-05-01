@@ -123,32 +123,43 @@ Returns matching files via vector similarity (embeddings). Use `--semantic/-s` f
 ### File inspection and extraction
 
 ```bash
-mm cat report.pdf              # text extraction from PDF (fast mode)
+# Default --mode metadata: local extraction only, no LLM call.
+mm cat report.pdf              # PDF text via pypdfium2
 mm cat image.jpg               # image dimensions, MIME, hash, EXIF
 mm cat video.mp4               # video resolution, duration, codecs (<100ms)
-mm cat image.jpg -m accurate   # LLM-powered caption
+
+# --mode fast: kind's fast pipeline (image/video include a short LLM caption stage).
+mm cat image.jpg -m fast       # short VLM caption
+mm cat video.mp4 -m fast       # mosaic → short VLM description
+
+# --mode accurate: LLM-heavy pipeline (requires a configured profile).
+mm cat image.jpg -m accurate   # LLM-powered caption + tags + objects
 mm cat video.mp4 -m accurate   # keyframe mosaic → LLM description
 mm cat audio.mp3 -m accurate   # transcript → LLM summary
 ```
 
 ### Pipeline customization
 
+`-p`, `--encode.*`, and `--generate.*` only take effect under `--mode fast`
+or `--mode accurate`; the default `metadata` mode skips the pipeline.
+
 ```bash
-mm cat photo.png -p image-tile                   # use named encoder
-mm cat photo.png -p my-pipeline.yaml             # custom pipeline YAML
+mm cat photo.png -m fast -p image-tile                     # use named encoder
+mm cat photo.png -m accurate -p my-pipeline.yaml           # custom pipeline YAML
 mm cat photo.png -m accurate --encode.strategy image-tile  # override encoder
 mm cat photo.png -m accurate --generate.max-tokens 1024    # override generation
-mm cat --list-encoders                           # list all registered encoders
-mm cat --list-pipelines                          # list built-in pipelines
+mm cat --list-encoders                                     # list all registered encoders
+mm cat --list-pipelines                                    # list built-in pipelines
 ```
 
 ### Batch operations
 
 ```bash
-mm wc ~/docs                   # file count, bytes, lines, token estimate
-mm find ~/videos               # list with tags, duration, resolution
-mm cat -m accurate video.mp4   # full context: transcript + scenes
+mm wc ~/docs                            # file count, bytes, lines, token estimate
+mm find ~/videos                        # list with tags, duration, resolution
+mm cat -m accurate video.mp4            # full context: transcript + scenes
 mm find ~/images --kind image | mm cat -m accurate --format json  # batch captioning
+mm find ~/images --kind image | mm cat --format json              # batch metadata (no LLM)
 ```
 
 ### Agentic integration

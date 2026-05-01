@@ -22,17 +22,17 @@ Each benchmark is a real CLI invocation measured end-to-end via subprocess.
 
 ### Fast mode — content extraction (file-level)
 
-Use `--no-cache` to bypass caching.
+Use `--no-cache` to bypass caching. `--mode fast` is passed explicitly because the CLI default is `metadata`.
 
 | Name | Command | Selection |
 |------|---------|-----------|
-| `mm cat <code> (x20)` | `mm cat {files} --format json` | first 20 code files |
-| `mm cat <image>` | `mm cat {file} --format json` | first image |
-| `mm cat <image> (x20)` | `mm cat {files} --format json` | first 20 images |
-| `mm cat <audio>` | `mm cat {file} --format json` | first audio |
-| `mm cat <video>` | `mm cat {file} --format json` | first video |
-| `mm cat <pdf>` | `mm cat {file} --format json` | first document |
-| `mm cat <pdf> (x10)` | `mm cat {files} --format json` | first 10 documents |
+| `mm cat <code> (x20)` | `mm cat {files} --mode fast --format json` | first 20 code files |
+| `mm cat <image>` | `mm cat {file} --mode fast --format json` | first image |
+| `mm cat <image> (x20)` | `mm cat {files} --mode fast --format json` | first 20 images |
+| `mm cat <audio>` | `mm cat {file} --mode fast --format json` | first audio |
+| `mm cat <video>` | `mm cat {file} --mode fast --format json` | first video |
+| `mm cat <pdf>` | `mm cat {file} --mode fast --format json` | first document |
+| `mm cat <pdf> (x10)` | `mm cat {files} --mode fast --format json` | first 10 documents |
 | `mm grep /pattern/` | `mm grep 'import\|include\|require' {dir} --format json` | all text files |
 
 ### Accurate mode (LLM pipelines)

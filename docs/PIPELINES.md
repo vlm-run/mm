@@ -32,9 +32,14 @@ graph LR
 Each pipeline is a YAML file under `pipelines/{kind}/{mode}.yaml` that references
 an encoder from `mm/encoders/` and configures LLM generation parameters.
 
+> **Mode required.** Pipelines run only when `--mode fast` or `--mode accurate`
+> is selected. The default `--mode metadata` does local extraction with no
+> pipeline, so `-p`, `--encode.*`, and `--generate.*` are ignored unless you
+> also pass an explicit `-m fast`/`-m accurate`.
+
 ```bash
-mm cat photo.jpg -p resize          # named encoder
-mm cat video.mp4 -p shot-mosaic     # scene-aware video encoder
+mm cat photo.jpg -m fast -p resize          # named encoder (fast pipeline)
+mm cat video.mp4 -m fast -p shot-mosaic     # scene-aware video encoder
 
 # Override pipeline config from CLI
 mm cat photo.jpg -m accurate --encode.strategy tile
@@ -48,8 +53,8 @@ mm cat video.mp4 -m accurate --encode.strategy_opts max_width=768 --encode.strat
 mm cat --print-pipeline image/accurate
 
 # Load explicit pipeline YAML (repeatable, dispatched by kind)
-mm cat photo.jpg -p ~/my-image-pipeline.yaml
-mm cat *.jpg *.mp4 -p image.yaml -p video.yaml
+mm cat photo.jpg -m accurate -p ~/my-image-pipeline.yaml
+mm cat *.jpg *.mp4 -m accurate -p image.yaml -p video.yaml
 
 # Custom Python transform via pyfunc
 mm cat photo.jpg -m accurate --encode.pyfunc ~/my_filter.py

@@ -1,4 +1,4 @@
-"""Tests for --mode fast/accurate pipeline-driven extraction in cat command."""
+"""Tests for --mode metadata/fast/accurate dispatch in the cat command."""
 
 from __future__ import annotations
 
@@ -83,6 +83,9 @@ class TestDocumentExts:
 class TestCatOptsMode:
     """Test that CatOpts carries the mode parameter."""
 
+    def test_mode_metadata(self):
+        assert _make_opts(mode="metadata").mode == "metadata"
+
     def test_mode_fast(self):
         assert _make_opts(mode="fast").mode == "fast"
 
@@ -98,6 +101,35 @@ class TestExtractDispatch:
         f.write_text("hello world")
         result = _extract(f, _make_opts("fast"))
         assert "hello world" in result
+
+    def test_metadata_image_short_circuits_pipeline(self, tmp_path):
+        """`-m metadata` returns extract_local output and never resolves a pipeline."""
+        f = tmp_path / "test.jpg"
+        f.write_bytes(b"\xff\xd8\xff" + b"\x00" * 100)
+        with (
+            patch("mm.commands.cat._run_fast") as fast_mock,
+            patch("mm.commands.cat._run_accurate") as accurate_mock,
+            patch("mm.commands.cat.extract_local", return_value="local-image-meta") as local_mock,
+        ):
+            opts = _make_opts("metadata")
+            result = _extract(f, opts)
+        assert result == "local-image-meta"
+        local_mock.assert_called_once_with(f, "image")
+        fast_mock.assert_not_called()
+        accurate_mock.assert_not_called()
+
+    def test_metadata_text_short_circuits_pipeline(self, tmp_path):
+        """Text files return extract_local output under any mode (kind='text' branch)."""
+        f = tmp_path / "test.txt"
+        f.write_text("hello world")
+        with (
+            patch("mm.commands.cat._run_fast") as fast_mock,
+            patch("mm.commands.cat._run_accurate") as accurate_mock,
+        ):
+            result = _extract(f, _make_opts("metadata"))
+        assert "hello world" in result
+        fast_mock.assert_not_called()
+        accurate_mock.assert_not_called()
 
     def test_fast_image_dispatch(self, tmp_path):
         f = tmp_path / "test.jpg"

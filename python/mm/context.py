@@ -615,8 +615,8 @@ class Context:
         new_ctx._pyctx = None
         return new_ctx
 
-    def cat(self, path: str, *, no_cache: bool = False) -> str:
-        """Read locally-extracted content of a file (directory-scan mode)."""
+    def cat(self, path: str) -> str:
+        """Read locally-extracted (metadata-tier) content of a file (directory-scan mode)."""
         self._require_table("cat")
         assert self.root is not None
         full_path = self.root / path
@@ -626,7 +626,7 @@ class Context:
         kind = file_kind(full_path)
         if kind == "text":
             return full_path.read_text(errors="replace")
-        return extract_local(full_path, kind, no_cache=no_cache)
+        return extract_local(full_path, kind)
 
     def head(self, path: str, *, n: int = 10) -> str:
         content = self.cat(path)
@@ -818,7 +818,7 @@ class Context:
                     if kind == "text":
                         out[ref_id] = p.read_text(errors="replace")
                     else:
-                        out[ref_id] = extract_local(p, kind, no_cache=True)
+                        out[ref_id] = extract_local(p, kind)
                 except Exception as exc:  # noqa: BLE001
                     out[ref_id] = f"[extract failed: {exc}]"
             # in-memory / url items fall through to the metadata fallback

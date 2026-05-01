@@ -24,7 +24,7 @@ def accurate_audio(path: Path, spec: PipelineSpec, opts: CatOpts) -> RunResult:
         )
 
     if spec.generate is None:
-        return RunResult(content=extract_local(path, "audio", no_cache=opts.no_cache))
+        return RunResult(content=extract_local(path, "audio"))
 
     # The hard-coded whisper+LLM fast path only implements `transcribe`.
     # Anything else (e.g. audio-gemini) must be routed through the

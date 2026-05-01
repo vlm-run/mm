@@ -59,7 +59,7 @@ def accurate_video(path: Path, spec: PipelineSpec, opts: CatOpts) -> RunResult:
         return RunResult(content=f"[ffmpeg not found — cannot process {path.name}]")
 
     if spec.generate is None:
-        return RunResult(content=extract_local(path, "video", no_cache=opts.no_cache))
+        return RunResult(content=extract_local(path, "video"))
 
     # The hard-coded mosaic+whisper fast path only implements a fixed
     # set of strategies. Anything else (e.g. video-gemini, frame-sample)

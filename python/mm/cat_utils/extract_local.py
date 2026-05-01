@@ -1,20 +1,13 @@
 from pathlib import Path
 
 
-def extract_local(path: Path, kind: str, *, no_cache: bool = False) -> str:
-    """Produce the metadata-tier content for a file (no LLM call) with caching.
-
-    This is the ``files.text_preview`` layer — what gets chunked under
-    ``chunks.mode='metadata'``. Distinct from the pipeline-output tiers
-    (``fast``/``accurate``) that live in ``extractions``.
-    Dispatches by kind: image metadata, video metadata, PDF text, raw
-    code/text passthrough, etc.
-    """
+def extract_local(path: Path, kind: str) -> str:
+    """Produce the metadata-tier content for a file (no LLM call) with caching."""
     from mm.store.db import MmDatabase
     from mm.store.utils import get_content_hash
 
     content_hash = get_content_hash(path)
-    if not no_cache and content_hash:
+    if content_hash:
         cached = MmDatabase().get_file_content(content_hash)
         if cached is not None:
             return cached
