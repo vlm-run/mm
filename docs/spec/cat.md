@@ -67,7 +67,7 @@ Passthrough in all modes — raw file content, no pipeline, no LLM (treated iden
 ## Caching
 
 The metadata tier is cached in `files.text_preview` keyed by `content_hash`
-(populated by `extract_local`; reused on every subsequent `cat` of the same
+(populated by `extract_meta`; reused on every subsequent `cat` of the same
 file, regardless of mode).
 
 The unified `extractions` table (SQLite at `~/.local/share/mm/mm.db`) caches

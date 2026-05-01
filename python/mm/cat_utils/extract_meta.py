@@ -1,7 +1,7 @@
 from pathlib import Path
 
 
-def extract_local(path: Path, kind: str) -> str:
+def extract_meta(path: Path, kind: str) -> str:
     """Produce the metadata-tier content for a file (no LLM call) with caching."""
     from mm.store.db import MmDatabase
     from mm.store.utils import get_content_hash

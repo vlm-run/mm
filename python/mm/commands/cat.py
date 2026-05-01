@@ -35,7 +35,7 @@ from mm.cat_utils.base_utils import (
     maybe_confirm_large_cat_batch,
     override_extra,
 )
-from mm.cat_utils.extract_meta import extract_local
+from mm.cat_utils.extract_meta import extract_meta
 from mm.cat_utils.run_encoder import run_encoder
 from mm.encoders.encoders_utils import do_list_encoders
 from mm.pipe import read_paths_from_stdin
@@ -353,7 +353,7 @@ def _extract(path: Path, opts: CatOpts) -> str:
     """Pipeline-driven extraction dispatch with unified extraction caching.
 
     1. Auto-detect kind from file extension
-    2. Run ``extract_local`` for the metadata tier (caches into ``files``)
+    2. Run ``extract_meta`` for the metadata tier (caches into ``files``)
     3. If mode='metadata' (default) or kind='text': return the metadata tier
     4. Check the ``extractions`` cache (applies to fast and accurate modes)
     5. Resolve pipeline (explicit -p > toml override > built-in)
@@ -361,7 +361,7 @@ def _extract(path: Path, opts: CatOpts) -> str:
     7. Run encode + (optional) generate step; persist to extractions cache
     """
     kind = file_kind(path)
-    local_extract = extract_local(path, kind)
+    local_extract = extract_meta(path, kind)
     if kind == "text" or opts.mode == "metadata":
         return local_extract
 
@@ -457,7 +457,7 @@ def _run_fast(path: Path, kind: FileKind, opts: CatOpts) -> RunResult:
     ``mode='fast'`` in ``extractions``/``chunks``.
     """
     if kind == "text":
-        return RunResult(content=extract_local(path, kind))
+        return RunResult(content=extract_meta(path, kind))
 
     from mm.pipelines import apply_overrides
 
@@ -466,7 +466,7 @@ def _run_fast(path: Path, kind: FileKind, opts: CatOpts) -> RunResult:
     if spec.encode.strategy:
         return run_encoder(path, kind, spec, opts)
 
-    content = extract_local(path, kind)
+    content = extract_meta(path, kind)
     if spec.generate is None:
         return RunResult(content=content)
 
@@ -502,7 +502,7 @@ def _run_accurate(path: Path, kind: BinaryFileKind, opts: CatOpts) -> RunResult:
     spec = resolve_pipeline(opts, kind)
     spec = apply_overrides(spec, opts.encode_overrides or None, opts.generate_overrides or None)
 
-    extract_local(path, kind)
+    extract_meta(path, kind)
 
     return _accurate_dispatch(path, kind, spec, opts)
 
@@ -521,7 +521,7 @@ def _accurate_dispatch(
     if spec.encode.strategy:
         return run_encoder(path, kind, spec, opts)
 
-    content = extract_local(path, kind)
+    content = extract_meta(path, kind)
     if spec.generate is None:
         return RunResult(content=content)
 

@@ -361,7 +361,7 @@ class Context:
 
         Args:
             mode: ``"fast"`` populates each row with the metadata-tier content
-                (``files.text_preview`` produced by ``extract_local``; no LLM call).
+                (``files.text_preview`` produced by ``extract_meta``; no LLM call).
                 ``"accurate"`` runs the LLM-backed path (requires a
                 configured profile; not wired yet — currently raises
                 ``NotImplementedError``).
@@ -620,13 +620,13 @@ class Context:
         self._require_table("cat")
         assert self.root is not None
         full_path = self.root / path
-        from mm.cat_utils.extract_meta import extract_local
+        from mm.cat_utils.extract_meta import extract_meta
         from mm.utils import file_kind
 
         kind = file_kind(full_path)
         if kind == "text":
             return full_path.read_text(errors="replace")
-        return extract_local(full_path, kind)
+        return extract_meta(full_path, kind)
 
     def head(self, path: str, *, n: int = 10) -> str:
         content = self.cat(path)
@@ -801,7 +801,7 @@ class Context:
 
     def _collect_fast_contents(self) -> dict[str, str]:
         """Extract ``cat``-like content for every put-based item (fast mode)."""
-        from mm.cat_utils.extract_meta import extract_local
+        from mm.cat_utils.extract_meta import extract_meta
         from mm.utils import file_kind
 
         out: dict[str, str] = {}
@@ -818,7 +818,7 @@ class Context:
                     if kind == "text":
                         out[ref_id] = p.read_text(errors="replace")
                     else:
-                        out[ref_id] = extract_local(p, kind)
+                        out[ref_id] = extract_meta(p, kind)
                 except Exception as exc:  # noqa: BLE001
                     out[ref_id] = f"[extract failed: {exc}]"
             # in-memory / url items fall through to the metadata fallback

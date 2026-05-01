@@ -103,13 +103,13 @@ class TestExtractDispatch:
         assert "hello world" in result
 
     def test_metadata_image_short_circuits_pipeline(self, tmp_path):
-        """`-m metadata` returns extract_local output and never resolves a pipeline."""
+        """`-m metadata` returns extract_meta output and never resolves a pipeline."""
         f = tmp_path / "test.jpg"
         f.write_bytes(b"\xff\xd8\xff" + b"\x00" * 100)
         with (
             patch("mm.commands.cat._run_fast") as fast_mock,
             patch("mm.commands.cat._run_accurate") as accurate_mock,
-            patch("mm.commands.cat.extract_local", return_value="local-image-meta") as local_mock,
+            patch("mm.commands.cat.extract_meta", return_value="local-image-meta") as local_mock,
         ):
             opts = _make_opts("metadata")
             result = _extract(f, opts)
@@ -119,7 +119,7 @@ class TestExtractDispatch:
         accurate_mock.assert_not_called()
 
     def test_metadata_text_short_circuits_pipeline(self, tmp_path):
-        """Text files return extract_local output under any mode (kind='text' branch)."""
+        """Text files return extract_meta output under any mode (kind='text' branch)."""
         f = tmp_path / "test.txt"
         f.write_text("hello world")
         with (

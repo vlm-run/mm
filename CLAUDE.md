@@ -292,7 +292,7 @@ Columns (`files`): `uri`, `name`, `stem`, `ext`, `size`, `modified`, `created`, 
 
 ## Processing modes
 
-- **metadata** (default): local extraction only — image dims/EXIF/hash, video resolution/duration/codec, audio duration/codec, PDF text via pypdfium2, code/text passthrough. Never invokes an LLM. Implemented in `mm/cat_utils/extract_local.py` and cached as `files.text_preview`.
+- **metadata** (default): local extraction only — image dims/EXIF/hash, video resolution/duration/codec, audio duration/codec, PDF text via pypdfium2, code/text passthrough. Never invokes an LLM. Implemented in `mm/cat_utils/extract_meta.py` and cached as `files.text_preview`.
 - **fast**: runs the kind's fast pipeline. *May* invoke an LLM with a short prompt — images and videos do (short caption / short description). Audio fast = Whisper transcript only. Documents fast = pypdfium2 text only. Code/text = raw passthrough. Pipeline-driven via `pipelines/{kind}/fast.yaml`.
 - **accurate**: LLM-powered descriptions via OpenAI-compatible API. Images → VLM caption. Videos → mosaic → VLM description. Audio → transcript → LLM summary. Documents → text → LLM structuring. Requires a configured profile (`mm profile add/update`). Pipeline-driven via `pipelines/{kind}/accurate.yaml`.
 
