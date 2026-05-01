@@ -1,126 +1,92 @@
 """Tests for mm.encoders.video helpers.
 
-Focused coverage of ``_read_frames_b64``, the thread-pool helper that
-batch-reads extracted video frames and base64-encodes them before they
-get wrapped into OpenAI-compatible Messages. The helper is on the hot
-path for every video pipeline, so it's worth nailing down the
-behaviour: empty input, single-path fast path, multi-path pool path,
-ordering guarantees, correctness against ``base64.b64encode``, and
-graceful propagation of I/O errors.
+Covers Frame.encode_jpeg() (the replacement for the old _read_frames_b64
+helper) and encoder registration verification.
 """
 
 from __future__ import annotations
 
 import base64
-from pathlib import Path
+import io
 
 import pytest
-from mm.encoders.video import _read_frames_b64
+from PIL import Image
+
+from mm.video import Frame
 
 
-def _write(tmp_path: Path, name: str, payload: bytes) -> Path:
-    """Write *payload* to *tmp_path/name* and return the path."""
-    p = tmp_path / name
-    p.write_bytes(payload)
-    return p
+class TestFrameEncodeJpeg:
+    """Test Frame.encode_jpeg() — the new in-memory equivalent."""
+
+    def test_basic_roundtrip(self):
+        img = Image.new("RGB", (200, 100), (128, 64, 32))
+        frame = Frame(timestamp=5.0, image=img)
+        b64, mime = frame.encode_jpeg()
+        assert mime == "image/jpeg"
+        decoded = Image.open(io.BytesIO(base64.b64decode(b64)))
+        assert decoded.size == (200, 100)
+
+    def test_rgba_auto_converts(self):
+        img = Image.new("RGBA", (50, 50), (255, 0, 0, 128))
+        frame = Frame(timestamp=0.0, image=img)
+        b64, mime = frame.encode_jpeg()
+        assert mime == "image/jpeg"
+        decoded = Image.open(io.BytesIO(base64.b64decode(b64)))
+        assert decoded.mode == "RGB"
+
+    def test_small_image(self):
+        img = Image.new("RGB", (1, 1), (0, 0, 0))
+        frame = Frame(timestamp=0.0, image=img)
+        b64, mime = frame.encode_jpeg()
+        assert len(b64) > 0
+
+    def test_quality_affects_size(self):
+        img = Image.new("RGB", (500, 500), (100, 150, 200))
+        frame = Frame(timestamp=0.0, image=img)
+        b64_low, _ = frame.encode_jpeg(quality=10)
+        b64_high, _ = frame.encode_jpeg(quality=95)
+        assert len(b64_high) > len(b64_low)
 
 
-class TestReadFramesB64Empty:
-    def test_empty_list_returns_empty_list(self):
-        assert _read_frames_b64([]) == []
+class TestEncoderRegistration:
+    """Verify all video encoders are correctly registered."""
 
-    def test_empty_list_returns_new_list_instance(self):
-        a = _read_frames_b64([])
-        b = _read_frames_b64([])
-        # Each call should yield its own fresh list — no accidental
-        # shared state.
-        assert a is not b
+    def test_all_video_encoders_registered(self):
+        from mm.encoders import get
 
+        expected = [
+            "video-frames",
+            "video-frames-w-transcript",
+            "video-mosaic",
+            "video-mosaic-w-transcript",
+            "video-shots",
+            "video-shots-w-transcript",
+            "video-shot-mosaic",
+            "video-shot-mosaic-w-transcript",
+            "video-clips",
+            "video-clips-w-transcript",
+            "video-chunks",
+            "video-keyframes",
+            "video-keyframes-w-transcript",
+            "video-summary",
+            "video-summary-w-transcript",
+            "video-captions",
+            "video-transcript",
+        ]
+        for name in expected:
+            enc = get(name)
+            assert enc is not None, f"Encoder {name!r} not registered"
+            assert hasattr(enc, "encode"), f"Encoder {name!r} has no encode method"
 
-class TestReadFramesB64SinglePath:
-    def test_single_path_hits_fast_path(self, tmp_path: Path):
-        payload = b"\xff\xd8\xff\xe0 fake jpeg bytes"
-        p = _write(tmp_path, "frame_0.jpg", payload)
+    def test_old_names_not_registered(self):
+        from mm.encoders import get
 
-        out = _read_frames_b64([p])
-        assert len(out) == 1
-        assert out[0] == base64.b64encode(payload).decode()
-
-    def test_single_path_roundtrip(self, tmp_path: Path):
-        payload = b"hello world"
-        p = _write(tmp_path, "frame.jpg", payload)
-
-        out = _read_frames_b64([p])
-        assert base64.b64decode(out[0]) == payload
-
-    def test_single_empty_file(self, tmp_path: Path):
-        p = _write(tmp_path, "empty.jpg", b"")
-        assert _read_frames_b64([p]) == [""]
-
-
-class TestReadFramesB64MultiplePaths:
-    def test_preserves_input_order(self, tmp_path: Path):
-        payloads = [f"frame-{i}".encode() for i in range(5)]
-        paths = [_write(tmp_path, f"f_{i}.jpg", p) for i, p in enumerate(payloads)]
-
-        out = _read_frames_b64(paths)
-
-        assert len(out) == len(paths)
-        expected = [base64.b64encode(p).decode() for p in payloads]
-        assert out == expected
-
-    def test_distinct_payloads_produce_distinct_b64(self, tmp_path: Path):
-        payloads = [b"\x00" * 8, b"\xff" * 8, b"\xab\xcd" * 4]
-        paths = [_write(tmp_path, f"f_{i}.jpg", p) for i, p in enumerate(payloads)]
-
-        out = _read_frames_b64(paths)
-        assert len(set(out)) == len(out), "expected distinct b64 per distinct payload"
-
-    def test_duplicate_paths_return_same_b64(self, tmp_path: Path):
-        payload = b"same bytes"
-        p = _write(tmp_path, "same.jpg", payload)
-
-        out = _read_frames_b64([p, p, p])
-        expected = base64.b64encode(payload).decode()
-        assert out == [expected, expected, expected]
-
-    def test_many_frames_cap_at_8_workers(self, tmp_path: Path):
-        """Smoke test: 32 frames should still produce 32 ordered results.
-
-        The helper caps the pool at 8 workers; 32 tasks exercise the
-        pool's reuse path.
-        """
-        payloads = [f"chunk-{i}".encode() * 16 for i in range(32)]
-        paths = [_write(tmp_path, f"f_{i}.bin", p) for i, p in enumerate(payloads)]
-
-        out = _read_frames_b64(paths)
-        assert len(out) == 32
-        for expected, actual in zip(payloads, out):
-            assert base64.b64decode(actual) == expected
-
-    def test_roundtrip_binary_data(self, tmp_path: Path):
-        # Random-ish bytes over the full 0x00..0xff range to make sure
-        # no text-mode assumption leaks in.
-        payloads = [bytes(range(i, i + 32)) for i in range(0, 96, 32)]
-        paths = [_write(tmp_path, f"f_{i}.bin", p) for i, p in enumerate(payloads)]
-
-        out = _read_frames_b64(paths)
-        decoded = [base64.b64decode(s) for s in out]
-        assert decoded == payloads
-
-
-class TestReadFramesB64Errors:
-    def test_missing_path_raises(self, tmp_path: Path):
-        missing = tmp_path / "does_not_exist.jpg"
-        with pytest.raises(FileNotFoundError):
-            _read_frames_b64([missing])
-
-    def test_one_missing_in_batch_raises(self, tmp_path: Path):
-        p_ok = _write(tmp_path, "ok.jpg", b"ok")
-        missing = tmp_path / "missing.jpg"
-
-        # ThreadPoolExecutor.map surfaces the first exception when the
-        # returned generator is iterated — `list(...)` forces iteration
-        # so the error propagates out of the helper.
-        with pytest.raises(FileNotFoundError):
-            _read_frames_b64([p_ok, missing])
+        for old_name in [
+            "frame-sample",
+            "shot-frames",
+            "shot-mosaic",
+            "video-frames-transcript",
+            "mosaic",
+        ]:
+            with pytest.raises(KeyError):
+                get(old_name)

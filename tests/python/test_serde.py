@@ -72,8 +72,10 @@ class TestRegistry:
         names = list_strategies()
         assert "resize" in names
         assert "tile" in names
-        assert "frame-sample" in names
-        assert "video-chunk" in names
+        # ``video-frames`` and ``video-chunks`` are the current PyAV-based
+        # equivalents of the retired ``frame-sample`` / ``video-chunk``.
+        assert "video-frames" in names
+        assert "video-chunks" in names
         assert "rasterize" in names
         assert "rasterize-text" in names
         assert "video-gemini" in names
@@ -87,14 +89,15 @@ class TestRegistry:
         names = list_strategies(media_type="image")
         assert "resize" in names
         assert "tile" in names
-        assert "frame-sample" not in names
+        # No video-only encoders should leak into the image namespace.
+        assert "video-frames" not in names
 
     def test_list_strategies_by_video(self):
         from mm.encoders import list_strategies
 
         names = list_strategies(media_type="video")
-        assert "frame-sample" in names
-        assert "video-chunk" in names
+        assert "video-frames" in names
+        assert "video-chunks" in names
         assert "video-gemini" in names
         assert "resize" not in names
 

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 import shlex
 import statistics
 import subprocess
@@ -169,14 +170,19 @@ def _sanitize_files(files: list) -> list:
 
 
 def _time_cmd(argv: list[str], rounds: int, warmup: int) -> list[float]:
-    """Run a shell command with warmup, return list of elapsed times in ms."""
+    """Run a shell command with warmup, return list of elapsed times in ms.
+
+    ``stdin`` is closed because ``mm cat`` (and friends) autodetect piped
+    stdin and try to read paths from it — which deadlocks under
+    ``subprocess.PIPE`` if we don't also feed something in.
+    """
     for _ in range(warmup):
-        subprocess.run(argv, capture_output=True)
+        subprocess.run(argv, capture_output=True, stdin=subprocess.DEVNULL)
 
     timings: list[float] = []
     for _ in range(rounds):
         t0 = time.perf_counter_ns()
-        subprocess.run(argv, capture_output=True)
+        subprocess.run(argv, capture_output=True, stdin=subprocess.DEVNULL)
         t1 = time.perf_counter_ns()
         timings.append((t1 - t0) / 1_000_000)  # ns → ms
     return timings
@@ -364,6 +370,148 @@ def _render_table(results: list[BenchResult], target_info: dict[str, Any]) -> No
     output_console.print(table)
 
 
+# ── Stdout snapshot mode ────────────────────────────────────────────
+
+
+# CSI escape sequences (colour, dim, cursor, etc.) leak into snapshots when
+# Rich treats ``subprocess.PIPE`` as a terminal. Strip them so the recorded
+# markdown is plain text and diff-friendly.
+_ANSI_RE = re.compile(r"\x1b\[[0-9;]*[A-Za-z]")
+
+
+def _strip_ansi(text: str) -> str:
+    """Remove ANSI escape sequences from *text*."""
+    return _ANSI_RE.sub("", text)
+
+
+def _format_stdout_block(label: str, cmd: str, stdout: str) -> str:
+    """Format one snapshot record: ``$ <cmd>  # <label>`` then stdout.
+
+    Trailing whitespace and trailing newlines are stripped so adjacent
+    blocks separated by ``---`` render cleanly in markdown. ANSI escape
+    sequences are also removed — the recorded markdown is meant to be
+    reviewable as plain text, not replayable as a terminal recording.
+    """
+    body = _strip_ansi(stdout).rstrip("\n")
+    return f"$ {cmd}  # {label}\n{body}"
+
+
+def _run_stdout_snapshot(
+    *,
+    directory: Path,
+    mode: str,
+    command_filter: str | None,
+    timeout_s: float,
+    with_generate: bool,
+) -> None:
+    """Run each filtered ``mm cat`` encoder variant once and emit its stdout.
+
+    The output format is::
+
+        $ mm cat <video> ... --pipeline encoder-a  # encoder-a
+        <stdout from that run>
+        ---
+        $ mm cat <video> ... --pipeline encoder-b  # encoder-b
+        ...
+
+    Errors (non-zero exit, timeouts, missing files) are emitted in the same
+    block style with the failure reason in place of stdout, so the resulting
+    markdown is always valid and reviewable.
+
+    Args:
+        directory: Directory passed to ``mm bench``.
+        mode: ``--mode`` value forwarded to each ``mm cat`` invocation.
+        command_filter: Substring filter on synthesised bench-command names.
+            ``None`` keeps everything; ``"video"`` keeps only video encoders.
+        timeout_s: Wall-clock cap per command. Hitting it terminates the
+            subprocess and records ``[timeout after Xs]`` for that block.
+        with_generate: When False (default) each ``mm cat`` invocation gets
+            ``--no-generate`` so the snapshot is LLM-free, deterministic,
+            and offline-friendly. When True, the full pipeline runs
+            (including the LLM step) — useful for capturing real model
+            output but slow and dependent on the active profile.
+    """
+    from mm.commands.bench_commands import build_encoder_cat_commands, resolve_command
+    from mm.context import Context
+
+    if mode not in ("fast", "accurate"):
+        typer.echo(
+            f"Error: --format stdout only supports --mode fast|accurate (got {mode!r}).",
+            err=True,
+        )
+        raise typer.Exit(code=1)
+
+    ctx = Context(directory)
+    files = _sanitize_files(ctx.files)
+    if not files:
+        typer.echo(f"Error: no files found in {directory}", err=True)
+        raise typer.Exit(code=1)
+
+    commands = build_encoder_cat_commands(files, mode=mode, no_generate=not with_generate)
+    if command_filter:
+        needle = command_filter.lower()
+        commands = [c for c in commands if needle in c.name.lower()]
+    if not commands:
+        typer.echo(
+            "Error: no encoders applicable to files in this directory "
+            f"(mode={mode!r}, filter={command_filter!r}).",
+            err=True,
+        )
+        raise typer.Exit(code=1)
+
+    blocks: list[str] = []
+    for cmd in commands:
+        resolved = resolve_command(cmd, directory, files)
+        if resolved is None:
+            blocks.append(
+                _format_stdout_block(cmd.name, cmd.cmd_template, f"[skipped: {cmd.skip_reason}]")
+            )
+            continue
+
+        argv, _, _, _ = resolved
+        # The bench harness resolves ``{file}`` to an absolute path so the
+        # subprocess can find it. For the *recorded* snapshot we strip the
+        # directory prefix down to the file's basename — ``$ mm cat
+        # bakery.mp4 ...`` reads cleanly in ``tests/stdout/*.md`` and stays
+        # stable regardless of where the user has the test data on disk.
+        abs_paths = {a for a in argv if a.startswith("/") and Path(a).is_file()}
+        display_argv = [Path(a).name if a in abs_paths else a for a in argv]
+        cmd_str = shlex.join(display_argv)
+        try:
+            # ``mm cat`` autodetects a piped stdin (`isatty()` is False under
+            # subprocess.PIPE) and tries to read paths from it. Close stdin
+            # explicitly so the snapshot subprocess never blocks on input.
+            proc = subprocess.run(
+                argv,
+                capture_output=True,
+                text=True,
+                stdin=subprocess.DEVNULL,
+                timeout=timeout_s,
+            )
+        except subprocess.TimeoutExpired:
+            blocks.append(
+                _format_stdout_block(cmd.name, cmd_str, f"[timeout after {timeout_s:.0f}s]")
+            )
+            continue
+
+        # Mirror the same path normalisation in the captured stdout so the
+        # ``"path": "..."`` field in JSON output is stable too.
+        clean_stdout = proc.stdout
+        for abs_path in abs_paths:
+            clean_stdout = clean_stdout.replace(abs_path, Path(abs_path).name)
+
+        if proc.returncode != 0:
+            err_tail = (proc.stderr or "").strip().splitlines()[-5:]
+            err_blob = "\n".join(err_tail) if err_tail else "(no stderr)"
+            body = f"[exit {proc.returncode}]\n{err_blob}"
+            blocks.append(_format_stdout_block(cmd.name, cmd_str, body))
+            continue
+
+        blocks.append(_format_stdout_block(cmd.name, cmd_str, clean_stdout))
+
+    print("\n---\n".join(blocks))
+
+
 # ── CLI command ─────────────────────────────────────────────────────
 
 
@@ -379,10 +527,39 @@ def bench_cmd(
             help="Groups to bench: metadata (default), fast, accurate, all",
         ),
     ] = None,
+    command: Annotated[
+        Optional[str],
+        typer.Option(
+            "--command",
+            "-c",
+            help=(
+                "Substring filter on bench-command names "
+                "(e.g. 'cat' to keep only `mm cat ...` benchmarks)."
+            ),
+        ),
+    ] = None,
     format: Annotated[
         Optional[BaseFormat],
-        typer.Option("--format", "-f", help="Output format: rich, json"),
+        typer.Option("--format", "-f", help="Output format: rich, json, tsv, csv, stdout"),
     ] = None,
+    timeout: Annotated[
+        float,
+        typer.Option(
+            "--timeout",
+            help="Per-command timeout in seconds (stdout snapshot mode only)",
+        ),
+    ] = 600.0,
+    with_generate: Annotated[
+        bool,
+        typer.Option(
+            "--with-generate",
+            help=(
+                "Stdout snapshot mode: include the LLM generate step in each "
+                "cat invocation. Default omits it (`--no-generate`) so the "
+                "snapshot is fast, deterministic, and offline-friendly."
+            ),
+        ),
+    ] = False,
     host_info: Annotated[
         bool,
         typer.Option("--host-info", help="Show host system info and exit"),
@@ -398,6 +575,12 @@ def bench_cmd(
       all                 overhead + metadata + fast + accurate
 
     \b
+    ``--format stdout`` switches to *snapshot* mode: each cat-encoder
+    variant runs once and its stdout is recorded between ``---`` separators
+    — handy for refreshing ``tests/stdout/cat.md``. ``--command`` is a
+    substring filter, useful in any mode.
+
+    \b
     Examples:
       mm bench ~/data                              # overhead + metadata (default)
       mm bench ~/data --mode metadata              # Unix-comparable subset (no LLM)
@@ -405,6 +588,7 @@ def bench_cmd(
       mm bench ~/data --mode all                   # full suite
       mm bench ~/data --rounds 5                   # more rounds for stability
       mm bench ~/data --format json                # JSON output for archival
+      mm bench ~/data --command cat --format stdout > tests/stdout/cat.md
       mm bench --host-info                         # print host spec and exit
       mm bench --host-info --format json           # host spec as JSON
     """
@@ -424,6 +608,16 @@ def bench_cmd(
         render_host_info(collect_host_info(), fmt=fmt)
         return
 
+    if fmt == "stdout":
+        _run_stdout_snapshot(
+            directory=directory,
+            mode=mode or "fast",
+            command_filter=command,
+            timeout_s=timeout,
+            with_generate=with_generate,
+        )
+        return
+
     bench_mode = mode or "metadata"
     if bench_mode == "metadata":
         extraction: list = []
@@ -441,6 +635,15 @@ def bench_cmd(
         raise typer.Exit(code=1)
 
     commands = OVERHEAD_COMMANDS + METADATA_COMMANDS + extraction
+    if command:
+        needle = command.lower()
+        commands = [c for c in commands if needle in c.name.lower()]
+        if not commands:
+            typer.echo(
+                f"Error: --command {command!r} matched no benchmark names.",
+                err=True,
+            )
+            raise typer.Exit(code=1)
 
     from mm.bench_utils import collect_host_info, render_host_info
 

@@ -2,7 +2,7 @@ kind: video
 mode: fast
 
 encode:
-  strategy: mosaic
+  strategy: video-mosaic
   strategy_opts:
     tile_cols: 4
     tile_rows: 4

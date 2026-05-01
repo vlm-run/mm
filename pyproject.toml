@@ -77,9 +77,12 @@ dependencies = [
     "python-pptx>=1.0.2",
     "pyyaml>=6.0",
     "google-genai>=1.0",
+    "av>=13.0",
     "faster-whisper>=1.0",
     "scenedetect[opencv]>=0.6",
     "ctranslate2>=2.0",
+    "cachetools>=5.3",
+    "cachetools-ext>=0.0.8",
 ]
 
 [project.optional-dependencies]
