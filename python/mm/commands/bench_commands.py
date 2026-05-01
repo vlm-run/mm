@@ -262,6 +262,50 @@ METADATA_COMMANDS: list[BenchCommand] = [
     BenchCommand(
         "mm grep /pattern/", "metadata", "mm grep 'import|include|require' {dir} --format json"
     ),
+    BenchCommand(
+        "mm cat <image> -m metadata",
+        "metadata",
+        "mm cat {file} --mode metadata --no-cache --format json",
+        requires_kind="image",
+        skip_reason="no image files",
+    ),
+    BenchCommand(
+        "mm cat <image> -m metadata (x20)",
+        "metadata",
+        "mm cat {files} --mode metadata --no-cache --format json",
+        requires_kind="image",
+        batch=20,
+        skip_reason="no image files",
+    ),
+    BenchCommand(
+        "mm cat <video> -m metadata",
+        "metadata",
+        "mm cat {file} --mode metadata --no-cache --format json",
+        requires_kind="video",
+        skip_reason="no video files",
+    ),
+    BenchCommand(
+        "mm cat <audio> -m metadata",
+        "metadata",
+        "mm cat {file} --mode metadata --no-cache --format json",
+        requires_kind="audio",
+        skip_reason="no audio files",
+    ),
+    BenchCommand(
+        "mm cat <pdf> -m metadata",
+        "metadata",
+        "mm cat {file} --mode metadata --no-cache --format json",
+        requires_kind="document",
+        skip_reason="no PDF files",
+    ),
+    BenchCommand(
+        "mm cat <code> -m metadata (x20)",
+        "metadata",
+        "mm cat {files} --mode metadata --no-cache --format json",
+        requires_kind="code",
+        batch=20,
+        skip_reason="no code files",
+    ),
 ]
 
 FAST_COMMANDS: list[BenchCommand] = [

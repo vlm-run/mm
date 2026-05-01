@@ -257,7 +257,7 @@ The following commands were merged into the 5 core commands:
 
 ### cat modes (auto-detected from file type × mode)
 
-`--mode` is one of `metadata` (default; local extraction, never an LLM call), `fast` (kind's fast pipeline; short LLM call for images/video), or `accurate` (LLM-heavy pipeline). Under the default metadata mode, `-p` and `--encode.*`/`--generate.*` overrides are ignored — pass `-m fast` or `-m accurate` to invoke a pipeline.
+`--mode` is one of `metadata` (default; local extraction, never an LLM call), `fast` (kind's fast pipeline; short LLM call for images/video), or `accurate` (LLM-heavy pipeline). Under the default `metadata` mode, `-p` and `--encode.*`/`--generate.*` overrides are ignored — pass `-m fast` or `-m accurate` to invoke a pipeline.
 
 - `mm cat file` — text/metadata extraction (default, no LLM, <100ms)
 - `mm cat file -n 20` — first 20 lines (head)
@@ -275,7 +275,7 @@ Use `mm find <dir> --schema` to see all available columns, their Arrow types, de
 `mm sql` auto-routes queries based on the table name in the `FROM` clause:
 - `files` → scan directory + SQLite (ephemeral in-memory table)
 - `extractions` → SQLite direct (LLM-generated summaries)
-- `chunks` → SQLite direct (chunked content + embeddings, mode = 'fast' or 'accurate')
+- `chunks` → SQLite direct (chunked content + embeddings, mode = 'metadata', 'fast', or 'accurate')
 
 Use `mm sql --list-tables` to see available tables and row counts.
 

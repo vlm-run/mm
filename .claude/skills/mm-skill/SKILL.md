@@ -117,7 +117,7 @@ Behaviour is auto-detected from file type. `--mode` is one of:
 - `accurate` — LLM-heavy pipeline.
 
 ```bash
-# Metadata mode (default) — local extraction, no LLM
+# metadata mode (default) — local extraction, no LLM
 mm cat <file>                                       # text/metadata extraction
 mm cat photo.png                                    # image metadata (dims, MIME, hash, EXIF)
 mm cat video.mp4                                    # video metadata (resolution, duration, codecs)
@@ -146,7 +146,7 @@ mm cat <file> -m accurate --no-cache                # bypass cache, force fresh 
 mm cat <file> --format json                          # JSON output
 ```
 
-Metadata mode behavior by file type (<100ms target):
+`metadata` mode behavior by file type (<100ms target):
 
 - **PDF** (.pdf): text extraction via pypdfium2. Scanned/image-only PDFs return empty.
 - **Document** (.docx, .pptx): text extraction.

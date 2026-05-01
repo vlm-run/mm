@@ -416,11 +416,11 @@ pipeline
 
 `mm` separates **content tiers** (what's stored) from **pipeline modes** (what runs). `mm cat` accepts `--mode metadata|fast|accurate` (default `metadata`).
 
-| Tier                   | What                                                                                  | LLM?     |
-| ---------------------- | ------------------------------------------------------------------------------------- | -------- |
+| Tier               | What                                                                                  | LLM?     |
+| ------------------ | ------------------------------------------------------------------------------------- | -------- |
 | **metadata** (default) | Locally-extracted file content — PDF text, image dims/EXIF, video codec, transcript   | never    |
-| **fast**               | Output of the kind's `fast` pipeline                                                  | maybe¹   |
-| **accurate**           | Output of the kind's `accurate` pipeline                                              | yes      |
+| **fast**           | Output of the kind's `fast` pipeline                                                  | maybe¹   |
+| **accurate**       | Output of the kind's `accurate` pipeline                                              | yes      |
 
 ¹ Per-kind fast pipelines: image/video include a short LLM caption stage;
 audio/document/code do not. See `pipelines/{kind}/fast.yaml`.

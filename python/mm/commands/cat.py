@@ -163,7 +163,7 @@ def cat_cmd(
     '-m accurate' runs the LLM-heavy pipeline.
 
     \b
-                metadata                     fast                                accurate
+                metadata (default)               fast                                accurate
     Images:     dimensions, EXIF, hash       short VLM caption                   full VLM caption + tags
     Videos:     resolution, duration, codec  mosaic → short VLM                  mosaic + transcript → VLM
     Audio:      duration, codec, hash        Whisper transcript                  transcript → LLM summary
