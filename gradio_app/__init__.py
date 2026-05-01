@@ -1,4 +1,4 @@
-"""mm Gradio + FastAPI app.
+"""mm Gradio + FastAPI.
 
 Exposes group-2 surface (cat with ``mode=fast|accurate``, grep with
 ``--semantic`` / ``--pre-index``), a list-directory endpoint that mirrors
