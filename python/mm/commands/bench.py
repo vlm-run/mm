@@ -376,7 +376,7 @@ def bench_cmd(
         typer.Option(
             "--mode",
             "-m",
-            help="Groups to bench: metadata, fast (default), accurate, all",
+            help="Groups to bench: metadata (default), fast, accurate, all",
         ),
     ] = None,
     format: Annotated[

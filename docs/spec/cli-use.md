@@ -22,7 +22,7 @@ Each benchmark is a real CLI invocation measured end-to-end via subprocess.
 
 ### Fast mode — content extraction (file-level)
 
-Use `--no-cache` to bypass caching. `--mode fast` is passed explicitly because the CLI default is `metadata`.
+Use `--no-cache` to bypass caching.
 
 | Name | Command | Selection |
 |------|---------|-----------|

@@ -112,8 +112,8 @@ Columns in the `files` table:
 
 Behaviour is auto-detected from file type. `--mode` is one of:
 
-- `metadata` (default) — local extraction, never an LLM call.
-- `fast` — kind's fast pipeline (image/video include a short LLM caption stage; audio/document/code are local-only passthrough).
+- `metadata` (default) — local, cheap extraction, no LLMs.
+- `fast` — kind's fast pipeline (image/video uses short VLM captioning; audio uses ffmpeg+whisper, document/code are local-only passthrough).
 - `accurate` — LLM-heavy pipeline.
 
 ```bash
