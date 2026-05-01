@@ -356,12 +356,15 @@ class Context:
 
         return build_messages(self, format=format, encoders=encoders or {})
 
-    def to_md(self, mode: Literal["fast", "accurate"] = "fast") -> str:
+    def to_md(self, mode: Literal["metadata", "fast", "accurate"] = "metadata") -> str:
         """Render a markdown table of every ref + source + content.
 
         Args:
-            mode: ``"fast"`` populates each row with the metadata-tier content
-                (``files.text_preview`` produced by ``extract_local``; no LLM call).
+            mode: ``"metadata"`` populates each row with the metadata-tier content
+                (``files.text_preview`` produced by ``extract_meta``; no LLM call).
+                ``"fast"`` runs light LLM extraction (requires a
+                configured profile; not wired yet — currently raises
+                ``NotImplementedError``).
                 ``"accurate"`` runs the LLM-backed path (requires a
                 configured profile; not wired yet — currently raises
                 ``NotImplementedError``).
@@ -370,12 +373,12 @@ class Context:
             Markdown table (headers: ref | kind | source | content).
         """
         self._require_pyctx("to_md")
-        if mode == "accurate":
+        if mode in ("fast", "accurate"):
             raise NotImplementedError(
-                "to_md(mode='accurate') is not implemented yet. "
-                "Use mode='fast' for the metadata-tier content."
+                f"to_md(mode={mode!r}) is not implemented yet. "
+                "Use mode='metadata' for the metadata-tier content."
             )
-        contents = self._collect_fast_contents()
+        contents = self._collect_metadata_contents()
         return self._pyctx.to_md_table(contents)
 
     def print_tree(self, layout: _TreeLayout = "insertion") -> None:
@@ -616,17 +619,17 @@ class Context:
         return new_ctx
 
     def cat(self, path: str, *, no_cache: bool = False) -> str:
-        """Read locally-extracted content of a file (directory-scan mode)."""
+        """Read locally-extracted (metadata-tier) content of a file (directory-scan mode)."""
         self._require_table("cat")
         assert self.root is not None
         full_path = self.root / path
-        from mm.cat_utils.extract_local import extract_local
+        from mm.cat_utils.extract_meta import extract_meta
         from mm.utils import file_kind
 
         kind = file_kind(full_path)
         if kind == "text":
             return full_path.read_text(errors="replace")
-        return extract_local(full_path, kind, no_cache=no_cache)
+        return extract_meta(full_path, kind, no_cache=no_cache)
 
     def head(self, path: str, *, n: int = 10) -> str:
         content = self.cat(path)
@@ -811,9 +814,9 @@ class Context:
 
     # ── Internals ────────────────────────────────────────────────────
 
-    def _collect_fast_contents(self) -> dict[str, str]:
-        """Extract ``cat``-like content for every put-based item (fast mode)."""
-        from mm.cat_utils.extract_local import extract_local
+    def _collect_metadata_contents(self) -> dict[str, str]:
+        """Extract ``cat``-like content for every put-based item - mode=metadata"""
+        from mm.cat_utils.extract_meta import extract_meta
         from mm.utils import file_kind
 
         out: dict[str, str] = {}
@@ -827,10 +830,7 @@ class Context:
                     continue
                 kind = file_kind(p)
                 try:
-                    if kind == "text":
-                        out[ref_id] = p.read_text(errors="replace")
-                    else:
-                        out[ref_id] = extract_local(p, kind, no_cache=True)
+                    out[ref_id] = extract_meta(p, kind)
                 except Exception as exc:  # noqa: BLE001
                     out[ref_id] = f"[extract failed: {exc}]"
             # in-memory / url items fall through to the metadata fallback

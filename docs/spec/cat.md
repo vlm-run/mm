@@ -12,60 +12,71 @@ Unified content extraction. Behaviour driven by **file type × mode × pipeline*
 
 ## Modes
 
-`--mode fast` (default) — runs the kind's fast pipeline. Whether an LLM is involved depends on the pipeline's `generate` step (image/fast.yaml has one, document/fast.yaml does not).
+`--mode metadata` (default) — returns the locally-extracted file content
+(`files.text_preview`): PDF text via pypdfium2, image dims/EXIF/hash, video
+resolution/duration/codec, audio duration/codec, raw text/code. Never
+invokes an LLM. `-p`, `--encode.*`, and `--generate.*` are ignored under
+this mode (they parameterize the pipeline runs in `fast`/`accurate`).
+`--mode fast` — runs the kind's fast pipeline. Whether an LLM is involved depends on the pipeline's `generate` step (image/fast.yaml has one, document/fast.yaml does not).
 `--mode accurate` — runs the kind's accurate pipeline; always LLM-heavy.
 
-Both modes read from the **metadata tier** — the locally-extracted file content
-(`files.text_preview`, populated by code/PDF text extraction, image dimensions,
-Whisper transcripts, etc.). That tier never invokes an LLM and is reusable
-across both `fast` and `accurate` extractions of the same file.
+Both `fast` and `accurate` read from the **metadata tier** as their input —
+the same locally-extracted content surfaced by the default `metadata` mode.
+That tier never invokes an LLM and is reusable across both `fast` and
+`accurate` extractions of the same file.
 
 ### Image
 
-| | fast | accurate |
-|---|---|---|
-| Encoder | `resize` (max 512px) | `resize` (max 1024px) |
-| Generate | 10-word description + 5 tags | ~200-word description + 10 tags + 10 objects |
-| Tokens | 256 max | 2048 max |
+| | metadata (default) | fast | accurate |
+|---|---|---|---|
+| Encoder | — (header read) | `resize` (max 512px) | `resize` (max 1024px) |
+| Output | dimensions, MIME, xxh3, EXIF | 10-word description + 5 tags | ~200-word description + 10 tags + 10 objects |
+| Tokens | — | 256 max | 2048 max |
 
 ### Video
 
 Multi-file: `mm cat a.mp4 b.mp4 -y` runs each video sequentially; the same **≥ 9 paths** batch rule applies as for images.
 
-| | fast | accurate |
-|---|---|---|
-| Encoder | `mosaic` (4×4 grid, 128 frames, up to 8 mosaics) | `frames-transcript` (1fps, whisper medium, no speedup) |
-| Generate | 50-word description + tags | ~200-word summary + tags + scene breakdown |
-| Tokens | 512 max | 1536 max |
-| Audio | none | whisper medium, 1.0× speed |
+| | metadata (default) | fast | accurate |
+|---|---|---|---|
+| Encoder | — (native MP4/MKV parse) | `mosaic` (4×4 grid, 128 frames, up to 8 mosaics) | `frames-transcript` (1fps, whisper medium, no speedup) |
+| Output | resolution, duration, FPS, codecs, hash | 50-word description + tags | ~200-word summary + tags + scene breakdown |
+| Tokens | — | 512 max | 1536 max |
+| Audio | none | none | whisper medium, 1.0× speed |
 
 ### Audio
 
-| | fast | accurate |
-|---|---|---|
-| Encoder | `transcribe` (whisper medium, 1.0×) | `transcribe` (whisper medium, 1.0×) |
-| Generate | none — raw timestamped transcript | ~80-word summary from transcript |
-| Tokens | — | 512 max |
+| | metadata (default) | fast | accurate |
+|---|---|---|---|
+| Encoder | — (symphonia probe) | `transcribe` (whisper medium, 1.0×) | `transcribe` (whisper medium, 1.0×) |
+| Output | duration, codec, hash | raw timestamped transcript | ~80-word summary from transcript |
+| Tokens | — | — | 512 max |
 
-### Document (PDF)
+### Document (PDF / DOCX / PPTX)
 
-| | fast | accurate |
-|---|---|---|
-| Encoder | `page-text` (pypdfium2, 1 page/message) | `page-text` (pypdfium2, 1 page/message) |
-| Generate | none — concatenated page text | lossless markdown restructuring |
-| Tokens | — | 16384 max |
+| | metadata (default) | fast | accurate |
+|---|---|---|---|
+| Encoder | — (pypdfium2 / python-docx / python-pptx) | `page-text` (pypdfium2, 1 page/message) | `page-text` (pypdfium2, 1 page/message) |
+| Output | concatenated text | concatenated page text | lossless markdown restructuring |
+| Tokens | — | — | 16384 max |
 
 ### Code / Text / Config
 
-Passthrough in both modes — raw file content, no pipeline, no LLM.
+Passthrough in all modes — raw file content, no pipeline, no LLM (treated identically whether `--mode` is `metadata`, `fast`, or `accurate`).
 
 ## Caching
 
-Unified extractions cache (SQLite at `~/.local/share/mm/mm.db`) for **both** fast and accurate modes.
+The metadata tier is cached in `files.text_preview` keyed by `content_hash`
+(populated by `extract_meta`; reused on every subsequent `cat` of the same
+file, regardless of mode).
 
-- Cache key: `content_hash × profile × model × mode × overrides`
+The unified `extractions` table (SQLite at `~/.local/share/mm/mm.db`) caches
+**both** fast and accurate pipeline outputs (the metadata tier never writes
+here — it lives in `files`).
+
+- Cache key (`extractions`): `content_hash × profile × model × mode × overrides`
   - Same file with different modes/profiles/overrides → separate cache entries
-- `--no-cache`: bypasses read, evicts existing entry, forces fresh run
+- `--no-cache`: bypasses read, evicts existing entry, forces fresh run (applies to fast/accurate; the metadata tier is always read from `files`)
 - Cache hit indicator: footer shows `cached • 36ms • 412.8 KB • 7.0 MB/s`
 - Embedding: on cache miss with accurate mode, `embed_file_chunks` auto-generates Gemini embeddings
 

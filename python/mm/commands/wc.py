@@ -92,7 +92,7 @@ def wc_cmd(
     if not stdin_paths and "document" in kind_stats and kind_stats["document"].get(F_FILES, 0) > 0:
         doc_entries = json_mod.loads(scanner.to_json_fast(kind="document"))
     if doc_entries:
-        from mm.cat_utils.extract_local import _local_document
+        from mm.cat_utils.extract_meta import _local_document
 
         for entry in doc_entries:
             content = _local_document(root / entry["path"])
@@ -306,7 +306,7 @@ def _wc_from_paths(
             flines = content.count("\n") or 1
             ftokens = len(content) // TOKEN_CHARS_RATIO
         elif fkind == "document":
-            from mm.cat_utils.extract_local import _local_document
+            from mm.cat_utils.extract_meta import _local_document
 
             content = _local_document(p)
             flines = max(1, content.count("\n"))

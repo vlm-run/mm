@@ -262,13 +262,62 @@ METADATA_COMMANDS: list[BenchCommand] = [
     BenchCommand(
         "mm grep /pattern/", "metadata", "mm grep 'import|include|require' {dir} --format json"
     ),
+    BenchCommand(
+        "mm grep /pattern/ --ignore-case",
+        "metadata",
+        "mm grep 'import|include|require' {dir} --ignore-case --format json",
+    ),
+    BenchCommand(
+        "mm cat <image>",
+        "metadata",
+        "mm cat {file} --no-cache --format json",
+        requires_kind="image",
+        skip_reason="no image files",
+    ),
+    BenchCommand(
+        "mm cat <image> (x20)",
+        "metadata",
+        "mm cat {files} --no-cache --format json",
+        requires_kind="image",
+        batch=20,
+        skip_reason="no image files",
+    ),
+    BenchCommand(
+        "mm cat <video>",
+        "metadata",
+        "mm cat {file} --no-cache --format json",
+        requires_kind="video",
+        skip_reason="no video files",
+    ),
+    BenchCommand(
+        "mm cat <audio>",
+        "metadata",
+        "mm cat {file} --no-cache --format json",
+        requires_kind="audio",
+        skip_reason="no audio files",
+    ),
+    BenchCommand(
+        "mm cat <pdf>",
+        "metadata",
+        "mm cat {file} --no-cache --format json",
+        requires_kind="document",
+        skip_reason="no PDF files",
+    ),
+    BenchCommand(
+        "mm cat <code> (x20)",
+        "metadata",
+        "mm cat {files} --no-cache --format json",
+        requires_kind="code",
+        batch=20,
+        skip_reason="no code files",
+    ),
 ]
 
 FAST_COMMANDS: list[BenchCommand] = [
     BenchCommand(
         "mm cat <code> (x20)",
         "fast",
-        "mm cat {files} --no-cache --format json",
+        "mm cat {files} --mode fast --no-cache --format json",
         requires_kind="code",
         batch=20,
         skip_reason="no code files",
@@ -276,14 +325,14 @@ FAST_COMMANDS: list[BenchCommand] = [
     BenchCommand(
         "mm cat <image>",
         "fast",
-        "mm cat {file} --no-cache --format json",
+        "mm cat {file} --mode fast --no-cache --format json",
         requires_kind="image",
         skip_reason="no image files",
     ),
     BenchCommand(
         "mm cat <image> (x20)",
         "fast",
-        "mm cat {files} --no-cache --format json",
+        "mm cat {files} --mode fast --no-cache --format json",
         requires_kind="image",
         batch=20,
         skip_reason="no image files",
@@ -291,28 +340,28 @@ FAST_COMMANDS: list[BenchCommand] = [
     BenchCommand(
         "mm cat <audio>",
         "fast",
-        "mm cat {file} --no-cache --format json",
+        "mm cat {file} --mode fast --no-cache --format json",
         requires_kind="audio",
         skip_reason="no audio files",
     ),
     BenchCommand(
         "mm cat <video>",
         "fast",
-        "mm cat {file} --no-cache --format json",
+        "mm cat {file} --mode fast --no-cache --format json",
         requires_kind="video",
         skip_reason="no video files",
     ),
     BenchCommand(
         "mm cat <pdf>",
         "fast",
-        "mm cat {file} --no-cache --format json",
+        "mm cat {file} --mode fast --no-cache --format json",
         requires_kind="document",
         skip_reason="no PDF files",
     ),
     BenchCommand(
         "mm cat <pdf> (x10)",
         "fast",
-        "mm cat {files} --no-cache --format json",
+        "mm cat {files} --mode fast --no-cache --format json",
         requires_kind="document",
         batch=10,
         skip_reason="no PDF files",

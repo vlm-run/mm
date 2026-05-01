@@ -344,7 +344,7 @@ class TestExtensionMime:
 
 
 class TestDBRoundtrip:
-    def test_roundtrip_preserves_dimensions(self, media_tree: Path):
+    def test_roundtrip_preserves_dimensions(self, media_tree: Path, isolated_db: Path):
         ctx = Context(media_tree)
         ctx.save()
 
@@ -358,7 +358,7 @@ class TestDBRoundtrip:
         assert all(r["width"] is not None for r in pngs)
         assert all(r["height"] is not None for r in pngs)
 
-    def test_roundtrip_column_count(self, media_tree: Path):
+    def test_roundtrip_column_count(self, media_tree: Path, isolated_db: Path):
         ctx = Context(media_tree)
         ctx.save()
 
@@ -392,7 +392,7 @@ class TestMetadataCli:
         )
         assert result.exit_code == 0
 
-    def test_sql_dimensions_query(self, media_tree: Path):
+    def test_sql_dimensions_query(self, media_tree: Path, isolated_db: Path):
         result = runner.invoke(
             app,
             [

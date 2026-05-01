@@ -524,7 +524,7 @@ def bench_cmd(
         typer.Option(
             "--mode",
             "-m",
-            help="Groups to bench: metadata, fast (default), accurate, all",
+            help="Groups to bench: metadata (default), fast, accurate, all",
         ),
     ] = None,
     command: Annotated[
@@ -569,10 +569,10 @@ def bench_cmd(
 
     \b
     overhead + metadata always run; ``--mode`` picks which extraction tier joins:
-      metadata        overhead + metadata (Unix-comparable: find/wc/sql/grep)
-      fast (default)  overhead + metadata + fast
-      accurate        overhead + metadata + accurate
-      all             overhead + metadata + fast + accurate
+      metadata (default)  overhead + metadata (Unix-comparable: find/wc/sql/grep)
+      fast                overhead + metadata + fast
+      accurate            overhead + metadata + accurate
+      all                 overhead + metadata + fast + accurate
 
     \b
     ``--format stdout`` switches to *snapshot* mode: each cat-encoder
@@ -582,8 +582,8 @@ def bench_cmd(
 
     \b
     Examples:
-      mm bench ~/data                              # overhead + metadata + fast
-      mm bench ~/data --mode metadata              # Unix-comparable subset
+      mm bench ~/data                              # overhead + metadata (default)
+      mm bench ~/data --mode metadata              # Unix-comparable subset (no LLM)
       mm bench ~/data --mode accurate              # overhead + metadata + accurate
       mm bench ~/data --mode all                   # full suite
       mm bench ~/data --rounds 5                   # more rounds for stability
@@ -618,7 +618,7 @@ def bench_cmd(
         )
         return
 
-    bench_mode = mode or "fast"
+    bench_mode = mode or "metadata"
     if bench_mode == "metadata":
         extraction: list = []
     elif bench_mode == "fast":

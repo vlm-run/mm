@@ -3,13 +3,14 @@ import os
 import sys
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 import typer
 
 from mm.pipelines.schema import PipelineSpec
 
 KIND_ORDER = ("image", "video", "audio", "document")
+CatMode = Literal["metadata", "fast", "accurate"]
 
 
 class CatOpts:
@@ -30,7 +31,7 @@ class CatOpts:
 
     n: int | None
     output_dir: Path | None
-    mode: str
+    mode: CatMode
     no_cache: bool
     no_generate: bool
     format: str
