@@ -277,3 +277,157 @@ class TestErrors:
         # `metadata` default.
         for token in ("metadata", "fast", "accurate"):
             assert token in combined.lower()
+
+
+# ── Override surfaces: --model / --prompt / --generate.extra-body ─────
+
+
+class TestValidateExtraBodyJson:
+    """Unit tests for cat._validate_extra_body_json — JSON validation only."""
+
+    def test_none_passes_through(self):
+        from mm.commands.cat import _validate_extra_body_json
+
+        assert _validate_extra_body_json(None) is None
+
+    def test_object_passes_through(self):
+        from mm.commands.cat import _validate_extra_body_json
+
+        raw = '{"method":"detect","method_params":{"object":"fish"}}'
+        assert _validate_extra_body_json(raw) == raw
+
+    def test_bad_json_raises_typer_exit(self):
+        import typer
+        from mm.commands.cat import _validate_extra_body_json
+
+        with pytest.raises(typer.Exit):
+            _validate_extra_body_json("{not json}")
+
+    def test_non_object_raises_typer_exit(self):
+        import typer
+        from mm.commands.cat import _validate_extra_body_json
+
+        with pytest.raises(typer.Exit):
+            _validate_extra_body_json("[1,2,3]")
+
+
+class TestCatGenerateExtraBodyCli:
+    """CLI smoke tests for --generate.extra-body JSON validation."""
+
+    def test_bad_extra_body_json_fails(self, mixed_dir: Path):
+        # Default mode is metadata (no LLM call) — JSON validator runs at arg
+        # parse time so the bad JSON should still be rejected.
+        r = runner.invoke(
+            app,
+            [
+                "cat",
+                str(mixed_dir / "readme.md"),
+                "--generate.extra-body",
+                "{not json}",
+            ],
+        )
+        assert r.exit_code != 0
+        combined = (r.output or "") + (getattr(r, "stderr", "") or "")
+        assert "extra-body" in combined.lower() or "json" in combined.lower()
+
+    def test_extra_body_array_rejected(self, mixed_dir: Path):
+        r = runner.invoke(
+            app,
+            [
+                "cat",
+                str(mixed_dir / "readme.md"),
+                "--generate.extra-body",
+                "[1,2,3]",
+            ],
+        )
+        assert r.exit_code != 0
+
+
+class TestCatDroppedFlags:
+    """Regression guards: flags removed in PR #106 must error out."""
+
+    @pytest.mark.parametrize(
+        "flag,value",
+        [
+            ("--extra-body", '{"method":"ocr"}'),
+            ("-e", '{"method":"ocr"}'),
+            ("--method", "ocr"),
+            ("--method-params", '{"lang":"ch"}'),
+        ],
+    )
+    def test_legacy_flag_no_longer_recognised(self, mixed_dir: Path, flag: str, value: str):
+        r = runner.invoke(
+            app,
+            ["cat", str(mixed_dir / "readme.md"), flag, value],
+        )
+        assert r.exit_code != 0
+
+
+class TestCatModelAlias:
+    """`--model` and `--generate.model` are accepted as aliases for the same option."""
+
+    def test_short_form_accepted(self, mixed_dir: Path):
+        r = runner.invoke(
+            app,
+            ["cat", str(mixed_dir / "readme.md"), "--model", "moondream2"],
+        )
+        # Default mode is metadata (no LLM call), but the flag must parse cleanly.
+        assert r.exit_code == 0, (r.output, getattr(r, "stderr", ""))
+
+    def test_dotted_form_accepted(self, mixed_dir: Path):
+        r = runner.invoke(
+            app,
+            ["cat", str(mixed_dir / "readme.md"), "--generate.model", "moondream2"],
+        )
+        assert r.exit_code == 0, (r.output, getattr(r, "stderr", ""))
+
+
+class TestCatPromptAlias:
+    """`--prompt` and `--generate.prompt` are accepted as aliases for the same option."""
+
+    def test_short_form_accepted(self, mixed_dir: Path):
+        r = runner.invoke(
+            app,
+            ["cat", str(mixed_dir / "readme.md"), "--prompt", "Summarize:"],
+        )
+        assert r.exit_code == 0, (r.output, getattr(r, "stderr", ""))
+
+    def test_dotted_form_accepted(self, mixed_dir: Path):
+        r = runner.invoke(
+            app,
+            ["cat", str(mixed_dir / "readme.md"), "--generate.prompt", "Summarize:"],
+        )
+        assert r.exit_code == 0, (r.output, getattr(r, "stderr", ""))
+
+
+class TestEffectiveModel:
+    """Pipeline-merged model takes precedence over profile default; profile is the fallback."""
+
+    def test_pipeline_pinned_model_wins(self):
+        from mm.cat_utils.base_utils import effective_model
+        from mm.pipelines.schema import Generate, PipelineSpec
+
+        spec = PipelineSpec(
+            kind="image",
+            mode="accurate",
+            generate=Generate(prompt="x", model="paddleocr-v5"),
+        )
+        assert effective_model(spec, "profile-default") == "paddleocr-v5"
+
+    def test_profile_default_when_unpinned(self):
+        from mm.cat_utils.base_utils import effective_model
+        from mm.pipelines.schema import Generate, PipelineSpec
+
+        spec = PipelineSpec(
+            kind="image",
+            mode="accurate",
+            generate=Generate(prompt="x"),
+        )
+        assert effective_model(spec, "profile-default") == "profile-default"
+
+    def test_no_generate_falls_back_to_profile(self):
+        from mm.cat_utils.base_utils import effective_model
+        from mm.pipelines.schema import PipelineSpec
+
+        spec = PipelineSpec(kind="image", mode="fast", generate=None)
+        assert effective_model(spec, "profile-default") == "profile-default"

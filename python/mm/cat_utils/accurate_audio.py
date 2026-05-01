@@ -1,7 +1,14 @@
 import time
 from pathlib import Path
 
-from mm.cat_utils.base_utils import CatOpts, RunResult, format_footer, format_generate_verbose
+from mm.cat_utils.base_utils import (
+    CatOpts,
+    RunResult,
+    format_footer,
+    format_generate_verbose,
+    make_llm_from_spec,
+    spec_extra_body,
+)
 from mm.cat_utils.extract_meta import extract_meta
 from mm.cat_utils.run_encoder import run_encoder
 from mm.pipelines.schema import PipelineSpec
@@ -62,15 +69,14 @@ def accurate_audio(path: Path, spec: PipelineSpec, opts: CatOpts) -> RunResult:
     if not transcript or transcript.startswith("["):
         return RunResult(content=transcript or "[No speech detected]")
 
-    from mm.llm import LlmBackend
-
     t_llm = time.monotonic()
-    llm = LlmBackend()
+    llm = make_llm_from_spec(spec)
     summary = llm.generate(
         "audio",
         "accurate",
         context={"filename": path.name, "transcript": transcript},
         pipeline_spec=spec,
+        extra_body=spec_extra_body(spec),
     )
     timing["llm_call_ms"] = (time.monotonic() - t_llm) * 1000
     timing["total_ms"] = (time.monotonic() - t_total) * 1000

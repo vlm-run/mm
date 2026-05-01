@@ -18,7 +18,7 @@ from __future__ import annotations
 
 import time
 from pathlib import Path
-from typing import Annotated, Optional
+from typing import Annotated, Any, Optional
 
 import typer
 
@@ -30,10 +30,13 @@ from mm.cat_utils.base_utils import (
     RunResult,
     coerce_opt_value,
     collect_overrides,
+    effective_model,
     format_footer,
     format_generate_verbose,
+    make_llm_from_spec,
     maybe_confirm_large_cat_batch,
     override_extra,
+    spec_extra_body,
 )
 from mm.cat_utils.extract_meta import extract_meta
 from mm.cat_utils.run_encoder import run_encoder
@@ -52,6 +55,33 @@ from mm.utils import BinaryFileKind, FileKind, Format, file_kind
 _total_bytes_processed = 0
 # Track whether the result was served from cache
 _was_cached = False
+
+
+def _validate_extra_body_json(raw: str | None) -> str | None:
+    """Validate ``--generate.extra-body`` is a JSON object before pipeline coercion.
+
+    Returns the original string (so ``apply_overrides``'s ``_coerce_generate``
+    can parse it once); raises ``typer.Exit(1)`` with a friendly error
+    message if the string is not valid JSON or does not decode to a dict.
+    """
+    if raw is None:
+        return None
+
+    import json
+
+    try:
+        parsed = json.loads(raw)
+    except json.JSONDecodeError as e:
+        typer.echo(f"Error: --generate.extra-body must be a JSON object: {e}", err=True)
+        raise typer.Exit(1) from e
+    if not isinstance(parsed, dict):
+        typer.echo(
+            f"Error: --generate.extra-body must decode to a JSON object, "
+            f"got {type(parsed).__name__}",
+            err=True,
+        )
+        raise typer.Exit(1)
+    return raw
 
 
 def cat_cmd(
@@ -136,10 +166,27 @@ def cat_cmd(
             ),
         ),
     ] = None,
-    # -- Surviving generate overrides --
-    generate_prompt: Annotated[
+    # -- Generate overrides (CLI > pipeline YAML > profile default) --
+    prompt: Annotated[
         Optional[str],
-        typer.Option("--generate.prompt", help="Override LLM prompt template"),
+        typer.Option(
+            "--prompt",
+            "--generate.prompt",
+            help="Override LLM prompt template (alias: --generate.prompt)",
+        ),
+    ] = None,
+    model: Annotated[
+        Optional[str],
+        typer.Option(
+            "--model",
+            "--generate.model",
+            help=(
+                "Override the model for this call, taking precedence over the "
+                "pipeline's `generate.model` and the active profile's default "
+                "(e.g. 'moondream2', 'qwen3.5-0.8b', 'paddleocr-v5'). "
+                "Alias: --generate.model"
+            ),
+        ),
     ] = None,
     generate_max_tokens: Annotated[
         Optional[str],
@@ -152,6 +199,18 @@ def cat_cmd(
     generate_json_mode: Annotated[
         Optional[str],
         typer.Option("--generate.json-mode", help="Override JSON mode (true/false)"),
+    ] = None,
+    generate_extra_body: Annotated[
+        Optional[str],
+        typer.Option(
+            "--generate.extra-body",
+            help=(
+                "JSON object forwarded to the OpenAI SDK's `extra_body` arg, "
+                "deep-merged onto the pipeline's `generate.extra_body` (CLI keys win). "
+                "Use for provider-specific knobs like vlmrt's "
+                "method/method_params/video_fps/image_resolution."
+            ),
+        ),
     ] = None,
     # -- Utility --
     verbose: Annotated[bool, typer.Option("--verbose", "-v", help="Show progress bars")] = False,
@@ -194,10 +253,43 @@ def cat_cmd(
                                             # custom pipeline YAML
       mm cat photo.png -m accurate --encode.strategy_opts max_width=768
                                             # override a single strategy_opts entry
-      mm cat photo.png -m accurate --generate.prompt "<new_prompt>"
+      mm cat photo.png -m accurate --prompt "<new_prompt>"
                                             # override the default pipeline prompt
       mm cat --print-pipeline image/accurate
                                             # inspect the pipeline YAML source
+
+    \b
+    Override surfaces (right-most layer wins on conflict):
+      profile (mm.toml)  ->  pipeline YAML (generate.*)  ->  CLI flags
+        base_url              prompt                          --prompt / --generate.prompt
+        api_key               model                           --model  / --generate.model
+        model (default)       max_tokens                      --generate.max-tokens
+                              temperature                     --generate.temperature
+                              json_mode                       --generate.json-mode
+                              extra_body (deep-merged)        --generate.extra-body
+
+    \b
+    Per-call provider/model/extra-body overrides (e.g. vlmrt deployments):
+      # Florence-2 OCR on a scanned page
+      mm --profile vlmrt cat page.png -m accurate \\
+        --model florence-2-base-ft \\
+        --generate.extra-body '{"method":"ocr"}'
+
+      # Moondream2 object detection
+      mm --profile vlmrt cat photo.jpg -m accurate \\
+        --model moondream2 \\
+        --generate.extra-body '{"method":"detect","method_params":{"object":"fish"}}'
+
+      # PaddleOCR scene-text recognition (Chinese, custom score threshold)
+      mm --profile vlmrt cat storefront.jpg -m accurate \\
+        --model paddleocr-v5 \\
+        --generate.extra-body '{"method":"ocr","method_params":{"lang":"ch","score_threshold":0.6}}'
+
+      # Qwen3.5 video summarization with frame sampling knobs
+      mm --profile vlmrt cat clip.mp4 -m accurate \\
+        --model qwen3.5-0.8b \\
+        --prompt "Summarize this clip in two sentences." \\
+        --generate.extra-body '{"video_fps":1.0,"video_max_frames":8}'
     """
     if list_pipelines:
         do_list_pipelines()
@@ -247,12 +339,16 @@ def cat_cmd(
             if isinstance(enc_overrides["strategy_opts"], dict):
                 enc_overrides["strategy_opts"][key] = coerce_opt_value(val)
 
-    gen_overrides = collect_overrides(
-        prompt=generate_prompt,
+    gen_overrides: dict[str, Any] = collect_overrides(
+        prompt=prompt,
+        model=model,
         max_tokens=generate_max_tokens,
         temperature=generate_temperature,
         json_mode=generate_json_mode,
     )
+    validated_extra_body = _validate_extra_body_json(generate_extra_body)
+    if validated_extra_body is not None:
+        gen_overrides["extra_body"] = validated_extra_body
 
     # -- Load explicit pipeline/-p args (YAML files or named encoders) keyed by kind --
     pipeline_specs: dict[str, PipelineSpec] = {}
@@ -366,21 +462,32 @@ def _extract(path: Path, opts: CatOpts) -> str:
     1. Auto-detect kind from file extension
     2. Run ``extract_meta`` for the metadata tier (caches into ``files``)
     3. If mode='metadata' (default) or kind='text': return the metadata tier
-    4. Check the ``extractions`` cache (applies to fast and accurate modes)
-    5. Resolve pipeline (explicit -p > toml override > built-in)
-    6. Apply CLI overrides
+    4. Resolve pipeline + apply CLI overrides exactly once — the merged
+       ``spec`` is the single source of truth for both ``model`` (with
+       ``profile.model`` fallback via ``effective_model``) and ``extra_body``.
+    5. Compute cache key from the effective model + override sentinel.
+    6. Check the ``extractions`` cache (applies to fast and accurate modes)
     7. Run encode + (optional) generate step; persist to extractions cache
     """
     kind = file_kind(path)
     if kind == "text" or opts.mode == "metadata":
         return extract_meta(path, kind, no_cache=opts.no_cache)
 
+    from mm.pipelines import apply_overrides
     from mm.profile import get_profile
     from mm.store.db import MmDatabase
     from mm.store.utils import get_content_hash
 
     db = MmDatabase()
     profile = get_profile()
+
+    # Resolve & merge the pipeline spec exactly once so the cache key reflects
+    # the effective model and the merged extra_body — required for correct
+    # invalidation on `--model` / `--generate.extra-body` changes.
+    spec = resolve_pipeline(opts, kind)
+    spec = apply_overrides(spec, opts.encode_overrides or None, opts.generate_overrides or None)
+    eff_model = effective_model(spec, profile.model)
+
     content_hash = get_content_hash(path)
 
     extra = override_extra(
@@ -396,7 +503,7 @@ def _extract(path: Path, opts: CatOpts) -> str:
         extraction_id = get_extraction_id(
             content_hash,
             profile.name,
-            profile.model,
+            eff_model,
             opts.mode,
             False,
             extra=extra,
@@ -418,11 +525,12 @@ def _extract(path: Path, opts: CatOpts) -> str:
 
     # Each branch returns a RunResult carrying the rendered verbose tail
     # (regardless of opts.verbose) so we can persist it for replay on a
-    # future cached + verbose run.
+    # future cached + verbose run. The merged ``spec`` is threaded down so
+    # the LLM call sites read ``spec.generate.{model, extra_body}`` directly.
     if opts.mode == "accurate":
-        run = _run_accurate(path, kind, opts)
+        run = _run_accurate(path, kind, spec, opts)
     else:
-        run = _run_fast(path, kind, opts)
+        run = _run_fast(path, kind, spec, opts)
 
     if content_hash and run.content and not run.content.startswith("["):
         extract_meta(path, kind)
@@ -433,7 +541,7 @@ def _extract(path: Path, opts: CatOpts) -> str:
                 uri=uri,
                 content_hash=content_hash,
                 profile=profile.name,
-                model=profile.model,
+                model=eff_model,
                 content=run.content,
                 mode=opts.mode,
                 detail=False,
@@ -459,21 +567,20 @@ def _format_run(run: RunResult, verbose: bool) -> str:
     return run.content
 
 
-def _run_fast(path: Path, kind: FileKind, opts: CatOpts) -> RunResult:
+def _run_fast(path: Path, kind: FileKind, spec: PipelineSpec, opts: CatOpts) -> RunResult:
     """Fast mode: run the kind's fast pipeline.
 
     Whether this involves an LLM depends on the YAML pipeline — e.g.
     ``image/fast.yaml`` defines a short LLM caption stage; ``code/text``
     passes through raw content with no LLM call. The output is tagged
     ``mode='fast'`` in ``extractions``/``chunks``.
+
+    ``spec`` is the merged (YAML + CLI) pipeline spec resolved by
+    ``_extract``; this function does no further override application.
     """
     if kind == "text":
         return RunResult(content=extract_meta(path, kind, no_cache=opts.no_cache))
 
-    from mm.pipelines import apply_overrides
-
-    spec = resolve_pipeline(opts, kind)
-    spec = apply_overrides(spec, opts.encode_overrides or None, opts.generate_overrides or None)
     if getattr(opts, "no_generate", False):
         import dataclasses
 
@@ -485,16 +592,16 @@ def _run_fast(path: Path, kind: FileKind, opts: CatOpts) -> RunResult:
     if spec.generate is None:
         return RunResult(content=content)
 
-    from mm.llm import LlmBackend
     from mm.profile import get_active_profile_name
 
     t0 = time.monotonic()
-    llm = LlmBackend()
+    llm = make_llm_from_spec(spec)
     result = llm.generate(
         kind,
         "fast",
         context={"filename": path.name, "content": content[:4000]},
         pipeline_spec=spec,
+        extra_body=spec_extra_body(spec),
     )
 
     elapsed = (time.monotonic() - t0) * 1000
@@ -510,12 +617,12 @@ def _run_fast(path: Path, kind: FileKind, opts: CatOpts) -> RunResult:
     return RunResult(content=result, verbose_suffix=suffix)
 
 
-def _run_accurate(path: Path, kind: BinaryFileKind, opts: CatOpts) -> RunResult:
-    """Accurate mode: LLM-powered semantic extraction."""
-    from mm.pipelines import apply_overrides
+def _run_accurate(path: Path, kind: BinaryFileKind, spec: PipelineSpec, opts: CatOpts) -> RunResult:
+    """Accurate mode: LLM-powered semantic extraction.
 
-    spec = resolve_pipeline(opts, kind)
-    spec = apply_overrides(spec, opts.encode_overrides or None, opts.generate_overrides or None)
+    ``spec`` is the merged (YAML + CLI) pipeline spec resolved by
+    ``_extract``; this function does no further override application.
+    """
     if getattr(opts, "no_generate", False):
         import dataclasses
 
@@ -544,16 +651,16 @@ def _accurate_dispatch(
     if spec.generate is None:
         return RunResult(content=content)
 
-    from mm.llm import LlmBackend
     from mm.profile import get_active_profile_name
 
     t0 = time.monotonic()
-    llm = LlmBackend()
+    llm = make_llm_from_spec(spec)
     result = llm.generate(
         kind,
         "accurate",
         context={"filename": path.name, "content": content[:4000]},
         pipeline_spec=spec,
+        extra_body=spec_extra_body(spec),
     )
     elapsed = (time.monotonic() - t0) * 1000
     u = llm.last_usage

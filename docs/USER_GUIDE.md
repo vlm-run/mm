@@ -152,6 +152,58 @@ mm cat --list-encoders                                     # list all registered
 mm cat --list-pipelines                                    # list built-in pipelines
 ```
 
+### Override surfaces
+
+Every `mm cat` invocation resolves its LLM call from three layers, with
+**CLI > pipeline YAML > profile** precedence on conflict:
+
+1. **Profile** (`mm.toml`) — owns `base_url`, `api_key`, default `model`.
+   Switch profiles globally per-call with `mm --profile <name> <subcommand>`.
+2. **Pipeline YAML** (`generate:` block) — `model`, `prompt`, `max_tokens`,
+   `temperature`, `json_mode`, `extra_body`. Each pipeline can pin
+   provider-specific defaults so a single command stays terse.
+3. **CLI flags on `cat`** — per-field, per-invocation overrides:
+
+| Flag | Alias | Pipeline field |
+|------|-------|----------------|
+| `--model NAME` | `--generate.model` | `generate.model` |
+| `--prompt TEXT` | `--generate.prompt` | `generate.prompt` |
+| `--generate.max-tokens N` | — | `generate.max_tokens` |
+| `--generate.temperature F` | — | `generate.temperature` |
+| `--generate.json-mode BOOL` | — | `generate.json_mode` |
+| `--generate.extra-body '<json>'` | — | `generate.extra_body` (deep-merged) |
+
+`base_url` and `api_key` are profile-only — there is no CLI override for them.
+The merged `model` + `extra_body` participate in the L2 cache key, so changing
+a knob correctly invalidates cached results.
+
+Using these flags to drive an arbitrary OpenAI-compatible deployment
+(e.g. [vlmrt](https://github.com/vlm-run/vlm-playground/blob/main/projects/vlmrt/docs/openai-chat-completions-compat.md),
+where each model dispatches by `extra_body.method`):
+
+```bash
+# Florence-2 — document OCR
+mm --profile vlmrt cat page.png -m accurate \
+  --model florence-2-base-ft \
+  --generate.extra-body '{"method":"ocr"}'
+
+# Qwen3.5-0.8B — free-form video summarisation, custom frame sampling
+mm --profile vlmrt cat clip.mp4 -m accurate \
+  --model qwen3.5-0.8b \
+  --generate.extra-body '{"video_fps":1.0,"video_max_frames":8}'
+
+# PaddleOCR-v5 — Chinese scene-text OCR with tighter score threshold
+mm --profile vlmrt cat storefront.jpg -m accurate \
+  --model paddleocr-v5 \
+  --generate.extra-body '{"method":"ocr","method_params":{"lang":"ch","score_threshold":0.6}}'
+
+# Moondream2 — multi-object detection with a custom prompt
+mm --profile vlmrt cat photo.jpg -m accurate \
+  --model moondream2 \
+  --prompt "List every visible animal." \
+  --generate.extra-body '{"method":"detect","method_params":{"object":"fish"}}'
+```
+
 ### Batch operations
 
 ```bash

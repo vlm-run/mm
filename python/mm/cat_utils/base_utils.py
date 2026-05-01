@@ -85,9 +85,45 @@ def override_extra(
     return "|".join(parts)
 
 
-def collect_overrides(**kwargs: str | None) -> dict[str, str]:
-    """Collect non-None CLI overrides into a ``{field: value}`` dict."""
+def collect_overrides(**kwargs: Any) -> dict[str, Any]:
+    """Collect non-None CLI overrides into a ``{field: value}`` dict.
+
+    Values are passed through as-is (string CLI values, parsed JSON
+    strings for ``extra_body``, etc.); type coercion happens later in
+    ``apply_overrides``/``_coerce_generate``.
+    """
     return {k: v for k, v in kwargs.items() if v is not None}
+
+
+def effective_model(spec: PipelineSpec, profile_model: str) -> str:
+    """Resolve the effective model: pipeline ``generate.model`` (CLI-merged) else profile default.
+
+    The profile model is always set (it has a documented hard default per
+    profile in ``mm.profile``), so this always returns a non-empty string.
+    """
+    if spec.generate is not None and spec.generate.model:
+        return spec.generate.model
+    return profile_model
+
+
+def spec_extra_body(spec: PipelineSpec) -> dict[str, Any] | None:
+    """Return ``spec.generate.extra_body`` if non-empty, else ``None``."""
+    if spec.generate is None:
+        return None
+    return spec.generate.extra_body or None
+
+
+def make_llm_from_spec(spec: PipelineSpec) -> Any:
+    """Build an ``LlmBackend`` honouring any pipeline/CLI-merged model override.
+
+    Reads ``spec.generate.model`` (which already reflects CLI ``--model`` /
+    ``--generate.model`` overrides via ``apply_overrides``); falls back to
+    the active profile's default model when unset.
+    """
+    from mm.llm import LlmBackend
+
+    model = spec.generate.model if spec.generate is not None else None
+    return LlmBackend(model=model)
 
 
 def cat_batch_confirm_threshold() -> int:
