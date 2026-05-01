@@ -5,12 +5,12 @@ from __future__ import annotations
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-from mm.cat_utils.base_utils import CatOpts, RunResult
+from mm.cat_utils.base_utils import CatMode, CatOpts, RunResult
 from mm.commands.cat import _extract, _run_fast
 from mm.utils import DOCUMENT_EXTS, file_kind
 
 
-def _make_opts(mode: str = "fast", **overrides: object) -> CatOpts:
+def _make_opts(mode: CatMode, **overrides: object) -> CatOpts:
     defaults: dict[str, object] = dict(
         n=None,
         output_dir=None,
@@ -111,10 +111,9 @@ class TestExtractDispatch:
             patch("mm.commands.cat._run_accurate") as accurate_mock,
             patch("mm.commands.cat.extract_meta", return_value="local-image-meta") as local_mock,
         ):
-            opts = _make_opts("metadata")
-            result = _extract(f, opts)
+            result = _extract(f, _make_opts("metadata"))
         assert result == "local-image-meta"
-        local_mock.assert_called_once_with(f, "image")
+        local_mock.assert_called_once_with(f, "image", no_cache=False)
         fast_mock.assert_not_called()
         accurate_mock.assert_not_called()
 
