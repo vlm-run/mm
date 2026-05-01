@@ -1,13 +1,13 @@
 from pathlib import Path
 
 
-def extract_meta(path: Path, kind: str) -> str:
+def extract_meta(path: Path, kind: str, *, no_cache: bool = False) -> str:
     """Produce the metadata-tier content for a file (no LLM call) with caching."""
     from mm.store.db import MmDatabase
     from mm.store.utils import get_content_hash
 
     content_hash = get_content_hash(path)
-    if content_hash:
+    if not no_cache and content_hash:
         cached = MmDatabase().get_file_content(content_hash)
         if cached is not None:
             return cached

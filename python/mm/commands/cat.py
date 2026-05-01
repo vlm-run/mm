@@ -361,9 +361,8 @@ def _extract(path: Path, opts: CatOpts) -> str:
     7. Run encode + (optional) generate step; persist to extractions cache
     """
     kind = file_kind(path)
-    local_extract = extract_meta(path, kind)
     if kind == "text" or opts.mode == "metadata":
-        return local_extract
+        return extract_meta(path, kind, no_cache=opts.no_cache)
 
     from mm.profile import get_profile
     from mm.store.db import MmDatabase
@@ -415,6 +414,7 @@ def _extract(path: Path, opts: CatOpts) -> str:
         run = _run_fast(path, kind, opts)
 
     if content_hash and run.content and not run.content.startswith("["):
+        extract_meta(path, kind)
         uri = str(path.resolve())
         meta = {"verbose_suffix": run.verbose_suffix} if run.verbose_suffix else None
         try:
@@ -457,7 +457,7 @@ def _run_fast(path: Path, kind: FileKind, opts: CatOpts) -> RunResult:
     ``mode='fast'`` in ``extractions``/``chunks``.
     """
     if kind == "text":
-        return RunResult(content=extract_meta(path, kind))
+        return RunResult(content=extract_meta(path, kind, no_cache=opts.no_cache))
 
     from mm.pipelines import apply_overrides
 
@@ -466,7 +466,7 @@ def _run_fast(path: Path, kind: FileKind, opts: CatOpts) -> RunResult:
     if spec.encode.strategy:
         return run_encoder(path, kind, spec, opts)
 
-    content = extract_meta(path, kind)
+    content = extract_meta(path, kind, no_cache=opts.no_cache)
     if spec.generate is None:
         return RunResult(content=content)
 
@@ -502,7 +502,7 @@ def _run_accurate(path: Path, kind: BinaryFileKind, opts: CatOpts) -> RunResult:
     spec = resolve_pipeline(opts, kind)
     spec = apply_overrides(spec, opts.encode_overrides or None, opts.generate_overrides or None)
 
-    extract_meta(path, kind)
+    extract_meta(path, kind, no_cache=opts.no_cache)
 
     return _accurate_dispatch(path, kind, spec, opts)
 

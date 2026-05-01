@@ -399,8 +399,8 @@ def bench_cmd(
 
     \b
     Examples:
-      mm bench ~/data                              # overhead + metadata + fast
-      mm bench ~/data --mode metadata              # Unix-comparable subset
+      mm bench ~/data                              # overhead + metadata + fast / Unix-comparable subset
+      mm bench ~/data --mode metadata              # works the same as omitting it
       mm bench ~/data --mode accurate              # overhead + metadata + accurate
       mm bench ~/data --mode all                   # full suite
       mm bench ~/data --rounds 5                   # more rounds for stability

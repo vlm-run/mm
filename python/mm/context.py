@@ -615,7 +615,7 @@ class Context:
         new_ctx._pyctx = None
         return new_ctx
 
-    def cat(self, path: str) -> str:
+    def cat(self, path: str, *, no_cache: bool = False) -> str:
         """Read locally-extracted (metadata-tier) content of a file (directory-scan mode)."""
         self._require_table("cat")
         assert self.root is not None
@@ -626,7 +626,7 @@ class Context:
         kind = file_kind(full_path)
         if kind == "text":
             return full_path.read_text(errors="replace")
-        return extract_meta(full_path, kind)
+        return extract_meta(full_path, kind, no_cache=no_cache)
 
     def head(self, path: str, *, n: int = 10) -> str:
         content = self.cat(path)
