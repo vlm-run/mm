@@ -7,7 +7,7 @@ Covers:
 - ``get`` round-trip (in-memory PIL objects come back identity-equal)
 - ``RefNotFoundError`` message + "did you mean" suggestions
 - ``to_messages(format=...)`` for both formats
-- ``to_md(mode="fast")`` table
+- ``to_md(mode="metadata")`` table
 - ``print_tree(layout="insertion")`` rendering
 - ``NotImplementedError`` for non-``insertion`` layouts + for
   :meth:`Context.save` on put-based contexts
@@ -21,11 +21,10 @@ from __future__ import annotations
 import uuid
 from pathlib import Path
 
-import pytest
-from PIL import Image
-
 import mm
+import pytest
 from mm.refs import RefNotFoundError
+from PIL import Image
 
 
 @pytest.fixture
@@ -270,16 +269,62 @@ class TestToMd:
         ctx = mm.Context()
         ctx.put(tiny_png)
         ctx.put(tiny_txt)
-        md = ctx.to_md(mode="fast")
+        md = ctx.to_md(mode="metadata")
         assert md.startswith("| ref | kind | source | content |")
         assert "img_" in md
         assert "code_" in md
 
-    def test_accurate_not_implemented(self, tiny_png: Path):
+    def test_default_mode_is_metadata(self, tiny_png: Path, tiny_txt: Path):
+        """Calling ``to_md()`` with no args must match ``mode='metadata'``.
+
+        Locks in the post-feedback default; previously was ``mode='fast'``.
+        """
         ctx = mm.Context()
         ctx.put(tiny_png)
-        with pytest.raises(NotImplementedError):
-            ctx.to_md(mode="accurate")
+        ctx.put(tiny_txt)
+        assert ctx.to_md() == ctx.to_md(mode="metadata")
+
+    def test_metadata_tier_content_renders(self, tiny_png: Path, tiny_txt: Path, isolated_db: Path):
+        """``mode='metadata'`` must surface the metadata tier, not just refs.
+
+        ``extract_meta`` produces ``Dimensions: 32x32 …`` for images and
+        ``read_text`` returns the file body for code/text. Asserting on
+        actual content guards against a future regression where ``to_md``
+        renders an empty content column.
+        """
+        ctx = mm.Context()
+        ctx.put(tiny_png)
+        ctx.put(tiny_txt)
+        md = ctx.to_md()
+        # image row carries extract_meta output
+        assert "32x32" in md
+        # text row carries the raw file body
+        assert 'print("hello")' in md
+
+    def test_renders_inmemory_and_url_items(self, tiny_png: Path):
+        """In-memory (PIL/bytes) + URL items skip ``_collect_metadata_contents``
+        and fall through to the Rust-side fallback. The table must still
+        render a row for each.
+        """
+        ctx = mm.Context()
+        path_ref = ctx.put(tiny_png)
+        pil_ref = ctx.put(Image.new("RGB", (8, 8), "blue"))
+        bytes_ref = ctx.put(b"\x89PNG\r\n\x1a\nrest")
+        url_ref = ctx.put("https://example.com/x.jpg")
+        md = ctx.to_md()
+        for ref in (path_ref, pil_ref, bytes_ref, url_ref):
+            assert ref in md, f"{ref} missing from to_md output"
+
+    @pytest.mark.parametrize("mode", ["fast", "accurate"])
+    def test_unimplemented_modes_raise(self, tiny_png: Path, mode: str):
+        ctx = mm.Context()
+        ctx.put(tiny_png)
+        with pytest.raises(NotImplementedError) as excinfo:
+            ctx.to_md(mode=mode)
+        # Error message must echo the actual mode passed (regression guard
+        # against the previous hard-coded "mode='accurate'" string).
+        assert f"mode={mode!r}" in str(excinfo.value)
+        assert "mode='metadata'" in str(excinfo.value)
 
 
 # ── print_tree ────────────────────────────────────────────────────────

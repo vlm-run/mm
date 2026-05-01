@@ -131,6 +131,8 @@ class TestBenchCommand:
             [
                 "bench",
                 str(tmp_path),
+                "--mode",
+                "fast",
                 "--rounds",
                 "2",
                 "--warmup",
@@ -349,6 +351,15 @@ class TestBenchCommands:
             assert cmd.name
             assert cmd.group in ("overhead", "metadata", "fast", "accurate")
             assert cmd.cmd_template
+
+    def test_metadata_group_includes_cat_metadata_benchmarks(self):
+        """The metadata group must include `cat --mode metadata` benchmarks alongside find/wc/sql/grep."""
+        from mm.commands.bench_commands import METADATA_COMMANDS
+
+        cat_meta_cmds = [c for c in METADATA_COMMANDS if "mm cat" in c.cmd_template]
+        assert len(cat_meta_cmds) > 0
+        for c in cat_meta_cmds:
+            assert c.group == "metadata"
 
     def test_accurate_group_is_accurate_mode_only(self):
         """Accurate group contains only --mode accurate commands."""

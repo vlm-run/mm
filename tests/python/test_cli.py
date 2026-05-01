@@ -234,7 +234,8 @@ class TestCat:
         assert r.exit_code == 0
         data = json.loads(r.output)
         assert len(data) == 1
-        assert data[0]["mode"] == "fast"
+        # Default mode is `metadata` — `--mode fast` must be explicit.
+        assert data[0]["mode"] == "metadata"
         assert "content" in data[0]
         assert "path" in data[0]
 

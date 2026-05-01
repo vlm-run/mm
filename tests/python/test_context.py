@@ -121,7 +121,7 @@ def test_grep_pattern(small_tree: Path):
     assert all("hello" in m["line"] for m in matches)
 
 
-def test_save_db(small_tree: Path):
+def test_save_db(small_tree: Path, isolated_db: Path):
     from mm.context import Context
 
     ctx = Context(small_tree)

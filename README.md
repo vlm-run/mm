@@ -160,12 +160,18 @@ mm --version                                                    # print version
 mm find mm-samples/ --tree --depth 1                            # directory overview with sizes
 mm wc mm-samples/ --by-kind                                     # file/byte/token counts by kind
 
-# PDF — text extraction (no LLM needed)
-mm cat wordpress-pdf-invoice-plugin-sample.pdf                  # extract text
-mm cat wordpress-pdf-invoice-plugin-sample.pdf -n 20            # first 20 lines
+# Default: --mode metadata (no LLM, local extraction only)
+mm cat wordpress-pdf-invoice-plugin-sample.pdf                  # PDF text via pypdfium2
+mm cat bench.jpg                                                # image dimensions, EXIF, hash
+mm cat Timelapse.mp4                                            # video resolution, duration, codecs
+mm cat wordpress-pdf-invoice-plugin-sample.pdf -n 20            # first 20 lines (metadata)
 
-# Image / Video / Audio — require a configured LLM profile
-mm cat bench.jpg -m accurate                                    # LLM caption
+# --mode fast: kind's fast pipeline (short LLM caption for image/video; passthrough for code)
+mm cat bench.jpg -m fast                                        # short VLM caption
+mm cat Timelapse.mp4 -m fast                                    # mosaic → short VLM description
+
+# --mode accurate: full LLM pipeline (requires a configured profile)
+mm cat bench.jpg -m accurate                                    # LLM caption + tags + objects
 mm cat Timelapse.mp4 -m accurate                                # keyframe mosaic → LLM description
 mm cat mp3_44100Hz_320kbps_stereo.mp3 -m accurate               # Whisper transcript → LLM summary
 mm cat wordpress-pdf-invoice-plugin-sample.pdf -m accurate      # LLM-structured invoice
@@ -242,7 +248,7 @@ Missed a ref? `ctx.get("img_a1b2cZ")` raises `mm.RefNotFoundError` (a `KeyError`
 
 ```python
 ctx.print_tree()                  # insertion-order tree with metadata
-print(ctx.to_md(mode="fast"))     # markdown: ref | kind | source | content
+print(ctx.to_md(mode="metadata")) # markdown: ref | kind | source | content
 print(repr(ctx))                  # markdown summary: ref | kind | source
 ```
 
@@ -302,7 +308,7 @@ The skill exposes mm's capabilities to any tool that supports the skills protoco
 | Command | Purpose | Key flags |
 |---------|---------|-----------|
 | `find`  | Find/list files, tree view, schema | `--name`, `-i` (ignore case), `--kind`, `--ext`, `--min-size`, `--max-size`, `--sort`, `--reverse`, `--columns`, `--tree`, `--depth`, `--schema`, `--limit`, `--no-ignore`, `--format` |
-| `cat` | Content extraction (auto-detected by file type × mode) | `--mode fast/accurate`, `-p` (pipeline), `-n`, `--no-cache`, `-v`, `--encode.*` (incl. `--encode.strategy_opts KEY=VALUE`), `--generate.*`, `--list-pipelines`, `--list-encoders`, `--print-pipeline <kind>/<mode>`, `--format` |
+| `cat` | Content extraction (auto-detected by file type × mode) | `--mode metadata/fast/accurate` (default `metadata`), `-p` (pipeline), `-n`, `--no-cache`, `-v`, `--encode.*` (incl. `--encode.strategy_opts KEY=VALUE`), `--generate.*`, `--list-pipelines`, `--list-encoders`, `--print-pipeline <kind>/<mode>`, `--format` |
 | `grep` | Content search across files | `--kind`, `--ext`, `-C`, `--count`, `-i`, `--semantic`, `--pre-index`, `--no-ignore`, `--format` |
 | `sql` | SQL queries on file index, results, chunks, and embeddings | `--dir`, `--pre-index`, `--format`, `--list-tables` |
 | `wc` | Count files, size, lines (est.), tokens (est.) | `--kind`, `--by-kind`, `--format` |
@@ -332,14 +338,18 @@ mm find ~/data --no-ignore                             # include gitignored file
 
 ### cat — content extraction
 
+`--mode` is one of `metadata` (default; local extraction, never an LLM call), `fast` (kind's fast pipeline; short LLM call for images/video), or `accurate` (LLM-heavy pipeline).
+
 ```bash
-mm cat wordpress-pdf-invoice-plugin-sample.pdf                  # extract text (no LLM needed)
+mm cat wordpress-pdf-invoice-plugin-sample.pdf                  # PDF text via pypdfium2 (metadata)
 mm cat wordpress-pdf-invoice-plugin-sample.pdf -n 20            # first 20 lines (head)
 mm cat wordpress-pdf-invoice-plugin-sample.pdf -n -20           # last 20 lines (tail)
-mm cat bench.jpg -m accurate                                     # LLM caption
+mm cat bench.jpg                                                 # image dimensions, EXIF, hash (metadata)
+mm cat bench.jpg -m fast                                         # short VLM caption
+mm cat bench.jpg -m accurate                                     # full LLM caption + tags + objects
 mm cat Timelapse.mp4 -m accurate                                 # mosaic → LLM description
-mm cat bench.jpg -p resize                                       # use named encoder
-mm cat bench.jpg -p my-pipeline.yaml                             # custom pipeline YAML
+mm cat bench.jpg -m fast -p resize                               # use named encoder (requires -m fast/accurate)
+mm cat bench.jpg -m accurate -p my-pipeline.yaml                 # custom pipeline YAML
 mm cat Timelapse.mp4 -m accurate --no-cache                      # force fresh LLM call
 mm cat bench.jpg -m accurate -v                                  # verbose (shows pipeline tree)
 mm cat --list-pipelines                                          # list registered pipelines
@@ -404,19 +414,19 @@ pipeline
 
 ## Processing tiers
 
-`mm` separates **content tiers** (what's stored) from **pipeline modes** (what runs).
+`mm` separates **content tiers** (what's stored) from **pipeline modes** (what runs). `mm cat` accepts `--mode metadata|fast|accurate` (default `metadata`).
 
-| Tier         | What                                                                                  | LLM?     |
-| ------------ | ------------------------------------------------------------------------------------- | -------- |
-| **metadata** | Locally-extracted file content — PDF text, image dims/EXIF, video codec, transcript   | never    |
-| **fast**     | Output of the kind's `fast` pipeline                                                  | maybe¹   |
-| **accurate** | Output of the kind's `accurate` pipeline                                              | yes      |
+| Tier               | What                                                                                  | LLM?     |
+| ------------------ | ------------------------------------------------------------------------------------- | -------- |
+| **metadata** (default) | Locally-extracted file content — PDF text, image dims/EXIF, video codec, transcript   | never    |
+| **fast**           | Output of the kind's `fast` pipeline                                                  | maybe¹   |
+| **accurate**       | Output of the kind's `accurate` pipeline                                              | yes      |
 
 ¹ Per-kind fast pipelines: image/video include a short LLM caption stage;
 audio/document/code do not. See `pipelines/{kind}/fast.yaml`.
 
-Metadata-tier extraction (used by `find`, `wc`, and as the input for fast/accurate
-pipelines) is Rust-native (~60ms / 700 files).
+Metadata-tier extraction (used by `find`, `wc`, the `cat` default, and as the
+input for fast/accurate pipelines) is Rust-native (~60ms / 700 files).
 
 ## Performance
 

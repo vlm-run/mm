@@ -169,7 +169,7 @@ def _probe_pdf_pages(path: Path) -> int:
 def bench_image(path: Path, runs: int = 3) -> list[BenchResult]:
     dims, pixels = _probe_image(path)
     results = []
-    for mode in ("fast", "accurate"):
+    for mode in ("metadata", "fast", "accurate"):
         console.print(f"  [dim]Benchmarking image {mode}...[/dim]", end="\r")
         t = _run_bench(["mm", "cat", str(path), "--mode", mode, "--format", "json"], runs)
         results.append(
@@ -189,7 +189,7 @@ def bench_image(path: Path, runs: int = 3) -> list[BenchResult]:
 def bench_video(path: Path, runs: int = 2) -> list[BenchResult]:
     dims, dur, fps = _probe_video(path)
     results = []
-    for mode in ("fast", "accurate"):
+    for mode in ("metadata", "fast", "accurate"):
         console.print(f"  [dim]Benchmarking video {mode}...[/dim]", end="\r")
         t = _run_bench(["mm", "cat", str(path), "--mode", mode, "--format", "json"], runs)
         results.append(
@@ -209,18 +209,21 @@ def bench_video(path: Path, runs: int = 2) -> list[BenchResult]:
 
 def bench_pdf(path: Path, runs: int = 5) -> list[BenchResult]:
     pages = _probe_pdf_pages(path)
-    console.print("  [dim]Benchmarking PDF fast...[/dim]", end="\r")
-    t = _run_bench(["mm", "cat", str(path), "--format", "json"], runs)
-    return [
-        BenchResult(
-            label="document/fast",
-            file=path.name,
-            file_bytes=path.stat().st_size,
-            wall_s=t,
-            mode="fast",
-            pages=pages,
+    results = []
+    for mode in ("metadata", "fast"):
+        console.print(f"  [dim]Benchmarking PDF {mode}...[/dim]", end="\r")
+        t = _run_bench(["mm", "cat", str(path), "--mode", mode, "--format", "json"], runs)
+        results.append(
+            BenchResult(
+                label=f"document/{mode}",
+                file=path.name,
+                file_bytes=path.stat().st_size,
+                wall_s=t,
+                mode=mode,
+                pages=pages,
+            )
         )
-    ]
+    return results
 
 
 def _sysinfo_panel() -> Panel:
