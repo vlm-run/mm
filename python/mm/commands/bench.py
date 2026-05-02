@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import importlib.util
+import json
 import re
 import shlex
 import statistics
@@ -51,6 +52,21 @@ class BenchResult:
     # ``<img>`` / ``<vid>`` / ``<doc>`` / ``<aud>`` / ``<code>`` /
     # ``<dir>`` placeholder substitution in the Command cell.
     requires_kind: str | None = None
+    # Absolute paths the harness substituted into ``{file}`` /
+    # ``{files}`` placeholders -- the row's actual data inputs.
+    # Renderers use this to distinguish data files (which become
+    # ``<img>`` / ``<vid>`` / ... placeholders) from helper-script
+    # paths or other absolute paths the template may legitimately
+    # contain.
+    data_file_paths: list[str] = field(default_factory=list)
+    # Captured from the *last* timed round of ``_time_cmd``. Used by
+    # the markdown recorder to embed the actual command output beneath
+    # each row's snapshot table; intentionally NOT surfaced in
+    # ``to_dict`` (would balloon JSON payloads for verbose models like
+    # dots-ocr).
+    last_stdout: str = ""
+    last_stderr: str = ""
+    returncode: int | None = None
 
     @property
     def mean_ms(self) -> float:
@@ -208,23 +224,37 @@ def _sanitize_files(files: list) -> list:
 # ── Timing harness ──────────────────────────────────────────────────
 
 
-def _time_cmd(argv: list[str], rounds: int, warmup: int) -> list[float]:
-    """Run a shell command with warmup, return list of elapsed times in ms.
+def _time_cmd(
+    argv: list[str], rounds: int, warmup: int
+) -> tuple[list[float], subprocess.CompletedProcess[str]]:
+    """Run a shell command with warmup, return ``(timings_ms, last_proc)``.
 
     ``stdin`` is closed because ``mm cat`` (and friends) autodetect piped
     stdin and try to read paths from it — which deadlocks under
     ``subprocess.PIPE`` if we don't also feed something in.
+
+    The ``CompletedProcess`` from the *final* timed round is returned so
+    callers (the markdown recorder) can embed the actual command output
+    in the per-row snapshot. Warmup runs continue to discard their
+    output; only the last timed round's stdout/stderr are kept.
     """
     for _ in range(warmup):
         subprocess.run(argv, capture_output=True, stdin=subprocess.DEVNULL)
 
     timings: list[float] = []
+    last_proc: subprocess.CompletedProcess[str] | None = None
     for _ in range(rounds):
         t0 = time.perf_counter_ns()
-        subprocess.run(argv, capture_output=True, stdin=subprocess.DEVNULL)
+        last_proc = subprocess.run(argv, capture_output=True, text=True, stdin=subprocess.DEVNULL)
         t1 = time.perf_counter_ns()
         timings.append((t1 - t0) / 1_000_000)  # ns → ms
-    return timings
+
+    if last_proc is None:
+        # ``rounds=0`` is a pathological edge case (no measurement, no
+        # output) but keeps callers crash-free without forcing an
+        # extra subprocess invocation.
+        last_proc = subprocess.CompletedProcess(argv, 0, "", "")
+    return timings, last_proc
 
 
 # ── Benchmark runner ─────────────────────────────────────────────────
@@ -302,7 +332,7 @@ def _run_benchmarks(
             )
             continue
 
-        argv, fc, tb, media = resolved
+        argv, fc, tb, media, data_paths = resolved
 
         # Preview is the resolved shell command
         preview = [shlex.join(argv)]
@@ -322,9 +352,14 @@ def _run_benchmarks(
             tags=dict(cmd.tags),
             cmd_template=cmd.cmd_template,
             requires_kind=cmd.requires_kind,
+            data_file_paths=list(data_paths),
         )
         if not dry_run:
-            r.timings_ms = _time_cmd(argv, rounds, warmup)
+            timings, last_proc = _time_cmd(argv, rounds, warmup)
+            r.timings_ms = timings
+            r.last_stdout = last_proc.stdout or ""
+            r.last_stderr = last_proc.stderr or ""
+            r.returncode = last_proc.returncode
 
         results.append(r)
 
@@ -448,12 +483,32 @@ def _kind_placeholder(kind: str | None) -> str:
     return _KIND_PLACEHOLDER.get(kind, f"<{kind}>")
 
 
-def _replace_paths(argv: list[str], file_placeholder: str) -> list[str]:
+def _replace_paths(
+    argv: list[str],
+    file_placeholder: str,
+    *,
+    data_paths: set[str] | None = None,
+) -> list[str]:
     """Replace abs paths and ``{file}`` / ``{files}`` / ``{dir}`` tokens.
 
-    Files (and the unresolved ``{file}`` / ``{files}`` template tokens
-    on skipped rows) become *file_placeholder*; directories (and
-    ``{dir}``) become ``<dir>``. Other tokens are left untouched.
+    Substitution rules:
+
+    * ``{file}`` / ``{files}`` template tokens (preserved on skipped
+      rows where ``resolve_command`` returns None) -> *file_placeholder*.
+    * ``{dir}`` -> ``<dir>``.
+    * Abs path that's in *data_paths* (the row's resolved data files)
+      -> *file_placeholder*.
+    * Other abs paths that *exist as a file* -> ``Path(a).name``
+      (basename only). This covers helper-script paths embedded in
+      the cmd_template (e.g. ``benchmarks/_multi_image_call.py``) so
+      the displayed Base Command stays portable across machines while
+      remaining recognizable.
+    * Abs paths that exist as a directory -> ``<dir>``.
+
+    When *data_paths* is None we fall back to the legacy behaviour
+    (every existing file becomes *file_placeholder*) -- preserves
+    callers that don't have the resolved-paths info handy (e.g.
+    skipped rows running on the unresolved ``cmd_template``).
     """
     out: list[str] = []
     for a in argv:
@@ -464,9 +519,18 @@ def _replace_paths(argv: list[str], file_placeholder: str) -> list[str]:
             out.append("<dir>")
             continue
         if a.startswith("/"):
+            if data_paths is not None and a in data_paths:
+                out.append(file_placeholder)
+                continue
             p = Path(a)
             if p.is_file():
-                out.append(file_placeholder)
+                # With explicit data_paths, ``a`` is a non-data file
+                # (helper script, interpreter, etc.) -- show basename.
+                # Without it, fall back to legacy placeholder swap.
+                if data_paths is None:
+                    out.append(file_placeholder)
+                else:
+                    out.append(p.name)
                 continue
             if p.is_dir():
                 out.append("<dir>")
@@ -555,14 +619,33 @@ def _build_command_cells(r: BenchResult) -> tuple[str, str]:
         return joined, ""
     argv = _strip_flag(argv, "--profile", "--model", "--generate.model")
     base_argv, extra_argv = _split_base_extra(argv)
-    base_argv = _replace_paths(base_argv, _kind_placeholder(r.requires_kind))
+    # ``data_paths`` is empty on skipped rows (we render off
+    # ``cmd_template``, so abs paths haven't been substituted yet) and
+    # on rows whose template carries no ``{file}`` / ``{files}``. Pass
+    # ``None`` in those cases to keep the legacy single-bucket
+    # behaviour; otherwise pass the resolved set so non-data abs paths
+    # (helper scripts, ...) basename-out instead of being miscast as
+    # the row's media kind.
+    data_paths: set[str] | None = set(r.data_file_paths) if r.data_file_paths else None
+    base_argv = _replace_paths(base_argv, _kind_placeholder(r.requires_kind), data_paths=data_paths)
     base_str = _shell_join(base_argv)
     extra_str = _shell_join(extra_argv) if extra_argv else ""
     return base_str, extra_str
 
 
-def _render_table(results: list[BenchResult], target_info: dict[str, Any]) -> None:
-    """Render all results as a single Rich table.
+def _build_table(
+    results: list[BenchResult],
+    target_info: dict[str, Any],
+    *,
+    include_caption: bool = True,
+) -> Any:
+    """Build a Rich ``Table`` for *results* and return it (no printing).
+
+    Shared between the live ``mm bench`` renderer and the per-row
+    markdown recorder so both paths stay in lockstep on column layout
+    and cell content. ``include_caption`` is False for single-row
+    snapshots (the recorder's own header carries the totals already, so
+    repeating them on every row is noise).
 
     Layout: ``Group | Model | Base Command | Extra Args | <metrics>``.
     ``Model`` and ``Extra Args`` are conditional -- rendered only when
@@ -572,7 +655,7 @@ def _render_table(results: list[BenchResult], target_info: dict[str, Any]) -> No
     get the fully split layout.
 
     The ``Base Command`` cell holds the stable shell skeleton
-    (``mm cat <img> --mode accurate --no-cache --format json``) with
+    (``mm cat <img> --mode fast --no-cache --format json``) with
     ``--profile`` / ``--model`` stripped (the profile is constant per
     benchfile run; the model lives in its own column) and file paths
     substituted with kind-based placeholders (``<img>`` / ``<vid>`` /
@@ -585,19 +668,21 @@ def _render_table(results: list[BenchResult], target_info: dict[str, Any]) -> No
     from rich.table import Table
     from rich.text import Text
 
-    from mm.display import format_size, output_console
+    from mm.display import format_size
 
-    wall_ms = target_info.get("total_wall_ms", 0)
-    wall_str = _fmt_ms(wall_ms) if wall_ms else "—"
     is_dry_run = bool(target_info.get("dry_run"))
-    caption = (
-        f"{target_info['files']:,} files  "
-        f"{format_size(target_info['total_bytes'])}  "
-        f"rounds={target_info['rounds']}  warmup={target_info['warmup']}  "
-        f"total={wall_str}"
-    )
-    if is_dry_run:
-        caption += "  (dry run — no commands executed)"
+    caption: str | None = None
+    if include_caption:
+        wall_ms = target_info.get("total_wall_ms", 0)
+        wall_str = _fmt_ms(wall_ms) if wall_ms else "—"
+        caption = (
+            f"{target_info['files']:,} files  "
+            f"{format_size(target_info['total_bytes'])}  "
+            f"rounds={target_info['rounds']}  warmup={target_info['warmup']}  "
+            f"total={wall_str}"
+        )
+        if is_dry_run:
+            caption += "  (dry run — no commands executed)"
 
     # Pre-compute (base, extra) for every row so we can decide which
     # columns to render based on actual content.
@@ -690,7 +775,316 @@ def _render_table(results: list[BenchResult], target_info: dict[str, Any]) -> No
             Text(r.bits_per_sec_str, style="bright_cyan") if r.bits_per_sec > 0 else Text("\u2014"),
         )
 
-    output_console.print(table)
+    return table
+
+
+def _render_table(results: list[BenchResult], target_info: dict[str, Any]) -> None:
+    """Render all results as a single Rich table to ``output_console``."""
+    from mm.display import output_console
+
+    output_console.print(_build_table(results, target_info, include_caption=True))
+
+
+# ── Markdown recording ──────────────────────────────────────────────
+
+
+def _derive_recording_stem(bench_file: Path | None) -> str:
+    """Return the ``<suite>`` portion of the recording filename.
+
+    ``bench_file`` is the ``--bench-file`` Path the user passed (or
+    None for the built-in default suite). For benchfiles we strip the
+    canonical ``_bench_commands`` suffix so
+    ``benchmarks/vlmgw_bench_commands.py`` -> ``vlmgw``; everything
+    else falls back to ``"default"``.
+    """
+    if bench_file is None:
+        return "default"
+    stem = Path(bench_file).stem
+    suffix = "_bench_commands"
+    if stem.endswith(suffix):
+        stem = stem[: -len(suffix)]
+    return stem or "default"
+
+
+def _derive_recording_path(bench_file: Path | None, *, root: Path | None = None) -> Path:
+    """Return the markdown recording path for *bench_file*.
+
+    Defaults to ``<cwd>/benchmarks/<YYMMDD>-mm-bench-<suite>.md``. The
+    ``root`` override exists primarily for tests so they can target a
+    pytest tmp directory without needing ``monkeypatch.chdir``.
+    """
+    import datetime as _dt
+
+    today = _dt.datetime.now().strftime("%y%m%d")
+    base = root if root is not None else Path("benchmarks")
+    return base / f"{today}-mm-bench-{_derive_recording_stem(bench_file)}.md"
+
+
+def _stdout_fence_lang(stdout: str) -> str:
+    """Pick a markdown code-fence language for *stdout*.
+
+    Uses ``json`` for anything that *looks* JSON (leading ``{`` / ``[``
+    after stripping whitespace) so renderers get syntax highlighting,
+    and falls back to plain ``text`` otherwise.
+    """
+    s = stdout.lstrip()
+    if s.startswith(("{", "[")):
+        return "json"
+    return "text"
+
+
+def _normalize_stdout_paths(argv_str: str, stdout: str) -> str:
+    """Replace absolute file paths from *argv_str* with basenames in *stdout*.
+
+    Mirrors the path-normalization in :func:`_run_stdout_snapshot` so
+    the recorded markdown stays stable across machines: absolute paths
+    in shell command arguments are surfaced as basenames in both the
+    snapshot tables (already handled by ``_replace_paths``) and in
+    captured stdout (handled here).
+    """
+    if not stdout or not argv_str:
+        return stdout
+    try:
+        argv = shlex.split(argv_str)
+    except ValueError:
+        return stdout
+    for tok in argv:
+        if not tok.startswith("/") or "/" not in tok:
+            continue
+        try:
+            if Path(tok).is_file():
+                stdout = stdout.replace(tok, Path(tok).name)
+        except OSError:
+            continue
+    return stdout
+
+
+def _format_recording_output(r: BenchResult, argv_str: str) -> tuple[str, str]:
+    """Return ``(body, fence_language)`` for one row's stdout block.
+
+    Branches on row state:
+
+    * skipped -> ``[skipped: <reason>]`` in a ``text`` block.
+    * non-zero exit -> ``[exit N]`` followed by the last 5 stderr lines.
+    * empty stdout -> ``(no output)``.
+    * everything else -> ANSI-stripped + path-normalized stdout, with
+      ``json`` fence when the output starts with ``{`` / ``[`` and
+      ``text`` otherwise.
+    """
+    if r.skipped:
+        return f"[skipped: {r.skip_reason}]", "text"
+
+    if (r.returncode or 0) != 0:
+        rc = r.returncode if r.returncode is not None else "?"
+        err_lines = (r.last_stderr or "").rstrip().splitlines()[-5:]
+        err = "\n".join(err_lines) if err_lines else "(no stderr)"
+        return f"[exit {rc}]\n{err}", "text"
+
+    body = _strip_ansi(r.last_stdout or "").rstrip()
+    body = _normalize_stdout_paths(argv_str, body)
+    if not body:
+        return "(no output)", "text"
+    return body, _stdout_fence_lang(body)
+
+
+# Short keys for the per-row ``args:`` line. ``image`` -> ``"img"``
+# matches the kind placeholders the Base Command cell uses
+# (``<img>``, ``<vid>``, ...) so the eye can correlate the abstract
+# placeholder back to its resolved value.
+_ARGS_KIND_KEY: dict[str, str] = {
+    "image": "img",
+    "video": "vid",
+    "audio": "aud",
+    "document": "doc",
+    "code": "code",
+}
+
+
+def _build_args_line(r: BenchResult, argv: list[str]) -> str:
+    """One-line JSON summary of the row's resolved data inputs + mode.
+
+    Surfaces the values the table itself can't show -- the
+    ``<img>`` / ``<vid>`` / ... placeholders in the Base Command
+    collapse N data files down to one symbol; this line restores the
+    actual basenames so the recording stays diffable across runs that
+    pick different files. ``mode`` is included when the row uses
+    ``--mode <X>`` because it's a primary axis of the bench matrix
+    (metadata / fast / accurate) even though the same value also
+    appears in the Base Command column.
+    """
+    args: dict[str, Any] = {}
+
+    if r.data_file_paths:
+        key = _ARGS_KIND_KEY.get(r.requires_kind or "", r.requires_kind or "file")
+        names = [Path(p).name for p in r.data_file_paths]
+        args[key] = names[0] if len(names) == 1 else names
+
+    mode = _extract_flag(argv, "--mode") if argv else ""
+    if mode:
+        args["mode"] = mode
+
+    return f"args: {json.dumps(args)}" if args else ""
+
+
+def _fmt_size(n: float) -> str:
+    """Compact byte formatter (KB / MB / GB)."""
+    n = float(n)
+    if n >= 1024**3:
+        return f"{n / 1024**3:.1f} GB"
+    if n >= 1024**2:
+        return f"{n / 1024**2:.1f} MB"
+    if n >= 1024:
+        return f"{n / 1024:.1f} KB"
+    return f"{n:.0f} B"
+
+
+def _build_footer_line(r: BenchResult) -> str:
+    """``<elapsed> • <bytes> • <bytes/s>`` summary for the captured round.
+
+    Uses the LAST round's timing (the one that produced the captured
+    stdout) rather than the mean -- the line is "this particular
+    invocation took X to produce that stdout", complementing the
+    aggregate stats already shown in the row table above.
+    """
+    if not r.timings_ms:
+        return ""
+    last_ms = r.timings_ms[-1]
+    parts = [_fmt_ms(last_ms)]
+    if r.total_bytes > 0:
+        parts.append(_fmt_size(r.total_bytes))
+        if last_ms > 0:
+            parts.append(f"{_fmt_size(r.total_bytes / (last_ms / 1000))}/s")
+    return " • ".join(parts)
+
+
+def _render_row_table_text(r: BenchResult, target_info: dict[str, Any], *, width: int = 240) -> str:
+    """Render a single-row Rich Table as plain text (ANSI stripped).
+
+    Uses ``Console.capture()`` so nothing is written to stdout. The
+    fixed ``width=240`` matches the typical ``COLUMNS`` we use for
+    bench rendering elsewhere (see tests setting
+    ``monkeypatch.setenv('COLUMNS', '260')``); narrower widths would
+    fold long base-command / extra-args cells across multiple lines
+    in the recorded markdown.
+    """
+    from rich.console import Console
+
+    console = Console(width=width, no_color=True, force_terminal=False)
+    with console.capture() as cap:
+        console.print(_build_table([r], target_info, include_caption=False))
+    return cap.get().rstrip("\n")
+
+
+def _format_host_oneline(host_info: dict[str, Any]) -> str:
+    """One-line summary of the host entry for the recording header."""
+    parts: list[str] = []
+    if host_info.get("hostname"):
+        parts.append(f"`{host_info['hostname']}`")
+    cpu = host_info.get("cpu")
+    if cpu:
+        threads = host_info.get("cpu_threads")
+        parts.append(f"{cpu} ({threads} threads)" if threads else cpu)
+    if host_info.get("os"):
+        parts.append(host_info["os"])
+    if host_info.get("python"):
+        parts.append(f"Python {host_info['python']}")
+    if host_info.get("mm_version"):
+        parts.append(f"mm v{host_info['mm_version']}")
+    return " · ".join(parts)
+
+
+def _write_bench_recording(
+    results: list[BenchResult],
+    target_info: dict[str, Any],
+    host_info: dict[str, Any],
+    bench_file: Path | None,
+    *,
+    root: Path | None = None,
+) -> Path:
+    """Write per-row Rich-table snapshots + captured stdout to markdown.
+
+    Returns the resolved output path. Always writes (idempotent
+    overwrite -- one snapshot per suite per day); the caller decides
+    whether to call this based on flags (``--dry-run`` / ``--host-info``
+    / ``--format stdout`` all skip).
+    """
+    import datetime as _dt
+
+    from mm.display import format_size
+
+    path = _derive_recording_path(bench_file, root=root)
+    path.parent.mkdir(parents=True, exist_ok=True)
+
+    stem = _derive_recording_stem(bench_file)
+    today = _dt.datetime.now().strftime("%Y-%m-%d")
+
+    lines: list[str] = []
+    lines.append(f"# mm bench recording — {stem} — {today}")
+    lines.append("")
+
+    rounds = target_info.get("rounds", "?")
+    warmup = target_info.get("warmup", "?")
+    files = target_info.get("files", "?")
+    total_bytes = target_info.get("total_bytes", 0)
+    wall_ms = target_info.get("total_wall_ms", 0)
+    files_str = f"{files:,}" if isinstance(files, int) else str(files)
+    lines.append(
+        f"Run: `mm bench` against `{target_info.get('directory', '?')}` "
+        f"(rounds={rounds}, warmup={warmup}, "
+        f"{files_str} files / {format_size(total_bytes)}, "
+        f"wall={_fmt_ms(wall_ms) if wall_ms else '—'})."
+    )
+    if bench_file is not None:
+        lines.append(f"Benchfile: `{bench_file}`.")
+
+    host_line = _format_host_oneline(host_info)
+    if host_line:
+        lines.append(f"Host: {host_line}.")
+
+    prof = host_info.get("profile") or {}
+    if prof.get("name"):
+        lines.append(
+            f"Profile: `{prof['name']}` "
+            f"(`{prof.get('base_url', '?')}`, default model `{prof.get('model', '?')}`)."
+        )
+
+    lines.append("")
+    lines.append("---")
+    lines.append("")
+
+    for r in results:
+        # Per-row layout:
+        #   <rich table verbatim, no fence>
+        #   args: {"img": "...", "mode": "fast"}     (when applicable)
+        #   ```json|text
+        #   <captured stdout>
+        #   ```
+        #   <elapsed> • <bytes> • <bytes/s>          (real runs only)
+        #
+        # The table is emitted as raw markdown content (not inside a
+        # ```text``` fence) so renderers display its rich box-drawing
+        # characters directly -- matching the live ``mm bench`` view.
+        table_text = _render_row_table_text(r, target_info)
+        lines.append(table_text)
+
+        argv_str = r.preview_lines[0] if r.preview_lines else ""
+        argv = _split_argv(argv_str) if argv_str else []
+        args_line = _build_args_line(r, argv)
+        if args_line:
+            lines.append(args_line)
+
+        body, lang = _format_recording_output(r, argv_str)
+        lines.append(f"```{lang}")
+        lines.append(body)
+        lines.append("```")
+
+        footer = _build_footer_line(r)
+        if footer:
+            lines.append(footer)
+        lines.append("")
+
+    path.write_text("\n".join(lines).rstrip() + "\n")
+    return path
 
 
 # ── Stdout snapshot mode ────────────────────────────────────────────
@@ -791,7 +1185,7 @@ def _run_stdout_snapshot(
             )
             continue
 
-        argv, _, _, _ = resolved
+        argv, _, _, _, _ = resolved
         # The bench harness resolves ``{file}`` to an absolute path so the
         # subprocess can find it. For the *recorded* snapshot we strip the
         # directory prefix down to the file's basename — ``$ mm cat
@@ -1173,7 +1567,12 @@ def bench_cmd(
 
     from mm.bench_utils import collect_host_info, render_host_info
 
-    render_host_info(collect_host_info(), fmt=fmt, to_stderr=True)
+    # Distinct name -- ``host_info`` here is the typer ``bool`` flag
+    # arg ``--host-info``; we resolved the early-return path above and
+    # now need the full host-info dict for both the live header line
+    # and the markdown recording.
+    host_info_data = collect_host_info()
+    render_host_info(host_info_data, fmt=fmt, to_stderr=True)
 
     # Progress callback for rich output
     if fmt == "rich":
@@ -1232,3 +1631,20 @@ def bench_cmd(
                 "mb_per_sec",
             ],
         )
+
+    # Markdown recording: always-on for real (non-dry-run) measurement
+    # runs. Skipped via early returns above for ``--host-info`` and
+    # ``--format stdout`` (snapshot mode); skipped here for
+    # ``--dry-run`` because there's nothing meaningful to record yet.
+    if not dry_run and results:
+        try:
+            recording_path = _write_bench_recording(
+                results, target_info, host_info_data, bench_file
+            )
+            typer.echo(f"Wrote recording to {recording_path}", err=True)
+        except OSError as exc:
+            # Don't fail the whole run on a recording-write error -- the
+            # primary output (rich/json/tsv) has already been emitted
+            # and is what the user came for. Surface the failure on
+            # stderr so it's still visible.
+            typer.echo(f"Warning: failed to write bench recording: {exc}", err=True)

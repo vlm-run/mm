@@ -71,10 +71,14 @@ Translation notes
   nor ``video`` (text-only -- ``noop``, ``qwen/text``) attach the
   smallest available image; vision-encode overhead is constant across
   those rows so trends remain interpretable.
-* ``num_images > 1`` becomes ``mm cat <file1> <file2> ...``
-  (``batch=N``). Each file produces a separate gateway request, so
-  the timing measures sequential multi-image throughput rather than a
-  single multi-image conversation.
+* ``num_images > 1`` is translated by a hand-authored row in
+  ``_MULTI_IMAGE`` (not ``_to_command``): ``mm cat`` itself iterates
+  over file arguments client-side and fires one gateway request per
+  file, which is *not* what we want here. The bench instead invokes
+  ``benchmarks/_multi_image_call.py`` -- a tiny helper that builds a
+  single chat completion with N ``image_url`` parts attached to one
+  user message. This times the gateway's actual multi-image
+  conversation latency rather than ``mm cat``'s file-iteration loop.
 * ``fps`` / ``max_frames`` / ``video_resolution`` are folded into
   ``--generate.extra-body`` as ``video_fps`` / ``video_max_frames`` /
   ``video_resolution`` keys, alongside any ``method`` /
@@ -89,6 +93,7 @@ from __future__ import annotations
 import json
 import shlex
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any
 
 from mm.commands.bench_commands import BenchCommand
@@ -116,6 +121,13 @@ SMOLVLM2_500M_VIDEO = "ggml-org/smolvlm2-500m-video-instruct-gguf"
 
 _CAT = f"mm --profile {PROFILE} cat"
 _BASE_FLAGS = "--mode fast --no-cache --format json"
+
+# ``mm cat`` iterates over file arguments client-side, so a multi-image
+# bench would actually time N sequential one-image chats. The helper
+# below builds a single chat completion with N ``image_url`` parts in
+# one user message -- the canonical multi-image conversation shape --
+# so the timing reflects the gateway's true multi-image latency.
+_MULTI_IMAGE_SCRIPT = (Path(__file__).parent / "_multi_image_call.py").resolve()
 
 
 # ── BenchSpec → BenchCommand translation ─────────────────────────────
@@ -241,8 +253,9 @@ NOOP_SPECS: list[BenchSpec] = [
 
 
 # ── Model matrix (mirrors the internal vlmgw BenchSpec list) ─────────
-# All 28 variants from the canonical list -- covered exhaustively
-# below. The noop family lives in NOOP_SPECS above.
+# 28 single-call variants here + 1 hand-authored multi-image row in
+# ``_MULTI_IMAGE`` below = 29 ``group="model"`` entries total. The
+# noop family lives in NOOP_SPECS above.
 
 
 SPECS: list[BenchSpec] = [
@@ -275,16 +288,12 @@ SPECS: list[BenchSpec] = [
         video_resolution="448x336",
         extra_body={"method": "caption"},
     ),
-    # Qwen3.5 (text, image, multi-image, video)
+    # Qwen3.5 (text, image, video). The multi-image variant is
+    # hand-authored in ``_MULTI_IMAGE`` below: a single chat
+    # completion with two image_url parts, NOT mm cat's
+    # file-iteration loop.
     BenchSpec(QWEN, "qwen/text", prompt="What is 2+2? Reply in one word."),
     BenchSpec(QWEN, "qwen/image", image=True, prompt="Describe this image briefly."),
-    BenchSpec(
-        QWEN,
-        "qwen/multi-image",
-        image=True,
-        num_images=2,
-        prompt="Compare these two images.",
-    ),
     BenchSpec(
         QWEN,
         "qwen/video",
@@ -413,6 +422,34 @@ SPECS: list[BenchSpec] = [
         "moondream/caption+llm",
         image=True,
         extra_body={"method": "caption", "llm": QWEN},
+    ),
+]
+
+
+# ── multi-image: single chat completion with N image_url parts ──────
+# ``mm cat <file1> <file2>`` iterates client-side and fires N
+# independent gateway requests, which times the wrong thing for
+# multi-image conversation latency. We invoke a tiny helper script
+# (`benchmarks/_multi_image_call.py`) that builds ONE chat completion
+# with both images attached as ``image_url`` parts on a single user
+# message -- the canonical multi-image shape every OpenAI-compatible
+# vlm gateway accepts.
+
+_MULTI_IMAGE: list[BenchCommand] = [
+    BenchCommand(
+        name="qwen/multi-image",
+        group="model",
+        cmd_template=(
+            f"python {shlex.quote(str(_MULTI_IMAGE_SCRIPT))} "
+            f"--model {shlex.quote(QWEN)} "
+            "--prompt 'Compare these two images.' "
+            "{files}"
+        ),
+        requires_kind="image",
+        batch=2,
+        smallest=True,
+        skip_reason="no image files",
+        tags={"model": QWEN},
     ),
 ]
 
@@ -549,6 +586,7 @@ _VALIDATION: list[BenchCommand] = [
 COMMANDS: list[BenchCommand] = (
     [_to_command(s, group="noop") for s in NOOP_SPECS]
     + [_to_command(s) for s in SPECS]
+    + _MULTI_IMAGE
     + _IMAGE_RES
     + _VIDEO_FRAMES
     + _CACHE

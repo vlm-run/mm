@@ -321,6 +321,77 @@ blobs) lives in `Extra Args` rather than in tag columns — the
 column-per-tag mechanism is reserved for short, comparable
 identifiers like `model` and `provider`.
 
+### Bench recording: `benchmarks/<YYMMDD>-mm-bench-<suite>.md`
+
+Every non-dry-run `mm bench` invocation also writes a per-row
+markdown snapshot under `benchmarks/`. The file contains, for each
+benchmarked command, the *exact same single-row Rich table* the live
+bench rendered — followed by a fenced block holding that row's
+captured stdout. This keeps a portable, diffable record of what was
+measured *and* what each command actually returned, which is
+particularly useful when chasing regressions across gateway versions
+or comparing two benchfiles side-by-side.
+
+Path derivation:
+
+- `benchmarks/<YYMMDD>-mm-bench-<suite>.md` (relative to the current
+  working directory; `benchmarks/` is created if missing).
+- `<suite>` is `default` for the built-in suite, or
+  `Path(--bench-file).stem` with a trailing `_bench_commands` stripped
+  (so `benchmarks/vlmgw_bench_commands.py` → `vlmgw`).
+- Existing files are overwritten — one snapshot per suite per day.
+  Use `git mv` afterwards if you want per-run history.
+
+Per-row layout:
+
+```text
+╭──────┬──────────────────┬──────────────────────────────┬───────┬───────╮
+│ ...  │ Model            │ Base Command                 │  Mean │  ...  │
+├──────┼──────────────────┼──────────────────────────────┼───────┼───────┤
+│ ...  │ qwen/qwen3.5-…   │ mm cat <img> --mode fast …   │ 2.91s │  ...  │
+╰──────┴──────────────────┴──────────────────────────────┴───────┴───────╯
+args: {"img": "1-vqa-car.jpg", "mode": "fast"}
+```json
+{...captured stdout...}
+```
+2.91s • 38.2 KB • 13.1 KB/s
+```
+
+- The Rich table is emitted as raw markdown content (no ` ```text `
+  wrapping fence) so renderers display its box-drawing characters
+  directly — matching the live `mm bench` view.
+- `args:` carries a JSON one-liner with the resolved data inputs
+  (under the kind alias `img` / `vid` / `aud` / `doc` / `code`) and
+  `mode` when the row uses `--mode <X>`. This restores the actual
+  basenames the `<img>` / `<vid>` placeholders in the Base Command
+  column collapse away. Omitted entirely when there's nothing to
+  surface (e.g. directory-level `mm find` rows).
+- The captured stdout is wrapped in a fenced block — `json` when it
+  starts with `{` / `[`, else `text`. ANSI-stripped; absolute paths
+  from the resolved argv are rewritten to basenames so the markdown
+  stays portable across machines.
+- The footer line `<elapsed> • <bytes> • <bytes/s>` reports the
+  *last* timed round (the one that produced the captured stdout),
+  complementing the aggregate stats already shown in the row table.
+- Skipped rows render their snapshot table with `skipped: <reason>`
+  and a `text` block carrying the same reason; no footer.
+- Non-zero exits produce a `text` block prefixed with `[exit N]`
+  followed by the last 5 stderr lines, plus the standard footer.
+
+The header carries the resolved invocation (rounds, warmup, file
+count + size, total wall), the host one-liner (hostname / CPU / OS
+/ Python / mm version), and the active profile.
+
+The path is logged to stderr (`Wrote recording to …`) regardless of
+`--format`, so you always see where the snapshot landed.
+
+Skipped when:
+
+- `--dry-run` (nothing measured to record).
+- `--host-info` (it's not a measurement run).
+- `--format stdout` (snapshot mode has its own destination via stdout
+  redirection, e.g. `tests/stdout/cat.md`).
+
 ### Filtering: `--group`, `--model`, `--command`
 
 Three independent filters compose via AND, so you can scope a run to

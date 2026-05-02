@@ -596,7 +596,8 @@ class TestVlmgwBenchfileSmoke:
             "moondream/video-caption",
             "qwen/text",
             "qwen/image",
-            "qwen/multi-image",
+            # qwen/multi-image is hand-authored in ``_MULTI_IMAGE``
+            # (single-call helper, not mm cat) and lives outside SPECS.
             "qwen/video",
             "rfdetr/detect",
             "rfdetr-seg/segment",
@@ -1118,3 +1119,388 @@ class TestArgvHelpers:
         assert "--mode fast" in base
         assert "vlmgw" not in base
         assert extra == "--prompt hi"
+
+
+# ── markdown recording ───────────────────────────────────────────────
+
+
+class TestRecordingHelpers:
+    """Unit tests for the recording helper functions (no subprocesses)."""
+
+    def test_derive_recording_stem_default(self):
+        from mm.commands.bench import _derive_recording_stem
+
+        assert _derive_recording_stem(None) == "default"
+
+    def test_derive_recording_stem_strips_bench_commands_suffix(self, tmp_path: Path):
+        from mm.commands.bench import _derive_recording_stem
+
+        bf = tmp_path / "vlmgw_bench_commands.py"
+        bf.write_text("COMMANDS = []\n")
+        assert _derive_recording_stem(bf) == "vlmgw"
+
+    def test_derive_recording_stem_keeps_other_stems(self, tmp_path: Path):
+        from mm.commands.bench import _derive_recording_stem
+
+        bf = tmp_path / "custom.py"
+        bf.write_text("COMMANDS = []\n")
+        assert _derive_recording_stem(bf) == "custom"
+
+    def test_derive_recording_path_uses_yymmdd(self, tmp_path: Path):
+        import datetime as dt
+
+        from mm.commands.bench import _derive_recording_path
+
+        path = _derive_recording_path(None, root=tmp_path / "benchmarks")
+        today = dt.datetime.now().strftime("%y%m%d")
+        assert path.name == f"{today}-mm-bench-default.md"
+        assert path.parent == tmp_path / "benchmarks"
+
+    def test_stdout_fence_lang_json_for_object(self):
+        from mm.commands.bench import _stdout_fence_lang
+
+        assert _stdout_fence_lang('{"a": 1}') == "json"
+        assert _stdout_fence_lang("  \n  [1,2,3]") == "json"
+
+    def test_stdout_fence_lang_text_for_other(self):
+        from mm.commands.bench import _stdout_fence_lang
+
+        assert _stdout_fence_lang("hello world\n") == "text"
+        assert _stdout_fence_lang("") == "text"
+
+    def test_normalize_stdout_paths_replaces_argv_abs_paths(self, tmp_path: Path):
+        from mm.commands.bench import _normalize_stdout_paths
+
+        f = tmp_path / "img.jpg"
+        f.write_bytes(b"x")
+        argv_str = f"mm cat {f} --mode fast"
+        stdout = f'{{"path": "{f}", "size": 1}}'
+        out = _normalize_stdout_paths(argv_str, stdout)
+        assert str(f) not in out
+        assert "img.jpg" in out
+
+    def test_normalize_stdout_paths_skips_relative_tokens(self):
+        from mm.commands.bench import _normalize_stdout_paths
+
+        out = _normalize_stdout_paths("mm find . --format json", "no abs paths here")
+        assert out == "no abs paths here"
+
+    def test_format_recording_output_skipped(self):
+        from mm.commands.bench import BenchResult, _format_recording_output
+
+        r = BenchResult("x", "g", skipped=True, skip_reason="no image files")
+        body, lang = _format_recording_output(r, "")
+        assert lang == "text"
+        assert body == "[skipped: no image files]"
+
+    def test_format_recording_output_non_zero_exit(self):
+        from mm.commands.bench import BenchResult, _format_recording_output
+
+        r = BenchResult(
+            "x",
+            "g",
+            last_stderr="line1\nline2\nline3\nline4\nline5\nline6\nline7",
+            returncode=2,
+        )
+        body, lang = _format_recording_output(r, "")
+        assert lang == "text"
+        assert body.startswith("[exit 2]")
+        # Tail keeps the last 5 stderr lines.
+        assert "line3" in body
+        assert "line7" in body
+        assert "line1" not in body
+        assert "line2" not in body
+
+    def test_format_recording_output_json_stdout(self, tmp_path: Path):
+        from mm.commands.bench import BenchResult, _format_recording_output
+
+        f = tmp_path / "img.jpg"
+        f.write_bytes(b"x")
+        argv_str = f"mm cat {f}"
+        r = BenchResult(
+            "x",
+            "g",
+            last_stdout=f'{{"path": "{f}"}}\n',
+            returncode=0,
+        )
+        body, lang = _format_recording_output(r, argv_str)
+        assert lang == "json"
+        # Path normalization runs (argv has the abs path) and ANSI strip
+        # is a no-op for plain text.
+        assert "img.jpg" in body
+        assert str(f) not in body
+
+    def test_build_args_line_image_with_mode(self):
+        from mm.commands.bench import BenchResult, _build_args_line
+
+        r = BenchResult(
+            "x",
+            "g",
+            requires_kind="image",
+            data_file_paths=["/tmp/test/1-vqa-car.jpg"],
+        )
+        argv = ["mm", "cat", "/tmp/test/1-vqa-car.jpg", "--mode", "fast"]
+        line = _build_args_line(r, argv)
+        assert line.startswith("args: ")
+        # JSON-parse to assert structure independent of key ordering.
+        payload = json.loads(line[len("args: ") :])
+        assert payload == {"img": "1-vqa-car.jpg", "mode": "fast"}
+
+    def test_build_args_line_multi_image(self):
+        from mm.commands.bench import BenchResult, _build_args_line
+
+        r = BenchResult(
+            "x",
+            "g",
+            requires_kind="image",
+            data_file_paths=["/tmp/a.jpg", "/tmp/b.jpg"],
+        )
+        argv = ["python", "_multi_image_call.py", "/tmp/a.jpg", "/tmp/b.jpg"]
+        line = _build_args_line(r, argv)
+        payload = json.loads(line[len("args: ") :])
+        # Multiple files -> list under the kind key. ``mode`` absent
+        # because argv has no ``--mode`` flag.
+        assert payload == {"img": ["a.jpg", "b.jpg"]}
+
+    def test_build_args_line_empty_when_no_data_or_mode(self):
+        from mm.commands.bench import BenchResult, _build_args_line
+
+        r = BenchResult("x", "g")
+        assert _build_args_line(r, ["mm", "version"]) == ""
+
+    def test_build_footer_line_uses_last_round(self):
+        from mm.commands.bench import BenchResult, _build_footer_line
+
+        r = BenchResult(
+            "x",
+            "g",
+            timings_ms=[2900.0, 2950.0, 3100.0],  # last round = 3.1s
+            total_bytes=39080,
+        )
+        line = _build_footer_line(r)
+        # 3.1s elapsed; 39080 B / 3.1 s ≈ 12.3 KB/s.
+        assert "3.10s" in line
+        assert "38.2 KB" in line
+        assert "/s" in line
+        assert "•" in line
+
+    def test_build_footer_line_empty_for_zero_round_dry_run(self):
+        from mm.commands.bench import BenchResult, _build_footer_line
+
+        r = BenchResult("x", "g", is_dry_run=True)
+        assert _build_footer_line(r) == ""
+
+
+class TestRecordingFile:
+    """End-to-end tests covering ``benchmarks/<YYMMDD>-mm-bench-*.md``."""
+
+    @staticmethod
+    def _today_filename(suite: str) -> str:
+        import datetime as dt
+
+        return f"{dt.datetime.now().strftime('%y%m%d')}-mm-bench-{suite}.md"
+
+    def test_recording_written_for_default_suite(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, small_tree: Path
+    ):
+        monkeypatch.chdir(tmp_path)
+        r = runner.invoke(
+            app,
+            [
+                "bench",
+                str(small_tree),
+                "--command",
+                "find",
+                "-r",
+                "1",
+                "-w",
+                "0",
+                "--format",
+                "json",
+            ],
+        )
+        assert r.exit_code == 0, r.output
+        rec = tmp_path / "benchmarks" / self._today_filename("default")
+        assert rec.exists(), f"expected {rec}, cwd={list(tmp_path.iterdir())}"
+        body = rec.read_text()
+        assert body.startswith("# mm bench recording — default — ")
+        # Each row's Rich-table snapshot is emitted as raw markdown
+        # (not inside a fence) so renderers display the box-drawing
+        # characters directly. Probe column-header text to confirm.
+        assert "Group" in body
+        assert "Base Command" in body
+        # Stdout is still fenced (json when it looks like JSON, text
+        # otherwise).
+        assert "```json" in body or "```text" in body
+
+    def test_recording_written_for_benchfile(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        tmp_path: Path,
+        small_tree: Path,
+    ):
+        monkeypatch.chdir(tmp_path)
+        bf = _write_benchfile(
+            tmp_path / "demo_bench_commands.py",
+            """
+            from mm.commands.bench_commands import BenchCommand
+            COMMANDS = [BenchCommand("hello", "demo", "echo hello")]
+            """,
+        )
+        r = runner.invoke(
+            app,
+            [
+                "bench",
+                str(small_tree),
+                "--bench-file",
+                str(bf),
+                "-r",
+                "1",
+                "-w",
+                "0",
+                "--format",
+                "json",
+            ],
+        )
+        assert r.exit_code == 0, r.output
+        rec = tmp_path / "benchmarks" / self._today_filename("demo")
+        assert rec.exists()
+        body = rec.read_text()
+        assert "# mm bench recording — demo — " in body
+        # Captured stdout from `echo hello`.
+        assert "hello" in body
+
+    def test_recording_skipped_for_dry_run(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, small_tree: Path
+    ):
+        monkeypatch.chdir(tmp_path)
+        r = runner.invoke(
+            app,
+            [
+                "bench",
+                str(small_tree),
+                "--command",
+                "find",
+                "--dry-run",
+                "--format",
+                "json",
+            ],
+        )
+        assert r.exit_code == 0, r.output
+        bench_dir = tmp_path / "benchmarks"
+        # Either the directory wasn't created at all, or it has no
+        # mm-bench-*.md files.
+        if bench_dir.exists():
+            assert not list(bench_dir.glob("*-mm-bench-*.md"))
+
+    def test_recording_skipped_for_host_info(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
+        monkeypatch.chdir(tmp_path)
+        r = runner.invoke(app, ["bench", str(tmp_path), "--host-info"])
+        assert r.exit_code == 0, r.output
+        bench_dir = tmp_path / "benchmarks"
+        if bench_dir.exists():
+            assert not list(bench_dir.glob("*-mm-bench-*.md"))
+
+    def test_recording_strips_absolute_paths(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        tmp_path: Path,
+        small_tree: Path,
+    ):
+        """An echo of the absolute path argument is rewritten to its basename."""
+        monkeypatch.chdir(tmp_path)
+        f = tmp_path / "marker.jpg"
+        f.write_bytes(b"x")
+        bf = _write_benchfile(
+            tmp_path / "abs_paths_bench_commands.py",
+            f"""
+            from mm.commands.bench_commands import BenchCommand
+            COMMANDS = [BenchCommand("echo-abs", "demo", "echo {f}")]
+            """,
+        )
+        r = runner.invoke(
+            app,
+            [
+                "bench",
+                str(small_tree),
+                "--bench-file",
+                str(bf),
+                "-r",
+                "1",
+                "-w",
+                "0",
+                "--format",
+                "json",
+            ],
+        )
+        assert r.exit_code == 0, r.output
+        rec = tmp_path / "benchmarks" / self._today_filename("abs_paths")
+        body = rec.read_text()
+        # Captured stdout had the abs path, but the recording shows the
+        # basename only.
+        assert "marker.jpg" in body
+        assert str(f) not in body
+
+    def test_recording_handles_non_zero_exit(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        tmp_path: Path,
+        small_tree: Path,
+    ):
+        monkeypatch.chdir(tmp_path)
+        bf = _write_benchfile(
+            tmp_path / "fail_bench_commands.py",
+            """
+            from mm.commands.bench_commands import BenchCommand
+            COMMANDS = [
+                BenchCommand("fail", "demo",
+                             "sh -c 'echo boom 1>&2; exit 7'"),
+            ]
+            """,
+        )
+        r = runner.invoke(
+            app,
+            [
+                "bench",
+                str(small_tree),
+                "--bench-file",
+                str(bf),
+                "-r",
+                "1",
+                "-w",
+                "0",
+                "--format",
+                "json",
+            ],
+        )
+        assert r.exit_code == 0, r.output
+        rec = tmp_path / "benchmarks" / self._today_filename("fail")
+        body = rec.read_text()
+        assert "[exit 7]" in body
+        assert "boom" in body
+
+    def test_recording_path_logged_to_stderr(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, small_tree: Path
+    ):
+        monkeypatch.chdir(tmp_path)
+        r = runner.invoke(
+            app,
+            [
+                "bench",
+                str(small_tree),
+                "--command",
+                "find",
+                "-r",
+                "1",
+                "-w",
+                "0",
+                "--format",
+                "json",
+            ],
+        )
+        assert r.exit_code == 0, r.output
+        # ``CliRunner.output`` is the merged stdout+stderr stream; the
+        # recording line is written to stderr via ``typer.echo(...,
+        # err=True)``.
+        assert "Wrote recording to " in r.output
+        assert "-mm-bench-default.md" in r.output

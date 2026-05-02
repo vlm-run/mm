@@ -143,14 +143,23 @@ def resolve_command(
     cmd: BenchCommand,
     directory: Path,
     files: list[FileEntry],
-) -> tuple[list[str], int, int, MediaInfo] | None:
-    """Resolve a command template into (argv, files_count, total_bytes, media_info).
+) -> tuple[list[str], int, int, MediaInfo, list[str]] | None:
+    """Resolve a command template into ``(argv, files_count, total_bytes, media_info, data_file_paths)``.
+
+    The fifth element is the absolute paths the harness substituted
+    into ``{file}`` / ``{files}`` placeholders -- i.e. the row's
+    actual data inputs. Renderers use this to distinguish data-file
+    paths (which become ``<img>`` / ``<vid>`` / ... placeholders in
+    the displayed Base Command) from any other absolute paths the
+    template may legitimately contain (helper script paths,
+    interpreter paths, ...).
 
     Returns None if the command should be skipped (missing files).
     """
     resolved_dir = str(directory.resolve())
     template = cmd.cmd_template
     media = MediaInfo()
+    data_file_paths: list[str] = []
 
     if cmd.requires_kind is not None:
         # Check kind exists (for skip logic even on directory-level commands)
@@ -160,6 +169,7 @@ def resolve_command(
         if cmd.batch > 0 and "{files}" in template:
             picked = _pick_files(files, cmd.requires_kind, cmd.batch)
             abs_paths = [str(directory.resolve() / p) for p in picked]
+            data_file_paths = list(abs_paths)
             template = template.replace("{files}", " ".join(shlex.quote(p) for p in abs_paths))
             count = len(picked)
             total = sum(
@@ -184,6 +194,7 @@ def resolve_command(
             if not picked_one:
                 return None
             abs_path = str(directory.resolve() / picked_one)
+            data_file_paths = [abs_path]
             template = template.replace("{file}", shlex.quote(abs_path))
             count = 1
             total = (
@@ -215,7 +226,7 @@ def resolve_command(
 
     template = template.replace("{dir}", shlex.quote(resolved_dir))
     argv = shlex.split(template)
-    return argv, count, total, media
+    return argv, count, total, media, data_file_paths
 
 
 # ── Command registries ──────────────────────────────────────────────
