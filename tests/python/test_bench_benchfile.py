@@ -544,24 +544,39 @@ class TestVlmgwBenchfileSmoke:
         }, groups
 
     def test_noop_group_has_ping_and_two_image_resolutions(self):
-        """The noop group exists for gateway round-trip cost measurements."""
+        """The noop group exists for gateway round-trip cost measurements.
+
+        ``noop/image-*`` rows must use **client-side**
+        ``--encode.strategy_opts max_width=N`` (PIL/Rust resize before
+        upload), NOT a server-side ``image_resolution`` extra-body
+        knob. The noop gateway endpoint doesn't transform the image at
+        all, so the only knob that actually changes upload bytes is the
+        client-side encoder.
+        """
         mod = self._load()
         noop_cmds = [c for c in mod.COMMANDS if c.group == "noop"]
         names = [c.name for c in noop_cmds]
         assert names == ["noop/ping", "noop/image-512", "noop/image-1024"]
 
         ping, img512, img1024 = noop_cmds
-        # ping has no extra_body, just a --prompt ping.
-        assert ping.tags["extra_body"] == ""
+        # ping has no extra_body and no encoder flag -- just a --prompt.
         assert "--prompt ping" in ping.cmd_template
-        # The image rows pass image_resolution at distinct values via
-        # --generate.extra-body and have NO --prompt (the noop endpoint
-        # is purely a passthrough).
-        assert json.loads(img512.tags["extra_body"]) == {"image_resolution": 512}
-        assert json.loads(img1024.tags["extra_body"]) == {"image_resolution": 1024}
+        assert "--encode.strategy_opts" not in ping.cmd_template
+        assert "--generate.extra-body" not in ping.cmd_template
+
+        # The image rows pass max_width via `--encode.strategy_opts`
+        # (client-side downsample) and NEVER via `--generate.extra-body`.
+        assert "--encode.strategy_opts max_width=512" in img512.cmd_template
+        assert "--encode.strategy_opts max_width=1024" in img1024.cmd_template
         for cmd in (img512, img1024):
+            assert "--generate.extra-body" not in cmd.cmd_template
+            assert "image_resolution" not in cmd.cmd_template
+            # The noop endpoint is a pure passthrough -- no prompt.
             assert "--prompt" not in cmd.cmd_template
-            assert cmd.tags["model"] == "noop"
+
+        # Model tag uses the canonical <org>/<model-name> form.
+        for cmd in noop_cmds:
+            assert cmd.tags["model"] == "vlm-run/noop"
 
     def test_all_27_canonical_model_variants_present(self):
         """Every model variant from the upstream BenchSpec list is represented.
@@ -609,7 +624,12 @@ class TestVlmgwBenchfileSmoke:
 
     def test_specs_translate_with_correct_group_and_tags(self):
         """Spec rows land in `model` (or `model+llm` for cross-model pipelines)
-        and carry model + extra_body tags."""
+        and carry only the `model` tag.
+
+        ``extra_body`` is intentionally NOT a tag column -- it's
+        inlined into the resolved Command cell instead, so tag
+        metadata stays compact.
+        """
         mod = self._load()
         # COMMANDS layout: NOOP_SPECS then SPECS then auxiliary lists.
         offset = len(mod.NOOP_SPECS)
@@ -618,12 +638,13 @@ class TestVlmgwBenchfileSmoke:
             expected_group = "model+llm" if "llm" in spec.extra_body else "model"
             assert cmd.group == expected_group, (spec.name, cmd.group, expected_group)
             assert cmd.name == spec.name
-            assert cmd.tags.get("model") == spec.model
-            # extra_body tag is the JSON-rendered final payload
-            # (including folded fps/max_frames/video_resolution).
-            assert "extra_body" in cmd.tags
-            if cmd.tags["extra_body"]:
-                assert json.loads(cmd.tags["extra_body"]) == mod._eb_for(spec)
+            # Only `model` is surfaced as a tag column.
+            assert set(cmd.tags) == {"model"}, cmd.tags
+            assert cmd.tags["model"] == spec.model
+            # Every model name must follow the <org>/<model-name>
+            # convention -- enforced uniformly so the Model column
+            # is unambiguous across providers.
+            assert "/" in cmd.tags["model"], (spec.name, cmd.tags["model"])
 
     def test_cross_model_pipeline_routed_to_model_plus_llm(self):
         """Specs declaring `extra_body.llm` go to group=`model+llm`."""
@@ -636,6 +657,9 @@ class TestVlmgwBenchfileSmoke:
             # And the model tag still names the *primary* (vision) model,
             # not the post-processor.
             assert cmd.tags["model"] == spec.model
+            # Cross-model pipelines reference the post-processor via
+            # extra_body.llm using the same <org>/<name> convention.
+            assert "/" in spec.extra_body["llm"], spec.extra_body["llm"]
 
     def test_video_specs_fold_extra_body(self):
         mod = self._load()
@@ -648,11 +672,68 @@ class TestVlmgwBenchfileSmoke:
         assert eb["video_max_frames"] == 8
         assert eb["video_resolution"] == "448x336"
 
+    def test_image_res_uses_client_side_encoder_resize(self):
+        """`image-res` rows downsample with `--encode.strategy_opts max_width=N`.
 
-class TestTagColumns:
-    """Tag-driven dynamic columns in the bench renderer + JSON output."""
+        The previous incarnation of this sweep passed
+        ``image_resolution`` via ``--generate.extra-body`` -- a
+        server-side knob -- which is wrong: the gateway is OpenAI-
+        compatible and image resize is supposed to happen client-side,
+        in the encoder, BEFORE the bytes hit the wire. This test pins
+        the correct mechanism so the sweep can't silently regress.
+        """
+        mod = self._load()
+        rows = [c for c in mod.COMMANDS if c.group == "image-res"]
+        assert len(rows) == 3
+        assert {c.name for c in rows} == {
+            "qwen/image-512",
+            "qwen/image-1024",
+            "qwen/image-1536",
+        }
+        for cmd in rows:
+            assert "--encode.strategy_opts max_width=" in cmd.cmd_template
+            # Server-side image_resolution must NOT appear in the
+            # resolved command. Anywhere.
+            assert "image_resolution" not in cmd.cmd_template
+            assert "--generate.extra-body" not in cmd.cmd_template
 
-    def _make_benchfile(self, tmp_path: Path) -> Path:
+    def test_every_command_has_org_prefixed_model_tag(self):
+        """Every non-validation row uses an ``<org>/<model-name>`` model tag.
+
+        Validation rows pin ``(default)`` because the row exercises
+        argument-parsing failures before the model is even looked up;
+        every other row must follow the namespaced convention so the
+        Model column is uniformly resolvable.
+        """
+        mod = self._load()
+        for cmd in mod.COMMANDS:
+            if cmd.group == "validation":
+                continue
+            assert cmd.tags.get("model"), cmd.name
+            assert "/" in cmd.tags["model"], (cmd.name, cmd.tags["model"])
+
+
+class TestColumnsAndCommandCell:
+    """Layout: ``Group | Model | Base Command | Extra Args | <metrics>``.
+
+    ``Profile`` and ``Mode`` are intentionally NOT separate columns:
+    profile is constant across a benchfile run (so showing it on every
+    row is noise), and mode is part of the base command itself. The
+    ``Command`` cell is split into ``Base Command`` (stable shell
+    skeleton: ``mm cat <img> --mode fast --no-cache --format json``)
+    and ``Extra Args`` (variant-specific knobs like ``--prompt`` /
+    ``--generate.*`` / ``--encode.*``) so the eye lands on the
+    *variation* between rows rather than on the boilerplate.
+    """
+
+    def _make_vlmgw_like_benchfile(self, tmp_path: Path) -> Path:
+        """Two-row benchfile mirroring the vlmgw shape (image + video).
+
+        Both rows pin ``--profile vlmgw --mode fast --model
+        <org>/<name>``. Each row carries one ``Extra Args`` flag
+        (``--prompt`` on the image row, ``--generate.extra-body`` on
+        the video row) so we can exercise the base/extra split.
+        """
         bf = tmp_path / "bf.py"
         bf.write_text(
             dedent(
@@ -661,15 +742,27 @@ class TestTagColumns:
 
                 COMMANDS = [
                     BenchCommand(
-                        "alpha-row", "alpha", "echo alpha",
-                        tags={"model": "model-a", "extra_body": '{"k": 1}'},
+                        "img-row",
+                        "model",
+                        "mm --profile vlmgw cat {file} --mode fast "
+                        "--model org-a/model-a --no-cache --format json "
+                        "--prompt 'describe this'",
+                        requires_kind="image",
+                        smallest=True,
+                        skip_reason="no image files",
+                        tags={"model": "org-a/model-a"},
                     ),
                     BenchCommand(
-                        "beta-row", "beta", "echo beta",
-                        tags={"model": "model-b"},
+                        "vid-row",
+                        "model",
+                        "mm --profile vlmgw cat {file} --mode fast "
+                        "--model org-b/model-b --no-cache --format json "
+                        "--generate.extra-body '{\\"video_fps\\":1.0}'",
+                        requires_kind="video",
+                        smallest=True,
+                        skip_reason="no video files",
+                        tags={"model": "org-b/model-b"},
                     ),
-                    # Untagged -- should still render with empty tag cells.
-                    BenchCommand("gamma-row", "gamma", "echo gamma"),
                 ]
                 """
             )
@@ -677,99 +770,349 @@ class TestTagColumns:
         return bf
 
     def test_tags_surface_in_json(self, tmp_path: Path, small_tree: Path):
-        bf = self._make_benchfile(tmp_path)
+        bf = self._make_vlmgw_like_benchfile(tmp_path)
         r = runner.invoke(
             app,
-            [
-                "bench",
-                str(small_tree),
-                "-b",
-                str(bf),
-                "--dry-run",
-                "--format",
-                "json",
-            ],
+            ["bench", str(small_tree), "-b", str(bf), "--dry-run", "--format", "json"],
         )
         assert r.exit_code == 0, r.output
         data = json.loads(r.stdout)
         rows = {row["name"]: row for row in data["results"]}
 
-        assert rows["alpha-row"]["tags"] == {"model": "model-a", "extra_body": '{"k": 1}'}
-        assert rows["beta-row"]["tags"] == {"model": "model-b"}
-        # Untagged rows must NOT include a tags key (clean JSON).
-        assert "tags" not in rows["gamma-row"]
+        assert rows["img-row"]["tags"] == {"model": "org-a/model-a"}
+        assert rows["img-row"]["requires_kind"] == "image"
+        assert rows["vid-row"]["requires_kind"] == "video"
+        # ``profile`` / ``mode`` are intentionally NOT separate JSON
+        # keys -- they're either redundant (constant per run) or part
+        # of the base command itself.
+        assert "profile" not in rows["img-row"]
+        assert "mode" not in rows["img-row"]
 
-    def test_tag_keys_become_columns_in_first_seen_order(
+    def test_minimal_row_keeps_json_compact(self, tmp_path: Path, small_tree: Path):
+        """A row with no tags / no requires_kind keeps the JSON shape minimal."""
+        bf = tmp_path / "bf.py"
+        bf.write_text(
+            dedent(
+                """
+                from mm.commands.bench_commands import BenchCommand
+                COMMANDS = [BenchCommand("alpha", "demo", "echo alpha")]
+                """
+            )
+        )
+        r = runner.invoke(
+            app,
+            ["bench", str(small_tree), "-b", str(bf), "--dry-run", "--format", "json"],
+        )
+        assert r.exit_code == 0, r.output
+        data = json.loads(r.stdout)
+        row = data["results"][0]
+        assert "profile" not in row
+        assert "mode" not in row
+        assert "requires_kind" not in row
+        assert "tags" not in row
+
+    def test_columns_appear_in_fixed_order(
         self, tmp_path: Path, small_tree: Path, monkeypatch: pytest.MonkeyPatch
     ):
-        """`Model` then `Extra Body` columns appear between `Group` and `Command`."""
-        bf = self._make_benchfile(tmp_path)
-        # Rich pulls width from COLUMNS / the terminal; widen so headers
-        # render without ellipsis truncation under CliRunner.
-        monkeypatch.setenv("COLUMNS", "240")
+        """Header order: ``Group | Model | Base Command | Extra Args | <metrics>``."""
+        bf = self._make_vlmgw_like_benchfile(tmp_path)
+        monkeypatch.setenv("COLUMNS", "260")
         r = runner.invoke(
             app,
-            [
-                "bench",
-                str(small_tree),
-                "-b",
-                str(bf),
-                "--dry-run",
-                "--format",
-                "rich",
-            ],
-        )
-        assert r.exit_code == 0, r.output
-        plain = _strip_ansi(r.stdout)
-        # Header line -- locate the column ordering.
-        header_line = next(
-            line for line in plain.splitlines() if "Group" in line and "Command" in line
-        )
-        idx = lambda label: header_line.index(label)  # noqa: E731
-        assert idx("Group") < idx("Model") < idx("Extra Body") < idx("Command") < idx("Mean")
-
-    def test_helpers_humanize_and_collect(self):
-        from mm.commands.bench import BenchResult, _collect_tag_keys, _humanize_tag_key
-
-        results = [
-            BenchResult(
-                "x",
-                "g",
-                tags={"model": "m1", "extra_body": "eb1"},
-                is_dry_run=True,
-            ),
-            BenchResult(
-                "y",
-                "g",
-                tags={"model": "m2", "image_resolution": "low"},
-                is_dry_run=True,
-            ),
-            BenchResult("z", "g", tags={}, is_dry_run=True),
-        ]
-        # First-seen order preserved across rows.
-        assert _collect_tag_keys(results) == ["model", "extra_body", "image_resolution"]
-        assert _humanize_tag_key("extra_body") == "Extra Body"
-        assert _humanize_tag_key("model") == "Model"
-        assert _humanize_tag_key("video-fps") == "Video Fps"
-
-    def test_default_suite_unaffected_when_no_tags(self, small_tree: Path):
-        """Built-in matrix has no tags -> no extra columns rendered."""
-        r = runner.invoke(
-            app,
-            [
-                "bench",
-                str(small_tree),
-                "--dry-run",
-                "--format",
-                "rich",
-            ],
+            ["bench", str(small_tree), "-b", str(bf), "--dry-run", "--format", "rich"],
         )
         assert r.exit_code == 0, r.output
         plain = _strip_ansi(r.stdout)
         header_line = next(
-            line for line in plain.splitlines() if "Group" in line and "Command" in line
+            line for line in plain.splitlines() if "Group" in line and "Base Command" in line
         )
-        # `Model` and `Extra Body` are tag-driven; without tags they
-        # must not appear in the table header.
-        assert "Model" not in header_line
+
+        def _idx(label: str) -> int:
+            m = re.search(rf"\b{re.escape(label)}\b", header_line)
+            assert m, f"label {label!r} not in header line: {header_line!r}"
+            return m.start()
+
+        assert (
+            _idx("Group") < _idx("Model") < _idx("Base Command") < _idx("Extra Args") < _idx("Mean")
+        )
+        # Profile / Mode / Extra Body / plain "Command" are all
+        # intentionally absent from the new layout.
+        assert "Profile" not in header_line
+        assert re.search(r"\bMode\b", header_line) is None
         assert "Extra Body" not in header_line
+
+    def test_command_cell_strips_profile_and_model(
+        self, tmp_path: Path, small_tree: Path, monkeypatch: pytest.MonkeyPatch
+    ):
+        """``--profile X`` and ``--model X`` are dropped from the Base Command cell."""
+        bf = self._make_vlmgw_like_benchfile(tmp_path)
+        monkeypatch.setenv("COLUMNS", "260")
+        r = runner.invoke(
+            app,
+            ["bench", str(small_tree), "-b", str(bf), "--dry-run", "--format", "rich"],
+        )
+        assert r.exit_code == 0, r.output
+        plain = _strip_ansi(r.stdout)
+        # The model identifier appears in the Model column, but the
+        # ``--model`` / ``--profile`` flag tokens themselves must not
+        # appear anywhere in the data rows.
+        assert "org-a/model-a" in plain
+        body_lines = [ln for ln in plain.splitlines() if "<img>" in ln or "<vid>" in ln]
+        assert body_lines, "expected at least one body row with placeholder substitution"
+        for ln in body_lines:
+            assert "--profile" not in ln, ln
+            assert "--model" not in ln, ln
+
+    def test_base_command_keeps_actual_mode_value(
+        self, tmp_path: Path, small_tree: Path, monkeypatch: pytest.MonkeyPatch
+    ):
+        """``--mode fast`` stays literally in Base Command (no <mode> templatize)."""
+        bf = self._make_vlmgw_like_benchfile(tmp_path)
+        monkeypatch.setenv("COLUMNS", "260")
+        r = runner.invoke(
+            app,
+            ["bench", str(small_tree), "-b", str(bf), "--dry-run", "--format", "rich"],
+        )
+        assert r.exit_code == 0, r.output
+        plain = _strip_ansi(r.stdout)
+        assert "--mode fast" in plain
+        # And the placeholder form must NOT appear -- mode is no
+        # longer pulled out into its own column.
+        assert "--mode <mode>" not in plain
+
+    def test_extra_args_column_holds_prompt_and_generate(
+        self, tmp_path: Path, small_tree: Path, monkeypatch: pytest.MonkeyPatch
+    ):
+        """``--prompt`` and ``--generate.*`` go into the ``Extra Args`` column.
+
+        Concretely: at least one body row carries each flag, and the
+        header row carries the new ``Extra Args`` column label.
+        """
+        bf = self._make_vlmgw_like_benchfile(tmp_path)
+        monkeypatch.setenv("COLUMNS", "260")
+        r = runner.invoke(
+            app,
+            ["bench", str(small_tree), "-b", str(bf), "--dry-run", "--format", "rich"],
+        )
+        assert r.exit_code == 0, r.output
+        plain = _strip_ansi(r.stdout)
+        assert "--prompt" in plain
+        assert "--generate.extra-body" in plain
+        header_line = next(
+            line for line in plain.splitlines() if "Base Command" in line and "Extra Args" in line
+        )
+        assert header_line  # already filtered above
+
+    def test_command_cell_uses_kind_placeholder(
+        self, tmp_path: Path, small_tree: Path, monkeypatch: pytest.MonkeyPatch
+    ):
+        """``<img>`` for image rows; ``<vid>`` for video rows."""
+        bf = self._make_vlmgw_like_benchfile(tmp_path)
+        monkeypatch.setenv("COLUMNS", "260")
+        r = runner.invoke(
+            app,
+            ["bench", str(small_tree), "-b", str(bf), "--dry-run", "--format", "rich"],
+        )
+        assert r.exit_code == 0, r.output
+        plain = _strip_ansi(r.stdout)
+        assert "<img>" in plain
+        assert "<vid>" in plain
+
+    def test_default_suite_hides_extra_columns(
+        self, small_tree: Path, monkeypatch: pytest.MonkeyPatch
+    ):
+        """Default benchmark suite has no model tags and no extra args.
+
+        Layout collapses to ``Group | Base Command | <metrics>`` --
+        ``Model`` and ``Extra Args`` are conditionally hidden, and
+        ``Profile`` / ``Mode`` were dropped wholesale.
+        """
+        monkeypatch.setenv("COLUMNS", "260")
+        r = runner.invoke(
+            app,
+            ["bench", str(small_tree), "--dry-run", "--format", "rich"],
+        )
+        assert r.exit_code == 0, r.output
+        plain = _strip_ansi(r.stdout)
+        header_line = next(
+            line for line in plain.splitlines() if "Group" in line and "Base Command" in line
+        )
+        assert "Model" not in header_line
+        assert "Extra Args" not in header_line
+        assert "Profile" not in header_line
+        assert re.search(r"\bMode\b", header_line) is None
+
+
+class TestArgvHelpers:
+    """Unit-level coverage for the argv-manipulation helpers."""
+
+    def test_extract_flag_space_form(self):
+        from mm.commands.bench import _extract_flag
+
+        argv = ["mm", "--profile", "vlmgw", "cat", "x"]
+        assert _extract_flag(argv, "--profile") == "vlmgw"
+
+    def test_extract_flag_equals_form(self):
+        from mm.commands.bench import _extract_flag
+
+        argv = ["mm", "--profile=vlmgw", "cat", "x"]
+        assert _extract_flag(argv, "--profile") == "vlmgw"
+
+    def test_extract_flag_aliases(self):
+        from mm.commands.bench import _extract_flag
+
+        argv = ["mm", "cat", "x", "-m", "fast"]
+        assert _extract_flag(argv, "--mode", "-m") == "fast"
+
+    def test_extract_flag_missing(self):
+        from mm.commands.bench import _extract_flag
+
+        assert _extract_flag(["echo", "hi"], "--profile") == ""
+
+    def test_strip_flag_removes_value(self):
+        from mm.commands.bench import _strip_flag
+
+        argv = ["mm", "--profile", "vlmgw", "cat", "x"]
+        assert _strip_flag(argv, "--profile") == ["mm", "cat", "x"]
+        argv2 = ["mm", "--profile=vlmgw", "cat", "x"]
+        assert _strip_flag(argv2, "--profile") == ["mm", "cat", "x"]
+
+    def test_kind_placeholder(self):
+        from mm.commands.bench import _kind_placeholder
+
+        assert _kind_placeholder("image") == "<img>"
+        assert _kind_placeholder("video") == "<vid>"
+        assert _kind_placeholder("audio") == "<aud>"
+        assert _kind_placeholder("document") == "<doc>"
+        assert _kind_placeholder("code") == "<code>"
+        assert _kind_placeholder(None) == "<file>"
+        assert _kind_placeholder("") == "<file>"
+        # Unknown kinds fall through to a self-describing token.
+        assert _kind_placeholder("blueprint") == "<blueprint>"
+
+    def test_replace_paths_handles_template_tokens(self):
+        from mm.commands.bench import _replace_paths
+
+        argv = ["mm", "cat", "{file}", "--no-cache"]
+        assert _replace_paths(argv, "<img>") == ["mm", "cat", "<img>", "--no-cache"]
+        argv2 = ["mm", "find", "{dir}"]
+        assert _replace_paths(argv2, "<img>") == ["mm", "find", "<dir>"]
+
+    def test_split_base_extra_partitions_argv(self):
+        """``--prompt`` / ``--generate.*`` / ``--encode.*`` move to extra; the rest stays in base."""
+        from mm.commands.bench import _split_base_extra
+
+        argv = [
+            "mm",
+            "cat",
+            "/tmp/x.jpg",
+            "--mode",
+            "accurate",
+            "--no-cache",
+            "--format",
+            "json",
+            "--prompt",
+            "describe",
+            "--generate.extra-body",
+            '{"method":"caption"}',
+            "--encode.strategy_opts",
+            "max_width=512",
+        ]
+        base, extra = _split_base_extra(argv)
+        assert base == [
+            "mm",
+            "cat",
+            "/tmp/x.jpg",
+            "--mode",
+            "accurate",
+            "--no-cache",
+            "--format",
+            "json",
+        ]
+        assert extra == [
+            "--prompt",
+            "describe",
+            "--generate.extra-body",
+            '{"method":"caption"}',
+            "--encode.strategy_opts",
+            "max_width=512",
+        ]
+
+    def test_split_base_extra_handles_equals_form(self):
+        """``--prompt=foo`` (equals-bundled) keeps the value attached to the flag."""
+        from mm.commands.bench import _split_base_extra
+
+        argv = ["mm", "cat", "x", "--prompt=hello", "--no-cache"]
+        base, extra = _split_base_extra(argv)
+        assert base == ["mm", "cat", "x", "--no-cache"]
+        assert extra == ["--prompt=hello"]
+
+    def test_split_base_extra_with_no_extras(self):
+        """Argvs without any extra-flag prefix produce an empty extra list."""
+        from mm.commands.bench import _split_base_extra
+
+        argv = ["mm", "find", "{dir}", "--format", "json"]
+        base, extra = _split_base_extra(argv)
+        assert base == argv
+        assert extra == []
+
+    def test_build_command_cells_full_pipeline(self, tmp_path: Path):
+        """End-to-end: profile/model dropped, paths swapped, base/extra split."""
+        from mm.commands.bench import BenchResult, _build_command_cells
+
+        f = tmp_path / "x.jpg"
+        f.write_bytes(b"\x89PNG\r\n\x1a\n")
+        joined = (
+            f"mm --profile vlmgw cat {f!s} --mode fast --model org/m "
+            f"--no-cache --format json --prompt describe"
+        )
+        r = BenchResult(
+            "n",
+            "g",
+            preview_lines=[joined],
+            requires_kind="image",
+            tags={"model": "org/m"},
+        )
+        base, extra = _build_command_cells(r)
+        # Base: profile/model stripped, real path -> <img>, mode value retained.
+        assert "--profile" not in base
+        assert "vlmgw" not in base
+        assert "--model" not in base
+        assert "org/m" not in base
+        assert "--mode fast" in base
+        assert "<img>" in base
+        assert "--no-cache" in base
+        assert "--format json" in base
+        # Extra: only the variant-specific knob.
+        assert extra == "--prompt describe"
+
+    def test_build_command_cells_empty_extra(self, tmp_path: Path):
+        """Rows without --prompt/--generate.*/--encode.* return an empty extra string."""
+        from mm.commands.bench import BenchResult, _build_command_cells
+
+        f = tmp_path / "x.jpg"
+        f.write_bytes(b"\x89PNG\r\n\x1a\n")
+        joined = f"mm --profile vlmgw cat {f!s} --mode fast --no-cache --format json"
+        r = BenchResult("n", "g", preview_lines=[joined], requires_kind="image")
+        base, extra = _build_command_cells(r)
+        assert "<img>" in base
+        assert "--mode fast" in base
+        assert extra == ""
+
+    def test_build_command_cells_falls_back_to_template_for_skipped(self):
+        """Skipped rows have empty preview_lines; cell uses cmd_template."""
+        from mm.commands.bench import BenchResult, _build_command_cells
+
+        r = BenchResult(
+            "n",
+            "g",
+            cmd_template="mm --profile vlmgw cat {file} --mode fast --prompt hi",
+            requires_kind="image",
+            skipped=True,
+            skip_reason="no image files",
+        )
+        base, extra = _build_command_cells(r)
+        assert "<img>" in base
+        assert "--mode fast" in base
+        assert "vlmgw" not in base
+        assert extra == "--prompt hi"

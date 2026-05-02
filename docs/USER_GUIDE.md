@@ -287,6 +287,40 @@ A worked example covering all `mm cat` override surfaces (model alias,
 prompt overrides, `--generate.extra-body` deep-merge, video frame
 sampling, cache cold/warm) lives in [`benchmarks/vlmgw_bench_commands.py`](../benchmarks/vlmgw_bench_commands.py).
 
+### Table layout: `Group | Model | Base Command | Extra Args | <metrics>`
+
+The bench renderer surfaces up to four structured columns before the
+metrics — the eye lands on the *variation* between rows rather than
+on the boilerplate that's stable across them:
+
+- `Group` — the `BenchCommand.group` bucket (e.g. `model`,
+  `image-res`, `cache`, `404`).
+- `Model` — pulled from `BenchCommand.tags["model"]`. Conventionally
+  follows the `<org>/<model-name>` format (e.g.
+  `microsoft/florence-2-base-ft`, `vikhyatk/moondream2`,
+  `qwen/qwen3.5-0.8b`) so the column is unambiguous across providers.
+  The column is only shown when at least one row declares a `model`
+  tag, so the default suite stays compact.
+- `Base Command` — the **stable** part of the resolved invocation:
+  `mm cat <img> --mode fast --no-cache --format json` (or
+  `mm find <dir> --format json` for the find rows). `--profile` is
+  stripped (it's constant across every row of a given benchfile run)
+  and `--model` is stripped (already in its own column); file paths
+  are substituted with kind-based placeholders (`<img>` / `<vid>` /
+  `<doc>` / `<aud>` / `<code>` / `<dir>`) so paths don't drown out
+  the actual command shape.
+- `Extra Args` — the **variant-specific** knobs:
+  `--prompt …`, `--generate.…`, `--encode.…`. This column is only
+  rendered when at least one row has extras, so the default suite
+  collapses to `Group | Base Command | <metrics>`.
+
+`BenchCommand.tags` can declare additional keys for downstream JSON
+consumers; only the `model` tag drives a dedicated rich-table
+column. High-cardinality / long-string metadata (full prompts, JSON
+blobs) lives in `Extra Args` rather than in tag columns — the
+column-per-tag mechanism is reserved for short, comparable
+identifiers like `model` and `provider`.
+
 ### Filtering: `--group`, `--model`, `--command`
 
 Three independent filters compose via AND, so you can scope a run to
@@ -296,21 +330,24 @@ exactly the rows you want:
   `BenchCommand.group`. E.g. `--group cache` keeps only the cache rows.
 - `--model MODEL` — exact match (case-insensitive) against
   `BenchCommand.tags["model"]`. Cuts across groups, e.g.
-  `--model qwen3.5-0.8b` keeps every row pinned to qwen regardless
+  `--model qwen/qwen3.5-0.8b` keeps every row pinned to qwen regardless
   of which bucket it lives in (model / image-res / video-frames /
   cache, etc.).
-- `--command/-c TERM` — substring filter on `BenchCommand.name`
-  (the variant identifier in the `Command` column).
+- `--command/-c TERM` — substring filter on `BenchCommand.name`. The
+  name is a stable variant identifier (e.g. `florence2/caption`,
+  `qwen/image-512`) defined by the benchfile; it's used purely for
+  filtering and JSON output and isn't shown as a column in the rich
+  table (the resolved `Command` cell is more informative).
 
 ```bash
 # Just the model variants
 mm bench ~/data/mmbench-tiny -b benchmarks/vlmgw_bench_commands.py --group model
 
-# Every row using qwen3.5-0.8b across all groups
-mm bench ~/data/mmbench-tiny -b benchmarks/vlmgw_bench_commands.py --model qwen3.5-0.8b
+# Every row using qwen/qwen3.5-0.8b across all groups
+mm bench ~/data/mmbench-tiny -b benchmarks/vlmgw_bench_commands.py --model qwen/qwen3.5-0.8b
 
 # Just the SAM3 rows in the model group
-mm bench ~/data/mmbench-tiny -b benchmarks/vlmgw_bench_commands.py -g model --model sam3
+mm bench ~/data/mmbench-tiny -b benchmarks/vlmgw_bench_commands.py -g model --model facebook/sam3
 ```
 
 ### Inspecting a plan: `--dry-run`
