@@ -252,3 +252,53 @@ A standalone benchmark script is also available at `./benchmarks/bench_cli.sh`. 
 **Data sources:**
 - `https://storage.googleapis.com/vlm-data-public-prod/mmbench/mmbench-mini.tar.gz`
 - `https://storage.googleapis.com/vlm-data-public-prod/mmbench/mmbench-tiny.tar.gz`
+
+### Custom benchmark suites: `--bench-file`
+
+For internal matrices, point `mm bench` at a Python file that exposes
+`BenchCommand` entries:
+
+```bash
+mm bench ~/data/mmbench-tiny --bench-file benchmarks/vlmgw_bench_commands.py
+mm bench ~/data/mmbench-tiny -b benchmarks/vlmgw_bench_commands.py -r 1 -w 0
+```
+
+A benchfile must define **one** of:
+
+```python
+from mm.commands.bench_commands import BenchCommand
+
+# (a) static list
+COMMANDS: list[BenchCommand] = [...]
+
+# (b) file-aware factory (preferred when commands depend on what's on disk)
+def commands(files) -> list[BenchCommand]: ...
+```
+
+The factory takes precedence when both are present. The loaded set
+**fully replaces** the built-in `overhead + metadata + <mode>` matrix —
+`--mode` is ignored when `--bench-file` is set, and the benchfile's
+own `BenchCommand.group` drives display grouping. `--command`
+substring filtering and `--format` rendering still apply on top, so
+you can scope a slow benchfile to a single row with
+`--command image-resolution` or pipe its JSON to a custom renderer.
+
+A worked example covering all `mm cat` override surfaces (model alias,
+prompt overrides, `--generate.extra-body` deep-merge, video frame
+sampling, cache cold/warm) lives in [`benchmarks/vlmgw_bench_commands.py`](../benchmarks/vlmgw_bench_commands.py).
+
+### Inspecting a plan: `--dry-run`
+
+`--dry-run` resolves the benchmark plan — directory pre-scan, file
+selection, placeholder substitution — without invoking any
+subprocess. Every row renders with `-` placeholders in the rich/tsv
+table and `"dry_run": true` in JSON, with the resolved shell command
+in `argv` for inspection:
+
+```bash
+mm bench ~/data/mmbench-tiny -b benchmarks/vlmgw_bench_commands.py --dry-run
+mm bench ~/data/mmbench-tiny -b benchmarks/vlmgw_bench_commands.py --dry-run --format json
+```
+
+Useful for verifying a new benchfile before committing to a long run,
+or for snapshotting the plan in CI without paying timing cost.

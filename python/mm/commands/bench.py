@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import importlib.util
 import re
 import shlex
 import statistics
@@ -13,7 +14,7 @@ from typing import Annotated, Any, Callable, Optional
 
 import typer
 
-from mm.commands.bench_commands import ALL_COMMANDS, resolve_command
+from mm.commands.bench_commands import ALL_COMMANDS, BenchCommand, resolve_command
 from mm.utils import BaseFormat
 
 # ── Data model ──────────────────────────────────────────────────────
@@ -38,6 +39,7 @@ class BenchResult:
     media_pixel_bits: float = 0.0
     prompt_tokens: int = 0
     completion_tokens: int = 0
+    is_dry_run: bool = False
 
     @property
     def mean_ms(self) -> float:
@@ -134,6 +136,15 @@ class BenchResult:
                 "skipped": True,
                 "skip_reason": self.skip_reason,
             }
+        if self.is_dry_run:
+            return {
+                "name": self.name,
+                "group": self.group,
+                "dry_run": True,
+                "argv": list(self.preview_lines),
+                "files_count": self.files_count,
+                "total_bytes": self.total_bytes,
+            }
         return {
             "name": self.name,
             "group": self.group,
@@ -197,8 +208,16 @@ def _run_benchmarks(
     warmup: int,
     on_progress: Callable[[str, str], None] | None = None,
     commands: list | None = None,
+    dry_run: bool = False,
 ) -> tuple[list[BenchResult], dict[str, Any]]:
-    """Run benchmark commands, return (results, target_info)."""
+    """Run benchmark commands, return (results, target_info).
+
+    When ``dry_run`` is True the function still runs the directory pre-scan
+    and resolves each command (so ``files_count``/``total_bytes``/``media_*``
+    are populated), but does not invoke ``_time_cmd``. Each row is marked
+    ``is_dry_run=True`` so the renderer / JSON encoder can show ``-``
+    placeholders instead of zero metrics.
+    """
     from mm.context import Context
 
     if commands is None:
@@ -219,6 +238,7 @@ def _run_benchmarks(
         "total_bytes": total_bytes,
         "rounds": rounds,
         "warmup": warmup,
+        "dry_run": dry_run,
     }
 
     for cmd in commands:
@@ -254,8 +274,10 @@ def _run_benchmarks(
             media_fps=media.fps,
             media_pixel_bits=media.pixel_bits,
             preview_lines=preview,
+            is_dry_run=dry_run,
         )
-        r.timings_ms = _time_cmd(argv, rounds, warmup)
+        if not dry_run:
+            r.timings_ms = _time_cmd(argv, rounds, warmup)
 
         results.append(r)
 
@@ -306,12 +328,15 @@ def _render_table(results: list[BenchResult], target_info: dict[str, Any]) -> No
 
     wall_ms = target_info.get("total_wall_ms", 0)
     wall_str = _fmt_ms(wall_ms) if wall_ms else "—"
+    is_dry_run = bool(target_info.get("dry_run"))
     caption = (
         f"{target_info['files']:,} files  "
         f"{format_size(target_info['total_bytes'])}  "
         f"rounds={target_info['rounds']}  warmup={target_info['warmup']}  "
         f"total={wall_str}"
     )
+    if is_dry_run:
+        caption += "  (dry run — no commands executed)"
 
     table = Table(
         caption=caption,
@@ -351,6 +376,21 @@ def _render_table(results: list[BenchResult], target_info: dict[str, Any]) -> No
                 "",
                 "",
                 "",
+            )
+            continue
+
+        if r.is_dry_run:
+            placeholder = Text("-", style="dim")
+            table.add_row(
+                r.group,
+                r.name,
+                placeholder,
+                placeholder,
+                placeholder,
+                placeholder,
+                placeholder,
+                placeholder,
+                placeholder,
             )
             continue
 
@@ -512,6 +552,91 @@ def _run_stdout_snapshot(
     print("\n---\n".join(blocks))
 
 
+# ── External benchfile loader ────────────────────────────────────────
+
+
+def _load_benchfile(
+    path: Path,
+    files: list | None = None,
+) -> list[BenchCommand]:
+    """Load an external benchfile and return its ``BenchCommand`` list.
+
+    A benchfile is an ordinary Python module that exposes ONE of:
+
+    * ``commands(files: list[FileEntry]) -> list[BenchCommand]`` — file-aware
+      factory; preferred when present so the benchfile can short-circuit
+      based on which kinds are available on disk.
+    * ``COMMANDS: list[BenchCommand]`` — static list, sufficient for matrices
+      that only depend on placeholder substitution.
+
+    The factory takes precedence: a file may define both, but if
+    ``commands`` is callable we always call it. ``files`` may be ``None``
+    when the loader runs before the directory pre-scan (e.g. when the
+    pre-scan itself wants the command count); the factory should tolerate
+    an empty list in that case.
+
+    Raises ``typer.Exit(1)`` with a friendly stderr message when:
+      * The path doesn't exist or isn't a ``.py`` file
+      * Importing the module raises
+      * Neither ``commands`` nor ``COMMANDS`` is defined
+      * The result isn't a list of ``BenchCommand`` instances
+    """
+    if not path.exists():
+        typer.echo(f"Error: --bench-file {path} not found.", err=True)
+        raise typer.Exit(code=1)
+    if path.suffix != ".py":
+        typer.echo(
+            f"Error: --bench-file must be a .py file (got {path.suffix or '<no suffix>'}).",
+            err=True,
+        )
+        raise typer.Exit(code=1)
+
+    spec = importlib.util.spec_from_file_location(f"_mm_benchfile_{path.stem}", path)
+    if spec is None or spec.loader is None:
+        typer.echo(f"Error: could not load benchfile {path} (invalid module spec).", err=True)
+        raise typer.Exit(code=1)
+    module = importlib.util.module_from_spec(spec)
+    try:
+        spec.loader.exec_module(module)
+    except Exception as e:  # pragma: no cover - exercised via tests with bad files
+        typer.echo(f"Error: failed to import benchfile {path}: {e}", err=True)
+        raise typer.Exit(code=1) from e
+
+    factory = getattr(module, "commands", None)
+    if callable(factory):
+        try:
+            commands = factory(files or [])
+        except Exception as e:
+            typer.echo(f"Error: benchfile {path} `commands(files)` raised: {e}", err=True)
+            raise typer.Exit(code=1) from e
+    elif hasattr(module, "COMMANDS"):
+        commands = module.COMMANDS
+    else:
+        typer.echo(
+            f"Error: benchfile {path} must define either "
+            f"`COMMANDS: list[BenchCommand]` or `def commands(files) -> list[BenchCommand]`.",
+            err=True,
+        )
+        raise typer.Exit(code=1)
+
+    if not isinstance(commands, list):
+        typer.echo(
+            f"Error: benchfile {path} produced {type(commands).__name__}, expected a list.",
+            err=True,
+        )
+        raise typer.Exit(code=1)
+    bad = [(i, c) for i, c in enumerate(commands) if not isinstance(c, BenchCommand)]
+    if bad:
+        i, c = bad[0]
+        typer.echo(
+            f"Error: benchfile {path} entry [{i}] is {type(c).__name__}, "
+            f"expected mm.commands.bench_commands.BenchCommand.",
+            err=True,
+        )
+        raise typer.Exit(code=1)
+    return commands
+
+
 # ── CLI command ─────────────────────────────────────────────────────
 
 
@@ -560,6 +685,30 @@ def bench_cmd(
             ),
         ),
     ] = False,
+    bench_file: Annotated[
+        Optional[Path],
+        typer.Option(
+            "--bench-file",
+            "-b",
+            help=(
+                "Python file exposing `COMMANDS: list[BenchCommand]` or "
+                "`def commands(files) -> list[BenchCommand]`. Replaces the "
+                "built-in overhead+metadata+mode set entirely; --mode is "
+                "ignored. --command filtering still applies on top."
+            ),
+        ),
+    ] = None,
+    dry_run: Annotated[
+        bool,
+        typer.Option(
+            "--dry-run",
+            help=(
+                "Resolve the benchmark plan and render the same table with "
+                "`-` placeholders, without executing any commands. Useful "
+                "for inspecting an external --bench-file before running it."
+            ),
+        ),
+    ] = False,
     host_info: Annotated[
         bool,
         typer.Option("--host-info", help="Show host system info and exit"),
@@ -581,6 +730,19 @@ def bench_cmd(
     substring filter, useful in any mode.
 
     \b
+    ``--bench-file PATH`` loads a Python module that exposes either
+    ``COMMANDS: list[BenchCommand]`` or ``def commands(files) ->
+    list[BenchCommand]`` and **fully replaces** the built-in matrix.
+    ``--mode`` is ignored in this mode; the benchfile's own
+    ``BenchCommand.group`` drives display grouping. ``--command``
+    substring filtering and ``--format`` rendering still apply.
+
+    \b
+    ``--dry-run`` resolves the plan without timing — every row renders
+    with ``-`` placeholders (or ``dry_run: true`` in JSON), great for
+    inspecting a new benchfile before running it.
+
+    \b
     Examples:
       mm bench ~/data                              # overhead + metadata (default)
       mm bench ~/data --mode metadata              # Unix-comparable subset (no LLM)
@@ -589,6 +751,8 @@ def bench_cmd(
       mm bench ~/data --rounds 5                   # more rounds for stability
       mm bench ~/data --format json                # JSON output for archival
       mm bench ~/data --command cat --format stdout > tests/stdout/cat.md
+      mm bench ~/data -b benchmarks/vlmgw_bench_commands.py --dry-run
+      mm bench ~/data -b benchmarks/vlmgw_bench_commands.py -r 1 -w 0
       mm bench --host-info                         # print host spec and exit
       mm bench --host-info --format json           # host spec as JSON
     """
@@ -618,23 +782,39 @@ def bench_cmd(
         )
         return
 
-    bench_mode = mode or "metadata"
-    if bench_mode == "metadata":
-        extraction: list = []
-    elif bench_mode == "fast":
-        extraction = FAST_COMMANDS
-    elif bench_mode == "accurate":
-        extraction = ACCURATE_COMMANDS
-    elif bench_mode == "all":
-        extraction = FAST_COMMANDS + ACCURATE_COMMANDS
+    if bench_file is not None:
+        # External benchfile fully replaces the built-in set. We pass an
+        # empty `files` list to the loader because the directory pre-scan
+        # happens inside `_run_benchmarks`; benchfile factories should
+        # return commands keyed by `requires_kind` placeholders, which are
+        # then resolved per-file inside the runner.
+        commands = _load_benchfile(bench_file)
+        if mode is not None:
+            typer.echo(
+                "Note: --mode is ignored when --bench-file is set; "
+                "the benchfile's BenchCommand.group drives display grouping.",
+                err=True,
+            )
     else:
-        typer.echo(
-            f"Error: Unknown --mode {bench_mode!r}. Use 'metadata', 'fast', 'accurate', or 'all'.",
-            err=True,
-        )
-        raise typer.Exit(code=1)
+        bench_mode = mode or "metadata"
+        if bench_mode == "metadata":
+            extraction: list = []
+        elif bench_mode == "fast":
+            extraction = FAST_COMMANDS
+        elif bench_mode == "accurate":
+            extraction = ACCURATE_COMMANDS
+        elif bench_mode == "all":
+            extraction = FAST_COMMANDS + ACCURATE_COMMANDS
+        else:
+            typer.echo(
+                f"Error: Unknown --mode {bench_mode!r}. "
+                "Use 'metadata', 'fast', 'accurate', or 'all'.",
+                err=True,
+            )
+            raise typer.Exit(code=1)
 
-    commands = OVERHEAD_COMMANDS + METADATA_COMMANDS + extraction
+        commands = OVERHEAD_COMMANDS + METADATA_COMMANDS + extraction
+
     if command:
         needle = command.lower()
         commands = [c for c in commands if needle in c.name.lower()]
@@ -660,13 +840,22 @@ def bench_cmd(
             status.update(f"[dim]{group}[/dim] [bold]{name}[/bold]")
 
         try:
-            results, target_info = _run_benchmarks(directory, rounds, warmup, on_progress, commands)
+            results, target_info = _run_benchmarks(
+                directory,
+                rounds,
+                warmup,
+                on_progress,
+                commands,
+                dry_run=dry_run,
+            )
         finally:
             status.stop()
 
         _render_table(results, target_info)
     elif fmt == "json":
-        results, target_info = _run_benchmarks(directory, rounds, warmup, commands=commands)
+        results, target_info = _run_benchmarks(
+            directory, rounds, warmup, commands=commands, dry_run=dry_run
+        )
 
         from mm.display import json_dumps
 
@@ -677,7 +866,9 @@ def bench_cmd(
         print(json_dumps(output))
     else:
         # tsv/csv fallback
-        results, target_info = _run_benchmarks(directory, rounds, warmup, commands=commands)
+        results, target_info = _run_benchmarks(
+            directory, rounds, warmup, commands=commands, dry_run=dry_run
+        )
 
         from mm.display import emit_tsv
 
