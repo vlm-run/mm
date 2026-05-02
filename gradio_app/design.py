@@ -1,11 +1,3 @@
-"""Design system chrome — fonts, custom CSS, header, footer.
-
-Extracted from ``ui.py`` so the visual layer can be edited without
-touching the Gradio component wiring. The Gradio theme tokens (colours,
-radii, hover states) live in ``theme.py``; this module only carries
-the supplemental CSS, the header markup, and the footer markup.
-"""
-
 from __future__ import annotations
 
 DESIGN_HEAD = """
@@ -81,13 +73,6 @@ DESIGN_HEAD = """
   .gradio-container *:focus-visible {
     outline: 2px solid var(--mm-accent-soft);
     outline-offset: 2px;
-  }
-
-  /* Soft shadow on the white surfaces */
-  .gradio-container .form,
-  .gradio-container .panel,
-  .gradio-container .block {
-    box-shadow: var(--mm-shadow);
   }
 
   /* Tables / Dataframe — explicit so dark mode never wins */
@@ -190,9 +175,6 @@ DESIGN_HEAD = """
     border: 1px solid var(--mm-border);
   }
 
-  /* 2-column layout for Browse/Cat/Grep.
-     min-lg (≥1024px): result : config = 3 : 2 (result side larger).
-     max-lg (<1024px): single column, both fill parent. */
   .gradio-container .mm-twocol {
     display: flex;
     flex-direction: row;
@@ -242,27 +224,217 @@ DESIGN_HEAD = """
     transition: color 0.2s ease;
   }
   .mm-footer a:hover { color: var(--mm-accent-hover); }
-
-  /* Subtle entry animation */
+  .mm-footer .mm-install {
+    font-family: 'Geist Mono', ui-monospace, SFMono-Regular, Consolas, monospace;
+    background: var(--mm-surface-tint);
+    color: var(--mm-accent-deep);
+    padding: 2px 8px;
+    border-radius: 6px;
+    border: 1px solid var(--mm-border);
+    font-size: 11.5px;
+  }
+  .mm-footer .mm-footer-sep {
+    margin: 0 10px;
+    color: var(--mm-text-muted);
+  }
   @keyframes mm-fade-up {
     from { opacity: 0; transform: translateY(8px); }
     to   { opacity: 1; transform: translateY(0); }
   }
-  .mm-header, .mm-section, .mm-footer { animation: mm-fade-up 0.5s ease-out both; }
-  .mm-section { animation-delay: 0.05s; }
+  .mm-header, .mm-footer { animation: mm-fade-up 0.5s ease-out both; }
   .mm-footer  { animation-delay: 0.1s; }
+  .mm-section { padding: 12px 2px 16px 2px; margin: 0; }
+  .gradio-container .mm-tabnav {
+    margin: 4px 0 20px 0 !important;
+    border-bottom: 1px solid var(--mm-border) !important;
+    background: transparent !important;
+    border-radius: 0 !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+  }
+  .gradio-container .mm-tabnav .wrap,
+  .gradio-container .mm-tabnav fieldset {
+    display: flex !important;
+    flex-direction: row !important;
+    gap: 4px !important;
+    border: none !important;
+    background: transparent !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    box-shadow: none !important;
+  }
+  .gradio-container .mm-tabnav label {
+    display: inline-flex !important;
+    align-items: center !important;
+    background: transparent !important;
+    border: none !important;
+    border-bottom: 2px solid transparent !important;
+    border-radius: 0 !important;
+    padding: 8px 16px !important;
+    margin: 0 !important;
+    margin-bottom: -1px !important;
+    color: var(--mm-text-secondary) !important;
+    font-family: Geist, Inter, sans-serif !important;
+    font-size: 14px !important;
+    font-weight: 500 !important;
+    cursor: pointer !important;
+    box-shadow: none !important;
+    transition: color 0.15s ease, border-color 0.15s ease !important;
+  }
+  .gradio-container .mm-tabnav label:hover {
+    color: var(--mm-accent) !important;
+  }
+  .gradio-container .mm-tabnav input[type="radio"] {
+    display: none !important;
+  }
+  .gradio-container .mm-tabnav label.selected,
+  .gradio-container .mm-tabnav label:has(input:checked) {
+    color: var(--mm-text) !important;
+    border-bottom-color: var(--mm-accent) !important;
+    background: transparent !important;
+  }
+  .gradio-container .mm-pane,
+  .gradio-container div.mm-pane {
+    background: transparent !important;
+    background-color: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    border-radius: 0 !important;
+    overflow: visible !important;
+    max-height: none !important;
+    min-height: 0 !important;
+  }
+  .gradio-container .mm-pane > .form,
+  .gradio-container .mm-pane > .panel,
+  .gradio-container .mm-pane > .block:not(.mm-config-panel):not(.mm-accordion),
+  .gradio-container .mm-pane > div.gap:not(.mm-config-panel):not(.mm-accordion) {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    border-radius: 0 !important;
+  }
+  .gr-group > div,
+  .mm-pane > div {
+    background-color: var(--mm-bg) !important;
+  }
+  .mm-config-panel > div,
+  .mm-accordion > div {
+    background-color: var(--mm-surface) !important;
+  }
+  .gradio-container .mm-pane .form > * + *,
+  .gradio-container .mm-pane .gap > * + *,
+  .gradio-container .mm-pane > .form > .block + .block,
+  .gradio-container .mm-config-panel .form > * + *,
+  .gradio-container .mm-config-panel .gap > * + * {
+    border-top: none !important;
+  }
+
+  .gradio-container .mm-accordion {
+    border: 1px solid var(--mm-border) !important;
+    border-radius: 10px !important;
+    background: var(--mm-surface) !important;
+    margin: 12px 0 !important;
+    overflow: hidden !important;
+    box-shadow: none !important;
+  }
+  .gradio-container .mm-accordion > button.label-wrap,
+  .gradio-container .mm-accordion > .label-wrap,
+  .gradio-container .mm-accordion > summary {
+    background: var(--mm-surface-tint) !important;
+    color: var(--mm-text) !important;
+    font-family: Geist, Inter, sans-serif !important;
+    font-size: 13px !important;
+    font-weight: 500 !important;
+    padding: 10px 14px !important;
+    border: none !important;
+    border-radius: 0 !important;
+  }
+  .gradio-container .mm-accordion > button.label-wrap:hover,
+  .gradio-container .mm-accordion > .label-wrap:hover {
+    background: var(--mm-border) !important;
+  }
+  .gradio-container .mm-accordion[open] > button.label-wrap,
+  .gradio-container .mm-accordion.open > button.label-wrap,
+  .gradio-container .mm-accordion[open] > .label-wrap {
+    border-bottom: 1px solid var(--mm-border) !important;
+  }
+
+  /* Profile table — custom @gr.render layout with per-row action buttons */
+  .gradio-container .mm-profile-row {
+    display: grid !important;
+    grid-template-columns: 1.4fr 2fr 1.4fr 0.6fr 0.6fr 1.6fr;
+    gap: 8px !important;
+    padding: 8px 12px !important;
+    border-bottom: 1px solid var(--mm-border) !important;
+    align-items: center !important;
+    background: var(--mm-surface) !important;
+    margin: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+  }
+  .gradio-container .mm-profile-row.mm-profile-header {
+    background: var(--mm-surface-tint) !important;
+    border-radius: 8px 8px 0 0 !important;
+    border-bottom: 1px solid var(--mm-border-strong) !important;
+  }
+  .gradio-container .mm-profile-row > .mm-profile-cell {
+    margin: 0 !important;
+    padding: 0 !important;
+    background: transparent !important;
+    border: none !important;
+    font-family: 'Geist Mono', ui-monospace, monospace !important;
+    font-size: 13px !important;
+    color: var(--mm-text) !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+  }
+  .gradio-container .mm-profile-row.mm-profile-header > .mm-profile-cell {
+    font-family: Geist, Inter, sans-serif !important;
+    font-size: 12px !important;
+    color: var(--mm-text-secondary) !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.04em !important;
+  }
+  .gradio-container .mm-profile-actions {
+    display: flex !important;
+    flex-direction: row !important;
+    gap: 4px !important;
+    flex-wrap: nowrap !important;
+    background: transparent !important;
+    border: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+  .gradio-container .mm-profile-actions button {
+    padding: 4px 10px !important;
+    font-size: 12px !important;
+    white-space: nowrap !important;
+    min-width: 0 !important;
+  }
+  .gradio-container .mm-profile-empty {
+    padding: 16px !important;
+    color: var(--mm-text-secondary) !important;
+    font-style: italic !important;
+  }
 </style>
 """
 
 HEADER_HTML = """
 <div class="mm-header">
-  <h1 class="mm-h1"><span class="mm-h1-mark">mm</span> &middot; fast, multimodal context</h1>
+  <h1 class="mm-h1"><span class="mm-h1-mark">mm</span> &middot; fast, multimodal context for agents</h1>
   <p class="mm-sub">cat, grep &amp; profile management for the mm Python API</p>
 </div>
 """
 
 FOOTER_HTML = (
-    '<div class="mm-footer">Powered by '
+    '<div class="mm-footer">'
+    '<code class="mm-install">pip install mm-ctx</code>'
+    '<span class="mm-footer-sep">·</span>'
+    "Powered by "
     '<a href="https://vlm.run/open-source/mm" target="_blank" rel="noopener">VLM Run</a>'
     "</div>"
 )
