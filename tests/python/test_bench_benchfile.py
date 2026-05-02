@@ -534,7 +534,7 @@ class TestVlmgwBenchfileSmoke:
         # Exact group counts -- the matrix is fully prescribed.
         assert groups == {
             "noop": 3,
-            "model": 27,
+            "model": 29,
             "model+llm": 1,
             "image-res": 3,
             "video-frames": 3,
@@ -578,7 +578,7 @@ class TestVlmgwBenchfileSmoke:
         for cmd in noop_cmds:
             assert cmd.tags["model"] == "vlm-run/noop"
 
-    def test_all_27_canonical_model_variants_present(self):
+    def test_all_canonical_model_variants_present(self):
         """Every model variant from the upstream BenchSpec list is represented.
 
         Locked-in canonical list -- if upstream adds a variant, this
@@ -610,6 +610,8 @@ class TestVlmgwBenchfileSmoke:
             "dots-ocr/grounding_ocr",
             "paddleocr/ocr",
             "paddleocr/detect",
+            "gliner/extract_entities",
+            "gliner/classify_text",
             "smolvlm/256m-caption",
             "smolvlm2/256m-image",
             "smolvlm2/256m-video",

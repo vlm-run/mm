@@ -42,7 +42,7 @@ column section breaks in the bench table:
   the bytes BEFORE upload), not via a server-side ``image_resolution``
   knob, so each row's network payload size is predictable and the
   measurement isolates encode-side cost from model-side cost.
-* ``model`` (27 rows) -- every single-model variant from the
+* ``model`` (29 rows) -- every single-model variant from the
   upstream BenchSpec list. The ``Model`` tag carries the namespaced
   ``<org>/<model-name>`` so each row is self-describing.
 * ``model+llm`` (1 row) -- cross-model pipelines (e.g.
@@ -105,13 +105,14 @@ MOONDREAM2 = "vikhyatk/moondream2"
 QWEN = "qwen/qwen3.5-0.8b"
 RFDETR = "roboflow/rfdetr-nano"
 RFDETR_SEG = "roboflow/rfdetr-seg-nano"
-VITPOSE = "usyd-community/vitpose-s"
+VITPOSE = "usyd-community/vitpose-plus-small"
 SAM3 = "facebook/sam3"
-DOTS_OCR = "rednote-hilab/dots-ocr"
-PADDLEOCR = "paddlepaddle/paddleocr-v5"
-SMOLVLM_256M = "HuggingFaceTB/SmolVLM-256M-Instruct"
-SMOLVLM2_256M_VIDEO = "HuggingFaceTB/SmolVLM2-256M-Video-Instruct"
-SMOLVLM2_500M_VIDEO = "HuggingFaceTB/SmolVLM2-500M-Video-Instruct"
+DOTS_OCR = "rednote-hilab/dots.ocr"
+PADDLEOCR = "paddleocr/pp-ocrv5"
+GLINER = "fastino/gliner2-multi-v1"
+SMOLVLM_256M = "ggml-org/smolvlm-256m-instruct-gguf"
+SMOLVLM2_256M_VIDEO = "ggml-org/smolvlm2-256m-video-instruct-gguf"
+SMOLVLM2_500M_VIDEO = "ggml-org/smolvlm2-500m-video-instruct-gguf"
 
 _CAT = f"mm --profile {PROFILE} cat"
 _BASE_FLAGS = "--mode fast --no-cache --format json"
@@ -350,6 +351,21 @@ SPECS: list[BenchSpec] = [
     # PP-OCRv5 -- scene text recognition
     BenchSpec(PADDLEOCR, "paddleocr/ocr", image=True, extra_body={"method": "ocr"}),
     BenchSpec(PADDLEOCR, "paddleocr/detect", image=True, extra_body={"method": "detect"}),
+    # GLiNER2 -- text-only NER / classification / JSON extraction.
+    # ``mm cat`` requires a file argument so the smallest available
+    # image is attached as a no-op carrier; the model ignores it.
+    BenchSpec(
+        GLINER,
+        "gliner/extract_entities",
+        prompt="Vlm Run is hiring engineers in San Francisco.",
+        extra_body={"method": "extract_entities"},
+    ),
+    BenchSpec(
+        GLINER,
+        "gliner/classify_text",
+        prompt="The fourth quarter earnings exceeded analyst expectations.",
+        extra_body={"method": "classify_text"},
+    ),
     # SmolVLM family (llama.cpp GGUF; only the preferred quantization is
     # measured -- F16 variants exist in the manifest but are excluded).
     BenchSpec(
