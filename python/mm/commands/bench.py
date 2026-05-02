@@ -721,6 +721,7 @@ def _build_table(
     # columns to render based on actual content.
     cmd_cells: list[tuple[str, str]] = [_build_command_cells(r) for r in results]
     has_model = any(r.tags.get("model") for r in results)
+    has_task = any(r.tags.get("task") for r in results)
     has_extra = any(extra for _base, extra in cmd_cells)
 
     table = Table(
@@ -739,6 +740,12 @@ def _build_table(
         # which we want to keep visible in full -- folding rather than
         # truncating preserves the org/name namespace structure.
         table.add_column("Model", no_wrap=False, overflow="fold")
+    if has_task:
+        # ``Task`` is a short closed-taxonomy label (``cap`` / ``ocr`` /
+        # ``det`` / ``seg`` / ``llm`` / ``pose`` / ``track`` / ``noop``)
+        # so a fixed narrow column keeps it visually compact and the
+        # values left-aligned for grep-ability across rows.
+        table.add_column("Task", style="cyan", width=5)
     # Base / Extra both wrap so long invocations stay visible.
     table.add_column("Base Command", no_wrap=False, overflow="fold")
     if has_extra:
@@ -764,6 +771,8 @@ def _build_table(
         prefix: list[Any] = [r.group]
         if has_model:
             prefix.append(r.tags.get("model", ""))
+        if has_task:
+            prefix.append(r.tags.get("task", ""))
 
         if r.skipped:
             # Show the (possibly empty) base + extra cells, then a dim
@@ -1473,7 +1482,22 @@ def bench_cmd(
                 "(case-insensitive exact match on `BenchCommand.tags['model']`). "
                 "Cuts across groups, e.g. `--model qwen3.5-0.8b` keeps every "
                 "row pinned to that model regardless of its group. Combines "
-                "with --group / --command via AND."
+                "with --group / --task / --command via AND."
+            ),
+        ),
+    ] = None,
+    task: Annotated[
+        Optional[str],
+        typer.Option(
+            "--task",
+            help=(
+                "Filter to rows whose `task` tag matches the given value "
+                "(case-insensitive exact match on `BenchCommand.tags['task']`). "
+                "Conventional values: `cap`, `ocr`, `det`, `seg`, `llm`, "
+                "`pose`, `track`, `noop`. Cuts across groups and models, "
+                "e.g. `--task ocr` keeps every OCR row regardless of which "
+                "model it pins. Combines with --group / --model / --command "
+                "via AND."
             ),
         ),
     ] = None,
@@ -1508,8 +1532,8 @@ def bench_cmd(
                 "Python file exposing `COMMANDS: list[BenchCommand]` or "
                 "`def commands(files) -> list[BenchCommand]`. Replaces the "
                 "built-in overhead+metadata+mode set entirely; --mode is "
-                "ignored. --group / --model / --command filters still "
-                "apply on top."
+                "ignored. --group / --model / --task / --command filters "
+                "still apply on top."
             ),
         ),
     ] = None,
@@ -1547,6 +1571,8 @@ def bench_cmd(
     Filtering (combined via AND):
       --group/-g GROUP    keep rows where BenchCommand.group == GROUP
       --model MODEL       keep rows where tags['model'] == MODEL
+      --task TASK         keep rows where tags['task'] == TASK
+                          (cap / ocr / det / seg / llm / pose / track / noop)
       --command/-c TERM   keep rows where TERM is a substring of name
 
     \b
@@ -1555,7 +1581,8 @@ def bench_cmd(
     list[BenchCommand]`` and **fully replaces** the built-in matrix.
     ``--mode`` is ignored in this mode; the benchfile's own
     ``BenchCommand.group`` drives display grouping. ``--group`` /
-    ``--model`` / ``--command`` filters still apply on top.
+    ``--model`` / ``--task`` / ``--command`` filters still apply on
+    top.
 
     \b
     ``--dry-run`` resolves the plan without timing — every row renders
@@ -1576,6 +1603,8 @@ def bench_cmd(
       mm bench ~/data -b benchmarks/vlmgw_bench_commands.py --group cache
       mm bench ~/data -b benchmarks/vlmgw_bench_commands.py --model qwen/qwen3.5-0.8b
       mm bench ~/data -b benchmarks/vlmgw_bench_commands.py -g model --model facebook/sam3
+      mm bench ~/data -b benchmarks/vlmgw_bench_commands.py --task ocr
+      mm bench ~/data -b benchmarks/vlmgw_bench_commands.py --task cap --model qwen/qwen3.5-0.8b
       mm bench --host-info                         # print host spec and exit
       mm bench --host-info --format json           # host spec as JSON
     """
@@ -1656,6 +1685,18 @@ def bench_cmd(
             typer.echo(
                 f"Error: --model {model!r} matched no benchmarks "
                 "(no rows declare this value in `BenchCommand.tags['model']`).",
+                err=True,
+            )
+            raise typer.Exit(code=1)
+
+    if task:
+        needle_t = task.lower()
+        commands = [c for c in commands if c.tags.get("task", "").lower() == needle_t]
+        if not commands:
+            typer.echo(
+                f"Error: --task {task!r} matched no benchmarks "
+                "(no rows declare this value in `BenchCommand.tags['task']`). "
+                "Conventional values: cap, ocr, det, seg, llm, pose, track, noop.",
                 err=True,
             )
             raise typer.Exit(code=1)

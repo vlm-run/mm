@@ -43,6 +43,21 @@ class BenchCommand:
                        keys across all rows in first-seen order, so
                        benchfile authors control the column ordering by
                        defining tags in the order they want displayed.
+
+                       Two keys are first-class: ``model`` and ``task``.
+                       Both render as their own dedicated columns
+                       (``Model`` immediately after ``Group``, ``Task``
+                       immediately after ``Model``) and both are
+                       filterable via the ``--model`` / ``--task`` CLI
+                       flags. ``task`` is conventionally one of
+                       ``cap``, ``ocr``, ``det``, ``seg``, ``llm``,
+                       ``pose``, ``track``, or ``noop`` -- a closed
+                       taxonomy describing what the row exercises:
+                       captioning, OCR, detection, segmentation,
+                       text-only LLM, pose estimation, tracking, or
+                       passthrough/round-trip cost. Other tag keys
+                       still flow through to JSON output but don't
+                       participate in column rendering or filtering.
         disabled:      When True, the row appears in the rendered table
                        (dimmed, with ``skipped: disabled`` in the metrics
                        column) but the harness never invokes its argv.

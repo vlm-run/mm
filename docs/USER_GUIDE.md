@@ -402,7 +402,7 @@ Skipped when:
 
 ### Filtering: `--group`, `--model`, `--command`
 
-Three independent filters compose via AND, so you can scope a run to
+Four independent filters compose via AND, so you can scope a run to
 exactly the rows you want:
 
 - `--group/-g GROUP` — exact match (case-insensitive) against
@@ -412,6 +412,16 @@ exactly the rows you want:
   `--model qwen/qwen3.5-0.8b` keeps every row pinned to qwen regardless
   of which bucket it lives in (model / image-res / video-frames /
   cache, etc.).
+- `--task TASK` — exact match (case-insensitive) against
+  `BenchCommand.tags["task"]`. Conventional taxonomy: `cap` (caption),
+  `ocr`, `det` (detection), `seg` (segmentation), `llm` (text-only
+  generation), `pose`, `track`, `noop` (gateway round-trip cost).
+  Cuts across groups *and* models — `--task ocr` returns every OCR
+  variant in the matrix regardless of which provider serves it,
+  which is the natural slice when comparing capabilities across
+  deployments. Rows without a `task` tag (e.g. `404/*` and
+  `validation/*` infrastructure tests) are intentionally invisible
+  to this filter.
 - `--command/-c TERM` — substring filter on `BenchCommand.name`. The
   name is a stable variant identifier (e.g. `florence2/caption`,
   `qwen/image-512`) defined by the benchfile; it's used purely for
@@ -424,6 +434,12 @@ mm bench ~/data/mmbench-tiny -b benchmarks/vlmgw_bench_commands.py --group model
 
 # Every row using qwen/qwen3.5-0.8b across all groups
 mm bench ~/data/mmbench-tiny -b benchmarks/vlmgw_bench_commands.py --model qwen/qwen3.5-0.8b
+
+# Every OCR row across all providers (florence2, dots-ocr, paddleocr)
+mm bench ~/data/mmbench-tiny -b benchmarks/vlmgw_bench_commands.py --task ocr
+
+# Just the qwen captioning rows (model AND task compose via AND)
+mm bench ~/data/mmbench-tiny -b benchmarks/vlmgw_bench_commands.py --task cap --model qwen/qwen3.5-0.8b
 
 # Just the SAM3 rows in the model group
 mm bench ~/data/mmbench-tiny -b benchmarks/vlmgw_bench_commands.py -g model --model facebook/sam3

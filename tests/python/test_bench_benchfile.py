@@ -374,11 +374,16 @@ class TestFilterFlags:
                 from mm.commands.bench_commands import BenchCommand
 
                 COMMANDS = [
-                    BenchCommand("alpha-x", "alpha", "echo a", tags={"model": "qwen"}),
-                    BenchCommand("alpha-y", "alpha", "echo b", tags={"model": "sam3"}),
-                    BenchCommand("beta-x",  "beta",  "echo c", tags={"model": "qwen"}),
-                    BenchCommand("beta-y",  "beta",  "echo d", tags={"model": "moondream2"}),
-                    BenchCommand("gamma-x", "gamma", "echo e", tags={"model": "sam3"}),
+                    BenchCommand("alpha-x", "alpha", "echo a",
+                                 tags={"model": "qwen",       "task": "cap"}),
+                    BenchCommand("alpha-y", "alpha", "echo b",
+                                 tags={"model": "sam3",       "task": "seg"}),
+                    BenchCommand("beta-x",  "beta",  "echo c",
+                                 tags={"model": "qwen",       "task": "ocr"}),
+                    BenchCommand("beta-y",  "beta",  "echo d",
+                                 tags={"model": "moondream2", "task": "cap"}),
+                    BenchCommand("gamma-x", "gamma", "echo e",
+                                 tags={"model": "sam3",       "task": "seg"}),
                 ]
                 """
             )
@@ -474,6 +479,94 @@ class TestFilterFlags:
         )
         assert r.exit_code == 1, r.output
         assert "--model 'nope'" in (r.stderr or r.output)
+
+    # ── --task filter ────────────────────────────────────────────────
+
+    def test_task_filter_cuts_across_groups_and_models(self, benchfile: Path, small_tree: Path):
+        """`--task seg` keeps every seg row regardless of group / model."""
+        data = self._run(small_tree, benchfile, "--task", "seg")
+        assert {r["name"] for r in data["results"]} == {"alpha-y", "gamma-x"}
+        # And spans both groups + models.
+        assert {r["group"] for r in data["results"]} == {"alpha", "gamma"}
+        assert {r["tags"]["model"] for r in data["results"]} == {"sam3"}
+
+    def test_task_filter_case_insensitive(self, benchfile: Path, small_tree: Path):
+        data = self._run(small_tree, benchfile, "--task", "OCR")
+        assert {r["name"] for r in data["results"]} == {"beta-x"}
+
+    def test_task_filter_exact_match_only(self, benchfile: Path, small_tree: Path):
+        """`--task cap` must NOT match `caption`-style longer tasks."""
+        bf = small_tree.parent / "bf_task_exact.py"
+        bf.write_text(
+            dedent(
+                """
+                from mm.commands.bench_commands import BenchCommand
+                COMMANDS = [
+                    BenchCommand("a", "g", "echo 1", tags={"task": "cap"}),
+                    BenchCommand("b", "g", "echo 2", tags={"task": "caption"}),
+                ]
+                """
+            )
+        )
+        data = self._run(small_tree, bf, "--task", "cap")
+        assert {r["name"] for r in data["results"]} == {"a"}
+
+    def test_task_and_model_compose_via_and(self, benchfile: Path, small_tree: Path):
+        """`--task cap --model qwen` -> only the qwen+cap row."""
+        data = self._run(small_tree, benchfile, "--task", "cap", "--model", "qwen")
+        assert {r["name"] for r in data["results"]} == {"alpha-x"}
+
+    def test_group_task_model_command_four_way_compose(self, benchfile: Path, small_tree: Path):
+        """All four filters narrow the set monotonically (AND-composition)."""
+        # alpha group ∩ task=cap ∩ model=qwen ∩ name contains "x"  -> alpha-x
+        data = self._run(
+            small_tree,
+            benchfile,
+            "--group",
+            "alpha",
+            "--task",
+            "cap",
+            "--model",
+            "qwen",
+            "--command",
+            "x",
+        )
+        assert [r["name"] for r in data["results"]] == ["alpha-x"]
+
+    def test_task_no_match_exits_one(self, benchfile: Path, small_tree: Path):
+        r = runner.invoke(
+            app,
+            ["bench", str(small_tree), "-b", str(benchfile), "--dry-run", "--task", "nope"],
+        )
+        assert r.exit_code == 1, r.output
+        msg = r.stderr or r.output
+        assert "--task 'nope'" in msg
+        # The error mentions the conventional taxonomy so users know what to try.
+        assert "cap" in msg and "ocr" in msg and "noop" in msg
+
+    def test_task_filter_skips_rows_without_task_tag(
+        self, benchfile: Path, small_tree: Path, tmp_path: Path
+    ):
+        """Rows missing a ``task`` tag don't match any ``--task`` value.
+
+        Mirrors how ``404/*`` and ``validation/*`` rows in vlmgw work
+        -- they intentionally carry no ``task`` so ``--task`` filtering
+        passes them through cleanly without ever matching.
+        """
+        bf = tmp_path / "bf_no_task.py"
+        bf.write_text(
+            dedent(
+                """
+                from mm.commands.bench_commands import BenchCommand
+                COMMANDS = [
+                    BenchCommand("with-task",    "g", "echo 1", tags={"task": "cap"}),
+                    BenchCommand("without-task", "g", "echo 2", tags={"model": "x"}),
+                ]
+                """
+            )
+        )
+        data = self._run(small_tree, bf, "--task", "cap")
+        assert {r["name"] for r in data["results"]} == {"with-task"}
 
     def test_filters_work_against_default_suite(self, small_tree: Path):
         """`--group metadata` works against the built-in matrix too."""
@@ -742,7 +835,7 @@ class TestVlmgwBenchfileSmoke:
 
     def test_specs_translate_with_correct_group_and_tags(self):
         """Spec rows land in `model` (or `model+llm` for cross-model pipelines)
-        and carry only the `model` tag.
+        and carry the `model` + `task` tag pair.
 
         ``extra_body`` is intentionally NOT a tag column -- it's
         inlined into the resolved Command cell instead, so tag
@@ -756,9 +849,10 @@ class TestVlmgwBenchfileSmoke:
             expected_group = "model+llm" if "llm" in spec.extra_body else "model"
             assert cmd.group == expected_group, (spec.name, cmd.group, expected_group)
             assert cmd.name == spec.name
-            # Only `model` is surfaced as a tag column.
-            assert set(cmd.tags) == {"model"}, cmd.tags
+            # ``model`` + ``task`` are the two surfaced tag columns.
+            assert set(cmd.tags) == {"model", "task"}, cmd.tags
             assert cmd.tags["model"] == spec.model
+            assert cmd.tags["task"] == spec.task
             # Every model name must follow the <org>/<model-name>
             # convention -- enforced uniformly so the Model column
             # is unambiguous across providers.
@@ -829,6 +923,51 @@ class TestVlmgwBenchfileSmoke:
                 continue
             assert cmd.tags.get("model"), cmd.name
             assert "/" in cmd.tags["model"], (cmd.name, cmd.tags["model"])
+
+    def test_workload_rows_carry_task_tag_from_closed_taxonomy(self):
+        """Every non-infra row tags ``task`` with one of the 8 conventional values.
+
+        ``404/*`` and ``validation/*`` rows are infrastructure failure
+        tests, not workloads, so they're allowed to omit the task tag
+        (and ``--task`` filtering passes them through cleanly). Every
+        other row must declare a ``task`` so ``--task`` slicing covers
+        the matrix exhaustively.
+        """
+        mod = self._load()
+        valid = {"cap", "ocr", "det", "seg", "llm", "pose", "track", "noop"}
+        infra_groups = {"404", "validation"}
+        for cmd in mod.COMMANDS:
+            if cmd.group in infra_groups:
+                # Infra rows MUST NOT carry a task tag -- they're
+                # unfiltered out by ``--task`` on purpose.
+                assert "task" not in cmd.tags, (cmd.name, cmd.tags)
+                continue
+            t = cmd.tags.get("task")
+            assert t, cmd.name
+            assert t in valid, (cmd.name, t)
+
+    def test_task_taxonomy_distribution_is_realistic(self):
+        """The vlmgw matrix exercises every task in the taxonomy.
+
+        Pins the lower-bound count for each task class so a future
+        BenchSpec edit that accidentally removes the only ``pose`` /
+        ``track`` / ``llm`` row is caught here -- coverage of the
+        taxonomy is part of the matrix's value.
+        """
+        from collections import Counter
+
+        mod = self._load()
+        counts = Counter(cmd.tags.get("task") for cmd in mod.COMMANDS if cmd.tags.get("task"))
+        # Lower bounds, not exact (so adding new rows in any class
+        # doesn't churn this test). The matrix MUST exercise every
+        # task in the closed taxonomy.
+        for task in ("cap", "ocr", "det", "seg", "llm", "pose", "track", "noop"):
+            assert counts.get(task, 0) >= 1, (task, counts)
+        # And ``pose`` / ``track`` are intentionally singletons today
+        # (one model each) -- if either grows, that's a matrix
+        # improvement worth flagging.
+        assert counts["pose"] == 1
+        assert counts["track"] == 1
 
 
 class TestColumnsAndCommandCell:
@@ -958,6 +1097,99 @@ class TestColumnsAndCommandCell:
         assert "Profile" not in header_line
         assert re.search(r"\bMode\b", header_line) is None
         assert "Extra Body" not in header_line
+
+    def test_task_column_renders_after_model_when_any_row_tags_it(
+        self, tmp_path: Path, small_tree: Path, monkeypatch: pytest.MonkeyPatch
+    ):
+        """`Task` column appears between `Model` and `Base Command`.
+
+        The column is conditional on at least one row declaring a
+        ``task`` tag (parallels the ``Model`` column's gating). When
+        present the column sits immediately right of ``Model`` so the
+        eye reads ``Group | Model | Task | Base Command`` naturally.
+        """
+        bf = tmp_path / "bf_task_column.py"
+        bf.write_text(
+            dedent(
+                """
+                from mm.commands.bench_commands import BenchCommand
+                COMMANDS = [
+                    BenchCommand(
+                        "img-row", "model",
+                        "mm cat {file} --model org-a/model-a",
+                        requires_kind="image", smallest=True,
+                        skip_reason="no image files",
+                        tags={"model": "org-a/model-a", "task": "cap"},
+                    ),
+                    BenchCommand(
+                        "vid-row", "model",
+                        "mm cat {file} --model org-b/model-b",
+                        requires_kind="video", smallest=True,
+                        skip_reason="no video files",
+                        tags={"model": "org-b/model-b", "task": "ocr"},
+                    ),
+                ]
+                """
+            )
+        )
+        monkeypatch.setenv("COLUMNS", "260")
+        r = runner.invoke(
+            app,
+            ["bench", str(small_tree), "-b", str(bf), "--dry-run", "--format", "rich"],
+        )
+        assert r.exit_code == 0, r.output
+        plain = _strip_ansi(r.stdout)
+        header_line = next(
+            line for line in plain.splitlines() if "Group" in line and "Base Command" in line
+        )
+
+        def _idx(label: str) -> int:
+            m = re.search(rf"\b{re.escape(label)}\b", header_line)
+            assert m, f"label {label!r} not in header line: {header_line!r}"
+            return m.start()
+
+        assert _idx("Group") < _idx("Model") < _idx("Task") < _idx("Base Command")
+        # And the actual task values land in the body rows.
+        body = [ln for ln in plain.splitlines() if "<img>" in ln or "<vid>" in ln]
+        assert body, "expected at least one body row"
+        joined = " ".join(body)
+        assert "cap" in joined
+        assert "ocr" in joined
+
+    def test_task_column_hidden_when_no_row_tags_it(
+        self, tmp_path: Path, small_tree: Path, monkeypatch: pytest.MonkeyPatch
+    ):
+        """A benchfile with no ``task`` tag anywhere keeps `Task` out of the header.
+
+        Mirrors how `Model` and `Extra Args` are conditionally shown
+        -- the renderer only allocates a column when at least one
+        row populates it, so default-suite layouts stay narrow.
+        """
+        bf = tmp_path / "bf_no_task.py"
+        bf.write_text(
+            dedent(
+                """
+                from mm.commands.bench_commands import BenchCommand
+                COMMANDS = [
+                    BenchCommand("a", "g", "echo 1", tags={"model": "m1"}),
+                    BenchCommand("b", "g", "echo 2", tags={"model": "m2"}),
+                ]
+                """
+            )
+        )
+        monkeypatch.setenv("COLUMNS", "260")
+        r = runner.invoke(
+            app,
+            ["bench", str(small_tree), "-b", str(bf), "--dry-run", "--format", "rich"],
+        )
+        assert r.exit_code == 0, r.output
+        plain = _strip_ansi(r.stdout)
+        header_line = next(
+            line for line in plain.splitlines() if "Group" in line and "Base Command" in line
+        )
+        # Model column is present (every row tags it); Task column is not.
+        assert "Model" in header_line
+        assert re.search(r"\bTask\b", header_line) is None
 
     def test_command_cell_strips_profile_and_model(
         self, tmp_path: Path, small_tree: Path, monkeypatch: pytest.MonkeyPatch

@@ -12,14 +12,44 @@ path shipped in PR #106: Typer parsing -> ``apply_overrides`` deep-merge
 Display contract
 ----------------
 
-The table renders ``Group | Model | Base Command | Extra Args | <metrics>``.
+The table renders
+``Group | Model | Task | Base Command | Extra Args | <metrics>``.
 The ``Base Command`` cell holds the **fully resolved** ``mm cat ...``
 shell invocation (with absolute file paths shortened to ``<img>`` /
 ``<vid>`` / ``<file>`` placeholders), so each row is self-describing.
 ``--prompt``, ``--generate.extra-body`` and ``--encode.strategy_opts``
-land in ``Extra Args``. Only ``model`` is surfaced as its own dedicated
-column (via :attr:`BenchCommand.tags`) because grouping by model is the
-most common slice.
+land in ``Extra Args``. ``model`` and ``task`` are surfaced as their
+own dedicated columns (via :attr:`BenchCommand.tags`) because slicing
+by either is the most common interrogation pattern -- ``--model
+qwen/...`` for a single deployment, ``--task ocr`` for a capability
+class across deployments.
+
+Task taxonomy
+-------------
+
+Every row carries a ``task`` tag from the closed set ``cap`` /
+``ocr`` / ``det`` / ``seg`` / ``llm`` / ``pose`` / ``track`` /
+``noop``:
+
+* ``cap``  -- captioning / description (image, video, multi-image,
+  doc-summary).
+* ``ocr``  -- text recognition + document layout (florence2/ocr,
+  dots-ocr/*, paddleocr/*).
+* ``det``  -- object / box detection (florence2/od, moondream/detect,
+  rfdetr/detect).
+* ``seg``  -- mask / region segmentation (rfdetr-seg/segment, sam3/
+  segment{,_box}).
+* ``llm``  -- text-only generation (qwen/text math Q&A, gliner/*
+  NER+classify, cache/* document summarisation).
+* ``pose`` -- keypoint estimation (vitpose/pose).
+* ``track`` -- video object tracking (sam3/track).
+* ``noop`` -- gateway round-trip with no real inference (vlm-run/
+  noop passthrough).
+
+The ``404/*`` and ``validation/*`` rows test infrastructure failure
+paths rather than workloads, so they intentionally carry no ``task``
+tag and stay invisible to ``--task`` filtering -- use ``--group 404``
+/ ``--group validation`` to scope to those.
 
 Model names follow the ``<org>/<model-name>`` convention everywhere
 (both in the displayed ``Model`` column and in the actual ``--model``
@@ -168,7 +198,10 @@ class BenchSpec:
     ``extra_body`` are routed to ``group="model+llm"``. Callers can
     also pin a custom group via :func:`_to_command`'s ``group``
     argument (e.g. the ``noop`` round-trip rows). The model family
-    is conveyed via the ``model`` tag column.
+    and task class are conveyed via the ``model`` / ``task`` tag
+    columns; ``task`` is required at the spec level (closed taxonomy:
+    ``cap`` / ``ocr`` / ``det`` / ``seg`` / ``llm`` / ``pose`` /
+    ``track`` / ``noop``) so every row is filterable by capability.
 
     ``encode_max_width`` (when set) is *client-side*: it surfaces as
     ``--encode.strategy_opts max_width=N`` and downsamples the image
@@ -190,6 +223,7 @@ class BenchSpec:
 
     model: str
     name: str
+    task: str
     prompt: str | None = None
     image: bool = False
     video: bool = False
@@ -271,10 +305,11 @@ def _to_command(spec: BenchSpec, *, group: str | None = None) -> BenchCommand:
         batch=batch,
         smallest=requires is not None,
         skip_reason=f"no {requires} files" if requires else "not applicable",
-        # Only ``model`` is surfaced as a dedicated column; everything
-        # else (prompt, extra_body, encode flags) is inlined in the
-        # resolved ``Command`` cell and filterable via ``--command``.
-        tags={"model": spec.model},
+        # ``model`` + ``task`` are surfaced as dedicated columns; the
+        # rest of the row's variation (prompt, extra_body, encode
+        # flags) is inlined in the resolved ``Command`` cell and
+        # filterable via ``--command``.
+        tags={"model": spec.model, "task": spec.task},
         disabled=spec.disabled,
     )
 
@@ -289,9 +324,11 @@ def _to_command(spec: BenchSpec, *, group: str | None = None) -> BenchCommand:
 
 
 NOOP_SPECS: list[BenchSpec] = [
-    BenchSpec(NOOP, "noop/ping", prompt="ping", disabled=True),
-    BenchSpec(NOOP, "noop/image-512", image=True, encode_max_width=512, disabled=True),
-    BenchSpec(NOOP, "noop/image-1024", image=True, encode_max_width=1024, disabled=True),
+    BenchSpec(NOOP, "noop/ping", task="noop", prompt="ping", disabled=True),
+    BenchSpec(NOOP, "noop/image-512", task="noop", image=True, encode_max_width=512, disabled=True),
+    BenchSpec(
+        NOOP, "noop/image-1024", task="noop", image=True, encode_max_width=1024, disabled=True
+    ),
 ]
 
 
@@ -305,27 +342,32 @@ NOOP_SPECS: list[BenchSpec] = [
 
 
 SPECS: list[BenchSpec] = [
-    # Florence-2
+    # Florence-2 -- caption / OCR / object detection.
     BenchSpec(
         FLORENCE2,
         "florence2/caption",
+        task="cap",
         image=True,
         extra_body={"method": "caption"},
     ),
     BenchSpec(
         FLORENCE2,
         "florence2/ocr",
+        task="ocr",
         pinned_file=_OCR_IMG,
         extra_body={"method": "ocr"},
     ),
-    BenchSpec(FLORENCE2, "florence2/od", image=True, extra_body={"method": "od"}),
+    BenchSpec(FLORENCE2, "florence2/od", task="det", image=True, extra_body={"method": "od"}),
     # Moondream2 -- image. Video support was removed in the gateway
     # (the server now rejects multi-frame requests with a
     # capability_violation), so no moondream/video-caption row.
-    BenchSpec(MOONDREAM2, "moondream/caption", image=True, extra_body={"method": "caption"}),
+    BenchSpec(
+        MOONDREAM2, "moondream/caption", task="cap", image=True, extra_body={"method": "caption"}
+    ),
     BenchSpec(
         MOONDREAM2,
         "moondream/detect",
+        task="det",
         image=True,
         extra_body={"method": "detect", "method_params": {"object": "bench"}},
     ),
@@ -338,13 +380,15 @@ SPECS: list[BenchSpec] = [
     BenchSpec(
         QWEN,
         "qwen/text",
+        task="llm",
         prompt="What is 2+2? Reply in one word.",
         disabled=True,
     ),
-    BenchSpec(QWEN, "qwen/image", image=True, prompt="Describe this image briefly."),
+    BenchSpec(QWEN, "qwen/image", task="cap", image=True, prompt="Describe this image briefly."),
     BenchSpec(
         QWEN,
         "qwen/video",
+        task="cap",
         video=True,
         fps=0.4,
         max_frames=8,
@@ -354,15 +398,17 @@ SPECS: list[BenchSpec] = [
     BenchSpec(
         QWEN,
         "qwen/multi-image",
+        task="cap",
         image=True,
         num_images=2,
         prompt="Compare these two images.",
     ),
     # RF-DETR detection / segmentation
-    BenchSpec(RFDETR, "rfdetr/detect", image=True, extra_body={"method": "detect"}),
+    BenchSpec(RFDETR, "rfdetr/detect", task="det", image=True, extra_body={"method": "detect"}),
     BenchSpec(
         RFDETR_SEG,
         "rfdetr-seg/segment",
+        task="seg",
         image=True,
         extra_body={"method": "segment"},
     ),
@@ -372,6 +418,7 @@ SPECS: list[BenchSpec] = [
     BenchSpec(
         VITPOSE,
         "vitpose/pose",
+        task="pose",
         pinned_file=_POSE_IMG,
         extra_body={"method": "pose"},
     ),
@@ -381,6 +428,7 @@ SPECS: list[BenchSpec] = [
     BenchSpec(
         SAM3,
         "sam3/segment",
+        task="seg",
         image=True,
         extra_body={"method": "segment", "method_params": {"prompt": "soccer ball"}},
         disabled=True,
@@ -388,6 +436,7 @@ SPECS: list[BenchSpec] = [
     BenchSpec(
         SAM3,
         "sam3/segment_box",
+        task="seg",
         image=True,
         extra_body={"method": "segment_box", "method_params": {"box": [50, 50, 400, 400]}},
         disabled=True,
@@ -395,6 +444,7 @@ SPECS: list[BenchSpec] = [
     BenchSpec(
         SAM3,
         "sam3/track",
+        task="track",
         video=True,
         fps=2.0,
         max_frames=30,
@@ -410,6 +460,7 @@ SPECS: list[BenchSpec] = [
     BenchSpec(
         DOTS_OCR,
         "dots-ocr/parse_layout",
+        task="ocr",
         pinned_file=_OCR_IMG,
         extra_body={"method": "parse_layout"},
         disabled=True,
@@ -417,6 +468,7 @@ SPECS: list[BenchSpec] = [
     BenchSpec(
         DOTS_OCR,
         "dots-ocr/parse_layout_only",
+        task="ocr",
         pinned_file=_OCR_IMG,
         extra_body={"method": "parse_layout_only"},
         disabled=True,
@@ -424,6 +476,7 @@ SPECS: list[BenchSpec] = [
     BenchSpec(
         DOTS_OCR,
         "dots-ocr/ocr",
+        task="ocr",
         pinned_file=_OCR_IMG,
         extra_body={"method": "ocr"},
         disabled=True,
@@ -431,15 +484,20 @@ SPECS: list[BenchSpec] = [
     BenchSpec(
         DOTS_OCR,
         "dots-ocr/grounding_ocr",
+        task="ocr",
         pinned_file=_OCR_IMG,
         extra_body={"method": "grounding_ocr", "method_params": {"box": [120, 200, 900, 400]}},
         disabled=True,
     ),
     # PP-OCRv5 -- scene text recognition. Both disabled (Internal
-    # Server Error from the gateway).
+    # Server Error from the gateway). ``paddleocr/detect`` is text-
+    # bounding-box detection within the OCR pipeline; tagged ``ocr``
+    # rather than ``det`` so ``--task ocr`` returns the full OCR
+    # family in one go.
     BenchSpec(
         PADDLEOCR,
         "paddleocr/ocr",
+        task="ocr",
         pinned_file=_OCR_IMG,
         extra_body={"method": "ocr"},
         disabled=True,
@@ -447,6 +505,7 @@ SPECS: list[BenchSpec] = [
     BenchSpec(
         PADDLEOCR,
         "paddleocr/detect",
+        task="ocr",
         pinned_file=_OCR_IMG,
         extra_body={"method": "detect"},
         disabled=True,
@@ -454,10 +513,14 @@ SPECS: list[BenchSpec] = [
     # GLiNER2 -- text-only NER / classification. Both disabled
     # because the gateway rejects images on text-only models, and
     # ``mm cat`` always attaches its file argument to the request
-    # (no way to send pure text via ``mm cat``).
+    # (no way to send pure text via ``mm cat``). Tagged ``llm``
+    # because the workload is text-only structured generation; if
+    # we ever re-classify NER as detection-of-text-spans, flip to
+    # ``det``.
     BenchSpec(
         GLINER,
         "gliner/extract_entities",
+        task="llm",
         prompt="Vlm Run is hiring engineers in San Francisco.",
         extra_body={"method": "extract_entities"},
         disabled=True,
@@ -465,6 +528,7 @@ SPECS: list[BenchSpec] = [
     BenchSpec(
         GLINER,
         "gliner/classify_text",
+        task="llm",
         prompt="The fourth quarter earnings exceeded analyst expectations.",
         extra_body={"method": "classify_text"},
         disabled=True,
@@ -476,18 +540,21 @@ SPECS: list[BenchSpec] = [
     BenchSpec(
         SMOLVLM_256M,
         "smolvlm/256m-caption",
+        task="cap",
         image=True,
         prompt="Describe this image briefly.",
     ),
     BenchSpec(
         SMOLVLM2_256M_VIDEO,
         "smolvlm2/256m-image",
+        task="cap",
         image=True,
         prompt="What is in this image?",
     ),
     BenchSpec(
         SMOLVLM2_256M_VIDEO,
         "smolvlm2/256m-video",
+        task="cap",
         video=True,
         fps=0.4,
         max_frames=8,
@@ -498,12 +565,14 @@ SPECS: list[BenchSpec] = [
     BenchSpec(
         SMOLVLM2_500M_VIDEO,
         "smolvlm2/500m-image",
+        task="cap",
         image=True,
         prompt="Describe this image briefly.",
     ),
     BenchSpec(
         SMOLVLM2_500M_VIDEO,
         "smolvlm2/500m-video",
+        task="cap",
         video=True,
         fps=0.4,
         max_frames=8,
@@ -513,10 +582,14 @@ SPECS: list[BenchSpec] = [
     ),
     # Moondream2 + LLM post-processing -- cross-model pipeline.
     # Disabled (Internal Server Error from the gateway). Routed to
-    # ``group="model+llm"`` automatically when re-enabled.
+    # ``group="model+llm"`` automatically when re-enabled. Tagged
+    # ``cap`` because the front-end task is image captioning -- the
+    # LLM is a post-processor refining the caption, not the primary
+    # workload.
     BenchSpec(
         MOONDREAM2,
         "moondream/caption+llm",
+        task="cap",
         image=True,
         extra_body={"method": "caption", "llm": QWEN},
         disabled=True,
@@ -541,7 +614,7 @@ _IMAGE_RES: list[BenchCommand] = [
         requires_kind="image",
         smallest=True,
         skip_reason="no image files",
-        tags={"model": QWEN},
+        tags={"model": QWEN, "task": "cap"},
     )
     for px in (512, 1024, 1536)
 ]
@@ -561,7 +634,7 @@ _VIDEO_FRAMES: list[BenchCommand] = [
         ),
         requires_kind="video",
         skip_reason="no video files",
-        tags={"model": QWEN},
+        tags={"model": QWEN, "task": "cap"},
     )
     for fps, max_frames in ((0.5, 4), (1.0, 8), (2.0, 16))
 ]
@@ -582,7 +655,9 @@ _CACHE: list[BenchCommand] = [
         requires_kind="document",
         smallest=True,
         skip_reason="no document files",
-        tags={"model": QWEN},
+        # Document summarization is text-only generation downstream of
+        # the doc encoder -- ``llm`` rather than ``cap``.
+        tags={"model": QWEN, "task": "llm"},
     ),
     BenchCommand(
         name="cache/warm",
@@ -595,7 +670,7 @@ _CACHE: list[BenchCommand] = [
         requires_kind="document",
         smallest=True,
         skip_reason="no document files",
-        tags={"model": QWEN},
+        tags={"model": QWEN, "task": "llm"},
     ),
 ]
 
