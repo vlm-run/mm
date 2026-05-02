@@ -8,6 +8,105 @@ Host: `Sudeeps-M3-Max.local` · Apple M3 Max (16 threads) · macOS 14.6 · Pytho
 
 ---
 
+## `mm bench` reference
+
+`mm bench` is a statistical benchmarking harness for `mm` subcommands.
+Every row in the table corresponds to a `BenchCommand` (a shell template
+plus metadata: `group`, `requires_kind`, `tags`, `cmd_template`,
+`smallest`, `batch`, `skip_reason`). The harness resolves each template
+against the dataset, runs it `--warmup` then `--rounds` times, and
+records mean / std / min / max / median latency per row. See
+[`docs/USER_GUIDE.md`](../docs/USER_GUIDE.md) for the column layout
+documentation; the `Group | Model | Base Command | Extra Args | <metrics>`
+shape used here is the standard `--bench-file` rendering.
+
+### Two modes
+
+| Mode | What runs | When to use |
+|---|---|---|
+| **Default** | Built-in `overhead + metadata + <mode>` matrix from `python/mm/commands/bench_commands.py`. `--mode metadata` (default) skips the LLM tier entirely. | Local performance regression checks for the `mm find` / `mm cat` core surfaces. |
+| **`--bench-file`** | A user-supplied Python module exposing `COMMANDS: list[BenchCommand]` (or `def commands(files) -> list[BenchCommand]`). **Replaces** the built-in matrix; `--mode` is ignored. | Custom matrices like this vlmgw run — compare across models, providers, override surfaces, and prompt variants. |
+
+### Flags reference
+
+| Flag | Description |
+|---|---|
+| `--rounds`, `-r` *INT* | Measurement rounds (default `3`). |
+| `--warmup`, `-w` *INT* | Warmup rounds before timed runs (default `1`). Use `-w 0` for cold-only measurements. |
+| `--mode`, `-m` *TEXT* | Default-suite tier: `metadata` (Unix-comparable, no LLM), `fast`, `accurate`, `all`. **Ignored when `--bench-file` is set.** |
+| `--bench-file`, `-b` *PATH* | Replace the built-in matrix with a Python file's `COMMANDS` list. |
+| `--dry-run` | Resolve the plan and render the same table with `-` placeholders. No commands execute. Useful for inspecting a new benchfile. |
+| `--group`, `-g` *GROUP* | Keep rows where `BenchCommand.group == GROUP` (case-insensitive exact match). |
+| `--model` *MODEL* | Keep rows where `tags['model'] == MODEL`. Cuts across groups. |
+| `--command`, `-c` *TERM* | Substring filter on `BenchCommand.name`. Combines with `--group` / `--model` via AND. |
+| `--format`, `-f` *FMT* | Output: `rich` (default Rich table), `json` (one host info line + one results line), `tsv`, `csv`, `stdout` (snapshot mode for `--command cat`). |
+| `--host-info` | Print the host spec (CPU / RAM / GPU / Python / mm version) and exit. |
+
+### Profile pinning
+
+`mm bench` doesn't take a `--profile` flag itself — instead the
+benchfile pins the profile inside each `cmd_template`. For this run:
+
+```python
+PROFILE = "vlmgw"
+_CAT = f"mm --profile {PROFILE} cat"
+_BASE_FLAGS = "--mode fast --no-cache --format json"
+```
+
+So every row resolves to `mm --profile vlmgw cat <file> --mode fast
+--no-cache --format json [extras...]`. The profile (`base_url`,
+`api_key`, default `model`) is read from `~/.config/mm/mm.toml`. See
+[`docs/USER_GUIDE.md`](../docs/USER_GUIDE.md#table-layout-group--model--base-command--extra-args--metrics)
+for the full override-surface contract: profile → pipeline yaml →
+`mm cat` flags (`--model`, `--prompt`, `--generate.*`, `--encode.*`).
+
+### Reproducing this run
+
+```bash
+# Plan inspection (no network):
+mm bench ~/data/mmbench-tiny -b benchmarks/vlmgw_bench_commands.py --dry-run
+
+# Full run (rich table on stdout):
+mm bench ~/data/mmbench-tiny -b benchmarks/vlmgw_bench_commands.py
+
+# Full run (machine-readable, used to regenerate this report):
+mm bench ~/data/mmbench-tiny -b benchmarks/vlmgw_bench_commands.py \
+    --format json > /tmp/vlmgw-bench-260501.json
+
+# Scope to one bucket / model:
+mm bench ~/data/mmbench-tiny -b benchmarks/vlmgw_bench_commands.py --group cache
+mm bench ~/data/mmbench-tiny -b benchmarks/vlmgw_bench_commands.py \
+    --model qwen/qwen3.5-0.8b
+mm bench ~/data/mmbench-tiny -b benchmarks/vlmgw_bench_commands.py \
+    -g model --model facebook/sam3
+```
+
+### Benchfile structure
+
+The benchfile (`benchmarks/vlmgw_bench_commands.py`) builds the
+`COMMANDS` list from a higher-level `BenchSpec` matrix that mirrors the
+upstream vlmgw model list, plus standalone `BenchCommand`s for the
+`image-res`, `video-frames`, `cache`, `404`, and `validation` groups.
+Each spec carries:
+
+- `model` — the gateway model id (`<org>/<model-name>`).
+- `prompt` — optional `--prompt` text. When omitted, the model
+  receives no prompt (it relies on `extra_body.method` instead).
+- `image` / `video` / `num_images` — drive the `requires_kind` /
+  `batch` shape. Text-only specs (gliner, qwen/text) attach the
+  smallest image as a no-op carrier because `mm cat` needs a file
+  argument.
+- `fps` / `max_frames` / `video_resolution` — folded into
+  `--generate.extra-body` as `video_fps` / `video_max_frames` /
+  `video_resolution`.
+- `encode_max_width` — surfaces as `--encode.strategy_opts max_width=N`,
+  a **client-side** PIL/Rust resize that runs before upload.
+- `extra_body` — arbitrary dict deep-merged into the openai
+  `extra_body` payload. Specs declaring an `llm` key route to
+  `group="model+llm"` automatically.
+
+---
+
 ## `noop` (3 rows)
 
 Gateway round-trip cost. `noop/ping` is the smallest possible payload (text-only); `noop/image-{512,1024}` measure passthrough cost at two client-side encoder resolutions. (`vlm-run/noop` isn't in `/v1/openai/models` — these rows currently measure 404 round-trip cost on this gateway.)
