@@ -287,6 +287,32 @@ A worked example covering all `mm cat` override surfaces (model alias,
 prompt overrides, `--generate.extra-body` deep-merge, video frame
 sampling, cache cold/warm) lives in [`benchmarks/vlmgw_bench_commands.py`](../benchmarks/vlmgw_bench_commands.py).
 
+### Filtering: `--group`, `--model`, `--command`
+
+Three independent filters compose via AND, so you can scope a run to
+exactly the rows you want:
+
+- `--group/-g GROUP` — exact match (case-insensitive) against
+  `BenchCommand.group`. E.g. `--group cache` keeps only the cache rows.
+- `--model MODEL` — exact match (case-insensitive) against
+  `BenchCommand.tags["model"]`. Cuts across groups, e.g.
+  `--model qwen3.5-0.8b` keeps every row pinned to qwen regardless
+  of which bucket it lives in (model / image-res / video-frames /
+  cache, etc.).
+- `--command/-c TERM` — substring filter on `BenchCommand.name`
+  (the variant identifier in the `Command` column).
+
+```bash
+# Just the model variants
+mm bench ~/data/mmbench-tiny -b benchmarks/vlmgw_bench_commands.py --group model
+
+# Every row using qwen3.5-0.8b across all groups
+mm bench ~/data/mmbench-tiny -b benchmarks/vlmgw_bench_commands.py --model qwen3.5-0.8b
+
+# Just the SAM3 rows in the model group
+mm bench ~/data/mmbench-tiny -b benchmarks/vlmgw_bench_commands.py -g model --model sam3
+```
+
 ### Inspecting a plan: `--dry-run`
 
 `--dry-run` resolves the benchmark plan — directory pre-scan, file

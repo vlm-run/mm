@@ -732,6 +732,31 @@ def bench_cmd(
             ),
         ),
     ] = None,
+    group: Annotated[
+        Optional[str],
+        typer.Option(
+            "--group",
+            "-g",
+            help=(
+                "Filter to a single group (case-insensitive exact match on "
+                "`BenchCommand.group`). Useful for scoping a benchfile run "
+                "to one bucket, e.g. `--group model` or `--group cache`."
+            ),
+        ),
+    ] = None,
+    model: Annotated[
+        Optional[str],
+        typer.Option(
+            "--model",
+            help=(
+                "Filter to rows whose `model` tag matches the given value "
+                "(case-insensitive exact match on `BenchCommand.tags['model']`). "
+                "Cuts across groups, e.g. `--model qwen3.5-0.8b` keeps every "
+                "row pinned to that model regardless of its group. Combines "
+                "with --group / --command via AND."
+            ),
+        ),
+    ] = None,
     format: Annotated[
         Optional[BaseFormat],
         typer.Option("--format", "-f", help="Output format: rich, json, tsv, csv, stdout"),
@@ -763,7 +788,8 @@ def bench_cmd(
                 "Python file exposing `COMMANDS: list[BenchCommand]` or "
                 "`def commands(files) -> list[BenchCommand]`. Replaces the "
                 "built-in overhead+metadata+mode set entirely; --mode is "
-                "ignored. --command filtering still applies on top."
+                "ignored. --group / --model / --command filters still "
+                "apply on top."
             ),
         ),
     ] = None,
@@ -795,16 +821,21 @@ def bench_cmd(
     \b
     ``--format stdout`` switches to *snapshot* mode: each cat-encoder
     variant runs once and its stdout is recorded between ``---`` separators
-    — handy for refreshing ``tests/stdout/cat.md``. ``--command`` is a
-    substring filter, useful in any mode.
+    — handy for refreshing ``tests/stdout/cat.md``.
+
+    \b
+    Filtering (combined via AND):
+      --group/-g GROUP    keep rows where BenchCommand.group == GROUP
+      --model MODEL       keep rows where tags['model'] == MODEL
+      --command/-c TERM   keep rows where TERM is a substring of name
 
     \b
     ``--bench-file PATH`` loads a Python module that exposes either
     ``COMMANDS: list[BenchCommand]`` or ``def commands(files) ->
     list[BenchCommand]`` and **fully replaces** the built-in matrix.
     ``--mode`` is ignored in this mode; the benchfile's own
-    ``BenchCommand.group`` drives display grouping. ``--command``
-    substring filtering and ``--format`` rendering still apply.
+    ``BenchCommand.group`` drives display grouping. ``--group`` /
+    ``--model`` / ``--command`` filters still apply on top.
 
     \b
     ``--dry-run`` resolves the plan without timing — every row renders
@@ -822,6 +853,9 @@ def bench_cmd(
       mm bench ~/data --command cat --format stdout > tests/stdout/cat.md
       mm bench ~/data -b benchmarks/vlmgw_bench_commands.py --dry-run
       mm bench ~/data -b benchmarks/vlmgw_bench_commands.py -r 1 -w 0
+      mm bench ~/data -b benchmarks/vlmgw_bench_commands.py --group cache
+      mm bench ~/data -b benchmarks/vlmgw_bench_commands.py --model qwen3.5-0.8b
+      mm bench ~/data -b benchmarks/vlmgw_bench_commands.py -g model --model sam3
       mm bench --host-info                         # print host spec and exit
       mm bench --host-info --format json           # host spec as JSON
     """
@@ -883,6 +917,28 @@ def bench_cmd(
             raise typer.Exit(code=1)
 
         commands = OVERHEAD_COMMANDS + METADATA_COMMANDS + extraction
+
+    # Compose --group, --model, --command filters via AND. Each filter
+    # narrows the surviving command set; the first one that empties it
+    # raises with a flag-specific error so the user knows which one
+    # was the culprit.
+    if group:
+        needle_g = group.lower()
+        commands = [c for c in commands if c.group.lower() == needle_g]
+        if not commands:
+            typer.echo(f"Error: --group {group!r} matched no benchmarks.", err=True)
+            raise typer.Exit(code=1)
+
+    if model:
+        needle_m = model.lower()
+        commands = [c for c in commands if c.tags.get("model", "").lower() == needle_m]
+        if not commands:
+            typer.echo(
+                f"Error: --model {model!r} matched no benchmarks "
+                "(no rows declare this value in `BenchCommand.tags['model']`).",
+                err=True,
+            )
+            raise typer.Exit(code=1)
 
     if command:
         needle = command.lower()

@@ -362,6 +362,139 @@ class TestDryRun:
 # ── vlmgw benchfile smoke ────────────────────────────────────────────
 
 
+class TestFilterFlags:
+    """`--group` / `--model` / `--command` compose via AND on benchfile rows."""
+
+    @pytest.fixture
+    def benchfile(self, tmp_path: Path) -> Path:
+        bf = tmp_path / "bf.py"
+        bf.write_text(
+            dedent(
+                """
+                from mm.commands.bench_commands import BenchCommand
+
+                COMMANDS = [
+                    BenchCommand("alpha-x", "alpha", "echo a", tags={"model": "qwen"}),
+                    BenchCommand("alpha-y", "alpha", "echo b", tags={"model": "sam3"}),
+                    BenchCommand("beta-x",  "beta",  "echo c", tags={"model": "qwen"}),
+                    BenchCommand("beta-y",  "beta",  "echo d", tags={"model": "moondream2"}),
+                    BenchCommand("gamma-x", "gamma", "echo e", tags={"model": "sam3"}),
+                ]
+                """
+            )
+        )
+        return bf
+
+    def _run(self, small_tree: Path, bf: Path, *extra: str) -> dict:
+        r = runner.invoke(
+            app,
+            [
+                "bench",
+                str(small_tree),
+                "-b",
+                str(bf),
+                "--dry-run",
+                "--format",
+                "json",
+                *extra,
+            ],
+        )
+        assert r.exit_code == 0, r.output
+        return json.loads(r.stdout)
+
+    def test_group_filter(self, benchfile: Path, small_tree: Path):
+        data = self._run(small_tree, benchfile, "--group", "alpha")
+        assert {r["name"] for r in data["results"]} == {"alpha-x", "alpha-y"}
+
+    def test_group_filter_short_flag(self, benchfile: Path, small_tree: Path):
+        data = self._run(small_tree, benchfile, "-g", "beta")
+        assert {r["name"] for r in data["results"]} == {"beta-x", "beta-y"}
+
+    def test_group_filter_case_insensitive(self, benchfile: Path, small_tree: Path):
+        data = self._run(small_tree, benchfile, "--group", "ALPHA")
+        assert {r["name"] for r in data["results"]} == {"alpha-x", "alpha-y"}
+
+    def test_group_filter_exact_match_only(self, benchfile: Path, small_tree: Path):
+        """`--group alpha` must NOT match `alphabet`-style longer groups."""
+        bf = small_tree.parent / "bf2.py"
+        bf.write_text(
+            dedent(
+                """
+                from mm.commands.bench_commands import BenchCommand
+                COMMANDS = [
+                    BenchCommand("a", "alpha",    "echo 1"),
+                    BenchCommand("b", "alphabet", "echo 2"),
+                ]
+                """
+            )
+        )
+        data = self._run(small_tree, bf, "--group", "alpha")
+        assert {r["name"] for r in data["results"]} == {"a"}
+
+    def test_model_filter_cuts_across_groups(self, benchfile: Path, small_tree: Path):
+        data = self._run(small_tree, benchfile, "--model", "qwen")
+        assert {r["name"] for r in data["results"]} == {"alpha-x", "beta-x"}
+        # And spans both alpha + beta groups.
+        assert {r["group"] for r in data["results"]} == {"alpha", "beta"}
+
+    def test_model_filter_case_insensitive(self, benchfile: Path, small_tree: Path):
+        data = self._run(small_tree, benchfile, "--model", "QWEN")
+        assert {r["name"] for r in data["results"]} == {"alpha-x", "beta-x"}
+
+    def test_group_and_model_compose_via_and(self, benchfile: Path, small_tree: Path):
+        data = self._run(small_tree, benchfile, "--group", "alpha", "--model", "sam3")
+        assert {r["name"] for r in data["results"]} == {"alpha-y"}
+
+    def test_group_model_command_three_way_compose(self, benchfile: Path, small_tree: Path):
+        # alpha group ∩ qwen model ∩ name contains "x" -> alpha-x
+        data = self._run(
+            small_tree,
+            benchfile,
+            "--group",
+            "alpha",
+            "--model",
+            "qwen",
+            "--command",
+            "x",
+        )
+        assert [r["name"] for r in data["results"]] == ["alpha-x"]
+
+    def test_group_no_match_exits_one(self, benchfile: Path, small_tree: Path):
+        r = runner.invoke(
+            app,
+            ["bench", str(small_tree), "-b", str(benchfile), "--dry-run", "--group", "nope"],
+        )
+        assert r.exit_code == 1, r.output
+        assert "--group 'nope'" in (r.stderr or r.output)
+
+    def test_model_no_match_exits_one(self, benchfile: Path, small_tree: Path):
+        r = runner.invoke(
+            app,
+            ["bench", str(small_tree), "-b", str(benchfile), "--dry-run", "--model", "nope"],
+        )
+        assert r.exit_code == 1, r.output
+        assert "--model 'nope'" in (r.stderr or r.output)
+
+    def test_filters_work_against_default_suite(self, small_tree: Path):
+        """`--group metadata` works against the built-in matrix too."""
+        r = runner.invoke(
+            app,
+            [
+                "bench",
+                str(small_tree),
+                "--dry-run",
+                "--format",
+                "json",
+                "--group",
+                "metadata",
+            ],
+        )
+        assert r.exit_code == 0, r.output
+        data = json.loads(r.stdout)
+        groups = {row["group"] for row in data["results"]}
+        assert groups == {"metadata"}, groups
+
+
 class TestVlmgwBenchfileSmoke:
     """The shipped vlmgw benchfile parses cleanly and dry-runs end-to-end."""
 
