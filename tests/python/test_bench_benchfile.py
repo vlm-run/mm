@@ -121,6 +121,39 @@ class TestLoadBenchfile:
             _load_benchfile(bf)
         assert ei.value.exit_code == 1
 
+    def test_module_scope_dataclass_decorates(self, tmp_path: Path):
+        """Dataclasses declared at benchfile module scope decorate cleanly.
+
+        Regression: under Python 3.12 the dataclass decorator walks
+        ``sys.modules.get(cls.__module__).__dict__`` to resolve string
+        annotations. The loader must register the module in
+        ``sys.modules`` BEFORE running ``exec_module``; otherwise the
+        decorator raises ``AttributeError: 'NoneType' object ...``.
+        """
+        bf = _write_benchfile(
+            tmp_path / "bf.py",
+            """
+            from __future__ import annotations
+            from dataclasses import dataclass, field
+            from typing import Any
+            from mm.commands.bench_commands import BenchCommand
+
+            @dataclass(frozen=True)
+            class Spec:
+                model: str
+                extra: dict[str, Any] = field(default_factory=dict)
+
+            COMMANDS = [
+                BenchCommand(s.model, "demo", f"echo {s.model}")
+                for s in [Spec("alpha"), Spec("beta", extra={"k": 1})]
+            ]
+            """,
+        )
+        from mm.commands.bench import _load_benchfile
+
+        cmds = _load_benchfile(bf)
+        assert [c.name for c in cmds] == ["alpha", "beta"]
+
 
 # ── --bench-file CLI integration ─────────────────────────────────────
 
@@ -351,13 +384,60 @@ class TestVlmgwBenchfileSmoke:
         assert r.exit_code == 0, r.output
         data = json.loads(r.stdout)
         groups = {row["group"] for row in data["results"]}
-        # All seven groups from the plan must be represented.
-        assert {
-            "A. image-prompt",
-            "B. model-alias",
-            "C. image-extra-body",
-            "D. video-frame-sampling",
-            "E. cache",
-            "F. unavailable",
-            "G. validation",
-        }.issubset(groups)
+        # Each model family should be represented as its own group, plus
+        # the supplemental cache + validation infra-guard groups.
+        expected_model_groups = {
+            "noop",
+            "florence2",
+            "moondream",
+            "qwen",
+            "rfdetr",
+            "rfdetr-seg",
+            "vitpose",
+            "sam3",
+            "dots-ocr",
+            "paddleocr",
+            "smolvlm",
+            "smolvlm2",
+        }
+        infra_groups = {"cache", "validation"}
+        assert expected_model_groups.issubset(groups), groups
+        assert infra_groups.issubset(groups), groups
+
+    def test_specs_translate_to_commands_one_to_one(self):
+        """Every BenchSpec gets a matching BenchCommand in the COMMANDS list."""
+        from mm.commands.bench import _load_benchfile
+
+        bf_path = Path(__file__).resolve().parents[2] / "benchmarks" / "vlmgw_bench_commands.py"
+        # _load_benchfile registers the module in sys.modules so dataclasses
+        # at module scope decorate cleanly; reach into sys.modules to grab it.
+        _load_benchfile(bf_path)
+        import sys as _sys
+
+        mod = _sys.modules["_mm_benchfile_vlmgw_bench_commands"]
+
+        assert len(mod.COMMANDS) >= len(mod.SPECS)
+        for benchspec, cmd in zip(mod.SPECS, mod.COMMANDS, strict=False):
+            group, _, display = benchspec.name.partition("/")
+            assert cmd.group == group
+            assert cmd.name == (display or group)
+            assert f"--model {benchspec.model}" in cmd.cmd_template
+
+    def test_video_specs_fold_extra_body(self):
+        """fps / max_frames / video_resolution are folded into --generate.extra-body."""
+        from mm.commands.bench import _load_benchfile
+
+        bf_path = Path(__file__).resolve().parents[2] / "benchmarks" / "vlmgw_bench_commands.py"
+        _load_benchfile(bf_path)
+        import sys as _sys
+
+        mod = _sys.modules["_mm_benchfile_vlmgw_bench_commands"]
+
+        qwen_video = next(s for s in mod.SPECS if s.name == "qwen/video")
+        cmd = mod._to_command(qwen_video)
+        m = re.search(r"--generate\.extra-body\s+'([^']+)'", cmd.cmd_template)
+        assert m, cmd.cmd_template
+        eb = json.loads(m.group(1))
+        assert eb["video_fps"] == 0.4
+        assert eb["video_max_frames"] == 8
+        assert eb["video_resolution"] == "448x336"

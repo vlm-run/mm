@@ -7,6 +7,7 @@ import re
 import shlex
 import statistics
 import subprocess
+import sys
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -591,14 +592,21 @@ def _load_benchfile(
         )
         raise typer.Exit(code=1)
 
-    spec = importlib.util.spec_from_file_location(f"_mm_benchfile_{path.stem}", path)
+    module_name = f"_mm_benchfile_{path.stem}"
+    spec = importlib.util.spec_from_file_location(module_name, path)
     if spec is None or spec.loader is None:
         typer.echo(f"Error: could not load benchfile {path} (invalid module spec).", err=True)
         raise typer.Exit(code=1)
     module = importlib.util.module_from_spec(spec)
+    # Register the module in sys.modules BEFORE exec_module so any
+    # dataclass declared at module scope can resolve its `__module__`
+    # via `sys.modules.get(...)` during decoration. Python 3.12+ raises
+    # AttributeError otherwise.
+    sys.modules[module_name] = module
     try:
         spec.loader.exec_module(module)
     except Exception as e:  # pragma: no cover - exercised via tests with bad files
+        sys.modules.pop(module_name, None)
         typer.echo(f"Error: failed to import benchfile {path}: {e}", err=True)
         raise typer.Exit(code=1) from e
 
