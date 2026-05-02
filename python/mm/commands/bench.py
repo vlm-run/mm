@@ -826,36 +826,44 @@ def _render_table(results: list[BenchResult], target_info: dict[str, Any]) -> No
 # ── Markdown recording ──────────────────────────────────────────────
 
 
-def _derive_recording_stem(bench_file: Path | None) -> str:
-    """Return the ``<suite>`` portion of the recording filename.
+def _derive_recording_stem(profile_name: str | None) -> str:
+    """Return the ``<profile>`` portion of the recording filename.
 
-    ``bench_file`` is the ``--bench-file`` Path the user passed (or
-    None for the built-in default suite). For benchfiles we strip the
-    canonical ``_bench_commands`` suffix so
-    ``benchmarks/vlmgw_bench_commands.py`` -> ``vlmgw``; everything
-    else falls back to ``"default"``.
+    Earlier iterations derived this from the ``--bench-file`` path
+    (``benchmarks/vlmgw_bench_commands.py`` -> ``vlmgw``), but the
+    profile name is what actually identifies the gateway / model
+    surface the bench is hitting -- multiple benchfiles can target
+    the same profile, and the same benchfile can be re-run against
+    different profiles. Pinning the stem to the active profile
+    keeps recordings grouped by deployment, not by author intent.
     """
-    if bench_file is None:
+    if not profile_name:
         return "default"
-    stem = Path(bench_file).stem
-    suffix = "_bench_commands"
-    if stem.endswith(suffix):
-        stem = stem[: -len(suffix)]
-    return stem or "default"
+    # ``/`` and other path separators in profile names would punch
+    # subdirectories into the recording path; normalize them out so
+    # ``"a/b"`` lands at ``benchmark/<date>-mm-bench-a-b.md`` rather
+    # than ``benchmark/<date>-mm-bench-a/b.md``.
+    safe = profile_name.replace("/", "-").replace("\\", "-")
+    return safe or "default"
 
 
-def _derive_recording_path(bench_file: Path | None, *, root: Path | None = None) -> Path:
-    """Return the markdown recording path for *bench_file*.
+def _derive_recording_path(profile_name: str | None, *, root: Path | None = None) -> Path:
+    """Return the markdown recording path for the active *profile_name*.
 
-    Defaults to ``<cwd>/benchmarks/<YYMMDD>-mm-bench-<suite>.md``. The
-    ``root`` override exists primarily for tests so they can target a
-    pytest tmp directory without needing ``monkeypatch.chdir``.
+    Defaults to ``<cwd>/benchmark/<YYMMDD>-mm-bench-<profile>.md``.
+    The directory is singular (``benchmark/``) on purpose: pluralized
+    ``benchmarks/`` is the source-of-truth for benchfile inputs
+    (``.py``) and ad-hoc scripts; recordings live separately so they
+    can be archived / cleaned independently of the author-curated
+    inputs. The ``root`` override exists primarily for tests so they
+    can target a pytest tmp directory without needing
+    ``monkeypatch.chdir``.
     """
     import datetime as _dt
 
     today = _dt.datetime.now().strftime("%y%m%d")
-    base = root if root is not None else Path("benchmarks")
-    return base / f"{today}-mm-bench-{_derive_recording_stem(bench_file)}.md"
+    base = root if root is not None else Path("benchmark")
+    return base / f"{today}-mm-bench-{_derive_recording_stem(profile_name)}.md"
 
 
 def _stdout_fence_lang(stdout: str) -> str:
@@ -1070,19 +1078,22 @@ def _write_bench_recording(
 ) -> Path:
     """Write per-row Rich-table snapshots + captured stdout to markdown.
 
-    Returns the resolved output path. Always writes (idempotent
-    overwrite -- one snapshot per suite per day); the caller decides
-    whether to call this based on flags (``--dry-run`` / ``--host-info``
-    / ``--format stdout`` all skip).
+    Returns the resolved output path -- ``benchmark/<YYMMDD>-mm-bench-
+    <profile>.md`` (one snapshot per profile per day, idempotent
+    overwrite). The caller decides whether to invoke this based on
+    flags (``--dry-run`` / ``--host-info`` / ``--format stdout`` all
+    skip). ``bench_file`` is forwarded purely so the header line can
+    cite the originating benchfile when one was passed.
     """
     import datetime as _dt
 
     from mm.display import format_size
 
-    path = _derive_recording_path(bench_file, root=root)
+    profile_name = (host_info.get("profile") or {}).get("name")
+    path = _derive_recording_path(profile_name, root=root)
     path.parent.mkdir(parents=True, exist_ok=True)
 
-    stem = _derive_recording_stem(bench_file)
+    stem = _derive_recording_stem(profile_name)
     today = _dt.datetime.now().strftime("%Y-%m-%d")
 
     lines: list[str] = []

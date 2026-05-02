@@ -321,25 +321,33 @@ blobs) lives in `Extra Args` rather than in tag columns — the
 column-per-tag mechanism is reserved for short, comparable
 identifiers like `model` and `provider`.
 
-### Bench recording: `benchmarks/<YYMMDD>-mm-bench-<suite>.md`
+### Bench recording: `benchmark/<YYMMDD>-mm-bench-<profile>.md`
 
 Every non-dry-run `mm bench` invocation also writes a per-row
-markdown snapshot under `benchmarks/`. The file contains, for each
-benchmarked command, the *exact same single-row Rich table* the live
-bench rendered — followed by a fenced block holding that row's
-captured stdout. This keeps a portable, diffable record of what was
-measured *and* what each command actually returned, which is
-particularly useful when chasing regressions across gateway versions
-or comparing two benchfiles side-by-side.
+markdown snapshot under `benchmark/` (singular — distinct from
+the plural `benchmarks/` directory where author-curated benchfiles
+and ad-hoc scripts live). The file contains, for each benchmarked
+command, the *exact same single-row Rich table* the live bench
+rendered — followed by a fenced block holding that row's captured
+stdout. This keeps a portable, diffable record of what was measured
+*and* what each command actually returned, which is particularly
+useful when chasing regressions across gateway versions or comparing
+two benchfiles side-by-side.
 
 Path derivation:
 
-- `benchmarks/<YYMMDD>-mm-bench-<suite>.md` (relative to the current
-  working directory; `benchmarks/` is created if missing).
-- `<suite>` is `default` for the built-in suite, or
-  `Path(--bench-file).stem` with a trailing `_bench_commands` stripped
-  (so `benchmarks/vlmgw_bench_commands.py` → `vlmgw`).
-- Existing files are overwritten — one snapshot per suite per day.
+- `benchmark/<YYMMDD>-mm-bench-<profile>.md` (relative to the current
+  working directory; `benchmark/` is created if missing).
+- `<profile>` is the *active mm profile name* (the same one that
+  drives `mm cat`'s default base URL / model — see the `--profile`
+  flag and `~/.config/mm/mm.toml`). When no profile is configured
+  the stem falls back to `default`.
+- The recording is keyed on the deployment being measured, not on
+  the benchfile that wrote the matrix: re-running the same benchfile
+  against a different profile writes to a different file, and two
+  benchfiles aimed at the same profile will overwrite each other on
+  the same day.
+- Existing files are overwritten — one snapshot per profile per day.
   Use `git mv` afterwards if you want per-run history.
 
 Per-row layout:

@@ -1247,9 +1247,9 @@ class TestDisabledRows:
         self, tmp_path: Path, small_tree: Path, monkeypatch: pytest.MonkeyPatch
     ):
         """JSON surfaces ``skipped: true`` plus ``skip_reason: disabled`` plus ``disabled: true``."""
-        # ``--dry-run`` keeps the markdown recorder dormant so this
-        # test doesn't leak a ``benchmarks/<date>-mm-bench-bf.md``
-        # file into whatever ``cwd`` pytest happens to inherit.
+        # ``monkeypatch.chdir`` keeps any incidental recording from
+        # leaking a ``benchmark/<date>-mm-bench-<profile>.md`` file
+        # into whatever ``cwd`` pytest happens to inherit.
         monkeypatch.chdir(tmp_path)
         bf = _write_benchfile(
             tmp_path / "bf.py",
@@ -1348,34 +1348,48 @@ class TestDisabledRows:
 class TestRecordingHelpers:
     """Unit tests for the recording helper functions (no subprocesses)."""
 
-    def test_derive_recording_stem_default(self):
+    def test_derive_recording_stem_default_for_missing_profile(self):
+        """Empty / None profile name falls back to the literal ``default``."""
         from mm.commands.bench import _derive_recording_stem
 
         assert _derive_recording_stem(None) == "default"
+        assert _derive_recording_stem("") == "default"
 
-    def test_derive_recording_stem_strips_bench_commands_suffix(self, tmp_path: Path):
+    def test_derive_recording_stem_passes_through_simple_profile(self):
+        """Plain alphanumeric profile names land in the filename verbatim."""
         from mm.commands.bench import _derive_recording_stem
 
-        bf = tmp_path / "vlmgw_bench_commands.py"
-        bf.write_text("COMMANDS = []\n")
-        assert _derive_recording_stem(bf) == "vlmgw"
+        assert _derive_recording_stem("vlmgw") == "vlmgw"
+        assert _derive_recording_stem("ollama") == "ollama"
+        assert _derive_recording_stem("dev") == "dev"
 
-    def test_derive_recording_stem_keeps_other_stems(self, tmp_path: Path):
+    def test_derive_recording_stem_normalises_path_separators(self):
+        """``a/b`` -> ``a-b`` so profile names can't punch subdirs into the path."""
         from mm.commands.bench import _derive_recording_stem
 
-        bf = tmp_path / "custom.py"
-        bf.write_text("COMMANDS = []\n")
-        assert _derive_recording_stem(bf) == "custom"
+        assert _derive_recording_stem("org/profile") == "org-profile"
+        assert _derive_recording_stem("a\\b") == "a-b"
 
-    def test_derive_recording_path_uses_yymmdd(self, tmp_path: Path):
+    def test_derive_recording_path_uses_yymmdd_and_singular_dir(self, tmp_path: Path):
+        """Default root is ``benchmark/`` (singular); filename folds in profile."""
         import datetime as dt
 
         from mm.commands.bench import _derive_recording_path
 
-        path = _derive_recording_path(None, root=tmp_path / "benchmarks")
+        path = _derive_recording_path("vlmgw", root=tmp_path / "benchmark")
+        today = dt.datetime.now().strftime("%y%m%d")
+        assert path.name == f"{today}-mm-bench-vlmgw.md"
+        assert path.parent == tmp_path / "benchmark"
+
+    def test_derive_recording_path_default_when_no_profile(self, tmp_path: Path):
+        """``None`` profile -> ``-mm-bench-default.md`` so plain runs still record."""
+        import datetime as dt
+
+        from mm.commands.bench import _derive_recording_path
+
+        path = _derive_recording_path(None, root=tmp_path / "benchmark")
         today = dt.datetime.now().strftime("%y%m%d")
         assert path.name == f"{today}-mm-bench-default.md"
-        assert path.parent == tmp_path / "benchmarks"
 
     def test_stdout_fence_lang_json_for_object(self):
         from mm.commands.bench import _stdout_fence_lang
@@ -1539,13 +1553,31 @@ class TestRecordingHelpers:
 
 
 class TestRecordingFile:
-    """End-to-end tests covering ``benchmarks/<YYMMDD>-mm-bench-*.md``."""
+    """End-to-end tests covering ``benchmark/<YYMMDD>-mm-bench-<profile>.md``."""
 
     @staticmethod
-    def _today_filename(suite: str) -> str:
+    def _today_filename(stem: str) -> str:
         import datetime as dt
 
-        return f"{dt.datetime.now().strftime('%y%m%d')}-mm-bench-{suite}.md"
+        return f"{dt.datetime.now().strftime('%y%m%d')}-mm-bench-{stem}.md"
+
+    @staticmethod
+    def _active_profile_stem() -> str:
+        """The profile-name stem the recorder will use for the current test run.
+
+        Tests don't pin a ``--profile`` flag, so the stem matches
+        whatever the dev / CI environment has configured as the
+        active profile -- discovered the same way ``mm bench`` does
+        (via ``collect_host_info``). Falls back to ``"default"``
+        when no profile is active, mirroring
+        ``_derive_recording_stem(None)``.
+        """
+        from mm.bench_utils import collect_host_info
+
+        from mm.commands.bench import _derive_recording_stem
+
+        prof = (collect_host_info().get("profile") or {}).get("name")
+        return _derive_recording_stem(prof)
 
     def test_recording_written_for_default_suite(
         self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, small_tree: Path
@@ -1567,10 +1599,11 @@ class TestRecordingFile:
             ],
         )
         assert r.exit_code == 0, r.output
-        rec = tmp_path / "benchmarks" / self._today_filename("default")
+        stem = self._active_profile_stem()
+        rec = tmp_path / "benchmark" / self._today_filename(stem)
         assert rec.exists(), f"expected {rec}, cwd={list(tmp_path.iterdir())}"
         body = rec.read_text()
-        assert body.startswith("# mm bench recording — default — ")
+        assert body.startswith(f"# mm bench recording — {stem} — ")
         # Each row's Rich-table snapshot is emitted as raw markdown
         # (not inside a fence) so renderers display the box-drawing
         # characters directly. Probe column-header text to confirm.
@@ -1622,7 +1655,7 @@ class TestRecordingFile:
             ],
         )
         assert r.exit_code == 0, r.output
-        rec = tmp_path / "benchmarks" / self._today_filename("summary")
+        rec = tmp_path / "benchmark" / self._today_filename(self._active_profile_stem())
         body = rec.read_text()
         # Disabled row is in the roll-up section, NOT as its own
         # Rich-table block.
@@ -1665,10 +1698,14 @@ class TestRecordingFile:
             ],
         )
         assert r.exit_code == 0, r.output
-        rec = tmp_path / "benchmarks" / self._today_filename("demo")
+        stem = self._active_profile_stem()
+        rec = tmp_path / "benchmark" / self._today_filename(stem)
         assert rec.exists()
         body = rec.read_text()
-        assert "# mm bench recording — demo — " in body
+        # Recording is keyed by *profile*, not benchfile -- the same
+        # benchfile against different profiles writes to different
+        # files (and vice-versa).
+        assert f"# mm bench recording — {stem} — " in body
         # Captured stdout from `echo hello`.
         assert "hello" in body
 
@@ -1689,7 +1726,7 @@ class TestRecordingFile:
             ],
         )
         assert r.exit_code == 0, r.output
-        bench_dir = tmp_path / "benchmarks"
+        bench_dir = tmp_path / "benchmark"
         # Either the directory wasn't created at all, or it has no
         # mm-bench-*.md files.
         if bench_dir.exists():
@@ -1699,7 +1736,7 @@ class TestRecordingFile:
         monkeypatch.chdir(tmp_path)
         r = runner.invoke(app, ["bench", str(tmp_path), "--host-info"])
         assert r.exit_code == 0, r.output
-        bench_dir = tmp_path / "benchmarks"
+        bench_dir = tmp_path / "benchmark"
         if bench_dir.exists():
             assert not list(bench_dir.glob("*-mm-bench-*.md"))
 
@@ -1736,7 +1773,7 @@ class TestRecordingFile:
             ],
         )
         assert r.exit_code == 0, r.output
-        rec = tmp_path / "benchmarks" / self._today_filename("abs_paths")
+        rec = tmp_path / "benchmark" / self._today_filename(self._active_profile_stem())
         body = rec.read_text()
         # Captured stdout had the abs path, but the recording shows the
         # basename only.
@@ -1776,7 +1813,7 @@ class TestRecordingFile:
             ],
         )
         assert r.exit_code == 0, r.output
-        rec = tmp_path / "benchmarks" / self._today_filename("fail")
+        rec = tmp_path / "benchmark" / self._today_filename(self._active_profile_stem())
         body = rec.read_text()
         assert "[exit 7]" in body
         assert "boom" in body
@@ -1803,6 +1840,11 @@ class TestRecordingFile:
         assert r.exit_code == 0, r.output
         # ``CliRunner.output`` is the merged stdout+stderr stream; the
         # recording line is written to stderr via ``typer.echo(...,
-        # err=True)``.
+        # err=True)``. The filename is keyed on the active profile;
+        # whatever stem the recorder picks must show up in the path
+        # we logged.
+        stem = self._active_profile_stem()
         assert "Wrote recording to " in r.output
-        assert "-mm-bench-default.md" in r.output
+        assert f"-mm-bench-{stem}.md" in r.output
+        # And the directory part is the new singular ``benchmark/``.
+        assert "benchmark/" in r.output
