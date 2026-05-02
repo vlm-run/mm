@@ -9,14 +9,20 @@ Every row pins ``mm --profile vlmgw cat`` and exercises the override
 path shipped in PR #106: Typer parsing -> ``apply_overrides`` deep-merge
 -> cache key -> ``LlmBackend`` -> openai SDK ``extra_body``.
 
-The matrix is organised into six groups, each surfaced as a ``Group``
+The matrix is organised into seven groups, each surfaced as a ``Group``
 column section in the bench table. ``model`` and ``extra_body`` are
 declared via :attr:`BenchCommand.tags` so the renderer adds them as
 extra columns automatically:
 
-* ``model`` (29 rows) — every model × variant. ``model`` and
+* ``model`` (28 rows) — every single-model variant. ``model`` and
   ``extra_body`` tags carry the configuration so each row is
   self-describing in the table.
+* ``model+llm`` (1 row) — cross-model pipelines (e.g.
+  ``moondream/caption+llm``) where a vision model's output is
+  post-processed by an LLM via ``extra_body.llm``. Any spec that
+  declares an ``llm`` key in ``extra_body`` is routed here
+  automatically so timing for compound pipelines is grouped
+  separately from atomic model calls.
 * ``image-res`` (3 rows) — ``image_resolution`` sweep on
   ``qwen3.5-0.8b``: low / medium / high.
 * ``video-frames`` (3 rows) — ``video_fps`` × ``video_max_frames``
@@ -71,9 +77,11 @@ class BenchSpec:
     paste of the canonical spec list works after a ``ruff format``.
 
     The ``name`` is the variant identifier (e.g. ``florence2/caption``
-    or ``qwen/multi-image``) shown in the ``Command`` column. The
-    ``Group`` column is always ``"model"`` for spec-derived rows; the
-    family is conveyed via the ``model`` tag instead.
+    or ``qwen/multi-image``) shown in the ``Command`` column. Spec rows
+    land in ``group="model"`` by default; specs declaring an ``llm``
+    key inside ``extra_body`` are routed to ``group="model+llm"``
+    instead (cross-model pipelines deserve their own timing bucket).
+    The model family is conveyed via the ``model`` tag column.
     """
 
     model: str
@@ -123,9 +131,14 @@ def _to_command(spec: BenchSpec) -> BenchCommand:
     if eb:
         parts.append(f"--generate.extra-body {shlex.quote(json.dumps(eb, separators=(',', ':')))}")
 
+    # Cross-model pipelines (vision model + LLM post-processor) are
+    # routed to their own group so their timing characteristics aren't
+    # mixed with atomic single-model calls.
+    group = "model+llm" if "llm" in eb else "model"
+
     return BenchCommand(
         name=spec.name,
-        group="model",
+        group=group,
         cmd_template=" ".join(parts),
         requires_kind=requires,
         batch=batch,
@@ -289,7 +302,9 @@ SPECS: list[BenchSpec] = [
         video_resolution="448x336",
         prompt="Summarise the video in one sentence.",
     ),
-    # Moondream2 + LLM post-processing (cross-model pipeline via extra_body)
+    # Moondream2 + LLM post-processing -- cross-model pipeline. Routed
+    # to group="model+llm" by `_to_command` because extra_body declares
+    # an `llm` key.
     BenchSpec(
         "moondream2",
         "moondream/caption+llm",

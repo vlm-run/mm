@@ -400,7 +400,8 @@ class TestVlmgwBenchfileSmoke:
 
         # Exact group counts -- the matrix is fully prescribed.
         assert groups == {
-            "model": 29,
+            "model": 28,
+            "model+llm": 1,
             "image-res": 3,
             "video-frames": 3,
             "cache": 2,
@@ -451,11 +452,13 @@ class TestVlmgwBenchfileSmoke:
         assert not missing, f"missing variants: {sorted(missing)}"
         assert not extra, f"unexpected variants: {sorted(extra)}"
 
-    def test_specs_translate_with_model_group_and_tags(self):
-        """Spec rows land in `group=model` and carry model + extra_body tags."""
+    def test_specs_translate_with_correct_group_and_tags(self):
+        """Spec rows land in `model` (or `model+llm` for cross-model pipelines)
+        and carry model + extra_body tags."""
         mod = self._load()
         for spec, cmd in zip(mod.SPECS, mod.COMMANDS[: len(mod.SPECS)], strict=True):
-            assert cmd.group == "model"
+            expected_group = "model+llm" if "llm" in spec.extra_body else "model"
+            assert cmd.group == expected_group, (spec.name, cmd.group, expected_group)
             assert cmd.name == spec.name
             assert cmd.tags.get("model") == spec.model
             # extra_body tag is the JSON-rendered final payload
@@ -463,6 +466,18 @@ class TestVlmgwBenchfileSmoke:
             assert "extra_body" in cmd.tags
             if cmd.tags["extra_body"]:
                 assert json.loads(cmd.tags["extra_body"]) == mod._eb_for(spec)
+
+    def test_cross_model_pipeline_routed_to_model_plus_llm(self):
+        """Specs declaring `extra_body.llm` go to group=`model+llm`."""
+        mod = self._load()
+        cross = [s for s in mod.SPECS if "llm" in s.extra_body]
+        assert cross, "expected at least one cross-model spec in the matrix"
+        for spec in cross:
+            cmd = mod._to_command(spec)
+            assert cmd.group == "model+llm"
+            # And the model tag still names the *primary* (vision) model,
+            # not the post-processor.
+            assert cmd.tags["model"] == spec.model
 
     def test_video_specs_fold_extra_body(self):
         mod = self._load()
