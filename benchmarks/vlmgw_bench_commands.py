@@ -9,14 +9,18 @@ Every row pins ``mm --profile vlmgw cat`` and exercises the override
 path shipped in PR #106: Typer parsing -> ``apply_overrides`` deep-merge
 -> cache key -> ``LlmBackend`` -> openai SDK ``extra_body``.
 
-The matrix is organised into seven groups, each surfaced as a ``Group``
+The matrix is organised into eight groups, each surfaced as a ``Group``
 column section in the bench table. ``model`` and ``extra_body`` are
 declared via :attr:`BenchCommand.tags` so the renderer adds them as
 extra columns automatically:
 
-* ``model`` (28 rows) — every single-model variant. ``model`` and
-  ``extra_body`` tags carry the configuration so each row is
-  self-describing in the table.
+* ``noop`` (3 rows) — gateway round-trip cost. ``ping`` measures
+  the smallest possible payload (text prompt only, no image content);
+  ``image-512`` / ``image-1024`` measure passthrough cost at two
+  ``image_resolution`` values so encode time is in the picture.
+* ``model`` (27 rows) — every single-model variant from the
+  upstream BenchSpec list. ``model`` and ``extra_body`` tags carry
+  the configuration so each row is self-describing in the table.
 * ``model+llm`` (1 row) — cross-model pipelines (e.g.
   ``moondream/caption+llm``) where a vision model's output is
   post-processed by an LLM via ``extra_body.llm``. Any spec that
@@ -77,11 +81,13 @@ class BenchSpec:
     paste of the canonical spec list works after a ``ruff format``.
 
     The ``name`` is the variant identifier (e.g. ``florence2/caption``
-    or ``qwen/multi-image``) shown in the ``Command`` column. Spec rows
-    land in ``group="model"`` by default; specs declaring an ``llm``
-    key inside ``extra_body`` are routed to ``group="model+llm"``
-    instead (cross-model pipelines deserve their own timing bucket).
-    The model family is conveyed via the ``model`` tag column.
+    or ``qwen/multi-image``) shown in the ``Command`` column. By default
+    spec rows land in ``group="model"``; specs declaring an ``llm`` key
+    inside ``extra_body`` are routed to ``group="model+llm"`` (cross-
+    model pipelines deserve their own timing bucket). Callers can also
+    pin a custom group via :func:`_to_command`'s ``group`` argument
+    (e.g. the ``noop`` round-trip rows). The model family is conveyed
+    via the ``model`` tag column.
     """
 
     model: str
@@ -109,8 +115,15 @@ def _eb_for(spec: BenchSpec) -> dict[str, Any]:
     return eb
 
 
-def _to_command(spec: BenchSpec) -> BenchCommand:
-    """Render a :class:`BenchSpec` into a runnable :class:`BenchCommand`."""
+def _to_command(spec: BenchSpec, *, group: str | None = None) -> BenchCommand:
+    """Render a :class:`BenchSpec` into a runnable :class:`BenchCommand`.
+
+    ``group`` overrides the auto-derived label. By default we pick
+    ``"model+llm"`` when ``extra_body`` declares an ``llm`` key (cross-
+    model post-processing pipelines) and ``"model"`` otherwise. Callers
+    building auxiliary spec lists (e.g. the ``noop`` round-trip rows)
+    can pin a custom group such as ``"noop"``.
+    """
     if spec.video:
         requires, placeholder, batch = "video", "{file}", 0
     elif spec.image and spec.num_images > 1:
@@ -131,10 +144,11 @@ def _to_command(spec: BenchSpec) -> BenchCommand:
     if eb:
         parts.append(f"--generate.extra-body {shlex.quote(json.dumps(eb, separators=(',', ':')))}")
 
-    # Cross-model pipelines (vision model + LLM post-processor) are
-    # routed to their own group so their timing characteristics aren't
-    # mixed with atomic single-model calls.
-    group = "model+llm" if "llm" in eb else "model"
+    if group is None:
+        # Default routing: cross-model pipelines (vision model + LLM
+        # post-processor) get their own bucket so their timing isn't
+        # mixed in with atomic single-model calls.
+        group = "model+llm" if "llm" in eb else "model"
 
     return BenchCommand(
         name=spec.name,
@@ -151,14 +165,37 @@ def _to_command(spec: BenchSpec) -> BenchCommand:
     )
 
 
-# ── Spec matrix (mirrors the internal vlmgw BenchSpec list) ──────────
-# ALL 29 variants from the canonical list — covered exhaustively below.
-# See the module docstring for grouping semantics.
+# ── noop: gateway round-trip cost ────────────────────────────────────
+# Three variants: a text-only ping (smallest possible payload) and two
+# image passthrough rows at distinct resolutions so encode-side cost
+# is measurable. The noop "model" on the gateway is a passthrough that
+# returns immediately, so timing differences between these rows isolate
+# the vision-encode pipeline from the model itself.
+
+
+NOOP_SPECS: list[BenchSpec] = [
+    BenchSpec("noop", "noop/ping", prompt="ping"),
+    BenchSpec(
+        "noop",
+        "noop/image-512",
+        image=True,
+        extra_body={"image_resolution": 512},
+    ),
+    BenchSpec(
+        "noop",
+        "noop/image-1024",
+        image=True,
+        extra_body={"image_resolution": 1024},
+    ),
+]
+
+
+# ── Model matrix (mirrors the internal vlmgw BenchSpec list) ─────────
+# All 28 variants from the canonical list -- covered exhaustively
+# below. The noop family lives in NOOP_SPECS above.
 
 
 SPECS: list[BenchSpec] = [
-    # noop -- gateway round-trip cost only.
-    BenchSpec("noop", "noop/ping", prompt="ping"),
     # Florence-2
     BenchSpec(
         "florence-2-base-ft",
@@ -445,7 +482,8 @@ _VALIDATION: list[BenchCommand] = [
 
 
 COMMANDS: list[BenchCommand] = (
-    [_to_command(s) for s in SPECS]
+    [_to_command(s, group="noop") for s in NOOP_SPECS]
+    + [_to_command(s) for s in SPECS]
     + _IMAGE_RES
     + _VIDEO_FRAMES
     + _CACHE

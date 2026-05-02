@@ -400,7 +400,8 @@ class TestVlmgwBenchfileSmoke:
 
         # Exact group counts -- the matrix is fully prescribed.
         assert groups == {
-            "model": 28,
+            "noop": 3,
+            "model": 27,
             "model+llm": 1,
             "image-res": 3,
             "video-frames": 3,
@@ -409,15 +410,36 @@ class TestVlmgwBenchfileSmoke:
             "validation": 2,
         }, groups
 
-    def test_all_29_canonical_variants_present(self):
-        """Every variant from the upstream BenchSpec list is represented."""
+    def test_noop_group_has_ping_and_two_image_resolutions(self):
+        """The noop group exists for gateway round-trip cost measurements."""
+        mod = self._load()
+        noop_cmds = [c for c in mod.COMMANDS if c.group == "noop"]
+        names = [c.name for c in noop_cmds]
+        assert names == ["noop/ping", "noop/image-512", "noop/image-1024"]
+
+        ping, img512, img1024 = noop_cmds
+        # ping has no extra_body, just a --prompt ping.
+        assert ping.tags["extra_body"] == ""
+        assert "--prompt ping" in ping.cmd_template
+        # The image rows pass image_resolution at distinct values via
+        # --generate.extra-body and have NO --prompt (the noop endpoint
+        # is purely a passthrough).
+        assert json.loads(img512.tags["extra_body"]) == {"image_resolution": 512}
+        assert json.loads(img1024.tags["extra_body"]) == {"image_resolution": 1024}
+        for cmd in (img512, img1024):
+            assert "--prompt" not in cmd.cmd_template
+            assert cmd.tags["model"] == "noop"
+
+    def test_all_27_canonical_model_variants_present(self):
+        """Every model variant from the upstream BenchSpec list is represented.
+
+        Locked-in canonical list -- if upstream adds a variant, this
+        test fails until the benchfile is updated. The noop family
+        lives in NOOP_SPECS and is checked separately above.
+        """
         mod = self._load()
         names = {s.name for s in mod.SPECS}
-        # Locked-in canonical list -- if upstream adds a variant, this
-        # test fails until the benchfile is updated. Matches the spec
-        # the user pasted on 2026-05-01.
         expected = {
-            "noop/ping",
             "florence2/caption",
             "florence2/ocr",
             "florence2/od",
@@ -456,7 +478,10 @@ class TestVlmgwBenchfileSmoke:
         """Spec rows land in `model` (or `model+llm` for cross-model pipelines)
         and carry model + extra_body tags."""
         mod = self._load()
-        for spec, cmd in zip(mod.SPECS, mod.COMMANDS[: len(mod.SPECS)], strict=True):
+        # COMMANDS layout: NOOP_SPECS then SPECS then auxiliary lists.
+        offset = len(mod.NOOP_SPECS)
+        spec_cmds = mod.COMMANDS[offset : offset + len(mod.SPECS)]
+        for spec, cmd in zip(mod.SPECS, spec_cmds, strict=True):
             expected_group = "model+llm" if "llm" in spec.extra_body else "model"
             assert cmd.group == expected_group, (spec.name, cmd.group, expected_group)
             assert cmd.name == spec.name
