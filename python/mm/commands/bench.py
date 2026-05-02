@@ -67,6 +67,13 @@ class BenchResult:
     last_stdout: str = ""
     last_stderr: str = ""
     returncode: int | None = None
+    # ``True`` when the originating ``BenchCommand.disabled`` was set.
+    # Disabled rows are rendered (dimmed) in dry-run / live tables so
+    # the matrix coverage stays visible, but the harness never invokes
+    # their argv. Tracked separately from ``skipped`` so the renderer
+    # can apply full-row dim styling without confusing it with regular
+    # ``no <kind> files`` skips.
+    disabled: bool = False
 
     @property
     def mean_ms(self) -> float:
@@ -177,6 +184,12 @@ class BenchResult:
                 "skipped": True,
                 "skip_reason": self.skip_reason,
             }
+            if self.disabled:
+                # Distinct from "no <kind> files" -- disabled rows are
+                # an intentional opt-out (e.g. broken upstream model)
+                # rather than a missing-input skip. External consumers
+                # use this to filter out vs. surface failure paths.
+                payload["disabled"] = True
             return self._annotate(payload)
         if self.is_dry_run:
             payload = {
@@ -302,6 +315,26 @@ def _run_benchmarks(
     for cmd in commands:
         if on_progress:
             on_progress(cmd.group, cmd.name)
+
+        if cmd.disabled:
+            # Render-only row: keep the matrix coverage visible (with
+            # ``skipped: disabled`` in the metrics column and full-row
+            # dim styling) but never invoke the argv. Short-circuits
+            # before ``resolve_command`` so missing-input errors on
+            # disabled rows can't accidentally mask the disable intent.
+            results.append(
+                BenchResult(
+                    cmd.name,
+                    cmd.group,
+                    skipped=True,
+                    skip_reason="disabled",
+                    disabled=True,
+                    tags=dict(cmd.tags),
+                    cmd_template=cmd.cmd_template,
+                    requires_kind=cmd.requires_kind,
+                )
+            )
+            continue
 
         if num_files == 0:
             results.append(
@@ -735,15 +768,20 @@ def _build_table(
         if r.skipped:
             # Show the (possibly empty) base + extra cells, then a dim
             # ``[skipped: <reason>]`` trailer in the metrics column;
-            # remaining metric cells stay blank.
+            # remaining metric cells stay blank. Disabled rows ride
+            # the same skipped path but get full-row dim styling so
+            # the eye can quickly distinguish "intentionally muted"
+            # from "no files of this kind in the bench dir".
             command_cells: list[Any] = [base_str or r.name]
             if has_extra:
                 command_cells.append(extra_str)
+            row_style = "dim" if r.disabled else None
             table.add_row(
                 *prefix,
                 *command_cells,
                 Text(f"skipped: {r.skip_reason}", style="dim italic"),
                 *([""] * 6),
+                style=row_style,
             )
             continue
 
@@ -859,6 +897,32 @@ def _normalize_stdout_paths(argv_str: str, stdout: str) -> str:
     return stdout
 
 
+# Per-row stdout cap for the markdown recorder. Sized so a full
+# benchfile suite (~30 active rows) stays under the typical pre-commit
+# ``check-added-large-files`` 100 KB threshold while still preserving
+# the leading JSON / text shape of the model's response. Verbose
+# captions, OCR dumps, and similar are truncated with an explicit
+# ``... [N bytes truncated]`` marker so the trim is auditable.
+_MAX_RECORDING_STDOUT_BYTES = 1024
+
+
+def _truncate_recording_stdout(body: str) -> str:
+    """Cap *body* at ``_MAX_RECORDING_STDOUT_BYTES`` and annotate the trim.
+
+    Long model outputs (e.g. moondream2 captions, dots-ocr layout
+    dumps) routinely run 4-8 KB per call, so a full benchfile run can
+    blow past pre-commit's 100 KB new-file cap on the recording. Cap
+    each row's stdout block at a fixed byte budget; rows that fit
+    pass through unchanged.
+    """
+    encoded = body.encode("utf-8")
+    if len(encoded) <= _MAX_RECORDING_STDOUT_BYTES:
+        return body
+    truncated_bytes = len(encoded) - _MAX_RECORDING_STDOUT_BYTES
+    head = encoded[:_MAX_RECORDING_STDOUT_BYTES].decode("utf-8", errors="ignore").rstrip()
+    return f"{head}\n... [{truncated_bytes:,} bytes truncated]"
+
+
 def _format_recording_output(r: BenchResult, argv_str: str) -> tuple[str, str]:
     """Return ``(body, fence_language)`` for one row's stdout block.
 
@@ -867,9 +931,10 @@ def _format_recording_output(r: BenchResult, argv_str: str) -> tuple[str, str]:
     * skipped -> ``[skipped: <reason>]`` in a ``text`` block.
     * non-zero exit -> ``[exit N]`` followed by the last 5 stderr lines.
     * empty stdout -> ``(no output)``.
-    * everything else -> ANSI-stripped + path-normalized stdout, with
-      ``json`` fence when the output starts with ``{`` / ``[`` and
-      ``text`` otherwise.
+    * everything else -> ANSI-stripped + path-normalized stdout
+      (capped at ``_MAX_RECORDING_STDOUT_BYTES`` with an explicit
+      truncation marker), with ``json`` fence when the output starts
+      with ``{`` / ``[`` and ``text`` otherwise.
     """
     if r.skipped:
         return f"[skipped: {r.skip_reason}]", "text"
@@ -884,7 +949,9 @@ def _format_recording_output(r: BenchResult, argv_str: str) -> tuple[str, str]:
     body = _normalize_stdout_paths(argv_str, body)
     if not body:
         return "(no output)", "text"
-    return body, _stdout_fence_lang(body)
+    lang = _stdout_fence_lang(body)
+    body = _truncate_recording_stdout(body)
+    return body, lang
 
 
 # Short keys for the per-row ``args:`` line. ``image`` -> ``"img"``
@@ -1048,16 +1115,43 @@ def _write_bench_recording(
             f"(`{prof.get('base_url', '?')}`, default model `{prof.get('model', '?')}`)."
         )
 
+    # Disabled rows are render-only (visible in the live --dry-run /
+    # rich table for matrix-coverage purposes) and carry no captured
+    # stdout, no timing data, and no actionable diagnostics. Listing
+    # them in a compact roll-up keeps the recording focused on rows
+    # that actually executed while still acknowledging the disabled
+    # surface area; per-row table snapshots would balloon the file
+    # past pre-commit's new-file size cap on bigger suites.
+    disabled = [r for r in results if r.disabled]
+    active = [r for r in results if not r.disabled]
+    if disabled:
+        lines.append("")
+        lines.append(f"## Disabled ({len(disabled)})")
+        lines.append("")
+        for r in disabled:
+            # Bench-command names are typically already namespaced
+            # (e.g. ``noop/ping`` lives in ``group="noop"``). Avoid
+            # duplicating the prefix when the name already starts
+            # with ``<group>/``.
+            label = (
+                r.name
+                if r.name.startswith(f"{r.group}/") or "/" in r.name
+                else f"{r.group}/{r.name}"
+            )
+            tag = r.tags.get("model")
+            suffix = f" — `{tag}`" if tag else ""
+            lines.append(f"- `{label}`{suffix}")
+
     lines.append("")
     lines.append("---")
     lines.append("")
 
-    for r in results:
+    for r in active:
         # Per-row layout:
         #   <rich table verbatim, no fence>
         #   args: {"img": "...", "mode": "fast"}     (when applicable)
         #   ```json|text
-        #   <captured stdout>
+        #   <captured stdout, truncated at _MAX_RECORDING_STDOUT_BYTES>
         #   ```
         #   <elapsed> • <bytes> • <bytes/s>          (real runs only)
         #

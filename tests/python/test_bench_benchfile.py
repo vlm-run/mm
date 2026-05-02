@@ -532,9 +532,13 @@ class TestVlmgwBenchfileSmoke:
             groups[row["group"]] = groups.get(row["group"], 0) + 1
 
         # Exact group counts -- the matrix is fully prescribed.
+        # ``moondream/video-caption`` was dropped (the gateway no
+        # longer supports moondream2 video) and ``qwen/multi-image``
+        # was folded back into SPECS as a regular ``mm cat <f1> <f2>``
+        # row, so SPECS now contributes 28 ``model`` + 1 ``model+llm``.
         assert groups == {
             "noop": 3,
-            "model": 29,
+            "model": 28,
             "model+llm": 1,
             "image-res": 3,
             "video-frames": 3,
@@ -552,6 +556,10 @@ class TestVlmgwBenchfileSmoke:
         knob. The noop gateway endpoint doesn't transform the image at
         all, so the only knob that actually changes upload bytes is the
         client-side encoder.
+
+        All three rows are currently ``disabled=True`` because the
+        ``vlm-run/noop`` model isn't deployed; the row layout still
+        has to be correct so re-enabling is a one-flag flip.
         """
         mod = self._load()
         noop_cmds = [c for c in mod.COMMANDS if c.group == "noop"]
@@ -578,12 +586,24 @@ class TestVlmgwBenchfileSmoke:
         for cmd in noop_cmds:
             assert cmd.tags["model"] == "vlm-run/noop"
 
+        # Currently disabled -- vlm-run/noop isn't deployed.
+        for cmd in noop_cmds:
+            assert cmd.disabled is True, cmd.name
+
     def test_all_canonical_model_variants_present(self):
         """Every model variant from the upstream BenchSpec list is represented.
 
         Locked-in canonical list -- if upstream adds a variant, this
         test fails until the benchfile is updated. The noop family
         lives in NOOP_SPECS and is checked separately above.
+
+        ``moondream/video-caption`` is intentionally absent: moondream2
+        no longer accepts multi-frame video on the gateway, so the
+        spec was removed entirely (rather than disabled) until that
+        capability returns. ``qwen/multi-image`` lives in SPECS (not
+        a separate hand-authored list) and resolves to a regular
+        ``mm cat <f1> <f2>`` invocation -- two sequential one-image
+        chats, not a single multi-image API call.
         """
         mod = self._load()
         names = {s.name for s in mod.SPECS}
@@ -593,12 +613,10 @@ class TestVlmgwBenchfileSmoke:
             "florence2/od",
             "moondream/caption",
             "moondream/detect",
-            "moondream/video-caption",
             "qwen/text",
             "qwen/image",
-            # qwen/multi-image is hand-authored in ``_MULTI_IMAGE``
-            # (single-call helper, not mm cat) and lives outside SPECS.
             "qwen/video",
+            "qwen/multi-image",
             "rfdetr/detect",
             "rfdetr-seg/segment",
             "vitpose/pose",
@@ -624,6 +642,103 @@ class TestVlmgwBenchfileSmoke:
         extra = names - expected
         assert not missing, f"missing variants: {sorted(missing)}"
         assert not extra, f"unexpected variants: {sorted(extra)}"
+
+    def test_disabled_specs_match_known_failures(self):
+        """The disabled set matches the known-broken upstream surface.
+
+        Locked in so re-enabling a row requires an explicit decision
+        (deployment fix verified, capability restored, etc) rather
+        than someone silently flipping the flag.
+        """
+        mod = self._load()
+        disabled_specs = {s.name for s in mod.SPECS if s.disabled}
+        assert disabled_specs == {
+            # qwen/text -- "What is 2+2?" prompt isn't representative
+            # of any real usage pattern.
+            "qwen/text",
+            # SAM3 deployment unavailable (failed to deploy) +
+            # multi-image rejection on sam3/track.
+            "sam3/segment",
+            "sam3/segment_box",
+            "sam3/track",
+            # dots.ocr deployment unavailable.
+            "dots-ocr/parse_layout",
+            "dots-ocr/parse_layout_only",
+            "dots-ocr/ocr",
+            "dots-ocr/grounding_ocr",
+            # paddleocr -- gateway returns Internal Server Error.
+            "paddleocr/ocr",
+            "paddleocr/detect",
+            # gliner is text-only but mm cat always attaches an image.
+            "gliner/extract_entities",
+            "gliner/classify_text",
+            # smolvlm2-video accepts at most 1 image_url part, which
+            # is incompatible with multi-frame video sampling.
+            "smolvlm2/256m-video",
+            "smolvlm2/500m-video",
+            # moondream/caption+llm -- Internal Server Error.
+            "moondream/caption+llm",
+        }, sorted(disabled_specs)
+
+    def test_qwen_multi_image_uses_regular_mm_cat(self):
+        """``qwen/multi-image`` resolves to ``mm cat <f1> <f2>`` (not a helper script).
+
+        Earlier iterations routed multi-image through a Python helper
+        that built a single chat-completion with multiple image_url
+        parts; that's been reverted to the standard ``mm cat`` shape
+        (which iterates client-side, firing N independent requests).
+        Pin the new shape so it can't silently regress.
+        """
+        mod = self._load()
+        spec = next(s for s in mod.SPECS if s.name == "qwen/multi-image")
+        assert spec.image is True
+        assert spec.num_images == 2
+        cmd = next(c for c in mod.COMMANDS if c.name == "qwen/multi-image")
+        assert "{files}" in cmd.cmd_template
+        assert cmd.cmd_template.startswith("mm --profile vlmgw cat")
+        # No helper-script invocation.
+        assert "_multi_image_call" not in cmd.cmd_template
+        assert "python" not in cmd.cmd_template.split()
+        assert cmd.batch == 2
+        assert cmd.requires_kind == "image"
+
+    def test_pinned_file_rows_bypass_file_placeholder(self):
+        """OCR / pose specs hard-code the input path (no ``{file}`` token).
+
+        The harness's bench-dir scan is bypassed for these rows so
+        the model gets a domain-appropriate image (text scan for OCR,
+        tennis player for pose) regardless of what's in the bench
+        target directory.
+        """
+        mod = self._load()
+        # Domain pin spot-check: florence2/ocr / dots-ocr/* /
+        # paddleocr/* should all reference the OCR image; vitpose/pose
+        # should reference the tennis image.
+        ocr_image_basename = "image-ocr.jpg"
+        pose_image_basename = "2.1-detect-count-tennis.jpg"
+
+        ocr_specs = [
+            s for s in mod.SPECS if s.name.startswith(("florence2/ocr", "dots-ocr/", "paddleocr/"))
+        ]
+        assert ocr_specs, "expected at least one OCR spec"
+        for spec in ocr_specs:
+            assert spec.pinned_file is not None, spec.name
+            assert spec.pinned_file.name == ocr_image_basename, (spec.name, spec.pinned_file)
+
+        pose_spec = next(s for s in mod.SPECS if s.name == "vitpose/pose")
+        assert pose_spec.pinned_file is not None
+        assert pose_spec.pinned_file.name == pose_image_basename
+
+        # Resolved cmd_template carries the absolute path verbatim
+        # (no ``{file}`` placeholder, no ``{files}``).
+        for spec in [*ocr_specs, pose_spec]:
+            cmd = next(c for c in mod.COMMANDS if c.name == spec.name)
+            assert "{file}" not in cmd.cmd_template, cmd.cmd_template
+            assert "{files}" not in cmd.cmd_template, cmd.cmd_template
+            assert str(spec.pinned_file) in cmd.cmd_template, cmd.cmd_template
+            # ``requires_kind`` is None so the harness doesn't try to
+            # pick a file from the bench dir for this row.
+            assert cmd.requires_kind is None, (spec.name, cmd.requires_kind)
 
     def test_specs_translate_with_correct_group_and_tags(self):
         """Spec rows land in `model` (or `model+llm` for cross-model pipelines)
@@ -1124,6 +1239,112 @@ class TestArgvHelpers:
 # ── markdown recording ───────────────────────────────────────────────
 
 
+class TestDisabledRows:
+    """`BenchCommand.disabled=True` is render-only: appears in the table (dimmed)
+    but the harness never invokes its argv."""
+
+    def test_disabled_row_is_marked_in_json(
+        self, tmp_path: Path, small_tree: Path, monkeypatch: pytest.MonkeyPatch
+    ):
+        """JSON surfaces ``skipped: true`` plus ``skip_reason: disabled`` plus ``disabled: true``."""
+        # ``--dry-run`` keeps the markdown recorder dormant so this
+        # test doesn't leak a ``benchmarks/<date>-mm-bench-bf.md``
+        # file into whatever ``cwd`` pytest happens to inherit.
+        monkeypatch.chdir(tmp_path)
+        bf = _write_benchfile(
+            tmp_path / "bf.py",
+            """
+            from mm.commands.bench_commands import BenchCommand
+            COMMANDS = [
+                BenchCommand("alive", "demo", "echo alive"),
+                BenchCommand("muted", "demo", "echo muted", disabled=True),
+            ]
+            """,
+        )
+        with patch("mm.commands.bench._time_cmd") as time_cmd:
+            time_cmd.return_value = (
+                [1.0],
+                type("P", (), {"stdout": "", "stderr": "", "returncode": 0})(),
+            )
+            r = runner.invoke(
+                app,
+                ["bench", str(small_tree), "-b", str(bf), "-r", "1", "-w", "0", "--format", "json"],
+            )
+        assert r.exit_code == 0, r.output
+        rows = {row["name"]: row for row in json.loads(r.stdout)["results"]}
+        # Live row: not skipped, not disabled.
+        assert rows["alive"].get("skipped") is None or rows["alive"]["skipped"] is False
+        assert "disabled" not in rows["alive"]
+        # Disabled row: skipped + skip_reason + disabled flags all set.
+        assert rows["muted"]["skipped"] is True
+        assert rows["muted"]["skip_reason"] == "disabled"
+        assert rows["muted"]["disabled"] is True
+
+    def test_disabled_row_never_invokes_subprocess(
+        self, tmp_path: Path, small_tree: Path, monkeypatch: pytest.MonkeyPatch
+    ):
+        """The runner short-circuits BEFORE calling _time_cmd for disabled rows."""
+        monkeypatch.chdir(tmp_path)
+        bf = _write_benchfile(
+            tmp_path / "bf.py",
+            """
+            from mm.commands.bench_commands import BenchCommand
+            COMMANDS = [
+                BenchCommand("disabled-row", "demo", "echo nope", disabled=True),
+            ]
+            """,
+        )
+        with patch("mm.commands.bench._time_cmd") as time_cmd:
+            r = runner.invoke(
+                app,
+                ["bench", str(small_tree), "-b", str(bf), "-r", "1", "-w", "0", "--format", "json"],
+            )
+        assert r.exit_code == 0, r.output
+        time_cmd.assert_not_called()
+        data = json.loads(r.stdout)
+        assert data["results"][0]["disabled"] is True
+
+    def test_disabled_row_renders_dimmed_in_rich(
+        self, tmp_path: Path, small_tree: Path, monkeypatch: pytest.MonkeyPatch
+    ):
+        """The rich table embeds the dim ANSI sequence on disabled rows.
+
+        Rich applies row-level ``style="dim"`` as the ANSI ``\\x1b[2m``
+        opener around every cell of that row. We probe the raw output
+        for a disabled-row line bearing the dim opener, plus the
+        ``skipped: disabled`` trailer.
+        """
+        bf = _write_benchfile(
+            tmp_path / "bf.py",
+            """
+            from mm.commands.bench_commands import BenchCommand
+            COMMANDS = [
+                BenchCommand("alive", "demo", "echo alive"),
+                BenchCommand("muted", "demo", "echo muted", disabled=True),
+            ]
+            """,
+        )
+        monkeypatch.setenv("COLUMNS", "260")
+        # ``CliRunner`` strips colour by default; force-rich stays
+        # alive only when output is captured with ANSI codes intact.
+        r = runner.invoke(
+            app,
+            ["bench", str(small_tree), "-b", str(bf), "--dry-run", "--format", "rich"],
+            color=True,
+        )
+        assert r.exit_code == 0, r.output
+        # Disabled row is annotated as ``skipped: disabled`` in the
+        # metrics column. Validate that the row is present, no live
+        # metric appears for it, and the ``\\x1b[2m`` (dim) sequence
+        # appears somewhere on the muted row's line.
+        muted_lines = [ln for ln in r.stdout.splitlines() if "muted" in ln]
+        assert muted_lines, "expected the disabled row to render"
+        assert any("skipped: disabled" in _strip_ansi(ln) for ln in muted_lines)
+        # At least one cell on the muted row must carry the dim ANSI
+        # opener (``\\x1b[2m``) -- proves full-row dimming is in effect.
+        assert any("\x1b[2m" in ln for ln in muted_lines), muted_lines
+
+
 class TestRecordingHelpers:
     """Unit tests for the recording helper functions (no subprocesses)."""
 
@@ -1210,6 +1431,32 @@ class TestRecordingHelpers:
         assert "line7" in body
         assert "line1" not in body
         assert "line2" not in body
+
+    def test_format_recording_output_truncates_long_stdout(self):
+        """Verbose model outputs are capped at the recorder's per-row budget."""
+        from mm.commands.bench import (
+            BenchResult,
+            _MAX_RECORDING_STDOUT_BYTES,
+            _format_recording_output,
+        )
+
+        # 4x the cap; well over budget so the truncation branch fires.
+        long_body = "x" * (_MAX_RECORDING_STDOUT_BYTES * 4)
+        r = BenchResult("x", "g", last_stdout=long_body, returncode=0)
+        body, _lang = _format_recording_output(r, "")
+        # Body shrinks below 2x the cap (head + truncation marker),
+        # carrying an auditable annotation of how much was dropped.
+        assert len(body.encode("utf-8")) < 2 * _MAX_RECORDING_STDOUT_BYTES
+        assert "bytes truncated]" in body
+
+    def test_format_recording_output_short_stdout_passthrough(self):
+        """Short outputs flow through untouched -- no marker, no trim."""
+        from mm.commands.bench import BenchResult, _format_recording_output
+
+        r = BenchResult("x", "g", last_stdout="ok\n", returncode=0)
+        body, _lang = _format_recording_output(r, "")
+        assert body.rstrip() == "ok"
+        assert "truncated" not in body
 
     def test_format_recording_output_json_stdout(self, tmp_path: Path):
         from mm.commands.bench import BenchResult, _format_recording_output
@@ -1332,6 +1579,61 @@ class TestRecordingFile:
         # Stdout is still fenced (json when it looks like JSON, text
         # otherwise).
         assert "```json" in body or "```text" in body
+
+    def test_recording_summarises_disabled_rows(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        tmp_path: Path,
+        small_tree: Path,
+    ):
+        """Disabled rows land in a `## Disabled` roll-up, not as per-row tables.
+
+        Per-row Rich-table snapshots for disabled rows would balloon
+        the recording past the 100 KB pre-commit cap on bigger suites
+        without adding any diagnostic value (no stdout, no timing). The
+        compact roll-up keeps the matrix coverage acknowledged while
+        focusing the body on rows that actually executed.
+        """
+        monkeypatch.chdir(tmp_path)
+        bf = _write_benchfile(
+            tmp_path / "summary_bench_commands.py",
+            """
+            from mm.commands.bench_commands import BenchCommand
+            COMMANDS = [
+                BenchCommand("alive", "demo", "echo alive"),
+                BenchCommand("muted", "demo", "echo muted",
+                             disabled=True, tags={"model": "x/y"}),
+            ]
+            """,
+        )
+        r = runner.invoke(
+            app,
+            [
+                "bench",
+                str(small_tree),
+                "--bench-file",
+                str(bf),
+                "-r",
+                "1",
+                "-w",
+                "0",
+                "--format",
+                "json",
+            ],
+        )
+        assert r.exit_code == 0, r.output
+        rec = tmp_path / "benchmarks" / self._today_filename("summary")
+        body = rec.read_text()
+        # Disabled row is in the roll-up section, NOT as its own
+        # Rich-table block.
+        assert "## Disabled (1)" in body
+        assert "- `demo/muted` — `x/y`" in body
+        # Active row still gets the per-row Rich-table treatment.
+        assert "alive" in body
+        # The body holds exactly ONE Rich-table block (for the active
+        # ``alive`` row); the disabled row appears only in the roll-up
+        # bullet list, no per-row table.
+        assert body.count("╭") == 1, body
 
     def test_recording_written_for_benchfile(
         self,

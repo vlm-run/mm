@@ -12,15 +12,14 @@ path shipped in PR #106: Typer parsing -> ``apply_overrides`` deep-merge
 Display contract
 ----------------
 
-The table renders ``Group | Model | Command | <metrics...>``. The
-``Command`` cell holds the **fully resolved** ``mm cat ...`` shell
-invocation (with absolute file paths shortened to basenames), so each
-row is self-describing -- ``--model``, ``--prompt``,
-``--generate.extra-body`` and ``--encode.strategy_opts`` are inlined
-in the cell rather than spread across separate columns. Only ``model``
-is surfaced as its own dedicated column (via :attr:`BenchCommand.tags`),
-because grouping by model is the most common slice and the model name
-otherwise drowns in the longer flag soup.
+The table renders ``Group | Model | Base Command | Extra Args | <metrics>``.
+The ``Base Command`` cell holds the **fully resolved** ``mm cat ...``
+shell invocation (with absolute file paths shortened to ``<img>`` /
+``<vid>`` / ``<file>`` placeholders), so each row is self-describing.
+``--prompt``, ``--generate.extra-body`` and ``--encode.strategy_opts``
+land in ``Extra Args``. Only ``model`` is surfaced as its own dedicated
+column (via :attr:`BenchCommand.tags`) because grouping by model is the
+most common slice.
 
 Model names follow the ``<org>/<model-name>`` convention everywhere
 (both in the displayed ``Model`` column and in the actual ``--model``
@@ -28,33 +27,50 @@ flag passed to the gateway). The vlmgw gateway is OpenAI-compatible
 and accepts both bare and namespaced model names; using the namespaced
 form keeps benchmark output unambiguous for cross-provider comparisons.
 
+Disabled rows
+-------------
+
+Specs whose upstream deployment is currently broken (sam3, dots-ocr,
+paddleocr, gliner, smolvlm2-video, moondream/caption+llm,
+moondream/caption+llm) carry ``disabled=True``. They render in the
+table with ``skipped: disabled`` in the metrics column and full-row
+dim styling, so the matrix coverage stays visible without polluting
+timing data. Flip back to ``False`` once the deployment is healthy.
+
+Pinned-file rows
+----------------
+
+OCR and pose specs override the harness's ``{file}`` placeholder by
+hard-coding an absolute path to a domain-appropriate image: an
+OCR-bearing scan for the OCR specs, and a tennis player for ViTPose.
+The harness's bench-directory pre-scan is bypassed for these rows
+(``requires_kind=None``), so the throughput cells render as ``-`` —
+time metrics are accurate, but ``MB/s`` / ``bps`` are not, since the
+external file isn't part of the bench dir's byte accounting.
+
 Group layout
 ------------
 
 The matrix is organised into eight groups, surfaced as ``Group``
 column section breaks in the bench table:
 
-* ``noop`` (3 rows) -- gateway round-trip cost. ``ping`` measures
-  the smallest possible payload (text prompt only, no image content);
-  ``image-512`` / ``image-1024`` measure passthrough cost at two
-  client-side encoder resolutions. Image resize happens via
-  ``--encode.strategy_opts max_width=N`` (PIL/Rust encoder downsamples
-  the bytes BEFORE upload), not via a server-side ``image_resolution``
-  knob, so each row's network payload size is predictable and the
-  measurement isolates encode-side cost from model-side cost.
-* ``model`` (29 rows) -- every single-model variant from the
-  upstream BenchSpec list. The ``Model`` tag carries the namespaced
-  ``<org>/<model-name>`` so each row is self-describing.
+* ``noop`` (3 rows, all disabled) -- gateway round-trip cost
+  measurements. Disabled by default because the ``vlm-run/noop``
+  passthrough model isn't currently deployed; flip back on once it
+  lands.
+* ``model`` (28 rows) -- every single-model variant from the
+  upstream BenchSpec list. Includes ``qwen/multi-image``, which
+  fires ``mm cat <file1> <file2>`` (two sequential single-image
+  chats) -- not a true multi-image API call. Some rows are
+  ``disabled=True`` (sam3/*, dots-ocr/*, paddleocr/*, gliner/*,
+  smolvlm2-video, qwen/text) pending deployment fixes or because
+  the test isn't representative.
 * ``model+llm`` (1 row) -- cross-model pipelines (e.g.
   ``moondream/caption+llm``) where a vision model's output is
-  post-processed by an LLM via ``extra_body.llm``. Any spec that
-  declares an ``llm`` key in ``extra_body`` is routed here
-  automatically so timing for compound pipelines is grouped
-  separately from atomic model calls.
+  post-processed by an LLM via ``extra_body.llm``. Currently
+  disabled (Internal Server Error from the gateway).
 * ``image-res`` (3 rows) -- client-side image-resolution sweep on
-  ``qwen/qwen3.5-0.8b``: 512 / 1024 / 1536 px. Same encoder mechanism
-  as the ``noop/image-*`` rows so timing differences here isolate the
-  model-side scaling cost from constant-cost encode overhead.
+  ``qwen/qwen3.5-0.8b``: 512 / 1024 / 1536 px.
 * ``video-frames`` (3 rows) -- ``video_fps`` x ``video_max_frames``
   sweep on ``qwen/qwen3.5-0.8b``.
 * ``cache`` (2 rows) -- cold (``--no-cache``) vs warm cache hit on
@@ -68,17 +84,16 @@ Translation notes
 -----------------
 
 * ``mm cat`` requires a file argument. Specs with neither ``image``
-  nor ``video`` (text-only -- ``noop``, ``qwen/text``) attach the
-  smallest available image; vision-encode overhead is constant across
-  those rows so trends remain interpretable.
-* ``num_images > 1`` is translated by a hand-authored row in
-  ``_MULTI_IMAGE`` (not ``_to_command``): ``mm cat`` itself iterates
-  over file arguments client-side and fires one gateway request per
-  file, which is *not* what we want here. The bench instead invokes
-  ``benchmarks/_multi_image_call.py`` -- a tiny helper that builds a
-  single chat completion with N ``image_url`` parts attached to one
-  user message. This times the gateway's actual multi-image
-  conversation latency rather than ``mm cat``'s file-iteration loop.
+  nor ``video`` (text-only -- the disabled ``noop/ping`` and
+  ``qwen/text`` rows, plus ``gliner/*``) attach the smallest
+  available image; vision-encode overhead is constant across those
+  rows so trends remain interpretable.
+* ``num_images > 1`` translates to ``mm cat <file1> <file2>`` --
+  ``mm cat`` iterates client-side and fires N independent gateway
+  requests, so the timing reflects the sum of N sequential
+  one-image chats rather than a single multi-image conversation.
+  This matches how multi-file ``mm cat`` is normally invoked in
+  the wild.
 * ``fps`` / ``max_frames`` / ``video_resolution`` are folded into
   ``--generate.extra-body`` as ``video_fps`` / ``video_max_frames`` /
   ``video_resolution`` keys, alongside any ``method`` /
@@ -86,6 +101,9 @@ Translation notes
 * ``encode_max_width`` (when set) maps to
   ``--encode.strategy_opts max_width=N`` -- a *client-side* encoder
   flag that downsamples the image with PIL/Rust before upload.
+* ``pinned_file`` (when set) replaces the harness's ``{file}``
+  placeholder with an absolute path; the row's input is fixed
+  rather than scanned from the bench directory.
 """
 
 from __future__ import annotations
@@ -122,12 +140,14 @@ SMOLVLM2_500M_VIDEO = "ggml-org/smolvlm2-500m-video-instruct-gguf"
 _CAT = f"mm --profile {PROFILE} cat"
 _BASE_FLAGS = "--mode fast --no-cache --format json"
 
-# ``mm cat`` iterates over file arguments client-side, so a multi-image
-# bench would actually time N sequential one-image chats. The helper
-# below builds a single chat completion with N ``image_url`` parts in
-# one user message -- the canonical multi-image conversation shape --
-# so the timing reflects the gateway's true multi-image latency.
-_MULTI_IMAGE_SCRIPT = (Path(__file__).parent / "_multi_image_call.py").resolve()
+# ── Domain-appropriate pinned inputs (~/data/1-demo) ─────────────────
+# OCR rows need an image with actual text; pose rows need a person in
+# motion. The bench harness's own scan dir (``~/data/mmbench-tiny``)
+# is curated for media-kind coverage, not domain content -- pinning
+# keeps each row exercising what its model is meant to do, even if
+# the row is currently disabled (so re-enabling later "just works").
+_OCR_IMG = Path("~/data/1-demo/image-ocr.jpg").expanduser()
+_POSE_IMG = Path("~/data/1-demo/2.1-detect-count-tennis.jpg").expanduser()
 
 
 # ── BenchSpec → BenchCommand translation ─────────────────────────────
@@ -143,19 +163,29 @@ class BenchSpec:
 
     The ``name`` is the variant identifier (e.g. ``florence2/caption``
     or ``qwen/multi-image``) and is used as the ``--command`` filter
-    key, NOT for display -- the rendered Command cell shows the full
-    resolved ``mm cat ...`` shell invocation. By default spec rows
-    land in ``group="model"``; specs declaring an ``llm`` key inside
-    ``extra_body`` are routed to ``group="model+llm"`` (cross-model
-    pipelines deserve their own timing bucket). Callers can also pin
-    a custom group via :func:`_to_command`'s ``group`` argument
-    (e.g. the ``noop`` round-trip rows). The model family is conveyed
-    via the ``model`` tag column.
+    key, NOT for display. By default spec rows land in
+    ``group="model"``; specs declaring an ``llm`` key inside
+    ``extra_body`` are routed to ``group="model+llm"``. Callers can
+    also pin a custom group via :func:`_to_command`'s ``group``
+    argument (e.g. the ``noop`` round-trip rows). The model family
+    is conveyed via the ``model`` tag column.
 
     ``encode_max_width`` (when set) is *client-side*: it surfaces as
     ``--encode.strategy_opts max_width=N`` and downsamples the image
     with PIL/Rust before upload. This is distinct from server-side
     ``extra_body.image_resolution`` knobs that some providers expose.
+
+    ``pinned_file`` (when set) hard-codes the row's input image path,
+    bypassing the harness's bench-directory file scan. The ``{file}``
+    placeholder is omitted from the resulting cmd_template. Used for
+    OCR / pose specs that need domain-specific imagery rather than
+    whatever happens to be in the bench dir.
+
+    ``disabled`` (when True) flags the row as render-only: it appears
+    in the table (dimmed, with ``skipped: disabled`` in the metrics
+    column) but the harness never invokes its argv. Used to keep
+    matrix coverage of variants whose upstream deployment is
+    currently broken without polluting timing data.
     """
 
     model: str
@@ -169,6 +199,8 @@ class BenchSpec:
     video_resolution: str | None = None
     encode_max_width: int | None = None
     extra_body: dict[str, Any] = field(default_factory=dict)
+    pinned_file: Path | None = None
+    disabled: bool = False
 
 
 def _eb_for(spec: BenchSpec) -> dict[str, Any]:
@@ -189,11 +221,21 @@ def _to_command(spec: BenchSpec, *, group: str | None = None) -> BenchCommand:
 
     ``group`` overrides the auto-derived label. By default we pick
     ``"model+llm"`` when ``extra_body`` declares an ``llm`` key (cross-
-    model post-processing pipelines) and ``"model"`` otherwise. Callers
-    building auxiliary spec lists (e.g. the ``noop`` round-trip rows)
-    can pin a custom group such as ``"noop"``.
+    model post-processing pipelines) and ``"model"`` otherwise.
     """
-    if spec.video:
+    if spec.pinned_file is not None:
+        # Hard-coded path: bake into the template, no {file} placeholder
+        # and no requires_kind. The harness's file scan / skip-logic /
+        # byte accounting is bypassed; throughput cells render as ``-``
+        # but the time metrics are accurate. The displayed Base Command
+        # still shows ``<file>`` because ``_replace_paths`` falls back to
+        # its legacy "any abs path -> placeholder" mode when the row's
+        # ``data_file_paths`` is empty.
+        path_token = shlex.quote(str(spec.pinned_file))
+        requires: str | None = None
+        placeholder = path_token
+        batch = 0
+    elif spec.video:
         requires, placeholder, batch = "video", "{file}", 0
     elif spec.image and spec.num_images > 1:
         requires, placeholder, batch = "image", "{files}", spec.num_images
@@ -227,35 +269,39 @@ def _to_command(spec: BenchSpec, *, group: str | None = None) -> BenchCommand:
         cmd_template=" ".join(parts),
         requires_kind=requires,
         batch=batch,
-        smallest=True,
-        skip_reason=f"no {requires} files",
+        smallest=requires is not None,
+        skip_reason=f"no {requires} files" if requires else "not applicable",
         # Only ``model`` is surfaced as a dedicated column; everything
         # else (prompt, extra_body, encode flags) is inlined in the
         # resolved ``Command`` cell and filterable via ``--command``.
         tags={"model": spec.model},
+        disabled=spec.disabled,
     )
 
 
-# ── noop: gateway round-trip cost ────────────────────────────────────
+# ── noop: gateway round-trip cost (currently disabled) ───────────────
 # Three variants: a text-only ping (smallest possible payload) and two
 # image passthrough rows at distinct client-side encoder resolutions.
-# The noop "model" on the gateway is a passthrough that returns
-# immediately, so timing differences between these rows isolate the
-# vision-encode pipeline (PIL resize + base64 + HTTP upload) from the
-# model itself.
+# All three are disabled because the ``vlm-run/noop`` passthrough
+# model isn't currently deployed on the gateway -- the rows still
+# show up in the matrix so re-enabling is a one-flag flip once the
+# deployment is restored.
 
 
 NOOP_SPECS: list[BenchSpec] = [
-    BenchSpec(NOOP, "noop/ping", prompt="ping"),
-    BenchSpec(NOOP, "noop/image-512", image=True, encode_max_width=512),
-    BenchSpec(NOOP, "noop/image-1024", image=True, encode_max_width=1024),
+    BenchSpec(NOOP, "noop/ping", prompt="ping", disabled=True),
+    BenchSpec(NOOP, "noop/image-512", image=True, encode_max_width=512, disabled=True),
+    BenchSpec(NOOP, "noop/image-1024", image=True, encode_max_width=1024, disabled=True),
 ]
 
 
 # ── Model matrix (mirrors the internal vlmgw BenchSpec list) ─────────
-# 28 single-call variants here + 1 hand-authored multi-image row in
-# ``_MULTI_IMAGE`` below = 29 ``group="model"`` entries total. The
-# noop family lives in NOOP_SPECS above.
+# 28 single-call variants here including ``qwen/multi-image`` (which
+# is ``mm cat <file1> <file2>`` -- two sequential one-image chats,
+# not a true multi-image API call). The noop family lives in
+# NOOP_SPECS above and ``moondream/caption+llm`` lands in
+# ``group="model+llm"`` automatically because its ``extra_body``
+# declares an ``llm`` key.
 
 
 SPECS: list[BenchSpec] = [
@@ -266,9 +312,16 @@ SPECS: list[BenchSpec] = [
         image=True,
         extra_body={"method": "caption"},
     ),
-    BenchSpec(FLORENCE2, "florence2/ocr", image=True, extra_body={"method": "ocr"}),
+    BenchSpec(
+        FLORENCE2,
+        "florence2/ocr",
+        pinned_file=_OCR_IMG,
+        extra_body={"method": "ocr"},
+    ),
     BenchSpec(FLORENCE2, "florence2/od", image=True, extra_body={"method": "od"}),
-    # Moondream2 -- image
+    # Moondream2 -- image. Video support was removed in the gateway
+    # (the server now rejects multi-frame requests with a
+    # capability_violation), so no moondream/video-caption row.
     BenchSpec(MOONDREAM2, "moondream/caption", image=True, extra_body={"method": "caption"}),
     BenchSpec(
         MOONDREAM2,
@@ -276,23 +329,18 @@ SPECS: list[BenchSpec] = [
         image=True,
         extra_body={"method": "detect", "method_params": {"object": "bench"}},
     ),
-    # Moondream2 -- 8 frames spread across the clip (fps=0.4 ~= 2.5s
-    # per frame on a 20s soccer-juggling clip) at 448x336 so the
-    # video_resolution knob is exercised by default.
+    # Qwen3.5 (text, image, video, multi-image). The multi-image row
+    # uses ``num_images=2`` so it resolves to ``mm cat <f1> <f2>`` --
+    # two sequential one-image chats, not a single multi-image API
+    # call. ``qwen/text`` is disabled because the "What is 2+2?" prompt
+    # isn't representative of any real usage pattern; the row stays for
+    # reference.
     BenchSpec(
-        MOONDREAM2,
-        "moondream/video-caption",
-        video=True,
-        fps=0.4,
-        max_frames=8,
-        video_resolution="448x336",
-        extra_body={"method": "caption"},
+        QWEN,
+        "qwen/text",
+        prompt="What is 2+2? Reply in one word.",
+        disabled=True,
     ),
-    # Qwen3.5 (text, image, video). The multi-image variant is
-    # hand-authored in ``_MULTI_IMAGE`` below: a single chat
-    # completion with two image_url parts, NOT mm cat's
-    # file-iteration loop.
-    BenchSpec(QWEN, "qwen/text", prompt="What is 2+2? Reply in one word."),
     BenchSpec(QWEN, "qwen/image", image=True, prompt="Describe this image briefly."),
     BenchSpec(
         QWEN,
@@ -303,6 +351,13 @@ SPECS: list[BenchSpec] = [
         video_resolution="448x336",
         prompt="Summarise what happens in this video in one sentence.",
     ),
+    BenchSpec(
+        QWEN,
+        "qwen/multi-image",
+        image=True,
+        num_images=2,
+        prompt="Compare these two images.",
+    ),
     # RF-DETR detection / segmentation
     BenchSpec(RFDETR, "rfdetr/detect", image=True, extra_body={"method": "detect"}),
     BenchSpec(
@@ -311,20 +366,31 @@ SPECS: list[BenchSpec] = [
         image=True,
         extra_body={"method": "segment"},
     ),
-    # ViTPose pose estimation
-    BenchSpec(VITPOSE, "vitpose/pose", image=True, extra_body={"method": "pose"}),
-    # SAM3 -- promptable segmentation + video tracking
+    # ViTPose pose estimation -- pinned to a tennis player so the
+    # pose model has actual keypoints to find rather than the bench
+    # dir's default car photo.
+    BenchSpec(
+        VITPOSE,
+        "vitpose/pose",
+        pinned_file=_POSE_IMG,
+        extra_body={"method": "pose"},
+    ),
+    # SAM3 -- promptable segmentation + video tracking. All three
+    # are disabled because the ``facebook/sam3`` deployment is
+    # currently down (Deployment unavailable / multi-image rejection).
     BenchSpec(
         SAM3,
         "sam3/segment",
         image=True,
         extra_body={"method": "segment", "method_params": {"prompt": "soccer ball"}},
+        disabled=True,
     ),
     BenchSpec(
         SAM3,
         "sam3/segment_box",
         image=True,
         extra_body={"method": "segment_box", "method_params": {"box": [50, 50, 400, 400]}},
+        disabled=True,
     ),
     BenchSpec(
         SAM3,
@@ -336,47 +402,77 @@ SPECS: list[BenchSpec] = [
             "method": "track",
             "method_params": {"prompt": "soccer ball", "skip": 1, "max_frames": 30},
         },
+        disabled=True,
     ),
-    # DOTS-OCR -- document layout + OCR
+    # DOTS-OCR -- document layout + OCR. All four disabled because
+    # ``rednote-hilab/dots.ocr`` deployment is currently down. Pinned
+    # to an OCR-bearing image so re-enabling works correctly.
     BenchSpec(
         DOTS_OCR,
         "dots-ocr/parse_layout",
-        image=True,
+        pinned_file=_OCR_IMG,
         extra_body={"method": "parse_layout"},
+        disabled=True,
     ),
     BenchSpec(
         DOTS_OCR,
         "dots-ocr/parse_layout_only",
-        image=True,
+        pinned_file=_OCR_IMG,
         extra_body={"method": "parse_layout_only"},
+        disabled=True,
     ),
-    BenchSpec(DOTS_OCR, "dots-ocr/ocr", image=True, extra_body={"method": "ocr"}),
+    BenchSpec(
+        DOTS_OCR,
+        "dots-ocr/ocr",
+        pinned_file=_OCR_IMG,
+        extra_body={"method": "ocr"},
+        disabled=True,
+    ),
     BenchSpec(
         DOTS_OCR,
         "dots-ocr/grounding_ocr",
-        image=True,
+        pinned_file=_OCR_IMG,
         extra_body={"method": "grounding_ocr", "method_params": {"box": [120, 200, 900, 400]}},
+        disabled=True,
     ),
-    # PP-OCRv5 -- scene text recognition
-    BenchSpec(PADDLEOCR, "paddleocr/ocr", image=True, extra_body={"method": "ocr"}),
-    BenchSpec(PADDLEOCR, "paddleocr/detect", image=True, extra_body={"method": "detect"}),
-    # GLiNER2 -- text-only NER / classification / JSON extraction.
-    # ``mm cat`` requires a file argument so the smallest available
-    # image is attached as a no-op carrier; the model ignores it.
+    # PP-OCRv5 -- scene text recognition. Both disabled (Internal
+    # Server Error from the gateway).
+    BenchSpec(
+        PADDLEOCR,
+        "paddleocr/ocr",
+        pinned_file=_OCR_IMG,
+        extra_body={"method": "ocr"},
+        disabled=True,
+    ),
+    BenchSpec(
+        PADDLEOCR,
+        "paddleocr/detect",
+        pinned_file=_OCR_IMG,
+        extra_body={"method": "detect"},
+        disabled=True,
+    ),
+    # GLiNER2 -- text-only NER / classification. Both disabled
+    # because the gateway rejects images on text-only models, and
+    # ``mm cat`` always attaches its file argument to the request
+    # (no way to send pure text via ``mm cat``).
     BenchSpec(
         GLINER,
         "gliner/extract_entities",
         prompt="Vlm Run is hiring engineers in San Francisco.",
         extra_body={"method": "extract_entities"},
+        disabled=True,
     ),
     BenchSpec(
         GLINER,
         "gliner/classify_text",
         prompt="The fourth quarter earnings exceeded analyst expectations.",
         extra_body={"method": "classify_text"},
+        disabled=True,
     ),
-    # SmolVLM family (llama.cpp GGUF; only the preferred quantization is
-    # measured -- F16 variants exist in the manifest but are excluded).
+    # SmolVLM family (llama.cpp GGUF). The 256m image / caption rows
+    # work; the *-video rows are disabled because the smolvlm2-video
+    # variants on the gateway accept at most 1 image_url part, which
+    # is incompatible with multi-frame video sampling.
     BenchSpec(
         SMOLVLM_256M,
         "smolvlm/256m-caption",
@@ -397,6 +493,7 @@ SPECS: list[BenchSpec] = [
         max_frames=8,
         video_resolution="448x336",
         prompt="Summarise the video in one sentence.",
+        disabled=True,
     ),
     BenchSpec(
         SMOLVLM2_500M_VIDEO,
@@ -412,44 +509,17 @@ SPECS: list[BenchSpec] = [
         max_frames=8,
         video_resolution="448x336",
         prompt="Summarise the video in one sentence.",
+        disabled=True,
     ),
-    # Moondream2 + LLM post-processing -- cross-model pipeline. Routed
-    # to group="model+llm" by `_to_command` because extra_body declares
-    # an `llm` key. The LLM post-processor is referenced by namespaced
-    # name to mirror the convention used everywhere else in this file.
+    # Moondream2 + LLM post-processing -- cross-model pipeline.
+    # Disabled (Internal Server Error from the gateway). Routed to
+    # ``group="model+llm"`` automatically when re-enabled.
     BenchSpec(
         MOONDREAM2,
         "moondream/caption+llm",
         image=True,
         extra_body={"method": "caption", "llm": QWEN},
-    ),
-]
-
-
-# ── multi-image: single chat completion with N image_url parts ──────
-# ``mm cat <file1> <file2>`` iterates client-side and fires N
-# independent gateway requests, which times the wrong thing for
-# multi-image conversation latency. We invoke a tiny helper script
-# (`benchmarks/_multi_image_call.py`) that builds ONE chat completion
-# with both images attached as ``image_url`` parts on a single user
-# message -- the canonical multi-image shape every OpenAI-compatible
-# vlm gateway accepts.
-
-_MULTI_IMAGE: list[BenchCommand] = [
-    BenchCommand(
-        name="qwen/multi-image",
-        group="model",
-        cmd_template=(
-            f"python {shlex.quote(str(_MULTI_IMAGE_SCRIPT))} "
-            f"--model {shlex.quote(QWEN)} "
-            "--prompt 'Compare these two images.' "
-            "{files}"
-        ),
-        requires_kind="image",
-        batch=2,
-        smallest=True,
-        skip_reason="no image files",
-        tags={"model": QWEN},
+        disabled=True,
     ),
 ]
 
@@ -586,7 +656,6 @@ _VALIDATION: list[BenchCommand] = [
 COMMANDS: list[BenchCommand] = (
     [_to_command(s, group="noop") for s in NOOP_SPECS]
     + [_to_command(s) for s in SPECS]
-    + _MULTI_IMAGE
     + _IMAGE_RES
     + _VIDEO_FRAMES
     + _CACHE

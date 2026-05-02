@@ -43,6 +43,13 @@ class BenchCommand:
                        keys across all rows in first-seen order, so
                        benchfile authors control the column ordering by
                        defining tags in the order they want displayed.
+        disabled:      When True, the row appears in the rendered table
+                       (dimmed, with ``skipped: disabled`` in the metrics
+                       column) but the harness never invokes its argv.
+                       Use to keep declarative coverage of variants whose
+                       upstream dependency is currently broken without
+                       polluting timing data; flip back to False once the
+                       deployment is healthy again.
     """
 
     name: str
@@ -53,6 +60,7 @@ class BenchCommand:
     smallest: bool = False
     skip_reason: str = "not applicable"
     tags: dict[str, str] = field(default_factory=dict)
+    disabled: bool = False
 
 
 # ── Resolution ─────────────────────────────────────────────────────
