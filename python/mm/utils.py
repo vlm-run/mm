@@ -13,6 +13,7 @@ T = TypeVar("T")
 class BaseFormat(str, Enum):
     rich = "rich"
     json = "json"
+    pretty_json = "pretty-json"
     tsv = "tsv"
     csv = "csv"
     stdout = "stdout"
@@ -21,6 +22,7 @@ class BaseFormat(str, Enum):
 class Format(str, Enum):
     rich = "rich"
     json = "json"
+    pretty_json = "pretty-json"
     tsv = "tsv"
     csv = "csv"
     dataset_jsonl = "dataset-jsonl"

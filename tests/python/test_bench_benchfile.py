@@ -626,12 +626,13 @@ class TestVlmgwBenchfileSmoke:
 
         # Exact group counts -- the matrix is fully prescribed.
         # ``moondream/video-caption`` was dropped (the gateway no
-        # longer supports moondream2 video) and ``qwen/multi-image``
-        # was folded back into SPECS as a regular ``mm cat <f1> <f2>``
-        # row, so SPECS now contributes 28 ``model`` + 1 ``model+llm``.
+        # longer supports moondream2 video); ``qwen/multi-image`` was
+        # folded back into SPECS as a regular ``mm cat <f1> <f2>``
+        # row; ``qwen/ocr`` was added for the OCR task slot. SPECS
+        # now contributes 29 ``model`` + 1 ``model+llm``.
         assert groups == {
             "noop": 3,
-            "model": 28,
+            "model": 29,
             "model+llm": 1,
             "image-res": 3,
             "video-frames": 3,
@@ -710,6 +711,7 @@ class TestVlmgwBenchfileSmoke:
             "qwen/image",
             "qwen/video",
             "qwen/multi-image",
+            "qwen/ocr",
             "rfdetr/detect",
             "rfdetr-seg/segment",
             "vitpose/pose",
@@ -759,9 +761,6 @@ class TestVlmgwBenchfileSmoke:
             "dots-ocr/parse_layout_only",
             "dots-ocr/ocr",
             "dots-ocr/grounding_ocr",
-            # paddleocr -- gateway returns Internal Server Error.
-            "paddleocr/ocr",
-            "paddleocr/detect",
             # gliner is text-only but mm cat always attaches an image.
             "gliner/extract_entities",
             "gliner/classify_text",
@@ -1480,8 +1479,8 @@ class TestDisabledRows:
     ):
         """JSON surfaces ``skipped: true`` plus ``skip_reason: disabled`` plus ``disabled: true``."""
         # ``monkeypatch.chdir`` keeps any incidental recording from
-        # leaking a ``benchmark/<date>-mm-bench-<profile>.md`` file
-        # into whatever ``cwd`` pytest happens to inherit.
+        # leaking a ``benchmarks/results/<date>-mm-bench-<profile>-<HHMM>.md``
+        # file into whatever ``cwd`` pytest happens to inherit.
         monkeypatch.chdir(tmp_path)
         bf = _write_benchfile(
             tmp_path / "bf.py",
@@ -1602,26 +1601,50 @@ class TestRecordingHelpers:
         assert _derive_recording_stem("org/profile") == "org-profile"
         assert _derive_recording_stem("a\\b") == "a-b"
 
-    def test_derive_recording_path_uses_yymmdd_and_singular_dir(self, tmp_path: Path):
-        """Default root is ``benchmark/`` (singular); filename folds in profile."""
+    def test_derive_recording_path_filename_carries_date_profile_and_hhmm(self, tmp_path: Path):
+        """Default filename is ``<YYMMDD>-mm-bench-<profile>-<HHMM>.md``.
+
+        ``HHMM`` (24-hour time-of-day) is what gives same-day re-runs
+        unique filenames -- previously the recorder overwrote the
+        single ``<YYMMDD>-mm-bench-<profile>.md`` artefact on every
+        invocation, which was useful for "one canonical snapshot per
+        day" but lossy when iterating on a benchfile.
+        """
         import datetime as dt
+        import re
 
         from mm.commands.bench import _derive_recording_path
 
-        path = _derive_recording_path("vlmgw", root=tmp_path / "benchmark")
+        path = _derive_recording_path("vlmgw", root=tmp_path / "benchmarks/results")
         today = dt.datetime.now().strftime("%y%m%d")
-        assert path.name == f"{today}-mm-bench-vlmgw.md"
-        assert path.parent == tmp_path / "benchmark"
+        # Filename matches ``<YYMMDD>-mm-bench-<profile>-<HHMM>.md``.
+        assert re.fullmatch(rf"{today}-mm-bench-vlmgw-\d{{4}}\.md", path.name), path.name
+        assert path.parent == tmp_path / "benchmarks/results"
+
+    def test_derive_recording_path_default_dir_is_benchmarks_results(self):
+        """Default base is ``benchmarks/results/`` (plural + nested).
+
+        Plural ``benchmarks/`` keeps housing the input source-of-truth
+        (benchfiles, helper scripts); the ``results/`` subdir collects
+        auto-recordings so generated artefacts can be cleaned without
+        touching curated inputs.
+        """
+        from mm.commands.bench import _derive_recording_path
+
+        path = _derive_recording_path("vlmgw")
+        # Last two path components: ``benchmarks/results``.
+        assert path.parent == Path("benchmarks/results"), path.parent
 
     def test_derive_recording_path_default_when_no_profile(self, tmp_path: Path):
-        """``None`` profile -> ``-mm-bench-default.md`` so plain runs still record."""
+        """``None`` profile -> ``-mm-bench-default-<HHMM>.md`` so plain runs still record."""
         import datetime as dt
+        import re
 
         from mm.commands.bench import _derive_recording_path
 
-        path = _derive_recording_path(None, root=tmp_path / "benchmark")
+        path = _derive_recording_path(None, root=tmp_path / "benchmarks/results")
         today = dt.datetime.now().strftime("%y%m%d")
-        assert path.name == f"{today}-mm-bench-default.md"
+        assert re.fullmatch(rf"{today}-mm-bench-default-\d{{4}}\.md", path.name)
 
     def test_stdout_fence_lang_json_for_object(self):
         from mm.commands.bench import _stdout_fence_lang
@@ -1719,9 +1742,176 @@ class TestRecordingHelpers:
         body, lang = _format_recording_output(r, argv_str)
         assert lang == "json"
         # Path normalization runs (argv has the abs path) and ANSI strip
-        # is a no-op for plain text.
+        # is a no-op for plain text. Top-level object (not a list) so
+        # the ``mm cat`` envelope-extraction branch doesn't fire and
+        # we keep the legacy passthrough.
         assert "img.jpg" in body
         assert str(f) not in body
+
+
+class TestExtractCatContent:
+    """Recorder unwraps ``mm cat --format json`` into content-only blocks.
+
+    The bench harness invokes ``mm cat ... --format json`` and captures
+    its stdout. The captured envelope (``[{"path": ..., "mode": ...,
+    "content": ...}]`` plus a trailing perf-summary footer) is noisy
+    in the recording: ``path`` / ``mode`` repeat across every row,
+    the perf footer leaks in via ``output_console``, and -- when the
+    model returns structured output -- the ``content`` field holds an
+    escaped single-line JSON string instead of a multi-line block. The
+    extractor unwraps all three so the recording shows just the model
+    response, pretty-printed.
+    """
+
+    def test_single_entry_json_content_pretty_prints(self):
+        """Florence2-style ``"content": "{\\\"<CAPTION>\\\": ...}"``."""
+        from mm.commands.bench import _extract_cat_content
+
+        envelope = (
+            '[{"path":"/abs/img.jpg","mode":"fast",'
+            '"content":"{\\"<CAPTION>\\": \\"a green car\\"}"}]'
+        )
+        body, lang = _extract_cat_content(envelope)
+        assert lang == "json"
+        # Multi-line output, indented -- not the original escaped soup.
+        assert "\n" in body
+        assert '"<CAPTION>": "a green car"' in body
+        # And the envelope keys are gone.
+        assert "path" not in body
+        assert "mode" not in body
+        assert "content" not in body
+
+    def test_single_entry_plain_text_content_passes_through(self):
+        """Moondream-style caption -- ``content`` is a plain string."""
+        from mm.commands.bench import _extract_cat_content
+
+        envelope = (
+            '[{"path":"/abs/img.jpg","mode":"fast",'
+            '"content":"A vintage car parked beside a yellow building."}]'
+        )
+        body, lang = _extract_cat_content(envelope)
+        assert lang == "text"
+        assert body == "A vintage car parked beside a yellow building."
+
+    def test_perf_footer_after_envelope_is_stripped(self):
+        """``mm cat`` prints its `display_elapsed` footer to stdout.
+
+        The bullet-separated ``1.7s • 38.2 KB • 22.9 KB/s`` line trails
+        the JSON envelope. ``raw_decode`` parses the JSON prefix and
+        ignores everything after, so the footer never reaches the
+        rendered fence.
+        """
+        from mm.commands.bench import _extract_cat_content
+
+        envelope = (
+            '[{"path":"/abs/img.jpg","mode":"fast","content":"caption"}]\n'
+            "1.7s \u2022 38.2 KB \u2022 22.9 KB/s\n"
+        )
+        body, lang = _extract_cat_content(envelope)
+        assert lang == "text"
+        assert body == "caption"
+        # The footer separator and units must not survive into the body.
+        assert "\u2022" not in body
+        assert "KB/s" not in body
+
+    def test_multi_entry_folds_into_json_array(self):
+        """``mm cat <f1> <f2>`` -> two-entry list -> JSON array of contents."""
+        import json
+
+        from mm.commands.bench import _extract_cat_content
+
+        envelope = (
+            '[{"path":"/a/img1.jpg","mode":"fast","content":"first"},'
+            ' {"path":"/a/img2.jpg","mode":"fast","content":"second"}]'
+        )
+        body, lang = _extract_cat_content(envelope)
+        assert lang == "json"
+        parsed = json.loads(body)
+        assert parsed == ["first", "second"]
+        # And the array is pretty-printed (multiple lines).
+        assert body.count("\n") >= 2
+
+    def test_multi_entry_mixed_content_types(self):
+        """One entry has JSON content, the other plain text -- both flow through."""
+        import json
+
+        from mm.commands.bench import _extract_cat_content
+
+        envelope = (
+            '[{"path":"/a/img1.jpg","mode":"fast",'
+            '"content":"{\\"caption\\": \\"first\\"}"},'
+            ' {"path":"/a/img2.jpg","mode":"fast","content":"second"}]'
+        )
+        body, lang = _extract_cat_content(envelope)
+        assert lang == "json"
+        parsed = json.loads(body)
+        # First entry's content was a parseable JSON string -> dict.
+        # Second's was plain text -> kept as a string.
+        assert parsed == [{"caption": "first"}, "second"]
+
+    def test_non_json_stdout_returns_none(self):
+        """Plain stderr-style errors leave the recorder pipeline untouched."""
+        from mm.commands.bench import _extract_cat_content
+
+        assert _extract_cat_content("Error: model not found\n") is None
+        assert _extract_cat_content("") is None
+        assert _extract_cat_content("   ") is None
+
+    def test_top_level_object_returns_none(self):
+        """Only the list-of-entries envelope is recognised; bare dicts pass through."""
+        from mm.commands.bench import _extract_cat_content
+
+        # A top-level dict could legitimately come from a non-cat command
+        # (e.g. ``mm wc``); leave it for the legacy fence-detection path.
+        assert _extract_cat_content('{"path": "x"}') is None
+
+    def test_list_without_content_key_returns_none(self):
+        """Non-``mm cat`` arrays (no ``content`` key) pass through."""
+        from mm.commands.bench import _extract_cat_content
+
+        # ``mm find --format json`` returns a list of file dicts with
+        # ``path``/``size``/``kind`` -- no ``content`` field. Leave
+        # those alone so we don't mis-massage non-cat output.
+        assert _extract_cat_content('[{"path": "a", "size": 1}]') is None
+
+    def test_malformed_json_returns_none(self):
+        """Truncated / corrupt JSON falls through to the legacy passthrough."""
+        from mm.commands.bench import _extract_cat_content
+
+        assert _extract_cat_content('[{"path": "a", "content":') is None
+
+    def test_format_recording_output_unwraps_cat_envelope(self, tmp_path: Path):
+        """End-to-end: ``_format_recording_output`` runs the extractor on cat output."""
+        import json as _json
+
+        from mm.commands.bench import BenchResult, _format_recording_output
+
+        f = tmp_path / "img.jpg"
+        f.write_bytes(b"x")
+        argv_str = f"mm cat {f} --format json"
+        # Build the envelope via ``json.dumps`` rather than hand-rolling
+        # the escapes -- mirrors what ``mm cat --format json`` actually
+        # produces and immunises this test against quoting mistakes.
+        envelope_obj = [
+            {
+                "path": str(f),
+                "mode": "fast",
+                # ``content`` is a JSON-as-string payload (the
+                # florence2 / dots-ocr shape).
+                "content": _json.dumps({"<CAPTION>": "a car"}),
+            }
+        ]
+        envelope = _json.dumps(envelope_obj) + "\n1.7s \u2022 38.2 KB \u2022 22.9 KB/s\n"
+        r = BenchResult("x", "g", last_stdout=envelope, returncode=0)
+        body, lang = _format_recording_output(r, argv_str)
+        assert lang == "json"
+        # Pretty-printed, multi-line, content-only.
+        assert "\n" in body
+        assert '"<CAPTION>": "a car"' in body
+        # Envelope + footer noise are gone.
+        assert "path" not in body
+        assert "mode" not in body
+        assert "KB/s" not in body
 
     def test_build_args_line_image_with_mode(self):
         from mm.commands.bench import BenchResult, _build_args_line
@@ -1785,13 +1975,7 @@ class TestRecordingHelpers:
 
 
 class TestRecordingFile:
-    """End-to-end tests covering ``benchmark/<YYMMDD>-mm-bench-<profile>.md``."""
-
-    @staticmethod
-    def _today_filename(stem: str) -> str:
-        import datetime as dt
-
-        return f"{dt.datetime.now().strftime('%y%m%d')}-mm-bench-{stem}.md"
+    """End-to-end tests covering ``benchmarks/results/<YYMMDD>-mm-bench-<profile>-<HHMM>.md``."""
 
     @staticmethod
     def _active_profile_stem() -> str:
@@ -1810,6 +1994,28 @@ class TestRecordingFile:
 
         prof = (collect_host_info().get("profile") or {}).get("name")
         return _derive_recording_stem(prof)
+
+    @staticmethod
+    def _find_recording(tmp_path: Path, stem: str) -> Path:
+        """Return the single recording file for *stem* under *tmp_path*.
+
+        Filenames now carry an ``HHMM`` suffix for same-day uniqueness
+        (``<YYMMDD>-mm-bench-<stem>-<HHMM>.md``), so we glob rather
+        than predict. Asserts exactly one file matches -- multiple
+        would mean the test accidentally invoked ``mm bench`` more
+        than once and we want to know.
+        """
+        import datetime as dt
+
+        today = dt.datetime.now().strftime("%y%m%d")
+        results_dir = tmp_path / "benchmarks" / "results"
+        assert results_dir.exists(), f"expected {results_dir} to exist"
+        candidates = sorted(results_dir.glob(f"{today}-mm-bench-{stem}-*.md"))
+        assert len(candidates) == 1, (
+            f"expected exactly one recording for stem={stem!r}, "
+            f"found {len(candidates)}: {candidates}"
+        )
+        return candidates[0]
 
     def test_recording_written_for_default_suite(
         self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, small_tree: Path
@@ -1832,8 +2038,7 @@ class TestRecordingFile:
         )
         assert r.exit_code == 0, r.output
         stem = self._active_profile_stem()
-        rec = tmp_path / "benchmark" / self._today_filename(stem)
-        assert rec.exists(), f"expected {rec}, cwd={list(tmp_path.iterdir())}"
+        rec = self._find_recording(tmp_path, stem)
         body = rec.read_text()
         assert body.startswith(f"# mm bench recording — {stem} — ")
         # Each row's Rich-table snapshot is emitted as raw markdown
@@ -1887,7 +2092,7 @@ class TestRecordingFile:
             ],
         )
         assert r.exit_code == 0, r.output
-        rec = tmp_path / "benchmark" / self._today_filename(self._active_profile_stem())
+        rec = self._find_recording(tmp_path, self._active_profile_stem())
         body = rec.read_text()
         # Disabled row is in the roll-up section, NOT as its own
         # Rich-table block.
@@ -1931,8 +2136,7 @@ class TestRecordingFile:
         )
         assert r.exit_code == 0, r.output
         stem = self._active_profile_stem()
-        rec = tmp_path / "benchmark" / self._today_filename(stem)
-        assert rec.exists()
+        rec = self._find_recording(tmp_path, stem)
         body = rec.read_text()
         # Recording is keyed by *profile*, not benchfile -- the same
         # benchfile against different profiles writes to different
@@ -1958,19 +2162,19 @@ class TestRecordingFile:
             ],
         )
         assert r.exit_code == 0, r.output
-        bench_dir = tmp_path / "benchmark"
+        results_dir = tmp_path / "benchmarks" / "results"
         # Either the directory wasn't created at all, or it has no
         # mm-bench-*.md files.
-        if bench_dir.exists():
-            assert not list(bench_dir.glob("*-mm-bench-*.md"))
+        if results_dir.exists():
+            assert not list(results_dir.glob("*-mm-bench-*.md"))
 
     def test_recording_skipped_for_host_info(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
         monkeypatch.chdir(tmp_path)
         r = runner.invoke(app, ["bench", str(tmp_path), "--host-info"])
         assert r.exit_code == 0, r.output
-        bench_dir = tmp_path / "benchmark"
-        if bench_dir.exists():
-            assert not list(bench_dir.glob("*-mm-bench-*.md"))
+        results_dir = tmp_path / "benchmarks" / "results"
+        if results_dir.exists():
+            assert not list(results_dir.glob("*-mm-bench-*.md"))
 
     def test_recording_strips_absolute_paths(
         self,
@@ -2005,7 +2209,7 @@ class TestRecordingFile:
             ],
         )
         assert r.exit_code == 0, r.output
-        rec = tmp_path / "benchmark" / self._today_filename(self._active_profile_stem())
+        rec = self._find_recording(tmp_path, self._active_profile_stem())
         body = rec.read_text()
         # Captured stdout had the abs path, but the recording shows the
         # basename only.
@@ -2045,7 +2249,7 @@ class TestRecordingFile:
             ],
         )
         assert r.exit_code == 0, r.output
-        rec = tmp_path / "benchmark" / self._today_filename(self._active_profile_stem())
+        rec = self._find_recording(tmp_path, self._active_profile_stem())
         body = rec.read_text()
         assert "[exit 7]" in body
         assert "boom" in body
@@ -2074,9 +2278,10 @@ class TestRecordingFile:
         # recording line is written to stderr via ``typer.echo(...,
         # err=True)``. The filename is keyed on the active profile;
         # whatever stem the recorder picks must show up in the path
-        # we logged.
+        # we logged. ``HHMM`` suffix is variable; check the profile
+        # stem prefix only.
         stem = self._active_profile_stem()
         assert "Wrote recording to " in r.output
-        assert f"-mm-bench-{stem}.md" in r.output
-        # And the directory part is the new singular ``benchmark/``.
-        assert "benchmark/" in r.output
+        assert f"-mm-bench-{stem}-" in r.output
+        # And the directory part is the nested ``benchmarks/results/``.
+        assert "benchmarks/results/" in r.output

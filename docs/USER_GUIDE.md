@@ -321,12 +321,15 @@ blobs) lives in `Extra Args` rather than in tag columns — the
 column-per-tag mechanism is reserved for short, comparable
 identifiers like `model` and `provider`.
 
-### Bench recording: `benchmark/<YYMMDD>-mm-bench-<profile>.md`
+### Bench recording: `benchmarks/results/<YYMMDD>-mm-bench-<profile>-<HHMM>.md`
 
 Every non-dry-run `mm bench` invocation also writes a per-row
-markdown snapshot under `benchmark/` (singular — distinct from
-the plural `benchmarks/` directory where author-curated benchfiles
-and ad-hoc scripts live). The file contains, for each benchmarked
+markdown snapshot under `benchmarks/results/`. The plural
+`benchmarks/` directory continues to host author-curated benchfiles
+(`vlmgw_bench_commands.py`, ad-hoc shell helpers, …); the nested
+`results/` subfolder is reserved for generated recordings so a
+`rm -rf benchmarks/results/` only nukes auto-produced artefacts and
+never the curated inputs. The file contains, for each benchmarked
 command, the *exact same single-row Rich table* the live bench
 rendered — followed by a fenced block holding that row's captured
 stdout. This keeps a portable, diffable record of what was measured
@@ -336,19 +339,21 @@ two benchfiles side-by-side.
 
 Path derivation:
 
-- `benchmark/<YYMMDD>-mm-bench-<profile>.md` (relative to the current
-  working directory; `benchmark/` is created if missing).
+- `benchmarks/results/<YYMMDD>-mm-bench-<profile>-<HHMM>.md` (relative
+  to the current working directory; `benchmarks/results/` is created
+  if missing).
 - `<profile>` is the *active mm profile name* (the same one that
   drives `mm cat`'s default base URL / model — see the `--profile`
   flag and `~/.config/mm/mm.toml`). When no profile is configured
   the stem falls back to `default`.
+- `<HHMM>` is the 24-hour wall-clock time the run started. Two runs
+  in the same minute will collide, but iterating on a benchfile
+  every few minutes preserves history without manual `git mv`s.
 - The recording is keyed on the deployment being measured, not on
   the benchfile that wrote the matrix: re-running the same benchfile
-  against a different profile writes to a different file, and two
-  benchfiles aimed at the same profile will overwrite each other on
-  the same day.
-- Existing files are overwritten — one snapshot per profile per day.
-  Use `git mv` afterwards if you want per-run history.
+  against a different profile writes to a different file (different
+  `<profile>` slot), and two benchfiles aimed at the same profile
+  produce sibling files distinguished only by `<HHMM>`.
 
 Per-row layout:
 

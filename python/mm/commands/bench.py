@@ -850,8 +850,8 @@ def _derive_recording_stem(profile_name: str | None) -> str:
         return "default"
     # ``/`` and other path separators in profile names would punch
     # subdirectories into the recording path; normalize them out so
-    # ``"a/b"`` lands at ``benchmark/<date>-mm-bench-a-b.md`` rather
-    # than ``benchmark/<date>-mm-bench-a/b.md``.
+    # ``"a/b"`` lands at ``benchmarks/results/<date>-mm-bench-a-b-<HHMM>.md``
+    # rather than ``benchmarks/results/<date>-mm-bench-a/b-<HHMM>.md``.
     safe = profile_name.replace("/", "-").replace("\\", "-")
     return safe or "default"
 
@@ -859,20 +859,37 @@ def _derive_recording_stem(profile_name: str | None) -> str:
 def _derive_recording_path(profile_name: str | None, *, root: Path | None = None) -> Path:
     """Return the markdown recording path for the active *profile_name*.
 
-    Defaults to ``<cwd>/benchmark/<YYMMDD>-mm-bench-<profile>.md``.
-    The directory is singular (``benchmark/``) on purpose: pluralized
-    ``benchmarks/`` is the source-of-truth for benchfile inputs
-    (``.py``) and ad-hoc scripts; recordings live separately so they
-    can be archived / cleaned independently of the author-curated
-    inputs. The ``root`` override exists primarily for tests so they
-    can target a pytest tmp directory without needing
-    ``monkeypatch.chdir``.
+    Defaults to
+    ``<cwd>/benchmarks/results/<YYMMDD>-mm-bench-<profile>-<HHMM>.md``.
+
+    Layout rationale:
+
+    * ``benchmarks/`` (plural) keeps the input source-of-truth --
+      ``vlmgw_bench_commands.py``, ``bench_cli*.sh``, etc.
+    * ``benchmarks/results/`` collects every auto-recording so a
+      ``rm -rf benchmarks/results/`` only nukes generated artefacts
+      and never the author-curated inputs.
+
+    Filename rationale:
+
+    * ``<YYMMDD>`` keeps day-level clustering for grep / archive.
+    * ``<HHMM>`` (24-hour) suffix gives minute-level uniqueness so two
+      runs against the same profile on the same day don't overwrite
+      each other -- previously the recorder was idempotent per day,
+      which was useful for "single canonical snapshot" but lossy when
+      iterating on a benchfile through several runs.
+
+    ``root`` overrides the base directory (used by tests so they can
+    target a pytest tmp dir without ``monkeypatch.chdir``).
     """
     import datetime as _dt
 
-    today = _dt.datetime.now().strftime("%y%m%d")
-    base = root if root is not None else Path("benchmark")
-    return base / f"{today}-mm-bench-{_derive_recording_stem(profile_name)}.md"
+    now = _dt.datetime.now()
+    date = now.strftime("%y%m%d")
+    time = now.strftime("%H%M")
+    base = root if root is not None else Path("benchmarks/results")
+    stem = _derive_recording_stem(profile_name)
+    return base / f"{date}-mm-bench-{stem}-{time}.md"
 
 
 def _stdout_fence_lang(stdout: str) -> str:
@@ -886,6 +903,95 @@ def _stdout_fence_lang(stdout: str) -> str:
     if s.startswith(("{", "[")):
         return "json"
     return "text"
+
+
+def _extract_cat_content(stdout: str) -> tuple[str, str] | None:
+    """Extract the ``content`` payload from ``mm cat --format json`` stdout.
+
+    The bench harness invokes ``mm cat ... --format json`` and captures
+    its stdout. The raw envelope looks like::
+
+        [{"path": "<abs>", "mode": "<mode>", "content": "<actual output>"}]
+        <perf-footer line, e.g. "1.7s • 38.2 KB • 22.9 KB/s">
+
+    For the markdown recording we want the **content** only -- the
+    ``path`` / ``mode`` keys are noise (they're already in the row's
+    Rich table + ``args:`` line), and the trailing perf-footer line is
+    a `mm cat` ``display_elapsed`` artifact that leaks into stdout
+    because it's printed via ``output_console`` rather than stderr.
+
+    Returns:
+
+    * ``(pretty_body, "json")`` when we successfully extract a JSON
+      payload (single content as JSON object/array, or multi-image as
+      a JSON array of content values).
+    * ``(text_body, "text")`` when the single extracted content is a
+      plain string.
+    * ``None`` when *stdout* doesn't look like a ``mm cat --format
+      json`` envelope -- caller falls back to the raw stdout pipeline.
+
+    Multi-content (``mm cat <f1> <f2>``) renders as a JSON array of
+    parsed contents so the per-row block stays one cohesive code
+    fence rather than a sequence of un-delimited blocks.
+    """
+    import json
+
+    s = stdout.lstrip()
+    if not s.startswith(("[", "{")):
+        return None
+
+    try:
+        decoder = json.JSONDecoder()
+        obj, _end = decoder.raw_decode(s)
+    except json.JSONDecodeError:
+        # Not a JSON envelope at all -- could be a model that returned
+        # non-JSON to a ``--format json`` request, or a CLI error
+        # before the envelope was assembled. Leave it to the caller.
+        return None
+
+    # We only know how to massage the ``mm cat`` envelope shape:
+    # a non-empty list of dicts each carrying a ``content`` field.
+    # Anything else (a top-level dict, an empty list, a list of
+    # primitives, ...) flows through unchanged so we don't surprise
+    # callers with unexpected reshaping.
+    if not isinstance(obj, list) or not obj:
+        return None
+    if not all(isinstance(e, dict) and "content" in e for e in obj):
+        return None
+
+    contents: list[Any] = []
+    for entry in obj:
+        raw = entry.get("content")
+        if isinstance(raw, str):
+            stripped = raw.strip()
+            if stripped.startswith(("{", "[")):
+                # Some encoders / pipelines return JSON-as-string
+                # (florence2's ``"{\"<CAPTION>\": ...}"`` shape, dots-
+                # ocr's layout dumps, etc.). Parse so the recording
+                # pretty-prints the structured payload rather than a
+                # single line of escaped quotes.
+                try:
+                    contents.append(json.loads(stripped))
+                    continue
+                except json.JSONDecodeError:
+                    pass
+        contents.append(raw)
+
+    if len(contents) == 1:
+        c = contents[0]
+        if isinstance(c, (dict, list)):
+            return json.dumps(c, indent=2, ensure_ascii=False), "json"
+        # Plain-text caption / OCR string. No JSON fence -- the
+        # markdown renderer would syntax-highlight a multi-paragraph
+        # caption as if it were JSON, which looks worse than a plain
+        # ``text`` block.
+        return str(c), "text"
+
+    # Multi-entry: fold into a JSON array of contents. Even when
+    # every content is a plain string, JSON keeps each one quoted
+    # and separated by a comma -- which is far more diff-friendly
+    # than concatenating raw strings.
+    return json.dumps(contents, indent=2, ensure_ascii=False), "json"
 
 
 def _normalize_stdout_paths(argv_str: str, stdout: str) -> str:
@@ -948,10 +1054,16 @@ def _format_recording_output(r: BenchResult, argv_str: str) -> tuple[str, str]:
     * skipped -> ``[skipped: <reason>]`` in a ``text`` block.
     * non-zero exit -> ``[exit N]`` followed by the last 5 stderr lines.
     * empty stdout -> ``(no output)``.
-    * everything else -> ANSI-stripped + path-normalized stdout
-      (capped at ``_MAX_RECORDING_STDOUT_BYTES`` with an explicit
-      truncation marker), with ``json`` fence when the output starts
-      with ``{`` / ``[`` and ``text`` otherwise.
+    * looks like ``mm cat --format json`` envelope -> extract the
+      ``content`` payload, drop ``path`` / ``mode``, drop the trailing
+      perf-summary line, pretty-print structured content (JSON) or
+      pass-through text content. This is what most workload rows hit.
+    * everything else -> ANSI-stripped + path-normalized stdout, with
+      ``json`` fence when the output starts with ``{`` / ``[`` and
+      ``text`` otherwise.
+
+    All non-skip branches end in ``_truncate_recording_stdout`` so a
+    single chatty model can't blow the per-row recording budget.
     """
     if r.skipped:
         return f"[skipped: {r.skip_reason}]", "text"
@@ -966,6 +1078,17 @@ def _format_recording_output(r: BenchResult, argv_str: str) -> tuple[str, str]:
     body = _normalize_stdout_paths(argv_str, body)
     if not body:
         return "(no output)", "text"
+
+    extracted = _extract_cat_content(body)
+    if extracted is not None:
+        # Path normalization runs again on the extracted body so any
+        # paths embedded inside the model's content (rare but
+        # possible -- e.g. a model that echoes the input filename)
+        # still get reduced to basenames.
+        ebody, lang = extracted
+        ebody = _normalize_stdout_paths(argv_str, ebody)
+        return _truncate_recording_stdout(ebody), lang
+
     lang = _stdout_fence_lang(body)
     body = _truncate_recording_stdout(body)
     return body, lang
@@ -1087,9 +1210,11 @@ def _write_bench_recording(
 ) -> Path:
     """Write per-row Rich-table snapshots + captured stdout to markdown.
 
-    Returns the resolved output path -- ``benchmark/<YYMMDD>-mm-bench-
-    <profile>.md`` (one snapshot per profile per day, idempotent
-    overwrite). The caller decides whether to invoke this based on
+    Returns the resolved output path --
+    ``benchmarks/results/<YYMMDD>-mm-bench-<profile>-<HHMM>.md`` (one
+    snapshot per profile per *minute*; the ``HHMM`` suffix gives
+    same-day re-runs unique filenames so iteration history isn't lost
+    to overwrite). The caller decides whether to invoke this based on
     flags (``--dry-run`` / ``--host-info`` / ``--format stdout`` all
     skip). ``bench_file`` is forwarded purely so the header line can
     cite the originating benchfile when one was passed.

@@ -192,6 +192,36 @@ class TestMetadataDefault:
         data = json.loads(r.output)
         assert data[0].get("mode") == "metadata"
 
+    def test_pretty_json_format_indents_and_breaks_lines(self, mixed_dir: Path):
+        """``--format pretty-json`` always indents, regardless of TTY/pipe.
+
+        The wire shape matches ``--format json`` (same ``{path, mode,
+        content}`` envelope so downstream parsers don't need to fork
+        on the format flag); only the serializer's ``indent`` argument
+        differs. Useful for capturing into markdown / docs / recordings
+        where multi-line JSON renders far more readably than a
+        single-line escape soup.
+        """
+        r = runner.invoke(app, ["cat", str(mixed_dir / "main.py"), "--format", "pretty-json"])
+        assert r.exit_code == 0
+        # Same envelope as `json`: ingestable by anyone who already
+        # parses `mm cat --format json`.
+        data = json.loads(r.output)
+        assert isinstance(data, list) and data
+        assert {"path", "mode", "content"}.issubset(data[0])
+        # And the *serialised* form has line breaks + indentation
+        # (multiple top-level newlines means the printer formatted it,
+        # not just that ``content`` happened to contain ``\n``).
+        assert r.output.count("\n") >= 4
+        assert "  " in r.output  # 2-space indent
+
+    def test_json_vs_pretty_json_share_payload_shape(self, mixed_dir: Path):
+        """Parsing either format yields the same dict (only whitespace differs)."""
+        compact = runner.invoke(app, ["cat", str(mixed_dir / "main.py"), "--format", "json"])
+        pretty = runner.invoke(app, ["cat", str(mixed_dir / "main.py"), "--format", "pretty-json"])
+        assert compact.exit_code == 0 and pretty.exit_code == 0
+        assert json.loads(compact.output) == json.loads(pretty.output)
+
 
 # ── Fast mode (explicit) ─────────────────────────────────────────────
 

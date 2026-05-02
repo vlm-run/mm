@@ -403,6 +403,13 @@ SPECS: list[BenchSpec] = [
         num_images=2,
         prompt="Compare these two images.",
     ),
+    BenchSpec(
+        QWEN,
+        "qwen/ocr",
+        task="ocr",
+        image=True,
+        prompt="OCR this image",
+    ),
     # RF-DETR detection / segmentation
     BenchSpec(RFDETR, "rfdetr/detect", task="det", image=True, extra_body={"method": "detect"}),
     BenchSpec(
@@ -500,7 +507,7 @@ SPECS: list[BenchSpec] = [
         task="ocr",
         pinned_file=_OCR_IMG,
         extra_body={"method": "ocr"},
-        disabled=True,
+        disabled=False,
     ),
     BenchSpec(
         PADDLEOCR,
@@ -508,7 +515,7 @@ SPECS: list[BenchSpec] = [
         task="ocr",
         pinned_file=_OCR_IMG,
         extra_body={"method": "detect"},
-        disabled=True,
+        disabled=False,
     ),
     # GLiNER2 -- text-only NER / classification. Both disabled
     # because the gateway rejects images on text-only models, and

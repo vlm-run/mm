@@ -142,7 +142,14 @@ def cat_cmd(
     format: Annotated[
         Optional[Format],
         typer.Option(
-            "--format", "-f", help="Output format: json, tsv, csv, dataset-jsonl, dataset-hf"
+            "--format",
+            "-f",
+            help=(
+                "Output format: json (compact in pipes / indented in TTY), "
+                "pretty-json (always indented -- ideal for piping into "
+                "markdown / docs / recordings), tsv, csv, dataset-jsonl, "
+                "dataset-hf."
+            ),
         ),
     ] = None,
     # -- Surviving encode overrides --
@@ -398,8 +405,13 @@ def cat_cmd(
             all_lines = content.splitlines()
             content = "\n".join(all_lines[:n] if n >= 0 else all_lines[n:])
 
-        if fmt in ("json", "dataset-jsonl", "dataset-hf"):
-            if fmt == "json":
+        if fmt in ("json", "pretty-json", "dataset-jsonl", "dataset-hf"):
+            if fmt in ("json", "pretty-json"):
+                # ``pretty-json`` shares the wire shape with ``json`` --
+                # only the serializer indentation differs (always
+                # indented vs TTY-conditional). Same {path, mode,
+                # content} envelope so downstream parsers don't have
+                # to special-case the format flag.
                 entry: dict = {"path": str(p), "mode": mode, "content": content}
             else:
                 entry = {
@@ -445,7 +457,7 @@ def cat_cmd(
                 output_console.print("\n".join(rich_lines))
             _emitted += 1
 
-    if fmt in ("json", "dataset-jsonl", "dataset-hf"):
+    if fmt in ("json", "pretty-json", "dataset-jsonl", "dataset-hf"):
         from mm.display import emit_rows
 
         emit_rows(fmt, results, output_dir=str(output_dir) if output_dir else "mm_dataset")
