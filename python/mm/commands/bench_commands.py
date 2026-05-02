@@ -11,7 +11,7 @@ ACCURATE_COMMANDS.
 from __future__ import annotations
 
 import shlex
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -36,6 +36,13 @@ class BenchCommand:
         batch:         Number of files for {files} (0 = single {file}).
         smallest:      If True, pick the smallest file of requires_kind.
         skip_reason:   Reason shown when skipped.
+        tags:          Free-form ``{key: value}`` annotations surfaced as
+                       extra columns in the rich table (and a ``tags``
+                       field in JSON output) when any row in the run
+                       declares them. The renderer collects the union of
+                       keys across all rows in first-seen order, so
+                       benchfile authors control the column ordering by
+                       defining tags in the order they want displayed.
     """
 
     name: str
@@ -45,6 +52,7 @@ class BenchCommand:
     batch: int = 0
     smallest: bool = False
     skip_reason: str = "not applicable"
+    tags: dict[str, str] = field(default_factory=dict)
 
 
 # ── Resolution ─────────────────────────────────────────────────────

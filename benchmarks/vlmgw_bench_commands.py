@@ -5,43 +5,43 @@ Run with::
     mm bench ~/data/mmbench-tiny --bench-file benchmarks/vlmgw_bench_commands.py --dry-run
     mm bench ~/data/mmbench-tiny -b benchmarks/vlmgw_bench_commands.py -r 1 -w 0
 
-Each row pins ``mm --profile vlmgw cat`` and exercises the override path
-shipped in PR #106: Typer parsing -> ``apply_overrides`` deep-merge ->
-cache key -> ``LlmBackend`` -> openai SDK ``extra_body``. The matrix
-below mirrors the internal ``BenchSpec`` list used by other vlmgw
-tooling so this benchfile tracks changes there with minimal drift.
+Every row pins ``mm --profile vlmgw cat`` and exercises the override
+path shipped in PR #106: Typer parsing -> ``apply_overrides`` deep-merge
+-> cache key -> ``LlmBackend`` -> openai SDK ``extra_body``.
 
-Coverage groups (in display order):
+The matrix is organised into six groups, each surfaced as a ``Group``
+column section in the bench table. ``model`` and ``extra_body`` are
+declared via :attr:`BenchCommand.tags` so the renderer adds them as
+extra columns automatically:
 
-* ``noop``        gateway round-trip cost (smallest payload)
-* ``florence2``   Florence-2 caption/ocr/od
-* ``moondream``   Moondream2 caption/detect, video caption, +llm post-proc
-* ``qwen``        Qwen3.5 text/image/multi-image/video
-* ``rfdetr``      RF-DETR detection / segmentation
-* ``vitpose``     ViTPose pose estimation
-* ``sam3``        SAM3 prompt-segment / segment-by-box / video tracking
-* ``dots-ocr``    DOTS-OCR layout/parse/ocr/grounding
-* ``paddleocr``   PP-OCRv5 OCR / detection
-* ``smolvlm``     SmolVLM-256M caption
-* ``smolvlm2``    SmolVLM2-256M-video & 500M-video on image+video
-* ``cache``       cold (``--no-cache``) vs warm cache hit (mm-cat infra guard)
-* ``validation``  CLI-side ``--generate.extra-body`` rejection (mm-cat infra guard)
+* ``model`` (29 rows) — every model × variant. ``model`` and
+  ``extra_body`` tags carry the configuration so each row is
+  self-describing in the table.
+* ``image-res`` (3 rows) — ``image_resolution`` sweep on
+  ``qwen3.5-0.8b``: low / medium / high.
+* ``video-frames`` (3 rows) — ``video_fps`` × ``video_max_frames``
+  sweep on ``qwen3.5-0.8b``.
+* ``cache`` (2 rows) — cold (``--no-cache``) vs warm cache hit on
+  the same prompt+model+file.
+* ``404`` (3 rows) — guaranteed-unavailable model names to measure
+  the gateway's failure round-trip cost.
+* ``validation`` (2 rows) — CLI-side ``--generate.extra-body``
+  rejection paths (bad / non-object JSON).
 
-Notes on the translation:
+Translation notes:
 
-* ``mm cat`` requires a file argument. Specs with ``image=False`` and
-  ``video=False`` (text-only, e.g. ``noop``, ``qwen/text``) attach the
-  smallest available image — vision-encode overhead is constant across
+* ``mm cat`` requires a file argument. Specs with neither ``image``
+  nor ``video`` (text-only — ``noop``, ``qwen/text``) attach the
+  smallest available image; vision-encode overhead is constant across
   those rows so trends remain interpretable.
-* ``num_images > 1`` becomes ``mm cat <file1> <file2> ...`` (``batch=N``).
-  Each file produces a separate request to the gateway, so the timing
-  measures sequential multi-image throughput rather than a single-chat
-  multi-image conversation.
+* ``num_images > 1`` becomes ``mm cat <file1> <file2> ...``
+  (``batch=N``). Each file produces a separate gateway request, so
+  the timing measures sequential multi-image throughput rather than a
+  single multi-image conversation.
 * ``fps`` / ``max_frames`` / ``video_resolution`` are folded into
   ``--generate.extra-body`` as ``video_fps`` / ``video_max_frames`` /
-  ``video_resolution`` keys, alongside any ``method`` / ``method_params``
-  the spec declares (the deep-merge in ``apply_overrides`` handles the
-  combination).
+  ``video_resolution`` keys, alongside any ``method`` /
+  ``method_params`` the spec declares.
 """
 
 from __future__ import annotations
@@ -54,7 +54,9 @@ from typing import Any
 from mm.commands.bench_commands import BenchCommand
 
 PROFILE = "vlmgw"
+QWEN = "qwen3.5-0.8b"
 _CAT = f"mm --profile {PROFILE} cat"
+_BASE_FLAGS = "--mode accurate --no-cache --format json"
 
 
 # ── BenchSpec → BenchCommand translation ─────────────────────────────
@@ -64,9 +66,14 @@ _CAT = f"mm --profile {PROFILE} cat"
 class BenchSpec:
     """Higher-level spec mirroring the internal vlmgw matrix shape.
 
-    Translated to a ``BenchCommand`` by :func:`_to_command` below. Keeping
-    the spec layer intentionally close to the source matrix means a paste
-    from the upstream tool just works after running ``ruff format``.
+    Translated to a ``BenchCommand`` by :func:`_to_command` below.
+    Keeping this layer close to the upstream source matrix means a
+    paste of the canonical spec list works after a ``ruff format``.
+
+    The ``name`` is the variant identifier (e.g. ``florence2/caption``
+    or ``qwen/multi-image``) shown in the ``Command`` column. The
+    ``Group`` column is always ``"model"`` for spec-derived rows; the
+    family is conveyed via the ``model`` tag instead.
     """
 
     model: str
@@ -81,19 +88,8 @@ class BenchSpec:
     extra_body: dict[str, Any] = field(default_factory=dict)
 
 
-def _to_command(spec: BenchSpec) -> BenchCommand:
-    """Render a :class:`BenchSpec` into a runnable :class:`BenchCommand`."""
-    # Pick {file} vs {files}; for text-only specs we fall back to the
-    # smallest image since `mm cat` requires a file argument.
-    if spec.video:
-        requires, placeholder, batch = "video", "{file}", 0
-    elif spec.image and spec.num_images > 1:
-        requires, placeholder, batch = "image", "{files}", spec.num_images
-    else:
-        requires, placeholder, batch = "image", "{file}", 0
-
-    # Merge spec.extra_body with translated video knobs. Fold in this order
-    # so explicit spec.extra_body keys win over derived defaults.
+def _eb_for(spec: BenchSpec) -> dict[str, Any]:
+    """Compose the final ``extra_body`` dict from spec attributes."""
     eb: dict[str, Any] = {}
     if spec.fps is not None:
         eb["video_fps"] = spec.fps
@@ -102,41 +98,49 @@ def _to_command(spec: BenchSpec) -> BenchCommand:
     if spec.video_resolution is not None:
         eb["video_resolution"] = spec.video_resolution
     eb.update(spec.extra_body)
+    return eb
+
+
+def _to_command(spec: BenchSpec) -> BenchCommand:
+    """Render a :class:`BenchSpec` into a runnable :class:`BenchCommand`."""
+    if spec.video:
+        requires, placeholder, batch = "video", "{file}", 0
+    elif spec.image and spec.num_images > 1:
+        requires, placeholder, batch = "image", "{files}", spec.num_images
+    else:
+        requires, placeholder, batch = "image", "{file}", 0
+
+    eb = _eb_for(spec)
 
     parts: list[str] = [
         _CAT,
         placeholder,
-        "--mode",
-        "accurate",
-        "--no-cache",
-        "--format",
-        "json",
-        "--model",
-        shlex.quote(spec.model),
+        _BASE_FLAGS,
+        f"--model {shlex.quote(spec.model)}",
     ]
     if spec.prompt is not None:
-        parts += ["--prompt", shlex.quote(spec.prompt)]
+        parts.append(f"--prompt {shlex.quote(spec.prompt)}")
     if eb:
-        parts += [
-            "--generate.extra-body",
-            shlex.quote(json.dumps(eb, separators=(",", ":"))),
-        ]
-
-    group, _, display = spec.name.partition("/")
-    display = display or group
+        parts.append(f"--generate.extra-body {shlex.quote(json.dumps(eb, separators=(',', ':')))}")
 
     return BenchCommand(
-        name=display,
-        group=group,
+        name=spec.name,
+        group="model",
         cmd_template=" ".join(parts),
         requires_kind=requires,
         batch=batch,
         smallest=True,
         skip_reason=f"no {requires} files",
+        tags={
+            "model": spec.model,
+            "extra_body": json.dumps(eb, separators=(",", ":")) if eb else "",
+        },
     )
 
 
 # ── Spec matrix (mirrors the internal vlmgw BenchSpec list) ──────────
+# ALL 29 variants from the canonical list — covered exhaustively below.
+# See the module docstring for grouping semantics.
 
 
 SPECS: list[BenchSpec] = [
@@ -151,7 +155,7 @@ SPECS: list[BenchSpec] = [
     ),
     BenchSpec("florence-2-base-ft", "florence2/ocr", image=True, extra_body={"method": "ocr"}),
     BenchSpec("florence-2-base-ft", "florence2/od", image=True, extra_body={"method": "od"}),
-    # Moondream2
+    # Moondream2 -- image
     BenchSpec("moondream2", "moondream/caption", image=True, extra_body={"method": "caption"}),
     BenchSpec(
         "moondream2",
@@ -159,8 +163,8 @@ SPECS: list[BenchSpec] = [
         image=True,
         extra_body={"method": "detect", "method_params": {"object": "bench"}},
     ),
-    # Moondream2 on video — 8 frames spread across the clip (fps=0.4 →
-    # ~2.5 s per frame on a 20 s soccer-juggling clip) at 448x336 so the
+    # Moondream2 -- 8 frames spread across the clip (fps=0.4 ~= 2.5s
+    # per frame on a 20s soccer-juggling clip) at 448x336 so the
     # video_resolution knob is exercised by default.
     BenchSpec(
         "moondream2",
@@ -172,22 +176,17 @@ SPECS: list[BenchSpec] = [
         extra_body={"method": "caption"},
     ),
     # Qwen3.5 (text, image, multi-image, video)
-    BenchSpec("qwen3.5-0.8b", "qwen/text", prompt="What is 2+2? Reply in one word."),
+    BenchSpec(QWEN, "qwen/text", prompt="What is 2+2? Reply in one word."),
+    BenchSpec(QWEN, "qwen/image", image=True, prompt="Describe this image briefly."),
     BenchSpec(
-        "qwen3.5-0.8b",
-        "qwen/image",
-        image=True,
-        prompt="Describe this image briefly.",
-    ),
-    BenchSpec(
-        "qwen3.5-0.8b",
+        QWEN,
         "qwen/multi-image",
         image=True,
         num_images=2,
         prompt="Compare these two images.",
     ),
     BenchSpec(
-        "qwen3.5-0.8b",
+        QWEN,
         "qwen/video",
         video=True,
         fps=0.4,
@@ -195,9 +194,8 @@ SPECS: list[BenchSpec] = [
         video_resolution="448x336",
         prompt="Summarise what happens in this video in one sentence.",
     ),
-    # RF-DETR detection
+    # RF-DETR detection / segmentation
     BenchSpec("rfdetr-nano", "rfdetr/detect", image=True, extra_body={"method": "detect"}),
-    # RF-DETR segmentation
     BenchSpec(
         "rfdetr-seg-nano",
         "rfdetr-seg/segment",
@@ -206,7 +204,7 @@ SPECS: list[BenchSpec] = [
     ),
     # ViTPose pose estimation
     BenchSpec("vitpose-s", "vitpose/pose", image=True, extra_body={"method": "pose"}),
-    # SAM3 — promptable segmentation + video tracking
+    # SAM3 -- promptable segmentation + video tracking
     BenchSpec(
         "sam3",
         "sam3/segment",
@@ -230,7 +228,7 @@ SPECS: list[BenchSpec] = [
             "method_params": {"prompt": "soccer ball", "skip": 1, "max_frames": 30},
         },
     ),
-    # DOTS-OCR — document layout + OCR
+    # DOTS-OCR -- document layout + OCR
     BenchSpec(
         "dots-ocr",
         "dots-ocr/parse_layout",
@@ -250,11 +248,11 @@ SPECS: list[BenchSpec] = [
         image=True,
         extra_body={"method": "grounding_ocr", "method_params": {"box": [120, 200, 900, 400]}},
     ),
-    # PP-OCRv5 — scene text recognition
+    # PP-OCRv5 -- scene text recognition
     BenchSpec("paddleocr-v5", "paddleocr/ocr", image=True, extra_body={"method": "ocr"}),
     BenchSpec("paddleocr-v5", "paddleocr/detect", image=True, extra_body={"method": "detect"}),
     # SmolVLM family (llama.cpp GGUF; only the preferred quantization is
-    # measured — F16 variants exist in the manifest but are excluded).
+    # measured -- F16 variants exist in the manifest but are excluded).
     BenchSpec(
         "smolvlm-256m",
         "smolvlm/256m-caption",
@@ -296,64 +294,146 @@ SPECS: list[BenchSpec] = [
         "moondream2",
         "moondream/caption+llm",
         image=True,
-        extra_body={"method": "caption", "llm": "qwen3.5-0.8b"},
+        extra_body={"method": "caption", "llm": QWEN},
     ),
 ]
 
 
-# ── Supplemental mm-cat infrastructure guards ────────────────────────
+# ── image-res: image_resolution sweep on qwen3.5-0.8b ────────────────
 
 
-_INFRA_COMMANDS: list[BenchCommand] = [
-    # cache: cold (--no-cache) vs warm hit on the same prompt+model+file.
+_IMAGE_RES: list[BenchCommand] = [
+    BenchCommand(
+        name=f"image_resolution={res}",
+        group="image-res",
+        cmd_template=(
+            f"{_CAT} {{file}} {_BASE_FLAGS} --model {QWEN} "
+            "--prompt 'Describe the vehicle in 1 sentence.' "
+            f'--generate.extra-body \'{{"image_resolution":"{res}"}}\''
+        ),
+        requires_kind="image",
+        smallest=True,
+        skip_reason="no image files",
+        tags={
+            "model": QWEN,
+            "extra_body": json.dumps({"image_resolution": res}, separators=(",", ":")),
+        },
+    )
+    for res in ("low", "medium", "high")
+]
+
+
+# ── video-frames: fps × max_frames sweep on qwen3.5-0.8b ─────────────
+
+
+_VIDEO_FRAMES: list[BenchCommand] = [
+    BenchCommand(
+        name=f"fps={fps} max={max_frames}",
+        group="video-frames",
+        cmd_template=(
+            f"{_CAT} {{file}} {_BASE_FLAGS} --model {QWEN} "
+            "--prompt 'Summarise what happens in this video in one sentence.' "
+            f"--generate.extra-body {shlex.quote(json.dumps({'video_fps': fps, 'video_max_frames': max_frames}, separators=(',', ':')))}"
+        ),
+        requires_kind="video",
+        skip_reason="no video files",
+        tags={
+            "model": QWEN,
+            "extra_body": json.dumps(
+                {"video_fps": fps, "video_max_frames": max_frames},
+                separators=(",", ":"),
+            ),
+        },
+    )
+    for fps, max_frames in ((0.5, 4), (1.0, 8), (2.0, 16))
+]
+
+
+# ── cache: cold (--no-cache) vs warm hit ─────────────────────────────
+
+
+_CACHE: list[BenchCommand] = [
     BenchCommand(
         name="cold (--no-cache)",
         group="cache",
         cmd_template=(
-            f"{_CAT} {{file}} --mode accurate --no-cache --format json "
+            f"{_CAT} {{file}} --mode accurate --no-cache --format json --model {QWEN} "
             "--prompt 'Summarize this document in one sentence.'"
         ),
         requires_kind="document",
         smallest=True,
         skip_reason="no document files",
+        tags={"model": QWEN, "extra_body": ""},
     ),
     BenchCommand(
         name="warm (cache hit)",
         group="cache",
         cmd_template=(
-            f"{_CAT} {{file}} --mode accurate --format json "
+            f"{_CAT} {{file}} --mode accurate --format json --model {QWEN} "
             "--prompt 'Summarize this document in one sentence.'"
         ),
         requires_kind="document",
         smallest=True,
         skip_reason="no document files",
-    ),
-    # validation: --generate.extra-body parser rejection paths. These exit
-    # non-zero before the gateway is contacted; the harness is exit-code
-    # agnostic so they time as fast process-startup-cost rows.
-    BenchCommand(
-        name="bad json: '{not json}'",
-        group="validation",
-        cmd_template=(
-            f"{_CAT} {{file}} --mode accurate --no-cache --format json "
-            "--generate.extra-body '{not json}'"
-        ),
-        requires_kind="image",
-        smallest=True,
-        skip_reason="no image files",
-    ),
-    BenchCommand(
-        name="non-object json: '[1,2,3]'",
-        group="validation",
-        cmd_template=(
-            f"{_CAT} {{file}} --mode accurate --no-cache --format json "
-            "--generate.extra-body '[1,2,3]'"
-        ),
-        requires_kind="image",
-        smallest=True,
-        skip_reason="no image files",
+        tags={"model": QWEN, "extra_body": ""},
     ),
 ]
 
 
-COMMANDS: list[BenchCommand] = [_to_command(s) for s in SPECS] + _INFRA_COMMANDS
+# ── 404: guaranteed-unavailable model names ──────────────────────────
+# These model names are intentionally bogus so the row reliably 404s
+# regardless of which models are actually loaded on the gateway. The
+# bench harness is exit-code agnostic; the row times the round-trip
+# cost of a "model not found" failure.
+
+
+_UNAVAILABLE: list[BenchCommand] = [
+    BenchCommand(
+        name=f"--model {fake}",
+        group="404",
+        cmd_template=(f"{_CAT} {{file}} {_BASE_FLAGS} --model {fake}"),
+        requires_kind="image",
+        smallest=True,
+        skip_reason="no image files",
+        tags={"model": fake, "extra_body": ""},
+    )
+    for fake in ("nonexistent-v0", "florence-2-NONEXISTENT", "paddleocr-v999")
+]
+
+
+# ── validation: CLI-side --generate.extra-body rejection ─────────────
+# These exit non-zero before the gateway is contacted. The bench harness
+# is exit-code agnostic so they time as fast process-startup-cost rows
+# and serve as regression guards on the override-parser.
+
+
+_VALIDATION: list[BenchCommand] = [
+    BenchCommand(
+        name="bad json: '{not json}'",
+        group="validation",
+        cmd_template=(f"{_CAT} {{file}} {_BASE_FLAGS} --generate.extra-body '{{not json}}'"),
+        requires_kind="image",
+        smallest=True,
+        skip_reason="no image files",
+        tags={"model": "(default)", "extra_body": "{not json}"},
+    ),
+    BenchCommand(
+        name="non-object json: '[1,2,3]'",
+        group="validation",
+        cmd_template=(f"{_CAT} {{file}} {_BASE_FLAGS} --generate.extra-body '[1,2,3]'"),
+        requires_kind="image",
+        smallest=True,
+        skip_reason="no image files",
+        tags={"model": "(default)", "extra_body": "[1,2,3]"},
+    ),
+]
+
+
+COMMANDS: list[BenchCommand] = (
+    [_to_command(s) for s in SPECS]
+    + _IMAGE_RES
+    + _VIDEO_FRAMES
+    + _CACHE
+    + _UNAVAILABLE
+    + _VALIDATION
+)

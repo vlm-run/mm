@@ -41,6 +41,7 @@ class BenchResult:
     prompt_tokens: int = 0
     completion_tokens: int = 0
     is_dry_run: bool = False
+    tags: dict[str, str] = field(default_factory=dict)
 
     @property
     def mean_ms(self) -> float:
@@ -131,14 +132,17 @@ class BenchResult:
 
     def to_dict(self) -> dict[str, Any]:
         if self.skipped:
-            return {
+            payload: dict[str, Any] = {
                 "name": self.name,
                 "group": self.group,
                 "skipped": True,
                 "skip_reason": self.skip_reason,
             }
+            if self.tags:
+                payload["tags"] = dict(self.tags)
+            return payload
         if self.is_dry_run:
-            return {
+            dry_payload: dict[str, Any] = {
                 "name": self.name,
                 "group": self.group,
                 "dry_run": True,
@@ -146,7 +150,10 @@ class BenchResult:
                 "files_count": self.files_count,
                 "total_bytes": self.total_bytes,
             }
-        return {
+            if self.tags:
+                dry_payload["tags"] = dict(self.tags)
+            return dry_payload
+        payload: dict[str, Any] = {
             "name": self.name,
             "group": self.group,
             "mean_ms": round(self.mean_ms, 2),
@@ -164,6 +171,9 @@ class BenchResult:
             "completion_tokens": self.completion_tokens,
             "timings_ms": [round(t, 2) for t in self.timings_ms],
         }
+        if self.tags:
+            payload["tags"] = dict(self.tags)
+        return payload
 
 
 # ── Pre-ops sanitization ────────────────────────────────────────────
@@ -248,14 +258,26 @@ def _run_benchmarks(
 
         if num_files == 0:
             results.append(
-                BenchResult(cmd.name, cmd.group, skipped=True, skip_reason="empty directory")
+                BenchResult(
+                    cmd.name,
+                    cmd.group,
+                    skipped=True,
+                    skip_reason="empty directory",
+                    tags=dict(cmd.tags),
+                )
             )
             continue
 
         resolved = resolve_command(cmd, directory, files)
         if resolved is None:
             results.append(
-                BenchResult(cmd.name, cmd.group, skipped=True, skip_reason=cmd.skip_reason)
+                BenchResult(
+                    cmd.name,
+                    cmd.group,
+                    skipped=True,
+                    skip_reason=cmd.skip_reason,
+                    tags=dict(cmd.tags),
+                )
             )
             continue
 
@@ -276,6 +298,7 @@ def _run_benchmarks(
             media_pixel_bits=media.pixel_bits,
             preview_lines=preview,
             is_dry_run=dry_run,
+            tags=dict(cmd.tags),
         )
         if not dry_run:
             r.timings_ms = _time_cmd(argv, rounds, warmup)
@@ -319,8 +342,37 @@ def _latency_style(ms: float, group: str) -> str:
     return "red"
 
 
+def _collect_tag_keys(results: list[BenchResult]) -> list[str]:
+    """Return the union of tag keys across rows in first-seen order.
+
+    Benchfile authors control column ordering by declaring tags in the
+    order they want them displayed; we preserve that by iterating
+    rows + each row's dict in insertion order.
+    """
+    seen: list[str] = []
+    for r in results:
+        for k in r.tags:
+            if k not in seen:
+                seen.append(k)
+    return seen
+
+
+def _humanize_tag_key(key: str) -> str:
+    """``extra_body`` -> ``Extra Body``; ``model`` -> ``Model``."""
+    return key.replace("_", " ").replace("-", " ").title()
+
+
 def _render_table(results: list[BenchResult], target_info: dict[str, Any]) -> None:
-    """Render all results as a single Rich table."""
+    """Render all results as a single Rich table.
+
+    Tags declared on any ``BenchCommand`` surface as additional columns
+    inserted between ``Group`` and ``Command``, in first-seen key order.
+    Rows that don't declare a given key render the cell as an empty
+    string. This keeps the default benchmark suite (no tags anywhere)
+    looking identical to before, while allowing benchfiles to surface
+    structured metadata like ``model`` / ``extra_body`` without
+    bespoke renderer code.
+    """
     from rich import box
     from rich.table import Table
     from rich.text import Text
@@ -339,6 +391,9 @@ def _render_table(results: list[BenchResult], target_info: dict[str, Any]) -> No
     if is_dry_run:
         caption += "  (dry run — no commands executed)"
 
+    tag_keys = _collect_tag_keys(results)
+    n_tag_cols = len(tag_keys)
+
     table = Table(
         caption=caption,
         caption_style="dim",
@@ -350,6 +405,12 @@ def _render_table(results: list[BenchResult], target_info: dict[str, Any]) -> No
         box=box.ROUNDED,
     )
     table.add_column("Group", style="dim", width=10)
+    for key in tag_keys:
+        # Wide free-text columns (extra_body, prompt, etc.) wrap;
+        # short identifier-style ones (model) stay compact. We hint at
+        # the difference by giving every tag column overflow="fold" so
+        # JSON blobs wrap rather than truncate.
+        table.add_column(_humanize_tag_key(key), no_wrap=False, overflow="fold")
     table.add_column("Command", no_wrap=True)
     table.add_column("Mean", justify="right")
     table.add_column("\u00b1Std", justify="right", style="dim")
@@ -366,17 +427,18 @@ def _render_table(results: list[BenchResult], target_info: dict[str, Any]) -> No
             table.add_section()
         prev_group = r.group
 
+        tag_cells = [r.tags.get(k, "") for k in tag_keys]
+
         if r.skipped:
+            # Tag cells stay populated (still useful context); the metric
+            # cells collapse to one "skipped: <reason>" Text under the
+            # Command column, with the rest blank.
             table.add_row(
                 r.group,
+                *tag_cells,
                 Text(r.name, style="dim"),
                 Text(f"skipped: {r.skip_reason}", style="dim italic"),
-                "",
-                "",
-                "",
-                "",
-                "",
-                "",
+                *([""] * 7),
             )
             continue
 
@@ -384,20 +446,16 @@ def _render_table(results: list[BenchResult], target_info: dict[str, Any]) -> No
             placeholder = Text("-", style="dim")
             table.add_row(
                 r.group,
+                *tag_cells,
                 r.name,
-                placeholder,
-                placeholder,
-                placeholder,
-                placeholder,
-                placeholder,
-                placeholder,
-                placeholder,
+                *([placeholder] * 7),
             )
             continue
 
         color = _latency_style(r.mean_ms, r.group)
         table.add_row(
             r.group,
+            *tag_cells,
             r.name,
             Text(_fmt_ms(r.mean_ms), style=f"bold {color}"),
             Text(_fmt_ms(r.std_ms)),
@@ -408,6 +466,9 @@ def _render_table(results: list[BenchResult], target_info: dict[str, Any]) -> No
             Text(r.bits_per_sec_str, style="bright_cyan") if r.bits_per_sec > 0 else Text("\u2014"),
         )
 
+    # ``n_tag_cols`` is referenced indirectly via ``tag_cells`` length;
+    # bind it for type-checker friendliness when no tags are in play.
+    _ = n_tag_cols
     output_console.print(table)
 
 

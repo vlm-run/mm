@@ -365,10 +365,146 @@ class TestDryRun:
 class TestVlmgwBenchfileSmoke:
     """The shipped vlmgw benchfile parses cleanly and dry-runs end-to-end."""
 
-    def test_dry_run_loads(self, small_tree: Path):
-        bf = Path(__file__).resolve().parents[2] / "benchmarks" / "vlmgw_bench_commands.py"
-        assert bf.exists(), f"missing benchfile: {bf}"
+    BENCHFILE = Path(__file__).resolve().parents[2] / "benchmarks" / "vlmgw_bench_commands.py"
 
+    def _load(self):
+        """Helper: load the benchfile and return its module."""
+        from mm.commands.bench import _load_benchfile
+
+        _load_benchfile(self.BENCHFILE)
+        import sys as _sys
+
+        return _sys.modules["_mm_benchfile_vlmgw_bench_commands"]
+
+    def test_dry_run_loads_and_groups_match(self, small_tree: Path):
+        assert self.BENCHFILE.exists(), f"missing benchfile: {self.BENCHFILE}"
+
+        r = runner.invoke(
+            app,
+            [
+                "bench",
+                str(small_tree),
+                "-b",
+                str(self.BENCHFILE),
+                "--dry-run",
+                "--format",
+                "json",
+            ],
+        )
+        assert r.exit_code == 0, r.output
+        data = json.loads(r.stdout)
+
+        groups: dict[str, int] = {}
+        for row in data["results"]:
+            groups[row["group"]] = groups.get(row["group"], 0) + 1
+
+        # Exact group counts -- the matrix is fully prescribed.
+        assert groups == {
+            "model": 29,
+            "image-res": 3,
+            "video-frames": 3,
+            "cache": 2,
+            "404": 3,
+            "validation": 2,
+        }, groups
+
+    def test_all_29_canonical_variants_present(self):
+        """Every variant from the upstream BenchSpec list is represented."""
+        mod = self._load()
+        names = {s.name for s in mod.SPECS}
+        # Locked-in canonical list -- if upstream adds a variant, this
+        # test fails until the benchfile is updated. Matches the spec
+        # the user pasted on 2026-05-01.
+        expected = {
+            "noop/ping",
+            "florence2/caption",
+            "florence2/ocr",
+            "florence2/od",
+            "moondream/caption",
+            "moondream/detect",
+            "moondream/video-caption",
+            "qwen/text",
+            "qwen/image",
+            "qwen/multi-image",
+            "qwen/video",
+            "rfdetr/detect",
+            "rfdetr-seg/segment",
+            "vitpose/pose",
+            "sam3/segment",
+            "sam3/segment_box",
+            "sam3/track",
+            "dots-ocr/parse_layout",
+            "dots-ocr/parse_layout_only",
+            "dots-ocr/ocr",
+            "dots-ocr/grounding_ocr",
+            "paddleocr/ocr",
+            "paddleocr/detect",
+            "smolvlm/256m-caption",
+            "smolvlm2/256m-image",
+            "smolvlm2/256m-video",
+            "smolvlm2/500m-image",
+            "smolvlm2/500m-video",
+            "moondream/caption+llm",
+        }
+        missing = expected - names
+        extra = names - expected
+        assert not missing, f"missing variants: {sorted(missing)}"
+        assert not extra, f"unexpected variants: {sorted(extra)}"
+
+    def test_specs_translate_with_model_group_and_tags(self):
+        """Spec rows land in `group=model` and carry model + extra_body tags."""
+        mod = self._load()
+        for spec, cmd in zip(mod.SPECS, mod.COMMANDS[: len(mod.SPECS)], strict=True):
+            assert cmd.group == "model"
+            assert cmd.name == spec.name
+            assert cmd.tags.get("model") == spec.model
+            # extra_body tag is the JSON-rendered final payload
+            # (including folded fps/max_frames/video_resolution).
+            assert "extra_body" in cmd.tags
+            if cmd.tags["extra_body"]:
+                assert json.loads(cmd.tags["extra_body"]) == mod._eb_for(spec)
+
+    def test_video_specs_fold_extra_body(self):
+        mod = self._load()
+        qwen_video = next(s for s in mod.SPECS if s.name == "qwen/video")
+        cmd = mod._to_command(qwen_video)
+        m = re.search(r"--generate\.extra-body\s+'([^']+)'", cmd.cmd_template)
+        assert m, cmd.cmd_template
+        eb = json.loads(m.group(1))
+        assert eb["video_fps"] == 0.4
+        assert eb["video_max_frames"] == 8
+        assert eb["video_resolution"] == "448x336"
+
+
+class TestTagColumns:
+    """Tag-driven dynamic columns in the bench renderer + JSON output."""
+
+    def _make_benchfile(self, tmp_path: Path) -> Path:
+        bf = tmp_path / "bf.py"
+        bf.write_text(
+            dedent(
+                """
+                from mm.commands.bench_commands import BenchCommand
+
+                COMMANDS = [
+                    BenchCommand(
+                        "alpha-row", "alpha", "echo alpha",
+                        tags={"model": "model-a", "extra_body": '{"k": 1}'},
+                    ),
+                    BenchCommand(
+                        "beta-row", "beta", "echo beta",
+                        tags={"model": "model-b"},
+                    ),
+                    # Untagged -- should still render with empty tag cells.
+                    BenchCommand("gamma-row", "gamma", "echo gamma"),
+                ]
+                """
+            )
+        )
+        return bf
+
+    def test_tags_surface_in_json(self, tmp_path: Path, small_tree: Path):
+        bf = self._make_benchfile(tmp_path)
         r = runner.invoke(
             app,
             [
@@ -383,61 +519,84 @@ class TestVlmgwBenchfileSmoke:
         )
         assert r.exit_code == 0, r.output
         data = json.loads(r.stdout)
-        groups = {row["group"] for row in data["results"]}
-        # Each model family should be represented as its own group, plus
-        # the supplemental cache + validation infra-guard groups.
-        expected_model_groups = {
-            "noop",
-            "florence2",
-            "moondream",
-            "qwen",
-            "rfdetr",
-            "rfdetr-seg",
-            "vitpose",
-            "sam3",
-            "dots-ocr",
-            "paddleocr",
-            "smolvlm",
-            "smolvlm2",
-        }
-        infra_groups = {"cache", "validation"}
-        assert expected_model_groups.issubset(groups), groups
-        assert infra_groups.issubset(groups), groups
+        rows = {row["name"]: row for row in data["results"]}
 
-    def test_specs_translate_to_commands_one_to_one(self):
-        """Every BenchSpec gets a matching BenchCommand in the COMMANDS list."""
-        from mm.commands.bench import _load_benchfile
+        assert rows["alpha-row"]["tags"] == {"model": "model-a", "extra_body": '{"k": 1}'}
+        assert rows["beta-row"]["tags"] == {"model": "model-b"}
+        # Untagged rows must NOT include a tags key (clean JSON).
+        assert "tags" not in rows["gamma-row"]
 
-        bf_path = Path(__file__).resolve().parents[2] / "benchmarks" / "vlmgw_bench_commands.py"
-        # _load_benchfile registers the module in sys.modules so dataclasses
-        # at module scope decorate cleanly; reach into sys.modules to grab it.
-        _load_benchfile(bf_path)
-        import sys as _sys
+    def test_tag_keys_become_columns_in_first_seen_order(
+        self, tmp_path: Path, small_tree: Path, monkeypatch: pytest.MonkeyPatch
+    ):
+        """`Model` then `Extra Body` columns appear between `Group` and `Command`."""
+        bf = self._make_benchfile(tmp_path)
+        # Rich pulls width from COLUMNS / the terminal; widen so headers
+        # render without ellipsis truncation under CliRunner.
+        monkeypatch.setenv("COLUMNS", "240")
+        r = runner.invoke(
+            app,
+            [
+                "bench",
+                str(small_tree),
+                "-b",
+                str(bf),
+                "--dry-run",
+                "--format",
+                "rich",
+            ],
+        )
+        assert r.exit_code == 0, r.output
+        plain = _strip_ansi(r.stdout)
+        # Header line -- locate the column ordering.
+        header_line = next(
+            line for line in plain.splitlines() if "Group" in line and "Command" in line
+        )
+        idx = lambda label: header_line.index(label)  # noqa: E731
+        assert idx("Group") < idx("Model") < idx("Extra Body") < idx("Command") < idx("Mean")
 
-        mod = _sys.modules["_mm_benchfile_vlmgw_bench_commands"]
+    def test_helpers_humanize_and_collect(self):
+        from mm.commands.bench import BenchResult, _collect_tag_keys, _humanize_tag_key
 
-        assert len(mod.COMMANDS) >= len(mod.SPECS)
-        for benchspec, cmd in zip(mod.SPECS, mod.COMMANDS, strict=False):
-            group, _, display = benchspec.name.partition("/")
-            assert cmd.group == group
-            assert cmd.name == (display or group)
-            assert f"--model {benchspec.model}" in cmd.cmd_template
+        results = [
+            BenchResult(
+                "x",
+                "g",
+                tags={"model": "m1", "extra_body": "eb1"},
+                is_dry_run=True,
+            ),
+            BenchResult(
+                "y",
+                "g",
+                tags={"model": "m2", "image_resolution": "low"},
+                is_dry_run=True,
+            ),
+            BenchResult("z", "g", tags={}, is_dry_run=True),
+        ]
+        # First-seen order preserved across rows.
+        assert _collect_tag_keys(results) == ["model", "extra_body", "image_resolution"]
+        assert _humanize_tag_key("extra_body") == "Extra Body"
+        assert _humanize_tag_key("model") == "Model"
+        assert _humanize_tag_key("video-fps") == "Video Fps"
 
-    def test_video_specs_fold_extra_body(self):
-        """fps / max_frames / video_resolution are folded into --generate.extra-body."""
-        from mm.commands.bench import _load_benchfile
-
-        bf_path = Path(__file__).resolve().parents[2] / "benchmarks" / "vlmgw_bench_commands.py"
-        _load_benchfile(bf_path)
-        import sys as _sys
-
-        mod = _sys.modules["_mm_benchfile_vlmgw_bench_commands"]
-
-        qwen_video = next(s for s in mod.SPECS if s.name == "qwen/video")
-        cmd = mod._to_command(qwen_video)
-        m = re.search(r"--generate\.extra-body\s+'([^']+)'", cmd.cmd_template)
-        assert m, cmd.cmd_template
-        eb = json.loads(m.group(1))
-        assert eb["video_fps"] == 0.4
-        assert eb["video_max_frames"] == 8
-        assert eb["video_resolution"] == "448x336"
+    def test_default_suite_unaffected_when_no_tags(self, small_tree: Path):
+        """Built-in matrix has no tags -> no extra columns rendered."""
+        r = runner.invoke(
+            app,
+            [
+                "bench",
+                str(small_tree),
+                "--dry-run",
+                "--format",
+                "rich",
+            ],
+        )
+        assert r.exit_code == 0, r.output
+        plain = _strip_ansi(r.stdout)
+        header_line = next(
+            line for line in plain.splitlines() if "Group" in line and "Command" in line
+        )
+        # `Model` and `Extra Body` are tag-driven; without tags they
+        # must not appear in the table header.
+        assert "Model" not in header_line
+        assert "Extra Body" not in header_line
