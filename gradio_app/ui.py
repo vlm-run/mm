@@ -171,6 +171,7 @@ def _do_grep(
     ext: str,
     context_lines: int,
     ignore_case: bool,
+    semantic: bool,
     limit: int,
 ) -> tuple[list[list[Any]], str]:
     """Grep is always semantic + pre-index; binary files are searched via embeddings."""
@@ -183,8 +184,8 @@ def _do_grep(
         kind=kind or None,
         ext=ext or None,
         context_lines=int(context_lines or 0),
-        semantic=True,
-        pre_index=True,
+        semantic=semantic,
+        pre_index=True if semantic else False,
         ignore_case=ignore_case,
         no_ignore=False,
         limit=int(limit or 200),
@@ -390,16 +391,21 @@ def _build_grep_section(default_dir: str) -> None:
                 value=default_dir,
                 interactive=False,
                 elem_classes=["mm-readonly"],
+                visible="hidden",
             )
             g_kind = gr.Textbox(label="Kind", placeholder="document,image")
             g_ext = gr.Textbox(label="Extension", placeholder=".pdf,.md")
-            g_context = gr.Number(label="Context lines (-C)", value=0, precision=0)
-            g_limit = gr.Number(label="Limit", value=200, precision=0)
-            g_ignore_case = gr.Checkbox(label="Ignore case (-i)", value=False)
+            with gr.Row():
+                g_context = gr.Number(label="Context lines (-C)", value=0, precision=0)
+                g_limit = gr.Number(label="Limit", value=200, precision=0)
+            with gr.Row():
+                g_ignore_case = gr.Checkbox(label="Ignore case (-i)", value=False)
+                g_semantic = gr.Checkbox(label="Semantic", value=False)
             g_btn = gr.Button("Run grep", variant="primary")
+
     g_btn.click(
         _do_grep,
-        inputs=[g_pattern, g_dir, g_kind, g_ext, g_context, g_ignore_case, g_limit],
+        inputs=[g_pattern, g_dir, g_kind, g_ext, g_context, g_ignore_case, g_semantic, g_limit],
         outputs=[g_results, g_summary],
     )
 
