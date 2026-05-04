@@ -14,21 +14,21 @@ time, resolved via: CLI --profile > MM_PROFILE env > active_profile in file > <d
 
 TOML layout:
 
-    active_profile = "ollama"
+    active_profile = "gateway"
 
     [profile.ollama]
-    base_url = "http://localhost:11434"
-    model = "qwen3.5:0.8"
+    base_url = "http://localhost:11434/v1"
+    model = "gemma4:e2b"
     api_key = ""
 
-    [profile.gemini]
+    [profile.gateway]
+    base_url = "https://gateway.vlm.run/v1/openai"
+    model = "qwen/qwen3.5-0.8b"
+    api_key = ""
+
+    [profile.openrouter]
     base_url = "https://openrouter.ai/api/v1"
-    model = "google/gemini-2.5-flash-lite"
-    api_key = ""
-
-    [profile.vlmrun]
-    base_url = "https://mm-ctx.ngrok.io/v1"
-    model = "Qwen/Qwen3.5-0.8B"
+    model = "google/gemma-4-26b-a4b-it:free"
     api_key = ""
 """
 
@@ -50,36 +50,36 @@ from mm.config import (
 # ── Defaults ────────────────────────────────────────────────────────
 
 ENV_PROFILE = "MM_PROFILE"
-RESERVED_PROFILES = ("ollama", "gemini", "vlmrun")
-IMMUTABLE_PROFILES = frozenset({"vlmrun"})
-DEFAULT_PROFILE = "ollama"
+RESERVED_PROFILES = ("ollama", "gateway", "openrouter")
+IMMUTABLE_PROFILES = frozenset({"gateway"})
+DEFAULT_PROFILE = "gateway"
 
 
 OLLAMA_DEFAULTS = {
     "name": "ollama",
-    "base_url": "http://localhost:11434",
+    "base_url": "http://localhost:11434/v1",
     "api_key": "",
-    "model": "qwen3.5:0.8",
+    "model": "gemma4:e2b",
 }
 
-GEMINI_DEFAULTS = {
-    "name": "gemini",
+GATEWAY_DEFAULTS = {
+    "name": "gateway",
+    "base_url": "https://gateway.vlm.run/v1/openai",
+    "api_key": "",
+    "model": "qwen/qwen3.5-0.8b",
+}
+
+OPENROUTER_DEFAULTS = {
+    "name": "openrouter",
     "base_url": "https://openrouter.ai/api/v1",
     "api_key": "",
-    "model": "google/gemini-2.5-flash-lite",
-}
-
-VLMRUN_DEFAULTS = {
-    "name": "vlmrun",
-    "base_url": "https://mm-ctx.ngrok.io/v1",
-    "api_key": "",
-    "model": "Qwen/Qwen3.5-0.8B",
+    "model": "google/gemma-4-26b-a4b-it:free",
 }
 
 RESERVED_DEFAULTS = {
     "ollama": OLLAMA_DEFAULTS,
-    "gemini": GEMINI_DEFAULTS,
-    "vlmrun": VLMRUN_DEFAULTS,
+    "gateway": GATEWAY_DEFAULTS,
+    "openrouter": OPENROUTER_DEFAULTS,
 }
 
 

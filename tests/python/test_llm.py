@@ -82,7 +82,7 @@ class TestLlmBackendChat:
     def _make_backend(self):
         with patch("mm.profile.get_profile") as mock_profile:
             mock_profile.return_value = MagicMock(
-                base_url="http://localhost:11434",
+                base_url="http://localhost:11434/v1",
                 api_key="test-key",
                 model="test-model",
             )
