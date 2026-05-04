@@ -371,8 +371,8 @@ def _build_grep_section(default_dir: str) -> None:
     """Render Grep content into the current Gradio container."""
     gr.HTML(
         '<div class="mm-section"><h2>Grep</h2>'
-        '<p class="mm-note">Always runs <code>--semantic</code> with <code>--pre-index</code> '
-        "for binary files; text files use regex.</p></div>"
+        '<p class="mm-note">Run native search with an option for <code>--semantic</code> search '
+        "over binary files.</p></div>"
     )
     with gr.Row(elem_classes=["mm-twocol"]):
         with gr.Column(elem_classes=["mm-result"]):
