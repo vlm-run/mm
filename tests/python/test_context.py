@@ -121,7 +121,7 @@ def test_grep_pattern(small_tree: Path):
     assert all("hello" in m["line"] for m in matches)
 
 
-def test_save_db(small_tree: Path):
+def test_save_db(small_tree: Path, isolated_db: Path):
     from mm.context import Context
 
     ctx = Context(small_tree)
@@ -139,3 +139,26 @@ def test_context_repr(small_tree: Path):
     r = repr(ctx)
     assert "Context" in r
     assert str(ctx.num_files) in r
+
+
+def test_context_repr_includes_session(small_tree: Path):
+    from mm.context import Context
+
+    ctx = Context(small_tree, session_id="ctx-repr-sess")
+    assert "ctx-repr-sess" in repr(ctx)
+
+
+def test_save_db_with_session(small_tree: Path, tmp_path_factory, monkeypatch):
+    from mm.context import Context
+    from mm.store.db import MmDatabase
+
+    db_dir = tmp_path_factory.mktemp("mmdb")
+    db_path = db_dir / "mm.db"
+    monkeypatch.setattr(MmDatabase, "DB_PATH", db_path)
+    monkeypatch.setattr(MmDatabase, "DB_DIR", db_dir)
+
+    ctx = Context(small_tree, session_id="save-with-sess")
+    ctx.save()
+    rows = MmDatabase().list_session_files("save-with-sess")
+    assert len(rows) == ctx.num_files
+    assert all(r["ref_id"] for r in rows)

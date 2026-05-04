@@ -3,11 +3,66 @@ requires = ["maturin>=1.7,<2.0"]
 build-backend = "maturin"
 
 [project]
-name = "mm"
-version = "0.5.1"
-description = "High-performance multimodal context management library"
-requires-python = ">=3.10"
+name = "mm-ctx"
+version = "0.10.0"
+description = "Fast, multimodal context for agents."
+readme = "README.md"
+requires-python = ">=3.11,<3.14"
 license = { text = "MIT" }
+authors = [
+    { name = "VLM Run", email = "support@vlm.run" },
+]
+maintainers = [
+    { name = "VLM Run", email = "support@vlm.run" },
+]
+keywords = [
+    "multimodal",
+    "vlm",
+    "llm",
+    "agents",
+    "cli",
+    "context",
+    "pdf",
+    "image",
+    "video",
+    "audio",
+    "ocr",
+    "rag",
+    "retrieval",
+    "embeddings",
+    "unix",
+    "rust",
+    "pyo3",
+    "arrow",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Information Technology",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: MacOS",
+    "Operating System :: POSIX :: Linux",
+    "Operating System :: Microsoft :: Windows",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Rust",
+    "Environment :: Console",
+    "Topic :: Multimedia",
+    "Topic :: Multimedia :: Graphics",
+    "Topic :: Multimedia :: Sound/Audio :: Analysis",
+    "Topic :: Multimedia :: Video",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Scientific/Engineering :: Image Recognition",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Text Processing :: General",
+    "Topic :: Utilities",
+    "Typing :: Typed",
+]
 dependencies = [
     "typer>=0.12",
     "rich>=13.0",
@@ -18,23 +73,19 @@ dependencies = [
     "pypdfium2>=4.0",
     "Pillow>=10.0",
     "openai>=1.0",
-    "tomli>=1.0; python_version < '3.11'",
     "python-docx==1.2.0",
     "python-pptx>=1.0.2",
     "pyyaml>=6.0",
+    "google-genai>=1.0",
+    "av>=13.0",
     "faster-whisper>=1.0",
     "scenedetect[opencv]>=0.6",
-    "docling>=2.0; python_version >= '3.11'",
     "ctranslate2>=2.0",
+    "cachetools>=5.3",
+    "cachetools-ext>=0.0.8",
 ]
-
-[project.scripts]
-mm = "mm.cli:app"
 
 [project.optional-dependencies]
-gemini = [
-    "google-genai>=1.0",
-]
 mlx = [
     "mlx>=0.31.1",
     "lightning-whisper-mlx>=0.0.10",
@@ -49,21 +100,43 @@ dev = [
     "ruff>=0.4",
     "pre-commit>=4.0",
     "maturin>=1.7",
+    "logfire>=3.0",
 ]
 all = [
-    "mm[gemini]",
-    "mm[mlx]; sys_platform == 'darwin'",
+    "mm-ctx[experimental]",
+    "mm-ctx[mlx]; sys_platform == 'darwin'",
 ]
+
+[tool.uv]
+override-dependencies = [
+    "onnxruntime<1.24; sys_platform == 'darwin' and platform_machine == 'x86_64'"
+]
+
+[project.urls]
+Homepage = "https://github.com/vlm-run/mm"
+Documentation = "https://github.com/vlm-run/mm#readme"
+Repository = "https://github.com/vlm-run/mm"
+Issues = "https://github.com/vlm-run/mm/issues"
+Changelog = "https://github.com/vlm-run/mm/blob/main/CHANGELOG.md"
+Discord = "https://discord.gg/6aqcyvPF79"
+
+[project.scripts]
+mm = "mm.cli:app"
 
 [tool.maturin]
 python-source = "python"
 module-name = "mm._mm"
 manifest-path = "crates/mm-python/Cargo.toml"
 features = ["pyo3/extension-module"]
-# Ship built-in YAML pipelines alongside the Python package so
-# `pip install mm` can load them at runtime without the source tree.
+
+# Wheel: .py, .pyi, .yaml (pipelines), py.typed, compiled .so/.pyd, and dist-info.
+# Maturin auto-discovers .py/.pyi from python-source; YAMLs need explicit include.
+# Exclude blocks all other file types from leaking into the wheel.
 include = [
-    { path = "python/mm/pipelines/**/*.yaml", format = ["sdist", "wheel"] },
+    { path = "python/mm/pipelines/**/*.yaml", format = ["wheel"] },
+]
+exclude = [
+    "**/*.md",
 ]
 
 [tool.pytest.ini_options]
@@ -78,11 +151,11 @@ markers = [
 addopts = "-m 'not integration and not slow'"
 
 [tool.ruff]
-target-version = "py310"
+target-version = "py311"
 line-length = 100
 
 [tool.ty.environment]
-python-version = "3.10"
+python-version = "3.11"
 
 [tool.ty.rules]
 # Start with warnings for gradual adoption

@@ -1,36 +1,57 @@
 <div align="center">
 <p align="center" style="width: 100%;">
-    <img src="https://raw.githubusercontent.com/vlm-run/.github/refs/heads/main/profile/assets/vlm-black.svg" alt="VLM Run Logo" width="80" style="margin-bottom: -5px; color: #2e3138; vertical-align: middle; padding-right: 5px;"><br>
+    <img src="https://raw.githubusercontent.com/vlm-run/.github/refs/heads/main/profile/assets/vlm-black.svg" alt="VLM Run Logo" width="80" style="margin-bottom: -5px; color: #2e3138; vertical-align:
+middle; padding-right: 5px;"><br>
 </p>
-<h2>mm</h2>
-<i>Fast, multi-modal context for agents.</i>
-<p align="center"><a href="https://docs.vlm.run"><b>Website</b></a> | <a href="https://app.vlm.run/"><b>Platform</b></a> | <a href="https://docs.vlm.run/"><b>Docs</b></a> | <a href="https://docs.vlm.run/blog"><b>Blog</b></a> | <a href="https://discord.gg/AMApC2UzVY"><b>Discord</b></a>
-</p>
-<p align="center">
-<a href="https://github.com/vlm-run/mm/blob/main/LICENSE"><img alt="License" src="https://img.shields.io/github/license/vlm-run/mm.svg"></a>
-<a href="https://discord.gg/AMApC2UzVY"><img alt="Discord" src="https://img.shields.io/badge/discord-chat-purple?color=%235765F2&label=discord&logo=discord"></a>
-<a href="https://twitter.com/vlmrun"><img alt="Twitter Follow" src="https://img.shields.io/twitter/follow/vlmrun.svg?style=social&logo=twitter"></a>
-</p>
+  <h1>mm-ctx</h1>
 </div>
-Fast, multi-modal context for agents.
+<div align="center">
+  <h3>Fast, multimodal context for agents</h3>
+</div>
+<div align="center">
+  <a href="https://pypi.org/project/mm-ctx/"><img alt="PyPI Version" src="https://img.shields.io/pypi/v/mm-ctx.svg"></a>
+  <a href="https://www.pepy.tech/projects/mm-ctx"><img alt="PyPI Downloads" src="https://img.shields.io/pypi/dm/mm-ctx"></a>
+  <a href="https://pypi.org/project/mm-ctx/"><img src="https://img.shields.io/pypi/pyversions/mm-ctx.svg" alt="versions"></a>
+  <a href="https://pypi.org/project/mm-ctx/"><img src="https://img.shields.io/pypi/l/mm-ctx" alt="License"></a>
+  <a href="https://discord.gg/6aqcyvPF79"><img src="https://img.shields.io/badge/discord-chat-purple?color=%235765F2&label=discord&logo=discord" alt="Discord"></a>
+  <a href="https://twitter.com/vlmrun"><img src="https://img.shields.io/twitter/follow/vlmrun.svg?style=social&logo=twitter" alt="Twitter Follow"></a>
+</div>
 
-> Familiar UNIX tools like `find`, `grep`, `cat` with unfamiliar multi-modal powers.
+<br />
+<p align="center">
+  <img src="docs/assets/mm-terminal-window.png" alt="mm terminal demo" width="880" style="border-radius: 12px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);">
+</p>
 
-## Core ideology
+---
 
-- Rust core for speed.
-- Python for dev-ex.
-- UNIX philosophy for composability.
+Familiar UNIX CLI tools like `find`, `grep`, `cat` — with multimodal powers.
+
+`mm` offers both a CLI and a Python API that enable agents to work with file types that LLMs can't natively read, including images, video, audio, PDFs, and other binary formats. Rust core for speed, Python for dev-ex, UNIX philosophy for composability.
 
 ## Installation
 
 ```bash
-# Development install (requires Rust toolchain + uv)
-git clone https://github.com/vlm-run/mm && cd mm
-uv venv --python 3.12 && source .venv/bin/activate
-uv pip install -e ".[dev]"
-uv run maturin develop --release
+# with pip
+pip install mm-ctx
+
+# with uv
+uv pip install mm-ctx
+
+# or run directly without installing
+uvx --from mm-ctx mm --help
 ```
+
+<details>
+<summary>Alternative methods</summary>
+
+```bash
+# macOS / Linux (shell installer)
+curl -LsSf https://vlm-run.github.io/mm/install/install.sh | sh
+
+# Windows (PowerShell)
+irm https://vlm-run.github.io/mm/install/install.ps1 | iex
+```
+</details>
 
 ## CLI
 
@@ -39,32 +60,261 @@ Indexing is implicit — every command auto-builds a metadata index on first use
 
 Metadata commands (`find`, `wc` with `--format json`) run in **~60ms** on 700 files via the Rust fast path.
 
+### Sample files
+
+Download sample files from vlm.run to try the examples below:
+
+```bash
+mkdir mm-samples && cd mm-samples
+curl -LO https://storage.googleapis.com/vlm-data-public-prod/hub/examples/image.caption/bench.jpg
+curl -LO https://storage.googleapis.com/vlm-data-public-prod/hub/examples/document.invoice/wordpress-pdf-invoice-plugin-sample.pdf
+curl -LO https://storage.googleapis.com/vlm-data-public-prod/hub/examples/video/Timelapse.mp4
+curl -LO https://storage.googleapis.com/vlm-data-public-prod/hub/examples/mixed-files/mp3_44100Hz_320kbps_stereo.mp3
+```
+
+### Multimodal directory
+
+With all 4 files downloaded, `mm` treats the folder as a multimodal workspace:
+
+```bash
+$ mm find mm-samples/ --tree
+```
+```
+mm-samples  (4 files, 3.5 MB)
+├── Timelapse.mp4  [3.0 MB]
+├── bench.jpg  [253.8 KB]
+├── mp3_44100Hz_320kbps_stereo.mp3  [286.0 KB]
+└── wordpress-pdf-invoice-plugin-sample.pdf  [42.6 KB]
+```
+
+```bash
+$ mm wc mm-samples/ --by-kind
+```
+```
+kind      files  size      lines (est.)  tokens (est.)  tok_per_mb
+audio     1      286.0 KB  0             85             304
+document  1      42.6 KB   29            176            4.2K
+image     1      253.8 KB  0             425            1.7K
+video     1      3.0 MB    0             85             29
+—————
+total     4      3.5 MB    29            771            218
+```
+
+```bash
+$ mm find mm-samples/ --columns name,kind,size,ext
+```
+```
+name                                     kind      size     ext
+bench.jpg                                image     259865   .jpg
+Timelapse.mp4                            video     3113073  .mp4
+mp3_44100Hz_320kbps_stereo.mp3           audio     292853   .mp3
+wordpress-pdf-invoice-plugin-sample.pdf  document  43627    .pdf
+```
+
+```bash
+$ mm cat mm-samples/wordpress-pdf-invoice-plugin-sample.pdf -n 10
+```
+```
+wordpress-pdf-invoice-plugin-sample.pdf — pages 1-1 of 1:
+
+--- Page 1 ---
+INVOICE
+Sliced Invoices
+Suite 5a-1204 123 Somewhere Street
+Your City AZ 12345
+admin@slicedinvoices.com
+Invoice Number: INV-3337
+Invoice Date: January 25, 2016
+Due Date: January 31, 2016
+Total Due: $93.50
+0.8s • 42.6 KB • 53.2 KB/s
+```
+
+```bash
+$ mm cat mm-samples/bench.jpg -m accurate
+```
+```
+<description>
+This outdoor daytime photograph captures a peaceful park scene on a sunny day. The primary focus is a modern dark gray metal slat bench  positioned in the foreground on a patch of green grass. The bench is set upon a small concrete pad, and its curved backrest and armrests  create a sleek, contemporary silhouette. Behind the bench, a paved walkway cuts through a well-maintained lawn.
+</description>
+
+Tags: park, bench, outdoors, summer, grass, trees, street, urban, leisure, sunlight
+
+Objects: metal bench, tree, car, white SUV, red car, concrete pad, walkway, grass, street, building
+```
+
+```bash
+$ mm grep "invoice" mm-samples/
+```
+```
+wordpress-pdf-invoice-plugin-sample.pdf
+    2 Payment is due within 30 days from date of invoice. Late payment is subject to fees of 5% per month.
+    3 Thanks for choosing DEMO - Sliced Invoices | admin@slicedinvoices.com
+   10 admin@slicedinvoices.com
+```
+
 ### Quick start
 
 ```bash
-mm --version                                 # print version
-mm find ~/data --tree --depth 1              # directory overview with sizes
-mm wc ~/data --by-kind                       # file/byte/token counts by kind
-mm find ~/data --kind image --format json    # find all images (60ms)
-mm cat paper.pdf                             # extract text from PDF (fast mode)
-mm cat video.mp4                             # video metadata (<100ms)
-mm cat video.mp4 -m accurate                 # keyframe mosaic → LLM description
-mm cat photo.png -m accurate                 # LLM caption
-mm cat photo.png -p resize                   # use named encoder
+mm --version                                                    # print version
+mm find mm-samples/ --tree --depth 1                            # directory overview with sizes
+mm wc mm-samples/ --by-kind                                     # file/byte/token counts by kind
+
+# Default: --mode metadata (no LLM, local extraction only)
+mm cat wordpress-pdf-invoice-plugin-sample.pdf                  # PDF text via pypdfium2
+mm cat bench.jpg                                                # image dimensions, EXIF, hash
+mm cat Timelapse.mp4                                            # video resolution, duration, codecs
+mm cat wordpress-pdf-invoice-plugin-sample.pdf -n 20            # first 20 lines (metadata)
+
+# --mode fast: kind's fast pipeline (short LLM caption for image/video; passthrough for code)
+mm cat bench.jpg -m fast                                        # short VLM caption
+mm cat Timelapse.mp4 -m fast                                    # mosaic → short VLM description
+
+# --mode accurate: full LLM pipeline (requires a configured profile)
+mm cat bench.jpg -m accurate                                    # LLM caption + tags + objects
+mm cat Timelapse.mp4 -m accurate                                # keyframe mosaic → LLM description
+mm cat mp3_44100Hz_320kbps_stereo.mp3 -m accurate               # Whisper transcript → LLM summary
+mm cat wordpress-pdf-invoice-plugin-sample.pdf -m accurate      # LLM-structured invoice
 ```
+
+## Python API
+
+`mm` is also a library. `mm.Context` is the one class you need to build a multimodal prompt incrementally, then hand the whole thing to a VLM. Backed by a Rust core: O(1) insert/lookup, sub-millisecond render at 10K items.
+
+The public namespace is intentionally tiny:
+
+```python
+import mm
+mm.Context              # the one class you use
+mm.Ref                  # Annotated[str, "mm.Ref"] typed alias for ref ids
+mm.RefNotFoundError     # KeyError subclass raised by ctx.get on miss
+mm.uuid7()              # UUIDv7 helper (time-ordered default session_id)
+```
+
+### Build a prompt
+
+```python
+import mm
+from pathlib import Path
+from PIL import Image
+
+ctx = mm.Context(session_id=mm.uuid7())      # or omit; auto-mints a UUIDv7
+
+img:  mm.Ref = ctx.put(Path("photo.jpg"))
+img2: mm.Ref = ctx.put(Image.open("x.png"),
+                       metadata={"note": "product hero shot"})
+doc:  mm.Ref = ctx.put(Path("paper.pdf"),
+                       metadata={"summary": "Attention is all you need",
+                                 "tags": ["nlp", "transformer"]})
+vid:  mm.Ref = ctx.put(Path("clip.mp4"),
+                       metadata={"scene": 3, "actor": "A"})
+```
+
+`ctx.put(obj, *, metadata=...)` accepts a `pathlib.Path`, a `str` (file path or `http(s)://` URL), `bytes`, or a `PIL.Image.Image`. `metadata` is a single free-form JSON-serialisable `dict` — `note` / `summary` / `tags` are conventional keys used by rendering surfaces; anything else flows through to the VLM as a leading text block per item. Every `put` returns a short kind-prefixed ref id like `img_a1b2c3`, typed as `mm.Ref`.
+
+### Emit VLM-ready messages (OpenAI / Gemini)
+
+```python
+from openai.types.chat import ChatCompletionMessageParam
+from google.genai import types as genai_types
+
+messages_openai: list[ChatCompletionMessageParam] = ctx.to_messages(format="openai")
+messages_gemini: list[genai_types.ContentDict]    = ctx.to_messages(format="gemini")
+```
+
+Drop `messages_openai` directly into `client.chat.completions.create(messages=...)`, or `messages_gemini` into `model.generate_content(contents=...)`. Per-kind encoder overrides:
+
+```python
+messages: list[ChatCompletionMessageParam] = ctx.to_messages(
+    format="openai",
+    encoders={"image": "tile", "video": "mosaic"},
+)
+```
+
+Unspecified kinds fall back to sensible defaults (`image-resize`, `video-frame-sample`, `document-rasterize`).
+
+### Round-trip and resolve
+
+```python
+obj: Path | Image.Image | bytes | str = ctx.get(img)   # instance: returns the stored object
+row: dict | None = mm.Context.get(f"{ctx.session_id}/{img}")  # classmethod: cross-session DB lookup
+```
+
+Instance `ctx.get(ref)` returns the exact Python object you `put` — identity is preserved for in-memory items (no copy, no rehydrate). Classmethod `mm.Context.get("<session>/<ref>")` resolves against the global `~/.local/share/mm/mm.db` when you only have a ref string and no live `Context`.
+
+Missed a ref? `ctx.get("img_a1b2cZ")` raises `mm.RefNotFoundError` (a `KeyError` subclass) with a Levenshtein-based "did you mean" and the full context table inline — agent-friendly by default.
+
+### Render
+
+```python
+ctx.print_tree()                  # insertion-order tree with metadata
+print(ctx.to_md(mode="metadata")) # markdown: ref | kind | source | content
+print(repr(ctx))                  # markdown summary: ref | kind | source
+```
+
+```
+Context(session=019da4…, items=4)
+├── [1] img_a1b2c3  image     /abs/path/photo.jpg
+├── [2] img_9f0e12  image     PIL.Image(RGB, 1024×768)
+│        └─ note: "product hero shot"
+├── [3] doc_d4e5f6  document  /abs/path/paper.pdf
+│        ├─ summary: "Attention is all you need"
+│        └─ tags: [nlp, transformer]
+└── [4] vid_7890ab  video     /abs/path/clip.mp4
+         ├─ scene: 3
+         └─ actor: "A"
+```
+
+`Context("~/data")` continues to support the directory-scan surface (`to_polars`, `to_pandas`, `to_arrow`, `sql`, `show`, `info`). See [`docs/api.md`](docs/api.md) for the full spec — `print_tree` layouts, cross-session resolution, and the deferred `save()` API.
+
+## Integrations
+
+### Claude Code
+
+Install the `mm-cli-skill` via the skill marketplace:
+
+```bash
+claude
+> /plugin marketplace add vlm-run/skills
+> /plugin install mm-cli-skill@vlm-run/skills
+> Organize my ~/Downloads folder using mm
+```
+
+### npx skills
+
+Install mm-cli-skill globally so any CLI assistant or agentic tool can discover it:
+
+```bash
+npx skills add vlm-run/skills@mm-cli-skill
+```
+
+### Universal assistants (OpenClaw, NemoClaw, OpenCode, Codex, Gemini CLI)
+
+Install the mm-cli-skill globally first, then start your preferred tool:
+
+```bash
+# One-time setup
+npx skills add vlm-run/skills@mm-cli-skill
+
+# Then use any CLI assistant — it will discover mm automatically
+openclaw "Organize my ~/Downloads folder using mm"
+codex "Find all PDFs in ~/docs and summarize them with mm"
+```
+
+The skill exposes mm's capabilities to any tool that supports the skills protocol.
 
 ### Command reference
 
 | Command | Purpose | Key flags |
 |---------|---------|-----------|
-| `find`  | Find/list files, tree view, schema | `--name`, `--kind`, `--ext`, `--min-size`, `--max-size`, `--sort`, `--reverse`, `--columns`, `--tree`, `--depth`, `--schema`, `--limit`, `--no-ignore`, `--format` |
-| `cat` | Content extraction (auto-detected by file type × mode) | `--mode fast/accurate`, `-p` (pipeline), `-n`, `--no-cache`, `-v`, `--encode.*`, `--generate.*`, `--list-pipelines`, `--list-encoders`, `--format` |
-| `grep` | Content search across files | `--kind`, `--ext`, `-C`, `--count`, `-i`, `--no-ignore`, `--format` |
+| `find`  | Find/list files, tree view, schema | `--name`, `-i` (ignore case), `--kind`, `--ext`, `--min-size`, `--max-size`, `--sort`, `--reverse`, `--columns`, `--tree`, `--depth`, `--schema`, `--limit`, `--no-ignore`, `--format` |
+| `cat` | Content extraction (auto-detected by file type × mode) | `--mode metadata/fast/accurate` (default `metadata`), `-p` (pipeline), `-n`, `--no-cache`, `-v`, `--encode.*` (incl. `--encode.strategy_opts KEY=VALUE`), `--generate.*`, `--list-pipelines`, `--list-encoders`, `--print-pipeline <kind>/<mode>`, `--format` |
+| `grep` | Content search across files | `--kind`, `--ext`, `-C`, `--count`, `-i`, `--semantic`, `--pre-index`, `--no-ignore`, `--format` |
 | `sql` | SQL queries on file index, results, chunks, and embeddings | `--dir`, `--pre-index`, `--format`, `--list-tables` |
 | `wc` | Count files, size, lines (est.), tokens (est.) | `--kind`, `--by-kind`, `--format` |
-| `bench` | Benchmark suite | `--format`, `--rounds` |
+| `bench` | Benchmark suite | `--rounds`, `--warmup`, `--mode`, `--format` |
 | `config` | Extraction mode settings | `show`, `init`, `set`, `reset-db`, `reset-profiles`, `reset` |
-| `profile` | Manage LLM provider profiles | `list`, `add`, `update`, `use`, `remove` |
+| `profile` | Manage LLM provider profiles | `list`, `add`, `update`, `use`, `remove`, `--format` |
 
 ### find — locate/list, tree, and schema
 
@@ -75,6 +325,7 @@ mm find ~/data --ext .pdf --min-size 10mb                 # large PDFs
 mm find ~/data --kind image --limit 5 --format json       # JSON output
 mm find ~/data --name "test_.*\.py"                       # regex name match
 mm find ~/data -n config                                  # substring name match
+mm find ~/data -n CONFIG -i                               # case-insensitive (-i)
 
 mm find ~/data --sort size --reverse --limit 20        # tabular listing
 mm find ~/data --kind document --columns name,size,ext
@@ -87,20 +338,86 @@ mm find ~/data --no-ignore                             # include gitignored file
 
 ### cat — content extraction
 
+`--mode` is one of `metadata` (default; local extraction, never an LLM call), `fast` (kind's fast pipeline; short LLM call for images/video), or `accurate` (LLM-heavy pipeline).
+
 ```bash
-mm cat paper.pdf                               # extract text (fast mode, no LLM)
-mm cat paper.pdf -n 20                         # first 20 lines (head)
-mm cat paper.pdf -n -20                        # last 20 lines (tail)
-mm cat photo.png                               # image dims, MIME, hash, EXIF
-mm cat video.mp4                               # resolution, duration, codecs (<100ms)
-mm cat video.mp4 -m accurate                   # mosaic → LLM description
-mm cat photo.png -m accurate                   # LLM caption
-mm cat photo.png -p resize                     # use named encoder
-mm cat photo.png -p my-pipeline.yaml           # custom pipeline YAML
-mm cat video.mp4 -m accurate --no-cache        # force fresh LLM call
-mm cat photo.png -m accurate -v                # verbose (shows pipeline tree)
-mm cat --list-pipelines                        # list registered pipelines
-mm cat --list-encoders                         # list registered encoders
+mm cat wordpress-pdf-invoice-plugin-sample.pdf                  # PDF text via pypdfium2 (metadata)
+mm cat wordpress-pdf-invoice-plugin-sample.pdf -n 20            # first 20 lines (head)
+mm cat wordpress-pdf-invoice-plugin-sample.pdf -n -20           # last 20 lines (tail)
+mm cat bench.jpg                                                 # image dimensions, EXIF, hash (metadata)
+mm cat bench.jpg -m fast                                         # short VLM caption
+mm cat bench.jpg -m accurate                                     # full LLM caption + tags + objects
+mm cat Timelapse.mp4 -m accurate                                 # mosaic → LLM description
+mm cat bench.jpg -m fast -p resize                               # use named encoder (requires -m fast/accurate)
+mm cat bench.jpg -m accurate -p my-pipeline.yaml                 # custom pipeline YAML
+mm cat Timelapse.mp4 -m accurate --no-cache                      # force fresh LLM call
+mm cat bench.jpg -m accurate -v                                  # verbose (shows pipeline tree)
+mm cat --list-pipelines                                          # list registered pipelines
+mm cat --list-encoders                                           # list registered encoders
+mm cat --print-pipeline image/accurate                           # print a built-in pipeline's YAML source
+mm cat bench.jpg -m accurate --encode.strategy_opts max_width=768  # override a single strategy_opts entry
+```
+
+#### Override surfaces
+
+`mm cat` resolves each LLM call from three layers, with **right-most wins** on conflict:
+
+| Layer | Configures | How to set |
+|-------|------------|------------|
+| **Profile** (`mm.toml`) | `base_url`, `api_key`, default `model` | `mm profile add <name> --base-url ... --model ...`; selected per-invocation with `mm --profile <name> <subcommand> ...` |
+| **Pipeline YAML** (`generate:` block) | `model`, `prompt`, `max_tokens`, `temperature`, `json_mode`, `extra_body` (deep-merged) | Built-in pipelines under `python/mm/pipelines/` or custom YAMLs passed via `mm cat -p path.yaml` |
+| **CLI flags on `cat`** | per-field overrides | See table below |
+
+CLI override flags (each takes precedence over both pipeline YAML and profile):
+
+| Flag | Alias | Pipeline field |
+|------|-------|----------------|
+| `--model NAME` | `--generate.model NAME` | `generate.model` |
+| `--prompt TEXT` | `--generate.prompt TEXT` | `generate.prompt` |
+| `--generate.max-tokens N` | — | `generate.max_tokens` |
+| `--generate.temperature F` | — | `generate.temperature` |
+| `--generate.json-mode BOOL` | — | `generate.json_mode` |
+| `--generate.extra-body '<json>'` | — | `generate.extra_body` (deep-merged onto YAML; CLI keys win) |
+
+Use `--generate.extra-body` for any provider-specific knobs (vlmrt's `method`, `method_params`, `video_fps`, `image_resolution`, `vlmrun.metadata`, etc.). The merged `model` + `extra_body` participate in the L2 cache key, so changing a knob correctly invalidates cached results. `base_url` and `api_key` are profile-only — there is no CLI override for them.
+
+Examples against a vlmrt deployment (`mm profile add vlmrt --base-url http://gpu-box:8001/v1 --model qwen3.5-0.8b`):
+
+```bash
+# Florence-2 — document OCR (skip server-side LLM refinement)
+mm --profile vlmrt cat page.png -m accurate \
+  --model florence-2-base-ft \
+  --generate.extra-body '{"method":"ocr","refine_with_llm":false}'
+
+# Florence-2 — detailed caption
+mm --profile vlmrt cat photo.jpg -m accurate \
+  --model florence-2-base-ft \
+  --generate.extra-body '{"method":"detailed_caption"}'
+
+# Qwen3.5-0.8B — free-form VQA on an image with a custom prompt
+mm --profile vlmrt cat photo.jpg -m accurate \
+  --model qwen3.5-0.8b \
+  --prompt "What objects are visible? Reply as a comma-separated list."
+
+# Qwen3.5-0.8B — video summarisation with explicit frame sampling
+mm --profile vlmrt cat clip.mp4 -m accurate \
+  --model qwen3.5-0.8b \
+  --generate.extra-body '{"video_fps":1.0,"video_max_frames":8,"video_resolution":"448x336"}'
+
+# PaddleOCR-v5 — full detect + recognise (English, default threshold)
+mm --profile vlmrt cat storefront.jpg -m accurate \
+  --model paddleocr-v5 \
+  --generate.extra-body '{"method":"ocr"}'
+
+# PaddleOCR-v5 — Chinese OCR with a tighter score threshold
+mm --profile vlmrt cat storefront.jpg -m accurate \
+  --model paddleocr-v5 \
+  --generate.extra-body '{"method":"ocr","method_params":{"lang":"ch","score_threshold":0.6}}'
+
+# Moondream2 — multi-object detection
+mm --profile vlmrt cat photo.jpg -m accurate \
+  --model moondream2 \
+  --generate.extra-body '{"method":"detect","method_params":{"object":"fish"}}'
 ```
 
 ### wc — count files, size, tokens
@@ -117,6 +434,9 @@ mm grep "attention" ~/data --kind document
 mm grep "TODO" ~/data --kind code
 mm grep "invoice" ~/data --count               # match counts per file
 mm grep "Quantum Phase" ~/data -i              # case-insensitive search
+mm grep "secret" ~/data --no-ignore            # search gitignored files
+mm grep "revenue forecast" ~/data -s             # semantic (vector) search
+mm grep "architecture" ~/data -s --pre-index      # auto-index before search
 ```
 
 ### sql — query the index
@@ -129,7 +449,7 @@ mm sql "SELECT kind, COUNT(*) as n, ROUND(SUM(size)/1e6,1) as mb \
   FROM files GROUP BY kind ORDER BY mb DESC" --dir ~/data
 
 # Query stored tables directly (auto-detected from table name)
-mm sql "SELECT file_uri, summary FROM l2_results LIMIT 10"
+mm sql "SELECT file_uri, summary FROM extractions LIMIT 10"
 mm sql "SELECT file_uri, chunk_idx, LENGTH(chunk_text) FROM chunks"
 mm sql "SELECT * FROM files WHERE kind='image'" --dir ~/data --pre-index  # index before query
 mm sql --list-tables                              # show available tables
@@ -139,10 +459,10 @@ mm sql --list-tables                              # show available tables
 
 - **TTY**: Rich formatted tables/panels
 - **Piped**: plain TSV/text (machine-readable, no ANSI)
-- **`--format json`**: JSON output on any command that supports it
-- **`--format csv`**: Comma-separated values
-- **`--format dataset-jsonl`**: JSONL for dataset export
-- **`--format dataset-hf`**: HuggingFace Datasets format (requires `--output-dir`)
+- `**--format json`**: JSON output on any command that supports it
+- `**--format csv**`: Comma-separated values
+- `**--format dataset-jsonl**`: JSONL for dataset export
+- `**--format dataset-hf**`: HuggingFace Datasets format (requires `--output-dir`)
 
 ### Verbose mode (`--verbose` / `-v`)
 
@@ -154,85 +474,76 @@ pipeline
   └─ generate: ollama · 2.3s · 354→195 tokens
 ```
 
-## Python API
+## Processing tiers
 
-```python
-from mm import Context
+`mm` separates **content tiers** (what's stored) from **pipeline modes** (what runs). `mm cat` accepts `--mode metadata|fast|accurate` (default `metadata`).
 
-ctx = Context("~/data/domains")
-print(ctx)  # Context(root='/Users/.../domains', files=702)
+| Tier               | What                                                                                  | LLM?     |
+| ------------------ | ------------------------------------------------------------------------------------- | -------- |
+| **metadata** (default) | Locally-extracted file content — PDF text, image dims/EXIF, video codec, transcript   | never    |
+| **fast**           | Output of the kind's `fast` pipeline                                                  | maybe¹   |
+| **accurate**       | Output of the kind's `accurate` pipeline                                              | yes      |
 
-# DataFrame export
-df = ctx.to_polars()         # polars.DataFrame (zero-copy)
-df = ctx.to_pandas()         # pandas.DataFrame
+¹ Per-kind fast pipelines: image/video include a short LLM caption stage;
+audio/document/code do not. See `pipelines/{kind}/fast.yaml`.
 
-# SQL via SQLite
-result = ctx.sql("SELECT kind, COUNT(*) as n FROM files GROUP BY kind ORDER BY n DESC")
-
-# Chainable filtering
-big_images = ctx.filter(kind="image", min_size="1MB")
-
-# Content access
-text  = ctx.cat("paper.pdf")
-hits  = ctx.grep("revenue", kind="document")
-
-# Display
-ctx.show()    # Rich table
-ctx.info()    # Rich summary panel
-```
-
-## Processing Modes
-
-| Mode | What | Speed | How |
-|------|------|-------|-----|
-| **fast** (default) | Local extraction — text from PDF, image hash/EXIF, video metadata | <100ms/file | pypdfium2 (PDF), Rust mmap (images), mp4parse/matroska (video) |
-| **accurate** | LLM-powered semantic understanding (captions, descriptions, summaries) | Varies | LLM API via active profile + pipeline config |
-
-Metadata scanning (`find`, `wc`) always uses Rust-native extraction (~60ms / 700 files).
+Metadata-tier extraction (used by `find`, `wc`, the `cat` default, and as the
+input for fast/accurate pipelines) is Rust-native (~60ms / 700 files).
 
 ## Performance
 
 Benchmarked on Apple Silicon (M-series), 702 files (7.2GB):
 
-| Operation | Latency |
-|-----------|---------|
-| Metadata scan (702 files) | 8ms |
-| CLI cold start (`find --format json`) | 60ms |
-| CLI cold start (`find --schema --format json`) | 109ms |
-| CLI cold start (`sql`) | 300ms |
-| Fast code extraction | ~52ms |
-| Fast image extraction | ~61ms |
-| Fast PDF text extraction | ~220ms |
-| Fast video metadata | <100ms |
-| PDF page mosaic (per page) | ~10ms |
-| Video keyframe mosaic (48 frames) | ~1s |
+
+| Operation                                      | Latency |
+| ---------------------------------------------- | ------- |
+| Metadata scan (702 files)                      | 8ms     |
+| CLI cold start (`find --format json`)          | 60ms    |
+| CLI cold start (`find --schema --format json`) | 109ms   |
+| CLI cold start (`sql`)                         | 300ms   |
+| Fast code extraction                           | ~52ms   |
+| Fast image extraction                          | ~61ms   |
+| Fast PDF text extraction                       | ~220ms  |
+| Fast video metadata                            | <100ms  |
+| PDF page mosaic (per page)                     | ~10ms   |
+| Video keyframe mosaic (48 frames)              | ~1s     |
+
 
 ## Storage
 
 mm uses a global SQLite database at `~/.local/share/mm/mm.db` with sqlite-vec for vector search:
 
-| Table | Contents | Relationship |
-|-------|----------|-------------|
-| `files` | File metadata + content (one row per file, `uri` = absolute path) | — |
-| `l2_results` | LLM-generated summaries (many per file, `file_uri` = FK) | FK → `files.uri` |
-| `chunks` | ~1024-char content chunks (`file_uri` = FK) | FK → `l2_results.id` |
-| `chunks_vec` | Embedding vectors (sqlite-vec virtual table) | FK → `chunks.id` |
-| `cache` | Key-value result cache | — |
+
+| Table              | Contents                                                          | Relationship                |
+| ------------------ | ----------------------------------------------------------------- | --------------------------- |
+| `files`            | File metadata + content (one row per file, `uri` = absolute path) | —                           |
+| `extractions` | LLM-generated summaries (many per file)                           | FK → `files.uri`            |
+| `chunks`           | ~2048-char content chunks (mode = 'fast' or 'accurate')           | FK → `extractions.id`  |
+| `chunks_vec`       | Embedding vectors (sqlite-vec virtual table)                      | FK → `chunks.id`            |
+| `cache`            | Key-value result cache                                            | —                           |
+
 
 The `files` table includes metadata columns (path, size, kind, etc.) and content columns (content_hash, text_preview, line_count, duration_s, exif_*, video_codec, etc.).
 
 Use `mm config reset-db` to clear all databases and caches.
 
-
 ### Pipelines — encode + generate
 
-Pipelines are YAML configs under `pipelines/{kind}/{mode}.yaml` that pair an **encoder** with optional LLM **generation** parameters. When `generate` is `null`, the pipeline is encode-only (no LLM call). Encoders are Python classes under `encoders/` that convert media files into VLM-ready Messages. See [`docs/PIPELINES.md`](docs/PIPELINES.md) and [`docs/ENCODERS.md`](docs/ENCODERS.md) for the full pipeline and encoder reference.
+Pipelines are YAML configs under `pipelines/{kind}/{mode}.yaml` that pair an **encoder** with optional LLM **generation** parameters. When `generate` is `null`, the pipeline is encode-only (no LLM call). Encoders are Python classes under `encoders/` that convert media files into VLM-ready Messages. See `[docs/PIPELINES.md](docs/PIPELINES.md)` and `[docs/ENCODERS.md](docs/ENCODERS.md)` for the full pipeline and encoder reference.
 
 Pipeline fields can be overridden from the CLI:
 
 ```bash
 mm cat photo.jpg -m accurate --encode.strategy tile --generate.max-tokens 1024
 mm cat photo.jpg -m accurate --generate.temperature 0.5
+
+# Override individual strategy_opts entries (repeatable KEY=VALUE form;
+# values are coerced to int/float/bool when possible).
+mm cat photo.jpg -m accurate --encode.strategy_opts max_width=768
+mm cat video.mp4 -m accurate --encode.strategy_opts max_width=768 --encode.strategy_opts fps=5
+
+# Print a built-in pipeline's YAML as a starting point for your own.
+mm cat --print-pipeline image/accurate
 ```
 
 Load explicit pipeline YAML(s) with `-p` (repeatable, dispatched by `kind` field):
@@ -253,7 +564,7 @@ video.accurate = "/path/to/my-video-accurate.yaml"
 
 ## LLM Configuration using Profiles
 
-For accurate mode, mm uses the `openai` Python SDK to call any OpenAI-compatible API. Provider settings are managed through **profiles** — named configurations stored in `~/.config/mm/mm.toml`.
+For accurate mode, `mm` uses the `openai` Python SDK to call any OpenAI-compatible API. Provider settings are managed through **profiles** — named configurations stored in `~/.config/mm/mm.toml`.
 
 ### Quick setup
 
@@ -267,10 +578,12 @@ mm config show                # show resolved config with sources
 Each profile stores `base_url`, `api_key`, and `model`. You can have as many as you need — one per provider, one per use-case, etc.
 
 ```bash
-# Add profiles for different providers
+# Add custom profiles
 mm profile add openai --base-url https://api.openai.com/v1 --api-key sk-... --model gpt-4o
-mm profile add openrouter --base-url  https://openrouter.ai/api/v1 --model qwen/qwen3.5-27b
-mm profile add ollama --base-url http://localhost:11434 --model qwen3.5:9B
+mm profile add openrouter --base-url https://openrouter.ai/api/v1 --model qwen/qwen3.5-27b
+
+# Update reserved profiles (ollama, gemini, vlmrun)
+mm profile update ollama --base-url http://localhost:11434 --model qwen3.5:9B
 
 # List all profiles (● = active)
 mm profile list
@@ -302,24 +615,29 @@ Provider settings (base_url, api_key, model) come from the active profile, falli
 The active profile is resolved as:
 
 ```
---profile flag  >  MM_PROFILE env  >  active_profile in config file  >  "default"
+--profile flag  >  MM_PROFILE env  >  active_profile in config file  >  "ollama"
 ```
 
 ### Config file format
 
 ```toml
 # ~/.config/mm/mm.toml
-active_profile = "default"
+active_profile = "ollama"
 
 [profile.ollama]
 base_url = "http://localhost:11434"
 api_key = ""
-model = "qwen3.5:0.8b"
+model = "qwen3.5:0.8"
 
-[profile.openrouter]
-base_url = " https://openrouter.ai/api/v1"
-api_key = ""
-model = "qwen/qwen3.5-27b"
+[profile.gemini]
+base_url = "https://openrouter.ai/api/v1"
+api_key = "<OPENROUTER_API_KEY>"
+model = "google/gemini-2.5-flash-lite"
+
+[profile.vlmrun]
+base_url = "https://api.vlm.run/v1/openai"
+api_key = "<VLMRUN_API_KEY>"
+model = "Qwen/Qwen3.5-0.8B"
 ```
 
 ## License

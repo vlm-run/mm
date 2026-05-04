@@ -3,6 +3,40 @@
 ## [Unreleased]
 
 ### Performance
+- **Disk-backed cache for `detect_scenes` + `transcript_messages` (260430)**:
+  the slow steps in the accurate-mode video pipeline now persist across CLI
+  invocations via `cachetools_ext.fs.FSLRUCache`. Implemented as an opt-in
+  `path=` parameter on `mm.cache.memoize_file` so cheap helpers (`probe`)
+  stay process-local while the expensive ones graduate to disk.
+  - `detect_scenes`: 3,080 ms cold → **0.2 ms warm cross-process** (~12,000×).
+  - `transcript_messages`: ~76 s cold → ~5 ms warm cross-process (Whisper
+    pickle on bakery.mp4) — turns the second `mm cat video.mp4 -m accurate`
+    into a near-instant operation.
+  - mtime/size fingerprint invalidates entries automatically when the source
+    file is re-encoded, so stale cache hits aren't possible.
+  - Cache lives under `$MM_CACHE_DIR` → `$XDG_CACHE_HOME/mm` → `~/.cache/mm`.
+    Tests pin `MM_CACHE_DIR` to a session temp dir via `conftest.py`.
+  - Backed by 9 new `TestDiskBackedCache` tests in `test_cache.py` covering
+    persistence across decorator instances, lazy `MM_CACHE_DIR` resolution,
+    mtime invalidation on disk, and `cache_clear()` wiping the directory.
+- **Video encoders P0 (260429)**: unified speedups across all 17 video encoders.
+  See `benchmark/260429-post-p0-video-encoders.md`.
+  - `Frame.reformat()` (libswscale) replaces `PIL.Image.resize` — 2.9× per-frame.
+  - JPEG default subsampling 4:4:4 → 4:2:0 — 1.7× JPEG encode, ~30% smaller.
+  - `video-mosaic` streams frames via `.batched()`; `video-shots*` bundle per-shot
+    timestamps into one parallel decode pass (single ThreadPoolExecutor for all
+    76 shots, was one per shot).
+  - Process-local LRU caches for `probe()`, `detect_scenes()`, transcript —
+    chained encoders against the same file pay each cost exactly once per process.
+  - Whisper now runs concurrently with visual extraction (Metal GPU + CPU);
+    `-w-transcript` wall time = `max(visual, whisper)` not sum.
+  - Cold-cache median win: visual-only **−18%**, with-transcript **−10%**.
+  - Warm-cache real-pipeline win: chained `-w-transcript` calls drop **>95%**
+    (e.g. `video-keyframes-w-transcript` 80.5s → 1.4s when transcript cached).
+  - Correctness covered by `tests/python/test_video_p0.py` (32 tests covering
+    resize visual fidelity, JPEG subsampling, cache invalidation on mtime
+    change, transcript-first message ordering, parallel-execution timing,
+    and cross-encoder cache reuse).
 - Video fast mode: 203x realtime (17min video in 5.0s) on Apple Silicon
 - 100min Google Next keynote: 235x realtime (25.5s)
 - Whisper MLX Metal: 5.9x faster than CTranslate2 CPU
@@ -16,7 +50,7 @@
 - Image: fast (10 words + 5 tags) / accurate (200 words + 10 tags + objects)
 - Video: parallel mosaic (4x4 @ 1500px) + audio transcription → VLM + transcript concat
 - Audio: ffmpeg 2x speed + whisper tiny (MLX Metal GPU on macOS)
-- Document: docling PDF/DOCX/PPTX → markdown with pypdfium2 fallback
+- Document: PDF text extraction via pypdfium2, DOCX/PPTX via python-docx/python-pptx
 - Whisper backend auto-select: MLX Metal GPU > CTranslate2 CPU/CUDA
 - `~/.config/mm/mm.toml` config with `[mode.fast]` / `[mode.accurate]` sections
 - `beam_size` config (fast=1 greedy, accurate=5 beam search)
@@ -24,7 +58,6 @@
 - `mm bench` with 24 commands across metadata, fast, and accurate modes, bits/s throughput
 - `sysinfo.py` — system capability detection (ffmpeg, GPU, optional deps)
 - `scenes.py` — PySceneDetect wrapper with uniform scene sampling
-- `docling_extract.py` — docling document conversion wrapper
 - 271 Python tests (44 new for modal extraction)
 
 ### Changed

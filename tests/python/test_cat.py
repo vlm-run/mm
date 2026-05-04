@@ -2,7 +2,7 @@
 
 Verifies that the CLI correctly auto-detects file types (image, video,
 audio, pdf, text) and dispatches to the right handler based on extension
-and the --mode flag (fast/accurate).
+and the --mode flag (metadata/fast/accurate).
 """
 
 from __future__ import annotations
@@ -41,6 +41,34 @@ def _write_png(path: Path, width: int, height: int):
     path.write_bytes(png)
 
 
+def _write_minimal_mp4(path: Path) -> None:
+    """Encode a 1-frame, 16x16 mp4 PyAV can probe.
+
+    The previous ``b"\\x00" * 200`` placeholder relied on ffprobe being
+    forgiving; the new PyAV-based ``mm.video.probe`` is stricter, so the
+    fixture must be a real (tiny) mp4 file.
+    """
+    import av
+    import numpy as np
+
+    container = av.open(str(path), mode="w")
+    try:
+        stream = container.add_stream("mpeg4", rate=24)
+        stream.width = 16
+        stream.height = 16
+        stream.pix_fmt = "yuv420p"
+        frame = av.VideoFrame.from_ndarray(
+            np.zeros((16, 16, 3), dtype=np.uint8),
+            format="rgb24",
+        )
+        for packet in stream.encode(frame):
+            container.mux(packet)
+        for packet in stream.encode():
+            container.mux(packet)
+    finally:
+        container.close()
+
+
 def _minimal_single_page_pdf(path: Path) -> None:
     """Tiny valid PDF with one (Hello World) text op — same structure as test_integration."""
     content = (
@@ -68,7 +96,7 @@ def _minimal_single_page_pdf(path: Path) -> None:
 def mixed_dir(tmp_path: Path) -> Path:
     """Directory with one file per major type."""
     _write_png(tmp_path / "photo.png", 64, 48)
-    (tmp_path / "clip.mp4").write_bytes(b"\x00" * 200)
+    _write_minimal_mp4(tmp_path / "clip.mp4")
     (tmp_path / "track.mp3").write_bytes(b"\xff\xfb\x90\x00" + b"\x00" * 200)
     (tmp_path / "readme.md").write_text("# Title\n\nHello world.\n")
     (tmp_path / "main.py").write_text("def run():\n    return 42\n")
@@ -102,23 +130,112 @@ class TestFileKindDetection:
         assert file_kind(Path(f"file{ext}")) == "text"
 
 
-# ── Fast mode (default) ──────────────────────────────────────────────
+# ── Metadata mode (default) ─────────────────────────────────────────
 
 
-class TestFastVideo:
-    def test_video_metadata(self, mixed_dir: Path):
+class TestMetadataDefault:
+    """The default `--mode metadata` returns local extraction with no LLM call."""
+
+    def test_video_metadata_default(self, mixed_dir: Path):
+        """No mode flag → metadata mode → native MP4 parse, no LLM."""
         r = runner.invoke(app, ["cat", str(mixed_dir / "clip.mp4")])
         assert r.exit_code == 0
 
+    def test_explicit_metadata_mode(self, mixed_dir: Path):
+        """Passing `-m metadata` is identical to omitting `-m`."""
+        r_default = runner.invoke(app, ["cat", str(mixed_dir / "clip.mp4")])
+        r_explicit = runner.invoke(app, ["cat", str(mixed_dir / "clip.mp4"), "-m", "metadata"])
+        assert r_default.exit_code == 0
+        assert r_explicit.exit_code == 0
 
-class TestFastText:
-    def test_text_passthrough(self, mixed_dir: Path):
+    def test_text_passthrough_default(self, mixed_dir: Path):
         r = runner.invoke(app, ["cat", str(mixed_dir / "readme.md")])
         assert r.exit_code == 0
         assert "Title" in r.output
 
-    def test_code_passthrough(self, mixed_dir: Path):
+    def test_code_passthrough_default(self, mixed_dir: Path):
         r = runner.invoke(app, ["cat", str(mixed_dir / "main.py")])
+        assert r.exit_code == 0
+        assert "def run" in r.output
+
+    def test_metadata_does_not_call_llm(self, monkeypatch, mixed_dir: Path):
+        """Default `metadata` mode must never instantiate the LLM backend.
+
+        The fast pipeline for images calls an LLM, but metadata mode short-
+        circuits before resolving any pipeline. We assert this by replacing
+        `LlmBackend` with a sentinel that raises if instantiated.
+        """
+        from mm import llm
+
+        class _Sentinel:
+            def __init__(self, *args, **kwargs):
+                raise AssertionError(
+                    "LlmBackend was constructed under --mode metadata; the "
+                    "default mode must not invoke an LLM."
+                )
+
+        monkeypatch.setattr(llm, "LlmBackend", _Sentinel)
+
+        r = runner.invoke(app, ["cat", str(mixed_dir / "photo.png")])
+        assert r.exit_code == 0
+
+    def test_metadata_mode_json_emits_mode_field(self, mixed_dir: Path):
+        r = runner.invoke(app, ["cat", str(mixed_dir / "main.py"), "--format", "json"])
+        assert r.exit_code == 0
+        data = json.loads(r.output)
+        assert isinstance(data, list) and data
+        assert data[0].get("mode") == "metadata"
+
+    def test_metadata_image_json_emits_mode_field(self, mixed_dir: Path):
+        r = runner.invoke(app, ["cat", str(mixed_dir / "photo.png"), "--format", "json"])
+        assert r.exit_code == 0
+        data = json.loads(r.output)
+        assert data[0].get("mode") == "metadata"
+
+    def test_pretty_json_format_indents_and_breaks_lines(self, mixed_dir: Path):
+        """``--format pretty-json`` always indents, regardless of TTY/pipe.
+
+        The wire shape matches ``--format json`` (same ``{path, mode,
+        content}`` envelope so downstream parsers don't need to fork
+        on the format flag); only the serializer's ``indent`` argument
+        differs. Useful for capturing into markdown / docs / recordings
+        where multi-line JSON renders far more readably than a
+        single-line escape soup.
+        """
+        r = runner.invoke(app, ["cat", str(mixed_dir / "main.py"), "--format", "pretty-json"])
+        assert r.exit_code == 0
+        # Same envelope as `json`: ingestable by anyone who already
+        # parses `mm cat --format json`.
+        data = json.loads(r.output)
+        assert isinstance(data, list) and data
+        assert {"path", "mode", "content"}.issubset(data[0])
+        # And the *serialised* form has line breaks + indentation
+        # (multiple top-level newlines means the printer formatted it,
+        # not just that ``content`` happened to contain ``\n``).
+        assert r.output.count("\n") >= 4
+        assert "  " in r.output  # 2-space indent
+
+    def test_json_vs_pretty_json_share_payload_shape(self, mixed_dir: Path):
+        """Parsing either format yields the same dict (only whitespace differs)."""
+        compact = runner.invoke(app, ["cat", str(mixed_dir / "main.py"), "--format", "json"])
+        pretty = runner.invoke(app, ["cat", str(mixed_dir / "main.py"), "--format", "pretty-json"])
+        assert compact.exit_code == 0 and pretty.exit_code == 0
+        assert json.loads(compact.output) == json.loads(pretty.output)
+
+
+# ── Fast mode (explicit) ─────────────────────────────────────────────
+
+
+class TestFastModeExplicit:
+    """Fast mode now requires the explicit `-m fast` flag."""
+
+    def test_text_fast_passthrough(self, mixed_dir: Path):
+        r = runner.invoke(app, ["cat", str(mixed_dir / "readme.md"), "-m", "fast"])
+        assert r.exit_code == 0
+        assert "Title" in r.output
+
+    def test_code_fast_passthrough(self, mixed_dir: Path):
+        r = runner.invoke(app, ["cat", str(mixed_dir / "main.py"), "-m", "fast"])
         assert r.exit_code == 0
         assert "def run" in r.output
 
@@ -141,7 +258,18 @@ class TestHeadTail:
 
 
 class TestCatDocumentPdf:
-    """CLI smoke: PDF fast path uses pypdfium2 page text (not mocked)."""
+    """CLI smoke: PDF metadata + fast paths both use pypdfium2 page text (not mocked)."""
+
+    def test_pdf_metadata_json_extracts_text(self, tmp_path: Path):
+        """Default mode (metadata) extracts PDF text via pypdfium2 — same path as fast."""
+        pdf = tmp_path / "hello.pdf"
+        _minimal_single_page_pdf(pdf)
+        r = runner.invoke(app, ["cat", str(pdf), "--format", "json"])
+        assert r.exit_code == 0, r.output
+        data = json.loads(r.output)
+        assert len(data) == 1
+        assert data[0].get("mode") == "metadata"
+        assert "Hello" in data[0].get("content", "")
 
     def test_pdf_fast_json_extracts_text(self, tmp_path: Path):
         pdf = tmp_path / "hello.pdf"
@@ -153,6 +281,7 @@ class TestCatDocumentPdf:
         assert r.exit_code == 0, r.output
         data = json.loads(r.output)
         assert len(data) == 1
+        assert data[0].get("mode") == "fast"
         body = data[0].get("content", "")
         assert "Hello" in body
 
@@ -173,3 +302,162 @@ class TestErrors:
     def test_invalid_mode(self, mixed_dir: Path):
         r = runner.invoke(app, ["cat", str(mixed_dir / "main.py"), "-m", "bogus"])
         assert r.exit_code != 0
+        combined = (r.output or "") + (getattr(r, "stderr", "") or "")
+        # Error must enumerate all three valid modes so users discover the new
+        # `metadata` default.
+        for token in ("metadata", "fast", "accurate"):
+            assert token in combined.lower()
+
+
+# ── Override surfaces: --model / --prompt / --generate.extra-body ─────
+
+
+class TestValidateExtraBodyJson:
+    """Unit tests for cat._validate_extra_body_json — JSON validation only."""
+
+    def test_none_passes_through(self):
+        from mm.commands.cat import _validate_extra_body_json
+
+        assert _validate_extra_body_json(None) is None
+
+    def test_object_passes_through(self):
+        from mm.commands.cat import _validate_extra_body_json
+
+        raw = '{"method":"detect","method_params":{"object":"fish"}}'
+        assert _validate_extra_body_json(raw) == raw
+
+    def test_bad_json_raises_typer_exit(self):
+        import typer
+        from mm.commands.cat import _validate_extra_body_json
+
+        with pytest.raises(typer.Exit):
+            _validate_extra_body_json("{not json}")
+
+    def test_non_object_raises_typer_exit(self):
+        import typer
+        from mm.commands.cat import _validate_extra_body_json
+
+        with pytest.raises(typer.Exit):
+            _validate_extra_body_json("[1,2,3]")
+
+
+class TestCatGenerateExtraBodyCli:
+    """CLI smoke tests for --generate.extra-body JSON validation."""
+
+    def test_bad_extra_body_json_fails(self, mixed_dir: Path):
+        # Default mode is metadata (no LLM call) — JSON validator runs at arg
+        # parse time so the bad JSON should still be rejected.
+        r = runner.invoke(
+            app,
+            [
+                "cat",
+                str(mixed_dir / "readme.md"),
+                "--generate.extra-body",
+                "{not json}",
+            ],
+        )
+        assert r.exit_code != 0
+        combined = (r.output or "") + (getattr(r, "stderr", "") or "")
+        assert "extra-body" in combined.lower() or "json" in combined.lower()
+
+    def test_extra_body_array_rejected(self, mixed_dir: Path):
+        r = runner.invoke(
+            app,
+            [
+                "cat",
+                str(mixed_dir / "readme.md"),
+                "--generate.extra-body",
+                "[1,2,3]",
+            ],
+        )
+        assert r.exit_code != 0
+
+
+class TestCatDroppedFlags:
+    """Regression guards: flags removed in PR #106 must error out."""
+
+    @pytest.mark.parametrize(
+        "flag,value",
+        [
+            ("--extra-body", '{"method":"ocr"}'),
+            ("-e", '{"method":"ocr"}'),
+            ("--method", "ocr"),
+            ("--method-params", '{"lang":"ch"}'),
+        ],
+    )
+    def test_legacy_flag_no_longer_recognised(self, mixed_dir: Path, flag: str, value: str):
+        r = runner.invoke(
+            app,
+            ["cat", str(mixed_dir / "readme.md"), flag, value],
+        )
+        assert r.exit_code != 0
+
+
+class TestCatModelAlias:
+    """`--model` and `--generate.model` are accepted as aliases for the same option."""
+
+    def test_short_form_accepted(self, mixed_dir: Path):
+        r = runner.invoke(
+            app,
+            ["cat", str(mixed_dir / "readme.md"), "--model", "moondream2"],
+        )
+        # Default mode is metadata (no LLM call), but the flag must parse cleanly.
+        assert r.exit_code == 0, (r.output, getattr(r, "stderr", ""))
+
+    def test_dotted_form_accepted(self, mixed_dir: Path):
+        r = runner.invoke(
+            app,
+            ["cat", str(mixed_dir / "readme.md"), "--generate.model", "moondream2"],
+        )
+        assert r.exit_code == 0, (r.output, getattr(r, "stderr", ""))
+
+
+class TestCatPromptAlias:
+    """`--prompt` and `--generate.prompt` are accepted as aliases for the same option."""
+
+    def test_short_form_accepted(self, mixed_dir: Path):
+        r = runner.invoke(
+            app,
+            ["cat", str(mixed_dir / "readme.md"), "--prompt", "Summarize:"],
+        )
+        assert r.exit_code == 0, (r.output, getattr(r, "stderr", ""))
+
+    def test_dotted_form_accepted(self, mixed_dir: Path):
+        r = runner.invoke(
+            app,
+            ["cat", str(mixed_dir / "readme.md"), "--generate.prompt", "Summarize:"],
+        )
+        assert r.exit_code == 0, (r.output, getattr(r, "stderr", ""))
+
+
+class TestEffectiveModel:
+    """Pipeline-merged model takes precedence over profile default; profile is the fallback."""
+
+    def test_pipeline_pinned_model_wins(self):
+        from mm.cat_utils.base_utils import effective_model
+        from mm.pipelines.schema import Generate, PipelineSpec
+
+        spec = PipelineSpec(
+            kind="image",
+            mode="accurate",
+            generate=Generate(prompt="x", model="paddleocr-v5"),
+        )
+        assert effective_model(spec, "profile-default") == "paddleocr-v5"
+
+    def test_profile_default_when_unpinned(self):
+        from mm.cat_utils.base_utils import effective_model
+        from mm.pipelines.schema import Generate, PipelineSpec
+
+        spec = PipelineSpec(
+            kind="image",
+            mode="accurate",
+            generate=Generate(prompt="x"),
+        )
+        assert effective_model(spec, "profile-default") == "profile-default"
+
+    def test_no_generate_falls_back_to_profile(self):
+        from mm.cat_utils.base_utils import effective_model
+        from mm.pipelines.schema import PipelineSpec
+
+        spec = PipelineSpec(kind="image", mode="fast", generate=None)
+        assert effective_model(spec, "profile-default") == "profile-default"

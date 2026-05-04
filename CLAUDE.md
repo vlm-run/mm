@@ -2,7 +2,7 @@
 
 ## What this is
 
-`mm` is a high-performance multimodal context management library + CLI designed primarily for **AI agents** to understand file types that are not natively understood by LLMs — images, video, audio, PDFs, and other binary/media formats. Text files are already natively understood by LLMs and do not need `mm` processing.
+`mm` is a fast, multimodal file intelligence for **agents** on the CLI, designed to provide multimodal understanding for file types that are not natively understood by LLMs — images, video, audio, PDFs, and other binary/media formats.
 
 Rust core for speed, Python for developer experience, Unix philosophy for composability.
 
@@ -60,7 +60,6 @@ Rust core for speed, Python for developer experience, Unix philosophy for compos
 - pyyaml — YAML template parsing
 - faster-whisper — Whisper transcription (CTranslate2 backend)
 - scenedetect[opencv] — shot/scene boundary detection
-- docling — document-to-markdown (PDF, DOCX, PPTX)
 - ctranslate2 — CTranslate2 inference runtime (for faster-whisper)
 - python-docx — DOCX text extraction
 - python-pptx — PPTX text extraction
@@ -116,8 +115,8 @@ mm/
 │   │   │   ├── hash.rs         # xxh3 hashing strategies (full, partial, mmap, directory_hash)
 │   │   │   ├── cache.rs        # Manifest-based incremental re-indexing
 │   │   │   └── format.rs       # Output formatting helpers
-│   │   └── benches/            # Criterion benchmarks (l0_walk, l0_index, l1_extract, hash)
-│   └── mm-python/          # PyO3 bindings (Scanner, L1Result)
+│   │   └── benches/            # Criterion benchmarks (metadata_walk, metadata_index, metadata_extract, hash)
+│   └── mm-python/          # PyO3 bindings (Scanner, MetadataResult)
 │       └── src/lib.rs          # Arrow IPC transfer to Python
 ├── python/mm/              # Python package source
 │   ├── __init__.py             # Public API re-exports
@@ -179,8 +178,7 @@ mm/
 │       ├── conftest.py
 │       ├── test_context.py
 │       ├── test_cli.py
-│       ├── test_l0_metadata.py
-│       ├── test_l1_extraction.py
+│       ├── test_metadata.py
 │       ├── test_pipe.py
 │       └── test_benchmark.py
 └── benchmarks/
@@ -227,8 +225,8 @@ uv run mm <command> [args]
 
 | Command   | Purpose | Key flags |
 |-----------|---------|-----------|
-| `find`    | Find/list files, tree view, schema | `--name`, `--kind`, `--ext`, `--min-size`, `--max-size`, `--sort`, `--columns`, `--tree`, `--depth`, `--schema`, `--limit`, `--no-ignore`, `--format` |
-| `cat`     | Content extraction (auto-detected by file type × mode) | `--mode fast/accurate`, `-p` (pipeline), `-n` (head/tail), `--encode.*`, `--generate.*`, `--format` |
+| `find`    | Find/list files, tree view, schema | `--name`, `-i` (ignore case), `--kind`, `--ext`, `--min-size`, `--max-size`, `--sort`, `--columns`, `--tree`, `--depth`, `--schema`, `--limit`, `--no-ignore`, `--format` |
+| `cat`     | Content extraction (auto-detected by file type × mode) | `--mode metadata/fast/accurate` (default `metadata`), `-p` (pipeline), `-n` (head/tail), `--encode.*`, `--generate.*`, `--format` |
 | `grep`    | Content search across files | `--kind`, `--ext`, `-C` (context), `--count`, `-i` (ignore case), `--no-ignore`, `--format` |
 | `sql`     | SQL on files, results, and chunks | `--dir`, `--format`, `--list-tables` |
 | `wc`      | Count files, size, lines (est.), tokens (est.) | `--kind`, `--by-kind`, `--format` |
@@ -251,6 +249,7 @@ The following commands were merged into the 5 core commands:
 
 - `mm find ~/data` — tabular listing (default)
 - `mm find ~/data --name "test_.*\.py"` — filter by file name (string or regex)
+- `mm find ~/data -n CONFIG -i` — case-insensitive name match (regex or substring)
 - `mm find ~/data --tree --depth 2` — hierarchical tree view with sizes
 - `mm find ~/data --schema` — column names, Arrow types, descriptions, sample values
 - `mm find ~/data --columns name,size,kind` — custom column selection
@@ -258,13 +257,16 @@ The following commands were merged into the 5 core commands:
 
 ### cat modes (auto-detected from file type × mode)
 
-- `mm cat file` — text/metadata extraction (default, fast mode, <100ms)
+`--mode` is one of `metadata` (default; local extraction, never an LLM call), `fast` (kind's fast pipeline; short LLM call for images/video), or `accurate` (LLM-heavy pipeline). Under the default `metadata` mode, `-p` and `--encode.*`/`--generate.*` overrides are ignored — pass `-m fast` or `-m accurate` to invoke a pipeline.
+
+- `mm cat file` — text/metadata extraction (default, no LLM, <100ms)
 - `mm cat file -n 20` — first 20 lines (head)
 - `mm cat file -n -20` — last 20 lines (tail)
+- `mm cat file -m fast` — kind's fast pipeline (image/video: short LLM caption; doc/audio/code: passthrough)
 - `mm cat file -m accurate` — LLM-generated caption/description
 - `mm cat video.mp4 -m accurate` — auto-generates keyframe mosaic → LLM description
-- `mm cat photo.png -p resize` — encode with named encoder
-- `mm cat photo.png -p my-pipeline.yaml` — custom pipeline YAML
+- `mm cat photo.png -m fast -p resize` — encode with named encoder (requires -m fast/accurate)
+- `mm cat photo.png -m accurate -p my-pipeline.yaml` — custom pipeline YAML
 
 ### Schema and SQL
 
@@ -272,8 +274,8 @@ Use `mm find <dir> --schema` to see all available columns, their Arrow types, de
 
 `mm sql` auto-routes queries based on the table name in the `FROM` clause:
 - `files` → scan directory + SQLite (ephemeral in-memory table)
-- `l2_results` → SQLite direct (LLM-generated summaries)
-- `chunks` → SQLite direct (chunked content + embeddings)
+- `extractions` → SQLite direct (LLM-generated summaries)
+- `chunks` → SQLite direct (chunked content + embeddings, mode = 'metadata', 'fast', or 'accurate')
 
 Use `mm sql --list-tables` to see available tables and row counts.
 
@@ -290,10 +292,13 @@ Columns (`files`): `uri`, `name`, `stem`, `ext`, `size`, `modified`, `created`, 
 
 ## Processing modes
 
-- **fast** (default): Local extraction, no LLM call. PDFs → text via pypdfium2. Images → resize/base64. Videos → mosaic grids. Audio → Whisper transcription. Pipeline-driven via `pipelines/{kind}/fast.yaml` for image, video, audio, document.
+- **metadata** (default): local extraction only — image dims/EXIF/hash, video resolution/duration/codec, audio duration/codec, PDF text via pypdfium2, code/text passthrough. Never invokes an LLM. Implemented in `mm/cat_utils/extract_meta.py` and cached as `files.text_preview`.
+- **fast**: runs the kind's fast pipeline. *May* invoke an LLM with a short prompt — images and videos do (short caption / short description). Audio fast = Whisper transcript only. Documents fast = pypdfium2 text only. Code/text = raw passthrough. Pipeline-driven via `pipelines/{kind}/fast.yaml`.
 - **accurate**: LLM-powered descriptions via OpenAI-compatible API. Images → VLM caption. Videos → mosaic → VLM description. Audio → transcript → LLM summary. Documents → text → LLM structuring. Requires a configured profile (`mm profile add/update`). Pipeline-driven via `pipelines/{kind}/accurate.yaml`.
 
 ## Python API
+
+See [docs/api.md](docs/api.md) for the incremental put-based `mm.Context` + `mm.Ref` API (VLM prompt building). The snippet below covers the directory-scan mode.
 
 ```python
 from mm import Context
@@ -321,9 +326,9 @@ ctx.info()   # Rich summary panel
 - **Rust fast path**: `find --format json`, `wc --format json` bypass pyarrow entirely — serde_json in Rust, ~60ms cold start.
 - **Parallel scanning**: `ignore` crate for gitignore-aware walking + `rayon` for parallelism.
 - **Hashing**: xxh3 via `xxhash-rust` for fast content fingerprinting (full file via mmap). `directory_hash` hashes sorted file listings for SQL cache keys.
-- **Storage**: Global SQLite database at `~/.local/share/mm/mm.db` with tables: `files` (metadata + content), `l2_results` (LLM summaries), `chunks` (content chunks), `chunks_vec` (sqlite-vec embeddings), `cache` (key-value cache). Schema defined in `python/mm/store/schema.py`.
+- **Storage**: Global SQLite database at `~/.local/share/mm/mm.db` with tables: `files` (file metadata + locally-extracted content), `extractions` (pipeline outputs; `mode` ∈ {'fast', 'accurate'}), `chunks` (chunked content; `mode` ∈ {'metadata', 'fast', 'accurate'} — the metadata tier is `files.text_preview`, fast/accurate are extraction outputs), `chunks_vec` (sqlite-vec embeddings), `cache` (key-value cache). Schema defined in `python/mm/store/schema.py`.
 - **Embeddings**: Generated via Gemini embedding API through the mm inference server (`/v1/embeddings`). Supports text, image, audio (chunked at 80s), video (chunked at 120s), and PDF. Stored in `chunks_vec` virtual table (sqlite-vec). Triggered automatically after accurate-mode extraction.
-- **SQL routing**: `mm sql` auto-detects table from `FROM` clause. `files` → scan + in-memory SQLite. `l2_results`/`chunks` → persistent SQLite direct.
+- **SQL routing**: `mm sql` auto-detects table from `FROM` clause. `files` → scan + in-memory SQLite. `extractions`/`chunks` → persistent SQLite direct.
 - **Video metadata (fast)**: Native MP4 parsing (mp4parse) and MKV/WebM parsing (matroska) in Rust. No ffmpeg in fast mode — metadata only, <100ms.
 - **PDF text extraction**: `pypdfium2` on the Python CLI side (in `commands/cat.py`). Scanned/image-only PDFs return empty text.
 - **Pipe detection**: `pipe.py` uses `isatty()` only — no `select.select()`. A zero-timeout `select` poll races with upstream writers in pipelines (`mm find | mm wc`) and misses data not yet flushed. Standard Unix tools block-read when stdin is not a TTY; we do the same.
@@ -332,7 +337,7 @@ ctx.info()   # Rich summary panel
 
 ## LLM configuration
 
-Provider settings (base_url, api_key, model) are configured per-profile. Active profile is resolved as: `--profile` flag > `MM_PROFILE` env > `active_profile` in config file > `"default"`.
+Provider settings (base_url, api_key, model) are configured per-profile. Active profile is resolved as: `--profile` flag > `MM_PROFILE` env > `active_profile` in config file > `"ollama"`.
 
 ```bash
 # Profile management

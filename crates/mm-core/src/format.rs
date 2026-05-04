@@ -135,8 +135,13 @@ pub fn filter_entries<'a>(
     let mut filtered: Vec<&FileEntry> = entries
         .iter()
         .filter(|e| {
-            kind.is_none_or(|k| e.kind.to_string() == k)
-                && ext.is_none_or(|x| e.ext.as_str() == x)
+            kind.is_none_or(|k| {
+                if k.contains(',') {
+                    k.split(',').any(|part| part.trim() == e.kind.to_string())
+                } else {
+                    e.kind.to_string() == k
+                }
+            }) && ext.is_none_or(|x| e.ext.as_str() == x)
                 && min_size.is_none_or(|m| e.size >= m)
                 && max_size.is_none_or(|m| e.size <= m)
                 && matcher.as_ref().is_none_or(|m| m.is_match(e.name.as_str()))
@@ -292,5 +297,109 @@ fn format_cell(batch: &RecordBatch, row: usize, col: usize) -> String {
             format!("{:.2}", arr.value(row))
         }
         _ => format!("{:?}", array),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::meta::{FileEntry, FileKind};
+    use compact_str::CompactString;
+
+    fn make_entry(name: &str, kind: FileKind) -> FileEntry {
+        FileEntry {
+            path: CompactString::from(name),
+            name: CompactString::from(name),
+            stem: CompactString::from(name.split('.').next().unwrap_or(name)),
+            ext: CompactString::from(name.rfind('.').map(|i| &name[i..]).unwrap_or("")),
+            size: 100,
+            modified_epoch_us: 0,
+            created_epoch_us: 0,
+            mime: CompactString::from("application/octet-stream"),
+            kind,
+            is_binary: false,
+            depth: 0,
+            parent: CompactString::from(""),
+            width: None,
+            height: None,
+        }
+    }
+
+    #[test]
+    fn test_filter_single_kind() {
+        let entries = vec![
+            make_entry("photo.png", FileKind::Image),
+            make_entry("main.py", FileKind::Code),
+            make_entry("doc.pdf", FileKind::Document),
+        ];
+        let result = filter_entries(
+            &entries,
+            Some("image"),
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            false,
+        );
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0].kind, FileKind::Image);
+    }
+
+    #[test]
+    fn test_filter_comma_separated_kinds() {
+        let entries = vec![
+            make_entry("photo.png", FileKind::Image),
+            make_entry("main.py", FileKind::Code),
+            make_entry("doc.pdf", FileKind::Document),
+            make_entry("config.toml", FileKind::Config),
+        ];
+        let result = filter_entries(
+            &entries,
+            Some("image,document"),
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            false,
+        );
+        assert_eq!(result.len(), 2);
+        let kinds: Vec<FileKind> = result.iter().map(|e| e.kind).collect();
+        assert!(kinds.contains(&FileKind::Image));
+        assert!(kinds.contains(&FileKind::Document));
+    }
+
+    #[test]
+    fn test_filter_comma_separated_kinds_with_spaces() {
+        let entries = vec![
+            make_entry("photo.png", FileKind::Image),
+            make_entry("main.py", FileKind::Code),
+            make_entry("doc.pdf", FileKind::Document),
+        ];
+        let result = filter_entries(
+            &entries,
+            Some("image, document"),
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            false,
+        );
+        assert_eq!(result.len(), 2);
+    }
+
+    #[test]
+    fn test_filter_no_kind_returns_all() {
+        let entries = vec![
+            make_entry("photo.png", FileKind::Image),
+            make_entry("main.py", FileKind::Code),
+        ];
+        let result = filter_entries(&entries, None, None, None, None, None, None, None, false);
+        assert_eq!(result.len(), 2);
     }
 }

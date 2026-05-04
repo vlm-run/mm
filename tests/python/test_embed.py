@@ -21,7 +21,7 @@ from mm.store.embed import (
 )
 
 from .conftest import requires_sqlite_vec
-from .test_utils import ensure_l1, get_hash
+from .test_utils import ensure_fast, get_hash
 
 
 def _genai_available() -> bool:
@@ -35,7 +35,7 @@ def _genai_available() -> bool:
 
 requires_gemini = pytest.mark.skipif(
     not _genai_available(),
-    reason="google-genai not installed (pip install mm[gemini])",
+    reason="google-genai not installed (pip install mm-ctx[gemini])",
 )
 
 FAKE_DIM = 4
@@ -164,14 +164,14 @@ class TestEmbedParts:
 @requires_gemini
 class TestEmbedFileChunks:
     @requires_sqlite_vec
-    def test_embeds_chunks_after_l2(self, db: MmDatabase, mock_server: MagicMock):
+    def test_embeds_chunks_after_accurate(self, db: MmDatabase, mock_server: MagicMock):
         uri = "/test/data/doc.txt"
-        ensure_l1(db, uri)
+        ensure_fast(db, uri)
 
         content = "Test content for embedding. " * 50
-        l2_id = db.put_l2(uri, "hash1", "default", "qwen", content)
+        extraction_id = db.put_extraction(uri, "hash1", "default", "qwen", content)
         with patch("mm.store.db.MmDatabase", return_value=db):
-            n = embed_file_chunks(l2_id)
+            n = embed_file_chunks(extraction_id)
         assert n > 0
         mock_server.assert_called()
 
@@ -184,12 +184,12 @@ class TestEmbedFileChunks:
     @requires_sqlite_vec
     def test_vectors_stored_in_db(self, db: MmDatabase, mock_server: MagicMock):
         uri = "/test/data/doc.txt"
-        ensure_l1(db, uri)
+        ensure_fast(db, uri)
         content_hash = get_hash(uri)
 
-        l2_id = db.put_l2(uri, content_hash, "default", "qwen", "Short text")
+        extraction_id = db.put_extraction(uri, content_hash, "default", "qwen", "Short text")
         with patch("mm.store.db.MmDatabase", return_value=db):
-            embed_file_chunks(l2_id)
+            embed_file_chunks(extraction_id)
 
         results = db.search_similar([1.0] * FAKE_DIM, limit=1)
         assert len(results) > 0
@@ -198,13 +198,13 @@ class TestEmbedFileChunks:
     @requires_sqlite_vec
     def test_content_preserved_after_embedding(self, db: MmDatabase, mock_server: MagicMock):
         uri = "/test/data/doc.txt"
-        ensure_l1(db, uri)
+        ensure_fast(db, uri)
         content_hash = get_hash(uri)
 
         content = "Preserved content. " * 100
-        l2_id = db.put_l2(uri, content_hash, "default", "qwen", content)
+        extraction_id = db.put_extraction(uri, content_hash, "default", "qwen", content)
         with patch("mm.store.db.MmDatabase", return_value=db):
-            embed_file_chunks(l2_id)
+            embed_file_chunks(extraction_id)
         full = db.get_full_content(uri, content_hash, "default", "qwen")
         assert full == content
 
@@ -217,14 +217,15 @@ class TestEmbedFileChunks:
 class TestCatEmbedIntegration:
     def test_run_accurate_triggers_embedding(self, tmp_path: Path, mock_server: MagicMock):
         """After accurate extraction, embed_file_chunks should be called."""
-        from mm.commands.cat import _CatOpts, _extract
+        from mm.cat_utils.base_utils import CatOpts, RunResult
+        from mm.commands.cat import _extract
 
         # Use a document kind since text kind short-circuits to raw passthrough
         # (no pipeline, no LLM, no cache) and thus never triggers embedding.
         pdf = tmp_path / "test.pdf"
         pdf.write_bytes(b"%PDF-1.4 fake")
 
-        opts = _CatOpts(
+        opts = CatOpts(
             n=None,
             output_dir=None,
             mode="accurate",
@@ -237,16 +238,19 @@ class TestCatEmbedIntegration:
         )
 
         mock_db = MagicMock()
-        mock_db.get_l2.return_value = None  # cache miss
-        l2_id = "fake_l2_id"
-        mock_db.put_l2.return_value = l2_id
+        mock_db.get_extraction.return_value = None  # cache miss
+        extraction_id = "fake_extraction_id"
+        mock_db.put_extraction.return_value = extraction_id
 
         with (
-            patch("mm.commands.cat._run_accurate", return_value="LLM generated text."),
-            patch("mm.store.util.get_content_hash", return_value="fakehash"),
+            patch(
+                "mm.commands.cat._run_accurate",
+                return_value=RunResult(content="LLM generated text."),
+            ),
+            patch("mm.store.utils.get_content_hash", return_value="fakehash"),
             patch("mm.store.db.MmDatabase", return_value=mock_db),
             patch("mm.profile.get_profile") as mock_profile,
-            patch("mm.store.util.get_l2_id", return_value="fake_l2_id"),
+            patch("mm.store.utils.get_extraction_id", return_value="fake_extraction_id"),
             patch("mm.store.embed.embed_file_chunks") as mock_embed,
         ):
             mock_profile.return_value.name = "default"
@@ -254,5 +258,5 @@ class TestCatEmbedIntegration:
             result = _extract(pdf, opts)
 
         assert result == "LLM generated text."
-        mock_db.put_l2.assert_called_once()
+        mock_db.put_extraction.assert_called_once()
         mock_embed.assert_called_once()

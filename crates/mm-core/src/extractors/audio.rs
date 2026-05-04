@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use crate::extract::{ContentExtractor, ExtractError, L1Record};
+use crate::extract::{ContentExtractor, ExtractError, MetadataRecord};
 use crate::hash;
 
 use super::shared;
@@ -12,7 +12,7 @@ impl ContentExtractor for AudioExtractor {
         kind == "audio"
     }
 
-    fn extract(&self, path: &Path) -> Result<L1Record, ExtractError> {
+    fn extract(&self, path: &Path) -> Result<MetadataRecord, ExtractError> {
         let ext = path
             .extension()
             .map(|e| e.to_string_lossy().to_ascii_lowercase())

@@ -22,8 +22,8 @@ fn create_image_tree(dir: &std::path::Path, count: usize) {
     }
 }
 
-fn bench_l1_code(c: &mut Criterion) {
-    let mut group = c.benchmark_group("l1_code_extract");
+fn bench_metadata_code(c: &mut Criterion) {
+    let mut group = c.benchmark_group("metadata_code_extract");
 
     for count in [10, 100] {
         let dir = TempDir::new().unwrap();
@@ -46,8 +46,8 @@ fn bench_l1_code(c: &mut Criterion) {
     group.finish();
 }
 
-fn bench_l1_image(c: &mut Criterion) {
-    let mut group = c.benchmark_group("l1_image_extract");
+fn bench_metadata_image(c: &mut Criterion) {
+    let mut group = c.benchmark_group("metadata_image_extract");
 
     for count in [10, 50] {
         let dir = TempDir::new().unwrap();
@@ -70,5 +70,5 @@ fn bench_l1_image(c: &mut Criterion) {
     group.finish();
 }
 
-criterion_group!(benches, bench_l1_code, bench_l1_image);
+criterion_group!(benches, bench_metadata_code, bench_metadata_image);
 criterion_main!(benches);

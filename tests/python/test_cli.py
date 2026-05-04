@@ -84,6 +84,75 @@ class TestFind:
         assert any("skip.log" in p for p in paths)
         assert any("file.csv" in p for p in paths)
 
+    def test_kind_filter_comma_separated(self, small_tree: Path):
+        """--kind image,code should return files of both kinds."""
+        r = runner.invoke(
+            app, ["find", str(small_tree), "--kind", "image,code", "--format", "json"]
+        )
+        assert r.exit_code == 0
+        data = json.loads(r.output)
+        kinds = {row["kind"] for row in data}
+        assert "image" in kinds
+        assert "code" in kinds
+        assert kinds <= {"image", "code"}
+
+    def test_kind_filter_comma_separated_with_spaces(self, small_tree: Path):
+        """--kind 'image, code' (with spaces) should still work."""
+        r = runner.invoke(
+            app, ["find", str(small_tree), "--kind", "image, code", "--format", "json"]
+        )
+        assert r.exit_code == 0
+        data = json.loads(r.output)
+        kinds = {row["kind"] for row in data}
+        assert "image" in kinds
+        assert "code" in kinds
+
+    def test_kind_filter_single_still_works(self, small_tree: Path):
+        """Single --kind value should still work after comma-separated support."""
+        r = runner.invoke(app, ["find", str(small_tree), "--kind", "image", "--format", "json"])
+        assert r.exit_code == 0
+        data = json.loads(r.output)
+        assert all(row["kind"] == "image" for row in data)
+        assert len(data) > 0
+
+    def test_ignore_case(self, small_tree: Path):
+        """--ignore-case / -i should make --name matching case-insensitive."""
+        # small_tree contains README.md (uppercase) and readme.md (lowercase).
+        # Case-sensitive: "README" only matches README.md.
+        r = runner.invoke(app, ["find", str(small_tree), "-n", "README", "--format", "json"])
+        assert r.exit_code == 0
+        names = {row["name"] for row in json.loads(r.output)}
+        assert "README.md" in names
+        assert "readme.md" not in names
+
+        # With -i: both README.md and readme.md should match.
+        r = runner.invoke(app, ["find", str(small_tree), "-n", "README", "-i", "--format", "json"])
+        assert r.exit_code == 0
+        names = {row["name"] for row in json.loads(r.output)}
+        assert {"README.md", "readme.md"} <= names
+
+    def test_ignore_case_regex(self, small_tree: Path):
+        """-i should combine with regex patterns (fast path via Rust)."""
+        r = runner.invoke(
+            app,
+            ["find", str(small_tree), "-n", r"^MAIN\.PY$", "-i", "--format", "json"],
+        )
+        assert r.exit_code == 0
+        names = {row["name"] for row in json.loads(r.output)}
+        assert "main.py" in names
+
+    def test_ignore_case_requires_name(self, small_tree: Path):
+        """--ignore-case without --name should error."""
+        r = runner.invoke(app, ["find", str(small_tree), "-i"])
+        assert r.exit_code != 0
+
+    def test_ignore_case_tree(self, small_tree: Path):
+        """-i should work with --tree mode."""
+        r = runner.invoke(app, ["find", str(small_tree), "--tree", "-n", "README", "-i"])
+        assert r.exit_code == 0
+        assert "README.md" in r.output
+        assert "readme.md" in r.output
+
 
 # ── find (table, tree, schema) ────────────────────────────────────────
 
@@ -138,7 +207,7 @@ class TestFindTable:
 
 
 class TestCat:
-    def test_text_file_l1(self, small_tree: Path):
+    def test_text_file_default(self, small_tree: Path):
         r = runner.invoke(app, ["cat", str(small_tree / "src" / "main.py")])
         assert r.exit_code == 0
         assert "main" in r.output
@@ -165,7 +234,8 @@ class TestCat:
         assert r.exit_code == 0
         data = json.loads(r.output)
         assert len(data) == 1
-        assert data[0]["mode"] == "fast"
+        # Default mode is `metadata` — `--mode fast` must be explicit.
+        assert data[0]["mode"] == "metadata"
         assert "content" in data[0]
         assert "path" in data[0]
 
@@ -314,11 +384,9 @@ class TestGrep:
 
     def test_ignore_case(self, small_tree: Path):
         """--ignore-case / -i should match regardless of casing."""
-        # "HELLO" doesn't match "hello" case-sensitively
         r = runner.invoke(app, ["grep", "HELLO", str(small_tree)])
         assert r.exit_code == 1
 
-        # With -i it should match
         r = runner.invoke(app, ["grep", "HELLO", str(small_tree), "-i"])
         assert r.exit_code == 0
         assert "hello" in r.output.lower()
@@ -333,12 +401,10 @@ class TestGrep:
 
     def test_no_ignore(self, gitignored_tree: Path):
         """--no-ignore should search inside gitignored files."""
-        # The gitignored_tree has skip.log with "log line" and data/file.csv with "a,b,c"
-        # Without --no-ignore: gitignored files are not searched
         r = runner.invoke(app, ["grep", "log line", str(gitignored_tree)])
         assert r.exit_code == 1
+        assert "skip.log" not in r.output
 
-        # With --no-ignore: gitignored files are included in the search
         r = runner.invoke(app, ["grep", "log line", str(gitignored_tree), "--no-ignore"])
         assert r.exit_code == 0
         assert "skip.log" in r.output
@@ -363,6 +429,304 @@ class TestGrep:
         row = json.loads(lines[0])
         assert "path" in row
         assert "count" in row
+
+    def test_dataset_hf(self, small_tree: Path, tmp_path: Path, monkeypatch):
+        """``grep --format dataset-hf`` writes a HuggingFace dataset to ``mm_dataset/``."""
+        datasets = pytest.importorskip("datasets")
+
+        monkeypatch.chdir(tmp_path)
+        r = runner.invoke(app, ["grep", "hello", str(small_tree), "--format", "dataset-hf"])
+        assert r.exit_code == 0
+
+        ds = datasets.load_from_disk(str(tmp_path / "mm_dataset"))
+        assert len(ds) > 0
+        assert "path" in ds.column_names
+        assert "line" in ds.column_names
+
+    def test_kind_filter_comma_separated(self, small_tree: Path):
+        """--kind document,code should search across both kinds."""
+        r = runner.invoke(app, ["grep", "hello", str(small_tree), "--kind", "document,code"])
+        assert r.exit_code == 0
+        assert "hello" in r.output
+
+    def test_kind_filter_comma_separated_excludes_others(self, small_tree: Path):
+        """--kind config,text should not match content only in code files."""
+        r = runner.invoke(app, ["grep", "def main", str(small_tree), "--kind", "document,text"])
+        assert r.exit_code == 1
+        assert "def main" not in r.output
+
+    def test_smart_case_lowercase_pattern_matches_mixed_content(self, tmp_path: Path):
+        """All-lowercase pattern matches mixed-case content (smart-case on)."""
+        (tmp_path / "doc.txt").write_text("Go Paperless, Go Green!\n")
+        r = runner.invoke(app, ["grep", "go paperless", str(tmp_path)])
+        assert r.exit_code == 0
+        assert "Go Paperless" in r.output
+
+    def test_smart_case_uppercase_in_pattern_stays_case_sensitive(self, tmp_path: Path):
+        """Any uppercase letter in pattern preserves case-sensitivity."""
+        (tmp_path / "doc.txt").write_text("Go Paperless\n")
+        r = runner.invoke(app, ["grep", "Paperless", str(tmp_path)])
+        assert r.exit_code == 0
+        r = runner.invoke(app, ["grep", "PAPERLESS", str(tmp_path)])
+        assert r.exit_code == 1
+
+    def test_smart_case_overridden_by_ignore_case_flag(self, tmp_path: Path):
+        """-i forces case-insensitive even when the pattern contains uppercase."""
+        (tmp_path / "doc.txt").write_text("Go Paperless\n")
+        r = runner.invoke(app, ["grep", "PAPERLESS", str(tmp_path), "-i"])
+        assert r.exit_code == 0
+        assert "Paperless" in r.output
+
+    def test_smart_case_ignores_uppercase_in_regex_escapes(self, tmp_path: Path):
+        """Uppercase inside regex escapes (\\S, \\W, \\D, \\B) shouldn't flip
+        smart-case off — they're metacharacters, not user-intended literals."""
+        (tmp_path / "doc.txt").write_text("LARGE WORLD\n")
+        r = runner.invoke(app, ["grep", r"\S+ world", str(tmp_path)])
+        assert r.exit_code == 0
+        assert "LARGE WORLD" in r.output
+
+    def test_smart_case_explicit_character_class_stays_case_sensitive(self, tmp_path: Path):
+        """An explicit [A-Z] in the pattern is user-intended uppercase — smart-case
+        stays off (matching ripgrep's behavior)."""
+        (tmp_path / "doc.txt").write_text("Hello world\n")
+        r = runner.invoke(app, ["grep", "[A-Z]ello", str(tmp_path)])
+        assert r.exit_code == 0
+        (tmp_path / "doc.txt").write_text("hello world\n")
+        r = runner.invoke(app, ["grep", "[A-Z]ello", str(tmp_path)])
+        assert r.exit_code == 1
+
+    def test_fts_snippet_includes_match_when_buried_in_chunk(
+        self, tmp_path: Path, isolated_db: Path
+    ):
+        """The displayed line for an FTS hit must contain the matching phrase even
+        when it sits in the middle of a long chunk — the chunk's head/tail must
+        not be the only thing shown, or the match would be cropped out."""
+        from mm.store.db import MmDatabase
+        from mm.store.utils import now_us
+
+        img = tmp_path / "shot.png"
+        img.write_bytes(b"\x89PNG\r\n\x1a\n" + b"\x00" * 32)
+
+        prefix = ("noisetoken-" + "x" * 8 + " ") * 60
+        suffix = ("filler-" + "y" * 8 + " ") * 60
+        chunk = prefix + "the quantum cloud is here " + suffix
+
+        db = MmDatabase()
+        db.ensure_metadata(str(img))
+        now = now_us()
+        db._connect.execute(
+            "INSERT INTO extractions (id, file_uri, content_hash, profile, model, mode, "
+            "detail, extra, summary, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            ("l2-snip", str(img), "h", "p", "m", "accurate", 0, "", "summary", now),
+        )
+        db._connect.execute(
+            "INSERT INTO chunks (extraction_id, file_uri, content_hash, profile, model, "
+            "mode, chunk_idx, chunk_text, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            ("l2-snip", str(img), "h", "p", "m", "accurate", 0, chunk, now),
+        )
+        db._connect.commit()
+
+        r = runner.invoke(app, ["grep", "quantum cloud", str(tmp_path)])
+        assert r.exit_code == 0
+        # The displayed line must include the matched phrase — the bug was that
+        # only the chunk's prefix[:90] and suffix[-50:] were shown, hiding it.
+        assert "quantum cloud" in r.output
+
+    def test_fts_finds_indexed_chunk_in_binary(self, tmp_path: Path, isolated_db: Path):
+        """FTS additively surfaces hits inside indexed chunks; regex never sees the
+        binary bytes of an image, but FTS can match the -m=accurate chunk text seeded for it.
+        """
+        from mm.store.db import MmDatabase
+        from mm.store.utils import now_us
+
+        img = tmp_path / "photo.png"
+        img.write_bytes(b"\x89PNG\r\n\x1a\n" + b"\x00" * 32)
+
+        db = MmDatabase()
+        db.ensure_metadata(str(img))
+        now = now_us()
+        db._connect.execute(
+            "INSERT INTO extractions (id, file_uri, content_hash, profile, model, mode, "
+            "detail, extra, summary, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            ("l2-1", str(img), "h", "p", "m", "accurate", 0, "", "summary", now),
+        )
+        db._connect.execute(
+            "INSERT INTO chunks (extraction_id, file_uri, content_hash, profile, model, "
+            "mode, chunk_idx, chunk_text, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (
+                "l2-1",
+                str(img),
+                "h",
+                "p",
+                "m",
+                "accurate",
+                0,
+                "the quick brown fox jumps over the lazy dog",
+                now,
+            ),
+        )
+        db._connect.commit()
+
+        r = runner.invoke(app, ["grep", "quick brown", str(tmp_path)])
+        assert r.exit_code == 0
+        assert "photo.png" in r.output
+
+    def test_fts_matches_substring_inside_token(self, tmp_path: Path, isolated_db: Path):
+        """``fts_search`` must surface hits when the query is a substring of
+        indexed words, not just a token prefix.
+        """
+        from mm.store.db import MmDatabase
+        from mm.store.utils import now_us
+
+        img = tmp_path / "doc.png"
+        img.write_bytes(b"\x89PNG\r\n\x1a\n" + b"\x00" * 32)
+
+        db = MmDatabase()
+        db.ensure_metadata(str(img))
+        now = now_us()
+        db._connect.execute(
+            "INSERT INTO extractions (id, file_uri, content_hash, profile, model, mode, "
+            "detail, extra, summary, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            ("l2-sub", str(img), "h", "p", "m", "accurate", 0, "", "summary", now),
+        )
+        db._connect.execute(
+            "INSERT INTO chunks (extraction_id, file_uri, content_hash, profile, model, "
+            "mode, chunk_idx, chunk_text, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            ("l2-sub", str(img), "h", "p", "m", "accurate", 0, "Breaking the Quantum Loop", now),
+        )
+        db._connect.commit()
+
+        from mm.fts import fts_search
+
+        # Mid-token substring, mixed case.
+        hits = fts_search("ntum Loop", uri_prefix=str(tmp_path))
+        assert len(hits) == 1
+        # Mid-token substring, uppercase.
+        hits_upper = fts_search("ntum LOOP", uri_prefix=str(tmp_path))
+        assert len(hits_upper) == 1
+
+        r = runner.invoke(app, ["grep", "ntum Loop", str(tmp_path), "--kind", "image"])
+        assert r.exit_code == 0
+        assert "doc.png" in r.output
+
+    def test_fts_kind_filter_pushed_into_sql(self, tmp_path: Path, isolated_db: Path):
+        """``--kind`` filters FTS hits via JOIN on ``files``: only matching kinds
+        come back, even when the wrong-kind chunk has the same text."""
+        from mm.store.db import MmDatabase
+        from mm.store.utils import now_us
+
+        img = tmp_path / "photo.png"
+        txt = tmp_path / "notes.txt"
+        img.write_bytes(b"\x89PNG\r\n\x1a\n" + b"\x00" * 32)
+        txt.write_text("placeholder so the file exists\n")
+
+        db = MmDatabase()
+        db.ensure_metadata(str(img))
+        db.ensure_metadata(str(txt))
+        now = now_us()
+        # Seed identical chunk text under both files so kind alone determines the hit.
+        for idx, (uri, extraction_id) in enumerate([(str(img), "l2-img"), (str(txt), "l2-txt")]):
+            db._connect.execute(
+                "INSERT INTO extractions (id, file_uri, content_hash, profile, model, mode, "
+                "detail, extra, summary, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                (extraction_id, uri, "h", "p", "m", "accurate", 0, "", "summary", now),
+            )
+            db._connect.execute(
+                "INSERT INTO chunks (extraction_id, file_uri, content_hash, profile, model, "
+                "mode, chunk_idx, chunk_text, created_at) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                (extraction_id, uri, "h", "p", "m", "accurate", idx, "rare phrase only here", now),
+            )
+        db._connect.commit()
+
+        r = runner.invoke(app, ["grep", "rare phrase", str(tmp_path), "--kind", "image"])
+        assert r.exit_code == 0
+        assert "photo.png" in r.output
+        assert "notes.txt" not in r.output
+
+    def test_fts_preserves_punctuation_in_query(self, tmp_path: Path, isolated_db: Path):
+        """Queries containing apostrophes/hyphens/dots must match content that
+        contains them verbatim. The trigram tokenizer indexes punctuation as
+        regular characters; stripping it on the way in (e.g. ``\\w+`` extraction)
+        would turn ``won't`` into ``won t`` and miss the content.
+        """
+        from mm.fts import fts_search
+        from mm.store.db import MmDatabase
+        from mm.store.utils import now_us
+
+        img = tmp_path / "punct.png"
+        img.write_bytes(b"\x89PNG\r\n\x1a\n" + b"\x00" * 32)
+
+        db = MmDatabase()
+        db.ensure_metadata(str(img))
+        now = now_us()
+        db._connect.execute(
+            "INSERT INTO extractions (id, file_uri, content_hash, profile, model, mode, "
+            "detail, extra, summary, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            ("l2-p", str(img), "h", "p", "m", "accurate", 0, "", "summary", now),
+        )
+        db._connect.execute(
+            "INSERT INTO chunks (extraction_id, file_uri, content_hash, profile, model, "
+            "mode, chunk_idx, chunk_text, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (
+                "l2-p",
+                str(img),
+                "h",
+                "p",
+                "m",
+                "accurate",
+                0,
+                "I won't ship hello-world v1.0 today, it's still WIP.",
+                now,
+            ),
+        )
+        db._connect.commit()
+
+        for q in ["won't", "hello-world", "v1.0", "it's still"]:
+            assert len(fts_search(q, uri_prefix=str(tmp_path))) == 1, (
+                f"punctuation query {q!r} must match"
+            )
+
+        # Empty/whitespace queries short-circuit to [].
+        assert fts_search("", uri_prefix=str(tmp_path)) == []
+        assert fts_search("   ", uri_prefix=str(tmp_path)) == []
+
+    def test_fts_escapes_like_wildcards_in_query(self, tmp_path: Path, isolated_db: Path):
+        """Underscore and percent in the user query must be treated literally."""
+        from mm.fts import fts_search
+        from mm.store.db import MmDatabase
+        from mm.store.utils import now_us
+
+        img = tmp_path / "wild.png"
+        img.write_bytes(b"\x89PNG\r\n\x1a\n" + b"\x00" * 32)
+
+        db = MmDatabase()
+        db.ensure_metadata(str(img))
+        now = now_us()
+        db._connect.execute(
+            "INSERT INTO extractions (id, file_uri, content_hash, profile, model, mode, "
+            "detail, extra, summary, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            ("l2-w", str(img), "h", "p", "m", "accurate", 0, "", "summary", now),
+        )
+        # Three chunks: only chunk 0 contains the literal query strings; the
+        # others would slip past an unescaped LIKE.
+        seeded = [
+            (0, "literal user_id and 100% appear here"),
+            (1, "userxid and 100 percent are decoys"),
+            (2, "user-id and 1000 are also decoys"),
+        ]
+        for idx, text in seeded:
+            db._connect.execute(
+                "INSERT INTO chunks (extraction_id, file_uri, content_hash, profile, model, "
+                "mode, chunk_idx, chunk_text, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                ("l2-w", str(img), "h", "p", "m", "accurate", idx, text, now),
+            )
+        db._connect.commit()
+
+        for q in ["user_id", "100%"]:
+            hits = fts_search(q, uri_prefix=str(tmp_path), limit=10)
+            assert len(hits) == 1, f"{q!r} must match exactly chunk 0, got {len(hits)}"
+            assert hits[0]["index"] == 0
 
 
 # ── sql ──────────────────────────────────────────────────────────────
@@ -485,6 +849,23 @@ class TestWc:
         assert "files" in row
         assert "tokens (est.)" in row
 
+    def test_kind_filter_comma_separated(self, small_tree: Path):
+        """--kind code,image should count files of both kinds."""
+        r = runner.invoke(app, ["wc", str(small_tree), "--kind", "code,image", "--format", "json"])
+        assert r.exit_code == 0
+        data = json.loads(r.output)
+        assert data["files"] > 0
+
+    def test_kind_filter_comma_separated_subset(self, small_tree: Path):
+        """Comma-separated kind should return fewer files than unfiltered."""
+        r_all = runner.invoke(app, ["wc", str(small_tree), "--format", "json"])
+        r_subset = runner.invoke(
+            app, ["wc", str(small_tree), "--kind", "code,image", "--format", "json"]
+        )
+        all_data = json.loads(r_all.output)
+        subset_data = json.loads(r_subset.output)
+        assert subset_data["files"] < all_data["files"]
+
 
 # ── dataset-hf ──────────────────────────────────────────────────────
 
@@ -551,18 +932,6 @@ class TestDatasetHf:
         assert "path" in ds.column_names
         assert "kind" in ds.column_names
 
-    def test_grep_dataset_hf(self, small_tree: Path, tmp_path: Path, monkeypatch):
-        datasets = pytest.importorskip("datasets")
-
-        monkeypatch.chdir(tmp_path)
-        r = runner.invoke(app, ["grep", "hello", str(small_tree), "--format", "dataset-hf"])
-        assert r.exit_code == 0
-
-        ds = datasets.load_from_disk(str(tmp_path / "mm_dataset"))
-        assert len(ds) > 0
-        assert "path" in ds.column_names
-        assert "line" in ds.column_names
-
 
 # ── config ───────────────────────────────────────────────────────────
 
@@ -594,3 +963,54 @@ class TestConfig:
         r = runner.invoke(app, ["config", "init"])
         assert r.exit_code == 0
         assert config_path.exists()
+
+
+# ── prune integration: deleted files are pruned from DB across sql/cat/grep ──
+
+
+class TestPruneIntegration:
+    """End-to-end: a file indexed in DB and later deleted from disk must not
+    leak through ``sql``, ``cat``, or ``grep`` output. Verifies the wiring of
+    :func:`mm.store.utils.prune_missing` in each command path.
+    """
+
+    def test_sql_prunes_stale_rows(self, tmp_path: Path, isolated_db: Path):
+        from mm.store.db import MmDatabase
+
+        a, b = tmp_path / "a.txt", tmp_path / "b.txt"
+        a.write_text("hello")
+        b.write_text("world")
+        db = MmDatabase()
+        db.ensure_metadata(str(a))
+        db.ensure_metadata(str(b))
+        assert len(db.get_files()) == 2
+
+        a.unlink()
+
+        r = runner.invoke(
+            app, ["sql", "SELECT uri FROM files", "--dir", str(tmp_path), "--format", "json"]
+        )
+        assert r.exit_code == 0
+        uris = {row["uri"] for row in json.loads(r.output)}
+        assert str(a) not in uris
+        assert str(b) in uris
+
+        # Row is physically gone from the DB, not just filtered from output.
+        assert db.get_file(str(a)) is None
+        assert db.get_file(str(b)) is not None
+
+    def test_cat_prunes_row_when_path_missing(self, tmp_path: Path, isolated_db: Path):
+        from mm.store.db import MmDatabase
+
+        p = tmp_path / "gone.txt"
+        p.write_text("bye")
+        db = MmDatabase()
+        db.ensure_metadata(str(p))
+        assert db.get_file(str(p)) is not None
+
+        p.unlink()
+
+        r = runner.invoke(app, ["cat", str(p)])
+        # cat exits 0 but emits "Error: ... not found." on stderr (mixed).
+        assert "not found" in r.output
+        assert db.get_file(str(p)) is None

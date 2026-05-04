@@ -13,13 +13,16 @@ T = TypeVar("T")
 class BaseFormat(str, Enum):
     rich = "rich"
     json = "json"
+    pretty_json = "pretty-json"
     tsv = "tsv"
     csv = "csv"
+    stdout = "stdout"
 
 
 class Format(str, Enum):
     rich = "rich"
     json = "json"
+    pretty_json = "pretty-json"
     tsv = "tsv"
     csv = "csv"
     dataset_jsonl = "dataset-jsonl"
@@ -101,7 +104,8 @@ CODE_EXTS = frozenset(
     }
 )
 
-FileKind = Literal["text", "image", "video", "audio", "document"]
+BinaryFileKind = Literal["image", "video", "audio", "document"]
+FileKind = Literal["text"] | BinaryFileKind
 
 
 def file_kind(path: Path | str) -> FileKind:

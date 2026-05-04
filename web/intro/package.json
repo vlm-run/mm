@@ -9,6 +9,7 @@
     "preview": "vite preview --port 9091"
   },
   "dependencies": {
+    "lucide-react": "^1.8.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0"
   },

@@ -33,11 +33,11 @@ criterion = { version = "0.5", features = ["html_reports"] }
 tempfile = "3"
 
 [[bench]]
-name = "l0_walk"
+name = "metadata_walk"
 harness = false
 
 [[bench]]
-name = "l0_index"
+name = "metadata_index"
 harness = false
 
 [[bench]]
@@ -45,7 +45,7 @@ name = "hash_strategies"
 harness = false
 
 [[bench]]
-name = "l1_extract"
+name = "metadata_extract"
 harness = false
 
 [[bench]]
@@ -58,4 +58,8 @@ harness = false
 
 [[bench]]
 name = "wc"
+harness = false
+
+[[bench]]
+name = "refs"
 harness = false

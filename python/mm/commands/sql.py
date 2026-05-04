@@ -1,4 +1,4 @@
-"""mm sql -- query file metadata, L2 results, and chunks with SQL."""
+"""mm sql -- query file metadata, extractions, and chunks with SQL."""
 
 from __future__ import annotations
 
@@ -12,7 +12,7 @@ import typer
 
 from mm.utils import Format
 
-_STORED_TABLES = {"l2_results", "chunks", "chunks_vec"}
+_STORED_TABLES = {"extractions", "chunks", "chunks_vec"}
 _RICH_COLUMNS = {
     "name",
     "kind",
@@ -30,7 +30,7 @@ _RICH_COLUMNS = {
 def sql_cmd(
     query: Annotated[
         Optional[str],
-        typer.Argument(help="SQL query (use 'files', 'l2_results', or 'chunks' as table name)"),
+        typer.Argument(help="SQL query (use 'files', 'extractions', or 'chunks' as table name)"),
     ] = None,
     directory: Annotated[Path, typer.Option("--dir", "-d", help="Directory to index")] = Path("."),
     format: Annotated[
@@ -45,23 +45,24 @@ def sql_cmd(
     pre_index: Annotated[
         bool,
         typer.Option(
-            "--pre-index", help="Index unindexed files (L0) before querying the files table"
+            "--pre-index",
+            help="Index unindexed files (metadata) before querying the files table",
         ),
     ] = False,
 ) -> None:
-    """Query file metadata, L2 results, and chunks with SQL.
+    """Query file metadata, extractions, and chunks with SQL.
 
     \b
     Tables:
-      files       — L0/L1 file metadata (scanned from --dir, or persistent store)
-      l2_results  — LLM-generated summaries (stored in SQLite)
-      chunks      — Chunked L2 content + embeddings (stored in SQLite)
+      files        — file metadata + locally extracted content (scanned from --dir, or persistent store)
+      extractions  — fast/accurate extraction outputs (stored in SQLite)
+      chunks       — chunked content + embeddings (stored in SQLite)
 
     \b
     Examples:
       mm sql "SELECT kind, COUNT(*) as n FROM files GROUP BY kind"
       mm sql "SELECT * FROM files WHERE kind='image'" --dir ~/photos
-      mm sql "SELECT file_uri, summary FROM l2_results LIMIT 10"
+      mm sql "SELECT file_uri, summary FROM extractions LIMIT 10"
       mm sql "SELECT file_uri, chunk_idx, LENGTH(chunk_text) FROM chunks"
       mm sql --list-tables
     """
@@ -96,7 +97,7 @@ def _detect_table(query: str) -> str:
 
 
 def _query_stored(query: str, fmt: str) -> None:
-    """Query persistent SQLite tables (l2_results, chunks)."""
+    """Query persistent SQLite tables (extractions, chunks)."""
     from mm.store.db import MmDatabase
 
     columns, rows = MmDatabase().sql(query)
@@ -110,13 +111,20 @@ def _query_files(query: str, directory: Path, fmt: str, *, pre_index: bool = Fal
 
     resolved = directory.resolve()
     prefix = str(resolved)
+    ctx = Context(directory)
     if pre_index:
-        # DO an L0 before querying
-        ctx = Context(directory)
         ctx.save()
 
-    # Query indexed files scoped to this directory from the persistent store
     db = MmDatabase()
+
+    # Reconcile: drop rows under *prefix* whose files no longer exist on disk.
+    # Uses the directory walk as a hint so only stale candidates get stat'd.
+    from mm.store.utils import prune_missing
+
+    disk_uris = {str(resolved / f.path) for f in ctx.files}
+    prune_missing(prefix=prefix, disk_uris=disk_uris, db=db)
+
+    # Query indexed files scoped to this directory from the persistent store
     safe_prefix = prefix.replace("'", "''")
     indexed_rows = db.get_files(where=f"uri LIKE '{safe_prefix}/%'")
 
@@ -134,8 +142,6 @@ def _query_files(query: str, directory: Path, fmt: str, *, pre_index: bool = Fal
 
     # Compute diff: files on disk but not in DB (when NOT pre-indexing)
     if not pre_index:
-        ctx = Context(directory)
-        disk_uris = {str(resolved / f.path) for f in ctx.files}
         db_uris_rows = db._connect.execute(
             "SELECT uri FROM files WHERE uri LIKE ?", (f"{prefix}/%",)
         ).fetchall()
@@ -203,7 +209,7 @@ def _query_dicts_as_files(rows: list[dict[str, Any]], query: str) -> tuple[list[
         "pages",
         "has_audio",
         "indexed_at",
-        "l1_indexed_at",
+        "content_indexed_at",
     }
     _REAL_COLS = {"modified", "created", "duration_s", "fps"}
     all_cols = list(rows[0].keys())
@@ -239,14 +245,14 @@ def _list_tables(fmt: str) -> None:
 
     db = MmDatabase()
     counts = {}
-    for name in ("l2_results", "chunks"):
+    for name in ("extractions", "chunks"):
         row = db._connect.execute(f"SELECT COUNT(*) FROM {name}").fetchone()
         counts[name] = row[0] if row else 0
 
     rows = [
         {"table": "files", "source": "scan + SQLite", "stored": "ephemeral"},
     ]
-    for name in ("l2_results", "chunks"):
+    for name in ("extractions", "chunks"):
         n = counts.get(name, 0)
         rows.append(
             {

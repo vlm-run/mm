@@ -2,10 +2,64 @@
 
 from __future__ import annotations
 
+import os
 import sqlite3
+import tempfile
 from pathlib import Path
 
 import pytest
+
+# Redirect mm's on-disk caches (FSLRUCache for transcripts/scenes) to a
+# session-scoped temp directory before any ``mm.*`` import runs.  Without
+# this, tests that invoke ``transcript_messages`` or ``detect_scenes``
+# would write pickle entries into the developer's real ``~/.cache/mm/``
+# and pollute it with ephemeral fingerprints from ``tmp_path`` files.
+#
+# Done at module-level (not in a fixture) because pytest imports test
+# modules — which transitively import mm — before any fixture fires.
+# ``mm.cache.cache_dir()`` resolves ``MM_CACHE_DIR`` lazily on first
+# cache access, so setting the env var here is sufficient.
+_MM_CACHE_TMP = tempfile.mkdtemp(prefix="mm-test-cache-")
+os.environ.setdefault("MM_CACHE_DIR", _MM_CACHE_TMP)
+
+
+@pytest.fixture
+def active_profile() -> str:
+    """Name of the LLM profile to pin for the duration of a test.
+
+    Defaults to ``"ollama"`` — the built-in OpenAI-compatible profile.
+    It has no ``"gemini"`` substring, so ``mm.encoders._resolve_provider``
+    resolves to ``"openai"`` and encoders emit OpenAI-shaped content
+    parts, matching what ``LlmBackend`` (OpenAI SDK) and
+    ``refs_messages._adapt_part`` assume.
+
+    Override per-test via indirect parametrization::
+
+        @pytest.mark.parametrize("active_profile", ["gemini"], indirect=True)
+        def test_gemini_workflow(...): ...
+
+    or per-class by redefining the fixture on the test class::
+
+        class TestGeminiStuff:
+            @pytest.fixture
+            def active_profile(self) -> str:
+                return "gemini"
+    """
+    return "ollama"
+
+
+@pytest.fixture(autouse=True)
+def use_active_profile(active_profile: str, monkeypatch) -> None:
+    """Apply the name from ``active_profile`` to ``MM_PROFILE`` for the test.
+
+    ``MM_PROFILE`` wins over the file config in
+    ``mm.profile.get_active_profile_name``, so this isolates every test
+    from the developer's local ``~/.config/mm/config.toml``. Tests that
+    exercise profile resolution itself (``test_profile.py``) clear
+    ``MM_PROFILE`` in their own module-scoped fixture, which takes
+    precedence within that module.
+    """
+    monkeypatch.setenv("MM_PROFILE", active_profile)
 
 
 def _sqlite_vec_available() -> bool:
@@ -26,6 +80,22 @@ requires_sqlite_vec = pytest.mark.skipif(
     not _sqlite_vec_available(),
     reason="sqlite3 extension loading not available (no sqlite-vec support)",
 )
+
+
+@pytest.fixture
+def isolated_db(tmp_path_factory: pytest.TempPathFactory, monkeypatch: pytest.MonkeyPatch) -> Path:
+    """Point ``MmDatabase`` at a temp directory outside any test's ``tmp_path``.
+
+    Keeping the DB out of ``tmp_path`` ensures its WAL/SHM sidecar files aren't
+    picked up by directory scans the command-under-test runs against ``tmp_path``.
+    """
+    from mm.store.db import MmDatabase
+
+    db_dir = tmp_path_factory.mktemp("mmdb")
+    db_path = db_dir / "mm.db"
+    monkeypatch.setattr(MmDatabase, "DB_PATH", db_path)
+    monkeypatch.setattr(MmDatabase, "DB_DIR", db_dir)
+    return db_path
 
 
 @pytest.fixture

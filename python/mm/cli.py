@@ -75,7 +75,7 @@ def _print_banner() -> None:
 
         console.print(
             f"  [bold {_STEEL_BLUE}]mm (v{__version__})[/bold {_STEEL_BLUE}]"
-            " [dim]— High-performance multimodal context management[/dim]"
+            " [dim]— Fast, multimodal context for agents[/dim]"
         )
     else:
         console.print(f"  [bold {_STEEL_BLUE}]mm (v{__version__})[/bold {_STEEL_BLUE}]")
@@ -90,6 +90,7 @@ app = typer.Typer(
 )
 
 _TIMED_COMMANDS = {"find", "cat", "grep", "sql", "wc"}
+_LLM_COMMANDS = {"cat", "bench"}
 
 
 @app.callback(invoke_without_command=True)
@@ -104,7 +105,7 @@ def _main(
     ] = "auto",
     version: Annotated[bool, typer.Option("--version", "-v", help="Show version and exit")] = False,
 ) -> None:
-    """High-performance multimodal context management."""
+    """Fast, multimodal context for agents."""
     if version:
         typer.echo(f"mm v{__version__}")
         raise typer.Exit()
@@ -123,11 +124,21 @@ def _main(
     if color != "auto":
         set_color_mode(color)
 
-    cmd = sys.argv[1] if len(sys.argv) > 1 else ""
+    cmd = ctx.invoked_subcommand or ""
     if cmd in _TIMED_COMMANDS:
-        _check_exit, _display_elapsed = display_elapsed_wrapper(start_time)
+        prefix = "took" if cmd == "grep" else None
+        _check_exit, _display_elapsed = display_elapsed_wrapper(start_time, prefix)
         sys.exit = _check_exit
         atexit.register(_display_elapsed)
+
+    if cmd in _LLM_COMMANDS:
+        from mm._logfire import cli_span
+        from mm.profile import get_profile
+
+        prof = get_profile()
+        _span = cli_span(command=cmd, profile=prof.name, model=prof.model)
+        _span.__enter__()
+        atexit.register(lambda: _span.__exit__(None, None, None))
 
 
 app.command(name="bench")(bench.bench_cmd)

@@ -1,7 +1,7 @@
-"""Comprehensive tests for L0 metadata extraction.
+"""Comprehensive tests for metadata extraction.
 
 Validates schema, column types, image dimension enrichment,
-file kind classification, and SQL queryability of all L0 columns.
+file kind classification, and SQL queryability of all metadata columns.
 """
 
 from __future__ import annotations
@@ -93,11 +93,11 @@ def _write_jpeg(path: Path, width: int, height: int):
         path.write_bytes(b"\xff\xd8\xff\xe0" + b"\x00" * 200 + b"\xff\xd9")
 
 
-# ── L0 Schema Tests ──────────────────────────────────────────────────
+# ── Metadata Schema Tests ──────────────────────────────────────────────────
 
 
-class TestL0Schema:
-    """Verify L0 Arrow schema: column names, types, nullability."""
+class TestMetadataSchema:
+    """Verify metadata Arrow schema: column names, types, nullability."""
 
     def test_schema_has_14_columns(self, media_tree: Path):
         ctx = Context(media_tree)
@@ -344,7 +344,7 @@ class TestExtensionMime:
 
 
 class TestDBRoundtrip:
-    def test_roundtrip_preserves_dimensions(self, media_tree: Path):
+    def test_roundtrip_preserves_dimensions(self, media_tree: Path, isolated_db: Path):
         ctx = Context(media_tree)
         ctx.save()
 
@@ -358,20 +358,20 @@ class TestDBRoundtrip:
         assert all(r["width"] is not None for r in pngs)
         assert all(r["height"] is not None for r in pngs)
 
-    def test_roundtrip_column_count(self, media_tree: Path):
+    def test_roundtrip_column_count(self, media_tree: Path, isolated_db: Path):
         ctx = Context(media_tree)
         ctx.save()
 
         root_str = str(media_tree.resolve()).replace("'", "''")
         rows = ctx.db.get_files(where=f"uri LIKE '{root_str}%'")
-        # 14 L0 + 18 L1 + 2 tracking = 34 columns in DB
-        assert len(rows[0].keys()) == 34
+        # 14 metadata + 18 fast + 2 session/ref + 2 tracking = 36 columns in DB
+        assert len(rows[0].keys()) == 36
 
 
 # ── CLI Integration ───────────────────────────────────────────────────
 
 
-class TestL0Cli:
+class TestMetadataCli:
     def test_describe_shows_width_height(self, media_tree: Path):
         result = runner.invoke(app, ["find", str(media_tree), "--schema", "--format", "json"])
         assert result.exit_code == 0
@@ -392,7 +392,7 @@ class TestL0Cli:
         )
         assert result.exit_code == 0
 
-    def test_sql_dimensions_query(self, media_tree: Path):
+    def test_sql_dimensions_query(self, media_tree: Path, isolated_db: Path):
         result = runner.invoke(
             app,
             [

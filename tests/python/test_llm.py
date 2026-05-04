@@ -241,3 +241,151 @@ class TestLlmBackendChat:
         backend.generate_chunked("image", "accurate", chunks=chunks)
         assert backend.last_usage.prompt_tokens == 200
         assert backend.last_usage.total_tokens == 300
+
+
+class TestLlmBackendExtraBody:
+    """Regression tests for the user-supplied extra_body plumbing."""
+
+    def _make_backend(self):
+        with patch("mm.profile.get_profile") as mock_profile:
+            mock_profile.return_value = MagicMock(
+                base_url="http://localhost:11434",
+                api_key="test-key",
+                model="profile-model",
+            )
+            with patch("mm.llm.OpenAI") as mock_openai_cls:
+                mock_client = MagicMock()
+                mock_openai_cls.return_value = mock_client
+                from mm.llm import LlmBackend
+
+                return LlmBackend(), mock_client
+
+    def _mock_response(self, content: str = "ok"):
+        choice = MagicMock()
+        choice.content = content
+        choice.reasoning = None
+        choice.reasoning_content = None
+        response = MagicMock()
+        response.choices = [MagicMock(message=choice)]
+        response.usage = None
+        return response
+
+    def _captured_kwargs(self, client) -> dict:
+        call = client.chat.completions.create.call_args
+        return dict(call.kwargs) if call.kwargs else dict(call[1])
+
+    def test_chat_forwards_caller_extra_body(self):
+        backend, client = self._make_backend()
+        client.chat.completions.create.return_value = self._mock_response()
+        backend._chat(
+            [{"role": "user", "content": "hi"}],
+            extra_body={"method": "detect", "method_params": {"object": "fish"}},
+        )
+        kw = self._captured_kwargs(client)
+        assert kw["extra_body"] == {
+            "method": "detect",
+            "method_params": {"object": "fish"},
+        }
+
+    def test_chat_caller_overrides_think_and_reasoning_keys(self):
+        """User-supplied extra_body wins over built-in think/reasoning_effort."""
+        backend, client = self._make_backend()
+        client.chat.completions.create.return_value = self._mock_response()
+        backend._chat(
+            [{"role": "user", "content": "hi"}],
+            think=True,
+            reasoning_effort="medium",
+            extra_body={"think": False, "reasoning_effort": "high", "method": "ocr"},
+        )
+        kw = self._captured_kwargs(client)
+        assert kw["extra_body"] == {
+            "think": False,
+            "reasoning_effort": "high",
+            "method": "ocr",
+        }
+
+    def test_chat_no_extra_body_omits_kwarg(self):
+        backend, client = self._make_backend()
+        client.chat.completions.create.return_value = self._mock_response()
+        backend._chat([{"role": "user", "content": "hi"}])
+        kw = self._captured_kwargs(client)
+        assert "extra_body" not in kw
+
+    def test_constructor_model_override_used_in_chat(self):
+        with patch("mm.profile.get_profile") as mock_profile:
+            mock_profile.return_value = MagicMock(
+                base_url="http://localhost:11434",
+                api_key="k",
+                model="profile-model",
+            )
+            with patch("mm.llm.OpenAI") as mock_openai_cls:
+                client = MagicMock()
+                mock_openai_cls.return_value = client
+                client.chat.completions.create.return_value = self._mock_response()
+
+                from mm.llm import LlmBackend
+
+                backend = LlmBackend(model="moondream2")
+                backend._chat([{"role": "user", "content": "hi"}])
+        kw = dict(client.chat.completions.create.call_args.kwargs)
+        assert kw["model"] == "moondream2"
+
+    def test_generate_merges_pipeline_and_call_level_extra_body(self):
+        """Pipeline extra_body is the base; call-site extra_body wins on conflict."""
+        backend, client = self._make_backend()
+        client.chat.completions.create.return_value = self._mock_response()
+
+        from mm.pipelines.schema import Encode, Generate, PipelineSpec
+
+        spec = PipelineSpec(
+            kind="image",
+            mode="accurate",
+            encode=Encode(),
+            generate=Generate(
+                prompt="Caption.",
+                extra_body={
+                    "method": "caption",
+                    "method_params": {"length": "normal"},
+                },
+            ),
+        )
+
+        backend.generate(
+            "image",
+            "accurate",
+            context={"filename": "p.jpg"},
+            parts=[{"type": "image_url", "image_url": {"url": "data:image/jpeg;base64,abc"}}],
+            pipeline_spec=spec,
+            extra_body={"method_params": {"length": "short"}, "video_fps": 1.0},
+        )
+
+        kw = self._captured_kwargs(client)
+        assert kw["extra_body"] == {
+            "method": "caption",
+            "method_params": {"length": "short"},
+            "video_fps": 1.0,
+        }
+
+    def test_generate_pipeline_only_extra_body_reaches_chat(self):
+        """When only the pipeline supplies extra_body, it still reaches the SDK."""
+        backend, client = self._make_backend()
+        client.chat.completions.create.return_value = self._mock_response()
+
+        from mm.pipelines.schema import Encode, Generate, PipelineSpec
+
+        spec = PipelineSpec(
+            kind="image",
+            mode="accurate",
+            encode=Encode(),
+            generate=Generate(prompt="p", extra_body={"method": "ocr"}),
+        )
+
+        backend.generate(
+            "image",
+            "accurate",
+            context={"filename": "p.jpg"},
+            parts=[{"type": "text", "text": "hi"}],
+            pipeline_spec=spec,
+        )
+        kw = self._captured_kwargs(client)
+        assert kw["extra_body"] == {"method": "ocr"}

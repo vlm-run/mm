@@ -39,6 +39,13 @@ KIND_TREE_STYLES: dict[str, str] = {
 }
 
 
+def _apply_ignore_case(pattern: str | None, ignore_case: bool) -> str | None:
+    """Prepend the regex ``(?i)`` flag when case-insensitive matching is requested - supports both py and rs"""
+    if pattern is None or not ignore_case:
+        return pattern
+    return f"(?i){pattern}"
+
+
 def _parse_size(size_str: str) -> int:
     size_str = size_str.strip().upper()
     multipliers = {"B": 1, "KB": 1024, "MB": 1024**2, "GB": 1024**3, "TB": 1024**4}
@@ -54,7 +61,16 @@ def find_cmd(
     name: Annotated[
         Optional[str], typer.Option("--name", "-n", help="Filter by file name (string or regex)")
     ] = None,
-    kind: Annotated[Optional[str], typer.Option("--kind", "-k", help="Filter by kind")] = None,
+    ignore_case: Annotated[
+        bool,
+        typer.Option("--ignore-case", "-i", help="Case-insensitive name matching"),
+    ] = False,
+    kind: Annotated[
+        Optional[str],
+        typer.Option(
+            "--kind", "-k", help="Filter by kind (supports comma-separated - image,document)"
+        ),
+    ] = None,
     ext: Annotated[
         Optional[str], typer.Option("--ext", "-e", help="Filter by extension(s), comma-separated")
     ] = None,
@@ -85,6 +101,20 @@ def find_cmd(
     no_ignore: Annotated[
         bool, typer.Option("--no-ignore", help="Don't respect .gitignore rules")
     ] = False,
+    session: Annotated[
+        Optional[str],
+        typer.Option(
+            "--session",
+            help="Session id to tag results with (enables global <session>/<ref_id> refs)",
+        ),
+    ] = None,
+    refs: Annotated[
+        bool,
+        typer.Option(
+            "--refs",
+            help="Include ref_id column (requires --session; opt-in, hidden by default)",
+        ),
+    ] = False,
 ) -> None:
     """Find files matching criteria (like fd/find).
 
@@ -97,19 +127,28 @@ def find_cmd(
     \b
     Examples:
       mm find ~/data --kind image                           # images only
+      mm find ~/data --kind image,document                  # images + documents
       mm find ~/data --ext .pdf,.docx --sort size -r        # docs by size
       mm find ~/data --columns name,kind,size --limit 20    # custom columns
       mm find ~/data --tree --kind video                    # video tree
       mm find ~/data --min-size 1mb --sort size -r          # large files
       mm find ~/data --name "test_.*\\.py"                  # regex name match
       mm find ~/data -n config                              # substring name match
+      mm find ~/data -n CONFIG -i                           # case-insensitive match
       mm find ~/data --no-ignore                            # include gitignored files
+      mm find ~/data --session my-sess --refs               # show <session>/<ref_id>
     """
     from mm.display import resolve_format
 
     fmt = resolve_format(format.value if format else None)
+    if refs and not session:
+        raise typer.BadParameter("--refs requires --session <id>")
+    if ignore_case and not name:
+        raise typer.BadParameter("--ignore-case requires --name/-n <pattern>")
     if tree:
-        _find_tree(directory, kind, name, depth, size, fmt, no_ignore=no_ignore)
+        _find_tree(
+            directory, kind, name, depth, size, fmt, no_ignore=no_ignore, ignore_case=ignore_case
+        )
         return
     if schema:
         _find_schema(directory, fmt, no_ignore=no_ignore)
@@ -129,6 +168,9 @@ def find_cmd(
         limit,
         fmt,
         no_ignore=no_ignore,
+        session=session,
+        refs=refs,
+        ignore_case=ignore_case,
     )
 
 
@@ -160,13 +202,18 @@ def _find_table(
     fmt: str,
     *,
     no_ignore: bool = False,
+    session: str | None = None,
+    refs: bool = False,
+    ignore_case: bool = False,
 ) -> None:
     """Default tabular listing."""
     from mm.pipe import read_paths_from_stdin, resolve_piped_paths
 
     stdin_paths = read_paths_from_stdin()
-    # Fast path: non-rich output without columns/stdin bypasses pyarrow
-    if fmt != "rich" and not stdin_paths and not columns and depth is None:
+    # Fast path: non-rich output without columns/stdin bypasses pyarrow.
+    # --session alone is a no-op for display; only --refs forces the slow
+    # path to attach the ref_id column.
+    if fmt != "rich" and not stdin_paths and not columns and depth is None and not refs:
         from mm._mm import Scanner
 
         scanner = Scanner(str(Path(directory).resolve()), None, no_ignore=no_ignore)
@@ -180,7 +227,7 @@ def _find_table(
             ext=ext,
             min_size=min_bytes,
             max_size=max_bytes,
-            name=name,
+            name=_apply_ignore_case(name, ignore_case),
             limit=limit,
             sort_by=sort,
             descending=reverse,
@@ -202,17 +249,18 @@ def _find_table(
 
     from mm.context import Context
 
-    ctx = Context(directory, no_ignore=no_ignore)
+    ctx = Context(directory, no_ignore=no_ignore, session_id=session)
     if kind or ext or min_size or max_size:
         ctx = ctx.filter(kind=kind, ext=ext, min_size=min_size, max_size=max_size)
 
-    table = ctx.to_arrow()
+    table = ctx.to_arrow(refs=refs)
 
     if name:
         import re as re_mod
 
+        flags = re_mod.IGNORECASE if ignore_case else 0
         try:
-            pattern = re_mod.compile(name)
+            pattern = re_mod.compile(name, flags)
             mask = [bool(pattern.search(str(n))) for n in table.column("name").to_pylist()]
         except re_mod.error:
             lower = name.lower()
@@ -274,6 +322,8 @@ def _find_table(
         default_cols = ["path", "kind", "size", "ext"]
         if not cols and _has_media_dimensions(table):
             default_cols = ["path", "kind", "size", "width", "height", "ext"]
+        if not cols and refs and "ref_id" in table.column_names:
+            default_cols = [*default_cols, "ref_id"]
 
         display_cols = cols or default_cols
         rich_table = arrow_table_to_rich(table, columns=display_cols, limit=limit)
@@ -384,13 +434,16 @@ def _find_tree(
     fmt: str,
     *,
     no_ignore: bool = False,
+    ignore_case: bool = False,
 ) -> None:
     from mm._mm import Scanner
 
     scanner = Scanner(str(Path(directory).resolve()), no_ignore=no_ignore)
     scanner.scan()
 
-    raw = json_mod.loads(scanner.to_json_fast(kind=kind, name=name))
+    raw = json_mod.loads(
+        scanner.to_json_fast(kind=kind, name=_apply_ignore_case(name, ignore_case))
+    )
     tree_data = _build_tree(raw)
     total_files, total_bytes = _count_subtree(tree_data)
 

@@ -14,7 +14,14 @@ from mm.utils import Format
 def grep_cmd(
     pattern: Annotated[str, typer.Argument(help="Search pattern (regex)")],
     directory: Annotated[Optional[Path], typer.Argument(help="Directory to search")] = None,
-    kind: Annotated[Optional[str], typer.Option("--kind", "-k", help="Filter by file kind")] = None,
+    kind: Annotated[
+        Optional[str],
+        typer.Option(
+            "--kind",
+            "-k",
+            help="Filter by file kind (supports comma-separated, e.g. image,document)",
+        ),
+    ] = None,
     ext: Annotated[
         Optional[str], typer.Option("--ext", "-e", help="Filter by extension(s)")
     ] = None,
@@ -22,12 +29,16 @@ def grep_cmd(
     count: Annotated[
         bool, typer.Option("--count", "-c", help="Show only match counts per file")
     ] = False,
-    level: Annotated[int, typer.Option("--level", "-l", help="Processing level")] = 1,
-    index: Annotated[
-        bool, typer.Option("--index", help="Index unindexed files before semantic search (max 50)")
+    do_semantic: Annotated[
+        bool, typer.Option("--semantic", "-s", help="Do a semantic (vector) search")
+    ] = False,
+    pre_index: Annotated[
+        bool,
+        typer.Option("--pre-index", help="Index unindexed files before semantic search (max 50)"),
     ] = False,
     ignore_case: Annotated[
-        bool, typer.Option("--ignore-case", "-i", help="Case-insensitive matching")
+        bool,
+        typer.Option("--ignore-case", "-i", help="Force case-insensitive matching"),
     ] = False,
     no_ignore: Annotated[
         bool, typer.Option("--no-ignore", help="Don't respect .gitignore rules")
@@ -41,13 +52,18 @@ def grep_cmd(
 ) -> None:
     """Search file contents -- text and semantic (like rg/grep).
 
+    When --semantic/-s is passed and binary files (images, video, audio,
+    documents) are present, semantic (vector) search runs alongside the
+    normal text search.
+
     \b
     Examples:
       mm grep "TODO" ~/project                          # search all files
       mm grep "import.*torch" ~/project --kind code     # code files only
       mm grep "attention" ~/papers --ext .pdf           # search PDF text
       mm grep "error|warn" ~/logs -C 2                  # context lines
-      mm grep "neural network" ~/data --level 2         # semantic (vector) search
+      mm grep "Quantum Phase" ~/data -s                 # semantic search on binaries
+      mm grep "Quantum Phase" ~/data -s --pre-index     # index first, then semantic search
       mm grep "def main" ~/src --count                  # match counts only
       mm grep "Quantum" ~/docs -i                       # case-insensitive
       mm grep "secret" ~/docs --no-ignore               # ignore .gitignore
@@ -56,27 +72,17 @@ def grep_cmd(
     from mm.context import FileEntry
     from mm.display import resolve_format
     from mm.pipe import read_paths_from_stdin, resolve_piped_paths
+    from mm.utils import is_binary_content
 
     fmt = resolve_format(format.value if format else None)
     stdin_paths = read_paths_from_stdin()
     _directory = directory or Path("./")
-    # Semantic search — vector similarity via embeddings
-    if level >= 2:
-        _grep_semantic(
-            pattern,
-            _directory,
-            kind,
-            ext,
-            count,
-            fmt,
-            limit=5,
-            stdin_paths=stdin_paths,
-            do_index=index,
-            no_ignore=no_ignore,
-        )
-        return
 
-    re_flags = re.IGNORECASE if ignore_case else 0
+    # Smart-case: default to case-insensitive matching when -i is not passed and the pattern has no uppercase
+    # letters. Any uppercase letter in the pattern preserves case-sensitivity
+    pattern_literals = re.sub(r"\\.", "", pattern, flags=re.DOTALL)
+    smart_case = not ignore_case and not any(c.isupper() for c in pattern_literals)
+    re_flags = re.IGNORECASE if (ignore_case or smart_case) else 0
     try:
         regex = re.compile(pattern, re_flags)
     except re.error as e:
@@ -107,7 +113,7 @@ def grep_cmd(
 
     # Piped paths (deduped against directory scan)
     if stdin_paths:
-        from mm.utils import file_kind_with_code, is_binary_content
+        from mm.utils import file_kind_with_code
 
         for item in resolve_piped_paths(stdin_paths):
             if item in seen_paths:
@@ -135,10 +141,10 @@ def grep_cmd(
             if f.is_binary and f.kind not in ("document",):
                 continue
 
-            if level >= 1 and f.kind == "document":
-                from mm.commands.cat import _l1_document
+            if f.kind == "document":
+                from mm.cat_utils.extract_meta import _local_document
 
-                content = _l1_document(full_path)
+                content = _local_document(full_path)
             elif f.is_binary:
                 continue
             else:
@@ -166,6 +172,76 @@ def grep_cmd(
         except Exception:
             continue
 
+    # FTS + semantic both query indexed chunks.
+    has_binary = any(is_binary_content(kind=f.kind) for f in files_to_search)
+    scan_root = _directory.resolve()
+    seen_chunk_keys: set[tuple[str, int]] = set()
+
+    def _merge_chunk_hits(hits: list[dict]) -> None:
+        for r in hits:
+            rel_path = r["path"]
+            try:
+                rel_path = str(Path(rel_path).relative_to(scan_root))
+            except ValueError:
+                pass
+            key = (rel_path, r["index"])
+            if key in seen_chunk_keys:
+                continue
+            seen_chunk_keys.add(key)
+            snippet = r.get("snippet")
+            if snippet:
+                line_text = snippet.replace("\n", " ")
+            else:
+                raw = r["match"].replace("\n", " ")
+                match = regex.search(raw)
+                if match:
+                    start = match.start()
+                    context = 40
+                    snippet_start = max(0, start - context)
+                    snippet_end = min(len(raw), start + len(match.group(0)) + context)
+                    line_text = raw[snippet_start:snippet_end]
+                    if snippet_start > 0:
+                        line_text = "..." + line_text
+                    if snippet_end < len(raw):
+                        line_text += "..."
+                else:
+                    line_text = f"{raw[:90]}...{raw[-50:]}" if len(raw) > 140 else raw[:140]
+            all_matches.append({"path": rel_path, "line_number": r["index"], "line": line_text})
+            file_counts[rel_path] = file_counts.get(rel_path, 0) + 1
+
+    # FTS5 token search over indexed chunks — Silent on missing FTS5 / empty index.
+    if has_binary:
+        from mm.fts import fts_search
+
+        try:
+            scope = (
+                {"uri": str(scan_root)} if _directory.is_file() else {"uri_prefix": str(scan_root)}
+            )
+            _merge_chunk_hits(fts_search(pattern, limit=5, kind=kind, ext=ext, **scope))
+        except Exception:
+            pass
+
+    if do_semantic and has_binary:
+        from mm.semantic import build_hint_cmd, grep_semantic
+
+        try:
+            _merge_chunk_hits(
+                grep_semantic(
+                    pattern,
+                    _directory,
+                    kind,
+                    ext,
+                    limit=5,
+                    stdin_paths=stdin_paths,
+                    no_ignore=no_ignore,
+                    do_index=pre_index,
+                    quiet=fmt not in ("rich",),
+                    cmd_hint=build_hint_cmd(pattern, _directory, kind, ext, ignore_case),
+                )
+            )
+        except (SystemExit, Exception):
+            pass
+
     # Exit 1 on no matches (standard grep/rg behaviour for composability).
     has_matches = bool(file_counts)
 
@@ -173,7 +249,6 @@ def grep_cmd(
         from mm.display import emit_rows
 
         if count:
-            # json emits the raw dict; dataset formats need a list of rows
             if fmt == "json":
                 from mm.display import json_dumps
 
@@ -251,166 +326,3 @@ def grep_cmd(
 
     if not has_matches:
         raise typer.Exit(1)
-
-
-# ---------------------------------------------------------------------------
-# Semantic grep via embeddings
-# ---------------------------------------------------------------------------
-
-
-def _grep_semantic(
-    pattern: str,
-    directory: Path,
-    kind: str | None,
-    ext: str | None,
-    count: bool,
-    fmt: str,
-    limit: int,
-    stdin_paths: list[str] | None = None,
-    do_index=False,
-    no_ignore: bool = False,
-) -> None:
-    """Semantic search: check indexing status, optionally index, then KNN search."""
-    from mm.context import Context
-    from mm.semantic import handle_missing, search
-
-    path = directory.resolve()
-    is_file = path.is_file()
-
-    # Collect URIs
-    if stdin_paths:
-        uris = [str(Path(p).resolve()) for p in stdin_paths if Path(p).is_file()]
-    elif is_file:
-        uris = [str(path)]
-    else:
-        ctx = Context(directory, no_ignore=no_ignore)
-        if kind:
-            ctx = ctx.filter(kind=kind)
-        if ext:
-            ctx = ctx.filter(ext=ext)
-        uris = [str(path / f.path) for f in ctx.files]
-
-    # Check which URIs are already indexed
-    handle_missing(uris, pattern, directory, kind, ext, do_index)
-
-    # Search — scope to the directories of/in piped URIs
-    if stdin_paths:
-        results: list[dict] = []
-        uri_prefixes = [str(Path(p).resolve()) for p in stdin_paths if not Path(p).is_file()]
-        for uri_prefix in uri_prefixes:
-            results.extend(search(pattern, uri_prefix=uri_prefix, limit=limit))
-
-        results.sort(key=lambda r: r["distance"])
-        results = results[:limit]
-    else:
-        results = search(
-            pattern,
-            uri=str(path) if is_file else None,
-            uri_prefix=str(path) if not is_file else None,
-            limit=limit,
-        )
-
-    if not results:
-        raise typer.Exit(1)
-
-    if fmt in ("json", "dataset-jsonl", "dataset-hf"):
-        from mm.display import emit_rows
-
-        if count:
-            from mm.display import json_dumps
-
-            counts: dict[str, int] = {}
-            for r in results:
-                counts[r["path"]] = counts.get(r["path"], 0) + 1
-            if fmt == "json":
-                print(json_dumps(counts))
-            else:
-                emit_rows(fmt, [{"path": p, "count": c} for p, c in counts.items()])
-        else:
-            emit_rows(fmt, results)
-        return
-
-    if count:
-        counts = {}
-        for r in results:
-            counts[r["path"]] = counts.get(r["path"], 0) + 1
-        if fmt == "rich":
-            from rich import box
-            from rich.table import Table as RichTable
-
-            from mm.display import output_console
-
-            t = RichTable(
-                caption=f"{sum(counts.values())} matches in {len(counts)} files",
-                caption_style="dim",
-                caption_justify="right",
-                show_lines=False,
-                padding=(0, 1),
-                border_style="dim",
-                header_style="bold white",
-                box=box.ROUNDED,
-            )
-            t.add_column("file", style="white")
-            t.add_column("matches", justify="right", style="bright_blue")
-            for p, c in sorted(counts.items(), key=lambda x: -x[1]):
-                t.add_row(p, str(c))
-            output_console.print(t)
-        elif fmt == "tsv":
-            from mm.display import emit_tsv
-
-            emit_tsv(
-                [{"path": p, "count": c} for p, c in sorted(counts.items(), key=lambda x: -x[1])],
-                columns=["path", "count"],
-            )
-        elif fmt == "csv":
-            from mm.display import emit_csv
-
-            emit_csv(
-                [{"path": p, "count": c} for p, c in sorted(counts.items(), key=lambda x: -x[1])],
-                columns=["path", "count"],
-            )
-        else:
-            for p, c in sorted(counts.items()):
-                print(f"{p}:{c}")
-        return
-
-    if fmt == "rich":
-        from rich import box
-        from rich.table import Table as RichTable
-
-        from mm.display import output_console
-
-        t = RichTable(
-            caption=f"{len(results)} semantic match{'es' if len(results) != 1 else ''}",
-            caption_style="dim",
-            caption_justify="right",
-            show_lines=False,
-            padding=(0, 1),
-            border_style="dim",
-            header_style="bold white",
-            box=box.ROUNDED,
-        )
-        t.add_column("path", style="magenta", overflow="fold")
-        t.add_column("index", justify="right", style="green")
-        t.add_column("distance", justify="right", style="yellow")
-        t.add_column("match", style="white", overflow="ellipsis")
-        for r in results:
-            text = r["match"]
-            preview = text[:200] + "..." if len(text) > 200 else text
-            preview = preview.replace("\n", " ")
-            t.add_row(r["path"], str(r["index"]), f"{r['distance']:.4f}", preview)
-        output_console.print(t)
-    elif fmt == "tsv":
-        from mm.display import emit_tsv
-
-        rows = [{**r, "match": r["match"][:200].replace("\n", " ")} for r in results]
-        emit_tsv(rows, columns=["path", "index", "distance", "match"])
-    elif fmt == "csv":
-        from mm.display import emit_csv
-
-        rows = [{**r, "match": r["match"][:200].replace("\n", " ")} for r in results]
-        emit_csv(rows, columns=["path", "index", "distance", "match"])
-    else:
-        for r in results:
-            preview = r["match"][:200].replace("\n", " ")
-            print(f"{r['path']}:index{r['index']}:{r['distance']}:{preview}")

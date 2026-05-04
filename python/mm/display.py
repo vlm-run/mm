@@ -82,6 +82,10 @@ KIND_ICONS: dict[str, str] = {
 }
 
 
+def resolve_stderr(stderr: bool = False):
+    return sys.stderr if stderr else None
+
+
 def json_dumps(obj: Any, *, indent: int | None = None) -> str:
     """Serialize to JSON — compact when piped (saves tokens), pretty in TTY.
 
@@ -113,17 +117,27 @@ def resolve_format(fmt: str | None) -> str:
     return "tsv" if is_piped_output() else "rich"
 
 
-def emit_tsv(rows: list[dict], columns: list[str] | None = None) -> None:
+def emit_tsv(
+    rows: list[dict],
+    columns: list[str] | None = None,
+    *,
+    stderr: bool = False,
+) -> None:
     """Print rows as TSV with a header line."""
     if not rows:
         return
     cols = columns or list(rows[0].keys())
-    print("\t".join(cols))
+    print("\t".join(cols), file=resolve_stderr(stderr))
     for row in rows:
-        print("\t".join(str(row.get(c, "")) for c in cols))
+        print("\t".join(str(row.get(c, "")) for c in cols), file=resolve_stderr(stderr))
 
 
-def emit_csv(rows: list[dict], columns: list[str] | None = None) -> None:
+def emit_csv(
+    rows: list[dict],
+    columns: list[str] | None = None,
+    *,
+    stderr: bool = False,
+) -> None:
     """Print rows as CSV with a header line."""
     import csv
     import io
@@ -136,23 +150,44 @@ def emit_csv(rows: list[dict], columns: list[str] | None = None) -> None:
     writer.writerow(cols)
     for row in rows:
         writer.writerow(str(row.get(c, "")) for c in cols)
-    print(buf.getvalue(), end="")
+    print(buf.getvalue(), end="", file=resolve_stderr(stderr))
 
 
-def emit_rows(fmt: str, rows: list[dict], *, output_dir: str = "mm_dataset") -> None:
-    """Unified emitter for json, dataset-jsonl, and dataset-hf formats.
+def emit_rows(
+    fmt: str,
+    rows: list[dict],
+    *,
+    output_dir: str = "mm_dataset",
+    stderr: bool = False,
+) -> None:
+    """Unified emitter for json, pretty-json, dataset-jsonl, and dataset-hf formats.
 
-    Dispatches to the appropriate serializer based on *fmt*.
+    Dispatches to the appropriate serializer based on *fmt*. ``json``
+    is auto-pretty/-compact based on TTY detection (compact when piped);
+    ``pretty-json`` always indents with ``indent=2`` regardless of where
+    stdout points -- useful when piping into a markdown fence or
+    capturing into a recording file where line-broken JSON renders far
+    more readably than a single-line escape soup.
     """
+    import json
+
     if fmt == "json":
-        print(json_dumps(rows))
+        print(json_dumps(rows), file=resolve_stderr(stderr))
+    elif fmt == "pretty-json":
+        print(
+            json.dumps(rows, indent=2, default=str, ensure_ascii=False), file=resolve_stderr(stderr)
+        )
     elif fmt == "dataset-jsonl":
-        _emit_dataset_jsonl(rows)
+        _emit_dataset_jsonl(rows, stderr=stderr)
     elif fmt == "dataset-hf":
         _emit_dataset_hf(rows, output_dir=output_dir)
 
 
-def _emit_dataset_jsonl(rows: list[dict]) -> None:
+def _emit_dataset_jsonl(
+    rows: list[dict],
+    *,
+    stderr: bool = False,
+) -> None:
     """Print rows as newline-delimited JSON (one JSON object per line).
 
     Suitable for ``datasets.load_dataset("json", data_files=...)``.
@@ -160,7 +195,7 @@ def _emit_dataset_jsonl(rows: list[dict]) -> None:
     import json
 
     for row in rows:
-        print(json.dumps(row, default=str, ensure_ascii=False))
+        print(json.dumps(row, default=str, ensure_ascii=False), file=resolve_stderr(stderr))
 
 
 def _emit_dataset_hf(rows: list[dict], output_dir: str = "mm_dataset") -> None:
@@ -168,7 +203,7 @@ def _emit_dataset_hf(rows: list[dict], output_dir: str = "mm_dataset") -> None:
 
     Saves to *output_dir* and prints the path to stderr.
 
-    Requires: pip install mm[experimental]
+    Requires: pip install mm-ctx[experimental]
     """
     from pathlib import Path
 
@@ -430,7 +465,16 @@ def info_panel(stats: dict[str, Any], title: str = "mm"):
     )
 
 
-def display_elapsed(start_time: float, total_bytes: int = 0, cached: bool = False) -> None:
+def format_time(elapsed_ms: float) -> str:
+    """Format elapsed time with adaptive ms/s units"""
+    if elapsed_ms >= 1000:
+        return f"{elapsed_ms / 1000:,.1f}s"
+    return f"{elapsed_ms:,.0f}ms"
+
+
+def display_elapsed(
+    start_time: float, total_bytes: int = 0, cached: bool = False, *, prefix: str | None = None
+) -> None:
     """display elapsed time since start_time with throughput metrics.
 
     Only prints when the command completed successfully.
@@ -439,17 +483,15 @@ def display_elapsed(start_time: float, total_bytes: int = 0, cached: bool = Fals
         start_time: start time in seconds (from time.perf_counter())
         total_bytes: total bytes processed (for throughput calculation)
         cached: whether the result was served from cache
+        prefix: optional leading text (e.g. ``"took "`` for grep)
     """
     assert start_time > 0
     elapsed_ms = (perf_counter() - start_time) * 1000
     elapsed_s = elapsed_ms / 1000.0
-
-    elapsed_value = f"{elapsed_ms:,.0f}ms"
-
     output_parts: list[str] = []
     if cached:
         output_parts.append("cached")
-    output_parts.append(elapsed_value)
+    output_parts.append(format_time(elapsed_ms))
 
     if total_bytes > 0:
         size_str = format_size(total_bytes)
@@ -469,10 +511,11 @@ def display_elapsed(start_time: float, total_bytes: int = 0, cached: bool = Fals
         output_parts.append(throughput_str)
 
     output_text = " \u2022 ".join(output_parts)
+    output_text = f"{prefix} {output_text}" if prefix else output_text
     output_console.print(f"[dim]{output_text}[/dim]")
 
 
-def display_elapsed_wrapper(start_time: float):
+def display_elapsed_wrapper(start_time: float, prefix: str | None = None):
     successful = [True]
     original_exit = sys.exit
 
@@ -493,6 +536,6 @@ def display_elapsed_wrapper(start_time: float):
             except (ImportError, AttributeError):
                 pass
 
-            display_elapsed(start_time, total_bytes, cached=cached)
+            display_elapsed(start_time, total_bytes, cached, prefix=prefix)
 
     return check_exit, display_if_successful

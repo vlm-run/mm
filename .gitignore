@@ -19,6 +19,7 @@ venv/
 .benchmarks/
 benchmarks/data/
 benchmarks/criterion/
+benchmarks/universal_cli/run_results
 htmlcov/
 .coverage
 
@@ -40,9 +41,11 @@ mlx_models/
 sample_files/
 remotion-videos/
 web/
+run_results/
 
 # Secrets
 *.env.*
 
 # Local exploration logs
 mm-*-output.txt
+.claude

@@ -3,8 +3,8 @@ name: mm-skill
 description: >
   Use the mm CLI to index, explore, query, and extract content from multimodal directories
   containing images, videos, PDFs, code, and other files. Triggers: exploring a directory's contents,
-  listing/finding files by type or size, extracting text from PDFs, getting image metadata, running SQL
-  analytics on file metadata, searching across file contents, counting tokens, viewing directory trees,
+  listing/finding files by type or size, extracting text from PDFs, getting image metadata,
+  searching across file contents, counting tokens, viewing directory trees,
   extracting PDF page mosaics, video keyframe extraction, 'what files are in this folder',
   'find all images', 'show me the PDFs', 'how much storage do videos use', 'extract text from this PDF',
   'search documents for X', 'analyze this directory', 'how many tokens', 'show the tree'.
@@ -12,7 +12,7 @@ description: >
 
 # mm CLI
 
-`mm` is a high-performance multimodal context management CLI. It indexes directories instantly (~60ms for 700 files), then exposes Unix-style commands for exploring, querying, and extracting content from images, videos, PDFs, code, and other files.
+`mm` is a Fast, multimodal context for agents. It indexes directories instantly (~60ms for 700 files), then exposes Unix-style commands for exploring, querying, and extracting content from images, videos, PDFs, code, and other files.
 
 Always use `--format json` for machine-readable output when parsing results programmatically.
 
@@ -20,7 +20,9 @@ Always use `--format json` for machine-readable output when parsing results prog
 
 ```bash
 # First run `mm --help` or `mm --version` to confirm mm isn't already installed
+pip install mm-ctx
 
+# Alternative: shell installer
 # macOS / Linux
 curl -LsSf https://vlm-run.github.io/mm/install/install.sh | sh
 
@@ -35,19 +37,17 @@ irm https://vlm-run.github.io/mm/install/install.ps1 | iex
 | `find`    | Locate/list files by name/kind/ext/size, tabular listing, tree view, schema |
 | `cat`     | Content extraction (auto-detected by file type × mode)                      |
 | `grep`    | Content search — text and semantic (via embeddings)                         |
-| `sql`     | SQL on files, results, and chunks (auto-routed)                             |
 | `wc`      | Count files, bytes, lines, tokens                                           |
 | `bench`   | Benchmark suite with statistical analysis                                   |
-| `config`  | Extraction mode settings (show, init, set, reset-db)                        |
+| `config`  | Extraction mode settings (show, init, set, reset-db, reset-profiles, reset) |
 | `profile` | Manage LLM provider profiles (list, add, update, use, remove)               |
 
 ## Workflow
 
 1. Start with `mm find <dir> --tree --depth 1` to see the directory structure.
 2. Use `mm wc <dir> --by-kind` to estimate token counts for LLM context budgeting.
-3. Use `mm find <dir> --schema` to see available columns before writing SQL.
-4. Explore with `find`, `sql`, `grep`, `cat` as needed.
-5. Use `mm cat <file> -m accurate` for LLM-powered descriptions.
+3. Explore with `find`, `grep`, `cat` as needed.
+4. Use `mm cat <file> -m accurate` for LLM-powered descriptions.
 
 ## find — locate files, tabular listing, tree view, schema
 
@@ -58,6 +58,7 @@ mm find <dir> --kind document                        # all PDFs/docs
 mm find <dir> --kind audio                           # audio files
 mm find <dir> --name "test_.*\.py"                   # filter by name (regex)
 mm find <dir> -n config                              # filter by name (substring)
+mm find <dir> -n CONFIG -i                           # case-insensitive name match
 mm find <dir> --ext .png,.webp                       # by extension
 mm find <dir> --min-size 1mb --max-size 10mb         # by size range
 mm find <dir> --kind image --limit 5 --format json   # JSON output, capped
@@ -90,52 +91,62 @@ mm find <dir> --no-ignore --tree                      # tree including ignored d
 
 Columns in the `files` table:
 
-| Column    | Type      | Description                                                                      |
-| --------- | --------- | -------------------------------------------------------------------------------- |
-| path      | string    | Relative path from scan root                                                     |
-| name      | string    | File name with extension                                                         |
-| stem      | string    | File name without extension                                                      |
-| ext       | string    | Extension including dot (`.png`, `.pdf`)                                         |
-| size      | uint64    | File size in bytes                                                               |
-| modified  | timestamp | Last modification time                                                           |
-| created   | timestamp | Creation time                                                                    |
-| mime      | string    | MIME type (`image/png`, `application/pdf`)                                       |
-| kind      | string    | `image`, `video`, `document`, `code`, `audio`, `data`, `config`, `text`, `other` |
-| is_binary | bool      | Whether file is binary                                                           |
-| depth     | uint16    | Directory depth (0 = top-level)                                                  |
-| parent    | string    | Parent directory path                                                            |
-| width     | uint32    | Pixel width (images only, null otherwise)                                        |
-| height    | uint32    | Pixel height (images only, null otherwise)                                       |
+| Column    | Type      | Description                                                                       |
+| --------- | --------- | --------------------------------------------------------------------------------- |
+| path      | string    | Relative path from scan root                                                      |
+| name      | string    | File name with extension                                                          |
+| stem      | string    | File name without extension                                                       |
+| ext       | string    | Extension including dot (`.png`, `.pdf`)                                          |
+| size      | uint64    | File size in bytes                                                                |
+| modified  | timestamp | Last modification time                                                            |
+| created   | timestamp | Creation time                                                                     |
+| mime      | string    | MIME type (`image/png`, `application/pdf`)                                        |
+| kind      | string    | `image`, `video`, `document`, `code`, `audio`, `data`, `config`, `text`, `other`  |
+| is_binary | bool      | Whether file is binary                                                            |
+| depth     | uint16    | Directory depth (0 = top-level)                                                   |
+| parent    | string    | Parent directory path                                                             |
+| width     | uint32    | Pixel width (images from header, videos via native parsing). Null for non-media.  |
+| height    | uint32    | Pixel height (images from header, videos via native parsing). Null for non-media. |
 
 ## cat — content extraction (pipeline-driven)
 
-Behaviour is auto-detected from file type. Default `--mode fast` runs local extraction (no LLM). Use `-m accurate` for LLM-powered descriptions.
+Behaviour is auto-detected from file type. `--mode` is one of:
+
+- `metadata` (default) — local, cheap extraction, no LLMs.
+- `fast` — kind's fast pipeline (image/video uses short VLM captioning; audio uses ffmpeg+whisper, document/code are local-only passthrough).
+- `accurate` — LLM-heavy pipeline.
 
 ```bash
-# Fast mode (default) — local extraction, no LLM
+# metadata mode (default) — local extraction, no LLM
 mm cat <file>                                       # text/metadata extraction
 mm cat photo.png                                    # image metadata (dims, MIME, hash, EXIF)
 mm cat video.mp4                                    # video metadata (resolution, duration, codecs)
 mm cat paper.pdf                                    # text extraction via pypdfium2
 
+# Fast mode — runs the kind's fast pipeline
+mm cat photo.png -m fast                            # short VLM caption
+mm cat video.mp4 -m fast                            # mosaic → short VLM description
+mm cat audio.mp3 -m fast                            # Whisper transcript only (no LLM)
+mm cat paper.pdf -m fast                            # PDF text only (no LLM)
+
 # Accurate mode — LLM-powered descriptions
-mm cat photo.png -m accurate                        # VLM caption
+mm cat photo.png -m accurate                        # VLM caption + tags + objects
 mm cat video.mp4 -m accurate                        # mosaic → VLM description
 mm cat audio.mp3 -m accurate                        # transcript → LLM summary
 mm cat paper.pdf -m accurate                        # text → LLM summary
 
-# Head / tail
+# Head / tail (all modes)
 mm cat <file> -n 20                                 # first 20 lines
 mm cat <file> -n -10                                # last 10 lines
 
-# Cache control
-mm cat <file> --no-cache                            # bypass cache, force fresh run
+# Cache control (applies to fast/accurate; metadata tier always served from `files`)
+mm cat <file> -m accurate --no-cache                # bypass cache, force fresh run
 
 # Output formats
 mm cat <file> --format json                          # JSON output
 ```
 
-Fast mode behavior by file type (<100ms target):
+`metadata` mode behavior by file type (<100ms target):
 
 - **PDF** (.pdf): text extraction via pypdfium2. Scanned/image-only PDFs return empty.
 - **Document** (.docx, .pptx): text extraction.
@@ -145,25 +156,29 @@ Fast mode behavior by file type (<100ms target):
 
 ## cat -p — named encoders and pipeline YAMLs
 
-The `-p` / `--pipeline` flag accepts either a registered encoder name or a YAML file path.
+The `-p` / `--pipeline` flag accepts either a registered encoder name or a YAML file path. `-p` only takes effect when `--mode fast` or `--mode accurate` is also passed; the default `--mode metadata` skips the pipeline.
 
 ```bash
 # Named encoder (encodes media into VLM-ready JSON messages)
-mm cat photo.png -p image-resize              # Fit to 1024px, base64 encode
-mm cat photo.png -p image-tile                # Resized overview + all tiles in one Message
-mm cat video.mp4 -p video-frame-sample        # Extract frames at 1fps
-mm cat video.mp4 -p video-chunk               # Chunk into 60s segments
-mm cat doc.pdf  -p document-rasterize         # Render pages as images
-mm cat doc.pdf  -p document-rasterize-text    # Rasterize + extract text
+mm cat photo.png -m fast -p image-resize              # Fit to 1024px, base64 encode
+mm cat photo.png -m accurate -p image-tile            # Resized overview + all tiles in one Message
+mm cat video.mp4 -m fast -p video-frame-sample        # Extract frames at 1fps
+mm cat video.mp4 -m fast -p video-chunk               # Chunk into 60s segments
+mm cat doc.pdf  -m accurate -p document-rasterize     # Render pages as images
+mm cat doc.pdf  -m accurate -p document-rasterize-text # Rasterize + extract text
 
 # YAML pipeline file
-mm cat photo.png -p custom-pipeline.yaml
+mm cat photo.png -m accurate -p custom-pipeline.yaml
 
 # Multiple pipelines (dispatched by kind field in YAML)
-mm cat *.jpg *.mp4 -p image.yaml -p video.yaml
+mm cat *.jpg *.mp4 -m accurate -p image.yaml -p video.yaml
 
 # List available encoders and pipelines
 mm cat --list-pipelines
+mm cat --list-encoders
+
+# Print a built-in pipeline's YAML source (e.g., as a starting point for a custom pipeline)
+mm cat --print-pipeline image/accurate          # takes <kind>/<mode>
 ```
 
 ### Built-in encoders
@@ -235,9 +250,26 @@ Pipelines are 2-stage YAMLs: **encode** (convert to LLM-ready parts) → **gener
 
 ### Encode overrides (--encode.\*)
 
+`--encode.*` overrides only apply when `-m fast` or `-m accurate` is also passed; the default `-m metadata` skips the pipeline.
+
 ```bash
 mm cat photo.png -m accurate --encode.strategy image-tile      # override encoder
 mm cat photo.png -m accurate --encode.pyfunc ~/my_filter.py    # custom transform
+
+# Override individual strategy_opts entries. KEY=VALUE form, repeatable.
+# Values are coerced to int/float/bool when possible (e.g. max_width=768 → int).
+mm cat photo.png -m accurate --encode.strategy_opts max_width=768
+mm cat video.mp4 -m accurate --encode.strategy_opts max_width=768 --encode.strategy_opts fps=5
+```
+
+### Inspecting pipelines (--print-pipeline)
+
+Print the raw YAML of a built-in pipeline to stdout — useful as a starting point
+for a custom pipeline in `~/.config/mm/pipelines/{kind}/{mode}.yaml`.
+
+```bash
+mm cat --print-pipeline image/accurate           # takes <kind>/<mode>
+mm cat --print-pipeline video/fast
 ```
 
 ### Generate overrides (--generate.\*)
@@ -398,34 +430,12 @@ mm grep "TODO" <dir> --ignore-case --kind code         # case-insensitive in cod
 mm grep "secret" <dir> --no-ignore                     # search gitignored files too
 
 # Semantic search (vector similarity via embeddings)
-mm grep "financial projections" <dir>                  # semantic search across all files
-mm grep "architecture overview" <dir> --format json    # JSON output with distances
-mm grep "revenue forecast" <dir> --index               # auto-index unindexed files before search
+mm grep "financial projections" <dir> -s               # semantic search across all files
+mm grep "architecture overview" <dir> -s --format json # JSON with distances
+mm grep "revenue forecast" <dir> -s --pre-index        # auto-index unindexed files before search
 ```
 
 **Warning**: grep runs extraction on every matching file. On large document directories (500+ PDFs), this can take minutes. Prefer `--kind code` or `--kind text` for fast text searches.
-
-## sql — SQL queries on files, results, and chunks
-
-Four tables available. Table is auto-detected from the `FROM` clause:
-
-- `files` — file metadata (via `--dir`, or persistent SQLite)
-- `l2_results` — LLM-generated summaries (persistent SQLite)
-- `chunks` — chunked content (persistent SQLite)
-- `chunks_vec` — embedding vectors for semantic search (sqlite-vec virtual table)
-
-```bash
-# File metadata (scan + SQLite)
-mm sql "SELECT kind, COUNT(*) as n, ROUND(SUM(size)/1e6,1) as mb FROM files GROUP BY kind ORDER BY mb DESC" --dir <dir>
-mm sql "SELECT * FROM files WHERE kind='document'" --dir <dir> --format json
-
-# LLM results (SQLite direct)
-mm sql "SELECT file_uri, profile, model, summary FROM l2_results LIMIT 10"
-mm sql "SELECT COUNT(*) as n FROM l2_results"
-
-# List available tables
-mm sql --list-tables
-```
 
 ## bench — benchmark suite
 
@@ -445,6 +455,8 @@ mm config init --force                          # overwrite existing config
 mm config set mode.fast.whisper_model tiny       # set a config value
 mm config set mode.accurate.beam_size 5          # set a config value
 mm config reset-db                              # delete all databases and caches
+mm config reset-profiles                        # restore profiles to defaults
+mm config reset                                 # reset everything (db + profiles)
 ```
 
 ## profile — LLM provider management
@@ -487,15 +499,13 @@ mm find <dir> --kind video --format json | jq '.[].name'  # extract video names
 ## Tips
 
 - All metadata commands (`find`, `wc`) run in ~60ms via the Rust fast path.
-- `sql` on stored tables runs in ~100-180ms; `files` queries are ~1.2s (includes scan).
 - Start with `find --tree --depth 1` then `wc --by-kind` for the fastest directory overview.
 - Use `--format json` when you need to parse output programmatically.
 - `find` returns paths only when piped, else it returns full metadata rows.
-- `sql` is the most powerful command — queries auto-route to in-memory SQLite (`files`) or persistent SQLite. Use `--list-tables` to see available tables.
 - For PDFs, `cat` extracts text in fast mode; if empty, the PDF contains scanned images only.
 - For videos, `mm cat video.mp4 -m accurate` auto-generates keyframe mosaics and sends to LLM.
-- Use `--mode fast` for quick metadata/text extraction (default), `--mode accurate` for LLM descriptions.
-- Use `--no-cache` with `-m accurate` to force a fresh LLM call.
-- Use `-p` to load custom pipeline YAMLs or named encoders; CLI overrides layer on top.
-- Use `--encode.pyfunc` to inject custom Python transforms.
+- `--mode metadata` (default) is the no-LLM local extraction. Use `--mode fast` for the kind's fast pipeline (image/video include a short LLM caption) and `--mode accurate` for the LLM-heavy pipeline.
+- Use `--no-cache` with `-m accurate` (or `-m fast` when the pipeline calls an LLM) to force a fresh LLM call.
+- Use `-p` to load custom pipeline YAMLs or named encoders; combine with `-m fast` or `-m accurate` (default `-m metadata` skips the pipeline). CLI overrides layer on top.
+- Use `--encode.pyfunc` to inject custom Python transforms (also requires `-m fast`/`-m accurate`).
 - Use `--list-pipelines` to see all available encoders and built-in pipelines.

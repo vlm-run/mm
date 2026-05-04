@@ -1,7 +1,7 @@
 """Semantic search — check indexing status, index on demand, then KNN query.
 
-Used by `mm grep --level|-l 2` to search inside files using vector similarity
-over the persisted chunks table.
+Used by `mm grep` to automatically search inside binary files (images, video,
+audio, documents) using vector similarity over the persisted chunks table.
 """
 
 from __future__ import annotations
@@ -10,11 +10,10 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from typing import Any
 
-import typer
-
 from mm.utils import batch_array
 
-MAX_INDEX = 50
+MAX_INDEX = 25
+INDEX_TIMEOUT_S = 300
 
 
 def check_indexed(uris: list[str]) -> tuple[set[str], list[str]]:
@@ -52,17 +51,17 @@ def _index_one(uri: str) -> str | None:
 
     Returns the URI on success, or ``None`` on failure (missing file,
     extractor error, or embed failure). Accurate-mode extraction writes
-    to the ``l2_results`` + ``chunks`` + ``chunks_vec`` tables as a
+    to the ``extractions`` + ``chunks`` + ``chunks_vec`` tables as a
     side effect of ``_run_accurate``.
     """
-    from mm.commands.cat import _CatOpts, _run_accurate
-    from mm.utils import file_kind
+    from mm.cat_utils.base_utils import CatOpts
+    from mm.commands.cat import _extract
 
     path = Path(uri)
     if not path.exists():
         return None
 
-    opts = _CatOpts(
+    opts = CatOpts(
         n=None,
         output_dir=None,
         mode="accurate",
@@ -71,10 +70,11 @@ def _index_one(uri: str) -> str | None:
         encode_overrides={},
         generate_overrides={},
         pipelines={},
+        verbose=False,
     )
 
     try:
-        result = _run_accurate(path, file_kind(path), opts)
+        result = _extract(path, opts)
         if result and not result.startswith("["):
             return uri
         raise ValueError(f"Accurate extraction failed for {uri}: {result}")
@@ -85,30 +85,58 @@ def _index_one(uri: str) -> str | None:
         return None
 
 
-def index_missing(missing: list[str], *, max_files: int = MAX_INDEX) -> int:
+def index_missing(missing: list[str]) -> int:
     """Index up to *max_files* URIs in parallel. Returns count of successfully indexed files."""
     from mm.display import console
+    from mm.encoders import _ensure_discovered
 
-    to_index = missing[:max_files]
-    if len(missing) > max_files:
-        console.print(
-            f"[yellow]Note:[/yellow] Indexing {max_files} of {len(missing)} unindexed files."
-        )
-    else:
-        console.print(
-            f"[dim]Indexing {len(to_index)} file{'s' if len(to_index) != 1 else ''}...[/dim]"
-        )
+    _ensure_discovered()
 
-    workers = min(4, len(to_index))
-    indexed = 0
-    with ThreadPoolExecutor(max_workers=workers) as pool:
+    to_index = missing[:MAX_INDEX]
+    total = len(to_index)
+    if len(missing) > MAX_INDEX:
+        console.print(
+            f"[yellow]Note:[/yellow] {MAX_INDEX} of {len(missing)} unindexed files will be indexed."
+        )
+    console.print(
+        f"[dim]Indexing {total} file{'s' if total != 1 else ''} "
+        f"(timeout: {INDEX_TIMEOUT_S}s)...[/dim]"
+    )
+
+    workers = min(4, total)
+    successful = 0
+    completed = 0
+    timed_out = False
+
+    pool = ThreadPoolExecutor(max_workers=workers)
+    try:
         futures = {pool.submit(_index_one, uri): uri for uri in to_index}
-        for fut in as_completed(futures):
-            if fut.result() is not None:
-                indexed += 1
+        try:
+            for fut in as_completed(futures, timeout=INDEX_TIMEOUT_S):
+                if fut.result() is not None:
+                    successful += 1
+                completed += 1
+                console.print(f"[dim]  {completed}/{total} done...[/dim]")
+        except TimeoutError:
+            timed_out = True
+            pending = [futures[f] for f in futures if not f.done()]
+            console.print(
+                f"[yellow]Warning:[/yellow] indexing hit the {INDEX_TIMEOUT_S}s timeout; "
+                f"{len(pending)} file{'s' if len(pending) != 1 else ''} did not finish. "
+                f"Continuing the search with {successful} indexed file"
+                f"{'s' if successful != 1 else ''}."
+            )
+            for uri in pending:
+                console.print(f"[dim]  skipped: {uri}[/dim]")
+    finally:
+        pool.shutdown(wait=not timed_out, cancel_futures=True)
 
-    console.print(f"[green]Indexed {indexed} file{'s' if indexed != 1 else ''}.[/green]")
-    return indexed
+    if not timed_out:
+        console.print(f"[green]Indexed {successful} file{'s' if successful != 1 else ''}.[/green]")
+    return successful
+
+
+SEMANTIC_MAX_DISTANCE = 1.0
 
 
 def search(
@@ -117,7 +145,9 @@ def search(
     uri: str | None = None,
     uri_prefix: str | None = None,
     limit=5,
-    max_distance=1.0,
+    max_distance=SEMANTIC_MAX_DISTANCE,
+    kind: str | None = None,
+    ext: str | None = None,
 ) -> list[dict[str, Any]]:
     """Embed query string and run KNN search, scoped by URI or prefix."""
     from mm.store.db import MmDatabase
@@ -133,7 +163,8 @@ def search(
     elif uri_prefix:
         where = f"c.file_uri LIKE '{uri_prefix.replace(chr(39), chr(39) * 2)}%'"
 
-    raw = MmDatabase().search_similar(vectors[0], limit=limit * 2, where=where)
+    fetch_limit = max(limit * 10, 100) if (kind or ext) else limit * 2
+    raw = MmDatabase().search_similar(vectors[0], limit=fetch_limit, where=where)
     results = [
         {
             "path": r["file_uri"],
@@ -144,46 +175,169 @@ def search(
         for r in raw
         if r.get("distance", float("inf")) <= max_distance
     ]
+
+    if raw and not results:
+        from mm.display import console
+
+        closest = min(r.get("distance", float("inf")) for r in raw)
+        console.print(
+            f"[dim]Semantic search: {len(raw)} candidate(s) found but all exceeded "
+            f"the distance cutoff ({max_distance}). Closest was {closest:.3f}.[/dim]"
+        )
+
+    if kind:
+        from mm.utils import file_kind_with_code
+
+        kinds = {k.strip() for k in kind.split(",")}
+        results = [res for res in results if file_kind_with_code(Path(res["path"])) in kinds]
+    if ext:
+        exts = tuple(e.strip().lower() for e in ext.split(","))
+        results = [res for res in results if res["path"].lower().endswith(exts)]
     results = sorted(results, key=lambda r: r["distance"])
     return results[:limit]
 
 
 def handle_missing(
     uris: list[str],
+    *,
+    do_index: bool = False,
+    cmd_hint: str | None = None,
+    quiet: bool = False,
+) -> bool:
+    """Check indexing status, optionally index, and warn about missing files.
+
+    Args:
+        uris: File URIs to check.
+        do_index: If True, index missing files (up to MAX_INDEX).
+        cmd_hint: Command string to show the user for manual indexing.
+        quiet: Suppress warning output (useful for structured output formats).
+
+    Returns:
+        True if at least some files are indexed (safe to search), False otherwise.
+    """
+    _, missing = check_indexed(uris)
+    if not missing:
+        return True
+
+    if do_index:
+        index_missing(missing)
+        return True
+
+    if not quiet:
+        from mm.display import console
+
+        console.print(
+            f"[yellow]Warning:[/yellow] {len(missing)} of {len(uris)} files are not indexed."
+        )
+        if cmd_hint:
+            console.print(f"[dim]To index missing files, run:\n  [bold]{cmd_hint}[/bold][/dim]")
+
+    return len(missing) < len(uris)
+
+
+def build_hint_cmd(
     pattern: str,
     directory: Path,
     kind: str | None,
     ext: str | None,
-    do_index=False,
-):
-    """Handle missing indexed files: optionally index, or show instructions to the user."""
-    from mm.semantic import check_indexed, index_missing
-
-    indexed, missing = check_indexed(uris)
-    if not missing:
-        return
-
-    if missing and do_index:
-        index_missing(missing, max_files=50)
-        return
-
-    from mm.display import console
-
-    # Build the equivalent command for the user to copy
-    cmd_parts = ["mm grep"]
-    cmd_parts.append(f'"{pattern}"')
-    cmd_parts.append(str(directory))
+    ignore_case: bool = False,
+) -> str:
+    """Reconstruct the user's grep command with ``-s --pre-index`` appended."""
+    parts = ["mm grep", f'"{pattern}"', str(directory)]
     if kind:
-        cmd_parts.append(f"--kind {kind}")
+        parts.append(f"--kind {kind}")
     if ext:
-        cmd_parts.append(f"--ext {ext}")
-    cmd_parts.append("--level 2 --index")
+        parts.append(f"--ext {ext}")
+    if ignore_case:
+        parts.append("--ignore-case")
+    parts.append("-s --pre-index")
+    return " ".join(parts)
 
-    console.print(f"[yellow]Warning:[/yellow] {len(missing)} of {len(uris)} files are not indexed.")
-    if not indexed:
-        console.print(
-            f"[dim]No indexed files found. Index them first:[/dim]\n"
-            f"  [bold]{' '.join(cmd_parts)}[/bold]"
+
+def grep_semantic(
+    pattern: str,
+    directory: Path,
+    kind: str | None,
+    ext: str | None,
+    limit: int,
+    stdin_paths: list[str] | None = None,
+    no_ignore: bool = False,
+    do_index: bool = False,
+    quiet: bool = False,
+    cmd_hint: str | None = None,
+) -> list[dict]:
+    """Semantic search via embeddings.
+
+    Only considers binary files (image, video, audio, document) — text and
+    code files are handled by the normal regex grep path.
+
+    Warns the user about missing indexes via stderr. Returns a list of
+    semantic match dicts (path, index, distance, match).
+    """
+    from mm.context import Context
+    from mm.utils import file_kind, is_binary_content
+
+    path = directory.resolve()
+    is_file = path.is_file()
+
+    if stdin_paths:
+        all_uris = [str(Path(p).resolve()) for p in stdin_paths if Path(p).is_file()]
+    elif is_file:
+        all_uris = [str(path)]
+    else:
+        ctx = Context(directory, no_ignore=no_ignore)
+        if kind:
+            ctx = ctx.filter(kind=kind)
+        if ext:
+            ctx = ctx.filter(ext=ext)
+        all_uris = [str(path / f.path) for f in ctx.files]
+
+    uris = [u for u in all_uris if is_binary_content(kind=file_kind(u))]
+    if not uris:
+        return []
+
+    # Reconcile DB → disk: drop indexed rows whose files no longer exist.
+    from mm.store.utils import prune_missing
+
+    if not is_file:
+        prune_missing(prefix=str(path), disk_uris=set(all_uris))
+    else:
+        prune_missing(uris=[str(path)])
+
+    has_indexed = handle_missing(
+        uris,
+        do_index=do_index,
+        cmd_hint=cmd_hint,
+        quiet=quiet,
+    )
+    if not has_indexed:
+        return []
+
+    if stdin_paths:
+        results: list[dict] = []
+        uri_prefixes = [str(Path(p).resolve()) for p in stdin_paths if not Path(p).is_file()]
+
+        for uri_prefix in uri_prefixes:
+            results.extend(
+                search(
+                    pattern,
+                    uri_prefix=uri_prefix,
+                    limit=limit,
+                    kind=kind,
+                    ext=ext,
+                )
+            )
+
+        results.sort(key=lambda r: r["distance"])
+        results = results[:limit]
+    else:
+        results = search(
+            pattern,
+            uri=str(path) if is_file else None,
+            uri_prefix=str(path) if not is_file else None,
+            limit=limit,
+            kind=kind,
+            ext=ext,
         )
-        raise typer.Exit(1)
-    console.print(f"[dim]To index missing files, run:[/dim]\n  [bold]{' '.join(cmd_parts)}[/bold]")
+
+    return results

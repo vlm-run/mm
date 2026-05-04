@@ -2,7 +2,7 @@ kind: video
 mode: accurate
 
 encode:
-  strategy: frames-transcript
+  strategy: video-frames-w-transcript
   strategy_opts:
     fps: 1.0
     max_width: 1024
@@ -24,7 +24,7 @@ generate:
 
     Use this format:
     ## Summary
-    <detailed analysis>
+    {{detailed analysis}}
 
     ## Tags
     - tag1
@@ -32,7 +32,7 @@ generate:
     ...
 
     ## Scenes
-    - Scene 1: <description>
-    - Scene 2: <description>
+    - Scene 1: {{description}}
+    - Scene 2: {{description}}
     ...
   max_tokens: 1536

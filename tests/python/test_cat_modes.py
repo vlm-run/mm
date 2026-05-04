@@ -1,19 +1,16 @@
-"""Tests for --mode fast/accurate pipeline-driven extraction in cat command."""
+"""Tests for --mode metadata/fast/accurate dispatch in the cat command."""
 
 from __future__ import annotations
 
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-from mm.commands.cat import (
-    _CatOpts,
-    _extract,
-    _run_fast,
-)
+from mm.cat_utils.base_utils import CatMode, CatOpts, RunResult
+from mm.commands.cat import _extract, _run_fast
 from mm.utils import DOCUMENT_EXTS, file_kind
 
 
-def _make_opts(mode: str = "fast", **overrides: object) -> _CatOpts:
+def _make_opts(mode: CatMode, **overrides: object) -> CatOpts:
     defaults: dict[str, object] = dict(
         n=None,
         output_dir=None,
@@ -26,21 +23,21 @@ def _make_opts(mode: str = "fast", **overrides: object) -> _CatOpts:
         verbose=False,
     )
     defaults.update(overrides)
-    return _CatOpts(**defaults)
+    return CatOpts(**defaults)
 
 
 def _mock_cache_miss():
-    """Context manager stack that mocks the L2 cache infrastructure to always miss."""
+    """Context manager stack that mocks the extractions cache to always miss."""
     mock_db = MagicMock()
-    mock_db.get_l2.return_value = None
+    mock_db.get_extraction.return_value = None
     mock_profile = MagicMock()
     mock_profile.name = "test"
     mock_profile.model = "test-model"
     return (
-        patch("mm.store.util.get_content_hash", return_value="fakehash"),
+        patch("mm.store.utils.get_content_hash", return_value="fakehash"),
         patch("mm.store.db.MmDatabase", return_value=mock_db),
         patch("mm.profile.get_profile", return_value=mock_profile),
-        patch("mm.store.util.get_l2_id", return_value="fake_l2_id"),
+        patch("mm.store.utils.get_extraction_id", return_value="fake_extraction_id"),
     )
 
 
@@ -84,7 +81,10 @@ class TestDocumentExts:
 
 
 class TestCatOptsMode:
-    """Test that _CatOpts carries the mode parameter."""
+    """Test that CatOpts carries the mode parameter."""
+
+    def test_mode_metadata(self):
+        assert _make_opts(mode="metadata").mode == "metadata"
 
     def test_mode_fast(self):
         assert _make_opts(mode="fast").mode == "fast"
@@ -102,37 +102,87 @@ class TestExtractDispatch:
         result = _extract(f, _make_opts("fast"))
         assert "hello world" in result
 
+    def test_metadata_image_short_circuits_pipeline(self, tmp_path):
+        """`-m metadata` returns extract_meta output and never resolves a pipeline."""
+        f = tmp_path / "test.jpg"
+        f.write_bytes(b"\xff\xd8\xff" + b"\x00" * 100)
+        with (
+            patch("mm.commands.cat._run_fast") as fast_mock,
+            patch("mm.commands.cat._run_accurate") as accurate_mock,
+            patch("mm.commands.cat.extract_meta", return_value="local-image-meta") as local_mock,
+        ):
+            result = _extract(f, _make_opts("metadata"))
+        assert result == "local-image-meta"
+        local_mock.assert_called_once_with(f, "image", no_cache=False)
+        fast_mock.assert_not_called()
+        accurate_mock.assert_not_called()
+
+    def test_metadata_text_short_circuits_pipeline(self, tmp_path):
+        """Text files return extract_meta output under any mode (kind='text' branch)."""
+        f = tmp_path / "test.txt"
+        f.write_text("hello world")
+        with (
+            patch("mm.commands.cat._run_fast") as fast_mock,
+            patch("mm.commands.cat._run_accurate") as accurate_mock,
+        ):
+            result = _extract(f, _make_opts("metadata"))
+        assert "hello world" in result
+        fast_mock.assert_not_called()
+        accurate_mock.assert_not_called()
+
     def test_fast_image_dispatch(self, tmp_path):
+        from mm.pipelines.schema import PipelineSpec
+
         f = tmp_path / "test.jpg"
         f.write_bytes(b"\xff\xd8\xff" + b"\x00" * 100)
         cm1, cm2, cm3, cm4 = _mock_cache_miss()
         with cm1, cm2, cm3, cm4, patch("mm.commands.cat._run_fast") as mock:
-            mock.return_value = "mocked fast result"
+            mock.return_value = RunResult(content="mocked fast result")
             opts = _make_opts("fast")
             result = _extract(f, opts)
-            mock.assert_called_once_with(f, "image", opts)
+            # _extract now resolves+merges the pipeline once and forwards it.
+            assert mock.call_count == 1
+            args, kwargs = mock.call_args
+            assert args[0] == f
+            assert args[1] == "image"
+            assert isinstance(args[2], PipelineSpec)
+            assert args[3] is opts
             assert result == "mocked fast result"
 
     def test_accurate_image_dispatch(self, tmp_path):
+        from mm.pipelines.schema import PipelineSpec
+
         f = tmp_path / "test.jpg"
         f.write_bytes(b"\xff\xd8\xff" + b"\x00" * 100)
         cm1, cm2, cm3, cm4 = _mock_cache_miss()
         with cm1, cm2, cm3, cm4, patch("mm.commands.cat._run_accurate") as mock:
-            mock.return_value = "mocked accurate result"
+            mock.return_value = RunResult(content="mocked accurate result")
             opts = _make_opts("accurate")
             result = _extract(f, opts)
-            mock.assert_called_once_with(f, "image", opts)
+            assert mock.call_count == 1
+            args, _ = mock.call_args
+            assert args[0] == f
+            assert args[1] == "image"
+            assert isinstance(args[2], PipelineSpec)
+            assert args[3] is opts
             assert result == "mocked accurate result"
 
     def test_accurate_document_dispatch(self, tmp_path):
+        from mm.pipelines.schema import PipelineSpec
+
         f = tmp_path / "test.pdf"
         f.write_bytes(b"%PDF-1.4 fake")
         cm1, cm2, cm3, cm4 = _mock_cache_miss()
         with cm1, cm2, cm3, cm4, patch("mm.commands.cat._run_accurate") as mock:
-            mock.return_value = "summary of document"
+            mock.return_value = RunResult(content="summary of document")
             opts = _make_opts("accurate")
             result = _extract(f, opts)
-            mock.assert_called_once_with(f, "document", opts)
+            assert mock.call_count == 1
+            args, _ = mock.call_args
+            assert args[0] == f
+            assert args[1] == "document"
+            assert isinstance(args[2], PipelineSpec)
+            assert args[3] is opts
             assert result == "summary of document"
 
 
@@ -140,7 +190,79 @@ class TestRunFastTextPassthrough:
     """Code/text/config files have no pipeline — fast mode reads raw content."""
 
     def test_text_passthrough(self, tmp_path):
+        from mm.pipelines.schema import PipelineSpec
+
         f = tmp_path / "test.txt"
         f.write_text("hello world")
-        result = _run_fast(f, "text", _make_opts("fast"))
-        assert "hello world" in result
+        # text kind returns local meta immediately; spec is required by the new
+        # signature but the body is irrelevant on the text branch.
+        empty_spec = PipelineSpec(kind="text", mode="fast")
+        result = _run_fast(f, "text", empty_spec, _make_opts("fast"))
+        assert "hello world" in result.content
+
+
+class TestVerboseCacheReplay:
+    """The headline fix for PR #100: ``--verbose`` no longer invalidates the cache.
+
+    On a cache miss, the rendered verbose suffix is persisted alongside the
+    extraction. On a subsequent cached run with ``verbose=True``, the suffix
+    is read back and appended without re-invoking the underlying pipeline.
+    """
+
+    def _isolated_db(self, tmp_path: Path, monkeypatch):
+        from mm.store.db import MmDatabase
+
+        db_path = tmp_path / "mm.db"
+        monkeypatch.setattr(MmDatabase, "DB_PATH", db_path)
+        monkeypatch.setattr(MmDatabase, "DB_DIR", tmp_path)
+        return db_path
+
+    def test_cached_verbose_replays_suffix_without_rerun(self, tmp_path, monkeypatch):
+        self._isolated_db(tmp_path, monkeypatch)
+
+        f = tmp_path / "photo.jpg"
+        f.write_bytes(b"\xff\xd8\xff" + b"\x00" * 100)
+
+        suffix = "[dim]generate: ollama • 1.2s • 100→50 tokens[/dim]"
+        run_call_count = {"n": 0}
+
+        def fake_run_fast(_path, _kind, _spec, _opts):
+            run_call_count["n"] += 1
+            return RunResult(content="cached body", verbose_suffix=suffix)
+
+        # Cold run with verbose=False → populates cache + metadata.
+        with patch("mm.commands.cat._run_fast", side_effect=fake_run_fast):
+            cold = _extract(f, _make_opts("fast", verbose=False))
+        assert cold == "cached body"
+        assert run_call_count["n"] == 1
+
+        # Warm run with verbose=True → cache hit, suffix replayed, no re-run.
+        with patch(
+            "mm.commands.cat._run_fast",
+            side_effect=AssertionError("should not be called on cache hit"),
+        ):
+            warm = _extract(f, _make_opts("fast", verbose=True))
+        assert warm == f"cached body\n\n{suffix}"
+        assert run_call_count["n"] == 1
+
+    def test_cached_non_verbose_omits_suffix(self, tmp_path, monkeypatch):
+        self._isolated_db(tmp_path, monkeypatch)
+
+        f = tmp_path / "photo.jpg"
+        f.write_bytes(b"\xff\xd8\xff" + b"\x00" * 100)
+
+        suffix = "[dim]generate: ollama • 0.5s • 10→5 tokens[/dim]"
+
+        def fake_run_fast(_path, _kind, _spec, _opts):
+            return RunResult(content="cached body", verbose_suffix=suffix)
+
+        with patch("mm.commands.cat._run_fast", side_effect=fake_run_fast):
+            _extract(f, _make_opts("fast", verbose=True))
+
+        # Even though metadata was stored, a verbose=False reader gets only content.
+        with patch(
+            "mm.commands.cat._run_fast",
+            side_effect=AssertionError("should not be called on cache hit"),
+        ):
+            warm = _extract(f, _make_opts("fast", verbose=False))
+        assert warm == "cached body"

@@ -22,6 +22,9 @@ from typing import Any
 
 from openai import OpenAI
 
+from mm.pipelines.schema import PipelineSpec
+from mm.utils import BinaryFileKind
+
 
 @dataclass
 class LlmUsage:
@@ -44,8 +47,10 @@ class LlmBackend:
         model: str | None = None,
     ):
         from mm import __version__
+        from mm._logfire import configure_logfire
         from mm.profile import get_profile
 
+        configure_logfire()
         profile = get_profile()
         resolved_base = (base_url or profile.base_url).rstrip("/")
 
@@ -69,12 +74,13 @@ class LlmBackend:
 
     def generate(
         self,
-        kind: str,
+        kind: BinaryFileKind,
         mode: str = "fast",
         *,
         context: dict[str, Any] | None = None,
         parts: list[dict[str, Any]] | None = None,
-        pipeline_spec: Any | None = None,
+        pipeline_spec: PipelineSpec | None = None,
+        extra_body: dict[str, Any] | None = None,
     ) -> str:
         """Pipeline-driven MLLM generation.
 
@@ -88,11 +94,16 @@ class LlmBackend:
             pipeline_spec: Pre-loaded ``PipelineSpec`` (with overrides
                 already applied).  When provided, ``load(kind, mode)``
                 is skipped.
+            extra_body: Provider-specific knobs forwarded to the OpenAI
+                SDK's ``extra_body``. Deep-merged on top of any
+                ``Generate.extra_body`` from the pipeline (call-site
+                values win on conflicts). Use this for vlmrt's
+                ``method``, ``method_params``, ``video_fps``, etc.
 
         Returns:
             Raw LLM response text.
         """
-        from mm.pipelines import load, render_prompt, run_pyfunc
+        from mm.pipelines import deep_merge, load, render_prompt, run_pyfunc
 
         ctx = context or {}
         tpl = pipeline_spec if pipeline_spec is not None else load(kind, mode)
@@ -101,7 +112,6 @@ class LlmBackend:
             return ""
 
         prompt = render_prompt(tpl, ctx)
-
         content_parts: list[dict[str, Any]] = parts or []
         content_parts = run_pyfunc(tpl, content_parts, ctx)
 
@@ -115,6 +125,8 @@ class LlmBackend:
 
         messages: list[dict[str, Any]] = [{"role": "user", "content": message_content}]
 
+        merged_extra_body = deep_merge(tpl.generate.extra_body or {}, extra_body or {})
+
         return self._chat(
             messages,
             max_tokens=tpl.generate.max_tokens,
@@ -122,18 +134,20 @@ class LlmBackend:
             json_mode=tpl.generate.json_mode,
             think=tpl.generate.think,
             reasoning_effort=tpl.generate.reasoning_effort,
+            extra_body=merged_extra_body or None,
         )
 
     def generate_chunked(
         self,
-        kind: str,
+        kind: BinaryFileKind,
         mode: str = "fast",
         *,
         context: dict[str, Any] | None = None,
         chunks: list[list[dict[str, Any]]],
         separator: str = "\n\n---\n\n",
         on_chunk: Any | None = None,
-        pipeline_spec: Any | None = None,
+        pipeline_spec: PipelineSpec | None = None,
+        extra_body: dict[str, Any] | None = None,
     ) -> str:
         """Process multiple content chunks sequentially and concatenate results.
 
@@ -170,6 +184,7 @@ class LlmBackend:
                 context=context,
                 parts=parts,
                 pipeline_spec=pipeline_spec,
+                extra_body=extra_body,
             )
             results.append(result)
 
@@ -209,8 +224,15 @@ class LlmBackend:
         json_mode: bool = False,
         think: bool = False,
         reasoning_effort: str = "none",
+        extra_body: dict[str, Any] | None = None,
     ) -> str:
-        """Single chat/completions call via the OpenAI SDK."""
+        """Single chat/completions call via the OpenAI SDK.
+
+        ``extra_body`` is deep-merged with the built-in ``think`` /
+        ``reasoning_effort`` keys (caller-supplied values win).
+        """
+        from mm.pipelines import deep_merge
+
         effective_max = min(max_tokens * 8, 16384) if think else max_tokens
         kwargs: dict[str, Any] = {
             "model": self.model,
@@ -221,14 +243,16 @@ class LlmBackend:
         if json_mode:
             kwargs["response_format"] = {"type": "json_object"}
 
-        extra_body: dict[str, Any] = {}
+        eb: dict[str, Any] = {}
         if think:
-            extra_body["think"] = True
+            eb["think"] = True
         if reasoning_effort != "none":
-            extra_body["reasoning_effort"] = reasoning_effort
-
+            eb["reasoning_effort"] = reasoning_effort
         if extra_body:
-            kwargs["extra_body"] = extra_body
+            eb = deep_merge(eb, extra_body)
+
+        if eb:
+            kwargs["extra_body"] = eb
 
         try:
             response = self.client.chat.completions.create(**kwargs)

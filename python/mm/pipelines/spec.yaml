@@ -13,8 +13,8 @@
 # Required top-level fields
 # ──────────────────────────────────────────────────────────────────────
 
-kind: image                 # Media kind: image | video | audio | document
-mode: fast                  # Processing mode: fast | accurate
+kind: image # Media kind: image | video | audio | document
+mode: fast # Processing mode: fast | accurate
 
 # ──────────────────────────────────────────────────────────────────────
 # encode — how to convert the file into LLM-ready content parts
@@ -25,8 +25,10 @@ encode:
   # the bare name (`resize`) or the kind-prefixed display name
   # (`image-resize`). Examples:
   #   image:    resize, tile
-  #   video:    frame-sample, frames-transcript, mosaic, video-chunk,
-  #             video-gemini, video-gemini-chunked, shot-frames, shot-mosaic
+  #   video:    video-frames, video-frames-w-transcript, video-mosaic,
+  #             video-chunks, video-clips, video-keyframes, video-shots,
+  #             video-shot-mosaic, video-summary, video-captions,
+  #             video-transcript, video-gemini, video-gemini-chunked
   #   audio:    transcribe, audio-gemini
   #   document: page-text, rasterize, rasterize-text, document-gemini
   # null = use the kind-specific default.
@@ -45,7 +47,7 @@ encode:
     # num_mosaics: 8
     # num_frames: 128
 
-    # Examples for video-frames-transcript:
+    # Examples for video-frames-w-transcript:
     # fps: 1.0
     # max_width: 1024
     # max_frames_per_message: 16
@@ -89,9 +91,9 @@ generate:
     Describe this image in 10 words or less.
     Then list exactly 5 keyword tags.
 
-    Use this format:
+    [OUTPUT]
     ## Description
-    <description>
+    {{description}}
 
     ## Tags
     - tag1

@@ -284,7 +284,16 @@ def _register_builtins() -> None:
     """Import built-in encoder modules so their classes self-register."""
     from mm.encoders import audio, document, gemini, image, video  # noqa: F401
     from mm.encoders.document import page_text  # noqa: F401
-    from mm.encoders.video import frame_sample_transcript, mosaic  # noqa: F401
+    from mm.encoders.video import (  # noqa: F401
+        captions,
+        frames,
+        keyframes,
+        mosaic,
+        native,
+        shots,
+        summary,
+        transcript,
+    )
 
 
 def discover_encoders() -> None:
