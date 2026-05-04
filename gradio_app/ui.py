@@ -331,7 +331,7 @@ def _build_cat_section() -> gr.Dropdown:
                 label="Profile (overrides active)",
                 allow_custom_value=True,
             )
-            cat_profile_refresh = gr.Button("↻ Refresh profiles")
+            cat_profile_refresh = gr.Button("↻ Refresh profiles", elem_classes=["mm-link-btn"])
             cat_no_cache = gr.Checkbox(label="No cache", value=False)
             with gr.Accordion("Pipeline + overrides", open=False, elem_classes=["mm-accordion"]):
                 cat_pipeline = gr.Textbox(
@@ -452,18 +452,43 @@ def _build_profile_section(
             for h in ("name", "base_url", "model", "active", "api_key", "actions"):
                 gr.Markdown(f"**{h}**", elem_classes=["mm-profile-cell"])
         for p in profiles:
-            with gr.Row(elem_classes=["mm-profile-row"]):
+            row_classes = ["mm-profile-row"]
+            if p["is_active"]:
+                row_classes.append("mm-profile-active-row")
+            with gr.Row(elem_classes=row_classes):
                 gr.Markdown(p["name"], elem_classes=["mm-profile-cell"])
                 gr.Markdown(p["base_url"], elem_classes=["mm-profile-cell"])
                 gr.Markdown(p["model"], elem_classes=["mm-profile-cell"])
-                gr.Markdown("✓" if p["is_active"] else "", elem_classes=["mm-profile-cell"])
-                gr.Markdown("✓" if p["has_api_key"] else "", elem_classes=["mm-profile-cell"])
+                gr.Markdown(
+                    "●" if p["is_active"] else "",
+                    elem_classes=["mm-profile-cell", "mm-profile-mark"],
+                )
+                gr.Markdown(
+                    "●" if p["has_api_key"] else "—",
+                    elem_classes=[
+                        "mm-profile-cell",
+                        "mm-profile-mark" if p["has_api_key"] else "mm-profile-mark-muted",
+                    ],
+                )
                 with gr.Row(elem_classes=["mm-profile-actions"]):
-                    upd_b = gr.Button("Update", size="sm")
-                    use_b = gr.Button("Use", size="sm")
-                    del_b = gr.Button("Delete", variant="stop", size="sm")
+                    upd_b = gr.Button(
+                        "✎",
+                        size="sm",
+                        elem_classes=["mm-icon-btn"],
+                    )
+                    use_b = gr.Button(
+                        "★",
+                        size="sm",
+                        elem_classes=["mm-icon-btn"],
+                        interactive=not p["is_active"],
+                    )
+                    del_b = gr.Button(
+                        "✕",
+                        size="sm",
+                        variant="stop",
+                        elem_classes=["mm-icon-btn", "mm-icon-btn-danger"],
+                    )
                 name = p["name"]
-                # Update -> open the inline edit form for this row
                 upd_b.click(lambda n=name: n, outputs=[edit_target_state])
                 use_evt = use_b.click(
                     lambda n=name: _action_use(n),
@@ -503,7 +528,7 @@ def _build_profile_section(
             if cat_profile is not None:
                 save_evt.then(_do_refresh_cat_profile, outputs=[cat_profile])
 
-    p_refresh = gr.Button("Refresh")
+    p_refresh = gr.Button("↻ Refresh", elem_classes=["mm-link-btn"])
     p_refresh.click(_profile_rows, outputs=[profiles_state])
 
     with gr.Accordion("Add profile", open=False, elem_classes=["mm-accordion"]):

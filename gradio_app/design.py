@@ -19,43 +19,45 @@ DESIGN_HEAD = """
     --mm-accent-hover: #2756A8;
     --mm-accent-bright: #4E8CFF;
     --mm-accent-soft: #749ADF;
+    --mm-danger: #B23A3A;
+    --mm-danger-soft: #FBE7E7;
+    --mm-danger-border: #E5B0B0;
     --mm-shadow: 0 1px 2px rgba(1,9,23,0.04), 0 4px 12px rgba(1,9,23,0.04);
+    --mm-shadow-sm: 0 1px 2px rgba(1,9,23,0.05);
   }
 
-  /* Page chrome — centered */
   .gradio-container {
-    max-width: 1200px !important;
+    max-width: 1080px !important;
     margin: 0 auto !important;
-    padding: 24px 28px 80px !important;
+    padding: 18px 24px 56px !important;
     font-family: Geist, Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
+    font-size: 13px !important;
   }
   gradio-app, gradio-app > .main, gradio-app > div {
     width: 100% !important;
   }
 
-  /* Checkboxes — white inset square with brand-blue check when selected. */
   .gradio-container input[type="checkbox"] {
     appearance: none;
     -webkit-appearance: none;
-    width: 16px;
-    height: 16px;
+    width: 14px;
+    height: 14px;
     margin: 0;
     cursor: pointer;
     background-position: center;
     background-repeat: no-repeat;
-    background-size: 14px 14px;
+    background-size: 12px 12px;
     transition: background-color 0.15s ease, border-color 0.15s ease;
   }
   .gradio-container input[type="checkbox"]:hover {
     border-color: var(--mm-accent-soft) !important;
   }
 
-  /* Field label typography */
   .gradio-container label > span,
   .gradio-container .label-wrap > span,
   .gradio-container span.label {
     font-family: Geist, Inter, sans-serif;
-    font-size: 12px;
+    font-size: 11.5px;
     font-weight: 500;
     letter-spacing: 0;
     color: var(--mm-text-secondary);
@@ -69,18 +71,18 @@ DESIGN_HEAD = """
   }
   .gradio-container .tab-nav button.selected { color: var(--mm-text); }
 
-  /* Sage-blue focus halo for keyboard navigation */
   .gradio-container *:focus-visible {
     outline: 2px solid var(--mm-accent-soft);
     outline-offset: 2px;
+    border-radius: 6px;
   }
 
-  /* Tables / Dataframe — explicit so dark mode never wins */
   .gradio-container .table-wrap,
   .gradio-container table {
     background: var(--mm-surface) !important;
     color: var(--mm-text) !important;
     border-color: var(--mm-border) !important;
+    font-size: 12.5px !important;
   }
   .gradio-container th, .gradio-container td {
     color: var(--mm-text) !important;
@@ -94,7 +96,6 @@ DESIGN_HEAD = """
   .gradio-container .tr-body:nth-child(odd) { background: var(--mm-bg) !important; }
   .gradio-container .tr-body:hover { background: var(--mm-surface-tint) !important; }
 
-  /* CodeMirror / Code blocks — navy on white, no dark theme bleed */
   .gradio-container .codemirror-wrappper,
   .gradio-container .cm-editor,
   .gradio-container .cm-scroller,
@@ -103,6 +104,7 @@ DESIGN_HEAD = """
     background: var(--mm-surface) !important;
     color: var(--mm-text) !important;
     font-family: 'Geist Mono', ui-monospace, SFMono-Regular, Consolas, monospace !important;
+    font-size: 12.5px !important;
   }
   .gradio-container .cm-line { color: var(--mm-text) !important; }
   .gradio-container .cm-gutters {
@@ -110,7 +112,6 @@ DESIGN_HEAD = """
     color: var(--mm-text-secondary) !important;
     border-right: 1px solid var(--mm-border) !important;
   }
-  /* JSON syntax tokens (CodeMirror v6 + Lezer highlighting classes) */
   .gradio-container .ͼ1 .tok-string,
   .gradio-container .cm-content .tok-string,
   .gradio-container .cm-content [class*="tok-string"] { color: var(--mm-accent-deep) !important; }
@@ -126,41 +127,39 @@ DESIGN_HEAD = """
   .gradio-container .cm-content .tok-null { color: var(--mm-text-muted) !important; }
   .gradio-container .cm-content .tok-punctuation { color: var(--mm-text-secondary) !important; }
 
-  /* Page header — flat, no card */
-  .mm-header { margin: 4px 2px 20px 2px; }
+  .mm-header { margin: 4px 2px 14px; }
   .mm-h1 {
     font-family: Geist, Inter, sans-serif;
-    font-size: 22px;
+    font-size: 19px;
     line-height: 1.15;
     letter-spacing: -0.01em;
-    margin: 0 0 2px 0;
+    margin: 0 0 2px;
     color: var(--mm-text);
     font-weight: 600;
   }
   .mm-h1 .mm-h1-mark { color: var(--mm-accent); }
   .mm-sub {
     font-family: Geist, Inter, sans-serif;
-    font-size: 13px;
+    font-size: 12.5px;
     line-height: 1.4;
     color: var(--mm-text-secondary);
     margin: 0;
     font-weight: 400;
   }
 
-  /* Per-tab section heading */
-  .mm-section { padding: 12px 2px 16px 2px; }
+  .mm-section { padding: 2px 2px 10px; }
   .mm-section h2 {
     font-family: Geist, Inter, sans-serif;
-    font-size: 20px;
+    font-size: 16px;
     font-weight: 600;
     letter-spacing: -0.01em;
     line-height: 1.2;
-    margin: 0 0 4px 0;
+    margin: 0 0 2px;
     color: var(--mm-text);
   }
   .mm-section .mm-note {
     font-family: Geist, Inter, sans-serif;
-    font-size: 13px;
+    font-size: 12.5px;
     color: var(--mm-text-secondary);
     margin: 0;
     font-weight: 400;
@@ -169,16 +168,16 @@ DESIGN_HEAD = """
     font-family: 'Geist Mono', ui-monospace, SFMono-Regular, Consolas, monospace;
     background: var(--mm-surface-tint);
     color: var(--mm-accent-deep);
-    padding: 1px 6px;
-    border-radius: 6px;
-    font-size: 0.9em;
+    padding: 1px 5px;
+    border-radius: 5px;
+    font-size: 0.88em;
     border: 1px solid var(--mm-border);
   }
 
   .gradio-container .mm-twocol {
     display: flex;
     flex-direction: row;
-    gap: 16px;
+    gap: 14px;
     align-items: stretch;
     width: 100%;
   }
@@ -187,8 +186,8 @@ DESIGN_HEAD = """
   .gradio-container .mm-config-panel {
     background: var(--mm-surface);
     border: 1px solid var(--mm-border);
-    border-radius: 14px;
-    padding: 16px;
+    border-radius: 12px;
+    padding: 14px;
     box-shadow: var(--mm-shadow);
   }
   @media (max-width: 1023px) {
@@ -197,23 +196,21 @@ DESIGN_HEAD = """
     .mm-twocol .mm-config { flex: 1 1 auto; width: 100%; }
   }
 
-  /* Read-only directory hint — visually present, not interactive */
   .gradio-container .mm-readonly,
   .gradio-container .mm-readonly input,
   .gradio-container .mm-readonly textarea {
     pointer-events: none;
     cursor: not-allowed;
-    opacity: 0.7;
+    opacity: 0.65;
   }
 
-  /* Footer */
   .mm-footer {
     text-align: center;
-    margin-top: 48px;
-    padding: 20px 0 0 0;
+    margin-top: 32px;
+    padding: 14px 0 0;
     border-top: 1px solid var(--mm-border);
     font-family: Geist, Inter, sans-serif;
-    font-size: 12px;
+    font-size: 11.5px;
     color: var(--mm-text-secondary);
     font-weight: 400;
   }
@@ -228,24 +225,25 @@ DESIGN_HEAD = """
     font-family: 'Geist Mono', ui-monospace, SFMono-Regular, Consolas, monospace;
     background: var(--mm-surface-tint);
     color: var(--mm-accent-deep);
-    padding: 2px 8px;
-    border-radius: 6px;
+    padding: 2px 7px;
+    border-radius: 5px;
     border: 1px solid var(--mm-border);
-    font-size: 11.5px;
+    font-size: 11px;
   }
   .mm-footer .mm-footer-sep {
-    margin: 0 10px;
+    margin: 0 8px;
     color: var(--mm-text-muted);
   }
+
   @keyframes mm-fade-up {
-    from { opacity: 0; transform: translateY(8px); }
+    from { opacity: 0; transform: translateY(6px); }
     to   { opacity: 1; transform: translateY(0); }
   }
-  .mm-header, .mm-footer { animation: mm-fade-up 0.5s ease-out both; }
-  .mm-footer  { animation-delay: 0.1s; }
-  .mm-section { padding: 12px 2px 16px 2px; margin: 0; }
+  .mm-header, .mm-footer { animation: mm-fade-up 0.4s ease-out both; }
+  .mm-footer { animation-delay: 0.08s; }
+
   .gradio-container .mm-tabnav {
-    margin: 4px 0 20px 0 !important;
+    margin: 0 0 14px !important;
     border-bottom: 1px solid var(--mm-border) !important;
     background: transparent !important;
     border-radius: 0 !important;
@@ -256,13 +254,13 @@ DESIGN_HEAD = """
   .gradio-container .mm-tabnav fieldset {
     display: flex !important;
     flex-direction: row !important;
-    gap: 4px !important;
+    gap: 2px !important;
     border: none !important;
     background: transparent !important;
     padding: 0 !important;
     margin: 0 !important;
     box-shadow: none !important;
-    overflow: hidden !important;
+    overflow:hidden !important;
   }
   .gradio-container .mm-tabnav label {
     display: inline-flex !important;
@@ -271,29 +269,26 @@ DESIGN_HEAD = """
     border: none !important;
     border-bottom: 2px solid transparent !important;
     border-radius: 0 !important;
-    padding: 8px 16px !important;
+    padding: 7px 14px !important;
     margin: 0 !important;
     margin-bottom: -1px !important;
     color: var(--mm-text-secondary) !important;
     font-family: Geist, Inter, sans-serif !important;
-    font-size: 14px !important;
+    font-size: 13px !important;
     font-weight: 500 !important;
     cursor: pointer !important;
     box-shadow: none !important;
     transition: color 0.15s ease, border-color 0.15s ease !important;
   }
-  .gradio-container .mm-tabnav label:hover {
-    color: var(--mm-accent) !important;
-  }
-  .gradio-container .mm-tabnav input[type="radio"] {
-    display: none !important;
-  }
+  .gradio-container .mm-tabnav label:hover { color: var(--mm-accent) !important; }
+  .gradio-container .mm-tabnav input[type="radio"] { display: none !important; }
   .gradio-container .mm-tabnav label.selected,
   .gradio-container .mm-tabnav label:has(input:checked) {
     color: var(--mm-text) !important;
     border-bottom-color: var(--mm-accent) !important;
     background: transparent !important;
   }
+
   .gradio-container .mm-pane,
   .gradio-container div.mm-pane {
     background: transparent !important;
@@ -302,6 +297,7 @@ DESIGN_HEAD = """
     box-shadow: none !important;
     padding: 0 !important;
     margin: 0 !important;
+    margin-top: -16px !important;
     border-radius: 0 !important;
     overflow: visible !important;
     max-height: none !important;
@@ -333,11 +329,23 @@ DESIGN_HEAD = """
     border-top: none !important;
   }
 
+  .html-container {
+    margin-top: -35px;
+  }
+  .gradio-container .mm-pane > .html-container:first-child {
+    margin-top: -2px !important;
+  }
+  .gradio-container .mm-config-panel .html-container,
+  .gradio-container .mm-pane .html-container {
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
   .gradio-container .mm-accordion {
     border: 1px solid var(--mm-border) !important;
-    border-radius: 10px !important;
+    border-radius: 9px !important;
     background: var(--mm-surface) !important;
-    margin: 12px 0 !important;
+    margin: 10px 0 !important;
     overflow: hidden !important;
     box-shadow: none !important;
   }
@@ -347,9 +355,9 @@ DESIGN_HEAD = """
     background: var(--mm-surface-tint) !important;
     color: var(--mm-text) !important;
     font-family: Geist, Inter, sans-serif !important;
-    font-size: 13px !important;
+    font-size: 12.5px !important;
     font-weight: 500 !important;
-    padding: 10px 14px !important;
+    padding: 8px 12px !important;
     border: none !important;
     border-radius: 0 !important;
   }
@@ -363,12 +371,11 @@ DESIGN_HEAD = """
     border-bottom: 1px solid var(--mm-border) !important;
   }
 
-  /* Profile table — custom @gr.render layout with per-row action buttons */
   .gradio-container .mm-profile-row {
     display: grid !important;
-    grid-template-columns: 1.4fr 2fr 1.4fr 0.6fr 0.6fr 1.6fr;
+    grid-template-columns: 1.3fr 2.2fr 1.3fr 0.5fr 0.5fr 0.95fr;
     gap: 8px !important;
-    padding: 8px 12px !important;
+    padding: 7px 12px !important;
     border-bottom: 1px solid var(--mm-border) !important;
     align-items: center !important;
     background: var(--mm-surface) !important;
@@ -387,7 +394,7 @@ DESIGN_HEAD = """
     background: transparent !important;
     border: none !important;
     font-family: 'Geist Mono', ui-monospace, monospace !important;
-    font-size: 13px !important;
+    font-size: 12.5px !important;
     color: var(--mm-text) !important;
     overflow: hidden !important;
     text-overflow: ellipsis !important;
@@ -395,34 +402,100 @@ DESIGN_HEAD = """
   }
   .gradio-container .mm-profile-row.mm-profile-header > .mm-profile-cell {
     font-family: Geist, Inter, sans-serif !important;
-    font-size: 12px !important;
+    font-size: 11px !important;
     color: var(--mm-text-secondary) !important;
     text-transform: uppercase !important;
-    letter-spacing: 0.04em !important;
+    letter-spacing: 0.05em !important;
+    font-weight: 600 !important;
   }
+  .gradio-container .mm-profile-row .mm-profile-mark {
+    color: var(--mm-accent) !important;
+    text-align: center !important;
+    font-weight: 600 !important;
+  }
+  .gradio-container .mm-profile-row .mm-profile-mark-muted {
+    color: var(--mm-text-muted) !important;
+    text-align: center !important;
+  }
+  .gradio-container .mm-profile-row.mm-profile-active-row {
+    background: linear-gradient(0deg, rgba(30,90,202,0.04), rgba(30,90,202,0.04)), var(--mm-surface) !important;
+  }
+
   .gradio-container .mm-profile-actions {
     display: flex !important;
     flex-direction: row !important;
-    gap: 4px !important;
+    gap: 6px !important;
     flex-wrap: nowrap !important;
     background: transparent !important;
     border: none !important;
     padding: 0 !important;
     margin: 0 !important;
+    justify-content: flex-end !important;
   }
-  .gradio-container .mm-profile-actions button {
-    padding: 4px 10px !important;
-    font-size: 12px !important;
-    white-space: nowrap !important;
+  .gradio-container .mm-icon-btn,
+  .gradio-container button.mm-icon-btn {
+    width: 28px !important;
+    height: 28px !important;
     min-width: 0 !important;
+    padding: 0 !important;
+    border-radius: 7px !important;
+    font-size: 14px !important;
+    line-height: 1 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    background: var(--mm-surface) !important;
+    border: 1px solid var(--mm-border) !important;
+    color: var(--mm-text-secondary) !important;
+    box-shadow: none !important;
+    transition: background 0.12s ease, border-color 0.12s ease, color 0.12s ease, transform 0.12s ease !important;
   }
+  .gradio-container .mm-icon-btn:hover,
+  .gradio-container button.mm-icon-btn:hover {
+    background: var(--mm-surface-tint) !important;
+    border-color: var(--mm-border-strong) !important;
+    color: var(--mm-accent) !important;
+  }
+  .gradio-container .mm-icon-btn:active,
+  .gradio-container button.mm-icon-btn:active {
+    transform: translateY(1px) !important;
+  }
+  .gradio-container .mm-icon-btn.mm-icon-btn-danger,
+  .gradio-container button.mm-icon-btn.mm-icon-btn-danger {
+    color: var(--mm-danger) !important;
+  }
+  .gradio-container .mm-icon-btn.mm-icon-btn-danger:hover,
+  .gradio-container button.mm-icon-btn.mm-icon-btn-danger:hover {
+    background: var(--mm-danger-soft) !important;
+    border-color: var(--mm-danger-border) !important;
+    color: #8E2A2A !important;
+  }
+
   .gradio-container .mm-profile-empty {
-    padding: 16px !important;
+    padding: 14px !important;
     color: var(--mm-text-secondary) !important;
     font-style: italic !important;
+    font-size: 12.5px !important;
+    background: var(--mm-surface) !important;
+    border: 1px dashed var(--mm-border) !important;
+    border-radius: 9px !important;
   }
-  .html-container {
-    margin-top: -35px;
+
+  .gradio-container button.mm-link-btn {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    color: var(--mm-text-secondary) !important;
+    padding: 4px 0 !important;
+    font-size: 12px !important;
+    font-weight: 500 !important;
+    text-align: left !important;
+    width: auto !important;
+    min-width: 0 !important;
+  }
+  .gradio-container button.mm-link-btn:hover {
+    color: var(--mm-accent) !important;
+    background: transparent !important;
   }
 </style>
 """
