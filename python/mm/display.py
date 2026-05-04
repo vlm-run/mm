@@ -160,12 +160,23 @@ def emit_rows(
     output_dir: str = "mm_dataset",
     stderr: bool = False,
 ) -> None:
-    """Unified emitter for json, dataset-jsonl, and dataset-hf formats.
+    """Unified emitter for json, pretty-json, dataset-jsonl, and dataset-hf formats.
 
-    Dispatches to the appropriate serializer based on *fmt*.
+    Dispatches to the appropriate serializer based on *fmt*. ``json``
+    is auto-pretty/-compact based on TTY detection (compact when piped);
+    ``pretty-json`` always indents with ``indent=2`` regardless of where
+    stdout points -- useful when piping into a markdown fence or
+    capturing into a recording file where line-broken JSON renders far
+    more readably than a single-line escape soup.
     """
+    import json
+
     if fmt == "json":
         print(json_dumps(rows), file=resolve_stderr(stderr))
+    elif fmt == "pretty-json":
+        print(
+            json.dumps(rows, indent=2, default=str, ensure_ascii=False), file=resolve_stderr(stderr)
+        )
     elif fmt == "dataset-jsonl":
         _emit_dataset_jsonl(rows, stderr=stderr)
     elif fmt == "dataset-hf":

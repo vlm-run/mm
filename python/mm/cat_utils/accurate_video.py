@@ -2,7 +2,14 @@ import time
 from pathlib import Path
 from typing import Any
 
-from mm.cat_utils.base_utils import CatOpts, RunResult, format_footer, format_generate_verbose
+from mm.cat_utils.base_utils import (
+    CatOpts,
+    RunResult,
+    format_footer,
+    format_generate_verbose,
+    make_llm_from_spec,
+    spec_extra_body,
+)
 from mm.cat_utils.extract_meta import extract_meta
 from mm.cat_utils.run_encoder import run_encoder
 from mm.pipelines.schema import PipelineSpec
@@ -53,7 +60,7 @@ def accurate_video(path: Path, spec: PipelineSpec, opts: CatOpts) -> RunResult:
         probe_duration,
         tile_frames_to_mosaics,
     )
-    from mm.llm import LlmBackend, image_part
+    from mm.llm import image_part
 
     if not ffmpeg_available():
         return RunResult(content=f"[ffmpeg not found — cannot process {path.name}]")
@@ -147,7 +154,7 @@ def accurate_video(path: Path, spec: PipelineSpec, opts: CatOpts) -> RunResult:
             dur_ctx = f" Duration: {int(mins)}m{secs:.0f}s."
 
         t_vlm = time.monotonic()
-        llm = LlmBackend()
+        llm = make_llm_from_spec(spec)
         img_parts = [image_part(mp, mime="image/jpeg") for mp in mosaics]
         analysis = llm.generate(
             "video",
@@ -155,6 +162,7 @@ def accurate_video(path: Path, spec: PipelineSpec, opts: CatOpts) -> RunResult:
             context={"filename": path.name, "duration_ctx": dur_ctx},
             parts=img_parts,
             pipeline_spec=spec,
+            extra_body=spec_extra_body(spec),
         )
         timing["vlm_call_ms"] = (time.monotonic() - t_vlm) * 1000
         timing["vlm_prompt_tokens"] = llm.last_usage.prompt_tokens

@@ -1,7 +1,13 @@
 import time
 from pathlib import Path
 
-from mm.cat_utils.base_utils import CatOpts, RunResult, format_generate_verbose
+from mm.cat_utils.base_utils import (
+    CatOpts,
+    RunResult,
+    format_generate_verbose,
+    make_llm_from_spec,
+    spec_extra_body,
+)
 from mm.pipelines.schema import PipelineSpec
 from mm.utils import BinaryFileKind
 
@@ -109,11 +115,10 @@ def run_encoder(path: Path, kind: BinaryFileKind, spec: PipelineSpec, opts: CatO
         encode_output = _format_encode_verbose(spec.encode.strategy, messages, encode_elapsed)
         return RunResult(content=result, verbose_suffix=_format_pipeline_tree(encode_output))
 
-    from mm.llm import LlmBackend
     from mm.profile import get_active_profile_name
 
     t0 = time.monotonic()
-    llm = LlmBackend()
+    llm = make_llm_from_spec(spec)
     chunks: list[list[dict]] = []
     for msg in messages:
         parts = _extract_llm_parts(msg)
@@ -124,11 +129,14 @@ def run_encoder(path: Path, kind: BinaryFileKind, spec: PipelineSpec, opts: CatO
         return RunResult(content="[No LLM-compatible content parts from encoder]")
 
     ctx = {"filename": path.name}
+    extra = spec_extra_body(spec)
     if len(chunks) == 1:
-        result = llm.generate(kind, opts.mode, context=ctx, parts=chunks[0], pipeline_spec=spec)
+        result = llm.generate(
+            kind, opts.mode, context=ctx, parts=chunks[0], pipeline_spec=spec, extra_body=extra
+        )
     else:
         result = llm.generate_chunked(
-            kind, opts.mode, context=ctx, chunks=chunks, pipeline_spec=spec
+            kind, opts.mode, context=ctx, chunks=chunks, pipeline_spec=spec, extra_body=extra
         )
 
     elapsed = (time.monotonic() - t0) * 1000

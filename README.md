@@ -358,6 +358,68 @@ mm cat --print-pipeline image/accurate                           # print a built
 mm cat bench.jpg -m accurate --encode.strategy_opts max_width=768  # override a single strategy_opts entry
 ```
 
+#### Override surfaces
+
+`mm cat` resolves each LLM call from three layers, with **right-most wins** on conflict:
+
+| Layer | Configures | How to set |
+|-------|------------|------------|
+| **Profile** (`mm.toml`) | `base_url`, `api_key`, default `model` | `mm profile add <name> --base-url ... --model ...`; selected per-invocation with `mm --profile <name> <subcommand> ...` |
+| **Pipeline YAML** (`generate:` block) | `model`, `prompt`, `max_tokens`, `temperature`, `json_mode`, `extra_body` (deep-merged) | Built-in pipelines under `python/mm/pipelines/` or custom YAMLs passed via `mm cat -p path.yaml` |
+| **CLI flags on `cat`** | per-field overrides | See table below |
+
+CLI override flags (each takes precedence over both pipeline YAML and profile):
+
+| Flag | Alias | Pipeline field |
+|------|-------|----------------|
+| `--model NAME` | `--generate.model NAME` | `generate.model` |
+| `--prompt TEXT` | `--generate.prompt TEXT` | `generate.prompt` |
+| `--generate.max-tokens N` | — | `generate.max_tokens` |
+| `--generate.temperature F` | — | `generate.temperature` |
+| `--generate.json-mode BOOL` | — | `generate.json_mode` |
+| `--generate.extra-body '<json>'` | — | `generate.extra_body` (deep-merged onto YAML; CLI keys win) |
+
+Use `--generate.extra-body` for any provider-specific knobs (vlmrt's `method`, `method_params`, `video_fps`, `image_resolution`, `vlmrun.metadata`, etc.). The merged `model` + `extra_body` participate in the L2 cache key, so changing a knob correctly invalidates cached results. `base_url` and `api_key` are profile-only — there is no CLI override for them.
+
+Examples against a vlmrt deployment (`mm profile add vlmrt --base-url http://gpu-box:8001/v1 --model qwen3.5-0.8b`):
+
+```bash
+# Florence-2 — document OCR (skip server-side LLM refinement)
+mm --profile vlmrt cat page.png -m accurate \
+  --model florence-2-base-ft \
+  --generate.extra-body '{"method":"ocr","refine_with_llm":false}'
+
+# Florence-2 — detailed caption
+mm --profile vlmrt cat photo.jpg -m accurate \
+  --model florence-2-base-ft \
+  --generate.extra-body '{"method":"detailed_caption"}'
+
+# Qwen3.5-0.8B — free-form VQA on an image with a custom prompt
+mm --profile vlmrt cat photo.jpg -m accurate \
+  --model qwen3.5-0.8b \
+  --prompt "What objects are visible? Reply as a comma-separated list."
+
+# Qwen3.5-0.8B — video summarisation with explicit frame sampling
+mm --profile vlmrt cat clip.mp4 -m accurate \
+  --model qwen3.5-0.8b \
+  --generate.extra-body '{"video_fps":1.0,"video_max_frames":8,"video_resolution":"448x336"}'
+
+# PaddleOCR-v5 — full detect + recognise (English, default threshold)
+mm --profile vlmrt cat storefront.jpg -m accurate \
+  --model paddleocr-v5 \
+  --generate.extra-body '{"method":"ocr"}'
+
+# PaddleOCR-v5 — Chinese OCR with a tighter score threshold
+mm --profile vlmrt cat storefront.jpg -m accurate \
+  --model paddleocr-v5 \
+  --generate.extra-body '{"method":"ocr","method_params":{"lang":"ch","score_threshold":0.6}}'
+
+# Moondream2 — multi-object detection
+mm --profile vlmrt cat photo.jpg -m accurate \
+  --model moondream2 \
+  --generate.extra-body '{"method":"detect","method_params":{"object":"fish"}}'
+```
+
 ### wc — count files, size, tokens
 
 ```bash

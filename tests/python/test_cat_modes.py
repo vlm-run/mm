@@ -131,6 +131,8 @@ class TestExtractDispatch:
         accurate_mock.assert_not_called()
 
     def test_fast_image_dispatch(self, tmp_path):
+        from mm.pipelines.schema import PipelineSpec
+
         f = tmp_path / "test.jpg"
         f.write_bytes(b"\xff\xd8\xff" + b"\x00" * 100)
         cm1, cm2, cm3, cm4 = _mock_cache_miss()
@@ -138,10 +140,18 @@ class TestExtractDispatch:
             mock.return_value = RunResult(content="mocked fast result")
             opts = _make_opts("fast")
             result = _extract(f, opts)
-            mock.assert_called_once_with(f, "image", opts)
+            # _extract now resolves+merges the pipeline once and forwards it.
+            assert mock.call_count == 1
+            args, kwargs = mock.call_args
+            assert args[0] == f
+            assert args[1] == "image"
+            assert isinstance(args[2], PipelineSpec)
+            assert args[3] is opts
             assert result == "mocked fast result"
 
     def test_accurate_image_dispatch(self, tmp_path):
+        from mm.pipelines.schema import PipelineSpec
+
         f = tmp_path / "test.jpg"
         f.write_bytes(b"\xff\xd8\xff" + b"\x00" * 100)
         cm1, cm2, cm3, cm4 = _mock_cache_miss()
@@ -149,10 +159,17 @@ class TestExtractDispatch:
             mock.return_value = RunResult(content="mocked accurate result")
             opts = _make_opts("accurate")
             result = _extract(f, opts)
-            mock.assert_called_once_with(f, "image", opts)
+            assert mock.call_count == 1
+            args, _ = mock.call_args
+            assert args[0] == f
+            assert args[1] == "image"
+            assert isinstance(args[2], PipelineSpec)
+            assert args[3] is opts
             assert result == "mocked accurate result"
 
     def test_accurate_document_dispatch(self, tmp_path):
+        from mm.pipelines.schema import PipelineSpec
+
         f = tmp_path / "test.pdf"
         f.write_bytes(b"%PDF-1.4 fake")
         cm1, cm2, cm3, cm4 = _mock_cache_miss()
@@ -160,7 +177,12 @@ class TestExtractDispatch:
             mock.return_value = RunResult(content="summary of document")
             opts = _make_opts("accurate")
             result = _extract(f, opts)
-            mock.assert_called_once_with(f, "document", opts)
+            assert mock.call_count == 1
+            args, _ = mock.call_args
+            assert args[0] == f
+            assert args[1] == "document"
+            assert isinstance(args[2], PipelineSpec)
+            assert args[3] is opts
             assert result == "summary of document"
 
 
@@ -168,9 +190,14 @@ class TestRunFastTextPassthrough:
     """Code/text/config files have no pipeline — fast mode reads raw content."""
 
     def test_text_passthrough(self, tmp_path):
+        from mm.pipelines.schema import PipelineSpec
+
         f = tmp_path / "test.txt"
         f.write_text("hello world")
-        result = _run_fast(f, "text", _make_opts("fast"))
+        # text kind returns local meta immediately; spec is required by the new
+        # signature but the body is irrelevant on the text branch.
+        empty_spec = PipelineSpec(kind="text", mode="fast")
+        result = _run_fast(f, "text", empty_spec, _make_opts("fast"))
         assert "hello world" in result.content
 
 
@@ -199,7 +226,7 @@ class TestVerboseCacheReplay:
         suffix = "[dim]generate: ollama • 1.2s • 100→50 tokens[/dim]"
         run_call_count = {"n": 0}
 
-        def fake_run_fast(_path, _kind, _opts):
+        def fake_run_fast(_path, _kind, _spec, _opts):
             run_call_count["n"] += 1
             return RunResult(content="cached body", verbose_suffix=suffix)
 
@@ -226,7 +253,7 @@ class TestVerboseCacheReplay:
 
         suffix = "[dim]generate: ollama • 0.5s • 10→5 tokens[/dim]"
 
-        def fake_run_fast(_path, _kind, _opts):
+        def fake_run_fast(_path, _kind, _spec, _opts):
             return RunResult(content="cached body", verbose_suffix=suffix)
 
         with patch("mm.commands.cat._run_fast", side_effect=fake_run_fast):

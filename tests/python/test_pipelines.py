@@ -7,7 +7,8 @@ from typing import Any
 
 import pytest
 import yaml
-from mm.pipelines import apply_overrides, load, render_prompt, run_pyfunc
+
+from mm.pipelines import apply_overrides, deep_merge, load, render_prompt, run_pyfunc
 from mm.pipelines.schema import Encode, Generate, PipelineSpec, PipelineValidationError
 
 ValidationError = PipelineValidationError
@@ -592,6 +593,209 @@ class TestPyfuncFileRef:
         )
         with pytest.raises(FileNotFoundError, match="pyfunc file not found"):
             run_pyfunc(spec, [], {})
+
+
+class TestDeepMerge:
+    """Tests for deep_merge — used for pipeline + CLI extra_body merging."""
+
+    def test_disjoint_keys(self):
+        assert deep_merge({"a": 1}, {"b": 2}) == {"a": 1, "b": 2}
+
+    def test_overlay_wins_on_scalars(self):
+        assert deep_merge({"a": 1, "b": 2}, {"b": 3}) == {"a": 1, "b": 3}
+
+    def test_nested_dicts_are_merged(self):
+        base = {"vlmrun": {"metadata": {"environment": "prod", "session_id": "abc"}}}
+        overlay = {"vlmrun": {"metadata": {"environment": "dev"}}}
+        merged = deep_merge(base, overlay)
+        assert merged == {"vlmrun": {"metadata": {"environment": "dev", "session_id": "abc"}}}
+
+    def test_non_dict_replaces_dict_in_overlay(self):
+        # If overlay value is not a dict, it replaces wholesale (lists, scalars).
+        merged = deep_merge({"method_params": {"object": "fish"}}, {"method_params": ["a"]})
+        assert merged == {"method_params": ["a"]}
+
+    def test_inputs_not_mutated(self):
+        base = {"a": {"b": 1}}
+        overlay = {"a": {"c": 2}}
+        deep_merge(base, overlay)
+        assert base == {"a": {"b": 1}}
+        assert overlay == {"a": {"c": 2}}
+
+
+class TestGenerateExtraBody:
+    """Schema + override behaviour for the new Generate.extra_body field."""
+
+    def test_default_is_empty_dict(self):
+        gen = Generate(prompt="hi")
+        assert gen.extra_body == {}
+
+    def test_from_dict_accepts_mapping(self):
+        spec = PipelineSpec.from_dict(
+            {
+                "kind": "image",
+                "mode": "accurate",
+                "generate": {
+                    "prompt": "Caption.",
+                    "extra_body": {
+                        "method": "caption",
+                        "method_params": {"length": "short"},
+                    },
+                },
+            }
+        )
+        assert spec.generate is not None
+        assert spec.generate.extra_body == {
+            "method": "caption",
+            "method_params": {"length": "short"},
+        }
+
+    def test_from_dict_null_extra_body_becomes_empty(self):
+        spec = PipelineSpec.from_dict(
+            {
+                "kind": "image",
+                "mode": "fast",
+                "generate": {"prompt": "p", "extra_body": None},
+            }
+        )
+        assert spec.generate is not None
+        assert spec.generate.extra_body == {}
+
+    def test_from_dict_rejects_non_mapping(self):
+        with pytest.raises(PipelineValidationError):
+            PipelineSpec.from_dict(
+                {
+                    "kind": "image",
+                    "mode": "fast",
+                    "generate": {"prompt": "p", "extra_body": ["nope"]},
+                }
+            )
+
+    def test_to_dict_round_trip(self):
+        gen = Generate(prompt="p", extra_body={"method": "ocr"})
+        assert gen.to_dict()["extra_body"] == {"method": "ocr"}
+
+    def test_apply_overrides_string_json(self):
+        spec = PipelineSpec.from_dict(
+            {"kind": "image", "mode": "fast", "generate": {"prompt": "p"}}
+        )
+        result = apply_overrides(spec, generate_overrides={"extra_body": '{"method":"detect"}'})
+        assert result.generate is not None
+        assert result.generate.extra_body == {"method": "detect"}
+
+    def test_apply_overrides_dict_value(self):
+        spec = PipelineSpec.from_dict(
+            {"kind": "image", "mode": "fast", "generate": {"prompt": "p"}}
+        )
+        result = apply_overrides(spec, generate_overrides={"extra_body": {"method": "caption"}})
+        assert result.generate is not None
+        assert result.generate.extra_body == {"method": "caption"}
+
+    def test_apply_overrides_deep_merges_with_pipeline_level(self):
+        spec = PipelineSpec.from_dict(
+            {
+                "kind": "image",
+                "mode": "fast",
+                "generate": {
+                    "prompt": "p",
+                    "extra_body": {
+                        "method": "caption",
+                        "method_params": {"length": "normal"},
+                    },
+                },
+            }
+        )
+        result = apply_overrides(
+            spec,
+            generate_overrides={
+                "extra_body": '{"method_params":{"length":"short"},"video_fps":1.0}'
+            },
+        )
+        assert result.generate is not None
+        assert result.generate.extra_body == {
+            "method": "caption",
+            "method_params": {"length": "short"},
+            "video_fps": 1.0,
+        }
+
+    def test_apply_overrides_invalid_json_raises(self):
+        spec = PipelineSpec.from_dict(
+            {"kind": "image", "mode": "fast", "generate": {"prompt": "p"}}
+        )
+        with pytest.raises(ValueError, match="JSON object"):
+            apply_overrides(spec, generate_overrides={"extra_body": "{not json}"})
+
+    def test_apply_overrides_non_object_json_raises(self):
+        spec = PipelineSpec.from_dict(
+            {"kind": "image", "mode": "fast", "generate": {"prompt": "p"}}
+        )
+        with pytest.raises(ValueError, match="JSON object"):
+            apply_overrides(spec, generate_overrides={"extra_body": "[1,2,3]"})
+
+
+class TestGenerateModel:
+    """`Generate.model` is a first-class schema field with CLI-overridable semantics."""
+
+    def test_default_is_none(self):
+        gen = Generate(prompt="p")
+        assert gen.model is None
+
+    def test_from_dict_reads_model(self):
+        spec = PipelineSpec.from_dict(
+            {
+                "kind": "image",
+                "mode": "accurate",
+                "generate": {"prompt": "describe", "model": "moondream2"},
+            }
+        )
+        assert spec.generate is not None
+        assert spec.generate.model == "moondream2"
+
+    def test_from_dict_rejects_non_string_model(self):
+        with pytest.raises(PipelineValidationError, match="generate.model"):
+            PipelineSpec.from_dict(
+                {
+                    "kind": "image",
+                    "mode": "accurate",
+                    "generate": {"prompt": "p", "model": 42},
+                }
+            )
+
+    def test_from_dict_allows_null_model(self):
+        spec = PipelineSpec.from_dict(
+            {
+                "kind": "image",
+                "mode": "accurate",
+                "generate": {"prompt": "p", "model": None},
+            }
+        )
+        assert spec.generate is not None
+        assert spec.generate.model is None
+
+    def test_to_dict_round_trip(self):
+        gen = Generate(prompt="p", model="paddleocr-v5")
+        assert gen.to_dict()["model"] == "paddleocr-v5"
+
+    def test_apply_overrides_sets_model(self):
+        spec = PipelineSpec.from_dict(
+            {"kind": "image", "mode": "fast", "generate": {"prompt": "p"}}
+        )
+        result = apply_overrides(spec, generate_overrides={"model": "qwen3.5-0.8b"})
+        assert result.generate is not None
+        assert result.generate.model == "qwen3.5-0.8b"
+
+    def test_apply_overrides_replaces_yaml_model(self):
+        """CLI override wins over YAML-pinned model (no merge — replacement)."""
+        spec = PipelineSpec.from_dict(
+            {
+                "kind": "image",
+                "mode": "accurate",
+                "generate": {"prompt": "p", "model": "yaml-pinned"},
+            }
+        )
+        result = apply_overrides(spec, generate_overrides={"model": "cli-override"})
+        assert result.generate is not None
+        assert result.generate.model == "cli-override"
 
 
 class TestTomlPipelinePaths:

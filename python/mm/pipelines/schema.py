@@ -75,14 +75,26 @@ class Generate:
 
     The ``prompt`` is a Python format string that receives the ``context``
     dict, so you can use ``{filename}``, ``{duration}``, ``{kind}`` etc.
+
+    ``model`` optionally pins a specific model name for this pipeline,
+    overriding the active profile's default. Leave unset (``None``) to
+    inherit the profile model.
+
+    ``extra_body`` is a free-form mapping forwarded verbatim to the OpenAI
+    SDK's ``extra_body`` argument on ``client.chat.completions.create``.
+    Use it for provider-specific knobs that don't have first-class
+    pipeline fields — e.g. vlmrt's ``method`` / ``method_params`` /
+    ``video_fps`` / ``image_resolution`` parameters.
     """
 
     prompt: str
+    model: str | None = None
     max_tokens: int = 256
     temperature: float | None = None
     json_mode: bool = False
     think: bool = False
     reasoning_effort: str = "none"
+    extra_body: dict[str, Any] = field(default_factory=dict)
 
     @classmethod
     def from_dict(cls, data: dict[str, Any] | None) -> "Generate | None":
@@ -94,18 +106,32 @@ class Generate:
             )
         if "prompt" not in data:
             raise PipelineValidationError("generate.prompt is required")
+        if "model" in data and data["model"] is not None and not isinstance(data["model"], str):
+            raise PipelineValidationError(
+                f"generate.model must be a string or null, got {type(data['model']).__name__}"
+            )
+        if "extra_body" in data and data["extra_body"] is not None:
+            if not isinstance(data["extra_body"], dict):
+                raise PipelineValidationError(
+                    f"generate.extra_body must be a mapping, got "
+                    f"{type(data['extra_body']).__name__}"
+                )
         known = {f.name for f in fields(cls)}
         kwargs = {k: v for k, v in data.items() if k in known}
+        if kwargs.get("extra_body") is None:
+            kwargs.pop("extra_body", None)
         return cls(**kwargs)
 
     def to_dict(self) -> dict[str, Any]:
         return {
             "prompt": self.prompt,
+            "model": self.model,
             "max_tokens": self.max_tokens,
             "temperature": self.temperature,
             "json_mode": self.json_mode,
             "think": self.think,
             "reasoning_effort": self.reasoning_effort,
+            "extra_body": dict(self.extra_body),
         }
 
 
