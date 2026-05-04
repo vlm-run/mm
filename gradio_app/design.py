@@ -262,6 +262,7 @@ DESIGN_HEAD = """
     padding: 0 !important;
     margin: 0 !important;
     box-shadow: none !important;
+    overflow: hidden !important;
   }
   .gradio-container .mm-tabnav label {
     display: inline-flex !important;
@@ -419,6 +420,9 @@ DESIGN_HEAD = """
     padding: 16px !important;
     color: var(--mm-text-secondary) !important;
     font-style: italic !important;
+  }
+  .html-container {
+    margin-top: -35px;
   }
 </style>
 """
