@@ -15,12 +15,20 @@ for a future AI-classified content-type binding using magika; ``None`` until the
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass
+from functools import cache
 from pathlib import Path
 from typing import Any, Literal
 
 from mm.utils import file_kind
 
 PeekKind = Literal["image", "video", "audio", "document", "text"]
+
+
+@cache
+def _magika():
+    from magika import Magika
+
+    return Magika()
 
 
 @dataclass
@@ -75,8 +83,7 @@ class FileMetadata:
     def from_path(cls, path: Path | str) -> FileMetadata:
         """Build a :class:`FileMetadata` for *path* via the Rust scanner.
 
-        Pure read — never touches the SQLite DB. Used by ``mm peek``
-        as the metadata-tier provider.
+        Pure read used by ``mm peek`` as the metadata-tier provider.
         """
         from mm._mm import Scanner
         from mm.constants import guess_mime
@@ -86,6 +93,12 @@ class FileMetadata:
         scanner.scan()
         r = scanner.extract_metadata(p.name)
         size = p.stat().st_size
+
+        try:
+            result = _magika().identify_path(p)
+            extra = dict(result.output.__dict__)
+        except Exception:
+            extra = None
 
         return cls(
             path=str(p.resolve()),
@@ -107,4 +120,5 @@ class FileMetadata:
             pages=r.pages,
             content_hash=r.content_hash,
             magic_mime=r.magic_mime,
+            extra=extra,
         )

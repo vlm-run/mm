@@ -83,6 +83,7 @@ dependencies = [
     "ctranslate2>=2.0",
     "cachetools>=5.3",
     "cachetools-ext>=0.0.8",
+    "magika>=1.0.3",
 ]
 
 [project.optional-dependencies]

@@ -117,19 +117,23 @@ def resolve_format(fmt: str | None) -> str:
     return "tsv" if is_piped_output() else "rich"
 
 
+def _strval(v: object) -> str:
+    return "" if v is None else str(v)
+
+
 def emit_tsv(
     rows: list[dict],
     columns: list[str] | None = None,
     *,
     stderr: bool = False,
 ) -> None:
-    """Print rows as TSV with a header line."""
+    """Print rows as TSV with a header line. ``None`` cells render empty."""
     if not rows:
         return
     cols = columns or list(rows[0].keys())
     print("\t".join(cols), file=resolve_stderr(stderr))
     for row in rows:
-        print("\t".join(str(row.get(c, "")) for c in cols), file=resolve_stderr(stderr))
+        print("\t".join(_strval(row.get(c)) for c in cols), file=resolve_stderr(stderr))
 
 
 def emit_csv(
@@ -138,7 +142,7 @@ def emit_csv(
     *,
     stderr: bool = False,
 ) -> None:
-    """Print rows as CSV with a header line."""
+    """Print rows as CSV with a header line. ``None`` cells render empty."""
     import csv
     import io
 
@@ -149,7 +153,7 @@ def emit_csv(
     writer = csv.writer(buf)
     writer.writerow(cols)
     for row in rows:
-        writer.writerow(str(row.get(c, "")) for c in cols)
+        writer.writerow(_strval(row.get(c)) for c in cols)
     print(buf.getvalue(), end="", file=resolve_stderr(stderr))
 
 

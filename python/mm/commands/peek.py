@@ -12,7 +12,6 @@ file *say*?".
 
 from __future__ import annotations
 
-import json as _json
 from pathlib import Path
 from typing import Annotated, Optional
 
@@ -65,26 +64,17 @@ def peek_cmd(
     if not rows:
         raise typer.Exit(1)
 
-    if fmt == "json":
-        typer.echo(_json.dumps([r.to_dict() for r in rows], default=str))
-    elif fmt == "pretty-json":
-        typer.echo(_json.dumps([r.to_dict() for r in rows], indent=2, default=str))
-    elif fmt in ("tsv", "csv"):
-        _emit_delimited(rows, sep="\t" if fmt == "tsv" else ",")
+    from mm.display import emit_csv, emit_rows, emit_tsv
+
+    dict_rows = [r.to_dict() for r in rows]
+    if fmt in ("json", "pretty-json"):
+        emit_rows(fmt, dict_rows)
+    elif fmt == "tsv":
+        emit_tsv(dict_rows)
+    elif fmt == "csv":
+        emit_csv(dict_rows)
     else:
         _emit_rich(rows)
-
-
-def _emit_delimited(rows: list[FileMetadata], *, sep: str) -> None:
-    """Emit rows as TSV/CSV with a stable column order. Nones → empty cell."""
-    if not rows:
-        return
-    cols = list(rows[0].to_dict().keys())
-    print(sep.join(cols))
-    for r in rows:
-        d = r.to_dict()
-        cells = ["" if d.get(c) is None else str(d.get(c)) for c in cols]
-        print(sep.join(cells))
 
 
 def _emit_rich(rows: list[FileMetadata]) -> None:
