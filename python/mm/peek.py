@@ -96,7 +96,7 @@ class FileMetadata:
 
         try:
             result = _magika().identify_path(p)
-            extra = dict(result.output.__dict__)
+            extra = {**result.output.__dict__, "confidence": result.score}
         except Exception:
             extra = None
 

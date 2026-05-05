@@ -66,7 +66,7 @@ def peek_cmd(
 
     from mm.display import emit_csv, emit_rows, emit_tsv
 
-    dict_rows = [r.to_dict() for r in rows]
+    dict_rows = [{k: v for k, v in r.to_dict().items() if v is not None} for r in rows]
     if fmt in ("json", "pretty-json"):
         emit_rows(fmt, dict_rows)
     elif fmt == "tsv":
@@ -137,12 +137,12 @@ def _emit_rich(rows: list[FileMetadata]) -> None:
         if r.pages is not None:
             tbl.add_row("pages", str(r.pages))
 
-        # Future: extra
         if r.extra:
-            mk = r.extra
-            tbl.add_row(
-                "extra",
-                f"{mk.get('label', '?')} ({mk.get('mime_type', '?')}, score={mk.get('score', 0):.3f})",
-            )
+            inner = Table.grid(padding=(0, 1))
+            inner.add_column(style="dim")
+            inner.add_column()
+            for k, v in r.extra.items():
+                inner.add_row(k, "" if v is None else str(v))
+            tbl.add_row("extra", inner)
 
         output_console.print(Panel(tbl, title=f"[bold]{r.name}[/bold]", border_style=kind_style))

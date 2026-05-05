@@ -125,12 +125,7 @@ class TestFileMetadataShape:
 
 
 class TestMagikaExtra:
-    """``FileMetadata.extra`` carries ``magika.identify_path(...).output.__dict__``.
-
-    Six keys (no ``score`` — that lives on the result object, not on
-    its ``output``). Values are JSON-serializable: ``label`` is a
-    str-enum, the rest are primitives or list[str].
-    """
+    """``FileMetadata.extra`` carries ``magika.identify_path(...).output.__dict__``."""
 
     EXPECTED_KEYS = {
         "label",
@@ -139,6 +134,7 @@ class TestMagikaExtra:
         "description",
         "extensions",
         "is_text",
+        "confidence",
     }
 
     def test_python_source_classified_as_python(self, tiny_txt: Path):
