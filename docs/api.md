@@ -202,8 +202,8 @@ User metadata is emitted as a leading text part per item
 Markdown table with one row per ref: `ref | kind | source | content`.
 `mode="metadata"` populates each row with the metadata-tier content
 (`files.text_preview` — produced by `extract_meta`; no LLM call) for
-non-text kinds, and raw text for code/text files. (Mirrors the CLI's
-default `mm cat --mode metadata` for binary kinds — same literal value, same behaviour.)
+non-text kinds, and raw text for code/text files. (Mirrors what the CLI's
+`mm peek` surfaces locally for binary kinds — same source data.)
 
 `mode="fast"` and `mode="accurate"` are reserved for the LLM-backed
 pipelines and currently raise `NotImplementedError`.

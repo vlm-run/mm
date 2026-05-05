@@ -8,8 +8,8 @@ more files without touching the SQLite store. Output is the flat
 Rich tables hide unset cells naturally.
 
 Identification fields (``mime`` / ``magic_mime`` / ``content_hash``)
-come from the existing Rust scanner. The ``aimeta`` field is reserved
-for a future AI-classified content-type binding using magika; ``None`` until then.
+come from the Rust scanner. The ``aimeta`` field carries magika's
+AI-classified content type plus a confidence score.
 """
 
 from __future__ import annotations
@@ -66,7 +66,8 @@ class FileMetadata:
     content_hash: str | None = None
     magic_mime: str | None = None
 
-    # AI predicted metadata (populated once magika is wired)
+    # AI-predicted metadata via magika (label, mime_type, group,
+    # description, extensions, is_text, confidence)
     aimeta: dict[str, Any] | None = None
 
     def to_dict(self) -> dict[str, Any]:

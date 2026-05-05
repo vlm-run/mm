@@ -2,7 +2,7 @@
 
 53 scenarios that leverage mm's multimodal awareness, Rust-speed metadata extraction, token estimation, and semantic search. Each maps to existing CLI commands.
 
-> **Note on `mm cat` modes:** the default is `--mode metadata` (local extraction only — no LLM call). It returns image dims/EXIF/hash, video resolution/duration/codecs, audio metadata, PDF text, and raw text/code. Pass `-m fast` for the kind's fast pipeline (short LLM caption for image/video) or `-m accurate` for the LLM-heavy pipeline. Examples below that need an LLM make the mode explicit.
+> **Note on `mm peek` vs `mm cat`:** `mm peek` returns local file metadata (image dims/EXIF/hash, video resolution/duration/codecs, audio metadata, mime, content hash). `mm cat` extracts content: PDF text, raw text/code passthrough, or a short LLM caption (`-m fast`) / LLM-heavy description (`-m accurate`) for image/video/audio/PDF. Examples below that need an LLM make the mode explicit.
 
 ---
 
@@ -302,5 +302,5 @@ For a construction project with permits (PDF), site photos (JPEG), and walkthrou
 
 <details><summary>53. Batch-extract metadata for a digital asset manager</summary>
 
-`mm find ~/dam --format json > metadata.json` for file-level metadata. `mm find ~/dam | mm cat --format json > content.json` for content metadata (text, dimensions, duration, hash, EXIF). Both are database-ready — one scan at ~0.02ms/file, one metadata-mode pass for richer local extraction (no LLM).
+`mm find ~/dam --format json > metadata.json` for file-level scan metadata. `mm find ~/dam | mm peek --format json > content.json` for richer local extraction (text, dimensions, duration, hash, EXIF).
 </details>

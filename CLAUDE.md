@@ -303,8 +303,7 @@ Columns (`files`): `uri`, `name`, `stem`, `ext`, `size`, `modified`, `created`, 
 
 ## Processing modes
 
-`peek` and `cat` split the surface that the legacy `--mode metadata`
-once spanned:
+`peek` and `cat` divide the surface by intent: identify vs. extract.
 
 - **peek** (separate command): local metadata extraction only
   — image dims / EXIF / hash / pHash, video resolution / duration /
