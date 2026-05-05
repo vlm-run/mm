@@ -84,6 +84,7 @@ dependencies = [
     "cachetools>=5.3",
     "cachetools-ext>=0.0.8",
     "magika>=1.0.3",
+    "onnxruntime>=1.16",
 ]
 
 [project.optional-dependencies]

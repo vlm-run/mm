@@ -25,7 +25,7 @@ from mm.utils import file_kind
 PeekKind = Literal["image", "video", "audio", "document", "text"]
 
 
-def _start_magika_preload():
+def _preload_magika():
     try:
         from magika import Magika
 
@@ -34,7 +34,7 @@ def _start_magika_preload():
         return None
 
 
-_magika_future = _start_magika_preload()
+_magika_future = _preload_magika()
 
 
 @cache
