@@ -255,7 +255,7 @@ class TestCat:
             ],
         )
         assert r.exit_code == 0
-        data = json.loads(r.output)
+        data = json.loads(r.stdout)
         assert len(data) == 2
 
     def test_dataset_jsonl(self, small_tree: Path):
