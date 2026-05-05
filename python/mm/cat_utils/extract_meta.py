@@ -156,26 +156,23 @@ def _local_pdf(path: Path) -> str:
         return f"[PDF extraction failed: {e}]"
 
 
-def extract_text(path: Path, kind: Literal["document", "text"]) -> str:
+def extract_text(path: Path, kind: Literal["document", "text"]) -> tuple[str, bool | None]:
     """``mm cat`` passthrough path — mode-agnostic."""
     from mm.store.db import MmDatabase
     from mm.store.embed import embed_text_chunks_concurrent
     from mm.store.utils import get_content_hash
 
-    content = extract_meta(path, kind, no_cache=False)
+    content = extract_meta(path, kind)
     if not content or content.startswith("["):
-        return content
+        return content, None
 
     content_hash = get_content_hash(path)
     if not content_hash:
-        return content
+        return content, None
 
     db = MmDatabase()
     if db.has_text_chunks(content_hash):
-        from mm.commands import cat as cat_cmd
-
-        cat_cmd._was_cached = True
-        return content
+        return content, True
 
     try:
         db.put_text_chunks(
@@ -185,6 +182,8 @@ def extract_text(path: Path, kind: Literal["document", "text"]) -> str:
         )
         embed_text_chunks_concurrent(content_hash, max_workers=4)
     except Exception as e:
-        print(f"Embedding failed for {content_hash}: {e}")
+        from mm.display import console
 
-    return content
+        console.print(f"Embedding failed for {content_hash}: {e}")
+
+    return content, None

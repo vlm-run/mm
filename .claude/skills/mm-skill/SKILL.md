@@ -109,7 +109,7 @@ Columns in the `files` table:
 | width     | uint32    | Pixel width (images from header, videos via native parsing). Null for non-media.  |
 | height    | uint32    | Pixel height (images from header, videos via native parsing). Null for non-media. |
 
-## peek — raw file metadata (no DB)
+## peek — raw file metadata
 
 `mm peek` returns locally-extracted metadata (dimensions / EXIF / codec / duration / mime / hash …).
 

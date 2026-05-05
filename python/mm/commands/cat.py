@@ -257,7 +257,6 @@ def cat_cmd(
                                             # override the default pipeline prompt
       mm cat --print-pipeline image/accurate
                                             # inspect the pipeline YAML source
-      mm peek photo.png                     # raw file metadata (no LLM, no DB)
 
     \b
     Override surfaces (right-most layer wins on conflict):
@@ -318,8 +317,7 @@ def cat_cmd(
 
     if mode not in ("fast", "accurate"):
         typer.echo(
-            f"Error: Unknown mode {mode!r}. Use 'fast' or 'accurate'. "
-            f"For raw metadata, run ``mm peek <file_path>``.",
+            f"Error: Unknown mode {mode!r}. Use 'fast' or 'accurate'. ",
             err=True,
         )
         raise typer.Exit(1)
@@ -470,8 +468,12 @@ def _extract(path: Path, opts: CatOpts) -> str:
     """Pipeline-driven extraction dispatch with unified extraction caching."""
     kind = file_kind(path)
     ext = path.suffix.lower()
+    global _was_cached
     if kind == "text" or (kind == "document" and ext != ".pdf"):
-        return extract_text(path, kind)
+        content, cached = extract_text(path, kind)
+        if cached:
+            _was_cached = True
+        return content
 
     from mm.pipelines import apply_overrides
     from mm.profile import get_profile
@@ -512,7 +514,6 @@ def _extract(path: Path, opts: CatOpts) -> str:
         if not opts.no_cache:
             cached = db.get_extraction(extraction_id)
             if cached is not None:
-                global _was_cached
                 _was_cached = True
                 if opts.verbose:
                     meta = db.get_extraction_metadata(extraction_id)

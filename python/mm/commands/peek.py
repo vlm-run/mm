@@ -1,4 +1,4 @@
-"""mm peek -- direct file metadata extraction (no DB).
+"""mm peek -- direct file metadata extraction.
 
 ``peek`` is the cheap, deterministic counterpart to ``cat``: it surfaces
 locally-extracted metadata (dimensions, EXIF, codec, duration, mime,

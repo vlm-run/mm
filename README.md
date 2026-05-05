@@ -340,7 +340,7 @@ mm find ~/data --format json                           # full metadata JSON
 mm find ~/data --no-ignore                             # include gitignored files
 ```
 
-### peek — raw file metadata (no DB)
+### peek — raw file metadata
 
 `mm peek` returns locally-extracted metadata (dimensions / EXIF / codec / duration / mime / hash …).
 

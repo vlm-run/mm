@@ -246,7 +246,7 @@ The following commands were merged into the core commands:
 - `audio` → `cat audio.mp3 -m accurate` (transcript → LLM summary)
 - `ls` / `tree` / `describe` → `find` with `--tree`, `--schema`, `--columns`
 - `info` → `wc` (default summary panel)
-- `cat -m metadata` → `peek` (raw file metadata, no DB)
+- `cat -m metadata` → `peek` (raw file metadata)
 
 ### find modes
 
@@ -258,7 +258,7 @@ The following commands were merged into the core commands:
 - `mm find ~/data --columns name,size,kind` — custom column selection
 - `mm find ~/data --no-ignore` — include files excluded by .gitignore
 
-### peek (raw file metadata, no DB)
+### peek (raw file metadata)
 
 `mm peek <file>` returns locally-extracted metadata (dimensions / EXIF / codec / duration / mime / hash …) for one or more files.
 
