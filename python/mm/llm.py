@@ -54,13 +54,17 @@ class LlmBackend:
         profile = get_profile()
         resolved_base = (base_url or profile.base_url).rstrip("/")
 
-        self.api_key = api_key or profile.api_key or "no-key"
+        resolved_key = api_key or profile.api_key or None
+        self.api_key = resolved_key or ""
         self.model = model or profile.model
+        headers: dict[str, str] = {"User-Agent": f"mm-ctx/{__version__}"}
+        if not resolved_key:
+            headers["Authorization"] = ""
         self.client = OpenAI(
             base_url=resolved_base,
-            api_key=self.api_key,
+            api_key=resolved_key or "noop",
             timeout=120.0,
-            default_headers={"User-Agent": f"mm-ctx/{__version__}"},
+            default_headers=headers,
         )
         self.last_usage = LlmUsage()
 

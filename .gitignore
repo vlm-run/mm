@@ -19,7 +19,6 @@ venv/
 .benchmarks/
 benchmarks/data/
 benchmarks/criterion/
-benchmarks/universal_cli/run_results
 htmlcov/
 .coverage
 

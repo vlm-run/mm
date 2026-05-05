@@ -20,10 +20,10 @@ from mm.config import (
 )
 from mm.profile import (
     DEFAULT_PROFILE,
-    GEMINI_DEFAULTS,
+    GATEWAY_DEFAULTS,
     OLLAMA_DEFAULTS,
+    OPENROUTER_DEFAULTS,
     RESERVED_PROFILES,
-    VLMRUN_DEFAULTS,
     Profile,
     add_profile,
     get_profile,
@@ -50,14 +50,14 @@ class TestDefaults:
     def test_defaults_used_when_nothing_set(self):
         profile = get_profile()
         assert profile.name == DEFAULT_PROFILE
-        assert profile.base_url == OLLAMA_DEFAULTS["base_url"]
-        assert profile.api_key == OLLAMA_DEFAULTS["api_key"]
-        assert profile.model == OLLAMA_DEFAULTS["model"]
+        assert profile.base_url == GATEWAY_DEFAULTS["base_url"]
+        assert profile.api_key == GATEWAY_DEFAULTS["api_key"]
+        assert profile.model == GATEWAY_DEFAULTS["model"]
 
 
 class TestFileConfig:
     def test_file_overrides_defaults(self, tmp_path: Path):
-        set_cli_overrides("gemini")
+        set_cli_overrides("openrouter")
         profile_data = cast(
             ProfileData,
             {"base_url": "http://remote:8000", "api_key": "sk-123", "model": "gpt-4o"},
@@ -65,7 +65,7 @@ class TestFileConfig:
         write_full_config(
             cast(
                 ConfigData,
-                {"active_profile": "gemini", "profile": {"gemini": profile_data}},
+                {"active_profile": "openrouter", "profile": {"openrouter": profile_data}},
             )
         )
         profile = get_profile()
@@ -74,7 +74,8 @@ class TestFileConfig:
         assert profile.model == "gpt-4o"
 
     def test_partial_file_keeps_user_values(self, tmp_path: Path):
-        toml = '[profile.ollama]\nbase_url = "http://localhost:11434"\napi_key = ""\nmodel = "llama3"\n'
+        set_cli_overrides("ollama")
+        toml = '[profile.ollama]\nbase_url = "http://localhost:11434/v1"\napi_key = ""\nmodel = "llama3"\n'
         (tmp_path / "config.toml").write_text(toml)
         profile = get_profile()
         # ollama is mutable — user values are preserved
@@ -94,9 +95,9 @@ class TestWriteFullConfigSetup:
             cast(
                 ConfigData,
                 {
-                    "active_profile": "gemini",
+                    "active_profile": "openrouter",
                     "profile": {
-                        "gemini": cast(
+                        "openrouter": cast(
                             ProfileData, {"base_url": "http://a", "api_key": "k", "model": "m"}
                         )
                     },
@@ -106,33 +107,33 @@ class TestWriteFullConfigSetup:
         assert p.exists()
         contents = p.read_text()
         assert "[profile.ollama]" in contents
-        assert "[profile.gemini]" in contents
-        assert "[profile.vlmrun]" in contents
+        assert "[profile.openrouter]" in contents
+        assert "[profile.gateway]" in contents
         assert 'base_url = "http://a"' in contents
 
-    def test_vlmrun_profile_is_rewritten_to_builtin_values(self, tmp_path: Path):
+    def test_gateway_profile_is_rewritten_to_builtin_values(self, tmp_path: Path):
         (tmp_path / "config.toml").write_text(
             """\
-active_profile = "vlmrun"
+active_profile = "gateway"
 
-[profile.vlmrun]
+[profile.gateway]
 base_url = "http://custom:9999"
 api_key = "secret"
 model = "custom-model"
 """
         )
 
-        set_cli_overrides("vlmrun")
+        set_cli_overrides("gateway")
         profile = get_profile()
         assert profile == Profile(
-            name=VLMRUN_DEFAULTS["name"],
-            base_url=VLMRUN_DEFAULTS["base_url"],
-            api_key=VLMRUN_DEFAULTS["api_key"],
-            model=VLMRUN_DEFAULTS["model"],
+            name=GATEWAY_DEFAULTS["name"],
+            base_url=GATEWAY_DEFAULTS["base_url"],
+            api_key=GATEWAY_DEFAULTS["api_key"],
+            model=GATEWAY_DEFAULTS["model"],
         )
         contents = (tmp_path / "config.toml").read_text()
-        assert f'base_url = "{VLMRUN_DEFAULTS["base_url"]}"' in contents
-        assert f'model = "{VLMRUN_DEFAULTS["model"]}"' in contents
+        assert f'base_url = "{GATEWAY_DEFAULTS["base_url"]}"' in contents
+        assert f'model = "{GATEWAY_DEFAULTS["model"]}"' in contents
 
 
 class TestUpdateModeConfig:
@@ -301,20 +302,20 @@ class TestResetProfiles:
         from typer.testing import CliRunner
 
         # Modify a mutable reserved profile
-        update_profile("gemini", base_url="http://modified:9000", model="modified-model")
+        update_profile("openrouter", base_url="http://modified:9000", model="modified-model")
         file_data = _read_config_file()
         assert "profile" in file_data
-        assert file_data["profile"]["gemini"]["base_url"] == "http://modified:9000"
+        assert file_data["profile"]["openrouter"]["base_url"] == "http://modified:9000"
 
         runner = CliRunner()
         result = runner.invoke(app, ["config", "reset-profiles", "--yes"])
         assert result.exit_code == 0
 
-        # Gemini should be back to defaults
+        # openrouter should be back to defaults
         file_data = _read_config_file()
         assert "profile" in file_data
-        assert file_data["profile"]["gemini"]["base_url"] == GEMINI_DEFAULTS["base_url"]
-        assert file_data["profile"]["gemini"]["model"] == GEMINI_DEFAULTS["model"]
+        assert file_data["profile"]["openrouter"]["base_url"] == OPENROUTER_DEFAULTS["base_url"]
+        assert file_data["profile"]["openrouter"]["model"] == OPENROUTER_DEFAULTS["model"]
 
     def test_reset_profiles_preserves_mode_settings(self):
         from mm.cli import app

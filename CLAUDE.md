@@ -2,7 +2,7 @@
 
 ## What this is
 
-`mm` is a fast, multimodal file intelligence for **agents** on the CLI, designed to provide multimodal understanding for file types that are not natively understood by LLMs — images, video, audio, PDFs, and other binary/media formats.
+`mm` provides fast, multimodal context for **agents** on the CLI, designed to provide multimodal understanding for file types that are not natively understood by LLMs — images, video, audio, PDFs, and other binary/media formats.
 
 Rust core for speed, Python for developer experience, Unix philosophy for composability.
 
