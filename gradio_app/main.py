@@ -29,8 +29,10 @@ import json
 import logging
 import os
 import pty
+import signal
 import struct
 import termios
+import threading
 from contextlib import asynccontextmanager
 from typing import AsyncIterator
 
@@ -87,11 +89,30 @@ def health() -> dict[str, str]:
 app.include_router(router, prefix="/api")
 
 
-def _read_pty(fd: int) -> bytes:
+def _reap_pid(pid: int) -> None:
+    """Blocking-waitpid in a daemon thread so the event loop is never paused."""
     try:
-        return os.read(fd, 4096)
-    except OSError:
-        return b""
+        os.waitpid(pid, 0)
+    except (ChildProcessError, OSError):
+        pass
+
+
+def _terminate_pty_child(pid: int) -> None:
+    """SIGKILL the PTY session group, then reap off-thread.
+
+    ``pty.fork()`` calls ``setsid()`` in the child, so ``pid`` is also the
+    session/process-group leader. Killing the group catches any subshells
+    bash spawned. Reaping is delegated to a daemon thread to keep the
+    asyncio loop responsive even if the kernel is slow to deliver SIGKILL.
+    """
+    try:
+        os.killpg(pid, signal.SIGKILL)
+    except (ProcessLookupError, OSError):
+        try:
+            os.kill(pid, signal.SIGKILL)
+        except ProcessLookupError:
+            return
+    threading.Thread(target=_reap_pid, args=(pid,), daemon=True).start()
 
 
 @app.websocket("/ws/terminal")
@@ -101,10 +122,19 @@ async def terminal_ws(ws: WebSocket) -> None:
     Frames from the client are JSON: ``{"type":"input","data":"..."}`` for
     keystrokes and ``{"type":"resize","rows":N,"cols":M}`` for window size.
     PTY output is sent back as binary frames.
+
+    PTY reads run via ``loop.add_reader`` on a non-blocking master fd —
+    not ``run_in_executor`` — because on macOS closing a fd does not
+    unblock another thread's ``os.read`` on it, which would deadlock
+    the executor thread permanently after each session.
     """
     await ws.accept()
     pid, fd = pty.fork()
     if pid == 0:
+        try:
+            os.closerange(3, 1024)
+        except OSError:
+            pass
         env = os.environ.copy()
         env["TERM"] = "xterm-256color"
         env["PS1"] = "mm $ "
@@ -117,15 +147,28 @@ async def terminal_ws(ws: WebSocket) -> None:
         except FileNotFoundError:
             os.execvpe("/bin/sh", ["/bin/sh", "-i"], env)
 
+    os.set_blocking(fd, False)
     loop = asyncio.get_running_loop()
+    queue: asyncio.Queue[bytes | None] = asyncio.Queue()
+
+    def on_readable() -> None:
+        try:
+            data = os.read(fd, 4096)
+        except BlockingIOError:
+            return
+        except OSError:
+            data = b""
+        queue.put_nowait(data if data else None)
+
+    loop.add_reader(fd, on_readable)
 
     async def pump_pty_to_ws() -> None:
         while True:
-            data = await loop.run_in_executor(None, _read_pty, fd)
-            if not data:
+            chunk = await queue.get()
+            if chunk is None:
                 return
             try:
-                await ws.send_bytes(data)
+                await ws.send_bytes(chunk)
             except (RuntimeError, WebSocketDisconnect):
                 return
 
@@ -154,16 +197,16 @@ async def terminal_ws(ws: WebSocket) -> None:
     except WebSocketDisconnect:
         pass
     finally:
+        try:
+            loop.remove_reader(fd)
+        except (OSError, ValueError):
+            pass
         pump.cancel()
         try:
             os.close(fd)
         except OSError:
             pass
-        try:
-            os.kill(pid, 9)
-            os.waitpid(pid, 0)
-        except (ProcessLookupError, ChildProcessError):
-            pass
+        _terminate_pty_child(pid)
 
 
 app = gr.mount_gradio_app(
