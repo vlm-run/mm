@@ -111,21 +111,21 @@ class TestFileMetadataShape:
             "pages",
             "content_hash",
             "magic_mime",
-            "extra",
+            "aimeta",
         }
         assert set(d.keys()) == expected_keys
 
-    def test_extra_field_present_in_shape(self, tiny_png: Path):
-        """``extra`` is part of the shape; populated by magika or ``None``."""
+    def test_aimeta_field_present_in_shape(self, tiny_png: Path):
+        """``aimeta`` is part of the shape; populated by magika or ``None``."""
         fm = FileMetadata.from_path(tiny_png)
-        assert fm.extra is None or isinstance(fm.extra, dict)
+        assert fm.aimeta is None or isinstance(fm.aimeta, dict)
 
 
 # ── magika integration ───────────────────────────────────────────────
 
 
 class TestMagikaExtra:
-    """``FileMetadata.extra`` carries ``magika.identify_path(...).output.__dict__``."""
+    """``FileMetadata.aimeta`` carries ``magika.identify_path(...).output.__dict__``."""
 
     EXPECTED_KEYS = {
         "label",
@@ -139,25 +139,25 @@ class TestMagikaExtra:
 
     def test_python_source_classified_as_python(self, tiny_txt: Path):
         fm = FileMetadata.from_path(tiny_txt)
-        assert fm.extra is not None
-        assert set(fm.extra.keys()) == self.EXPECTED_KEYS
-        assert fm.extra["label"] == "python"
-        assert fm.extra["group"] == "code"
-        assert fm.extra["is_text"] is True
-        assert fm.extra["mime_type"] == "text/x-python"
-        assert "py" in fm.extra["extensions"]
+        assert fm.aimeta is not None
+        assert set(fm.aimeta.keys()) == self.EXPECTED_KEYS
+        assert fm.aimeta["label"] == "python"
+        assert fm.aimeta["group"] == "code"
+        assert fm.aimeta["is_text"] is True
+        assert fm.aimeta["mime_type"] == "text/x-python"
+        assert "py" in fm.aimeta["extensions"]
 
     def test_png_classified_as_image(self, tiny_png: Path):
         fm = FileMetadata.from_path(tiny_png)
-        assert fm.extra is not None
-        assert set(fm.extra.keys()) == self.EXPECTED_KEYS
-        assert fm.extra["mime_type"].startswith("image/")
-        assert fm.extra["is_text"] is False
+        assert fm.aimeta is not None
+        assert set(fm.aimeta.keys()) == self.EXPECTED_KEYS
+        assert fm.aimeta["mime_type"].startswith("image/")
+        assert fm.aimeta["is_text"] is False
 
     def test_extensions_is_list_of_str(self, tiny_txt: Path):
         fm = FileMetadata.from_path(tiny_txt)
-        assert fm.extra is not None
-        exts = fm.extra["extensions"]
+        assert fm.aimeta is not None
+        exts = fm.aimeta["extensions"]
         assert isinstance(exts, list)
         assert all(isinstance(e, str) for e in exts)
 
@@ -166,30 +166,26 @@ class TestMagikaExtra:
         pdf = tmp_path / "tiny.pdf"
         pdf.write_bytes(b"%PDF-1.4\n%fake content\n%%EOF\n")
         fm = FileMetadata.from_path(pdf)
-        assert fm.extra is not None
-        assert fm.extra["label"] == "pdf"
-        assert fm.extra["mime_type"] == "application/pdf"
+        assert fm.aimeta is not None
+        assert fm.aimeta["label"] == "pdf"
+        assert fm.aimeta["mime_type"] == "application/pdf"
 
-    def test_extra_is_json_serializable(self, tiny_txt: Path):
-        """``extra`` must round-trip through ``json.dumps`` cleanly.
-
-        ``label`` is a magika ``ContentTypeLabel`` (str-enum); JSON
-        resolves it to its string value automatically.
-        """
+    def test_aimeta_is_json_serializable(self, tiny_txt: Path):
+        """``aimeta`` must round-trip through ``json.dumps`` cleanly."""
         fm = FileMetadata.from_path(tiny_txt)
-        assert fm.extra is not None
-        encoded = json.dumps(fm.extra)
+        assert fm.aimeta is not None
+        encoded = json.dumps(fm.aimeta)
         decoded = json.loads(encoded)
         assert decoded["label"] == "python"
         assert decoded["is_text"] is True
 
-    def test_extra_appears_in_peek_json_output(self, tiny_txt: Path):
-        """``mm peek --format json`` round-trip exposes ``extra`` to consumers."""
+    def test_aimeta_appears_in_peek_json_output(self, tiny_txt: Path):
+        """``mm peek --format json`` round-trip exposes ``aimeta`` to consumers."""
         r = runner.invoke(app, ["peek", str(tiny_txt), "--format", "json"])
         assert r.exit_code == 0
         rows = json.loads(r.stdout.splitlines()[0])
-        assert rows[0]["extra"] is not None
-        assert rows[0]["extra"]["label"] == "python"
+        assert rows[0]["aimeta"] is not None
+        assert rows[0]["aimeta"]["label"] == "python"
 
 
 # ── CLI: never touches the DB ─────────────────────────────────────────

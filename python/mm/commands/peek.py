@@ -137,12 +137,12 @@ def _emit_rich(rows: list[FileMetadata]) -> None:
         if r.pages is not None:
             tbl.add_row("pages", str(r.pages))
 
-        if r.extra:
+        if r.aimeta:
             inner = Table.grid(padding=(0, 1))
             inner.add_column(style="dim")
             inner.add_column()
-            for k, v in r.extra.items():
+            for k, v in r.aimeta.items():
                 inner.add_row(k, "" if v is None else str(v))
-            tbl.add_row("extra", inner)
+            tbl.add_row("aimeta", inner)
 
         output_console.print(Panel(tbl, title=f"[bold]{r.name}[/bold]", border_style=kind_style))

@@ -8,7 +8,7 @@ more files without touching the SQLite store. Output is the flat
 Rich tables hide unset cells naturally.
 
 Identification fields (``mime`` / ``magic_mime`` / ``content_hash``)
-come from the existing Rust scanner. The ``extra`` field is reserved
+come from the existing Rust scanner. The ``aimeta`` field is reserved
 for a future AI-classified content-type binding using magika; ``None`` until then.
 """
 
@@ -33,13 +33,7 @@ def _magika():
 
 @dataclass
 class FileMetadata:
-    """Locally-extracted file metadata, kind-agnostic flat shape.
-
-    Every field except ``path``, ``name``, ``size``, ``mime``, and
-    ``kind`` is nullable; the renderer / consumer ignores fields that
-    don't apply to the file's kind. Field order: identity → visual →
-    EXIF → audio/video → document → identification → AI-classified.
-    """
+    """Locally-extracted file metadata, kind-agnostic flat shape."""
 
     # Identity (always populated)
     path: str
@@ -72,8 +66,8 @@ class FileMetadata:
     content_hash: str | None = None
     magic_mime: str | None = None
 
-    # AI-classified content type (populated once magika is wired)
-    extra: dict[str, Any] | None = None
+    # AI predicted metadata (populated once magika is wired)
+    aimeta: dict[str, Any] | None = None
 
     def to_dict(self) -> dict[str, Any]:
         """Serializable mapping; ``None`` fields are preserved."""
@@ -96,9 +90,9 @@ class FileMetadata:
 
         try:
             result = _magika().identify_path(p)
-            extra = {**result.output.__dict__, "confidence": result.score}
+            aimeta = {**result.output.__dict__, "confidence": result.score}
         except Exception:
-            extra = None
+            aimeta = None
 
         return cls(
             path=str(p.resolve()),
@@ -120,5 +114,5 @@ class FileMetadata:
             pages=r.pages,
             content_hash=r.content_hash,
             magic_mime=r.magic_mime,
-            extra=extra,
+            aimeta=aimeta,
         )
