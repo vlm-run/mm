@@ -4,6 +4,74 @@ DESIGN_HEAD = """
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.css">
+<script src="https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.8.0/lib/xterm-addon-fit.js"></script>
+<script>
+(function() {
+  function mount() {
+    var el = document.getElementById('mm-terminal');
+    if (!el || el.dataset.mmMounted === 'true') return;
+    if (typeof Terminal === 'undefined' || typeof FitAddon === 'undefined') {
+      setTimeout(mount, 100);
+      return;
+    }
+    el.dataset.mmMounted = 'true';
+
+    var term = new Terminal({
+      cursorBlink: true,
+      fontFamily: '"Geist Mono", ui-monospace, SFMono-Regular, Consolas, monospace',
+      fontSize: 13,
+      theme: {
+        background: '#0F1115',
+        foreground: '#E6EDFC',
+        cursor: '#4E8CFF',
+        selectionBackground: 'rgba(30,90,202,0.35)'
+      }
+    });
+    var fit = new FitAddon.FitAddon();
+    term.loadAddon(fit);
+    term.open(el);
+    try { fit.fit(); } catch (e) {}
+
+    var proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    var ws = new WebSocket(proto + '//' + window.location.host + '/ws/terminal');
+    ws.binaryType = 'arraybuffer';
+
+    function sendResize() {
+      if (ws.readyState !== 1) return;
+      ws.send(JSON.stringify({type: 'resize', rows: term.rows, cols: term.cols}));
+    }
+
+    ws.onopen = function() { sendResize(); term.focus(); };
+    ws.onmessage = function(ev) {
+      if (typeof ev.data === 'string') term.write(ev.data);
+      else term.write(new Uint8Array(ev.data));
+    };
+    ws.onclose = function() { term.write('\\r\\n\\x1b[31m[connection closed]\\x1b[0m\\r\\n'); };
+    ws.onerror = function() { term.write('\\r\\n\\x1b[31m[connection error — is the FastAPI server running?]\\x1b[0m\\r\\n'); };
+
+    term.onData(function(data) {
+      if (ws.readyState === 1) ws.send(JSON.stringify({type: 'input', data: data}));
+    });
+
+    var rT;
+    window.addEventListener('resize', function() {
+      clearTimeout(rT);
+      rT = setTimeout(function() { try { fit.fit(); } catch (e) {} sendResize(); }, 80);
+    });
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', mount);
+  }
+  setTimeout(mount, 50);
+  setTimeout(mount, 400);
+  setTimeout(mount, 1200);
+  var mo = new MutationObserver(function() { mount(); });
+  mo.observe(document.documentElement, {childList: true, subtree: true});
+})();
+</script>
 <style>
   :root {
     --mm-bg: #F5FAFF;
@@ -496,6 +564,24 @@ DESIGN_HEAD = """
   .gradio-container button.mm-link-btn:hover {
     color: var(--mm-accent) !important;
     background: transparent !important;
+  }
+
+  .gradio-container .mm-terminal-wrap {
+    background: #0F1115;
+    border: 1px solid var(--mm-border);
+    border-radius: 12px;
+    padding: 10px;
+    box-shadow: var(--mm-shadow);
+  }
+  .gradio-container #mm-terminal {
+    width: 100%;
+    height: 600px;
+  }
+  .gradio-container #mm-terminal .xterm,
+  .gradio-container #mm-terminal .xterm-viewport,
+  .gradio-container #mm-terminal .xterm-screen {
+    height: 100% !important;
+    background: #0F1115 !important;
   }
 </style>
 """

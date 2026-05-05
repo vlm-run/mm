@@ -23,12 +23,19 @@ Run with::
 
 from __future__ import annotations
 
+import asyncio
+import fcntl
+import json
 import logging
+import os
+import pty
+import struct
+import termios
 from contextlib import asynccontextmanager
 from typing import AsyncIterator
 
 import gradio as gr
-from fastapi import FastAPI
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 
 from gradio_app import __version__
@@ -78,6 +85,86 @@ def health() -> dict[str, str]:
 
 
 app.include_router(router, prefix="/api")
+
+
+def _read_pty(fd: int) -> bytes:
+    try:
+        return os.read(fd, 4096)
+    except OSError:
+        return b""
+
+
+@app.websocket("/ws/terminal")
+async def terminal_ws(ws: WebSocket) -> None:
+    """PTY-backed terminal — bridges xterm.js (browser) to a login shell.
+
+    Frames from the client are JSON: ``{"type":"input","data":"..."}`` for
+    keystrokes and ``{"type":"resize","rows":N,"cols":M}`` for window size.
+    PTY output is sent back as binary frames.
+    """
+    await ws.accept()
+    pid, fd = pty.fork()
+    if pid == 0:
+        env = os.environ.copy()
+        env["TERM"] = "xterm-256color"
+        env["PS1"] = "mm $ "
+        try:
+            os.chdir(data_dir())
+        except OSError:
+            pass
+        try:
+            os.execvpe("/bin/bash", ["/bin/bash", "--norc", "-i"], env)
+        except FileNotFoundError:
+            os.execvpe("/bin/sh", ["/bin/sh", "-i"], env)
+
+    loop = asyncio.get_running_loop()
+
+    async def pump_pty_to_ws() -> None:
+        while True:
+            data = await loop.run_in_executor(None, _read_pty, fd)
+            if not data:
+                return
+            try:
+                await ws.send_bytes(data)
+            except (RuntimeError, WebSocketDisconnect):
+                return
+
+    pump = asyncio.create_task(pump_pty_to_ws())
+    try:
+        while True:
+            msg = await ws.receive()
+            if msg.get("type") == "websocket.disconnect":
+                break
+            text = msg.get("text")
+            if text is not None:
+                try:
+                    obj = json.loads(text)
+                except json.JSONDecodeError:
+                    os.write(fd, text.encode("utf-8"))
+                    continue
+                kind = obj.get("type")
+                if kind == "resize":
+                    rows = int(obj.get("rows") or 24)
+                    cols = int(obj.get("cols") or 80)
+                    fcntl.ioctl(fd, termios.TIOCSWINSZ, struct.pack("HHHH", rows, cols, 0, 0))
+                elif kind == "input":
+                    os.write(fd, str(obj.get("data", "")).encode("utf-8"))
+            elif msg.get("bytes"):
+                os.write(fd, msg["bytes"])
+    except WebSocketDisconnect:
+        pass
+    finally:
+        pump.cancel()
+        try:
+            os.close(fd)
+        except OSError:
+            pass
+        try:
+            os.kill(pid, 9)
+            os.waitpid(pid, 0)
+        except (ProcessLookupError, ChildProcessError):
+            pass
+
 
 app = gr.mount_gradio_app(
     app,
