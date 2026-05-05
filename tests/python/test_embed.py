@@ -147,7 +147,7 @@ class TestEmbedParts:
         embed_texts(["test"])
         call_args = mock_server.call_args
         url = call_args[0][0] if call_args[0] else call_args[1].get("url", "")
-        assert url.endswith("/v1/embeddings")
+        assert url.endswith(_EMBEDDINGS_PATH)
 
     def test_embed_parts_user_agent(self, mock_server: MagicMock):
         embed_texts(["test"])

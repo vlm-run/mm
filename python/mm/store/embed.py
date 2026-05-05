@@ -128,9 +128,9 @@ def embed_parts(parts: list[dict[str, Any]]) -> list[list[float]]:
     import httpx
 
     from mm import __version__
-    from mm.profile import VLMRUN_DEFAULTS
+    from mm.profile import GATEWAY_DEFAULTS
 
-    url = VLMRUN_DEFAULTS["base_url"] + _EMBEDDINGS_PATH
+    url = GATEWAY_DEFAULTS["base_url"] + _EMBEDDINGS_PATH
     response = httpx.post(
         url,
         json=parts,
