@@ -266,35 +266,27 @@ def grep_semantic(
     quiet: bool = False,
     cmd_hint: str | None = None,
 ) -> list[dict]:
-    """Semantic search via embeddings.
-
-    Only considers binary files (image, video, audio, document) — text and
-    code files are handled by the normal regex grep path.
-
-    Warns the user about missing indexes via stderr. Returns a list of
-    semantic match dicts (path, index, distance, match).
-    """
+    """Semantic search via embeddings"""
     from mm.context import Context
-    from mm.utils import file_kind, is_binary_content
 
     path = directory.resolve()
     is_file = path.is_file()
 
     if stdin_paths:
-        all_uris = [str(Path(p).resolve()) for p in stdin_paths if Path(p).is_file()]
+        uris = [str(Path(p).resolve()) for p in stdin_paths if Path(p).is_file()]
     elif is_file:
-        all_uris = [str(path)]
+        uris = [str(path)]
     else:
         ctx = Context(directory, no_ignore=no_ignore)
         if kind:
             ctx = ctx.filter(kind=kind)
         if ext:
             ctx = ctx.filter(ext=ext)
-        all_uris = [str(path / f.path) for f in ctx.files]
+        uris = [str(path / f.path) for f in ctx.files]
 
-    uris = [u for u in all_uris if is_binary_content(kind=file_kind(u))]
     if not uris:
         return []
+    all_uris = uris
 
     # Reconcile DB → disk: drop indexed rows whose files no longer exist.
     from mm.store.utils import prune_missing

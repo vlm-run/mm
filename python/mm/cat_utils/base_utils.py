@@ -10,7 +10,7 @@ import typer
 from mm.pipelines.schema import PipelineSpec
 
 KIND_ORDER = ("image", "video", "audio", "document")
-CatMode = Literal["metadata", "fast", "accurate"]
+CatMode = Literal["fast", "accurate"]
 
 
 class CatOpts:

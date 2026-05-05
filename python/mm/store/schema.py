@@ -233,7 +233,7 @@ CREATE INDEX IF NOT EXISTS idx_extractions_file_uri ON extractions (file_uri);
 CHUNKS_DDL = """\
 CREATE TABLE IF NOT EXISTS chunks (
     id            INTEGER PRIMARY KEY AUTOINCREMENT,
-    extraction_id TEXT NOT NULL REFERENCES extractions(id) ON DELETE CASCADE,
+    extraction_id TEXT REFERENCES extractions(id) ON DELETE CASCADE,
     file_uri      TEXT NOT NULL,
     content_hash  TEXT NOT NULL,
     profile       TEXT NOT NULL,

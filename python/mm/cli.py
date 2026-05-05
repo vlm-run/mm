@@ -26,7 +26,7 @@ else:
     sys.excepthook = _quiet_broken_pipe
 
 from mm import __version__
-from mm.commands import bench, cat, find, grep, sql, wc
+from mm.commands import bench, cat, find, grep, peek, sql, wc
 from mm.commands.config import config_app
 from mm.commands.profile import profile_app
 
@@ -89,7 +89,7 @@ app = typer.Typer(
     pretty_exceptions_enable=False,
 )
 
-_TIMED_COMMANDS = {"find", "cat", "grep", "sql", "wc"}
+_TIMED_COMMANDS = {"find", "cat", "grep", "peek", "sql", "wc"}
 _LLM_COMMANDS = {"cat", "bench"}
 
 
@@ -145,6 +145,7 @@ app.command(name="bench")(bench.bench_cmd)
 app.command(name="find")(find.find_cmd)
 app.command(name="cat")(cat.cat_cmd)
 app.command(name="grep")(grep.grep_cmd)
+app.command(name="peek")(peek.peek_cmd)
 app.command(name="sql")(sql.sql_cmd)
 app.command(name="wc")(wc.wc_cmd)
 app.add_typer(config_app, name="config")
