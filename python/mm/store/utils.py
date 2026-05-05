@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import time
+from functools import cache
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -9,6 +10,14 @@ from mm.constants import IMAGE_EXTS
 
 if TYPE_CHECKING:
     from mm.store.db import MmDatabase
+
+
+@cache
+def shared_db() -> MmDatabase:
+    """Process-wide :class:`MmDatabase` instance."""
+    from mm.store.db import MmDatabase
+
+    return MmDatabase()
 
 
 def get_content_hash(path: Path) -> str | None:

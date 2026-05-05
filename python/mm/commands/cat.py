@@ -477,10 +477,9 @@ def _extract(path: Path, opts: CatOpts) -> str:
 
     from mm.pipelines import apply_overrides
     from mm.profile import get_profile
-    from mm.store.db import MmDatabase
-    from mm.store.utils import get_content_hash
+    from mm.store.utils import get_content_hash, shared_db
 
-    db = MmDatabase()
+    db = shared_db()
     profile = get_profile()
 
     # Resolve & merge the pipeline spec exactly once so the cache key reflects

@@ -149,9 +149,9 @@ def embed_texts(texts: list[str]) -> list[list[float]]:
 
 def embed_file_chunks(extraction_id: str) -> int:
     """Embed all chunks for a file's extraction. Returns number of chunks embedded."""
-    from mm.store.db import MmDatabase
+    from mm.store.utils import shared_db
 
-    db = MmDatabase()
+    db = shared_db()
     chunks = db.get_chunks(extraction_id)
     if not chunks:
         return 0
@@ -180,9 +180,9 @@ def _parallel_embed_texts(texts: list[str], *, max_workers: int) -> list[list[fl
 
 def embed_file_chunks_concurrent(extraction_id: str, *, max_workers: int = 4) -> int:
     """Embed an extraction's chunks via a threadpool. Returns vector count."""
-    from mm.store.db import MmDatabase
+    from mm.store.utils import shared_db
 
-    db = MmDatabase()
+    db = shared_db()
     chunks = db.get_chunks(extraction_id)
     if not chunks:
         return 0
@@ -200,9 +200,9 @@ def embed_text_chunks_concurrent(content_hash: str, *, max_workers: int = 4) -> 
     so they're looked up by ``content_hash`` and vectors upserted by
     explicit chunk_id list. Returns the number of vectors written.
     """
-    from mm.store.db import MmDatabase
+    from mm.store.utils import shared_db
 
-    db = MmDatabase()
+    db = shared_db()
     chunks = db.get_text_chunks(content_hash)
     if not chunks:
         return 0

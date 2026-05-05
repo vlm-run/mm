@@ -4,12 +4,11 @@ from typing import Literal
 
 def extract_meta(path: Path, kind: str, *, no_cache: bool = False) -> str:
     """Produce the metadata-tier content for a file (no LLM call) with caching."""
-    from mm.store.db import MmDatabase
-    from mm.store.utils import get_content_hash
+    from mm.store.utils import get_content_hash, shared_db
 
     content_hash = get_content_hash(path)
     if not no_cache and content_hash:
-        cached = MmDatabase().get_file_content(content_hash)
+        cached = shared_db().get_file_content(content_hash)
         if cached is not None:
             return cached
 
@@ -26,7 +25,7 @@ def extract_meta(path: Path, kind: str, *, no_cache: bool = False) -> str:
 
     result = _handler()
     if content_hash and result and not result.startswith("["):
-        MmDatabase().put_file_content(str(path.resolve()), content_hash, result)
+        shared_db().put_file_content(str(path.resolve()), content_hash, result)
     return result
 
 
@@ -158,9 +157,8 @@ def _local_pdf(path: Path) -> str:
 
 def extract_text(path: Path, kind: Literal["document", "text"]) -> tuple[str, bool | None]:
     """``mm cat`` passthrough path — mode-agnostic."""
-    from mm.store.db import MmDatabase
     from mm.store.embed import embed_text_chunks_concurrent
-    from mm.store.utils import get_content_hash
+    from mm.store.utils import get_content_hash, shared_db
 
     content = extract_meta(path, kind)
     if not content or content.startswith("["):
@@ -170,7 +168,7 @@ def extract_text(path: Path, kind: Literal["document", "text"]) -> tuple[str, bo
     if not content_hash:
         return content, None
 
-    db = MmDatabase()
+    db = shared_db()
     if db.has_text_chunks(content_hash):
         return content, True
 
