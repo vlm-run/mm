@@ -32,10 +32,11 @@ graph LR
 Each pipeline is a YAML file under `pipelines/{kind}/{mode}.yaml` that references
 an encoder from `mm/encoders/` and configures LLM generation parameters.
 
-> **Mode required.** Pipelines run only when `--mode fast` or `--mode accurate`
-> is selected. The default `--mode metadata` does local extraction with no
-> pipeline, so `-p`, `--encode.*`, and `--generate.*` are ignored unless you
-> also pass an explicit `-m fast`/`-m accurate`.
+> **Pipeline scope.** Pipelines apply to image / video / audio / PDF —
+> the binary media kinds. `--mode fast` (default) runs the fast pipeline;
+> `--mode accurate` runs the LLM-heavy one. `kind=text` and non-PDF
+> documents (`.docx` / `.pptx`) follow a passthrough flow regardless of
+> mode, so `-p`, `--encode.*`, and `--generate.*` are no-ops for those.
 
 ```bash
 mm cat photo.jpg -m fast -p resize          # named encoder (fast pipeline)

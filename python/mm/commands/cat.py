@@ -225,8 +225,7 @@ def cat_cmd(
 
     \b
     Behavior auto-detects from file type. Default mode is 'fast'. For raw
-    file metadata (dimensions / EXIF / codec / mime / hash), use ``mm peek``
-    — that's the seam ``cat -m metadata`` used to occupy.
+    file metadata (dimensions / EXIF / codec / mime / hash), use ``mm peek``.
 
     \b
                                 fast (default)                  accurate

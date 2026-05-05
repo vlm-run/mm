@@ -12,57 +12,56 @@ Unified content extraction. Behaviour driven by **file type × mode × pipeline*
 
 ## Modes
 
-`--mode metadata` (default) — returns the locally-extracted file content
-(`files.text_preview`): PDF text via pypdfium2, image dims/EXIF/hash, video
-resolution/duration/codec, audio duration/codec, raw text/code. Never
-invokes an LLM. `-p`, `--encode.*`, and `--generate.*` are ignored under
-this mode (they parameterize the pipeline runs in `fast`/`accurate`).
-`--mode fast` — runs the kind's fast pipeline. Whether an LLM is involved depends on the pipeline's `generate` step (image/fast.yaml has one, document/fast.yaml does not).
+`--mode fast` (default) — runs the kind's fast pipeline. Whether an LLM is involved depends on the pipeline's `generate` step (image/fast.yaml has one, document/fast.yaml does not).
 `--mode accurate` — runs the kind's accurate pipeline; always LLM-heavy.
 
 Both `fast` and `accurate` read from the **metadata tier** as their input —
-the same locally-extracted content surfaced by the default `metadata` mode.
-That tier never invokes an LLM and is reusable across both `fast` and
-`accurate` extractions of the same file.
+the locally-extracted content cached in `files.text_preview`. That tier
+never invokes an LLM and is reusable across both `fast` and `accurate`
+extractions of the same file.
+
+`kind=text` and non-PDF documents (`.docx` / `.pptx`) ignore `--mode` entirely: they always return passthrough
+text and write FK-orphan chunks + concurrent embeddings on first sight, no `extractions` row.
 
 ### Image
 
-| | metadata (default) | fast | accurate |
-|---|---|---|---|
-| Encoder | — (header read) | `resize` (max 512px) | `resize` (max 1024px) |
-| Output | dimensions, MIME, xxh3, EXIF | 10-word description + 5 tags | ~200-word description + 10 tags + 10 objects |
-| Tokens | — | 256 max | 2048 max |
+| | fast (default) | accurate |
+|---|---|---|
+| Encoder | `resize` (max 512px) | `resize` (max 1024px) |
+| Output | 10-word description + 5 tags | ~200-word description + 10 tags + 10 objects |
+| Tokens | 256 max | 2048 max |
 
 ### Video
 
 Multi-file: `mm cat a.mp4 b.mp4 -y` runs each video sequentially; the same **≥ 9 paths** batch rule applies as for images.
 
-| | metadata (default) | fast | accurate |
-|---|---|---|---|
-| Encoder | — (native MP4/MKV parse) | `mosaic` (4×4 grid, 128 frames, up to 8 mosaics) | `frames-transcript` (1fps, whisper medium, no speedup) |
-| Output | resolution, duration, FPS, codecs, hash | 50-word description + tags | ~200-word summary + tags + scene breakdown |
-| Tokens | — | 512 max | 1536 max |
-| Audio | none | none | whisper medium, 1.0× speed |
+| | fast (default) | accurate |
+|---|---|---|
+| Encoder | `mosaic` (4×4 grid, 128 frames, up to 8 mosaics) | `frames-transcript` (1fps, whisper medium, no speedup) |
+| Output | 50-word description + tags | ~200-word summary + tags + scene breakdown |
+| Tokens | 512 max | 1536 max |
+| Audio | none | whisper medium, 1.0× speed |
 
 ### Audio
 
-| | metadata (default) | fast | accurate |
-|---|---|---|---|
-| Encoder | — (symphonia probe) | `transcribe` (whisper medium, 1.0×) | `transcribe` (whisper medium, 1.0×) |
-| Output | duration, codec, hash | raw timestamped transcript | ~80-word summary from transcript |
-| Tokens | — | — | 512 max |
+| | fast (default) | accurate |
+|---|---|---|
+| Encoder | `transcribe` (whisper medium, 1.0×) | `transcribe` (whisper medium, 1.0×) |
+| Output | raw timestamped transcript | ~80-word summary from transcript |
+| Tokens | — | 512 max |
 
-### Document (PDF / DOCX / PPTX)
+### Document (PDF only)
 
-| | metadata (default) | fast | accurate |
-|---|---|---|---|
-| Encoder | — (pypdfium2 / python-docx / python-pptx) | `page-text` (pypdfium2, 1 page/message) | `page-text` (pypdfium2, 1 page/message) |
-| Output | concatenated text | concatenated page text | lossless markdown restructuring |
-| Tokens | — | — | 16384 max |
+| | fast (default) | accurate |
+|---|---|---|
+| Encoder | `page-text` (pypdfium2, 1 page/message) | `page-text` (pypdfium2, 1 page/message) |
+| Output | concatenated page text | lossless markdown restructuring |
+| Tokens | — | 16384 max |
 
-### Code / Text / Config
+### Document (DOCX / PPTX) and Text / Code / Config
 
-Passthrough in all modes — raw file content, no pipeline, no LLM (treated identically whether `--mode` is `metadata`, `fast`, or `accurate`).
+Passthrough in all modes — raw file content extracted via python-docx /
+python-pptx (DOCX/PPTX) or `read_text` (text/code/config). No pipeline, no LLM; mode is a no-op.
 
 ## Caching
 
@@ -76,7 +75,7 @@ here — it lives in `files`).
 
 - Cache key (`extractions`): `content_hash × profile × model × mode × overrides`
   - Same file with different modes/profiles/overrides → separate cache entries
-- `--no-cache`: bypasses read, evicts existing entry, forces fresh run (applies to fast/accurate; the metadata tier is always read from `files`)
+- `--no-cache`: bypasses read, evicts existing entry, forces fresh run (applies to fast/accurate for image/video/audio/PDF; the metadata tier is always read from `files`, and `kind=text` + non-PDF documents ignore `--no-cache` since their content is deterministic)
 - Cache hit indicator: footer shows `cached • 36ms • 412.8 KB • 7.0 MB/s`
 - Embedding: on cache miss with accurate mode, `embed_file_chunks` auto-generates Gemini embeddings
 

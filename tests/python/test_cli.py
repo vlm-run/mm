@@ -229,13 +229,13 @@ class TestCat:
         lines = r.output.strip().splitlines()
         assert len(lines) == 1
 
-    def test_json_output(self, small_tree: Path):
+    def test_json_output(self, small_tree: Path, isolated_db: Path):
         r = runner.invoke(app, ["cat", str(small_tree / "src" / "main.py"), "--format", "json"])
         assert r.exit_code == 0
         data = json.loads(r.output)
         assert len(data) == 1
-        # Default mode is `metadata` — `--mode fast` must be explicit.
-        assert data[0]["mode"] == "metadata"
+        # Default mode is ``fast``.
+        assert data[0]["mode"] == "fast"
         assert "content" in data[0]
         assert "path" in data[0]
 

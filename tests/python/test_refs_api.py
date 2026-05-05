@@ -275,10 +275,7 @@ class TestToMd:
         assert "code_" in md
 
     def test_default_mode_is_metadata(self, tiny_png: Path, tiny_txt: Path):
-        """Calling ``to_md()`` with no args must match ``mode='metadata'``.
-
-        Locks in the post-feedback default; previously was ``mode='fast'``.
-        """
+        """Calling ``to_md()`` with no args must match ``mode='metadata'``."""
         ctx = mm.Context()
         ctx.put(tiny_png)
         ctx.put(tiny_txt)

@@ -286,8 +286,7 @@ class TestErrors:
         r = runner.invoke(app, ["cat", str(mixed_dir / "main.py"), "-m", "bogus"])
         assert r.exit_code != 0
         combined = (r.output or "") + (getattr(r, "stderr", "") or "")
-        # Error enumerates the two valid modes plus a hint at peek for the
-        # raw-metadata surface that ``-m metadata`` used to occupy.
+        # Error enumerates the two valid modes plus a hint at peek for raw metadata.
         for token in ("fast", "accurate", "peek"):
             assert token in combined.lower()
 

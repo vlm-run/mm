@@ -6,9 +6,8 @@ content hash, …) for one or more files and never reads from or writes
 to the SQLite store. Run it as often as you like — every invocation
 is a fresh scan.
 
-This is the command that the previous ``cat -m metadata`` flow has
-been split into. Use ``peek`` for "what is this file?", and ``cat``
-for "what does this file *say*?".
+Use ``peek`` for "what is this file?", and ``cat`` for "what does this
+file *say*?".
 """
 
 from __future__ import annotations
