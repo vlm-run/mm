@@ -7,12 +7,13 @@ DESIGN_HEAD = """
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.css">
 <script src="https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.8.0/lib/xterm-addon-fit.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xterm-addon-canvas@0.5.0/lib/xterm-addon-canvas.js"></script>
 <script>
 (function() {
   function mount() {
     var el = document.getElementById('mm-terminal');
     if (!el || el.dataset.mmMounted === 'true') return;
-    if (typeof Terminal === 'undefined' || typeof FitAddon === 'undefined') {
+    if (typeof Terminal === 'undefined' || typeof FitAddon === 'undefined' || typeof CanvasAddon === 'undefined') {
       setTimeout(mount, 100);
       return;
     }
@@ -20,26 +21,52 @@ DESIGN_HEAD = """
 
     var term = new Terminal({
       cursorBlink: true,
+      cursorStyle: 'block',
       fontFamily: '"Geist Mono", ui-monospace, SFMono-Regular, Consolas, monospace',
       fontSize: 13,
       theme: {
         background: '#0F1115',
-        foreground: '#E6EDFC',
-        cursor: '#4E8CFF',
-        selectionBackground: 'rgba(30,90,202,0.35)'
+        foreground: '#FFFFFF',
+        cursor: '#FFFFFF',
+        cursorAccent: '#0F1115',
+        selectionBackground: 'rgba(78,140,255,0.45)',
+        black: '#1A1D24',
+        red: '#FF6B6B',
+        green: '#7FE38C',
+        yellow: '#FFD479',
+        blue: '#7FB3FF',
+        magenta: '#D9A0FF',
+        cyan: '#8FE6FF',
+        white: '#FFFFFF',
+        brightBlack: '#7A8597',
+        brightRed: '#FF9090',
+        brightGreen: '#A4F0AB',
+        brightYellow: '#FFE5A6',
+        brightBlue: '#A8CCFF',
+        brightMagenta: '#E6BEFF',
+        brightCyan: '#B5EEFF',
+        brightWhite: '#FFFFFF'
       }
     });
     var fit = new FitAddon.FitAddon();
     term.loadAddon(fit);
     term.open(el);
-    try { fit.fit(); } catch (e) {}
+    try { term.loadAddon(new CanvasAddon.CanvasAddon()); } catch (e) {}
+    function safeFit() { try { fit.fit(); } catch (e) {} }
+    safeFit();
+    setTimeout(safeFit, 50);
+    setTimeout(safeFit, 250);
+    setTimeout(safeFit, 800);
+    if (typeof ResizeObserver !== 'undefined') {
+      new ResizeObserver(function() { safeFit(); sendResize(); }).observe(el);
+    }
 
     var proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     var ws = new WebSocket(proto + '//' + window.location.host + '/ws/terminal');
     ws.binaryType = 'arraybuffer';
 
     function sendResize() {
-      if (ws.readyState !== 1) return;
+      if (!ws || ws.readyState !== 1) return;
       ws.send(JSON.stringify({type: 'resize', rows: term.rows, cols: term.cols}));
     }
 
