@@ -11,13 +11,23 @@ file *say*?".
 
 from __future__ import annotations
 
+import sys
 from pathlib import Path
-from typing import Annotated, Optional
+from typing import TYPE_CHECKING, Annotated, Optional
 
 import typer
 
-from mm.peek import FileMetadata
 from mm.utils import BaseFormat
+
+if TYPE_CHECKING:
+    from mm.peek import FileMetadata
+
+print("sys argv:", sys.argv)
+
+if len(sys.argv) > 1 and "peek" in sys.argv:
+    from mm.peek import _preload_magika
+
+    _preload_magika()
 
 
 def peek_cmd(
@@ -52,6 +62,7 @@ def peek_cmd(
         raise typer.Exit(1)
 
     from mm.display import resolve_format
+    from mm.peek import FileMetadata
 
     fmt = resolve_format(format.value if format else None)
 
