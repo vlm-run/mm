@@ -124,6 +124,49 @@ class TestFileMetadataShape:
 # ── magika integration ───────────────────────────────────────────────
 
 
+class _FakeMagikaOutput:
+    def __init__(self, label, mime_type, group, description, extensions, is_text):
+        self.label = label
+        self.mime_type = mime_type
+        self.group = group
+        self.description = description
+        self.extensions = extensions
+        self.is_text = is_text
+
+
+class _FakeMagikaResult:
+    def __init__(self, output, score):
+        self.output = output
+        self.score = score
+
+
+class _FakeMagika:
+    """Deterministic stand-in keyed by extension + PDF magic bytes."""
+
+    _BY_EXT = {
+        ".py": ("python", "text/x-python", "code", "Python source", ["py"], True),
+        ".png": ("png", "image/png", "image", "PNG image", ["png"], False),
+        ".pdf": ("pdf", "application/pdf", "document", "PDF document", ["pdf"], False),
+    }
+
+    def identify_path(self, path):
+        from pathlib import Path as _P
+
+        p = _P(path)
+        try:
+            head = p.open("rb").read(4)
+        except Exception:
+            head = b""
+        if head == b"%PDF":
+            row = self._BY_EXT[".pdf"]
+        else:
+            row = self._BY_EXT.get(
+                p.suffix.lower(),
+                ("unknown", "application/octet-stream", "unknown", "Unknown", [], False),
+            )
+        return _FakeMagikaResult(_FakeMagikaOutput(*row), 0.99)
+
+
 class TestMagikaExtra:
     """``FileMetadata.aimeta`` carries ``magika.identify_path(...).output.__dict__``."""
 
@@ -136,6 +179,13 @@ class TestMagikaExtra:
         "is_text",
         "confidence",
     }
+
+    @pytest.fixture(autouse=True)
+    def _mock_magika(self, monkeypatch):
+        """Stub out the real magika model so CI doesn't depend on its weights."""
+        from mm import peek
+
+        monkeypatch.setattr(peek, "_magika", lambda: _FakeMagika())
 
     def test_python_source_classified_as_python(self, tiny_txt: Path):
         fm = FileMetadata.from_path(tiny_txt)
