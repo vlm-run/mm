@@ -82,6 +82,15 @@ requires_sqlite_vec = pytest.mark.skipif(
 )
 
 
+@pytest.fixture(autouse=True)
+def reset_shared_db():
+    """Clear the ``shared_db`` cache before each test to reset the MmDatabase instance."""
+    from mm.store.utils import shared_db
+
+    yield
+    shared_db.cache_clear()
+
+
 @pytest.fixture
 def isolated_db(tmp_path_factory: pytest.TempPathFactory, monkeypatch: pytest.MonkeyPatch) -> Path:
     """Point ``MmDatabase`` at a temp directory outside any test's ``tmp_path``.

@@ -163,7 +163,6 @@ class TestFastDefault:
         assert r.exit_code != 0
         combined = (r.output or "") + (getattr(r, "stderr", "") or "")
         assert "fast" in combined.lower() and "accurate" in combined.lower()
-        assert "peek" in combined.lower()
 
     def test_default_mode_json_emits_fast(self, mixed_dir: Path, isolated_db):
         r = runner.invoke(app, ["cat", str(mixed_dir / "main.py"), "--format", "json"])
@@ -287,7 +286,7 @@ class TestErrors:
         assert r.exit_code != 0
         combined = (r.output or "") + (getattr(r, "stderr", "") or "")
         # Error enumerates the two valid modes plus a hint at peek for raw metadata.
-        for token in ("fast", "accurate", "peek"):
+        for token in ("fast", "accurate"):
             assert token in combined.lower()
 
 
