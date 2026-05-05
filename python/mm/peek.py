@@ -20,16 +20,27 @@ from functools import cache
 from pathlib import Path
 from typing import Any, Literal
 
-from magika import Magika
-
 from mm.utils import file_kind
 
 PeekKind = Literal["image", "video", "audio", "document", "text"]
-_magika_future = ThreadPoolExecutor(max_workers=1).submit(Magika)
+
+
+def _start_magika_preload():
+    try:
+        from magika import Magika
+
+        return ThreadPoolExecutor(max_workers=1).submit(Magika)
+    except ImportError:
+        return None
+
+
+_magika_future = _start_magika_preload()
 
 
 @cache
 def _magika():
+    if _magika_future is None:
+        raise RuntimeError("magika is not installed")
     return _magika_future.result()
 
 

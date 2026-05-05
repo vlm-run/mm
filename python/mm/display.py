@@ -516,7 +516,7 @@ def display_elapsed(
 
     output_text = " \u2022 ".join(output_parts)
     output_text = f"{prefix} {output_text}" if prefix else output_text
-    output_console.print(f"[dim]{output_text}[/dim]")
+    console.print(f"[dim]{output_text}[/dim]")
 
 
 def display_elapsed_wrapper(start_time: float, prefix: str | None = None):
