@@ -2,8 +2,7 @@
 
 ``peek`` is the cheap, deterministic counterpart to ``cat``: it surfaces
 locally-extracted metadata (dimensions, EXIF, codec, duration, mime,
-content hash, …) for one or more files and never reads from or writes
-to the SQLite store. Run it as often as you like — every invocation
+content hash, …) for one or more files. Run it as often as you like — every invocation
 is a fresh scan.
 
 Use ``peek`` for "what is this file?", and ``cat`` for "what does this
