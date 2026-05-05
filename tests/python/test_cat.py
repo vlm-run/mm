@@ -167,7 +167,7 @@ class TestFastDefault:
     def test_default_mode_json_emits_fast(self, mixed_dir: Path, isolated_db):
         r = runner.invoke(app, ["cat", str(mixed_dir / "main.py"), "--format", "json"])
         assert r.exit_code == 0
-        data = json.loads(r.output)
+        data = json.loads(r.stdout)
         assert isinstance(data, list) and data
         assert data[0].get("mode") == "fast"
 
@@ -185,7 +185,7 @@ class TestFastDefault:
         assert r.exit_code == 0
         # Same envelope as `json`: ingestable by anyone who already
         # parses `mm cat --format json`.
-        data = json.loads(r.output)
+        data = json.loads(r.stdout)
         assert isinstance(data, list) and data
         assert {"path", "mode", "content"}.issubset(data[0])
         # And the *serialised* form has line breaks + indentation

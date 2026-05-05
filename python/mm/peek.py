@@ -14,21 +14,23 @@ AI-classified content type plus a confidence score.
 
 from __future__ import annotations
 
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import asdict, dataclass
 from functools import cache
 from pathlib import Path
 from typing import Any, Literal
 
+from magika import Magika
+
 from mm.utils import file_kind
 
 PeekKind = Literal["image", "video", "audio", "document", "text"]
+_magika_future = ThreadPoolExecutor(max_workers=1).submit(Magika)
 
 
 @cache
 def _magika():
-    from magika import Magika
-
-    return Magika()
+    return _magika_future.result()
 
 
 @dataclass
