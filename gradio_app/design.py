@@ -222,7 +222,7 @@ DESIGN_HEAD = """
   .gradio-container .cm-content .tok-null { color: var(--mm-text-muted) !important; }
   .gradio-container .cm-content .tok-punctuation { color: var(--mm-text-secondary) !important; }
 
-  .mm-header { margin: 4px 2px 14px; }
+  .mm-header { margin: 12px 2px }
   .mm-h1 {
     font-family: Geist, Inter, sans-serif;
     font-size: 19px;
@@ -240,6 +240,31 @@ DESIGN_HEAD = """
     color: var(--mm-text-secondary);
     margin: 0;
     font-weight: 400;
+  }
+
+  .mm-hero {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    margin: 22px 0 30px;
+    padding: 0;
+  }
+  .mm-hero-logo {
+    width: 80px;
+    height: 80px;
+    display: block;
+    margin: 0 auto 12px;
+    filter: drop-shadow(0 2px 10px rgba(1, 9, 23, 0.07));
+  }
+  .mm-hero-title {
+    font-family: Geist, Inter, sans-serif;
+    font-size: 36px;
+    font-weight: 700;
+    letter-spacing: -0.025em;
+    line-height: 1.05;
+    color: var(--mm-text);
+    margin: 0 0 6px;
   }
 
   .mm-section { padding: 2px 2px 10px; }
@@ -614,9 +639,15 @@ DESIGN_HEAD = """
 """
 
 HEADER_HTML = """
-<div class="mm-header">
-  <h1 class="mm-h1"><span class="mm-h1-mark">mm</span> &middot; fast, multimodal context for agents</h1>
-  <p class="mm-sub">cat, grep &amp; profile management for the mm Python API</p>
+<div class="mm-header mm-hero">
+  <img class="mm-hero-logo"
+       src="https://raw.githubusercontent.com/vlm-run/.github/refs/heads/main/profile/assets/vlm-black.svg"
+       alt="VLM Run">
+  <h1 class="mm-hero-title">mm-ctx</h1>
+  <hr style="width: 100%; height; 1px; margin:0; padding: 0" />
+  <div align="center">
+    <h3 style="font-size:18px;">Fast, multimodal context for agents</h3>
+  </div>
 </div>
 """
 
