@@ -173,7 +173,7 @@ def grep_cmd(
             continue
 
     # FTS + semantic both query indexed chunks.
-    has_binary = any(is_binary_content(kind=f.kind) for f in files_to_search)
+    has_indexable = bool(files_to_search)
     scan_root = _directory.resolve()
     seen_chunk_keys: set[tuple[str, int]] = set()
 
@@ -210,7 +210,7 @@ def grep_cmd(
             file_counts[rel_path] = file_counts.get(rel_path, 0) + 1
 
     # FTS5 token search over indexed chunks — Silent on missing FTS5 / empty index.
-    if has_binary:
+    if has_indexable:
         from mm.fts import fts_search
 
         try:
@@ -221,7 +221,7 @@ def grep_cmd(
         except Exception:
             pass
 
-    if do_semantic and has_binary:
+    if do_semantic and has_indexable:
         from mm.semantic import build_hint_cmd, grep_semantic
 
         try:

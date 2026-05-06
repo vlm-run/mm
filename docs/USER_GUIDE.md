@@ -120,28 +120,39 @@ mm grep "architecture overview" ~/docs -s --pre-index   # auto-index unindexed f
 
 Returns matching files via vector similarity (embeddings). Use `--semantic/-s` for semantic search, `--pre-index` to auto-index unindexed files before searching.
 
+### Raw file metadata
+
+```bash
+# mm peek: dimensions / EXIF / codec / duration / mime / hash.
+mm peek report.pdf             # mime, content hash
+mm peek image.jpg              # image dimensions, MIME, hash, EXIF
+mm peek video.mp4              # video resolution, duration, codecs (<100ms)
+mm peek image.jpg video.mp4 --format json   # multi-file JSON
+```
+
 ### File inspection and extraction
 
 ```bash
-# Default --mode metadata: local extraction only, no LLM call.
-mm cat report.pdf              # PDF text via pypdfium2
-mm cat image.jpg               # image dimensions, MIME, hash, EXIF
-mm cat video.mp4               # video resolution, duration, codecs (<100ms)
+# mm cat: content extraction. Default --mode fast.
+mm cat report.pdf              # PDF page-text via pypdfium2 (fast pipeline)
+mm cat src/main.py             # passthrough text
+mm cat notes.docx              # python-docx text
+mm cat image.jpg               # short VLM caption (fast pipeline)
+mm cat video.mp4               # mosaic → short VLM description (fast pipeline)
 
-# --mode fast: kind's fast pipeline (image/video include a short LLM caption stage).
-mm cat image.jpg -m fast       # short VLM caption
-mm cat video.mp4 -m fast       # mosaic → short VLM description
-
-# --mode accurate: LLM-heavy pipeline (requires a configured profile).
+# --mode accurate: LLM-heavy pipeline for image/video/audio/PDF (requires a configured profile).
 mm cat image.jpg -m accurate   # LLM-powered caption + tags + objects
 mm cat video.mp4 -m accurate   # keyframe mosaic → LLM description
 mm cat audio.mp3 -m accurate   # transcript → LLM summary
+mm cat report.pdf -m accurate  # text → LLM markdown structuring
 ```
+
+`kind=text` and non-PDF documents (`.docx` / `.pptx`) ignore `--mode` entirely: they always return passthrough
+text.
 
 ### Pipeline customization
 
-`-p`, `--encode.*`, and `--generate.*` only take effect under `--mode fast`
-or `--mode accurate`; the default `metadata` mode skips the pipeline.
+`-p`, `--encode.*`, and `--generate.*` apply to image / video / audio / PDF (the kinds that run a pipeline); they're a no-op for `kind=text` and non-PDF documents.
 
 ```bash
 mm cat photo.png -m fast -p image-tile                     # use named encoder
@@ -211,7 +222,7 @@ mm wc ~/docs                            # file count, bytes, lines, token estima
 mm find ~/videos                        # list with tags, duration, resolution
 mm cat -m accurate video.mp4            # full context: transcript + scenes
 mm find ~/images --kind image | mm cat -m accurate --format json  # batch captioning
-mm find ~/images --kind image | mm cat --format json              # batch metadata (no LLM)
+mm find ~/images --kind image | mm peek --format json              # batch metadata (no LLM)
 ```
 
 ### Agentic integration

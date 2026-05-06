@@ -1,18 +1,4 @@
-"""mm cat -- unified content extraction with pipeline-driven modes.
-
-Behaviour is driven by (file type × mode). Default is ``--mode metadata``,
-which returns the locally-extracted file content with no LLM call (PDF text
-via pypdfium2, image/video/audio header metadata, code/text passthrough).
-``--mode fast`` runs the kind's fast pipeline — may be a short LLM call
-(e.g. ``image/fast.yaml``) or pure local extraction. ``--mode accurate``
-runs the LLM-heavy pipeline.
-
-Three content tiers flow through caching:
-  metadata  — locally-extracted file content (``files.text_preview``);
-              never an LLM call. Default mode.
-  fast      — output of a fast-mode pipeline run (may include LLM output).
-  accurate  — output of an accurate-mode pipeline run.
-"""
+"""mm cat -- unified content extraction with pipeline-driven modes."""
 
 from __future__ import annotations
 
@@ -38,7 +24,7 @@ from mm.cat_utils.base_utils import (
     override_extra,
     spec_extra_body,
 )
-from mm.cat_utils.extract_meta import extract_meta
+from mm.cat_utils.extract_meta import extract_meta, extract_text
 from mm.cat_utils.run_encoder import run_encoder
 from mm.encoders.encoders_utils import do_list_encoders
 from mm.pipe import read_paths_from_stdin
@@ -49,12 +35,12 @@ from mm.pipelines.pipelines_utils import (
     resolve_pipeline,
 )
 from mm.pipelines.schema import PipelineSpec
-from mm.utils import BinaryFileKind, FileKind, Format, file_kind
+from mm.utils import BinaryFileKind, Format, file_kind
 
 # Track total bytes processed for throughput calculation
 _total_bytes_processed = 0
 # Track whether the result was served from cache
-_was_cached = False
+_was_cached: bool = False
 
 
 def _validate_extra_body_json(raw: str | None) -> str | None:
@@ -89,9 +75,14 @@ def cat_cmd(
     mode: Annotated[
         str,
         typer.Option(
-            "--mode", "-m", help="Processing mode: metadata, fast or accurate [default: metadata]"
+            "--mode",
+            "-m",
+            help=(
+                "Processing mode: fast or accurate [default: fast]. "
+                "For raw file metadata, use ``mm peek <file_path>``."
+            ),
         ),
-    ] = "metadata",
+    ] = "fast",
     pipeline: Annotated[
         Optional[list[str]],
         typer.Option(
@@ -233,29 +224,30 @@ def cat_cmd(
     """Extract and describe file content.
 
     \b
-    Behavior auto-detects from file type. Default mode is 'metadata' — local
-    extraction only, never an LLM call. '-m fast' runs the kind's fast
-    pipeline (a short LLM call for images/video; passthrough for code/text);
-    '-m accurate' runs the LLM-heavy pipeline.
+    Behavior auto-detects from file type. Default mode is 'fast'. For raw
+    file metadata (dimensions / EXIF / codec / mime / hash), use ``mm peek``.
 
     \b
-                metadata (default)               fast                                accurate
-    Images:     dimensions, EXIF, hash       short VLM caption                   full VLM caption + tags
-    Videos:     resolution, duration, codec  mosaic → short VLM                  mosaic + transcript → VLM
-    Audio:      duration, codec, hash        Whisper transcript                  transcript → LLM summary
-    Docs:       PDF/DOCX/PPTX text           text extraction                     text → LLM summary
-    Code/Text:  raw file content             raw file content (no LLM)           raw file content (no LLM)
+                                fast (default)                  accurate
+    Images:                     short VLM caption               full VLM caption + tags
+    Videos:                     mosaic → short VLM              mosaic + transcript → VLM
+    Audio:                      Whisper transcript              transcript → LLM summary
+    PDFs:                       page-text extraction            text → LLM markdown
+    Non-PDF docs (.docx/.pptx): passthrough text (no LLM)       passthrough text (no LLM)
+    Code / text:                passthrough text (no LLM)       passthrough text (no LLM)
+
+    Non-PDF docs and code/text always passthrough; ``--mode`` is a no-op
+    for those kinds. Chunks are written on first sight.
 
     \b
     Examples:
-      mm cat document.txt                   # raw text (metadata-only, default)
-      mm cat paper.pdf                      # PDF text via pypdfium2 (metadata)
-      mm cat photo.png                      # image dims/EXIF/hash (metadata)
-      mm cat paper.pdf -m fast              # text extraction (fast pipeline)
-      mm cat photo.png -m fast              # short VLM caption (fast pipeline)
+      mm cat main.py                        # passthrough text (kind=text)
+      mm cat notes.docx                     # passthrough text (kind=document, non-PDF)
+      mm cat paper.pdf                      # PDF page-text extraction (fast pipeline)
+      mm cat photo.png                      # short VLM caption (fast pipeline)
       mm cat photo.png -m accurate          # full VLM description
       mm cat video.mp4 -m accurate          # mosaic → VLM
-      mm cat photo.png -m fast -p tile      # use named encoder (requires -m fast/accurate)
+      mm cat photo.png -p tile              # use named encoder
       mm cat photo.png -m accurate -p my-pipeline.yaml
                                             # custom pipeline YAML
       mm cat photo.png -m accurate --encode.strategy_opts max_width=768
@@ -322,8 +314,11 @@ def cat_cmd(
 
     maybe_confirm_large_cat_batch(len(paths), assume_yes=yes)
 
-    if mode not in ("metadata", "fast", "accurate"):
-        typer.echo(f"Error: Unknown mode {mode!r}. Use 'metadata', 'fast' or 'accurate'.", err=True)
+    if mode not in ("fast", "accurate"):
+        typer.echo(
+            f"Error: Unknown mode {mode!r}. Use 'fast' or 'accurate'. ",
+            err=True,
+        )
         raise typer.Exit(1)
 
     enc_overrides: dict[str, str | dict[str, str]] = {
@@ -469,28 +464,21 @@ def cat_cmd(
 
 
 def _extract(path: Path, opts: CatOpts) -> str:
-    """Pipeline-driven extraction dispatch with unified extraction caching.
-
-    1. Auto-detect kind from file extension
-    2. Run ``extract_meta`` for the metadata tier (caches into ``files``)
-    3. If mode='metadata' (default) or kind='text': return the metadata tier
-    4. Resolve pipeline + apply CLI overrides exactly once — the merged
-       ``spec`` is the single source of truth for both ``model`` (with
-       ``profile.model`` fallback via ``effective_model``) and ``extra_body``.
-    5. Compute cache key from the effective model + override sentinel.
-    6. Check the ``extractions`` cache (applies to fast and accurate modes)
-    7. Run encode + (optional) generate step; persist to extractions cache
-    """
+    """Pipeline-driven extraction dispatch with unified extraction caching."""
     kind = file_kind(path)
-    if kind == "text" or opts.mode == "metadata":
-        return extract_meta(path, kind, no_cache=opts.no_cache)
+    ext = path.suffix.lower()
+    global _was_cached
+    if kind == "text" or (kind == "document" and ext != ".pdf"):
+        content, cached = extract_text(path, kind)
+        if cached:
+            _was_cached = True
+        return content
 
     from mm.pipelines import apply_overrides
     from mm.profile import get_profile
-    from mm.store.db import MmDatabase
-    from mm.store.utils import get_content_hash
+    from mm.store.utils import get_content_hash, shared_db
 
-    db = MmDatabase()
+    db = shared_db()
     profile = get_profile()
 
     # Resolve & merge the pipeline spec exactly once so the cache key reflects
@@ -524,7 +512,6 @@ def _extract(path: Path, opts: CatOpts) -> str:
         if not opts.no_cache:
             cached = db.get_extraction(extraction_id)
             if cached is not None:
-                global _was_cached
                 _was_cached = True
                 if opts.verbose:
                     meta = db.get_extraction_metadata(extraction_id)
@@ -562,13 +549,6 @@ def _extract(path: Path, opts: CatOpts) -> str:
             )
         except RuntimeError:
             return _format_run(run, opts.verbose)
-        if extraction_id:
-            try:
-                from mm.store.embed import embed_file_chunks
-
-                embed_file_chunks(extraction_id)
-            except Exception:
-                pass
     return _format_run(run, opts.verbose)
 
 
@@ -579,20 +559,8 @@ def _format_run(run: RunResult, verbose: bool) -> str:
     return run.content
 
 
-def _run_fast(path: Path, kind: FileKind, spec: PipelineSpec, opts: CatOpts) -> RunResult:
-    """Fast mode: run the kind's fast pipeline.
-
-    Whether this involves an LLM depends on the YAML pipeline — e.g.
-    ``image/fast.yaml`` defines a short LLM caption stage; ``code/text``
-    passes through raw content with no LLM call. The output is tagged
-    ``mode='fast'`` in ``extractions``/``chunks``.
-
-    ``spec`` is the merged (YAML + CLI) pipeline spec resolved by
-    ``_extract``; this function does no further override application.
-    """
-    if kind == "text":
-        return RunResult(content=extract_meta(path, kind, no_cache=opts.no_cache))
-
+def _run_fast(path: Path, kind: BinaryFileKind, spec: PipelineSpec, opts: CatOpts) -> RunResult:
+    """Fast mode: run the kind's fast pipeline."""
     if getattr(opts, "no_generate", False):
         import dataclasses
 

@@ -1,4 +1,4 @@
-"""Tests for --mode metadata/fast/accurate dispatch in the cat command."""
+"""Tests for --mode fast/accurate dispatch in the cat command."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 from mm.cat_utils.base_utils import CatMode, CatOpts, RunResult
-from mm.commands.cat import _extract, _run_fast
+from mm.commands.cat import _extract
 from mm.utils import DOCUMENT_EXTS, file_kind
 
 
@@ -83,9 +83,6 @@ class TestDocumentExts:
 class TestCatOptsMode:
     """Test that CatOpts carries the mode parameter."""
 
-    def test_mode_metadata(self):
-        assert _make_opts(mode="metadata").mode == "metadata"
-
     def test_mode_fast(self):
         assert _make_opts(mode="fast").mode == "fast"
 
@@ -102,31 +99,35 @@ class TestExtractDispatch:
         result = _extract(f, _make_opts("fast"))
         assert "hello world" in result
 
-    def test_metadata_image_short_circuits_pipeline(self, tmp_path):
-        """`-m metadata` returns extract_meta output and never resolves a pipeline."""
-        f = tmp_path / "test.jpg"
-        f.write_bytes(b"\xff\xd8\xff" + b"\x00" * 100)
-        with (
-            patch("mm.commands.cat._run_fast") as fast_mock,
-            patch("mm.commands.cat._run_accurate") as accurate_mock,
-            patch("mm.commands.cat.extract_meta", return_value="local-image-meta") as local_mock,
-        ):
-            result = _extract(f, _make_opts("metadata"))
-        assert result == "local-image-meta"
-        local_mock.assert_called_once_with(f, "image", no_cache=False)
-        fast_mock.assert_not_called()
-        accurate_mock.assert_not_called()
-
-    def test_metadata_text_short_circuits_pipeline(self, tmp_path):
-        """Text files return extract_meta output under any mode (kind='text' branch)."""
+    def test_text_short_circuits_pipeline(self, tmp_path, isolated_db):
+        """``cat`` on ``kind=text`` never resolves a pipeline."""
         f = tmp_path / "test.txt"
         f.write_text("hello world")
         with (
             patch("mm.commands.cat._run_fast") as fast_mock,
             patch("mm.commands.cat._run_accurate") as accurate_mock,
         ):
-            result = _extract(f, _make_opts("metadata"))
-        assert "hello world" in result
+            for mode in ("fast", "accurate"):
+                result = _extract(f, _make_opts(mode))
+                assert "hello world" in result
+        fast_mock.assert_not_called()
+        accurate_mock.assert_not_called()
+
+    def test_non_pdf_document_short_circuits_pipeline(self, tmp_path, isolated_db, monkeypatch):
+        """Non-PDF documents (.docx / .pptx) follow the ``extract_text`` flow."""
+        f = tmp_path / "notes.docx"
+        f.write_bytes(b"PK\x03\x04 not-a-real-docx")  # zip magic + garbage
+        with (
+            patch(
+                "mm.cat_utils.extract_meta.extract_meta",
+                return_value="docx body text",
+            ),
+            patch("mm.commands.cat._run_fast") as fast_mock,
+            patch("mm.commands.cat._run_accurate") as accurate_mock,
+        ):
+            for mode in ("fast", "accurate"):
+                result = _extract(f, _make_opts(mode))
+                assert result == "docx body text"
         fast_mock.assert_not_called()
         accurate_mock.assert_not_called()
 
@@ -184,21 +185,6 @@ class TestExtractDispatch:
             assert isinstance(args[2], PipelineSpec)
             assert args[3] is opts
             assert result == "summary of document"
-
-
-class TestRunFastTextPassthrough:
-    """Code/text/config files have no pipeline — fast mode reads raw content."""
-
-    def test_text_passthrough(self, tmp_path):
-        from mm.pipelines.schema import PipelineSpec
-
-        f = tmp_path / "test.txt"
-        f.write_text("hello world")
-        # text kind returns local meta immediately; spec is required by the new
-        # signature but the body is irrelevant on the text branch.
-        empty_spec = PipelineSpec(kind="text", mode="fast")
-        result = _run_fast(f, "text", empty_spec, _make_opts("fast"))
-        assert "hello world" in result.content
 
 
 class TestVerboseCacheReplay:

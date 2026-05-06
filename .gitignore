@@ -19,7 +19,6 @@ venv/
 .benchmarks/
 benchmarks/data/
 benchmarks/criterion/
-benchmarks/universal_cli/run_results
 htmlcov/
 .coverage
 
@@ -50,3 +49,5 @@ run_results/
 mm-*-output.txt
 .claude
 .agents
+
+benchmarks/results/

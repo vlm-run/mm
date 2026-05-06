@@ -67,7 +67,7 @@ mm
 │   ├── [x] Configurable via profiles: built-in default + reserved ollama + custom add/use
 │   ├── [x] think=false + reasoning_effort="none" + temperature=0.1
 │   ├── [x] Accurate-mode errors propagate directly (no silent fallback to fast mode)
-│   ├── [x] --mode metadata|fast|accurate per-modality extraction strategies (default 'metadata')
+│   ├── [x] --mode fast|accurate per-modality extraction strategies (default 'fast')
 │   ├── [x] Audio transcription via ffmpeg + whisper (2x speed, greedy beam=1)
 │   ├── [x] Whisper backend auto-select: MLX Metal GPU > CTranslate2 CPU/CUDA
 │   ├── [x] Parallel visual + audio extraction (ThreadPoolExecutor)
@@ -92,12 +92,13 @@ mm
 │   ├── [x] ref_for(path) / global_ref(path) / refs — kind-prefixed deterministic ref ids
 │   └── [x] Context.resolve("<session_id>/<ref_id>") — global cross-user lookup
 │
-├── CLI Commands (8 total: 5 core + bench + config + profile. Typer, Unix-philosophy composability)
+├── CLI Commands (9 total: 6 core + bench + config + profile. Typer, Unix-philosophy composability)
 │   ├── [x] --version/-v global flag
 │   ├── [x] find     — find/list files, tree view (--tree), schema (--schema), columns (--columns), name filter (--name, string/regex via Rust; -i/--ignore-case for case-insensitive)
+│   ├── [x] peek     — raw file metadata (dimensions / EXIF / codec / mime / hash).
 │   ├── [x] [cat](./cat.md)      — auto-detected content extraction (fast/accurate mode) → [full spec](cat.md)
 │   │   ├── [x] head/tail via -n (replaces old head/tail commands)
-│   │   ├── [x] --mode metadata|fast|accurate (default 'metadata' = local extraction, no LLM)
+│   │   ├── [x] --mode fast|accurate (default 'fast');
 │   │   ├── [x] video accurate: parallel mosaic + whisper → LLM (102x realtime)
 │   │   ├── [x] audio accurate: ffmpeg 2x + whisper → LLM transcript summary
 │   │   ├── [x] image accurate: fast (10w+5tags) / accurate (200w+10tags+objects)

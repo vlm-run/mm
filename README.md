@@ -160,17 +160,20 @@ mm --version                                                    # print version
 mm find mm-samples/ --tree --depth 1                            # directory overview with sizes
 mm wc mm-samples/ --by-kind                                     # file/byte/token counts by kind
 
-# Default: --mode metadata (no LLM, local extraction only)
-mm cat wordpress-pdf-invoice-plugin-sample.pdf                  # PDF text via pypdfium2
-mm cat bench.jpg                                                # image dimensions, EXIF, hash
-mm cat Timelapse.mp4                                            # video resolution, duration, codecs
-mm cat wordpress-pdf-invoice-plugin-sample.pdf -n 20            # first 20 lines (metadata)
+# mm peek: raw file metadata (dimensions / EXIF / codec / mime / hash).
+mm peek bench.jpg                                               # image dimensions, EXIF, hash
+mm peek Timelapse.mp4                                           # video resolution, duration, codecs
+mm peek wordpress-pdf-invoice-plugin-sample.pdf                 # mime, content hash
+mm peek bench.jpg Timelapse.mp4 --format json                   # multi-file JSON
 
-# --mode fast: kind's fast pipeline (short LLM caption for image/video; passthrough for code)
-mm cat bench.jpg -m fast                                        # short VLM caption
-mm cat Timelapse.mp4 -m fast                                    # mosaic → short VLM description
+# mm cat: content extraction. Default --mode fast.
+mm cat wordpress-pdf-invoice-plugin-sample.pdf                  # PDF page-text via pypdfium2 (fast pipeline)
+mm cat src/main.py                                              # passthrough text + chunk + embed (kind=text)
+mm cat notes.docx                                               # python-docx text
+mm cat bench.jpg                                                # short VLM caption (fast pipeline)
+mm cat wordpress-pdf-invoice-plugin-sample.pdf -n 20            # first 20 lines
 
-# --mode accurate: full LLM pipeline (requires a configured profile)
+# --mode accurate: full LLM pipeline for image/video/audio/PDF (requires a configured profile)
 mm cat bench.jpg -m accurate                                    # LLM caption + tags + objects
 mm cat Timelapse.mp4 -m accurate                                # keyframe mosaic → LLM description
 mm cat mp3_44100Hz_320kbps_stereo.mp3 -m accurate               # Whisper transcript → LLM summary
@@ -308,7 +311,8 @@ The skill exposes mm's capabilities to any tool that supports the skills protoco
 | Command | Purpose | Key flags |
 |---------|---------|-----------|
 | `find`  | Find/list files, tree view, schema | `--name`, `-i` (ignore case), `--kind`, `--ext`, `--min-size`, `--max-size`, `--sort`, `--reverse`, `--columns`, `--tree`, `--depth`, `--schema`, `--limit`, `--no-ignore`, `--format` |
-| `cat` | Content extraction (auto-detected by file type × mode) | `--mode metadata/fast/accurate` (default `metadata`), `-p` (pipeline), `-n`, `--no-cache`, `-v`, `--encode.*` (incl. `--encode.strategy_opts KEY=VALUE`), `--generate.*`, `--list-pipelines`, `--list-encoders`, `--print-pipeline <kind>/<mode>`, `--format` |
+| `peek` | Raw file metadata (dimensions / EXIF / codec / mime / hash). | `--format` (rich / json / pretty-json / tsv / csv) |
+| `cat` | Content extraction (auto-detected by file type × mode) | `--mode fast/accurate` (default `fast`), `-p` (pipeline), `-n`, `--no-cache`, `-v`, `--encode.*` (incl. `--encode.strategy_opts KEY=VALUE`), `--generate.*`, `--list-pipelines`, `--list-encoders`, `--print-pipeline <kind>/<mode>`, `--format` |
 | `grep` | Content search across files | `--kind`, `--ext`, `-C`, `--count`, `-i`, `--semantic`, `--pre-index`, `--no-ignore`, `--format` |
 | `sql` | SQL queries on file index, results, chunks, and embeddings | `--dir`, `--pre-index`, `--format`, `--list-tables` |
 | `wc` | Count files, size, lines (est.), tokens (est.) | `--kind`, `--by-kind`, `--format` |
@@ -336,25 +340,37 @@ mm find ~/data --format json                           # full metadata JSON
 mm find ~/data --no-ignore                             # include gitignored files
 ```
 
-### cat — content extraction
+### peek — raw file metadata
 
-`--mode` is one of `metadata` (default; local extraction, never an LLM call), `fast` (kind's fast pipeline; short LLM call for images/video), or `accurate` (LLM-heavy pipeline).
+`mm peek` returns locally-extracted metadata (dimensions / EXIF / codec / duration / mime / hash …).
 
 ```bash
-mm cat wordpress-pdf-invoice-plugin-sample.pdf                  # PDF text via pypdfium2 (metadata)
+mm peek bench.jpg                                                # image dims / EXIF / hash (Rich panel)
+mm peek Timelapse.mp4                                            # video resolution, duration, codecs
+mm peek wordpress-pdf-invoice-plugin-sample.pdf                  # mime, content hash
+mm peek bench.jpg Timelapse.mp4 --format json                    # multi-file JSON
+mm peek bench.jpg --format tsv                                   # flat TSV (every kind has the same column set)
+```
+
+### cat — content extraction
+
+`--mode` is one of `fast` (default) or `accurate`. Mode is a no-op for `kind=text` and non-PDF documents (`.docx` / `.pptx`): they always return passthrough text.
+
+```bash
+mm cat wordpress-pdf-invoice-plugin-sample.pdf                  # PDF page-text via pypdfium2 (fast pipeline)
 mm cat wordpress-pdf-invoice-plugin-sample.pdf -n 20            # first 20 lines (head)
-mm cat wordpress-pdf-invoice-plugin-sample.pdf -n -20           # last 20 lines (tail)
-mm cat bench.jpg                                                 # image dimensions, EXIF, hash (metadata)
-mm cat bench.jpg -m fast                                         # short VLM caption
-mm cat bench.jpg -m accurate                                     # full LLM caption + tags + objects
-mm cat Timelapse.mp4 -m accurate                                 # mosaic → LLM description
-mm cat bench.jpg -m fast -p resize                               # use named encoder (requires -m fast/accurate)
-mm cat bench.jpg -m accurate -p my-pipeline.yaml                 # custom pipeline YAML
-mm cat Timelapse.mp4 -m accurate --no-cache                      # force fresh LLM call
-mm cat bench.jpg -m accurate -v                                  # verbose (shows pipeline tree)
-mm cat --list-pipelines                                          # list registered pipelines
-mm cat --list-encoders                                           # list registered encoders
-mm cat --print-pipeline image/accurate                           # print a built-in pipeline's YAML source
+mm cat src/main.py                                              # passthrough text
+mm cat notes.docx                                               # python-docx tex
+mm cat bench.jpg                                                # short VLM caption (fast pipeline)
+mm cat bench.jpg -m accurate                                    # full LLM caption + tags + objects
+mm cat Timelapse.mp4 -m accurate                                # mosaic → LLM description
+mm cat bench.jpg -p resize                                      # use named encoder
+mm cat bench.jpg -m accurate -p my-pipeline.yaml                # custom pipeline YAML
+mm cat Timelapse.mp4 -m accurate --no-cache                     # force fresh LLM call
+mm cat bench.jpg -m accurate -v                                 # verbose (shows pipeline tree)
+mm cat --list-pipelines                                         # list registered pipelines
+mm cat --list-encoders                                          # list registered encoders
+mm cat --print-pipeline image/accurate                          # print a built-in pipeline's YAML source
 mm cat bench.jpg -m accurate --encode.strategy_opts max_width=768  # override a single strategy_opts entry
 ```
 
@@ -476,13 +492,13 @@ pipeline
 
 ## Processing tiers
 
-`mm` separates **content tiers** (what's stored) from **pipeline modes** (what runs). `mm cat` accepts `--mode metadata|fast|accurate` (default `metadata`).
+`mm` separates **what** by command and **how much LLM** by mode. `mm peek` surfaces local file metadata; `mm cat` extracts content and accepts `--mode fast|accurate` (default `fast`).
 
-| Tier               | What                                                                                  | LLM?     |
-| ------------------ | ------------------------------------------------------------------------------------- | -------- |
-| **metadata** (default) | Locally-extracted file content — PDF text, image dims/EXIF, video codec, transcript   | never    |
-| **fast**           | Output of the kind's `fast` pipeline                                                  | maybe¹   |
-| **accurate**       | Output of the kind's `accurate` pipeline                                              | yes      |
+| Tier            | Command          | What                                                                                | LLM?    |
+| --------------- | ---------------- | ----------------------------------------------------------------------------------- | ------- |
+| **metadata**    | `mm peek`        | image dims/EXIF/hash, video resolution/duration/codec, audio codec, mime, magika    | never   |
+| **fast** (default) | `mm cat -m fast` | Output of the kind's `fast` pipeline                                                | maybe¹  |
+| **accurate**    | `mm cat -m accurate` | Output of the kind's `accurate` pipeline                                            | yes     |
 
 ¹ Per-kind fast pipelines: image/video include a short LLM caption stage;
 audio/document/code do not. See `pipelines/{kind}/fast.yaml`.

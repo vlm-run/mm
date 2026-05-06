@@ -12,9 +12,9 @@ generate:
     Then list up to 10 keyword tags.
     Then list up to 10 identifiable objects, people, faces, or logos.
 
-    [OUTPUT]
-    {{description}}
+    ## FORMAT
+    --description--
 
-    Tags: {{10 keyword tags}}
-    Objects: {{10 identifiable objects, people, faces, or logos}}
+    Tags: Up to 10 keyword tags
+    Objects: Up to 10 identifiable objects, people, faces, brands or logos
   max_tokens: 2048

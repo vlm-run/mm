@@ -77,7 +77,7 @@ class MmDatabase:
     def _connect(self) -> sqlite3.Connection:
         if self._conn is None:
             self._db_path.parent.mkdir(parents=True, exist_ok=True)
-            self._conn = sqlite3.connect(str(self._db_path))
+            self._conn = sqlite3.connect(str(self._db_path), check_same_thread=False)
             self._conn.row_factory = sqlite3.Row
             self._vec_loaded = False
             try:
@@ -291,10 +291,6 @@ class MmDatabase:
     def delete_files(self, uris: list[str]) -> int:
         """Delete ``files`` rows by URI, cascading through chunks_vec manually.
 
-        FKs cascade ``files`` → ``extractions`` → ``chunks``. The ``chunks_vec``
-        virtual table has no FK support, so embeddings are cleaned up explicitly
-        before the cascade fires.
-
         Returns the number of rows deleted.
         """
         from mm.utils import batch_array
@@ -321,6 +317,10 @@ class MmDatabase:
                     for chunk_batch in batch_array(chunk_ids, 500):
                         cp = ",".join("?" * len(chunk_batch))
                         db.execute(f"DELETE FROM chunks_vec WHERE chunk_id IN ({cp})", chunk_batch)
+            db.execute(
+                f"DELETE FROM chunks WHERE file_uri IN ({ph}) AND extraction_id IS NULL",
+                batch,
+            )
             cur = db.execute(f"DELETE FROM files WHERE uri IN ({ph})", batch)
             deleted += cur.rowcount or 0
         db.commit()
@@ -500,7 +500,7 @@ class MmDatabase:
 
     def _put_chunks(
         self,
-        extraction_id: str,
+        extraction_id: str | None,
         uri: str,
         content_hash: str,
         profile: str,
@@ -508,15 +508,19 @@ class MmDatabase:
         content: str,
         mode: str,
     ) -> None:
+        """Slide a 2 KiB window over *content*; persist each chunk row."""
         now = now_us()
         step = CHUNK_SIZE - CHUNK_OVERLAP
         texts: list[str] = []
+
         for i in range(0, len(content), step):
             texts.append(content[i : i + CHUNK_SIZE])
             if i + CHUNK_SIZE >= len(content):
                 break
+
         if not texts:
             return
+
         db = self._connect
         db.executemany(
             "INSERT INTO chunks "
@@ -537,6 +541,68 @@ class MmDatabase:
             params.append(mode)
         q += " ORDER BY mode, chunk_idx"
         return [dict(r) for r in self._connect.execute(q, params).fetchall()]
+
+    def has_text_chunks(self, content_hash: str) -> bool:
+        """Return True if FK-orphan text chunks exist for *content_hash*."""
+        row = self._connect.execute(
+            "SELECT 1 FROM chunks WHERE content_hash = ? AND extraction_id IS NULL "
+            "AND mode = 'metadata' LIMIT 1",
+            (content_hash,),
+        ).fetchone()
+        return row is not None
+
+    def get_text_chunks(self, content_hash: str) -> list[dict[str, Any]]:
+        """Fetch FK-orphan chunks for *content_hash* in chunk order."""
+        rows = self._connect.execute(
+            "SELECT * FROM chunks WHERE content_hash = ? AND extraction_id IS NULL "
+            "AND mode = 'metadata' ORDER BY chunk_idx",
+            (content_hash,),
+        ).fetchall()
+        return [dict(r) for r in rows]
+
+    def put_text_chunks(
+        self,
+        *,
+        uri: str,
+        content_hash: str,
+        content: str,
+    ) -> int:
+        """Write FK-orphan text chunks.
+
+        Idempotent: prior orphan chunks for the same content hash are
+        cleared (along with their embeddings) before re-insertion.
+        Returns the number of chunks written.
+        """
+        self.ensure_metadata(uri)
+        db = self._connect
+
+        old_ids = [
+            r[0]
+            for r in db.execute(
+                "SELECT id FROM chunks WHERE content_hash = ? AND extraction_id IS NULL "
+                "AND mode = 'metadata'",
+                (content_hash,),
+            ).fetchall()
+        ]
+
+        if old_ids:
+            has_vec = db.execute(
+                "SELECT 1 FROM sqlite_master WHERE type='table' AND name='chunks_vec'"
+            ).fetchone()
+            if has_vec:
+                cp = ",".join("?" * len(old_ids))
+                db.execute(f"DELETE FROM chunks_vec WHERE chunk_id IN ({cp})", old_ids)
+            cp = ",".join("?" * len(old_ids))
+            db.execute(f"DELETE FROM chunks WHERE id IN ({cp})", old_ids)
+
+        self._put_chunks(None, uri, content_hash, "", "", content, mode="metadata")
+        return int(
+            db.execute(
+                "SELECT COUNT(*) FROM chunks WHERE content_hash = ? AND extraction_id IS NULL "
+                "AND mode = 'metadata'",
+                (content_hash,),
+            ).fetchone()[0]
+        )
 
     def get_full_content(
         self,
@@ -578,11 +644,15 @@ class MmDatabase:
     def upsert_embeddings(
         self,
         *,
-        extraction_id: str,
+        extraction_id: str | None = None,
+        chunk_ids: list[int] | None = None,
         vectors: list[list[float]],
     ) -> None:
+        """Pair *vectors* with chunk IDs and upsert into ``chunks_vec``."""
         if not vectors or not self._vec_available:
             return
+        if extraction_id is None and chunk_ids is None:
+            raise ValueError("pass exactly one of extraction_id or chunk_ids")
 
         import struct
 
@@ -590,14 +660,15 @@ class MmDatabase:
         dim = len(vectors[0])
         self._ensure_vec_table(dim)
 
-        chunks = self.get_chunks(extraction_id)
-        n = min(len(vectors), len(chunks))
+        if chunk_ids is None and extraction_id:
+            chunks = self.get_chunks(extraction_id)
+            chunk_ids = [c["id"] for c in chunks]
 
-        vec_inserts = []
-        for i in range(n):
-            chunk_id = chunks[i]["id"]
-            vec_inserts.append((chunk_id, struct.pack(f"{dim}f", *vectors[i])))
+        if not chunk_ids:
+            raise ValueError("chunk_ids couldn't be generated")
 
+        n = min(len(vectors), len(chunk_ids))
+        vec_inserts = [(chunk_ids[i], struct.pack(f"{dim}f", *vectors[i])) for i in range(n)]
         db.executemany(
             "INSERT OR REPLACE INTO chunks_vec (chunk_id, embedding) VALUES (?, ?)", vec_inserts
         )

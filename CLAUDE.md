@@ -166,7 +166,8 @@ mm/
 │   │   └── embed.py            # Embedding generation via Gemini (text, image, audio, video, doc)
 │   └── commands/               # CLI subcommands (6 + config + profile)
 │       ├── find.py             # mm find (--tree, --schema, --columns)
-│       ├── cat.py              # mm cat (-n, --mode, auto-detect by type, accurate → embed)
+│       ├── cat.py              # mm cat (-n, --mode fast/accurate, auto-detect by type)
+│       ├── peek.py             # mm peek (raw file metadata)
 │       ├── grep.py             # mm grep
 │       ├── sql.py              # mm sql (all tables via SQLite)
 │       ├── wc.py               # mm wc (--by-kind)
@@ -221,12 +222,13 @@ mm <command> [args]
 uv run mm <command> [args]
 ```
 
-## CLI commands (8 total)
+## CLI commands (9 total)
 
 | Command   | Purpose | Key flags |
 |-----------|---------|-----------|
 | `find`    | Find/list files, tree view, schema | `--name`, `-i` (ignore case), `--kind`, `--ext`, `--min-size`, `--max-size`, `--sort`, `--columns`, `--tree`, `--depth`, `--schema`, `--limit`, `--no-ignore`, `--format` |
-| `cat`     | Content extraction (auto-detected by file type × mode) | `--mode metadata/fast/accurate` (default `metadata`), `-p` (pipeline), `-n` (head/tail), `--encode.*`, `--generate.*`, `--format` |
+| `peek`    | Raw file metadata (dimensions / EXIF / codec / mime / hash). | `--format` (rich / json / pretty-json / tsv / csv) |
+| `cat`     | Content extraction (auto-detected by file type × mode) | `--mode fast/accurate` (default `fast`), `-p` (pipeline), `-n` (head/tail), `--encode.*`, `--generate.*`, `--format` |
 | `grep`    | Content search across files | `--kind`, `--ext`, `-C` (context), `--count`, `-i` (ignore case), `--no-ignore`, `--format` |
 | `sql`     | SQL on files, results, and chunks | `--dir`, `--format`, `--list-tables` |
 | `wc`      | Count files, size, lines (est.), tokens (est.) | `--kind`, `--by-kind`, `--format` |
@@ -236,7 +238,7 @@ uv run mm <command> [args]
 
 ### Consolidated commands
 
-The following commands were merged into the 5 core commands:
+The following commands were merged into the core commands:
 
 - `head` / `tail` → `cat -n 10` (head) / `cat -n -10` (tail)
 - `keyframes` → `cat video.mp4 -m accurate` (auto-generates mosaic)
@@ -244,6 +246,7 @@ The following commands were merged into the 5 core commands:
 - `audio` → `cat audio.mp3 -m accurate` (transcript → LLM summary)
 - `ls` / `tree` / `describe` → `find` with `--tree`, `--schema`, `--columns`
 - `info` → `wc` (default summary panel)
+- `cat -m metadata` → `peek` (raw file metadata)
 
 ### find modes
 
@@ -255,17 +258,25 @@ The following commands were merged into the 5 core commands:
 - `mm find ~/data --columns name,size,kind` — custom column selection
 - `mm find ~/data --no-ignore` — include files excluded by .gitignore
 
+### peek (raw file metadata)
+
+`mm peek <file>` returns locally-extracted metadata (dimensions / EXIF / codec / duration / mime / hash …) for one or more files.
+
+- `mm peek photo.png` — image dims / EXIF / hash (Rich panel by default)
+- `mm peek paper.pdf clip.mp4 main.py --format json` — multi-file JSON output
+- `mm peek video.mp4 --format tsv` — flat TSV (every kind has the same column set; nullable fields render empty)
+
 ### cat modes (auto-detected from file type × mode)
 
-`--mode` is one of `metadata` (default; local extraction, never an LLM call), `fast` (kind's fast pipeline; short LLM call for images/video), or `accurate` (LLM-heavy pipeline). Under the default `metadata` mode, `-p` and `--encode.*`/`--generate.*` overrides are ignored — pass `-m fast` or `-m accurate` to invoke a pipeline.
+`--mode` is one of `fast` (default) or `accurate`. For raw file metadata (dimensions / EXIF / codec / mime / hash), use `mm peek`. Mode is a no-op for `kind=text` and non-PDF documents (`.docx` / `.pptx`): they always return passthrough text.
 
-- `mm cat file` — text/metadata extraction (default, no LLM, <100ms)
+- `mm cat file` — fast pipeline (default; passthrough text for code / non-PDF docs)
 - `mm cat file -n 20` — first 20 lines (head)
 - `mm cat file -n -20` — last 20 lines (tail)
-- `mm cat file -m fast` — kind's fast pipeline (image/video: short LLM caption; doc/audio/code: passthrough)
-- `mm cat file -m accurate` — LLM-generated caption/description
+- `mm cat file -m fast` — kind's fast pipeline (image/video: short LLM caption; PDF: page-text via pypdfium2; audio: Whisper transcript; code/text/docx/pptx: passthrough)
+- `mm cat file -m accurate` — LLM-generated caption/description (image/video/audio/PDF); passthrough for code/text/docx/pptx
 - `mm cat video.mp4 -m accurate` — auto-generates keyframe mosaic → LLM description
-- `mm cat photo.png -m fast -p resize` — encode with named encoder (requires -m fast/accurate)
+- `mm cat photo.png -p resize` — encode with named encoder
 - `mm cat photo.png -m accurate -p my-pipeline.yaml` — custom pipeline YAML
 
 ### Schema and SQL
@@ -292,9 +303,27 @@ Columns (`files`): `uri`, `name`, `stem`, `ext`, `size`, `modified`, `created`, 
 
 ## Processing modes
 
-- **metadata** (default): local extraction only — image dims/EXIF/hash, video resolution/duration/codec, audio duration/codec, PDF text via pypdfium2, code/text passthrough. Never invokes an LLM. Implemented in `mm/cat_utils/extract_meta.py` and cached as `files.text_preview`.
-- **fast**: runs the kind's fast pipeline. *May* invoke an LLM with a short prompt — images and videos do (short caption / short description). Audio fast = Whisper transcript only. Documents fast = pypdfium2 text only. Code/text = raw passthrough. Pipeline-driven via `pipelines/{kind}/fast.yaml`.
-- **accurate**: LLM-powered descriptions via OpenAI-compatible API. Images → VLM caption. Videos → mosaic → VLM description. Audio → transcript → LLM summary. Documents → text → LLM structuring. Requires a configured profile (`mm profile add/update`). Pipeline-driven via `pipelines/{kind}/accurate.yaml`.
+`peek` and `cat` divide the surface by intent: identify vs. extract.
+
+- **peek** (separate command): local metadata extraction only
+  — image dims / EXIF / hash / pHash, video resolution / duration /
+  codec, audio duration / codec, mime, content_hash. Implemented as the
+  `FileMetadata` dataclass in `python/mm/peek.py`.
+- **cat fast** (default): runs the kind's fast pipeline. *May* invoke
+  an LLM with a short prompt — images and videos do (short caption /
+  short description). Audio fast = Whisper transcript only. PDFs
+  (`kind=document` with `.pdf` ext) = pypdfium2 page-text via the
+  `page-text` encoder. Non-PDF documents (`.docx` / `.pptx`) and
+  `kind=text` = passthrough text.
+  Pipeline-driven via `pipelines/{kind}/fast.yaml` for the binary
+  kinds; passthrough handled directly by `cat_utils/extract_meta.py::extract_text`.
+- **cat accurate**: LLM-powered descriptions via OpenAI-compatible
+  API. Images → VLM caption. Videos → mosaic → VLM description.
+  Audio → transcript → LLM summary. PDFs → page-text → LLM markdown
+  structuring. Non-PDF documents and `kind=text` ignore mode and
+  follow the same passthrough flow as fast. Requires a configured
+  profile (`mm profile add/update`). Pipeline-driven via
+  `pipelines/{kind}/accurate.yaml` for the binary kinds.
 
 ## Python API
 
@@ -327,7 +356,7 @@ ctx.info()   # Rich summary panel
 - **Parallel scanning**: `ignore` crate for gitignore-aware walking + `rayon` for parallelism.
 - **Hashing**: xxh3 via `xxhash-rust` for fast content fingerprinting (full file via mmap). `directory_hash` hashes sorted file listings for SQL cache keys.
 - **Storage**: Global SQLite database at `~/.local/share/mm/mm.db` with tables: `files` (file metadata + locally-extracted content), `extractions` (pipeline outputs; `mode` ∈ {'fast', 'accurate'}), `chunks` (chunked content; `mode` ∈ {'metadata', 'fast', 'accurate'} — the metadata tier is `files.text_preview`, fast/accurate are extraction outputs), `chunks_vec` (sqlite-vec embeddings), `cache` (key-value cache). Schema defined in `python/mm/store/schema.py`.
-- **Embeddings**: Generated via Gemini embedding API through the mm inference server (`/v1/embeddings`). Supports text, image, audio (chunked at 80s), video (chunked at 120s), and PDF. Stored in `chunks_vec` virtual table (sqlite-vec). Triggered automatically after accurate-mode extraction.
+- **Embeddings**: Generated via Gemini embedding API through the mm inference server (`/v1/embeddings`). Supports text, image, audio (chunked at 80s), video (chunked at 120s), and PDF. Stored in `chunks_vec` virtual table (sqlite-vec). **Indexing boundary**: `mm cat` performs chunking only (writes to `chunks`, never to `chunks_vec`); embedding + vec storage are deferred to `mm grep -s --pre-index`. A file is fully *indexed* only when all four stages — processed, chunked, embedded, vec-stored — have run. Files cat'd without `--pre-index` are reported as *chunked-only* and resume cheaply: `--pre-index` skips re-extraction and just embeds. Unprocessed files run through the fast-mode pipeline.
 - **SQL routing**: `mm sql` auto-detects table from `FROM` clause. `files` → scan + in-memory SQLite. `extractions`/`chunks` → persistent SQLite direct.
 - **Video metadata (fast)**: Native MP4 parsing (mp4parse) and MKV/WebM parsing (matroska) in Rust. No ffmpeg in fast mode — metadata only, <100ms.
 - **PDF text extraction**: `pypdfium2` on the Python CLI side (in `commands/cat.py`). Scanned/image-only PDFs return empty text.

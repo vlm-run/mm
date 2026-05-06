@@ -35,6 +35,7 @@ irm https://vlm-run.github.io/mm/install/install.ps1 | iex
 | Command   | Purpose                                                                     |
 | --------- | --------------------------------------------------------------------------- |
 | `find`    | Locate/list files by name/kind/ext/size, tabular listing, tree view, schema |
+| `peek`    | Raw file metadata (dimensions / EXIF / codec / mime / hash).                |
 | `cat`     | Content extraction (auto-detected by file type × mode)                      |
 | `grep`    | Content search — text and semantic (via embeddings)                         |
 | `wc`      | Count files, bytes, lines, tokens                                           |
@@ -108,55 +109,63 @@ Columns in the `files` table:
 | width     | uint32    | Pixel width (images from header, videos via native parsing). Null for non-media.  |
 | height    | uint32    | Pixel height (images from header, videos via native parsing). Null for non-media. |
 
+## peek — raw file metadata
+
+`mm peek` returns locally-extracted metadata (dimensions / EXIF / codec / duration / mime / hash …).
+
+```bash
+mm peek photo.png                                    # image dims / EXIF / hash (Rich panel)
+mm peek video.mp4                                    # resolution, duration, FPS, codecs
+mm peek paper.pdf                                    # mime, content hash
+mm peek photo.png video.mp4 --format json            # multi-file JSON (one row per file)
+mm peek photo.png --format tsv                       # flat TSV; every kind has the same column set
+```
+
+Behaviour by file type (single Rust scan, sub-100ms):
+
+- **Image** (.png/.jpg/.webp/.gif/.bmp/.tiff/.svg): dimensions, MIME, xxh3 hash, EXIF, pHash.
+- **Video** (.mp4/.mkv/.webm/.avi/.mov): resolution, duration, FPS, codecs (no ffmpeg).
+- **Audio** (.mp3/.wav/.flac/.aac/.ogg/.m4a): duration, codec, bitrate.
+- **PDF** (.pdf): mime + content hash.
+- **Document** (.docx, .pptx): mime + content hash.
+- **Text / code** (.py/.md/.txt/.csv/...): mime + content hash.
+
 ## cat — content extraction (pipeline-driven)
 
 Behaviour is auto-detected from file type. `--mode` is one of:
 
-- `metadata` (default) — local, cheap extraction, no LLMs.
-- `fast` — kind's fast pipeline (image/video uses short VLM captioning; audio uses ffmpeg+whisper, document/code are local-only passthrough).
-- `accurate` — LLM-heavy pipeline.
+- `fast` (default) — kind's fast pipeline. Image/video: short VLM caption. PDF: page-text via pypdfium2. Audio: Whisper transcript. `kind=text` and non-PDF documents (.docx/.pptx): passthrough text.
+- `accurate` — LLM-heavy pipeline for image/video/audio/PDF; `kind=text` and non-PDF documents always follow the passthrough flow regardless of mode.
 
 ```bash
-# metadata mode (default) — local extraction, no LLM
-mm cat <file>                                       # text/metadata extraction
-mm cat photo.png                                    # image metadata (dims, MIME, hash, EXIF)
-mm cat video.mp4                                    # video metadata (resolution, duration, codecs)
-mm cat paper.pdf                                    # text extraction via pypdfium2
-
-# Fast mode — runs the kind's fast pipeline
-mm cat photo.png -m fast                            # short VLM caption
-mm cat video.mp4 -m fast                            # mosaic → short VLM description
-mm cat audio.mp3 -m fast                            # Whisper transcript only (no LLM)
-mm cat paper.pdf -m fast                            # PDF text only (no LLM)
+# Default --mode fast
+mm cat photo.png                                    # short VLM caption
+mm cat video.mp4                                    # mosaic → short VLM description
+mm cat audio.mp3                                    # Whisper transcript only (no LLM)
+mm cat paper.pdf                                    # PDF page-text via pypdfium2 (no LLM)
+mm cat src/main.py                                  # passthrough text
+mm cat notes.docx                                   # python-docx text
 
 # Accurate mode — LLM-powered descriptions
 mm cat photo.png -m accurate                        # VLM caption + tags + objects
 mm cat video.mp4 -m accurate                        # mosaic → VLM description
 mm cat audio.mp3 -m accurate                        # transcript → LLM summary
-mm cat paper.pdf -m accurate                        # text → LLM summary
+mm cat paper.pdf -m accurate                        # text → LLM markdown structuring
 
-# Head / tail (all modes)
+# Head / tail
 mm cat <file> -n 20                                 # first 20 lines
 mm cat <file> -n -10                                # last 10 lines
 
-# Cache control (applies to fast/accurate; metadata tier always served from `files`)
+# Cache control (applies to fast/accurate for binary kinds; text/non-PDF docs always cached)
 mm cat <file> -m accurate --no-cache                # bypass cache, force fresh run
 
 # Output formats
 mm cat <file> --format json                          # JSON output
 ```
 
-`metadata` mode behavior by file type (<100ms target):
-
-- **PDF** (.pdf): text extraction via pypdfium2. Scanned/image-only PDFs return empty.
-- **Document** (.docx, .pptx): text extraction.
-- **Image** (.png/.jpg/.webp/.gif/.bmp/.tiff/.svg): dimensions, MIME, xxh3 hash, EXIF data.
-- **Video** (.mp4/.mkv/.webm/.avi/.mov): resolution, duration, FPS, codecs (metadata only, no ffmpeg).
-- **Audio** (.mp3/.wav/.flac/.aac/.ogg/.m4a): duration, codec, bitrate (metadata only).
-
 ## cat -p — named encoders and pipeline YAMLs
 
-The `-p` / `--pipeline` flag accepts either a registered encoder name or a YAML file path. `-p` only takes effect when `--mode fast` or `--mode accurate` is also passed; the default `--mode metadata` skips the pipeline.
+The `-p` / `--pipeline` flag accepts either a registered encoder name or a YAML file path.
 
 ```bash
 # Named encoder (encodes media into VLM-ready JSON messages)
@@ -250,7 +259,7 @@ Pipelines are 2-stage YAMLs: **encode** (convert to LLM-ready parts) → **gener
 
 ### Encode overrides (--encode.\*)
 
-`--encode.*` overrides only apply when `-m fast` or `-m accurate` is also passed; the default `-m metadata` skips the pipeline.
+`--encode.*` overrides apply to image / video / audio / PDF (the kinds that run a pipeline); they're a no-op for `kind=text` and non-PDF documents (.docx / .pptx) since those follow the passthrough flow regardless of mode.
 
 ```bash
 mm cat photo.png -m accurate --encode.strategy image-tile      # override encoder
@@ -504,8 +513,9 @@ mm find <dir> --kind video --format json | jq '.[].name'  # extract video names
 - `find` returns paths only when piped, else it returns full metadata rows.
 - For PDFs, `cat` extracts text in fast mode; if empty, the PDF contains scanned images only.
 - For videos, `mm cat video.mp4 -m accurate` auto-generates keyframe mosaics and sends to LLM.
-- `--mode metadata` (default) is the no-LLM local extraction. Use `--mode fast` for the kind's fast pipeline (image/video include a short LLM caption) and `--mode accurate` for the LLM-heavy pipeline.
-- Use `--no-cache` with `-m accurate` (or `-m fast` when the pipeline calls an LLM) to force a fresh LLM call.
-- Use `-p` to load custom pipeline YAMLs or named encoders; combine with `-m fast` or `-m accurate` (default `-m metadata` skips the pipeline). CLI overrides layer on top.
-- Use `--encode.pyfunc` to inject custom Python transforms (also requires `-m fast`/`-m accurate`).
+- `--mode fast` (default) runs the kind's fast pipeline. `--mode accurate` runs the LLM-heavy pipeline.
+- `kind=text` and non-PDF documents (.docx / .pptx) ignore `--mode` entirely: they always return passthrough text.
+- Use `--no-cache` with `-m accurate` (or `-m fast` when the pipeline calls an LLM) to force a fresh LLM call. `--no-cache` is a no-op for the passthrough kinds.
+- Use `-p` to load custom pipeline YAMLs or named encoders; CLI overrides layer on top.
+- Use `--encode.pyfunc` to inject custom Python transforms (image / video / audio / PDF only).
 - Use `--list-pipelines` to see all available encoders and built-in pipelines.

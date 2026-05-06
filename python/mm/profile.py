@@ -82,6 +82,8 @@ RESERVED_DEFAULTS = {
     "openrouter": OPENROUTER_DEFAULTS,
 }
 
+EMBEDDING_BASEURL = "https://mm-ctx.ngrok.io/v1"
+
 
 class ProfileUpdateData(TypedDict, total=False):
     base_url: str

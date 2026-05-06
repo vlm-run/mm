@@ -1,9 +1,4 @@
-"""Tests for `mm cat` auto-detection and dispatch.
-
-Verifies that the CLI correctly auto-detects file types (image, video,
-audio, pdf, text) and dispatches to the right handler based on extension
-and the --mode flag (metadata/fast/accurate).
-"""
+"""Tests for ``mm cat`` auto-detection and dispatch."""
 
 from __future__ import annotations
 
@@ -130,67 +125,51 @@ class TestFileKindDetection:
         assert file_kind(Path(f"file{ext}")) == "text"
 
 
-# ── Metadata mode (default) ─────────────────────────────────────────
+# ── Default mode (fast) ─────────────────────────────────────────────
 
 
-class TestMetadataDefault:
-    """The default `--mode metadata` returns local extraction with no LLM call."""
+class TestFastDefault:
+    """Default ``cat`` mode is now ``fast`` (peek replaces the old metadata tier)."""
 
-    def test_video_metadata_default(self, mixed_dir: Path):
-        """No mode flag → metadata mode → native MP4 parse, no LLM."""
-        r = runner.invoke(app, ["cat", str(mixed_dir / "clip.mp4")])
-        assert r.exit_code == 0
-
-    def test_explicit_metadata_mode(self, mixed_dir: Path):
-        """Passing `-m metadata` is identical to omitting `-m`."""
-        r_default = runner.invoke(app, ["cat", str(mixed_dir / "clip.mp4")])
-        r_explicit = runner.invoke(app, ["cat", str(mixed_dir / "clip.mp4"), "-m", "metadata"])
-        assert r_default.exit_code == 0
-        assert r_explicit.exit_code == 0
-
-    def test_text_passthrough_default(self, mixed_dir: Path):
+    def test_text_passthrough_default(self, mixed_dir: Path, isolated_db):
         r = runner.invoke(app, ["cat", str(mixed_dir / "readme.md")])
         assert r.exit_code == 0
         assert "Title" in r.output
 
-    def test_code_passthrough_default(self, mixed_dir: Path):
+    def test_code_passthrough_default(self, mixed_dir: Path, isolated_db):
         r = runner.invoke(app, ["cat", str(mixed_dir / "main.py")])
         assert r.exit_code == 0
         assert "def run" in r.output
 
-    def test_metadata_does_not_call_llm(self, monkeypatch, mixed_dir: Path):
-        """Default `metadata` mode must never instantiate the LLM backend.
-
-        The fast pipeline for images calls an LLM, but metadata mode short-
-        circuits before resolving any pipeline. We assert this by replacing
-        `LlmBackend` with a sentinel that raises if instantiated.
-        """
+    def test_text_does_not_call_llm(self, monkeypatch, mixed_dir: Path, isolated_db):
+        """``mm cat`` on text/code must never instantiate the LLM backend."""
         from mm import llm
 
         class _Sentinel:
             def __init__(self, *args, **kwargs):
                 raise AssertionError(
-                    "LlmBackend was constructed under --mode metadata; the "
-                    "default mode must not invoke an LLM."
+                    "LlmBackend was constructed under cat for a text file; "
+                    "the cat-text path must not invoke an LLM."
                 )
 
         monkeypatch.setattr(llm, "LlmBackend", _Sentinel)
 
-        r = runner.invoke(app, ["cat", str(mixed_dir / "photo.png")])
+        r = runner.invoke(app, ["cat", str(mixed_dir / "main.py")])
         assert r.exit_code == 0
 
-    def test_metadata_mode_json_emits_mode_field(self, mixed_dir: Path):
+    def test_metadata_mode_rejected(self, mixed_dir: Path):
+        """``--mode metadata`` is no longer valid; users get a friendly hint."""
+        r = runner.invoke(app, ["cat", str(mixed_dir / "main.py"), "-m", "metadata"])
+        assert r.exit_code != 0
+        combined = (r.output or "") + (getattr(r, "stderr", "") or "")
+        assert "fast" in combined.lower() and "accurate" in combined.lower()
+
+    def test_default_mode_json_emits_fast(self, mixed_dir: Path, isolated_db):
         r = runner.invoke(app, ["cat", str(mixed_dir / "main.py"), "--format", "json"])
         assert r.exit_code == 0
-        data = json.loads(r.output)
+        data = json.loads(r.stdout)
         assert isinstance(data, list) and data
-        assert data[0].get("mode") == "metadata"
-
-    def test_metadata_image_json_emits_mode_field(self, mixed_dir: Path):
-        r = runner.invoke(app, ["cat", str(mixed_dir / "photo.png"), "--format", "json"])
-        assert r.exit_code == 0
-        data = json.loads(r.output)
-        assert data[0].get("mode") == "metadata"
+        assert data[0].get("mode") == "fast"
 
     def test_pretty_json_format_indents_and_breaks_lines(self, mixed_dir: Path):
         """``--format pretty-json`` always indents, regardless of TTY/pipe.
@@ -206,7 +185,7 @@ class TestMetadataDefault:
         assert r.exit_code == 0
         # Same envelope as `json`: ingestable by anyone who already
         # parses `mm cat --format json`.
-        data = json.loads(r.output)
+        data = json.loads(r.stdout)
         assert isinstance(data, list) and data
         assert {"path", "mode", "content"}.issubset(data[0])
         # And the *serialised* form has line breaks + indentation
@@ -257,21 +236,25 @@ class TestHeadTail:
         assert len(lines) == 1
 
 
-class TestCatDocumentPdf:
-    """CLI smoke: PDF metadata + fast paths both use pypdfium2 page text (not mocked)."""
+class TestCatPdf:
+    """CLI smoke: ``mm cat`` on a PDF runs the document fast/accurate pipeline.
 
-    def test_pdf_metadata_json_extracts_text(self, tmp_path: Path):
-        """Default mode (metadata) extracts PDF text via pypdfium2 — same path as fast."""
+    Default mode (``fast``) and explicit ``-m fast`` both go through the
+    same ``page-text`` encoder, so the rendered text matches.
+    """
+
+    def test_pdf_default_json_extracts_text(self, tmp_path: Path, isolated_db: Path):
+        """Default mode is now ``fast`` — runs the document fast pipeline (pypdfium2 page-text)."""
         pdf = tmp_path / "hello.pdf"
         _minimal_single_page_pdf(pdf)
         r = runner.invoke(app, ["cat", str(pdf), "--format", "json"])
         assert r.exit_code == 0, r.output
         data = json.loads(r.output)
         assert len(data) == 1
-        assert data[0].get("mode") == "metadata"
+        assert data[0].get("mode") == "fast"
         assert "Hello" in data[0].get("content", "")
 
-    def test_pdf_fast_json_extracts_text(self, tmp_path: Path):
+    def test_pdf_explicit_fast_json_extracts_text(self, tmp_path: Path, isolated_db: Path):
         pdf = tmp_path / "hello.pdf"
         _minimal_single_page_pdf(pdf)
         r = runner.invoke(
@@ -282,8 +265,7 @@ class TestCatDocumentPdf:
         data = json.loads(r.output)
         assert len(data) == 1
         assert data[0].get("mode") == "fast"
-        body = data[0].get("content", "")
-        assert "Hello" in body
+        assert "Hello" in data[0].get("content", "")
 
 
 # ── Error handling ────────────────────────────────────────────────────
@@ -303,9 +285,8 @@ class TestErrors:
         r = runner.invoke(app, ["cat", str(mixed_dir / "main.py"), "-m", "bogus"])
         assert r.exit_code != 0
         combined = (r.output or "") + (getattr(r, "stderr", "") or "")
-        # Error must enumerate all three valid modes so users discover the new
-        # `metadata` default.
-        for token in ("metadata", "fast", "accurate"):
+        # Error enumerates the two valid modes plus a hint at peek for raw metadata.
+        for token in ("fast", "accurate"):
             assert token in combined.lower()
 
 
@@ -345,8 +326,6 @@ class TestCatGenerateExtraBodyCli:
     """CLI smoke tests for --generate.extra-body JSON validation."""
 
     def test_bad_extra_body_json_fails(self, mixed_dir: Path):
-        # Default mode is metadata (no LLM call) — JSON validator runs at arg
-        # parse time so the bad JSON should still be rejected.
         r = runner.invoke(
             app,
             [

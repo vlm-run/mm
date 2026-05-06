@@ -352,13 +352,13 @@ class TestBenchCommands:
             assert cmd.group in ("overhead", "metadata", "fast", "accurate")
             assert cmd.cmd_template
 
-    def test_metadata_group_includes_cat_metadata_benchmarks(self):
-        """The metadata group must include `cat --mode metadata` benchmarks alongside find/wc/sql/grep."""
+    def test_metadata_group_includes_peek_benchmarks(self):
+        """The metadata group must include ``mm peek`` rows for each binary kind."""
         from mm.commands.bench_commands import METADATA_COMMANDS
 
-        cat_meta_cmds = [c for c in METADATA_COMMANDS if "mm cat" in c.cmd_template]
-        assert len(cat_meta_cmds) > 0
-        for c in cat_meta_cmds:
+        peek_cmds = [c for c in METADATA_COMMANDS if "mm peek" in c.cmd_template]
+        assert len(peek_cmds) > 0
+        for c in peek_cmds:
             assert c.group == "metadata"
 
     def test_accurate_group_is_accurate_mode_only(self):
