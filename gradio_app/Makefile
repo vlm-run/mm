@@ -1,4 +1,4 @@
-.PHONY: help deploy deploy-app deploy-pkg status logs logs-build logs-follow restart hardware-gpu hardware-cpu
+.PHONY: help deploy status logs logs-build logs-follow restart hardware-gpu hardware-cpu
 
 SPACE ?= vlm-run/mm-ctx
 MSG   ?= ui polish
@@ -7,7 +7,8 @@ EXCLUDES := \
 	--exclude "__pycache__/**" --exclude "**/__pycache__/**" \
 	--exclude "data/**" --exclude "**/data/**" \
 	--exclude "*.pyc" --exclude "Makefile" --exclude ".gitignore" \
-	--exclude "spaces_app.py"
+	--exclude "spaces_app.py" --exclude "Dockerfile" --exclude "README.md" \
+	--exclude "requirements.txt"
 
 help: ## List targets
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  \033[36m%-16s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -16,13 +17,15 @@ help: ## List targets
 	@echo "  Override the commit message with MSG=\"...\""
 	@echo "  e.g. make deploy SPACE=username/mm-ctx MSG=\"hotfix\""
 
-deploy: deploy-app deploy-pkg ## Push spaces_app.py + gradio_app/ to $(SPACE)
-
-deploy-app: ## Push spaces_app.py to $(SPACE) as the Space root app.py
+deploy: ## Push Dockerfile + README + requirements.txt + app.py + gradio_app/ to $(SPACE)
+	hf upload --repo-type space $(SPACE) Dockerfile Dockerfile \
+		--commit-message "$(MSG) [Dockerfile]"
+	hf upload --repo-type space $(SPACE) README.md README.md \
+		--commit-message "$(MSG) [README]"
+	hf upload --repo-type space $(SPACE) requirements.txt requirements.txt \
+		--commit-message "$(MSG) [requirements.txt]"
 	hf upload --repo-type space $(SPACE) spaces_app.py app.py \
 		--commit-message "$(MSG) [app.py]"
-
-deploy-pkg: ## Push gradio_app/ contents to $(SPACE):gradio_app/
 	hf upload --repo-type space $(SPACE) . gradio_app \
 		$(EXCLUDES) \
 		--commit-message "$(MSG) [gradio_app]"

@@ -3,8 +3,6 @@
 from __future__ import annotations
 
 import json
-import struct
-import zlib
 from pathlib import Path
 
 import pytest
@@ -12,56 +10,12 @@ from mm.cli import app
 from mm.utils import AUDIO_EXTS, IMAGE_EXTS, VIDEO_EXTS, file_kind
 from typer.testing import CliRunner
 
+from .test_utils import write_minimal_mp4, write_png
+
 runner = CliRunner()
 
 
 # ── Helpers ───────────────────────────────────────────────────────────
-
-
-def _write_png(path: Path, width: int, height: int):
-    raw = b""
-    for _ in range(height):
-        raw += b"\x00" + b"\x80\x00\x40" * width
-    compressed = zlib.compress(raw)
-
-    def _chunk(ctype, data):
-        c = ctype + data
-        return struct.pack(">I", len(data)) + c + struct.pack(">I", zlib.crc32(c) & 0xFFFFFFFF)
-
-    ihdr_data = struct.pack(">IIBBBBB", width, height, 8, 2, 0, 0, 0)
-    png = b"\x89PNG\r\n\x1a\n"
-    png += _chunk(b"IHDR", ihdr_data)
-    png += _chunk(b"IDAT", compressed)
-    png += _chunk(b"IEND", b"")
-    path.write_bytes(png)
-
-
-def _write_minimal_mp4(path: Path) -> None:
-    """Encode a 1-frame, 16x16 mp4 PyAV can probe.
-
-    The previous ``b"\\x00" * 200`` placeholder relied on ffprobe being
-    forgiving; the new PyAV-based ``mm.video.probe`` is stricter, so the
-    fixture must be a real (tiny) mp4 file.
-    """
-    import av
-    import numpy as np
-
-    container = av.open(str(path), mode="w")
-    try:
-        stream = container.add_stream("mpeg4", rate=24)
-        stream.width = 16
-        stream.height = 16
-        stream.pix_fmt = "yuv420p"
-        frame = av.VideoFrame.from_ndarray(
-            np.zeros((16, 16, 3), dtype=np.uint8),
-            format="rgb24",
-        )
-        for packet in stream.encode(frame):
-            container.mux(packet)
-        for packet in stream.encode():
-            container.mux(packet)
-    finally:
-        container.close()
 
 
 def _minimal_single_page_pdf(path: Path) -> None:
@@ -90,8 +44,8 @@ def _minimal_single_page_pdf(path: Path) -> None:
 @pytest.fixture
 def mixed_dir(tmp_path: Path) -> Path:
     """Directory with one file per major type."""
-    _write_png(tmp_path / "photo.png", 64, 48)
-    _write_minimal_mp4(tmp_path / "clip.mp4")
+    write_png(tmp_path / "photo.png", 64, 48)
+    write_minimal_mp4(tmp_path / "clip.mp4")
     (tmp_path / "track.mp3").write_bytes(b"\xff\xfb\x90\x00" + b"\x00" * 200)
     (tmp_path / "readme.md").write_text("# Title\n\nHello world.\n")
     (tmp_path / "main.py").write_text("def run():\n    return 42\n")

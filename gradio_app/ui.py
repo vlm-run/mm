@@ -16,7 +16,6 @@ from fastapi import HTTPException
 from mm.cat_utils.base_utils import CatMode
 
 from gradio_app import routes
-from gradio_app.config import data_dir
 from gradio_app.design import DESIGN_HEAD, FOOTER_HTML, HEADER_HTML
 from gradio_app.models import (
     CatRequest,
@@ -548,57 +547,24 @@ def _build_profile_section(
     return profiles_state, p_status
 
 
-_TABS: tuple[str, ...] = ("Browse", "Cat", "Grep", "Profiles")
+_TERMINAL_HTML = '<div class="mm-terminal-wrap"><div id="mm-terminal"></div></div>'
 
 
 def build_ui() -> gr.Blocks:
-    """Single-page UI with Radio-driven tab nav and visibility-toggled sections.
+    """Single-page UI: header + xterm.js terminal + footer.
 
-    Deliberately avoids ``gr.Tabs`` — Gradio 6.14 / Svelte 5 has a structural
-    bug in the Tab component where pane mount/unmount triggers either a
-    reactive update loop (``effect_update_depth_exceeded``) or input-reference
-    drift (``needed N inputs, got 0``) depending on the ``render_children``
-    setting. Both modes have been verified broken on this version.
+    The terminal is mounted into ``#mm-terminal`` by the script in
+    ``DESIGN_HEAD``. It opens a WebSocket to ``/ws/terminal`` (served by
+    ``gradio_app.main``) which bridges to a PTY-backed login shell with
+    ``mm`` on PATH and the data directory as cwd. The previous custom
+    Browse/Cat/Grep/Profiles forms are gone — users now run the
+    corresponding ``mm`` commands directly.
 
-    Implementation:
-        - All four section helpers render their components into ``gr.Group``
-          containers; only the active section's group has ``visible=True``.
-        - A ``gr.Radio`` styled as a tab strip drives the active selection;
-          its ``change`` event flips the four groups' ``visible`` flags.
-        - Components stay mounted across "tab" switches — only CSS display
-          toggles — so event bindings and component IDs remain stable.
+    The ``_do_*`` helpers above are retained because ``spaces_app.py``
+    monkeypatches them; they are no longer wired into the UI.
     """
-    default_dir = str(data_dir())
-
     with gr.Blocks(title="mm app") as demo:
         gr.HTML(HEADER_HTML)
-
-        nav = gr.Radio(
-            choices=list(_TABS),
-            value=_TABS[0],
-            show_label=False,
-            container=False,
-            elem_classes=["mm-tabnav"],
-        )
-
-        with gr.Group(visible=True, elem_classes=["mm-pane"]) as section_browse:
-            _build_browse_section(default_dir)
-        with gr.Group(visible=False, elem_classes=["mm-pane"]) as section_cat:
-            cat_profile = _build_cat_section()
-        with gr.Group(visible=False, elem_classes=["mm-pane"]) as section_grep:
-            _build_grep_section(default_dir)
-        with gr.Group(visible=False, elem_classes=["mm-pane"]) as section_profile:
-            profiles_state, _p_status = _build_profile_section(cat_profile=cat_profile)
-
+        gr.HTML(_TERMINAL_HTML)
         gr.HTML(FOOTER_HTML)
-
-        sections = (section_browse, section_cat, section_grep, section_profile)
-
-        def _switch(label: str) -> tuple[Any, ...]:
-            return tuple(gr.update(visible=label == name) for name in _TABS)
-
-        nav.change(_switch, inputs=[nav], outputs=list(sections))
-
-        demo.load(_do_refresh_cat_profile, outputs=[cat_profile])
-        demo.load(_profile_rows, outputs=[profiles_state])
     return demo

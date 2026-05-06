@@ -178,10 +178,7 @@ def grep(req: GrepRequest) -> GrepResponse:
     ``semantic=True`` and binary files are present, vector search runs
     alongside via ``mm.semantic.grep_semantic``.
     """
-    try:
-        from mm.cat_utils.extract_meta import _local_document
-    except ImportError:
-        from mm.cat_utils.extract_meta import _local_document
+    from mm.cat_utils.extract_meta import _local_document
     from mm.context import Context
     from mm.utils import is_binary_content
 

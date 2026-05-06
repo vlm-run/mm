@@ -3,8 +3,6 @@
 from __future__ import annotations
 
 import json
-import struct
-import zlib
 from pathlib import Path
 
 import pytest
@@ -12,33 +10,18 @@ from mm.cli import app
 from mm.peek import FileMetadata
 from typer.testing import CliRunner
 
+from .test_utils import write_png
+
 runner = CliRunner()
 
 
 # ── Fixtures ──────────────────────────────────────────────────────────
 
 
-def _write_png(path: Path, width: int, height: int) -> None:
-    """Minimal valid PNG used in fixtures and `_write_minimal_mp4`'s sibling."""
-    raw = b""
-    for _ in range(height):
-        raw += b"\x00" + b"\x80\x00\x40" * width
-    compressed = zlib.compress(raw)
-
-    def _chunk(ctype: bytes, data: bytes) -> bytes:
-        c = ctype + data
-        return struct.pack(">I", len(data)) + c + struct.pack(">I", zlib.crc32(c) & 0xFFFFFFFF)
-
-    ihdr = struct.pack(">IIBBBBB", width, height, 8, 2, 0, 0, 0)
-    png = b"\x89PNG\r\n\x1a\n" + _chunk(b"IHDR", ihdr) + _chunk(b"IDAT", compressed)
-    png += _chunk(b"IEND", b"")
-    path.write_bytes(png)
-
-
 @pytest.fixture
 def tiny_png(tmp_path: Path) -> Path:
     p = tmp_path / "photo.png"
-    _write_png(p, 64, 48)
+    write_png(p, 64, 48)
     return p
 
 

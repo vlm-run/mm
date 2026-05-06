@@ -34,6 +34,10 @@ if [ ! -d "${DATA_DIR}/mmbench-mini" ]; then
 fi
 
 DIR="${DATA_DIR}/mmbench-mini"
+PDF="${DIR}/documents/research-paper.pdf"
+VID="$(find "${DIR}/video" -type f 2>/dev/null | head -1 || true)"
+AUD="$(find "${DIR}/audio" -type f 2>/dev/null | head -1 || true)"
+IMG="$(find "${DIR}/images" -type f 2>/dev/null | head -1 || true)"
 
 FILE_COUNT="$(find "${DIR}" -type f ! -name '.DS_Store' | wc -l | tr -d ' ')"
 TOTAL_SIZE="$(du -sh "${DIR}" | awk '{print $1}')"
@@ -77,6 +81,44 @@ hyperfine --warmup 2 --min-runs 10 \
     ".venv/bin/mm find ${DIR} --ext .pdf --format tsv" \
   --command-name "find (pdf+docx+html)" \
     "find ${DIR} -type f \\( -name '*.pdf' -o -name '*.docx' -o -name '*.html' \\)"
+
+# ===========================================================================
+# peek — raw per-file metadata
+# ===========================================================================
+echo ""
+echo "--- mm peek vs file/stat/ffprobe ---"
+PEEK_CMDS=(
+  --command-name "mm peek pdf"    ".venv/bin/mm peek '${PDF}' --format json"
+  --command-name "file pdf"       "file '${PDF}'"
+  --command-name "stat pdf"       "stat ${STAT_FMT} '${PDF}'"
+)
+if [ -n "${IMG}" ]; then
+  PEEK_CMDS+=(
+    --command-name "mm peek image" ".venv/bin/mm peek '${IMG}' --format json"
+    --command-name "file image"    "file '${IMG}'"
+  )
+fi
+if [ -n "${VID}" ]; then
+  PEEK_CMDS+=(
+    --command-name "mm peek video" ".venv/bin/mm peek '${VID}' --format json"
+    --command-name "file video"    "file '${VID}'"
+  )
+  if command -v ffprobe &>/dev/null; then
+    PEEK_CMDS+=(--command-name "ffprobe video" \
+      "ffprobe -v quiet -print_format json -show_format -show_streams '${VID}'")
+  fi
+fi
+if [ -n "${AUD}" ]; then
+  PEEK_CMDS+=(
+    --command-name "mm peek audio" ".venv/bin/mm peek '${AUD}' --format json"
+    --command-name "file audio"    "file '${AUD}'"
+  )
+  if command -v ffprobe &>/dev/null; then
+    PEEK_CMDS+=(--command-name "ffprobe audio" \
+      "ffprobe -v quiet -print_format json -show_format -show_streams '${AUD}'")
+  fi
+fi
+hyperfine --warmup 2 --min-runs 10 "${PEEK_CMDS[@]}"
 
 # ===========================================================================
 # wc — counting
