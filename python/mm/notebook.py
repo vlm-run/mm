@@ -851,7 +851,7 @@ def _decode_b64_prefix(data_url: str, n_bytes: int) -> bytes | None:
     chars_needed = math.ceil(n_bytes * 4 / 3) + 4
     chunk = b64[:chars_needed]
     try:
-        return base64.b64decode(chunk + "==")
+        return base64.b64decode(chunk + "=" * (-len(chunk) % 4))
     except Exception:
         return None
 
