@@ -2,11 +2,19 @@
 
 Used by `mm grep` to automatically search inside binary files (images, video,
 audio, documents) using vector similarity over the persisted chunks table.
+
+A file is considered **indexed** only when all four stages have run:
+processed → chunked → embedded → stored in the vector table. ``mm cat``
+performs only the first two stages (it writes chunks but no embeddings);
+``mm grep -s --pre-index`` completes the indexing (embed + vec store) for
+already-chunked files and runs the full pipeline for previously
+unprocessed ones.
 """
 
 from __future__ import annotations
 
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
@@ -16,10 +24,36 @@ MAX_INDEX = 25
 INDEX_TIMEOUT_S = 300
 
 
-def check_indexed(uris: list[str]) -> tuple[set[str], list[str]]:
-    """Return (indexed_set, missing_list) for the given URIs."""
+@dataclass
+class IndexStatus:
+    """
+    Three-way classification of URIs against the chunks/vec tables
+    """
+
+    indexed: set[str] = field(default_factory=set)
+    chunked_only: set[str] = field(default_factory=set)
+    unprocessed: set[str] = field(default_factory=set)
+    # Resume hints for chunked_only URIs.
+    extraction_ids_by_uri: dict[str, list[str]] = field(default_factory=dict)
+    text_hashes_by_uri: dict[str, str] = field(default_factory=dict)
+
+    @property
+    def missing(self) -> list[str]:
+        """URIs not yet fully indexed (chunked-only ∪ unprocessed)."""
+        return list(self.chunked_only) + list(self.unprocessed)
+
+
+def check_index_status(uris: list[str]) -> IndexStatus:
+    """
+    Classify each URI as indexed, chunked_only, or unprocessed.
+
+    *indexed*: at least one chunk row JOINs a ``chunks_vec`` entry.
+    *chunked_only*: chunks present but no vector — needs embedding only.
+    *unprocessed*: no chunks at all — needs the full pipeline.
+    """
+    status = IndexStatus()
     if not uris:
-        return set(), []
+        return status
 
     from mm.store.db import MmDatabase
 
@@ -28,10 +62,27 @@ def check_indexed(uris: list[str]) -> tuple[set[str], list[str]]:
         "SELECT 1 FROM sqlite_master WHERE type='table' AND name='chunks_vec'"
     ).fetchone()
 
+    chunked: set[str] = set()
+    for batch in batch_array(uris, 500):
+        placeholders = ", ".join("?" * len(batch))
+        rows = db._connect.execute(
+            f"SELECT file_uri, extraction_id, content_hash FROM chunks "
+            f"WHERE file_uri IN ({placeholders})",
+            batch,
+        ).fetchall()
+        for uri, extraction_id, content_hash in rows:
+            chunked.add(uri)
+            if extraction_id:
+                ids = status.extraction_ids_by_uri.setdefault(uri, [])
+                if extraction_id not in ids:
+                    ids.append(extraction_id)
+            else:
+                status.text_hashes_by_uri[uri] = content_hash
+
     indexed: set[str] = set()
-    if vec_exists:
-        rows_items = []
-        for batch in batch_array(uris, 500):
+    if vec_exists and chunked:
+        chunked_list = list(chunked)
+        for batch in batch_array(chunked_list, 500):
             placeholders = ", ".join("?" * len(batch))
             rows = db._connect.execute(
                 f"SELECT DISTINCT c.file_uri FROM chunks c "
@@ -39,20 +90,38 @@ def check_indexed(uris: list[str]) -> tuple[set[str], list[str]]:
                 f"WHERE c.file_uri IN ({placeholders})",
                 batch,
             ).fetchall()
-            rows_items.extend(rows)
-        indexed = {r[0] for r in rows_items}
+            indexed.update(r[0] for r in rows)
 
-    missing = [u for u in uris if u not in indexed]
-    return indexed, missing
+    status.indexed = indexed
+    status.chunked_only = chunked - indexed
+    status.unprocessed = set(uris) - chunked
+    return status
+
+
+def _embed_chunked_only(
+    uri: str,
+    extraction_ids: list[str],
+    text_hash: str | None,
+) -> str | None:
+    """Embed already-chunked content for *uri* without re-running extraction."""
+    from mm.store.embed import embed_file_chunks_concurrent, embed_text_chunks_concurrent
+
+    try:
+        for eid in extraction_ids:
+            embed_file_chunks_concurrent(eid, max_workers=4)
+        if text_hash:
+            embed_text_chunks_concurrent(text_hash, max_workers=4)
+        return uri
+    except Exception as e:
+        from mm.display import console
+
+        console.print(f"[red]Error embedding {uri}: {e}[/red]")
+        return None
 
 
 def _index_one(uri: str) -> str | None:
-    """Index a single file via the accurate-mode pipeline.
-
-    Returns the URI on success, or ``None`` on failure (missing file,
-    extractor error, or embed failure). Accurate-mode extraction writes
-    to the ``extractions`` + ``chunks`` + ``chunks_vec`` tables as a
-    side effect of ``_run_accurate``.
+    """
+    Run the full pipeline for an unprocessed *uri* in fast mode.
     """
     from mm.cat_utils.base_utils import CatOpts
     from mm.commands.cat import _extract
@@ -64,7 +133,7 @@ def _index_one(uri: str) -> str | None:
     opts = CatOpts(
         n=None,
         output_dir=None,
-        mode="accurate",
+        mode="fast",
         no_cache=False,
         format="rich",
         encode_overrides={},
@@ -75,18 +144,34 @@ def _index_one(uri: str) -> str | None:
 
     try:
         result = _extract(path, opts)
-        if result and not result.startswith("["):
-            return uri
-        raise ValueError(f"Accurate extraction failed for {uri}: {result}")
+        if not result or result.startswith("["):
+            raise ValueError(f"Fast extraction failed for {uri}: {result}")
     except Exception as e:
         from mm.display import console
 
         console.print(f"[red]Error indexing {uri}: {e}[/red]")
         return None
 
+    fresh = check_index_status([uri])
+    return _embed_chunked_only(
+        uri,
+        fresh.extraction_ids_by_uri.get(uri, []),
+        fresh.text_hashes_by_uri.get(uri),
+    )
 
-def index_missing(missing: list[str]) -> int:
-    """Index up to *max_files* URIs in parallel. Returns count of successfully indexed files."""
+
+def index_missing(
+    missing: list[str],
+    *,
+    status: IndexStatus | None = None,
+) -> int:
+    """
+    Finish indexing for up to ``MAX_INDEX`` URIs in parallel.
+
+    When *status* is supplied, chunked-only URIs take the embed-only
+    fast path (no re-extraction). When *status* is ``None`` every URI is
+    treated as unprocessed and run through ``_index_one``.
+    """
     from mm.display import console
     from mm.encoders import _ensure_discovered
 
@@ -103,6 +188,19 @@ def index_missing(missing: list[str]) -> int:
         f"(timeout: {INDEX_TIMEOUT_S}s)...[/dim]"
     )
 
+    chunked_only = status.chunked_only if status else set()
+    extraction_ids_by_uri = status.extraction_ids_by_uri if status else {}
+    text_hashes_by_uri = status.text_hashes_by_uri if status else {}
+
+    def _dispatch(uri: str) -> str | None:
+        if uri in chunked_only:
+            return _embed_chunked_only(
+                uri,
+                extraction_ids_by_uri.get(uri, []),
+                text_hashes_by_uri.get(uri),
+            )
+        return _index_one(uri)
+
     workers = min(4, total)
     successful = 0
     completed = 0
@@ -110,7 +208,7 @@ def index_missing(missing: list[str]) -> int:
 
     pool = ThreadPoolExecutor(max_workers=workers)
     try:
-        futures = {pool.submit(_index_one, uri): uri for uri in to_index}
+        futures = {pool.submit(_dispatch, uri): uri for uri in to_index}
         try:
             for fut in as_completed(futures, timeout=INDEX_TIMEOUT_S):
                 if fut.result() is not None:
@@ -149,7 +247,9 @@ def search(
     kind: str | None = None,
     ext: str | None = None,
 ) -> list[dict[str, Any]]:
-    """Embed query string and run KNN search, scoped by URI or prefix."""
+    """
+    Embed query string and run KNN search, scoped by URI or prefix.
+    """
     from mm.store.db import MmDatabase
     from mm.store.embed import embed_texts
 
@@ -204,35 +304,38 @@ def handle_missing(
     cmd_hint: str | None = None,
     quiet: bool = False,
 ) -> bool:
-    """Check indexing status, optionally index, and warn about missing files.
+    """
+    Check indexing status, optionally index, and warn about missing files.
 
     Args:
         uris: File URIs to check.
-        do_index: If True, index missing files (up to MAX_INDEX).
+        do_index: If True, finish indexing missing files (up to MAX_INDEX).
         cmd_hint: Command string to show the user for manual indexing.
         quiet: Suppress warning output (useful for structured output formats).
 
     Returns:
         True if at least some files are indexed (safe to search), False otherwise.
     """
-    _, missing = check_indexed(uris)
+    status = check_index_status(uris)
+    missing = status.missing
     if not missing:
         return True
 
     if do_index:
-        index_missing(missing)
+        index_missing(missing, status=status)
         return True
 
     if not quiet:
         from mm.display import console
 
         console.print(
-            f"[yellow]Warning:[/yellow] {len(missing)} of {len(uris)} files are not indexed."
+            f"[yellow]Warning:[/yellow] {len(missing)} of {len(uris)} files "
+            f"are not fully indexed — {len(missing)} missing."
         )
         if cmd_hint:
-            console.print(f"[dim]To index missing files, run:\n  [bold]{cmd_hint}[/bold][/dim]")
+            console.print(f"[dim]To finish indexing, run:\n  [bold]{cmd_hint}[/bold][/dim]")
 
-    return len(missing) < len(uris)
+    return len(status.indexed) > 0
 
 
 def build_hint_cmd(
@@ -242,7 +345,9 @@ def build_hint_cmd(
     ext: str | None,
     ignore_case: bool = False,
 ) -> str:
-    """Reconstruct the user's grep command with ``-s --pre-index`` appended."""
+    """
+    Reconstruct the user's grep command with ``-s --pre-index`` appended.
+    """
     parts = ["mm grep", f'"{pattern}"', str(directory)]
     if kind:
         parts.append(f"--kind {kind}")
@@ -266,7 +371,9 @@ def grep_semantic(
     quiet: bool = False,
     cmd_hint: str | None = None,
 ) -> list[dict]:
-    """Semantic search via embeddings"""
+    """
+    Semantic search via embeddings
+    """
     from mm.context import Context
 
     path = directory.resolve()

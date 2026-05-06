@@ -11,13 +11,21 @@ file *say*?".
 
 from __future__ import annotations
 
+import sys
 from pathlib import Path
-from typing import Annotated, Optional
+from typing import TYPE_CHECKING, Annotated, Optional
 
 import typer
 
-from mm.peek import FileMetadata
 from mm.utils import BaseFormat
+
+if TYPE_CHECKING:
+    from mm.peek import FileMetadata
+
+if len(sys.argv) > 1 and "peek" in sys.argv:
+    from mm.peek import _preload_magika  # noqa: F401 — import triggers module-level preload
+
+    _preload_magika()
 
 
 def peek_cmd(
@@ -41,12 +49,18 @@ def peek_cmd(
       mm peek paper.pdf            # mime, hash (no extracted text — use ``mm cat`` for that)
       mm peek a.png b.mp4 --format json
     """
+    from mm.pipe import read_paths_from_stdin
+
     paths = list(files or [])
+    stdin_paths = read_paths_from_stdin()
+    if stdin_paths:
+        paths.extend(Path(p) for p in stdin_paths)
     if not paths:
         typer.echo("Error: No files specified.", err=True)
         raise typer.Exit(1)
 
     from mm.display import resolve_format
+    from mm.peek import FileMetadata
 
     fmt = resolve_format(format.value if format else None)
 
@@ -65,7 +79,9 @@ def peek_cmd(
 
     from mm.display import emit_csv, emit_rows, emit_tsv
 
-    dict_rows = [{k: v for k, v in r.to_dict().items() if v is not None} for r in rows]
+    dict_rows_full = [r.to_dict() for r in rows]
+    dict_rows = [{k: v for k, v in d.items() if v is not None} for d in dict_rows_full]
+
     if fmt in ("json", "pretty-json"):
         emit_rows(fmt, dict_rows)
     elif fmt == "tsv":
