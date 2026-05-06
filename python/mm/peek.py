@@ -44,6 +44,63 @@ def _magika():
     return _magika_future.result()
 
 
+def _doc_props(path: Path) -> dict[str, Any]:
+    """Pull author/title/subject/creator/producer/pages for a document."""
+    ext = path.suffix.lower()
+    try:
+        if ext == ".pdf":
+            return _pdf_props(path)
+        if ext == ".docx":
+            return _docx_props(path)
+        if ext == ".pptx":
+            return _pptx_props(path)
+    except Exception:
+        return {}
+    return {}
+
+
+def _pdf_props(path: Path) -> dict[str, Any]:
+    import pypdfium2 as pdfium
+
+    pdf = pdfium.PdfDocument(str(path))
+    try:
+        info = pdf.get_metadata_dict(skip_empty=True) or {}
+        return {
+            "doc_author": info.get("Author") or None,
+            "doc_title": info.get("Title") or None,
+            "doc_subject": info.get("Subject") or None,
+            "doc_creator": info.get("Creator") or None,
+            "doc_producer": info.get("Producer") or None,
+            "pages": len(pdf),
+        }
+    finally:
+        pdf.close()
+
+
+def _docx_props(path: Path) -> dict[str, Any]:
+    from docx import Document
+
+    cp = Document(str(path)).core_properties
+    return {
+        "doc_author": cp.author or None,
+        "doc_title": cp.title or None,
+        "doc_subject": cp.subject or None,
+    }
+
+
+def _pptx_props(path: Path) -> dict[str, Any]:
+    from pptx import Presentation
+
+    prs = Presentation(str(path))
+    cp = prs.core_properties
+    return {
+        "doc_author": cp.author or None,
+        "doc_title": cp.title or None,
+        "doc_subject": cp.subject or None,
+        "pages": len(prs.slides),
+    }
+
+
 @dataclass
 class FileMetadata:
     """Locally-extracted file metadata, kind-agnostic flat shape."""
@@ -74,6 +131,11 @@ class FileMetadata:
 
     # Document
     pages: int | None = None
+    doc_author: str | None = None
+    doc_title: str | None = None
+    doc_subject: str | None = None
+    doc_creator: str | None = None
+    doc_producer: str | None = None
 
     # Identification
     content_hash: str | None = None
@@ -88,7 +150,7 @@ class FileMetadata:
         return asdict(self)
 
     @classmethod
-    def from_path(cls, path: Path | str) -> FileMetadata:
+    def from_path(cls, path: Path | str, *, full: bool = False) -> FileMetadata:
         """Build a :class:`FileMetadata` for *path* via the Rust scanner.
 
         Pure read used by ``mm peek`` as the metadata-tier provider.
@@ -108,12 +170,18 @@ class FileMetadata:
         except Exception:
             aimeta = None
 
+        kind = file_kind(p)
+        if full:
+            doc = _doc_props(p) if kind == "document" else {}
+        else:
+            doc = {}
+
         return cls(
             path=str(p.resolve()),
             name=p.name,
             size=size,
             mime=guess_mime(p.name, fallback="application/octet-stream"),
-            kind=file_kind(p),  # type: ignore[arg-type]
+            kind=kind,  # type: ignore[arg-type]
             dimensions=r.dimensions,
             phash=r.phash,
             exif_camera=r.exif_camera,
@@ -125,7 +193,12 @@ class FileMetadata:
             video_codec=r.video_codec,
             audio_codec=r.audio_codec,
             has_audio=r.has_audio,
-            pages=r.pages,
+            pages=doc.get("pages", r.pages),
+            doc_author=doc.get("doc_author"),
+            doc_title=doc.get("doc_title"),
+            doc_subject=doc.get("doc_subject"),
+            doc_creator=doc.get("doc_creator"),
+            doc_producer=doc.get("doc_producer"),
             content_hash=r.content_hash,
             magic_mime=r.magic_mime,
             aimeta=aimeta,

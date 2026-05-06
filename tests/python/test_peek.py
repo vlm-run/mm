@@ -92,6 +92,11 @@ class TestFileMetadataShape:
             "audio_codec",
             "has_audio",
             "pages",
+            "doc_author",
+            "doc_title",
+            "doc_subject",
+            "doc_creator",
+            "doc_producer",
             "content_hash",
             "magic_mime",
             "aimeta",
@@ -102,6 +107,145 @@ class TestFileMetadataShape:
         """``aimeta`` is part of the shape; populated by magika or ``None``."""
         fm = FileMetadata.from_path(tiny_png)
         assert fm.aimeta is None or isinstance(fm.aimeta, dict)
+
+
+# ── Document properties (PDF / DOCX / PPTX) ───────────────────────────
+
+
+def _build_pdf(path: Path, *, author: str, title: str, subject: str, pages: int = 1) -> None:
+    """Hand-craft a minimal valid PDF with N pages and an `/Info` dict.
+
+    pypdfium2 has no public metadata writer, so we emit one by hand. The
+    layout is fixed (catalog → pages → N page objects → info), and offsets
+    are computed on the fly so the xref table stays in sync.
+    """
+    objects: list[bytes] = []
+    kids = " ".join(f"{i + 3} 0 R" for i in range(pages))
+    objects.append(b"<< /Type /Catalog /Pages 2 0 R >>")
+    objects.append(f"<< /Type /Pages /Kids [{kids}] /Count {pages} >>".encode())
+    for _ in range(pages):
+        objects.append(b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 100 100] >>")
+    info_obj = f"<< /Author ({author}) /Title ({title}) /Subject ({subject}) >>".encode()
+    objects.append(info_obj)
+    info_obj_num = len(objects)
+
+    body = bytearray(b"%PDF-1.4\n")
+    offsets: list[int] = []
+    for i, obj in enumerate(objects, 1):
+        offsets.append(len(body))
+        body += f"{i} 0 obj\n".encode() + obj + b"\nendobj\n"
+    xref_off = len(body)
+    body += f"xref\n0 {len(objects) + 1}\n".encode()
+    body += b"0000000000 65535 f \n"
+    for off in offsets:
+        body += f"{off:010d} 00000 n \n".encode()
+    body += (
+        f"trailer\n<< /Size {len(objects) + 1} /Root 1 0 R /Info {info_obj_num} 0 R >>\n"
+        f"startxref\n{xref_off}\n%%EOF\n"
+    ).encode()
+    path.write_bytes(bytes(body))
+
+
+def _build_docx(path: Path, *, author: str, title: str, subject: str) -> None:
+    from docx import Document
+
+    doc = Document()
+    cp = doc.core_properties
+    cp.author = author
+    cp.title = title
+    cp.subject = subject
+    doc.save(str(path))
+
+
+def _build_pptx(path: Path, *, author: str, title: str, subject: str, slides: int = 2) -> None:
+    from pptx import Presentation
+
+    prs = Presentation()
+    blank = prs.slide_layouts[6]
+    for _ in range(slides):
+        prs.slides.add_slide(blank)
+    cp = prs.core_properties
+    cp.author = author
+    cp.title = title
+    cp.subject = subject
+    prs.save(str(path))
+
+
+class TestDocumentProperties:
+    """``mm peek`` surfaces author/title/subject + pages for PDF/DOCX/PPTX."""
+
+    def test_pdf_props_and_pages(self, tmp_path: Path):
+        pdf = tmp_path / "paper.pdf"
+        _build_pdf(pdf, author="Alice", title="A Paper", subject="physics", pages=3)
+        fm = FileMetadata.from_path(pdf, full=True)
+        assert fm.kind == "document"
+        assert fm.doc_author == "Alice"
+        assert fm.doc_title == "A Paper"
+        assert fm.doc_subject == "physics"
+        # The fixture omits /Creator and /Producer, so they stay null.
+        assert fm.doc_creator is None
+        assert fm.doc_producer is None
+        assert fm.pages == 3
+
+    def test_pdf_props_and_pages_needs_full(self, tmp_path: Path):
+        pdf = tmp_path / "paper.pdf"
+        _build_pdf(pdf, author="Alice", title="A Paper", subject="physics", pages=3)
+        fm = FileMetadata.from_path(pdf)
+        assert fm.kind == "document"
+
+        assert fm.doc_author is None
+        assert fm.doc_title is None
+        assert fm.doc_subject is None
+        assert fm.pages is None
+
+    def test_docx_props_no_pages(self, tmp_path: Path):
+        docx = tmp_path / "spec.docx"
+        _build_docx(docx, author="Bob", title="Spec", subject="research")
+        fm = FileMetadata.from_path(docx, full=True)
+        assert fm.doc_author == "Bob"
+        assert fm.doc_title == "Spec"
+        assert fm.doc_subject == "research"
+        # python-docx exposes no page count.
+        assert fm.pages is None
+        assert fm.doc_creator is None
+        assert fm.doc_producer is None
+
+    def test_pptx_props_and_slide_count(self, tmp_path: Path):
+        pptx = tmp_path / "deck.pptx"
+        _build_pptx(pptx, author="Carol", title="Deck", subject="launch", slides=4)
+        fm = FileMetadata.from_path(pptx, full=True)
+        assert fm.doc_author == "Carol"
+        assert fm.doc_title == "Deck"
+        assert fm.doc_subject == "launch"
+        assert fm.pages == 4
+        assert fm.doc_creator is None
+        assert fm.doc_producer is None
+
+    def test_non_document_kind_has_null_doc_fields(self, tiny_png: Path):
+        fm = FileMetadata.from_path(tiny_png)
+        assert fm.doc_author is None
+        assert fm.doc_title is None
+        assert fm.doc_subject is None
+        assert fm.doc_creator is None
+        assert fm.doc_producer is None
+
+    def test_pdf_doc_fields_in_peek_json(self, tmp_path: Path):
+        pdf = tmp_path / "paper.pdf"
+        _build_pdf(pdf, author="Dee", title="JSON OK", subject="serialization")
+        r = runner.invoke(app, ["peek", str(pdf), "--format", "json", "--full"])
+        assert r.exit_code == 0, r.output
+        rows = json.loads(r.stdout)
+        assert rows[0]["doc_author"] == "Dee"
+        assert rows[0]["doc_title"] == "JSON OK"
+        assert rows[0]["pages"] == 1
+
+    def test_corrupt_pdf_falls_back_silently(self, tmp_path: Path):
+        """A non-PDF byte blob with a .pdf suffix must not crash ``peek``."""
+        pdf = tmp_path / "bad.pdf"
+        pdf.write_bytes(b"not a pdf at all")
+        fm = FileMetadata.from_path(pdf)
+        assert fm.doc_author is None
+        assert fm.pages is None
 
 
 # ── magika integration ───────────────────────────────────────────────

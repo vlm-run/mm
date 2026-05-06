@@ -41,13 +41,21 @@ def peek_cmd(
             help="Output format: rich (default in TTY), json, pretty-json, tsv, csv, stdout",
         ),
     ] = None,
+    full: Annotated[
+        bool,
+        typer.Option(
+            "--full",
+            help="Include all metadata fields including author and page related information for documents. Default [False]",
+        ),
+    ] = False,
 ) -> None:
     """Surface locally-extracted file metadata. Always direct, never cached.
 
     Examples:
-      mm peek photo.png            # dimensions, EXIF, content hash
-      mm peek paper.pdf            # mime, hash (no extracted text — use ``mm cat`` for that)
-      mm peek a.png b.mp4 --format json
+      mm peek photo.png                   # dimensions, EXIF, content hash
+      mm peek paper.pdf                   # mime, hash (no extracted text — use ``mm cat`` for that)
+      mm peek a.png b.mp4 --format json   # return the metadata as a JSON object
+      mm peek paper.pdf --full            # include author/title/subject/creator/producer/pages
     """
     from mm.pipe import read_paths_from_stdin
 
@@ -72,7 +80,7 @@ def peek_cmd(
         if not p.is_file():
             typer.echo(f"Error: {p} is not a regular file.", err=True)
             continue
-        rows.append(FileMetadata.from_path(p))
+        rows.append(FileMetadata.from_path(p, full=full))
 
     if not rows:
         raise typer.Exit(1)
@@ -151,6 +159,15 @@ def _emit_rich(rows: list[FileMetadata]) -> None:
         # Document
         if r.pages is not None:
             tbl.add_row("pages", str(r.pages))
+        for label, key in (
+            ("author", "doc_author"),
+            ("title", "doc_title"),
+            ("subject", "doc_subject"),
+            ("creator", "doc_creator"),
+            ("producer", "doc_producer"),
+        ):
+            if d.get(key):
+                tbl.add_row(label, str(d[key]))
 
         if r.aimeta:
             inner = Table.grid(padding=(0, 1))
