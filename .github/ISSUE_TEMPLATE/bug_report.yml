@@ -1,0 +1,80 @@
+name: Bug report
+description: Report a problem with mm
+title: "[bug] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to file a bug! Please fill in the fields below.
+        For quick questions, [Discord](https://discord.gg/6aqcyvPF79) is often faster.
+
+  - type: input
+    id: mm-version
+    attributes:
+      label: mm version
+      description: Output of `mm --version`
+      placeholder: "mm v0.11.0"
+    validations:
+      required: true
+
+  - type: input
+    id: python-version
+    attributes:
+      label: Python version
+      description: Output of `python --version`
+      placeholder: "Python 3.12.4"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system
+      options:
+        - macOS (Apple Silicon)
+        - macOS (Intel)
+        - Linux
+        - Windows
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: doctor
+    attributes:
+      label: mm doctor output (if available)
+      description: Output of `mm doctor` (skip if the command does not exist yet).
+      render: shell
+
+  - type: textarea
+    id: command
+    attributes:
+      label: Command
+      description: The exact command(s) you ran.
+      render: shell
+      placeholder: |
+        mm cat ~/data/photo.jpg -m accurate
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behaviour
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behaviour
+      description: Include any error output, stack traces, or screenshots.
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: Anything else that might help — file types, sizes, profile config, etc.
