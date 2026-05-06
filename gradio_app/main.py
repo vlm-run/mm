@@ -1,16 +1,6 @@
 """FastAPI + Gradio entry-point for the mm app.
 
 The FastAPI surface lives at:
-    GET    /api/list-directory
-    POST   /api/cat
-    POST   /api/grep
-    GET    /api/profiles
-    GET    /api/profiles/active
-    POST   /api/profiles
-    PATCH  /api/profiles/{name}
-    POST   /api/profiles/{name}/use
-    DELETE /api/profiles/{name}
-    GET    /api/health
     GET    /docs (Swagger UI)
 
 The Gradio UI is mounted at ``/`` and talks to the same in-process Python
@@ -87,65 +77,6 @@ def health() -> dict[str, str]:
     return {"status": "ok"}
 
 
-_TEXT_EXTS = {
-    "txt",
-    "md",
-    "markdown",
-    "rst",
-    "csv",
-    "tsv",
-    "json",
-    "jsonl",
-    "yaml",
-    "yml",
-    "toml",
-    "ini",
-    "cfg",
-    "log",
-    "py",
-    "rs",
-    "js",
-    "ts",
-    "tsx",
-    "jsx",
-    "html",
-    "css",
-    "sh",
-    "bash",
-    "zsh",
-    "fish",
-    "go",
-    "java",
-    "c",
-    "cpp",
-    "h",
-    "hpp",
-    "rb",
-    "php",
-    "sql",
-    "xml",
-    "svg",
-}
-_IMAGE_EXTS = {"png", "jpg", "jpeg", "gif", "webp", "bmp", "svg", "ico"}
-_VIDEO_EXTS = {"mp4", "webm", "mov", "mkv", "avi", "m4v"}
-_AUDIO_EXTS = {"mp3", "wav", "flac", "m4a", "ogg", "opus", "aac"}
-_PDF_EXTS = {"pdf"}
-
-
-def _kind_for(ext: str) -> str:
-    if ext in _IMAGE_EXTS:
-        return "image"
-    if ext in _VIDEO_EXTS:
-        return "video"
-    if ext in _AUDIO_EXTS:
-        return "audio"
-    if ext in _PDF_EXTS:
-        return "pdf"
-    if ext in _TEXT_EXTS:
-        return "text"
-    return "other"
-
-
 def _safe_resolve(rel_path: str):
     base = mmbench_tiny_dir().resolve()
     target = (base / rel_path).resolve()
@@ -161,6 +92,8 @@ def _safe_resolve(rel_path: str):
 @app.get("/api/files")
 def list_mmbench_files() -> dict:
     """List every file in mmbench-tiny — used by the in-app File Viewer."""
+    from mm.utils import file_kind
+
     base = mmbench_tiny_dir()
     if not base.exists():
         return {"root": str(base), "files": []}
@@ -176,7 +109,7 @@ def list_mmbench_files() -> dict:
                 "name": p.name,
                 "size": p.stat().st_size,
                 "ext": ext,
-                "kind": _kind_for(ext),
+                "kind": file_kind(ext),
             }
         )
     return {"root": str(base), "files": files}
