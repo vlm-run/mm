@@ -29,6 +29,7 @@ import json
 import logging
 import os
 import pty
+import shlex
 import signal
 import struct
 import termios
@@ -245,7 +246,13 @@ async def terminal_ws(ws: WebSocket) -> None:
             os.chdir(data_dir())
         except OSError:
             pass
-        bash_init = "export PS1='mm $ '; mm; exec /bin/bash --noprofile --norc -i"
+        info_line = "info: mm find mmbench-tiny --tree     #view the directory"
+        bash_init = (
+            "mm; "
+            f"printf '\\n\\033[2m%s\\033[0m\\n\\n' {shlex.quote(info_line)}; "
+            "export PS1='mm $ '; "
+            "exec /bin/bash --noprofile --norc -i"
+        )
         try:
             os.execvpe(
                 "/bin/bash",
