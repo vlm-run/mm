@@ -131,10 +131,48 @@ DESIGN_HEAD = """
     listEl.innerHTML = '<div class="mm-fv-empty">Loading…</div>';
     fetch('/api/files').then(function(r) { return r.json(); }).then(function(data) {
       state.files = data.files || [];
+      state.root = data.root || '';
       renderList();
       if (state.files.length > 0) selectFile(state.files[0]);
     }).catch(function() {
       listEl.innerHTML = '<div class="mm-fv-empty">Failed to load files.</div>';
+    });
+  }
+
+  function buildTree(files) {
+    var root = {};
+    files.forEach(function(f) {
+      var parts = f.path.split('/');
+      var node = root;
+      parts.forEach(function(name, i) {
+        if (!node[name]) node[name] = { children: {} };
+        if (i === parts.length - 1) node[name].file = f;
+        node = node[name].children;
+      });
+    });
+    return root;
+  }
+
+  function walkTree(node, prefix, lines) {
+    var entries = Object.keys(node).map(function(k) {
+      return { name: k, file: node[k].file, children: node[k].children };
+    });
+    entries.sort(function(a, b) {
+      var aDir = !a.file, bDir = !b.file;
+      if (aDir !== bDir) return aDir ? -1 : 1;
+      return a.name.localeCompare(b.name);
+    });
+    entries.forEach(function(e, i) {
+      var last = i === entries.length - 1;
+      lines.push({
+        entry: e,
+        prefix: prefix + (last ? '└── ' : '├── '),
+        isFile: !!e.file,
+      });
+      var childKeys = Object.keys(e.children);
+      if (childKeys.length > 0) {
+        walkTree(e.children, prefix + (last ? '    ' : '│   '), lines);
+      }
     });
   }
 
@@ -144,23 +182,35 @@ DESIGN_HEAD = """
       listEl.innerHTML = '<div class="mm-fv-empty">No files in mmbench-tiny.</div>';
       return;
     }
-    var groups = {};
-    state.files.forEach(function(f) {
-      (groups[f.kind] = groups[f.kind] || []).push(f);
-    });
-    var order = ['image', 'video', 'audio', 'pdf', 'text', 'other'];
-    var html = '';
-    order.forEach(function(k) {
-      if (!groups[k]) return;
-      html += '<div class="mm-fv-group">' + k + ' · ' + groups[k].length + '</div>';
-      groups[k].forEach(function(f) {
+    var tree = buildTree(state.files);
+    var lines = [];
+    walkTree(tree, '', lines);
+
+    var totalBytes = state.files.reduce(function(s, f) { return s + f.size; }, 0);
+    var rootName = (state.root || 'mmbench-tiny').split('/').filter(Boolean).pop() || 'mmbench-tiny';
+    var html = '<div class="mm-fv-tree-root">' +
+                 '<span class="mm-fv-glyph">▾</span>' +
+                 '<span class="mm-fv-name">' + escapeHTML(rootName) + '/</span>' +
+                 '<span class="mm-fv-size">' + state.files.length + ' files · ' + fmtSize(totalBytes) + '</span>' +
+               '</div>';
+    lines.forEach(function(line) {
+      var prefix = '<span class="mm-fv-tree-prefix">' + escapeHTML(line.prefix) + '</span>';
+      if (line.isFile) {
+        var f = line.entry.file;
         var sel = state.selected && state.selected.path === f.path ? ' mm-fv-item-selected' : '';
         html += '<div class="mm-fv-item' + sel + '" data-path="' + escapeHTML(f.path) + '">' +
+                  prefix +
                   '<span class="mm-fv-glyph">' + KIND_GLYPH[f.kind] + '</span>' +
-                  '<span class="mm-fv-name">' + escapeHTML(f.path) + '</span>' +
+                  '<span class="mm-fv-name">' + escapeHTML(line.entry.name) + '</span>' +
                   '<span class="mm-fv-size">' + fmtSize(f.size) + '</span>' +
                 '</div>';
-      });
+      } else {
+        html += '<div class="mm-fv-tree-dir">' +
+                  prefix +
+                  '<span class="mm-fv-glyph">▸</span>' +
+                  '<span class="mm-fv-name">' + escapeHTML(line.entry.name) + '/</span>' +
+                '</div>';
+      }
     });
     listEl.innerHTML = html;
     Array.prototype.forEach.call(listEl.querySelectorAll('.mm-fv-item'), function(el) {
@@ -896,55 +946,80 @@ DESIGN_HEAD = """
     min-height: 0;
   }
   #mm-fv-modal .mm-fv-sidebar {
-    width: 280px;
+    width: 320px;
     border-right: 1px solid var(--mm-border);
-    overflow-y: auto;
+    overflow: auto;
     background: var(--mm-bg);
-    padding: 6px 0;
+    padding: 8px 0;
   }
-  #mm-fv-modal .mm-fv-group {
-    padding: 10px 14px 4px;
-    font-size: 10px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    color: var(--mm-text-secondary);
-  }
-  #mm-fv-modal .mm-fv-item {
-    display: grid;
-    grid-template-columns: 16px 1fr auto;
-    gap: 8px;
+  #mm-fv-modal .mm-fv-tree-root {
+    display: flex;
     align-items: center;
-    padding: 6px 14px;
-    cursor: pointer;
+    gap: 6px;
+    padding: 4px 14px 8px;
     font-family: 'Geist Mono', ui-monospace, monospace;
     font-size: 12px;
     color: var(--mm-text);
+    border-bottom: 1px solid var(--mm-border);
+    margin-bottom: 6px;
+  }
+  #mm-fv-modal .mm-fv-tree-root .mm-fv-glyph { color: var(--mm-accent); }
+  #mm-fv-modal .mm-fv-tree-root .mm-fv-name { font-weight: 600; flex: 1; }
+  #mm-fv-modal .mm-fv-tree-root .mm-fv-size {
+    color: var(--mm-text-muted);
+    font-size: 10.5px;
+    font-variant-numeric: tabular-nums;
+  }
+  #mm-fv-modal .mm-fv-item,
+  #mm-fv-modal .mm-fv-tree-dir {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 14px;
+    font-family: 'Geist Mono', ui-monospace, monospace;
+    font-size: 12px;
+    line-height: 1.4;
+    color: var(--mm-text);
     border-left: 2px solid transparent;
   }
-  #mm-fv-modal .mm-fv-item:hover {
-    background: var(--mm-surface-tint);
-  }
+  #mm-fv-modal .mm-fv-item { cursor: pointer; }
+  #mm-fv-modal .mm-fv-item:hover { background: var(--mm-surface-tint); }
   #mm-fv-modal .mm-fv-item-selected {
     background: var(--mm-surface);
     border-left-color: var(--mm-accent);
-    color: var(--mm-text);
+  }
+  #mm-fv-modal .mm-fv-tree-dir {
+    color: var(--mm-text-secondary);
+    cursor: default;
+    user-select: none;
+  }
+  #mm-fv-modal .mm-fv-tree-dir .mm-fv-glyph { color: var(--mm-text-muted); }
+  #mm-fv-modal .mm-fv-tree-prefix {
+    color: var(--mm-text-muted);
+    white-space: pre;
+    flex-shrink: 0;
+    font-variant-ligatures: none;
   }
   #mm-fv-modal .mm-fv-glyph {
     color: var(--mm-text-secondary);
     font-size: 11px;
+    width: 14px;
     text-align: center;
+    flex-shrink: 0;
   }
   #mm-fv-modal .mm-fv-item-selected .mm-fv-glyph { color: var(--mm-accent); }
   #mm-fv-modal .mm-fv-name {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    flex: 1;
+    min-width: 0;
   }
   #mm-fv-modal .mm-fv-size {
     color: var(--mm-text-muted);
     font-size: 10.5px;
     font-variant-numeric: tabular-nums;
+    flex-shrink: 0;
   }
   #mm-fv-modal .mm-fv-empty {
     padding: 16px;
