@@ -23,7 +23,7 @@ if TYPE_CHECKING:
     from mm.peek import FileMetadata
 
 if len(sys.argv) > 1 and "peek" in sys.argv:
-    from mm.peek import _preload_magika
+    from mm.peek import _preload_magika  # noqa: F401 — import triggers module-level preload
 
     _preload_magika()
 
