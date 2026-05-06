@@ -245,6 +245,7 @@ async def terminal_ws(ws: WebSocket) -> None:
             os.chdir(data_dir())
         except OSError:
             pass
+
         bash_init = (
             "mm; "
             "echo; "
@@ -253,6 +254,7 @@ async def terminal_ws(ws: WebSocket) -> None:
             "export PS1='mm $ '; "
             "exec /bin/bash --noprofile --norc -i"
         )
+
         try:
             os.execvpe(
                 "/bin/bash",
