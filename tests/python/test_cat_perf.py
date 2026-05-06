@@ -15,6 +15,8 @@ from mm.cli import app
 from PIL import Image
 from typer.testing import CliRunner
 
+from .test_utils import write_minimal_mp4
+
 pytestmark = [pytest.mark.perf, pytest.mark.slow]
 
 runner = CliRunner()
@@ -75,9 +77,9 @@ def test_cat_three_images_fast_cli_under_budget(tmp_path: Path) -> None:
 
 
 def test_cat_single_video_fast_cli_under_budget(tmp_path: Path) -> None:
-    """Fast video path: metadata via native parser (tiny stub file)."""
+    """Fast video path: ``video-mosaic`` encoder + short LLM caption."""
     vid = tmp_path / "clip.mp4"
-    vid.write_bytes(b"\x00" * 200)
+    write_minimal_mp4(vid)
     t0 = time.perf_counter()
     r = runner.invoke(
         app,
@@ -85,7 +87,7 @@ def test_cat_single_video_fast_cli_under_budget(tmp_path: Path) -> None:
     )
     elapsed = time.perf_counter() - t0
     assert r.exit_code == 0, r.output
-    data = json.loads(r.output)
+    data = json.loads(r.stdout)
     assert isinstance(data, list) and len(data) == 1
     assert "clip.mp4" in data[0].get("path", "")
     assert elapsed < _cat_video_max_s(), f"cat 1 video took {elapsed:.3f}s"
@@ -95,7 +97,7 @@ def test_cat_two_videos_fast_cli_under_budget(tmp_path: Path) -> None:
     paths: list[str] = []
     for name in ("a.mp4", "b.mp4"):
         p = tmp_path / name
-        p.write_bytes(b"\x00" * 200)
+        write_minimal_mp4(p)
         paths.append(str(p))
     t0 = time.perf_counter()
     r = runner.invoke(
@@ -104,7 +106,7 @@ def test_cat_two_videos_fast_cli_under_budget(tmp_path: Path) -> None:
     )
     elapsed = time.perf_counter() - t0
     assert r.exit_code == 0, r.output
-    data = json.loads(r.output)
+    data = json.loads(r.stdout)
     assert len(data) == 2
     assert elapsed < _cat_video_multi_max_s(), f"cat 2 videos took {elapsed:.3f}s"
 

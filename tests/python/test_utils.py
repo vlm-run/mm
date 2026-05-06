@@ -1,3 +1,5 @@
+import struct
+import zlib
 from pathlib import Path
 
 import pyarrow as pa
@@ -57,3 +59,50 @@ def ensure_fast(
     """Ensure fast (locally extracted) content exists for a file."""
     ensure_metadata(db, [uri], metadata_kinds)
     db.put_file_content(uri, get_hash(uri), fast_content)
+
+
+def write_png(path: Path, width: int, height: int):
+    """Create a valid PNG by constructing the binary format directly."""
+    raw = b""
+    for _ in range(height):
+        raw += b"\x00" + b"\x80\x00\x40" * width
+    compressed = zlib.compress(raw)
+
+    def _chunk(ctype, data):
+        c = ctype + data
+        return struct.pack(">I", len(data)) + c + struct.pack(">I", zlib.crc32(c) & 0xFFFFFFFF)
+
+    ihdr_data = struct.pack(">IIBBBBB", width, height, 8, 2, 0, 0, 0)
+    png = b"\x89PNG\r\n\x1a\n"
+    png += _chunk(b"IHDR", ihdr_data)
+    png += _chunk(b"IDAT", compressed)
+    png += _chunk(b"IEND", b"")
+    path.write_bytes(png)
+
+
+def write_minimal_mp4(path: Path) -> None:
+    """Encode a 1-frame, 16x16 mp4 PyAV can probe.
+
+    The previous ``b"\\x00" * 200`` placeholder relied on ffprobe being
+    forgiving; the new PyAV-based ``mm.video.probe`` is stricter, so the
+    fixture must be a real (tiny) mp4 file.
+    """
+    import av
+    import numpy as np
+
+    container = av.open(str(path), mode="w")
+    try:
+        stream = container.add_stream("mpeg4", rate=24)
+        stream.width = 16
+        stream.height = 16
+        stream.pix_fmt = "yuv420p"
+        frame = av.VideoFrame.from_ndarray(
+            np.zeros((16, 16, 3), dtype=np.uint8),
+            format="rgb24",
+        )
+        for packet in stream.encode(frame):
+            container.mux(packet)
+        for packet in stream.encode():
+            container.mux(packet)
+    finally:
+        container.close()
