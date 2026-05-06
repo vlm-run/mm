@@ -37,11 +37,12 @@ from contextlib import asynccontextmanager
 from typing import AsyncIterator
 
 import gradio as gr
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 
 from gradio_app import __version__
-from gradio_app.config import data_dir
+from gradio_app.config import data_dir, mmbench_tiny_dir
 from gradio_app.data_setup import ensure_mmbench_tiny
 from gradio_app.routes import router
 from gradio_app.theme import build_theme
@@ -84,6 +85,107 @@ app.add_middleware(
 @app.get("/api/health")
 def health() -> dict[str, str]:
     return {"status": "ok"}
+
+
+_TEXT_EXTS = {
+    "txt",
+    "md",
+    "markdown",
+    "rst",
+    "csv",
+    "tsv",
+    "json",
+    "jsonl",
+    "yaml",
+    "yml",
+    "toml",
+    "ini",
+    "cfg",
+    "log",
+    "py",
+    "rs",
+    "js",
+    "ts",
+    "tsx",
+    "jsx",
+    "html",
+    "css",
+    "sh",
+    "bash",
+    "zsh",
+    "fish",
+    "go",
+    "java",
+    "c",
+    "cpp",
+    "h",
+    "hpp",
+    "rb",
+    "php",
+    "sql",
+    "xml",
+    "svg",
+}
+_IMAGE_EXTS = {"png", "jpg", "jpeg", "gif", "webp", "bmp", "svg", "ico"}
+_VIDEO_EXTS = {"mp4", "webm", "mov", "mkv", "avi", "m4v"}
+_AUDIO_EXTS = {"mp3", "wav", "flac", "m4a", "ogg", "opus", "aac"}
+_PDF_EXTS = {"pdf"}
+
+
+def _kind_for(ext: str) -> str:
+    if ext in _IMAGE_EXTS:
+        return "image"
+    if ext in _VIDEO_EXTS:
+        return "video"
+    if ext in _AUDIO_EXTS:
+        return "audio"
+    if ext in _PDF_EXTS:
+        return "pdf"
+    if ext in _TEXT_EXTS:
+        return "text"
+    return "other"
+
+
+def _safe_resolve(rel_path: str):
+    base = mmbench_tiny_dir().resolve()
+    target = (base / rel_path).resolve()
+    try:
+        target.relative_to(base)
+    except ValueError as e:
+        raise HTTPException(status_code=403, detail="Path outside mmbench-tiny") from e
+    if not target.exists() or not target.is_file():
+        raise HTTPException(status_code=404, detail=f"File not found: {rel_path}")
+    return target
+
+
+@app.get("/api/files")
+def list_mmbench_files() -> dict:
+    """List every file in mmbench-tiny — used by the in-app File Viewer."""
+    base = mmbench_tiny_dir()
+    if not base.exists():
+        return {"root": str(base), "files": []}
+    files = []
+    for p in sorted(base.rglob("*")):
+        if not p.is_file() or p.name.startswith("."):
+            continue
+        rel = str(p.relative_to(base))
+        ext = p.suffix.lower().lstrip(".")
+        files.append(
+            {
+                "path": rel,
+                "name": p.name,
+                "size": p.stat().st_size,
+                "ext": ext,
+                "kind": _kind_for(ext),
+            }
+        )
+    return {"root": str(base), "files": files}
+
+
+@app.get("/api/files/raw/{rel_path:path}")
+def get_mmbench_file(rel_path: str) -> FileResponse:
+    """Stream a raw file from mmbench-tiny for inline viewing."""
+    return FileResponse(_safe_resolve(rel_path))
 
 
 app.include_router(router, prefix="/api")

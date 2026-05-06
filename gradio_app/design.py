@@ -99,6 +99,166 @@ DESIGN_HEAD = """
   mo.observe(document.documentElement, {childList: true, subtree: true});
 })();
 </script>
+<script>
+(function() {
+  var KIND_GLYPH = { image: '◧', video: '▶', audio: '♪', pdf: '◫', text: 'T', other: '·' };
+
+  function fmtSize(n) {
+    if (n < 1024) return n + ' B';
+    if (n < 1024 * 1024) return (n / 1024).toFixed(1) + ' KB';
+    if (n < 1024 * 1024 * 1024) return (n / (1024 * 1024)).toFixed(1) + ' MB';
+    return (n / (1024 * 1024 * 1024)).toFixed(2) + ' GB';
+  }
+
+  function escapeHTML(s) {
+    return String(s).replace(/[&<>"']/g, function(c) {
+      return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c];
+    });
+  }
+
+  var state = { files: [], selected: null };
+
+  function setOpen(open) {
+    var modal = document.getElementById('mm-fv-modal');
+    if (!modal) return;
+    modal.classList.toggle('mm-fv-open', !!open);
+    document.body.style.overflow = open ? 'hidden' : '';
+    if (open && state.files.length === 0) loadFiles();
+  }
+
+  function loadFiles() {
+    var listEl = document.getElementById('mm-fv-list');
+    listEl.innerHTML = '<div class="mm-fv-empty">Loading…</div>';
+    fetch('/api/files').then(function(r) { return r.json(); }).then(function(data) {
+      state.files = data.files || [];
+      renderList();
+      if (state.files.length > 0) selectFile(state.files[0]);
+    }).catch(function() {
+      listEl.innerHTML = '<div class="mm-fv-empty">Failed to load files.</div>';
+    });
+  }
+
+  function renderList() {
+    var listEl = document.getElementById('mm-fv-list');
+    if (!state.files.length) {
+      listEl.innerHTML = '<div class="mm-fv-empty">No files in mmbench-tiny.</div>';
+      return;
+    }
+    var groups = {};
+    state.files.forEach(function(f) {
+      (groups[f.kind] = groups[f.kind] || []).push(f);
+    });
+    var order = ['image', 'video', 'audio', 'pdf', 'text', 'other'];
+    var html = '';
+    order.forEach(function(k) {
+      if (!groups[k]) return;
+      html += '<div class="mm-fv-group">' + k + ' · ' + groups[k].length + '</div>';
+      groups[k].forEach(function(f) {
+        var sel = state.selected && state.selected.path === f.path ? ' mm-fv-item-selected' : '';
+        html += '<div class="mm-fv-item' + sel + '" data-path="' + escapeHTML(f.path) + '">' +
+                  '<span class="mm-fv-glyph">' + KIND_GLYPH[f.kind] + '</span>' +
+                  '<span class="mm-fv-name">' + escapeHTML(f.path) + '</span>' +
+                  '<span class="mm-fv-size">' + fmtSize(f.size) + '</span>' +
+                '</div>';
+      });
+    });
+    listEl.innerHTML = html;
+    Array.prototype.forEach.call(listEl.querySelectorAll('.mm-fv-item'), function(el) {
+      el.addEventListener('click', function() {
+        var path = el.getAttribute('data-path');
+        var f = state.files.find(function(x) { return x.path === path; });
+        if (f) selectFile(f);
+      });
+    });
+  }
+
+  function selectFile(f) {
+    state.selected = f;
+    renderList();
+    renderPreview(f);
+  }
+
+  function renderPreview(f) {
+    var pv = document.getElementById('mm-fv-preview');
+    var meta = document.getElementById('mm-fv-meta');
+    var url = '/api/files/raw/' + f.path.split('/').map(encodeURIComponent).join('/');
+    meta.innerHTML = '<span class="mm-fv-meta-name">' + escapeHTML(f.path) + '</span>' +
+                     '<span class="mm-fv-meta-sep">·</span>' +
+                     '<span>' + f.kind + '</span>' +
+                     '<span class="mm-fv-meta-sep">·</span>' +
+                     '<span>' + fmtSize(f.size) + '</span>';
+    if (f.kind === 'image') {
+      pv.innerHTML = '<div class="mm-fv-frame mm-fv-frame-center">' +
+                       '<img src="' + url + '" alt="" />' +
+                     '</div>';
+    } else if (f.kind === 'video') {
+      pv.innerHTML = '<div class="mm-fv-frame mm-fv-frame-center">' +
+                       '<video src="' + url + '" controls></video>' +
+                     '</div>';
+    } else if (f.kind === 'audio') {
+      pv.innerHTML = '<div class="mm-fv-frame mm-fv-frame-center">' +
+                       '<audio src="' + url + '" controls></audio>' +
+                     '</div>';
+    } else if (f.kind === 'pdf') {
+      pv.innerHTML = '<iframe class="mm-fv-iframe" src="' + url + '"></iframe>';
+    } else if (f.kind === 'text') {
+      pv.innerHTML = '<pre class="mm-fv-text">Loading…</pre>';
+      fetch(url).then(function(r) { return r.text(); }).then(function(t) {
+        pv.innerHTML = '<pre class="mm-fv-text">' + escapeHTML(t) + '</pre>';
+      }).catch(function() { pv.innerHTML = '<div class="mm-fv-empty">Failed to load.</div>'; });
+    } else {
+      pv.innerHTML = '<div class="mm-fv-empty">No inline preview for this file type. ' +
+                     '<a href="' + url + '" target="_blank">Open raw →</a></div>';
+    }
+  }
+
+  function ensureMounted() {
+    if (document.getElementById('mm-fv-modal')) return;
+    var btn = document.createElement('button');
+    btn.id = 'mm-fv-btn';
+    btn.title = 'Browse mmbench-tiny';
+    btn.setAttribute('aria-label', 'Open file viewer');
+    btn.innerHTML =
+      '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
+      'stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">' +
+      '<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>' +
+      '</svg>';
+    btn.addEventListener('click', function() { setOpen(true); });
+    document.body.appendChild(btn);
+
+    var modal = document.createElement('div');
+    modal.id = 'mm-fv-modal';
+    modal.innerHTML =
+      '<div class="mm-fv-backdrop"></div>' +
+      '<div class="mm-fv-panel" role="dialog" aria-label="File viewer">' +
+        '<div class="mm-fv-head">' +
+          '<div class="mm-fv-title">Files <span class="mm-fv-subtitle">mmbench-tiny</span></div>' +
+          '<button class="mm-fv-close" aria-label="Close">×</button>' +
+        '</div>' +
+        '<div class="mm-fv-body">' +
+          '<aside class="mm-fv-sidebar"><div id="mm-fv-list"></div></aside>' +
+          '<main class="mm-fv-main">' +
+            '<div id="mm-fv-meta" class="mm-fv-meta"></div>' +
+            '<div id="mm-fv-preview" class="mm-fv-preview"></div>' +
+          '</main>' +
+        '</div>' +
+      '</div>';
+    document.body.appendChild(modal);
+    modal.querySelector('.mm-fv-backdrop').addEventListener('click', function() { setOpen(false); });
+    modal.querySelector('.mm-fv-close').addEventListener('click', function() { setOpen(false); });
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') setOpen(false);
+    });
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', ensureMounted);
+  } else {
+    ensureMounted();
+  }
+  setTimeout(ensureMounted, 200);
+})();
+</script>
 <style>
   :root {
     --mm-bg: #F5FAFF;
@@ -634,6 +794,240 @@ DESIGN_HEAD = """
   .gradio-container #mm-terminal .xterm-screen {
     height: 100% !important;
     background: #0F1115 !important;
+  }
+
+  #mm-fv-btn {
+    position: fixed;
+    top: 16px;
+    left: 16px;
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
+    background: var(--mm-surface);
+    border: 1px solid var(--mm-border);
+    color: var(--mm-text-secondary);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    z-index: 9000;
+    box-shadow: var(--mm-shadow-sm);
+    transition: background 0.12s ease, border-color 0.12s ease, color 0.12s ease, transform 0.12s ease;
+  }
+  #mm-fv-btn:hover {
+    background: var(--mm-surface-tint);
+    border-color: var(--mm-border-strong);
+    color: var(--mm-accent);
+  }
+  #mm-fv-btn:active { transform: translateY(1px); }
+
+  #mm-fv-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 9100;
+    display: none;
+    font-family: Geist, Inter, sans-serif;
+  }
+  #mm-fv-modal.mm-fv-open { display: block; }
+  #mm-fv-modal .mm-fv-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(1, 9, 23, 0.45);
+    backdrop-filter: blur(2px);
+    -webkit-backdrop-filter: blur(2px);
+  }
+  #mm-fv-modal .mm-fv-panel {
+    position: absolute;
+    top: 4vh;
+    left: 50%;
+    transform: translateX(-50%);
+    width: min(1100px, 92vw);
+    height: 88vh;
+    background: var(--mm-surface);
+    border: 1px solid var(--mm-border);
+    border-radius: 12px;
+    box-shadow: 0 24px 60px rgba(1, 9, 23, 0.18);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+  #mm-fv-modal .mm-fv-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--mm-border);
+    background: var(--mm-surface);
+  }
+  #mm-fv-modal .mm-fv-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--mm-text);
+    letter-spacing: 0.01em;
+  }
+  #mm-fv-modal .mm-fv-subtitle {
+    font-family: 'Geist Mono', ui-monospace, monospace;
+    font-size: 11.5px;
+    font-weight: 400;
+    color: var(--mm-text-secondary);
+    margin-left: 8px;
+  }
+  #mm-fv-modal .mm-fv-close {
+    background: transparent;
+    border: none;
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    font-size: 20px;
+    line-height: 1;
+    color: var(--mm-text-secondary);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+  #mm-fv-modal .mm-fv-close:hover {
+    background: var(--mm-surface-tint);
+    color: var(--mm-text);
+  }
+  #mm-fv-modal .mm-fv-body {
+    flex: 1;
+    display: flex;
+    min-height: 0;
+  }
+  #mm-fv-modal .mm-fv-sidebar {
+    width: 280px;
+    border-right: 1px solid var(--mm-border);
+    overflow-y: auto;
+    background: var(--mm-bg);
+    padding: 6px 0;
+  }
+  #mm-fv-modal .mm-fv-group {
+    padding: 10px 14px 4px;
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--mm-text-secondary);
+  }
+  #mm-fv-modal .mm-fv-item {
+    display: grid;
+    grid-template-columns: 16px 1fr auto;
+    gap: 8px;
+    align-items: center;
+    padding: 6px 14px;
+    cursor: pointer;
+    font-family: 'Geist Mono', ui-monospace, monospace;
+    font-size: 12px;
+    color: var(--mm-text);
+    border-left: 2px solid transparent;
+  }
+  #mm-fv-modal .mm-fv-item:hover {
+    background: var(--mm-surface-tint);
+  }
+  #mm-fv-modal .mm-fv-item-selected {
+    background: var(--mm-surface);
+    border-left-color: var(--mm-accent);
+    color: var(--mm-text);
+  }
+  #mm-fv-modal .mm-fv-glyph {
+    color: var(--mm-text-secondary);
+    font-size: 11px;
+    text-align: center;
+  }
+  #mm-fv-modal .mm-fv-item-selected .mm-fv-glyph { color: var(--mm-accent); }
+  #mm-fv-modal .mm-fv-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  #mm-fv-modal .mm-fv-size {
+    color: var(--mm-text-muted);
+    font-size: 10.5px;
+    font-variant-numeric: tabular-nums;
+  }
+  #mm-fv-modal .mm-fv-empty {
+    padding: 16px;
+    color: var(--mm-text-secondary);
+    font-size: 12px;
+    text-align: center;
+  }
+  #mm-fv-modal .mm-fv-main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    background: var(--mm-surface);
+  }
+  #mm-fv-modal .mm-fv-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    border-bottom: 1px solid var(--mm-border);
+    font-family: 'Geist Mono', ui-monospace, monospace;
+    font-size: 11.5px;
+    color: var(--mm-text-secondary);
+    background: var(--mm-bg);
+  }
+  #mm-fv-modal .mm-fv-meta-name {
+    color: var(--mm-text);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  #mm-fv-modal .mm-fv-meta-sep { color: var(--mm-text-muted); }
+  #mm-fv-modal .mm-fv-preview {
+    flex: 1;
+    overflow: auto;
+    background: var(--mm-surface);
+  }
+  #mm-fv-modal .mm-fv-frame {
+    width: 100%;
+    height: 100%;
+    padding: 18px;
+    box-sizing: border-box;
+  }
+  #mm-fv-modal .mm-fv-frame-center {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background:
+      linear-gradient(45deg, var(--mm-bg) 25%, transparent 25%) 0 0 / 16px 16px,
+      linear-gradient(-45deg, var(--mm-bg) 25%, transparent 25%) 0 8px / 16px 16px,
+      linear-gradient(45deg, transparent 75%, var(--mm-bg) 75%) 8px -8px / 16px 16px,
+      linear-gradient(-45deg, transparent 75%, var(--mm-bg) 75%) -8px 0 / 16px 16px,
+      var(--mm-surface);
+  }
+  #mm-fv-modal .mm-fv-frame img,
+  #mm-fv-modal .mm-fv-frame video {
+    max-width: 100%;
+    max-height: 100%;
+    border-radius: 6px;
+    box-shadow: 0 4px 16px rgba(1, 9, 23, 0.08);
+    background: var(--mm-surface);
+  }
+  #mm-fv-modal .mm-fv-frame audio { width: min(520px, 100%); }
+  #mm-fv-modal .mm-fv-iframe {
+    width: 100%;
+    height: 100%;
+    border: 0;
+    background: var(--mm-surface);
+  }
+  #mm-fv-modal .mm-fv-text {
+    margin: 0;
+    padding: 16px 18px;
+    font-family: 'Geist Mono', ui-monospace, monospace;
+    font-size: 12.5px;
+    line-height: 1.55;
+    color: var(--mm-text);
+    background: var(--mm-surface);
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+  @media (max-width: 720px) {
+    #mm-fv-modal .mm-fv-sidebar { width: 200px; }
+    #mm-fv-modal .mm-fv-panel { top: 2vh; height: 96vh; width: 96vw; }
   }
 </style>
 """
