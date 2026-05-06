@@ -237,8 +237,7 @@ def cat_cmd(
     Code / text:                passthrough text (no LLM)       passthrough text (no LLM)
 
     Non-PDF docs and code/text always passthrough; ``--mode`` is a no-op
-    for those kinds. Chunks + embeddings are written on first sight so
-    ``mm grep --semantic`` can search them.
+    for those kinds. Chunks are written on first sight.
 
     \b
     Examples:
@@ -550,13 +549,6 @@ def _extract(path: Path, opts: CatOpts) -> str:
             )
         except RuntimeError:
             return _format_run(run, opts.verbose)
-        if extraction_id:
-            try:
-                from mm.store.embed import embed_file_chunks
-
-                embed_file_chunks(extraction_id)
-            except Exception:
-                pass
     return _format_run(run, opts.verbose)
 
 

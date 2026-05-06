@@ -215,13 +215,11 @@ class TestEmbedFileChunks:
 
 
 class TestCatEmbedIntegration:
-    def test_run_accurate_triggers_embedding(self, tmp_path: Path, mock_server: MagicMock):
-        """After accurate extraction, embed_file_chunks should be called."""
+    def test_run_accurate_does_not_embed(self, tmp_path: Path, mock_server: MagicMock):
+        """``cat`` writes chunks (via put_extraction)"""
         from mm.cat_utils.base_utils import CatOpts, RunResult
         from mm.commands.cat import _extract
 
-        # Use a document kind since text kind short-circuits to raw passthrough
-        # (no pipeline, no LLM, no cache) and thus never triggers embedding.
         pdf = tmp_path / "test.pdf"
         pdf.write_bytes(b"%PDF-1.4 fake")
 
@@ -238,9 +236,8 @@ class TestCatEmbedIntegration:
         )
 
         mock_db = MagicMock()
-        mock_db.get_extraction.return_value = None  # cache miss
-        extraction_id = "fake_extraction_id"
-        mock_db.put_extraction.return_value = extraction_id
+        mock_db.get_extraction.return_value = None
+        mock_db.put_extraction.return_value = "fake_extraction_id"
 
         with (
             patch(
@@ -251,7 +248,9 @@ class TestCatEmbedIntegration:
             patch("mm.store.db.MmDatabase", return_value=mock_db),
             patch("mm.profile.get_profile") as mock_profile,
             patch("mm.store.utils.get_extraction_id", return_value="fake_extraction_id"),
-            patch("mm.store.embed.embed_file_chunks") as mock_embed,
+            patch("mm.store.embed.embed_file_chunks") as mock_embed_file,
+            patch("mm.store.embed.embed_text_chunks_concurrent") as mock_embed_text,
+            patch("mm.store.embed.embed_file_chunks_concurrent") as mock_embed_file_conc,
         ):
             mock_profile.return_value.name = "default"
             mock_profile.return_value.model = "test-model"
@@ -259,4 +258,6 @@ class TestCatEmbedIntegration:
 
         assert result == "LLM generated text."
         mock_db.put_extraction.assert_called_once()
-        mock_embed.assert_called_once()
+        mock_embed_file.assert_not_called()
+        mock_embed_text.assert_not_called()
+        mock_embed_file_conc.assert_not_called()

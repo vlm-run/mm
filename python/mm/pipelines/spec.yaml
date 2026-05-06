@@ -91,11 +91,11 @@ generate:
     Describe this image in 10 words or less.
     Then list exactly 5 keyword tags.
 
-    [OUTPUT]
-    ## Description
-    {{description}}
+    ## FORMAT
+    Description:
+    --description--
 
-    ## Tags
+    Tags:
     - tag1
     - tag2
     ...
