@@ -71,7 +71,7 @@ if [ -n "${SELECTED_ASSISTANT}" ]; then
   unset _SEL_ARR _name
 fi
 
-TOTAL_TASKS=20
+TOTAL_TASKS=23
 if [ -n "${TASK_COUNT}" ]; then
   MAX_TASKS="${TASK_COUNT}"
 elif [ "${MODE}" = "fast" ]; then
@@ -491,6 +491,28 @@ register_tasks() {
   add_task "project_token_budget" \
     "Does the content of this directory fit in a 200K token LLM context window? Show total tokens, breakdown by file type, and list files that are too large to include." \
     "mm wc ${BENCH_DIR} --by-kind --format json"
+
+  # =======================================================================
+  # peek tasks (21-23): raw per-file metadata.
+  # =======================================================================
+
+  # 21. peek: image raw metadata (dims + EXIF + hash, no LLM)
+  add_task "image_peek_metadata" \
+    "Extract raw file metadata for this image: dimensions, format, content hash, and any EXIF (camera, capture date, GPS)." \
+    "mm peek '${BENCH_DIR}/photo.jpg' --format json" \
+    "${BENCH_DIR}/photo.jpg"
+
+  # 22. peek: video raw metadata (resolution, codec, duration, hash)
+  add_task "video_peek_metadata" \
+    "Extract raw file metadata for this video: resolution, duration, codec, fps, and content hash. Do not analyze the video content." \
+    "mm peek '${BENCH_DIR}/bakery.mp4' --format json" \
+    "${BENCH_DIR}/bakery.mp4"
+
+  # 23. peek: audio raw metadata (codec, duration, hash)
+  add_task "audio_peek_metadata" \
+    "Extract raw file metadata for this audio file: duration, codec, and content hash. Do not transcribe." \
+    "mm peek '${BENCH_DIR}/earnings-call.mp3' --format json" \
+    "${BENCH_DIR}/earnings-call.mp3"
 }
 
 run_task() {

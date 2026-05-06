@@ -91,6 +91,63 @@ hyperfine --warmup 2 --min-runs 10 \
   "mm sql 'SELECT ext, SUM(size) as total FROM files GROUP BY ext ORDER BY total DESC' --dir ${DIR}"
 
 # ===========================================================================
+# peek — raw per-file metadata
+# ===========================================================================
+echo ""
+echo "--- mm peek pdf vs file/stat ---"
+hyperfine --warmup 2 --min-runs 10 \
+  --command-name "mm peek pdf" \
+    "mm peek '${PDF}' --format json" \
+  --command-name "file pdf" \
+    "file '${PDF}'" \
+  --command-name "stat pdf" \
+    "stat ${STAT_FMT} '${PDF}'"
+
+echo ""
+echo "--- mm peek image vs file ---"
+hyperfine --warmup 2 --min-runs 10 \
+  --command-name "mm peek image" \
+    "mm peek '${IMG}' --format json" \
+  --command-name "file image" \
+    "file '${IMG}'"
+
+echo ""
+echo "--- mm peek video vs file/ffprobe ---"
+if command -v ffprobe &>/dev/null; then
+  hyperfine --warmup 2 --min-runs 10 \
+    --command-name "mm peek video" \
+      "mm peek '${VID}' --format json" \
+    --command-name "file video" \
+      "file '${VID}'" \
+    --command-name "ffprobe video" \
+      "ffprobe -v quiet -print_format json -show_format -show_streams '${VID}'"
+else
+  hyperfine --warmup 2 --min-runs 10 \
+    --command-name "mm peek video" \
+      "mm peek '${VID}' --format json" \
+    --command-name "file video" \
+      "file '${VID}'"
+fi
+
+echo ""
+echo "--- mm peek audio vs file/ffprobe ---"
+if command -v ffprobe &>/dev/null; then
+  hyperfine --warmup 2 --min-runs 10 \
+    --command-name "mm peek audio" \
+      "mm peek '${AUD}' --format json" \
+    --command-name "file audio" \
+      "file '${AUD}'" \
+    --command-name "ffprobe audio" \
+      "ffprobe -v quiet -print_format json -show_format -show_streams '${AUD}'"
+else
+  hyperfine --warmup 2 --min-runs 10 \
+    --command-name "mm peek audio" \
+      "mm peek '${AUD}' --format json" \
+    --command-name "file audio" \
+      "file '${AUD}'"
+fi
+
+# ===========================================================================
 # mode=fast: cat — PDF text extraction
 # ===========================================================================
 echo ""
@@ -107,22 +164,12 @@ hyperfine --warmup 1 --min-runs 10 \
 # mode=fast: cat — image metadata
 # ===========================================================================
 echo ""
-echo "--- mode=fast mm cat image vs file/mdls ---"
-if command -v mdls &>/dev/null; then
-  hyperfine --warmup 1 --min-runs 10 \
-    --command-name "mm cat image (fast)" \
-      "mm cat '${IMG}' --mode fast" \
-    --command-name "file image" \
-      "file '${IMG}'" \
-    --command-name "mdls image (dimensions)" \
-      "mdls -name kMDItemPixelWidth -name kMDItemPixelHeight '${IMG}'"
-else
-  hyperfine --warmup 1 --min-runs 10 \
-    --command-name "mm cat image (fast)" \
-      "mm cat '${IMG}' --mode fast" \
-    --command-name "file image" \
-      "file '${IMG}'"
-fi
+echo "--- mode=fast mm cat image vs file ---"
+hyperfine --warmup 1 --min-runs 10 \
+  --command-name "mm cat image (fast)" \
+    "mm cat '${IMG}' --mode fast" \
+  --command-name "file image" \
+    "file '${IMG}'"
 
 # ===========================================================================
 # mode=fast: cat — video metadata
