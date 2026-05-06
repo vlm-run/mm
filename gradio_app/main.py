@@ -138,14 +138,20 @@ async def terminal_ws(ws: WebSocket) -> None:
         env = os.environ.copy()
         env["TERM"] = "xterm-256color"
         env["PS1"] = "mm $ "
+        env["BASH_SILENCE_DEPRECATION_WARNING"] = "1"
         try:
             os.chdir(data_dir())
         except OSError:
             pass
+        bash_init = "export PS1='mm $ '; mm; exec /bin/bash --noprofile --norc -i"
         try:
-            os.execvpe("/bin/bash", ["/bin/bash", "--norc", "-i"], env)
+            os.execvpe(
+                "/bin/bash",
+                ["/bin/bash", "--noprofile", "--norc", "-c", bash_init],
+                env,
+            )
         except FileNotFoundError:
-            os.execvpe("/bin/sh", ["/bin/sh", "-i"], env)
+            os.execvpe("/bin/sh", ["/bin/sh", "-c", "mm; exec /bin/sh -i"], env)
 
     os.set_blocking(fd, False)
     loop = asyncio.get_running_loop()
