@@ -22,8 +22,6 @@ from mm.utils import BaseFormat
 if TYPE_CHECKING:
     from mm.peek import FileMetadata
 
-print("sys argv:", sys.argv)
-
 if len(sys.argv) > 1 and "peek" in sys.argv:
     from mm.peek import _preload_magika
 

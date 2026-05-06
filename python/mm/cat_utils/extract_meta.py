@@ -157,7 +157,6 @@ def _local_pdf(path: Path) -> str:
 
 def extract_text(path: Path, kind: Literal["document", "text"]) -> tuple[str, bool | None]:
     """``mm cat`` passthrough path — mode-agnostic."""
-    from mm.store.embed import embed_text_chunks_concurrent
     from mm.store.utils import get_content_hash, shared_db
 
     content = extract_meta(path, kind)
@@ -178,10 +177,9 @@ def extract_text(path: Path, kind: Literal["document", "text"]) -> tuple[str, bo
             content_hash=content_hash,
             content=content,
         )
-        embed_text_chunks_concurrent(content_hash, max_workers=4)
     except Exception as e:
         from mm.display import console
 
-        console.print(f"Embedding failed for {content_hash}: {e}")
+        console.print(f"Chunking failed for {content_hash}: {e}")
 
     return content, None
