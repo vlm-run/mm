@@ -4,7 +4,6 @@ from importlib.metadata import version
 
 __all__ = [
     "Context",
-    "MessageView",
     "Ref",
     "RefNotFoundError",
     "render_context",
@@ -15,7 +14,6 @@ __version__ = version("mm-ctx")
 
 _LAZY_IMPORTS = {
     "Context": ("mm.context", "Context"),
-    "MessageView": ("mm.notebook", "MessageView"),
     "Ref": ("mm.refs", "Ref"),
     "RefNotFoundError": ("mm.refs", "RefNotFoundError"),
     "render_context": ("mm.notebook", "render_context"),

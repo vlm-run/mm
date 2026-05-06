@@ -7,7 +7,6 @@ import struct
 from typing import Any
 
 from mm.notebook import (
-    MessageView,
     _Stats,
     _classify_part,
     _collapse_extras,
@@ -476,44 +475,6 @@ class TestRenderContext:
         result = ctx.render_html()
         assert "<style>" in result
         assert "IMAGE" in result
-
-
-class TestMessageView:
-    def test_with_messages(self):
-        msgs = [_message("user", [_text_part("hello")])]
-        view = MessageView(msgs)
-        h = view._repr_html_()
-        assert "hello" in h
-
-    def test_with_context(self, tmp_path):
-        img_path = tmp_path / "x.png"
-        img_path.write_bytes(_make_valid_png())
-
-        import mm
-
-        ctx = mm.Context()
-        ctx.put(img_path)
-        view = MessageView(ctx=ctx)
-        h = view._repr_html_()
-        assert "IMAGE" in h
-        assert "<style>" in h
-
-    def test_repr_str_messages(self):
-        msgs = [_message("user", [_text_part("a"), _image_part()])]
-        view = MessageView(msgs)
-        assert "1 message(s)" in repr(view)
-        assert "2 part(s)" in repr(view)
-
-    def test_repr_str_context(self, tmp_path):
-        img_path = tmp_path / "y.png"
-        img_path.write_bytes(_make_valid_png())
-
-        import mm
-
-        ctx = mm.Context()
-        ctx.put(img_path)
-        view = MessageView(ctx=ctx)
-        assert "1 item(s)" in repr(view)
 
 
 class TestCollapseExtras:

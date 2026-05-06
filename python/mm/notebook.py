@@ -25,10 +25,10 @@ Example::
     ctx.render_html()          # returns HTML string
     ctx                        # auto-renders in Jupyter via _repr_html_
 
-    # Or for raw message lists:
-    from mm.notebook import render_messages_html, MessageView
+    # Or for raw OpenAI-format message lists:
+    from mm.notebook import render_messages_html
     msgs = [{"role": "assistant", "content": "I see a car."}]
-    MessageView(msgs)
+    render_messages_html(msgs)
 """
 
 from __future__ import annotations
@@ -164,58 +164,6 @@ def render_messages_html(
         f"{title_html}\n{body}\n{stats_html}\n"
         f"</div>"
     )
-
-
-class MessageView:
-    """Wrapper for auto-rendering message threads in Jupyter.
-
-    Accepts either a ``Context`` (rich rendering) or a raw message list
-    (lightweight rendering).
-
-    Examples::
-
-        MessageView(ctx=ctx)            # rich
-        MessageView(messages=msgs)      # lightweight
-        MessageView(ctx.to_messages())  # lightweight (positional)
-    """
-
-    __slots__ = ("_ctx", "_messages", "_max_image_width", "_show_role", "_title")
-
-    def __init__(
-        self,
-        messages: list[dict[str, Any]] | None = None,
-        *,
-        ctx: "Context | None" = None,
-        max_image_width: int = 320,
-        show_role: bool = True,
-        title: str | None = None,
-    ):
-        self._ctx = ctx
-        self._messages = messages
-        self._max_image_width = max_image_width
-        self._show_role = show_role
-        self._title = title
-
-    def _repr_html_(self) -> str:
-        if self._ctx is not None:
-            return render_context(
-                self._ctx,
-                max_image_width=self._max_image_width,
-                title=self._title,
-            )
-        return render_messages_html(
-            self._messages or [],
-            max_image_width=self._max_image_width,
-            show_role=self._show_role,
-            title=self._title,
-        )
-
-    def __repr__(self) -> str:
-        if self._ctx is not None:
-            return f"MessageView(ctx, {self._ctx.num_files} item(s))"
-        msgs = self._messages or []
-        n_parts = sum(len(m.get("content", [])) for m in msgs if isinstance(m.get("content"), list))
-        return f"MessageView({len(msgs)} message(s), {n_parts} part(s))"
 
 
 class _Stats:
