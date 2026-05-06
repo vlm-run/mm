@@ -187,6 +187,17 @@ class TestDocumentProperties:
         assert fm.doc_producer is None
         assert fm.pages == 3
 
+    def test_pdf_props_and_pages_needs_full(self, tmp_path: Path):
+        pdf = tmp_path / "paper.pdf"
+        _build_pdf(pdf, author="Alice", title="A Paper", subject="physics", pages=3)
+        fm = FileMetadata.from_path(pdf)
+        assert fm.kind == "document"
+
+        assert fm.doc_author is None
+        assert fm.doc_title is None
+        assert fm.doc_subject is None
+        assert fm.pages is None
+
     def test_docx_props_no_pages(self, tmp_path: Path):
         docx = tmp_path / "spec.docx"
         _build_docx(docx, author="Bob", title="Spec", subject="research")
