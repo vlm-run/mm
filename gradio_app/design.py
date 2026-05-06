@@ -116,7 +116,7 @@ DESIGN_HEAD = """
     });
   }
 
-  var state = { files: [], selected: null };
+  var state = { files: [], selected: null, root: '' };
 
   function setOpen(open) {
     var modal = document.getElementById('mm-fv-modal');
@@ -128,14 +128,19 @@ DESIGN_HEAD = """
 
   function loadFiles() {
     var listEl = document.getElementById('mm-fv-list');
-    listEl.innerHTML = '<div class="mm-fv-empty">Loading…</div>';
+    if (listEl) listEl.innerHTML = '<div class="mm-fv-empty">Loading…</div>';
     fetch('/api/files').then(function(r) { return r.json(); }).then(function(data) {
       state.files = data.files || [];
       state.root = data.root || '';
-      renderList();
-      if (state.files.length > 0) selectFile(state.files[0]);
+      if (state.files.length > 0 && !state.selected) {
+        state.selected = state.files[0];
+        renderList();
+        renderPreview(state.selected);
+      } else {
+        renderList();
+      }
     }).catch(function() {
-      listEl.innerHTML = '<div class="mm-fv-empty">Failed to load files.</div>';
+      if (listEl) listEl.innerHTML = '<div class="mm-fv-empty">Failed to load files.</div>';
     });
   }
 
@@ -178,6 +183,7 @@ DESIGN_HEAD = """
 
   function renderList() {
     var listEl = document.getElementById('mm-fv-list');
+    if (!listEl) return;
     if (!state.files.length) {
       listEl.innerHTML = '<div class="mm-fv-empty">No files in mmbench-tiny.</div>';
       return;
@@ -264,15 +270,20 @@ DESIGN_HEAD = """
 
   function ensureMounted() {
     if (document.getElementById('mm-fv-modal')) return;
+
     var btn = document.createElement('button');
     btn.id = 'mm-fv-btn';
+    btn.type = 'button';
     btn.title = 'Browse mmbench-tiny';
-    btn.setAttribute('aria-label', 'Open file viewer');
+    btn.setAttribute('aria-label', 'Open file browser');
     btn.innerHTML =
-      '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
-      'stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">' +
-      '<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>' +
-      '</svg>';
+      '<span class="mm-fv-btn-icon">' +
+        '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
+        'stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">' +
+        '<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>' +
+        '</svg>' +
+      '</span>' +
+      '<span class="mm-fv-btn-label">File browser</span>';
     btn.addEventListener('click', function() { setOpen(true); });
     document.body.appendChild(btn);
 
@@ -850,26 +861,43 @@ DESIGN_HEAD = """
     position: fixed;
     top: 16px;
     left: 16px;
-    width: 34px;
-    height: 34px;
-    border-radius: 8px;
-    background: var(--mm-surface);
-    border: 1px solid var(--mm-border);
-    color: var(--mm-text-secondary);
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 14px 8px 10px;
+    background: var(--mm-accent);
+    color: #FFFFFF;
+    border: 1px solid var(--mm-accent);
+    border-radius: 999px;
+    font-family: Geist, Inter, sans-serif;
+    font-size: 12.5px;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    cursor: pointer;
+    z-index: 9000;
+    box-shadow: 0 2px 8px rgba(30, 90, 202, 0.25), 0 1px 2px rgba(1, 9, 23, 0.06);
+    transition: background 0.12s ease, border-color 0.12s ease, transform 0.12s ease, box-shadow 0.12s ease;
+  }
+  #mm-fv-btn:hover {
+    background: var(--mm-accent-hover);
+    border-color: var(--mm-accent-hover);
+    box-shadow: 0 4px 14px rgba(30, 90, 202, 0.32), 0 1px 2px rgba(1, 9, 23, 0.08);
+  }
+  #mm-fv-btn:active { transform: translateY(1px); }
+  #mm-fv-btn:focus-visible {
+    outline: 2px solid var(--mm-accent-soft);
+    outline-offset: 2px;
+  }
+  #mm-fv-btn .mm-fv-btn-icon {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    cursor: pointer;
-    z-index: 9000;
-    box-shadow: var(--mm-shadow-sm);
-    transition: background 0.12s ease, border-color 0.12s ease, color 0.12s ease, transform 0.12s ease;
+    width: 22px;
+    height: 22px;
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.18);
   }
-  #mm-fv-btn:hover {
-    background: var(--mm-surface-tint);
-    border-color: var(--mm-border-strong);
-    color: var(--mm-accent);
-  }
-  #mm-fv-btn:active { transform: translateY(1px); }
+  #mm-fv-btn .mm-fv-btn-label { line-height: 1; }
 
   #mm-fv-modal {
     position: fixed;
