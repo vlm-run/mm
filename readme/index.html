@@ -139,17 +139,20 @@ Objects: metal bench, tree, car, white SUV, red car, concrete pad, walkway, gras
 mm find mm-samples/ --tree --depth 1                            # directory overview with sizes
 mm wc mm-samples/ --by-kind                                     # file/byte/token counts by kind
 
-# Default: --mode metadata (no LLM, local extraction only)
-mm cat wordpress-pdf-invoice-plugin-sample.pdf                  # PDF text via pypdfium2
-mm cat bench.jpg                                                # image dimensions, EXIF, hash
-mm cat Timelapse.mp4                                            # video resolution, duration, codecs
-mm cat wordpress-pdf-invoice-plugin-sample.pdf -n 20            # first 20 lines (metadata)
+# mm peek: raw file metadata (dimensions / EXIF / codec / mime / hash).
+mm peek bench.jpg                                               # image dimensions, EXIF, hash
+mm peek Timelapse.mp4                                           # video resolution, duration, codecs
+mm peek wordpress-pdf-invoice-plugin-sample.pdf                 # mime, content hash
+mm peek bench.jpg Timelapse.mp4 --format json                   # multi-file JSON
 
-# --mode fast: kind&#39;s fast pipeline (short LLM caption for image/video; passthrough for code)
-mm cat bench.jpg -m fast                                        # short VLM caption
-mm cat Timelapse.mp4 -m fast                                    # mosaic → short VLM description
+# mm cat: content extraction. Default --mode fast.
+mm cat wordpress-pdf-invoice-plugin-sample.pdf                  # PDF page-text via pypdfium2 (fast pipeline)
+mm cat src/main.py                                              # passthrough text + chunk + embed (kind=text)
+mm cat notes.docx                                               # python-docx text
+mm cat bench.jpg                                                # short VLM caption (fast pipeline)
+mm cat wordpress-pdf-invoice-plugin-sample.pdf -n 20            # first 20 lines
 
-# --mode accurate: full LLM pipeline (requires a configured profile)
+# --mode accurate: full LLM pipeline for image/video/audio/PDF (requires a configured profile)
 mm cat bench.jpg -m accurate                                    # LLM caption + tags + objects
 mm cat Timelapse.mp4 -m accurate                                # keyframe mosaic → LLM description
 mm cat mp3_44100Hz_320kbps_stereo.mp3 -m accurate               # Whisper transcript → LLM summary
@@ -255,9 +258,14 @@ codex &quot;Find all PDFs in ~/docs and summarize them with mm&quot;
 <td><code>--name</code>, <code>-i</code> (ignore case), <code>--kind</code>, <code>--ext</code>, <code>--min-size</code>, <code>--max-size</code>, <code>--sort</code>, <code>--reverse</code>, <code>--columns</code>, <code>--tree</code>, <code>--depth</code>, <code>--schema</code>, <code>--limit</code>, <code>--no-ignore</code>, <code>--format</code></td>
 </tr>
 <tr>
+<td><code>peek</code></td>
+<td>Raw file metadata (dimensions / EXIF / codec / mime / hash).</td>
+<td><code>--format</code> (rich / json / pretty-json / tsv / csv)</td>
+</tr>
+<tr>
 <td><code>cat</code></td>
 <td>Content extraction (auto-detected by file type × mode)</td>
-<td><code>--mode metadata/fast/accurate</code> (default <code>metadata</code>), <code>-p</code> (pipeline), <code>-n</code>, <code>--no-cache</code>, <code>-v</code>, <code>--encode.*</code> (incl. <code>--encode.strategy_opts KEY=VALUE</code>), <code>--generate.*</code>, <code>--list-pipelines</code>, <code>--list-encoders</code>, <code>--print-pipeline &lt;kind&gt;/&lt;mode&gt;</code>, <code>--format</code></td>
+<td><code>--mode fast/accurate</code> (default <code>fast</code>), <code>-p</code> (pipeline), <code>-n</code>, <code>--no-cache</code>, <code>-v</code>, <code>--encode.*</code> (incl. <code>--encode.strategy_opts KEY=VALUE</code>), <code>--generate.*</code>, <code>--list-pipelines</code>, <code>--list-encoders</code>, <code>--print-pipeline &lt;kind&gt;/&lt;mode&gt;</code>, <code>--format</code></td>
 </tr>
 <tr>
 <td><code>grep</code></td>
@@ -307,23 +315,134 @@ mm find ~/data --schema                                # column names, types, de
 mm find ~/data --format json                           # full metadata JSON
 mm find ~/data --no-ignore                             # include gitignored files
 </code></pre>
+<h3>peek — raw file metadata</h3>
+<p><code>mm peek</code> returns locally-extracted metadata (dimensions / EXIF / codec / duration / mime / hash …).</p>
+<pre><code class="language-bash">mm peek bench.jpg                                                # image dims / EXIF / hash (Rich panel)
+mm peek Timelapse.mp4                                            # video resolution, duration, codecs
+mm peek wordpress-pdf-invoice-plugin-sample.pdf                  # mime, content hash
+mm peek bench.jpg Timelapse.mp4 --format json                    # multi-file JSON
+mm peek bench.jpg --format tsv                                   # flat TSV (every kind has the same column set)
+</code></pre>
 <h3>cat — content extraction</h3>
-<p><code>--mode</code> is one of <code>metadata</code> (default; local extraction, never an LLM call), <code>fast</code> (kind&#39;s fast pipeline; short LLM call for images/video), or <code>accurate</code> (LLM-heavy pipeline).</p>
-<pre><code class="language-bash">mm cat wordpress-pdf-invoice-plugin-sample.pdf                  # PDF text via pypdfium2 (metadata)
+<p><code>--mode</code> is one of <code>fast</code> (default) or <code>accurate</code>. Mode is a no-op for <code>kind=text</code> and non-PDF documents (<code>.docx</code> / <code>.pptx</code>): they always return passthrough text.</p>
+<pre><code class="language-bash">mm cat wordpress-pdf-invoice-plugin-sample.pdf                  # PDF page-text via pypdfium2 (fast pipeline)
 mm cat wordpress-pdf-invoice-plugin-sample.pdf -n 20            # first 20 lines (head)
-mm cat wordpress-pdf-invoice-plugin-sample.pdf -n -20           # last 20 lines (tail)
-mm cat bench.jpg                                                 # image dimensions, EXIF, hash (metadata)
-mm cat bench.jpg -m fast                                         # short VLM caption
-mm cat bench.jpg -m accurate                                     # full LLM caption + tags + objects
-mm cat Timelapse.mp4 -m accurate                                 # mosaic → LLM description
-mm cat bench.jpg -m fast -p resize                               # use named encoder (requires -m fast/accurate)
-mm cat bench.jpg -m accurate -p my-pipeline.yaml                 # custom pipeline YAML
-mm cat Timelapse.mp4 -m accurate --no-cache                      # force fresh LLM call
-mm cat bench.jpg -m accurate -v                                  # verbose (shows pipeline tree)
-mm cat --list-pipelines                                          # list registered pipelines
-mm cat --list-encoders                                           # list registered encoders
-mm cat --print-pipeline image/accurate                           # print a built-in pipeline&#39;s YAML source
+mm cat src/main.py                                              # passthrough text
+mm cat notes.docx                                               # python-docx tex
+mm cat bench.jpg                                                # short VLM caption (fast pipeline)
+mm cat bench.jpg -m accurate                                    # full LLM caption + tags + objects
+mm cat Timelapse.mp4 -m accurate                                # mosaic → LLM description
+mm cat bench.jpg -p resize                                      # use named encoder
+mm cat bench.jpg -m accurate -p my-pipeline.yaml                # custom pipeline YAML
+mm cat Timelapse.mp4 -m accurate --no-cache                     # force fresh LLM call
+mm cat bench.jpg -m accurate -v                                 # verbose (shows pipeline tree)
+mm cat --list-pipelines                                         # list registered pipelines
+mm cat --list-encoders                                          # list registered encoders
+mm cat --print-pipeline image/accurate                          # print a built-in pipeline&#39;s YAML source
 mm cat bench.jpg -m accurate --encode.strategy_opts max_width=768  # override a single strategy_opts entry
+</code></pre>
+<h4>Override surfaces</h4>
+<p><code>mm cat</code> resolves each LLM call from three layers, with <strong>right-most wins</strong> on conflict:</p>
+<table>
+<thead>
+<tr>
+<th>Layer</th>
+<th>Configures</th>
+<th>How to set</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>Profile</strong> (<code>mm.toml</code>)</td>
+<td><code>base_url</code>, <code>api_key</code>, default <code>model</code></td>
+<td><code>mm profile add &lt;name&gt; --base-url ... --model ...</code>; selected per-invocation with <code>mm --profile &lt;name&gt; &lt;subcommand&gt; ...</code></td>
+</tr>
+<tr>
+<td><strong>Pipeline YAML</strong> (<code>generate:</code> block)</td>
+<td><code>model</code>, <code>prompt</code>, <code>max_tokens</code>, <code>temperature</code>, <code>json_mode</code>, <code>extra_body</code> (deep-merged)</td>
+<td>Built-in pipelines under <code>python/mm/pipelines/</code> or custom YAMLs passed via <code>mm cat -p path.yaml</code></td>
+</tr>
+<tr>
+<td><strong>CLI flags on <code>cat</code></strong></td>
+<td>per-field overrides</td>
+<td>See table below</td>
+</tr>
+</tbody></table>
+<p>CLI override flags (each takes precedence over both pipeline YAML and profile):</p>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Alias</th>
+<th>Pipeline field</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>--model NAME</code></td>
+<td><code>--generate.model NAME</code></td>
+<td><code>generate.model</code></td>
+</tr>
+<tr>
+<td><code>--prompt TEXT</code></td>
+<td><code>--generate.prompt TEXT</code></td>
+<td><code>generate.prompt</code></td>
+</tr>
+<tr>
+<td><code>--generate.max-tokens N</code></td>
+<td>—</td>
+<td><code>generate.max_tokens</code></td>
+</tr>
+<tr>
+<td><code>--generate.temperature F</code></td>
+<td>—</td>
+<td><code>generate.temperature</code></td>
+</tr>
+<tr>
+<td><code>--generate.json-mode BOOL</code></td>
+<td>—</td>
+<td><code>generate.json_mode</code></td>
+</tr>
+<tr>
+<td><code>--generate.extra-body &#39;&lt;json&gt;&#39;</code></td>
+<td>—</td>
+<td><code>generate.extra_body</code> (deep-merged onto YAML; CLI keys win)</td>
+</tr>
+</tbody></table>
+<p>Use <code>--generate.extra-body</code> for any provider-specific knobs (vlmrt&#39;s <code>method</code>, <code>method_params</code>, <code>video_fps</code>, <code>image_resolution</code>, <code>vlmrun.metadata</code>, etc.). The merged <code>model</code> + <code>extra_body</code> participate in the L2 cache key, so changing a knob correctly invalidates cached results. <code>base_url</code> and <code>api_key</code> are profile-only — there is no CLI override for them.</p>
+<p>Examples against a vlmrt deployment (<code>mm profile add vlmrt --base-url http://gpu-box:8001/v1 --model qwen3.5-0.8b</code>):</p>
+<pre><code class="language-bash"># Florence-2 — document OCR (skip server-side LLM refinement)
+mm --profile vlmrt cat page.png -m accurate \
+  --model florence-2-base-ft \
+  --generate.extra-body &#39;{&quot;method&quot;:&quot;ocr&quot;,&quot;refine_with_llm&quot;:false}&#39;
+
+# Florence-2 — detailed caption
+mm --profile vlmrt cat photo.jpg -m accurate \
+  --model florence-2-base-ft \
+  --generate.extra-body &#39;{&quot;method&quot;:&quot;detailed_caption&quot;}&#39;
+
+# Qwen3.5-0.8B — free-form VQA on an image with a custom prompt
+mm --profile vlmrt cat photo.jpg -m accurate \
+  --model qwen3.5-0.8b \
+  --prompt &quot;What objects are visible? Reply as a comma-separated list.&quot;
+
+# Qwen3.5-0.8B — video summarisation with explicit frame sampling
+mm --profile vlmrt cat clip.mp4 -m accurate \
+  --model qwen3.5-0.8b \
+  --generate.extra-body &#39;{&quot;video_fps&quot;:1.0,&quot;video_max_frames&quot;:8,&quot;video_resolution&quot;:&quot;448x336&quot;}&#39;
+
+# PaddleOCR-v5 — full detect + recognise (English, default threshold)
+mm --profile vlmrt cat storefront.jpg -m accurate \
+  --model paddleocr-v5 \
+  --generate.extra-body &#39;{&quot;method&quot;:&quot;ocr&quot;}&#39;
+
+# PaddleOCR-v5 — Chinese OCR with a tighter score threshold
+mm --profile vlmrt cat storefront.jpg -m accurate \
+  --model paddleocr-v5 \
+  --generate.extra-body &#39;{&quot;method&quot;:&quot;ocr&quot;,&quot;method_params&quot;:{&quot;lang&quot;:&quot;ch&quot;,&quot;score_threshold&quot;:0.6}}&#39;
+
+# Moondream2 — multi-object detection
+mm --profile vlmrt cat photo.jpg -m accurate \
+  --model moondream2 \
+  --generate.extra-body &#39;{&quot;method&quot;:&quot;detect&quot;,&quot;method_params&quot;:{&quot;object&quot;:&quot;fish&quot;}}&#39;
 </code></pre>
 <h3>wc — count files, size, tokens</h3>
 <pre><code class="language-bash">mm wc ~/data --by-kind
@@ -366,27 +485,31 @@ mm sql --list-tables                              # show available tables
   └─ generate: ollama · 2.3s · 354→195 tokens
 </code></pre>
 <h2>Processing tiers</h2>
-<p><code>mm</code> separates <strong>content tiers</strong> (what&#39;s stored) from <strong>pipeline modes</strong> (what runs). <code>mm cat</code> accepts <code>--mode metadata|fast|accurate</code> (default <code>metadata</code>).</p>
+<p><code>mm</code> separates <strong>what</strong> by command and <strong>how much LLM</strong> by mode. <code>mm peek</code> surfaces local file metadata; <code>mm cat</code> extracts content and accepts <code>--mode fast|accurate</code> (default <code>fast</code>).</p>
 <table>
 <thead>
 <tr>
 <th>Tier</th>
+<th>Command</th>
 <th>What</th>
 <th>LLM?</th>
 </tr>
 </thead>
 <tbody><tr>
-<td><strong>metadata</strong> (default)</td>
-<td>Locally-extracted file content — PDF text, image dims/EXIF, video codec, transcript</td>
+<td><strong>metadata</strong></td>
+<td><code>mm peek</code></td>
+<td>image dims/EXIF/hash, video resolution/duration/codec, audio codec, mime, magika</td>
 <td>never</td>
 </tr>
 <tr>
-<td><strong>fast</strong></td>
+<td><strong>fast</strong> (default)</td>
+<td><code>mm cat -m fast</code></td>
 <td>Output of the kind&#39;s <code>fast</code> pipeline</td>
 <td>maybe¹</td>
 </tr>
 <tr>
 <td><strong>accurate</strong></td>
+<td><code>mm cat -m accurate</code></td>
 <td>Output of the kind&#39;s <code>accurate</code> pipeline</td>
 <td>yes</td>
 </tr>
