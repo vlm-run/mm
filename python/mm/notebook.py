@@ -33,9 +33,11 @@ Example::
 
 from __future__ import annotations
 
+import ast
 import base64
 import html
 import json
+import logging
 import math
 import re
 import struct
@@ -45,6 +47,8 @@ from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from mm.context import Context
+
+logger = logging.getLogger(__name__)
 
 _REF_TAG_RE = re.compile(r"\[ref=([^\]]+)\]")
 _GALLERY_COLLAPSE_THRESHOLD = 4
@@ -276,10 +280,8 @@ def _render_item(
                 meta = json.loads(meta_raw)
             except (json.JSONDecodeError, ValueError):
                 try:
-                    import ast
-
                     meta = ast.literal_eval(meta_raw)
-                except Exception:
+                except (SyntaxError, ValueError):
                     meta = {"_raw": meta_raw}
         elif isinstance(meta_raw, dict):
             meta = meta_raw
@@ -455,7 +457,11 @@ def _render_native_video(path: Path, scope: str, max_width: int) -> str:
     info = " · ".join(info_parts)
 
     if file_size <= _VIDEO_EMBED_MAX_BYTES:
-        b64 = base64.b64encode(path.read_bytes()).decode()
+        try:
+            b64 = base64.b64encode(path.read_bytes()).decode()
+        except OSError as exc:
+            logger.warning("notebook: cannot read video %s for embedding: %s", path, exc)
+            return _render_native_placeholder(f"Video unreadable: {path.name}", info, scope)
         return (
             f'<div class="{scope}-native">'
             f'<video controls preload="metadata" class="{scope}-video" '
@@ -466,13 +472,10 @@ def _render_native_video(path: Path, scope: str, max_width: int) -> str:
             f"</div>"
         )
 
-    return (
-        f'<div class="{scope}-native">'
-        f'<div class="{scope}-placeholder">'
-        f"Video too large to embed ({_fmt_bytes(file_size)}): {html.escape(path.name)}"
-        f"</div>"
-        f'<div class="{scope}-cap">{html.escape(info)}</div>'
-        f"</div>"
+    return _render_native_placeholder(
+        f"Video too large to embed ({_fmt_bytes(file_size)}): {path.name}",
+        info,
+        scope,
     )
 
 
@@ -484,7 +487,11 @@ def _render_native_audio(path: Path, scope: str) -> str:
     info = f"{mime} · {_fmt_bytes(file_size)}"
 
     if file_size <= _AUDIO_EMBED_MAX_BYTES:
-        b64 = base64.b64encode(path.read_bytes()).decode()
+        try:
+            b64 = base64.b64encode(path.read_bytes()).decode()
+        except OSError as exc:
+            logger.warning("notebook: cannot read audio %s for embedding: %s", path, exc)
+            return _render_native_placeholder(f"Audio unreadable: {path.name}", info, scope)
         return (
             f'<div class="{scope}-native">'
             f'<audio controls preload="metadata" class="{scope}-audio">'
@@ -494,12 +501,19 @@ def _render_native_audio(path: Path, scope: str) -> str:
             f"</div>"
         )
 
+    return _render_native_placeholder(
+        f"Audio too large to embed ({_fmt_bytes(file_size)}): {path.name}",
+        info,
+        scope,
+    )
+
+
+def _render_native_placeholder(message: str, caption: str, scope: str) -> str:
+    """Render a fallback `<div>` for media that cannot be embedded."""
     return (
         f'<div class="{scope}-native">'
-        f'<div class="{scope}-placeholder">'
-        f"Audio too large to embed ({_fmt_bytes(file_size)}): {html.escape(path.name)}"
-        f"</div>"
-        f'<div class="{scope}-cap">{html.escape(info)}</div>'
+        f'<div class="{scope}-placeholder">{html.escape(message)}</div>'
+        f'<div class="{scope}-cap">{html.escape(caption)}</div>'
         f"</div>"
     )
 
@@ -817,42 +831,90 @@ def _image_dims_from_bytes(data: bytes) -> tuple[int, int] | None:
 
 
 def _jpeg_dims(data: bytes) -> tuple[int, int] | None:
-    """Scan JPEG for the first SOF marker to read dimensions."""
+    """Scan a JPEG bitstream for the first SOF marker to read dimensions.
+
+    Handles real-world quirks of JPEG framing:
+      - Multiple ``0xFF`` fill bytes preceding a marker (``0xFF 0xFF 0xC0``).
+      - Stuffed ``0xFF 0x00`` byte pairs (zero is not a marker, just padding).
+      - Standalone markers (RSTn / TEM / SOI) that have no segment payload.
+      - Stops at SOS (``0xDA``) or EOI (``0xD9``); after SOS the data is
+        entropy-coded and any ``0xFF`` byte may be a literal, not a marker.
+
+    Returns ``None`` for malformed streams or streams without an SOF marker
+    in the inspected window.
+    """
+    n = len(data)
+    if n < 4 or data[0] != 0xFF or data[1] != 0xD8:
+        return None
+
+    standalone = {0x01, 0xD0, 0xD1, 0xD2, 0xD3, 0xD4, 0xD5, 0xD6, 0xD7, 0xD8}
+    sof_markers = {
+        0xC0,
+        0xC1,
+        0xC2,
+        0xC3,
+        0xC5,
+        0xC6,
+        0xC7,
+        0xC9,
+        0xCA,
+        0xCB,
+        0xCD,
+        0xCE,
+        0xCF,
+    }
+
     i = 2
-    while i < len(data) - 9:
+    while i < n:
         if data[i] != 0xFF:
-            break
-        marker = data[i + 1]
-        if marker in (0xC0, 0xC1, 0xC2):
+            return None
+        while i < n and data[i] == 0xFF:
+            i += 1
+        if i >= n:
+            return None
+        marker = data[i]
+        i += 1
+        if marker == 0x00:
+            continue
+        if marker == 0xD9 or marker == 0xDA:
+            return None
+        if marker in standalone:
+            continue
+        if marker in sof_markers:
+            if i + 7 > n:
+                return None
             try:
-                h, w = struct.unpack(">HH", data[i + 5 : i + 9])
-                return (w, h)
+                h, w = struct.unpack(">HH", data[i + 3 : i + 7])
             except struct.error:
                 return None
-        if marker == 0xD9:
-            break
-        if marker in (0xD0, 0xD1, 0xD2, 0xD3, 0xD4, 0xD5, 0xD6, 0xD7, 0xD8, 0x01):
-            i += 2
-            continue
-        if i + 3 < len(data):
-            try:
-                seg_len = struct.unpack(">H", data[i + 2 : i + 4])[0]
-            except struct.error:
-                break
-            i += 2 + seg_len
-        else:
-            break
+            return (w, h)
+        if i + 2 > n:
+            return None
+        try:
+            seg_len = struct.unpack(">H", data[i : i + 2])[0]
+        except struct.error:
+            return None
+        if seg_len < 2:
+            return None
+        i += seg_len
     return None
 
 
 def _decode_b64_prefix(data_url: str, n_bytes: int) -> bytes | None:
-    """Decode the first *n_bytes* from a data-URL without decoding all of it."""
+    """Decode the first *n_bytes* from a data-URL without decoding all of it.
+
+    Pads the truncated base64 chunk with the correct number of ``=`` so the
+    total length is a multiple of 4. A fixed two-byte pad would yield invalid
+    base64 for chunks whose length mod 4 is 2 or 3, raising
+    ``binascii.Error`` on decode.
+    """
     _, _, b64 = data_url.partition(",")
     chars_needed = math.ceil(n_bytes * 4 / 3) + 4
     chunk = b64[:chars_needed]
+    pad = (-len(chunk)) % 4
     try:
-        return base64.b64decode(chunk + "=" * (-len(chunk) % 4))
-    except Exception:
+        return base64.b64decode(chunk + "=" * pad)
+    except ValueError:
         return None
 
 

@@ -810,3 +810,185 @@ class TestContextRenderHtml:
 
         assert "<style" in result
         assert "mm-" in result
+
+
+class TestJpegDimsRobustness:
+    """Regression tests for the JPEG SOF scanner — see PR #113 review."""
+
+    def test_handles_ff_fill_padding(self):
+        # FF FF FF C0 ... — multiple FF fill bytes before the SOF marker.
+        sof = struct.pack(">HH", 240, 320)
+        data = (
+            b"\xff\xd8"
+            b"\xff\xff\xff\xc0\x00\x11\x08" + sof + b"\x03\x01\x11\x00\x02\x11\x01\x03\x11\x01"
+            b"\xff\xd9"
+        )
+        assert _image_dims_from_bytes(data) == (320, 240)
+
+    def test_skips_stuffed_zero_bytes(self):
+        # FF 00 is byte-stuffing (literal 0xFF in entropy data); should be
+        # treated as not-a-marker and not consume a segment length.
+        sof = struct.pack(">HH", 64, 96)
+        data = (
+            b"\xff\xd8"
+            b"\xff\x00"
+            b"\xff\xc0\x00\x11\x08" + sof + b"\x03\x01\x11\x00\x02\x11\x01\x03\x11\x01"
+            b"\xff\xd9"
+        )
+        assert _image_dims_from_bytes(data) == (96, 64)
+
+    def test_stops_at_sos_without_sof(self):
+        # SOS (0xDA) means entropy-coded data follows; if we haven't seen
+        # SOF by then, return None instead of recursing into garbage.
+        data = b"\xff\xd8" + b"\xff\xda" + b"\x00" * 100
+        assert _image_dims_from_bytes(data) is None
+
+    def test_stops_at_eoi(self):
+        data = b"\xff\xd8" + b"\xff\xd9"
+        assert _image_dims_from_bytes(data) is None
+
+    def test_skips_app_segment_to_find_sof(self):
+        # APP0 (0xE0) segment of length 16, then a real SOF0.
+        sof = struct.pack(">HH", 480, 640)
+        data = (
+            b"\xff\xd8"
+            b"\xff\xe0\x00\x10JFIF\x00\x01\x01\x00\x00\x01\x00\x01\x00\x00"
+            b"\xff\xc0\x00\x11\x08" + sof + b"\x03\x01\x11\x00\x02\x11\x01\x03\x11\x01"
+            b"\xff\xd9"
+        )
+        assert _image_dims_from_bytes(data) == (640, 480)
+
+    def test_recognises_progressive_sof2(self):
+        # SOF2 (0xC2) is progressive JPEG and must be detected the same as SOF0.
+        sof = struct.pack(">HH", 200, 100)
+        data = (
+            b"\xff\xd8"
+            b"\xff\xc2\x00\x11\x08" + sof + b"\x03\x01\x11\x00\x02\x11\x01\x03\x11\x01"
+            b"\xff\xd9"
+        )
+        assert _image_dims_from_bytes(data) == (100, 200)
+
+    def test_does_not_loop_on_zero_length_segment(self):
+        # Malformed: APP0 with declared length < 2 must not loop forever
+        # nor confuse the scanner.
+        data = b"\xff\xd8" + b"\xff\xe0\x00\x00" + b"\x00" * 200
+        # Should terminate cleanly, returning None.
+        assert _image_dims_from_bytes(data) is None
+
+    def test_does_not_loop_on_truncated_segment(self):
+        # Segment length claims more bytes than exist.
+        data = b"\xff\xd8" + b"\xff\xe0\xff\xff" + b"\x00" * 8
+        assert _image_dims_from_bytes(data) is None
+
+    def test_truncated_before_dimensions(self):
+        # SOF marker present but bytes are cut off before the height/width.
+        data = b"\xff\xd8" + b"\xff\xc0\x00\x11\x08\x00"
+        assert _image_dims_from_bytes(data) is None
+
+    def test_non_jpeg_returns_none(self):
+        assert _image_dims_from_bytes(b"GIF89a\x00\x00") is None
+
+
+class TestDecodeB64PrefixPadding:
+    """Regression tests for `=` padding handling — see PR #113 review."""
+
+    def test_handles_chunk_len_mod_4_eq_2(self):
+        # Construct a payload where the truncated chunk length % 4 == 2,
+        # which would have failed under the old fixed-`==` padding only by
+        # coincidence; the modulo strategy must always succeed for valid b64.
+        data = b"\x89PNG\r\n\x1a\n" + b"\x00" * 50
+        b64 = base64.b64encode(data).decode().rstrip("=")
+        url = f"data:image/png;base64,{b64}"
+        for n in range(8, 32):
+            result = _decode_b64_prefix(url, n)
+            assert result is not None, f"failed for n={n}"
+            assert result[:8] == b"\x89PNG\r\n\x1a\n", f"wrong prefix for n={n}"
+
+    def test_short_payload_does_not_raise(self):
+        # Payloads where every truncated chunk-mod-4 ∈ {0,1,2,3} is exercised.
+        data = b"X" * 6
+        b64 = base64.b64encode(data).decode().rstrip("=")
+        url = f"data:application/octet-stream;base64,{b64}"
+        for n in range(1, 6):
+            result = _decode_b64_prefix(url, n)
+            assert result is not None
+            assert result.startswith(b"X")
+
+    def test_invalid_chars_returns_none(self):
+        url = "data:application/octet-stream;base64,!!!not-base64!!!"
+        assert _decode_b64_prefix(url, 8) is None
+
+
+class TestNativeMediaErrorHandling:
+    """Regression tests for OSError handling in video/audio embedding."""
+
+    def test_video_unreadable_returns_placeholder(self, tmp_path, monkeypatch, caplog):
+        import logging
+
+        path = tmp_path / "broken.mp4"
+        path.write_bytes(b"\x00\x00\x00\x20ftypisom" + b"\x00" * 1024)
+
+        from pathlib import Path as _Path
+
+        def boom(self):
+            raise OSError("simulated read failure")
+
+        monkeypatch.setattr(_Path, "read_bytes", boom)
+
+        with caplog.at_level(logging.WARNING, logger="mm.notebook"):
+            result = _render_native_video(path, "scope", 320)
+
+        assert "<video controls" not in result
+        assert "Video unreadable" in result
+        assert "scope-placeholder" in result
+        assert any("simulated read failure" in rec.message for rec in caplog.records)
+
+    def test_audio_unreadable_returns_placeholder(self, tmp_path, monkeypatch, caplog):
+        import logging
+
+        path = tmp_path / "broken.mp3"
+        path.write_bytes(b"ID3\x04\x00\x00" + b"\x00" * 1024)
+
+        from pathlib import Path as _Path
+
+        def boom(self):
+            raise OSError("simulated read failure")
+
+        monkeypatch.setattr(_Path, "read_bytes", boom)
+
+        with caplog.at_level(logging.WARNING, logger="mm.notebook"):
+            result = _render_native_audio(path, "scope")
+
+        assert "<audio controls" not in result
+        assert "Audio unreadable" in result
+        assert "scope-placeholder" in result
+        assert any("simulated read failure" in rec.message for rec in caplog.records)
+
+    def test_video_placeholder_escapes_filename(self, tmp_path, monkeypatch):
+        # The placeholder rendered when a video is too large to embed must
+        # html-escape the filename — otherwise a maliciously named file could
+        # inject HTML when the Context is rendered in Jupyter.
+        from mm import notebook as nb
+
+        monkeypatch.setattr(nb, "_VIDEO_EMBED_MAX_BYTES", 100)
+        # `&` and `<` are valid on POSIX filesystems and trigger the escape path.
+        path = tmp_path / "evil&<bad>.mp4"
+        path.write_bytes(b"\x00" * 2000)
+        result = _render_native_video(path, "scope", 320)
+        assert "<bad>" not in result
+        assert "&lt;bad&gt;" in result
+        assert "&amp;" in result
+
+
+class TestContextDirectoryScanReprHtml:
+    """Regression test for XSS in the directory-scan `_repr_html_` fallback."""
+
+    def test_root_is_html_escaped(self, tmp_path):
+        import mm
+
+        evil = tmp_path / '<img src=x onerror="alert(1)">'
+        evil.mkdir()
+        ctx = mm.Context(str(evil))
+        result = ctx._repr_html_()
+        assert "<img src=x" not in result
+        assert "&lt;img" in result or "&amp;lt;img" in result

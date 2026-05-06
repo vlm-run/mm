@@ -895,7 +895,9 @@ class Context:
             from mm.notebook import render_context
 
             return render_context(self)
-        return f"<pre>Context(root='{self.root}', files={self.num_files})</pre>"
+        import html as _html
+
+        return f"<pre>Context(root='{_html.escape(str(self.root))}', files={self.num_files})</pre>"
 
     def __enter__(self) -> "Context":
         return self
