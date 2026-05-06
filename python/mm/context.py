@@ -859,6 +859,50 @@ class Context:
         sess = f", session='{self._session_id}'" if self._session_id else ""
         return f"Context(root='{self.root}', files={self.num_files}{sess})"
 
+    def render_html(
+        self,
+        *,
+        max_image_width: int = 320,
+        title: str | None = None,
+    ) -> str:
+        """Render the context as rich, self-contained HTML.
+
+        Each item is rendered with its native media view (image, video
+        player, audio player, document pages), user-supplied metadata
+        dict, and a collapsible section showing the encoded VLM
+        representation. Suitable for ``IPython.display.HTML()`` or
+        direct embedding.
+
+        Args:
+            max_image_width: Maximum rendered image width in pixels.
+            title: Optional title bar text. Defaults to an auto-generated
+                summary.
+
+        Returns:
+            Self-contained HTML string.
+
+        Raises:
+            RuntimeError: If called on a directory-scan Context.
+        """
+        self._require_pyctx("render_html")
+        from mm.notebook import render_context
+
+        return render_context(self, max_image_width=max_image_width, title=title)
+
+    def _repr_html_(self) -> str:
+        """Auto-render in Jupyter notebooks via IPython display protocol."""
+        if self._pyctx is not None:
+            from mm.notebook import render_context
+
+            return render_context(self)
+        return f"<pre>Context(root='{self.root}', files={self.num_files})</pre>"
+
+    def __enter__(self) -> "Context":
+        return self
+
+    def __exit__(self, *_: Any) -> None:
+        pass
+
     def __len__(self) -> int:
         return self.num_files
 
