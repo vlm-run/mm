@@ -50,13 +50,20 @@ def _doc_props(path: Path) -> dict[str, Any]:
     try:
         if ext == ".pdf":
             return _pdf_props(path)
-        if ext == ".docx":
-            return _docx_props(path)
-        if ext == ".pptx":
-            return _pptx_props(path)
+        else:
+            from mm._mm import office_metadata
+
+            v = office_metadata(str(path))
+            return {
+                "doc_author": v.author or None,
+                "doc_title": v.title or None,
+                "doc_subject": v.subject or None,
+                "doc_creator": None,
+                "doc_producer": None,
+                "pages": v.pages if v.pages is not None else None,
+            }
     except Exception:
         return {}
-    return {}
 
 
 def _pdf_props(path: Path) -> dict[str, Any]:
@@ -75,30 +82,6 @@ def _pdf_props(path: Path) -> dict[str, Any]:
         }
     finally:
         pdf.close()
-
-
-def _docx_props(path: Path) -> dict[str, Any]:
-    from docx import Document
-
-    cp = Document(str(path)).core_properties
-    return {
-        "doc_author": cp.author or None,
-        "doc_title": cp.title or None,
-        "doc_subject": cp.subject or None,
-    }
-
-
-def _pptx_props(path: Path) -> dict[str, Any]:
-    from pptx import Presentation
-
-    prs = Presentation(str(path))
-    cp = prs.core_properties
-    return {
-        "doc_author": cp.author or None,
-        "doc_title": cp.title or None,
-        "doc_subject": cp.subject or None,
-        "pages": len(prs.slides),
-    }
 
 
 @dataclass
