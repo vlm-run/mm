@@ -203,17 +203,19 @@ from PIL import Image
 
 ctx = mm.Context(session_id=mm.uuid7())      # or omit; auto-mints a UUIDv7
 
-img:  mm.Ref = ctx.put(Path("photo.jpg"))
-img2: mm.Ref = ctx.put(Image.open("x.png"),
+sys:  mm.Ref = ctx.add("You are a terse visual analyst.", role="system")
+txt:  mm.Ref = ctx.add("Summarize these assets.", role="user")
+img:  mm.Ref = ctx.add(Path("photo.jpg"), role="user")
+img2: mm.Ref = ctx.add(Image.open("x.png"), role="user",
                        metadata={"note": "product hero shot"})
-doc:  mm.Ref = ctx.put(Path("paper.pdf"),
+doc:  mm.Ref = ctx.add(Path("paper.pdf"), role="user",
                        metadata={"summary": "Attention is all you need",
                                  "tags": ["nlp", "transformer"]})
-vid:  mm.Ref = ctx.put(Path("clip.mp4"),
+vid:  mm.Ref = ctx.add(Path("clip.mp4"), role="user",
                        metadata={"scene": 3, "actor": "A"})
 ```
 
-`ctx.put(obj, *, metadata=...)` accepts a `pathlib.Path`, a `str` (file path or `http(s)://` URL), `bytes`, or a `PIL.Image.Image`. `metadata` is a single free-form JSON-serialisable `dict` — `note` / `summary` / `tags` are conventional keys used by rendering surfaces; anything else flows through to the VLM as a leading text block per item. Every `put` returns a short kind-prefixed ref id like `img_a1b2c3`, typed as `mm.Ref`.
+`ctx.add(obj, *, role="user", metadata=...)` accepts free-form `str` text, a `pathlib.Path`, or a `PIL.Image.Image`. Strings can use `system`, `developer`, or `user`; media must use `user`. Strings are always inlined as text; use `Path("file.ext")` for on-disk files. Every `add` returns a short kind-prefixed ref id like `img_a1b2c3`, typed as `mm.Ref`, and can be removed with `ctx.remove(ref)`.
 
 ### Emit VLM-ready messages (OpenAI / Gemini)
 
@@ -243,7 +245,7 @@ obj: Path | Image.Image | bytes | str = ctx.get(img)   # instance: returns the s
 row: dict | None = mm.Context.get(f"{ctx.session_id}/{img}")  # classmethod: cross-session DB lookup
 ```
 
-Instance `ctx.get(ref)` returns the exact Python object you `put` — identity is preserved for in-memory items (no copy, no rehydrate). Classmethod `mm.Context.get("<session>/<ref>")` resolves against the global `~/.local/share/mm/mm.db` when you only have a ref string and no live `Context`.
+Instance `ctx.get(ref)` returns the exact Python object you added — identity is preserved for in-memory items (no copy, no rehydrate). Classmethod `mm.Context.get("<session>/<ref>")` resolves against the global `~/.local/share/mm/mm.db` when you only have a ref string and no live `Context`.
 
 Missed a ref? `ctx.get("img_a1b2cZ")` raises `mm.RefNotFoundError` (a `KeyError` subclass) with a Levenshtein-based "did you mean" and the full context table inline — agent-friendly by default.
 

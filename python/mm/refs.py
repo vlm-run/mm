@@ -38,7 +38,7 @@ from typing import Annotated
 #: distinct type thanks to :data:`typing.Annotated`. Use this in type hints
 #: where you want to distinguish ref ids from arbitrary strings::
 #:
-#:     img: mm.Ref = ctx.put(Path("photo.jpg"))
+#:     img: mm.Ref = ctx.add(Path("photo.jpg"))
 Ref = Annotated[str, "mm.Ref"]
 
 

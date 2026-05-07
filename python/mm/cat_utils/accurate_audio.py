@@ -17,16 +17,16 @@ from mm.pipelines.schema import PipelineSpec
 def accurate_audio(path: Path, spec: PipelineSpec, opts: CatOpts) -> RunResult:
     """Audio extraction with transcription."""
     from mm.ffmpeg import extract_audio, ffmpeg_available
-    from mm.whisper import transcribe, whisper_available
+    from mm.common.audio import transcribe, transcribe_available
 
     if not ffmpeg_available():
         return RunResult(content=f"[ffmpeg not found — cannot process {path.name}]")
 
-    if not whisper_available():
+    if not transcribe_available():
         return RunResult(
             content=(
-                "[whisper not available — faster-whisper should be included in core mm install. "
-                "For MLX on Apple Silicon: pip install mm-ctx[mlx]]"
+                "[no transcription backend available — faster-whisper should be in core mm install. "
+                "For MLX on Apple Silicon: pip install mm[mlx]]"
             )
         )
 
@@ -54,7 +54,7 @@ def accurate_audio(path: Path, spec: PipelineSpec, opts: CatOpts) -> RunResult:
 
     whisper_result = transcribe(
         audio_result.path,
-        model_size=whisper_model,
+        model=whisper_model,
         beam_size=beam_size,
         audio_speed=audio_speed,
     )

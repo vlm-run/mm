@@ -171,7 +171,7 @@ class TestUpdateModeConfig:
                 },
             )
         )
-        with pytest.raises(ValueError, match="Invalid mode key"):
+        with pytest.raises(ValueError, match="Invalid config key"):
             update_mode_config("base_url", "http://x")
 
 

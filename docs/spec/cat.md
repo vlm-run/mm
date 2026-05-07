@@ -46,9 +46,25 @@ Multi-file: `mm cat a.mp4 b.mp4 -y` runs each video sequentially; the same **≥
 
 | | fast (default) | accurate |
 |---|---|---|
-| Encoder | `transcribe` (whisper medium, 1.0×) | `transcribe` (whisper medium, 1.0×) |
+| Encoder | `audio-transcribe` (whisper medium, 1.0×) | `audio-transcribe` (whisper medium, 1.0×) |
 | Output | raw timestamped transcript | ~80-word summary from transcript |
 | Tokens | — | 512 max |
+
+**Transcription backends** (auto-detected by priority, override via `encoder_kwargs` or `mm config set transcription.backend`):
+
+| Backend | Priority | Device | Notes |
+|---|---|---|---|
+| `mlx` | 10 | Apple Metal GPU | Requires `mm[mlx]` extra |
+| `ctranslate2` | 20 | CPU (int8) / CUDA (float16) | Included in core install |
+| `openai` | 30 | Remote API | Any OpenAI-compatible `/v1/audio/transcriptions` endpoint |
+
+**Python API** encoders for audio:
+
+| Name | Description |
+|---|---|
+| `audio-base64` | (default in `to_messages`) Raw base64-encoded audio for native VLM input |
+| `audio-transcribe` | Whisper transcript as text, supports `backend`/`base_url`/`api_key` kwargs |
+| `audio-gemini` | Pass audio file as a Gemini Part |
 
 ### Document (PDF only)
 

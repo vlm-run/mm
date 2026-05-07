@@ -38,7 +38,7 @@ class DocumentPageText:
     media_types: tuple[str, ...] = ("document",)
 
     def encode(self, path: Path, **kwargs: Any) -> Iterable[Message]:
-        pages_per_message: int = kwargs.get("pages_per_message", 4)
+        pages_per_message: int = kwargs.get("pages_per_message", 128)
         max_pages: Optional[int] = kwargs.get("max_pages", None)
 
         ext = path.suffix.lower()

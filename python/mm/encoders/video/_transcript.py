@@ -51,11 +51,11 @@ def transcript_messages(
     """
     try:
         from mm.video import extract_audio
-        from mm.whisper import transcribe, whisper_available
+        from mm.common.audio import transcribe, transcribe_available
     except ImportError:
         return []
 
-    if not whisper_available():
+    if not transcribe_available():
         return []
 
     audio_result = extract_audio(path, speed=audio_speed)
@@ -66,7 +66,7 @@ def transcript_messages(
 
     whisper_result = transcribe(
         audio_result.path,
-        model_size=whisper_model,
+        model=whisper_model,
         beam_size=5,
         audio_speed=audio_speed,
         **lang_kwarg,

@@ -310,20 +310,28 @@ def set_key(
       mm config set mode.accurate.whisper_model medium
       mm config set mode.accurate.audio_speed 1.0
       mm config set mode.accurate.beam_size 5
+
+    \b
+    Transcription keys:
+      mm config set transcription.backend openai
+      mm config set transcription.base_url http://localhost:11434/v1
+      mm config set transcription.api_key sk-...
     """
-    from mm.config import update_mode_config
+    from mm.config import update_config_key
     from mm.display import output_console
 
-    # Validate mode key format
-    if not key.startswith("mode."):
+    _VALID_PREFIXES = ("mode.", "transcription.")
+    if not any(key.startswith(p) for p in _VALID_PREFIXES):
         output_console.print(f"[red]Unknown key:[/red] {key}")
         output_console.print(
-            "[dim]Valid keys: mode.{{fast,accurate}}.{{whisper_model,audio_speed,beam_size}}[/dim]"
+            "[dim]Valid keys: mode.{fast,accurate}.{whisper_model,audio_speed,beam_size}, "
+            "transcription.{backend,base_url,api_key}[/dim]"
         )
         raise typer.Exit(1)
 
     parts = key.split(".")
-    if (
+
+    if key.startswith("mode.") and (
         len(parts) != 3
         or parts[1] not in ("fast", "accurate")
         or parts[2] not in ("whisper_model", "audio_speed", "beam_size")
@@ -334,5 +342,12 @@ def set_key(
         )
         raise typer.Exit(1)
 
-    path = update_mode_config(key, value)
+    if key.startswith("transcription.") and (
+        len(parts) != 2 or parts[1] not in ("backend", "base_url", "api_key")
+    ):
+        output_console.print(f"[red]Unknown key:[/red] {key}")
+        output_console.print("[dim]Valid keys: transcription.{backend,base_url,api_key}[/dim]")
+        raise typer.Exit(1)
+
+    path = update_config_key(key, value)
     output_console.print(f"[green]Set[/green] {key} = {value}  [dim]({path})[/dim]")

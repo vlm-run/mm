@@ -312,7 +312,7 @@ class TestTranscriptCache:
         ``[]`` — that's the cleanest way to keep tests fast while still
         exercising the real cached function (not a monkeypatched shim).
         """
-        monkeypatch.setattr("mm.whisper.whisper_available", lambda: available)
+        monkeypatch.setattr("mm.common.audio.transcribe_available", lambda: available)
 
     def test_cache_hit_on_repeated_call(self, tmp_path, monkeypatch):
         self._stub_whisper(monkeypatch)

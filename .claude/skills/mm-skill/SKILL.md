@@ -1,18 +1,24 @@
 ---
 name: mm-skill
 description: >
-  Use the mm CLI to index, explore, query, and extract content from multimodal directories
-  containing images, videos, PDFs, code, and other files. Triggers: exploring a directory's contents,
-  listing/finding files by type or size, extracting text from PDFs, getting image metadata,
-  searching across file contents, counting tokens, viewing directory trees,
-  extracting PDF page mosaics, video keyframe extraction, 'what files are in this folder',
-  'find all images', 'show me the PDFs', 'how much storage do videos use', 'extract text from this PDF',
-  'search documents for X', 'analyze this directory', 'how many tokens', 'show the tree'.
+  Use the mm CLI and Python API to index, explore, query, and extract content from multimodal
+  directories containing images, videos, PDFs, code, and other files. Triggers: exploring a
+  directory's contents, listing/finding files by type or size, extracting text from PDFs, getting
+  image metadata, searching across file contents, counting tokens, viewing directory trees,
+  extracting PDF page mosaics, video keyframe extraction, building VLM prompts, encoding media,
+  audio transcription, 'what files are in this folder', 'find all images', 'show me the PDFs',
+  'how much storage do videos use', 'extract text from this PDF', 'search documents for X',
+  'analyze this directory', 'how many tokens', 'show the tree', 'build a VLM prompt',
+  'transcribe audio', 'encode this image'.
 ---
 
-# mm CLI
+# mm
 
-`mm` is a Fast, multimodal context for agents. It indexes directories instantly (~60ms for 700 files), then exposes Unix-style commands for exploring, querying, and extracting content from images, videos, PDFs, code, and other files.
+`mm` is a fast, multimodal context tool for agents. Rust core for speed, Python for developer experience, Unix philosophy for composability.
+
+Two interfaces:
+- **CLI** — Unix-style commands (`find`, `cat`, `grep`, `wc`, `peek`) for exploring and extracting. See [cli.md](cli.md) for the CLI exploration workflow.
+- **Python API** — `mm.Context` for building role-aware VLM prompts, encoder system, transcription backends. See [api.md](api.md) for the full Python API reference.
 
 Always use `--format json` for machine-readable output when parsing results programmatically.
 
@@ -206,7 +212,8 @@ Use either the bare name or the kind-prefixed display name.
 | `video-shot-mosaic`       | video    | Scene detection → mosaic grid per shot               |
 | `video-gemini`            | video    | Pass video file as a Gemini Part                     |
 | `video-gemini-chunked`    | video    | Chunk video into Gemini Parts                        |
-| `audio-transcribe`        | audio    | Transcribe audio via Whisper (fast/accurate default) |
+| `audio-base64`            | audio    | **Default (Python API).** Raw base64 audio for native VLM input |
+| `audio-transcribe`        | audio    | Whisper transcript (supports `backend`/`base_url` kwargs) |
 | `audio-gemini`            | audio    | Pass audio file as a Gemini Part                     |
 | `document-page-text`      | document | Extract text per page from PDF/DOCX/PPTX             |
 | `document-rasterize`      | document | Render PDF pages as images (requires pypdfium2)      |
@@ -236,21 +243,21 @@ def my_custom(path: Path, **kw):
     ]}
 ```
 
-### Python API
+### Python API (Context + encoders)
+
+For the full Python API — `mm.Context`, `to_messages()`, encoder kwargs, transcription backends, notebook rendering — see **[api.md](api.md)**.
+
+Quick example:
 
 ```python
-from mm import process_image, process_image_tiled, process_video, process_document
+import mm
 from pathlib import Path
 
-msg = process_image(Path("photo.png"), max_width=1024)       # Single Message dict
-tiles = list(process_image_tiled(Path("scan.png"), tile_size=1024))  # Multiple Messages
-chunks = list(process_video(Path("video.mp4")))               # Multiple Messages
-pages = list(process_document(Path("doc.pdf")))               # Multiple Messages
+ctx: mm.Context = mm.Context()
+ctx.add("Describe this image.", role="user")
+ctx.add(Path("photo.jpg"), role="user")
 
-# Via Context
-from mm import Context
-ctx = Context("~/data")
-messages = ctx.encode("photo.png", strategy="resize")
+messages = ctx.to_messages(format="openai")
 ```
 
 ## cat — pipeline overrides
@@ -461,8 +468,10 @@ mm bench <dir> --format json            # JSON output for archival
 mm config show                                  # show current config
 mm config init                                  # create config with default profile
 mm config init --force                          # overwrite existing config
-mm config set mode.fast.whisper_model tiny       # set a config value
-mm config set mode.accurate.beam_size 5          # set a config value
+mm config set mode.fast.whisper_model tiny       # set a mode value
+mm config set mode.accurate.beam_size 5          # set a mode value
+mm config set transcription.backend openai       # transcription backend
+mm config set transcription.base_url http://localhost:11434/v1  # remote transcription URL
 mm config reset-db                              # delete all databases and caches
 mm config reset-profiles                        # restore profiles to defaults
 mm config reset                                 # reset everything (db + profiles)

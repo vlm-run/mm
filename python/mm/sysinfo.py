@@ -42,9 +42,9 @@ def collect() -> SystemInfo:
 
     # Optional Python deps
     try:
-        from mm.whisper import whisper_available
+        from mm.common.audio import transcribe_available
 
-        info.whisper_available = whisper_available()
+        info.whisper_available = transcribe_available()
     except Exception:
         pass
 

@@ -1,9 +1,9 @@
 //! PyO3 bindings for [`mm_core::refs::Context`].
 //!
 //! Exposes `PyContext` to Python as `_mm.PyContext`. The Python wrapper in
-//! `mm.context.Context` pre-classifies user objects (Path, PIL.Image, bytes,
-//! URL) and calls [`PyContext::put`] with primitive values; Rust owns the
-//! storage, ref generation, lookup, and rendering.
+//! `mm.context.Context` pre-classifies user objects (str, Path, PIL.Image)
+//! and calls [`PyContext::add`] with primitive values; Rust owns the storage,
+//! ref generation, lookup, and rendering.
 //!
 //! In-memory Python objects are kept alive on the Rust side in a parallel
 //! `Vec<Option<Py<PyAny>>>` indexed by item position, so [`PyContext::get`]
@@ -11,7 +11,7 @@
 
 use compact_str::CompactString;
 use mm_core::meta::FileKind;
-use mm_core::refs::{Context, ItemSource, MetaMap, MetaValue, kind_from_name, uuid7};
+use mm_core::refs::{Context, ItemSource, MetaMap, MetaValue, PromptRole, kind_from_name, uuid7};
 use pyo3::exceptions::{PyKeyError, PyValueError};
 use pyo3::prelude::*;
 use pyo3::types::{PyDict, PyList};
@@ -24,8 +24,8 @@ pyo3::create_exception!(_mm, RefNotFoundError, PyKeyError);
 #[pyclass(name = "PyContext", module = "_mm")]
 pub struct PyContext {
     inner: Context,
-    /// Parallel to `inner.items` — holds PIL / bytes / arbitrary Python
-    /// objects for in-memory items. `None` for path/url items.
+    /// Parallel to `inner.items` — holds in-memory strings, PIL images,
+    /// and arbitrary Python objects for in-memory items. `None` for path/url items.
     py_objs: Vec<Option<Py<PyAny>>>,
 }
 
@@ -54,8 +54,8 @@ impl PyContext {
         self.inner.len()
     }
 
-    /// Primitive-typed put. The Python wrapper classifies `obj` into
-    /// `kind` (one of the mm kinds) + a `source_kind` in
+    /// Primitive-typed add. The Python wrapper classifies `obj` into
+    /// a chat `role` + `kind` (one of the mm kinds) + a `source_kind` in
     /// ``("path", "in_memory", "url")`` + a `source_value` string.
     ///
     /// For `in_memory` items:
@@ -66,10 +66,11 @@ impl PyContext {
     /// `metadata_json` is an optional JSON object; keys are rendered in
     /// insertion order. Values may be strings, ints, floats, bools, string
     /// lists, or arbitrary nested JSON.
-    #[pyo3(signature = (kind, source_kind, source_value, byte_len=None, desc=None, py_obj=None, metadata_json=None))]
+    #[pyo3(signature = (role, kind, source_kind, source_value, byte_len=None, desc=None, py_obj=None, metadata_json=None))]
     #[allow(clippy::too_many_arguments)]
-    fn put(
+    fn add(
         &mut self,
+        role: &str,
         kind: &str,
         source_kind: &str,
         source_value: &str,
@@ -78,13 +79,29 @@ impl PyContext {
         py_obj: Option<Py<PyAny>>,
         metadata_json: Option<&str>,
     ) -> PyResult<String> {
+        let prompt_role = parse_role(role)?;
         let file_kind = kind_from_name(kind);
         let source = build_source(source_kind, source_value, byte_len, desc)?;
         let metadata = parse_metadata(metadata_json)?;
 
-        let ref_id = self.inner.put(file_kind, source, metadata);
+        let ref_id = self.inner.add(prompt_role, file_kind, source, metadata);
         self.py_objs.push(py_obj);
         Ok(ref_id.to_string())
+    }
+
+    /// Remove an item by ref id.
+    fn remove(&mut self, ref_id: &str) -> PyResult<()> {
+        let idx = self
+            .inner
+            .get_index(ref_id)
+            .map_err(|e| RefNotFoundError::new_err(e.message))?;
+        self.inner
+            .remove(ref_id)
+            .map_err(|e| RefNotFoundError::new_err(e.message))?;
+        if idx < self.py_objs.len() {
+            self.py_objs.remove(idx);
+        }
+        Ok(())
     }
 
     /// Return the stored Python object for an in-memory item, a
@@ -120,7 +137,7 @@ impl PyContext {
     }
 
     /// Return the item metadata at `ref_id` as a dict:
-    /// ``{ref_id, kind, source_kind, source_value, byte_len, desc, metadata}``.
+    /// ``{ref_id, role, kind, source_kind, source_value, byte_len, desc, metadata}``.
     fn item(&self, py: Python<'_>, ref_id: &str) -> PyResult<Py<PyAny>> {
         let idx = self
             .inner
@@ -191,6 +208,7 @@ impl PyContext {
             .ok_or_else(|| PyValueError::new_err(format!("item index {} out of range", idx)))?;
         let d = PyDict::new(py);
         d.set_item("ref_id", item.ref_id.as_str())?;
+        d.set_item("role", item.role.as_str())?;
         d.set_item("kind", item.kind.to_string())?;
         match &item.source {
             ItemSource::Path { path } => {
@@ -250,6 +268,15 @@ fn build_source(
             other
         ))),
     }
+}
+
+fn parse_role(role: &str) -> PyResult<PromptRole> {
+    role.parse::<PromptRole>().map_err(|()| {
+        PyValueError::new_err(format!(
+            "unknown role {:?}; expected 'system' | 'developer' | 'user'",
+            role
+        ))
+    })
 }
 
 fn parse_metadata(metadata_json: Option<&str>) -> PyResult<Option<MetaMap>> {

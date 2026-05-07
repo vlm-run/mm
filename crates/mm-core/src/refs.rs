@@ -1,7 +1,7 @@
 //! Incremental multimodal context for VLM prompt construction.
 //!
 //! The [`Context`] struct holds an ordered collection of heterogeneous
-//! [`Item`]s (files, in-memory blobs, URLs). Each item gets a stable
+//! [`Item`]s (files, in-memory strings/images, URLs). Each item gets a stable
 //! kind-prefixed [`RefId`] (``img_a1b2c3``, ``vid_d4e5f6``) that is unique
 //! within the owning `session_id`.
 //!
@@ -25,7 +25,7 @@
 //! `ref_not_found_message`) happens in Rust, so the Python side only pays
 //! one FFI boundary crossing to get a ready-to-print string.
 //!
-//! See [`crate::refs::Context::put`] for the insert path and
+//! See [`crate::refs::Context::add`] for the insert path and
 //! [`crate::refs::Context::get_index`] for the lookup path.
 
 use compact_str::CompactString;
@@ -75,6 +75,44 @@ pub fn kind_from_name(s: &str) -> FileKind {
         "config" => FileKind::Config,
         "text" => FileKind::Text,
         _ => FileKind::Other,
+    }
+}
+
+/// Chat role attached to an item.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum PromptRole {
+    System,
+    Developer,
+    User,
+}
+
+impl PromptRole {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            PromptRole::System => "system",
+            PromptRole::Developer => "developer",
+            PromptRole::User => "user",
+        }
+    }
+}
+
+impl std::fmt::Display for PromptRole {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
+impl std::str::FromStr for PromptRole {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "system" => Ok(PromptRole::System),
+            "developer" => Ok(PromptRole::Developer),
+            "user" => Ok(PromptRole::User),
+            _ => Err(()),
+        }
     }
 }
 
@@ -251,6 +289,7 @@ pub type MetaMap = Vec<(CompactString, MetaValue)>;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Item {
     pub ref_id: RefId,
+    pub role: PromptRole,
     pub kind: FileKind,
     pub source: ItemSource,
     /// Boxed so items without metadata cost only one pointer.
@@ -314,7 +353,13 @@ impl Context {
     ///
     /// The caller is expected to have already classified `kind` and built
     /// the `source` (Python dispatches types to these three variants).
-    pub fn put(&mut self, kind: FileKind, source: ItemSource, metadata: Option<MetaMap>) -> RefId {
+    pub fn add(
+        &mut self,
+        role: PromptRole,
+        kind: FileKind,
+        source: ItemSource,
+        metadata: Option<MetaMap>,
+    ) -> RefId {
         let mut ref_id = make_ref_id(kind);
         // Collision avoidance — essentially never hits at 2^24 entropy but
         // cheap to be defensive.
@@ -325,11 +370,20 @@ impl Context {
         self.by_ref.insert(ref_id.clone(), idx);
         self.items.push(Item {
             ref_id: ref_id.clone(),
+            role,
             kind,
             source,
             metadata: metadata.map(Box::new),
         });
         ref_id
+    }
+
+    /// Remove an item by ref id and return it.
+    pub fn remove(&mut self, ref_id: &str) -> Result<Item, RefNotFound> {
+        let idx = self.get_index(ref_id)?;
+        let item = self.items.remove(idx);
+        self.rebuild_index();
+        Ok(item)
     }
 
     /// Look up an item's position by ref id.
@@ -350,6 +404,13 @@ impl Context {
 
     pub fn item_at(&self, idx: usize) -> Option<&Item> {
         self.items.get(idx)
+    }
+
+    fn rebuild_index(&mut self) {
+        self.by_ref.clear();
+        for (idx, item) in self.items.iter().enumerate() {
+            self.by_ref.insert(item.ref_id.clone(), idx as u32);
+        }
     }
 
     /// Build the human-readable "ref not found" message (markdown + suggestions).
@@ -401,12 +462,13 @@ impl Context {
         if self.items.is_empty() {
             return out;
         }
-        out.push_str("| ref | kind | source |\n");
-        out.push_str("|-----|------|--------|\n");
+        out.push_str("| ref | role | kind | source |\n");
+        out.push_str("|-----|------|------|--------|\n");
         for item in &self.items {
             out.push_str(&format!(
-                "| {} | {} | {} |\n",
+                "| {} | {} | {} | {} |\n",
                 item.ref_id,
+                item.role,
                 item.kind,
                 escape_md_cell(item.source.display()),
             ));
@@ -419,8 +481,8 @@ impl Context {
     /// entry get a `summary` / `note` metadata fallback, else a blank cell.
     pub fn to_md_with_contents(&self, contents: &HashMap<String, String>) -> String {
         let mut out = String::new();
-        out.push_str("| ref | kind | source | content |\n");
-        out.push_str("|-----|------|--------|---------|\n");
+        out.push_str("| ref | role | kind | source | content |\n");
+        out.push_str("|-----|------|------|--------|---------|\n");
         for item in &self.items {
             let content = contents
                 .get(item.ref_id.as_str())
@@ -435,8 +497,9 @@ impl Context {
                 })
                 .unwrap_or_default();
             out.push_str(&format!(
-                "| {} | {} | {} | {} |\n",
+                "| {} | {} | {} | {} | {} |\n",
                 item.ref_id,
+                item.role,
                 item.kind,
                 escape_md_cell(item.source.display()),
                 escape_md_cell(&truncate(&content, 120)),
@@ -462,10 +525,11 @@ impl Context {
             let cont = if last { "   " } else { "│  " };
 
             out.push_str(&format!(
-                "{} [{}] {}  {}  {}\n",
+                "{} [{}] {}  {}  {}  {}\n",
                 branch,
                 i + 1,
                 item.ref_id,
+                item.role,
                 item.kind,
                 truncate(item.source.display(), 80),
             ));
@@ -570,16 +634,18 @@ mod tests {
     }
 
     #[test]
-    fn put_and_get() {
+    fn add_get_and_remove() {
         let mut ctx = Context::new("sess-1");
-        let r1 = ctx.put(
+        let r1 = ctx.add(
+            PromptRole::User,
             FileKind::Image,
             ItemSource::Path {
                 path: "/abs/photo.jpg".into(),
             },
             None,
         );
-        let r2 = ctx.put(
+        let r2 = ctx.add(
+            PromptRole::Developer,
             FileKind::Video,
             ItemSource::Path {
                 path: "/abs/clip.mp4".into(),
@@ -593,17 +659,25 @@ mod tests {
 
         let idx = ctx.get_index(&r2).unwrap();
         let it = ctx.item_at(idx).unwrap();
+        assert_eq!(it.role, PromptRole::Developer);
         assert_eq!(it.kind, FileKind::Video);
         assert_eq!(
             it.meta("note").map(|v| v.render_inline()),
             Some("\"hero\"".into())
         );
+
+        let removed = ctx.remove(&r1).unwrap();
+        assert_eq!(removed.ref_id, r1);
+        assert_eq!(ctx.len(), 1);
+        assert!(ctx.get_index(&r1).is_err());
+        assert_eq!(ctx.get_index(&r2).unwrap(), 0);
     }
 
     #[test]
     fn get_miss_suggests_close_ref() {
         let mut ctx = Context::new("s");
-        let r = ctx.put(
+        let r = ctx.add(
+            PromptRole::User,
             FileKind::Image,
             ItemSource::Path {
                 path: "/a.png".into(),
@@ -624,7 +698,8 @@ mod tests {
     #[test]
     fn get_miss_without_close_match_has_no_suggestion() {
         let mut ctx = Context::new("s");
-        ctx.put(
+        ctx.add(
+            PromptRole::User,
             FileKind::Image,
             ItemSource::Path {
                 path: "/a.png".into(),
@@ -640,14 +715,16 @@ mod tests {
     #[test]
     fn tree_insertion_contains_refs_and_metadata() {
         let mut ctx = Context::new("tree-sess");
-        ctx.put(
+        ctx.add(
+            PromptRole::System,
             FileKind::Image,
             ItemSource::Path {
                 path: "/photo.jpg".into(),
             },
             None,
         );
-        ctx.put(
+        ctx.add(
+            PromptRole::User,
             FileKind::Document,
             ItemSource::Path {
                 path: "/paper.pdf".into(),
@@ -664,6 +741,8 @@ mod tests {
         assert!(rendered.contains("Context(session=tree-sess"));
         assert!(rendered.contains("img_"));
         assert!(rendered.contains("doc_"));
+        assert!(rendered.contains("system"));
+        assert!(rendered.contains("user"));
         assert!(rendered.contains("summary"));
         assert!(rendered.contains("the paper"));
         assert!(rendered.contains("[nlp, transformer]"));
@@ -672,7 +751,8 @@ mod tests {
     #[test]
     fn repr_markdown_shape() {
         let mut ctx = Context::new("repr-sess");
-        ctx.put(
+        ctx.add(
+            PromptRole::User,
             FileKind::Image,
             ItemSource::Path {
                 path: "/a.png".into(),
@@ -682,6 +762,7 @@ mod tests {
         let md = ctx.to_repr_markdown();
         assert!(md.starts_with("Context(session=repr-sess, items=1)"));
         assert!(md.contains("| ref |"));
+        assert!(md.contains("| role |"));
         assert!(md.contains("img_"));
     }
 

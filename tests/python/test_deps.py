@@ -77,11 +77,11 @@ class TestMlxGuard:
 
     def test_get_mlx_model_raises_without_mlx(self):
         with _hide_module("lightning_whisper_mlx"):
-            from mm.whisper import _MODEL_CACHE, _get_mlx_model
+            from mm.common.audio._mlx import _MODEL_CACHE, _get_model
 
             _MODEL_CACHE.clear()
-            with pytest.raises(ImportError, match=r"pip install mm-ctx\[mlx\]"):
-                _get_mlx_model("tiny", 12)
+            with pytest.raises(ImportError, match=r"pip install mm.*\[mlx\]"):
+                _get_model("tiny", 12)
 
 
 class TestExperimentalGuard:

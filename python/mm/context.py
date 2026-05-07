@@ -2,7 +2,7 @@
 
 Two modes share the same class:
 
-1. **Incremental put-based context** (the primary, VLM-prompt-building API):
+1. **Incremental role-aware context** (the primary, VLM-prompt-building API):
 
    .. code-block:: python
 
@@ -11,10 +11,12 @@ Two modes share the same class:
        from PIL import Image
 
        ctx = mm.Context(session_id=mm.uuid7())
-       img  = ctx.put(Path("photo.jpg"), metadata={"note": "hero shot"})
-       doc  = ctx.put(Path("paper.pdf"),
+       sys  = ctx.add("You are a terse visual analyst.", role="system")
+       text = ctx.add("Summarize the following assets.", role="user")
+       img  = ctx.add(Path("photo.jpg"), role="user", metadata={"note": "hero shot"})
+       doc  = ctx.add(Path("paper.pdf"), role="user",
                       metadata={"summary": "Attention is all you need"})
-       img2 = ctx.put(Image.open("x.png"))
+       img2 = ctx.add(Image.open("x.png"), role="user")
 
        messages = ctx.to_messages(format="openai")
        obj = ctx.get(img)
@@ -31,7 +33,6 @@ insert/lookup and a sub-millisecond tree/repr render on 1K items.
 from __future__ import annotations
 
 import json
-import os
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Literal, cast
 
@@ -43,6 +44,7 @@ if TYPE_CHECKING:
 
 
 _FormatLiteral = Literal["openai", "gemini"]
+_RoleLiteral = Literal["system", "developer", "user"]
 _TreeLayout = Literal["insertion", "paths", "kind", "flat", "hybrid"]
 
 
@@ -50,7 +52,7 @@ class _HybridGet:
     """Descriptor that makes ``Context.get`` work as both instance and classmethod.
 
     * ``ctx.get(ref)`` → calls :meth:`Context._get_instance` (returns the
-      stored object / Path / URL for put-based contexts, or the DB row
+      stored object / Path for role-aware contexts, or the DB row
       for directory-scan contexts).
     * ``Context.get(global_ref, session_id=..., db=...)`` → calls
       :meth:`Context._classmethod_get` (cross-session DB resolver;
@@ -150,8 +152,9 @@ class Context:
     """Multimodal context backed by a Rust core.
 
     When constructed **without a** ``root`` (``Context()`` / ``Context(session_id=...)``)
-    the context is *incremental*: use :meth:`put` to attach files, PIL
-    images, bytes, or URLs, then :meth:`to_messages` to hand the whole
+    the context is *incremental*: use :meth:`add` to attach free-form
+    strings, ``pathlib.Path`` objects, or ``PIL.Image.Image`` instances
+    under a chat role, then :meth:`to_messages` to hand the whole
     context to a VLM.
 
     When constructed **with a** ``root`` (``Context("~/data")``) it scans
@@ -169,10 +172,11 @@ class Context:
         llm_base_url, llm_api_key: Optional LLM overrides.
 
     Examples:
-        Incremental (put-based)::
+        Incremental (role-aware)::
 
             ctx = Context()
-            ref = ctx.put("photo.jpg", metadata={"note": "hero shot"})
+            prompt = ctx.add("Describe this image.", role="user")
+            ref = ctx.add(Path("photo.jpg"), role="user", metadata={"note": "hero shot"})
             messages = ctx.to_messages(format="openai")
 
         Directory-scan (legacy)::
@@ -197,7 +201,7 @@ class Context:
         self._db: MmDatabase | None = None
 
         if root is None:
-            # Incremental put-based mode.
+            # Incremental role-aware mode.
             from mm._mm import PyContext
 
             sid = session_id if session_id is not None else uuid7()
@@ -257,24 +261,25 @@ class Context:
             return self._pyctx.num_items()
         return int(self._table.num_rows)
 
-    # ── Incremental API (put-based) ───────────────────────────────────
+    # ── Incremental API (role-aware) ──────────────────────────────────
 
-    def put(
+    def add(
         self,
-        obj: Any,
+        obj: str | Path | "PILImage.Image",
         *,
+        role: _RoleLiteral = "user",
         metadata: dict[str, Any] | None = None,
     ) -> Ref:
         """Attach an item to the context and return its kind-prefixed ref id.
 
         Accepts:
-            - :class:`pathlib.Path` or ``str`` pointing to an existing file.
-            - :class:`PIL.Image.Image` — held in-memory; recoverable via :meth:`get`.
-            - ``bytes`` — MIME-sniffed, held in-memory.
-            - URL string (``http://`` / ``https://``) — stored as a remote ref.
+            - ``str`` — free-form text, inlined under any supported role.
+            - :class:`pathlib.Path` pointing to an existing file (``role="user"`` only).
+            - :class:`PIL.Image.Image` — held in-memory (``role="user"`` only).
 
         Args:
-            obj: Source object (see accepted types above).
+            obj: Free-form text, a ``pathlib.Path``, or ``PIL.Image.Image``.
+            role: Chat role for this item: ``"system"``, ``"developer"``, or ``"user"``.
             metadata: Optional JSON-serialisable ``dict`` of extra
                 context for this item (e.g. ``{"note": "hero shot"}``,
                 ``{"summary": "Attention is all you need", "tags":
@@ -290,13 +295,20 @@ class Context:
 
         Raises:
             RuntimeError: If called on a directory-scan Context.
-            TypeError: If ``obj`` is of an unsupported type.
+            ValueError: If ``role`` is invalid or a media object is added
+                to a non-user role.
+            FileNotFoundError: If ``obj`` is a Path that doesn't exist.
+            TypeError: If ``obj`` is not a str, Path, or PIL.Image.Image.
         """
-        self._require_pyctx("put")
-        kind, source_kind, source_value, byte_len, desc, py_obj = _classify_put_obj(obj)
+        self._require_pyctx("add")
+        role = _validate_role(role)
+        kind, source_kind, source_value, byte_len, desc, py_obj = _classify_add_obj(obj)
+        if role != "user" and kind != "text":
+            raise ValueError("Only free-form string text can use role='system' or role='developer'")
         metadata_json = json.dumps(metadata) if metadata else None
 
-        ref_id: str = self._pyctx.put(
+        ref_id: str = self._pyctx.add(
+            role,
             kind,
             source_kind,
             source_value,
@@ -307,10 +319,26 @@ class Context:
         )
         return ref_id
 
+    def remove(self, ref_id: str) -> None:
+        """Remove an item from an incremental context by ref id.
+
+        Args:
+            ref_id: Bare ref id or a global ``<session_id>/<ref_id>`` whose
+                session matches this context.
+
+        Raises:
+            RuntimeError: If called on a directory-scan Context.
+            RefNotFoundError: If ``ref_id`` is not present.
+            ValueError: If a global ref belongs to a different session.
+        """
+        self._require_pyctx("remove")
+        bare = _strip_session_prefix(ref_id, self._session_id)
+        self._pyctx.remove(bare)
+
     def items(self) -> list[dict[str, Any]]:
         """Return all items as dicts (insertion order).
 
-        Each dict has keys ``ref_id``, ``kind``, ``source_kind``,
+        Each dict has keys ``ref_id``, ``role``, ``kind``, ``source_kind``,
         ``source_value``, ``byte_len``, ``desc``, and ``metadata``.
         """
         self._require_pyctx("items")
@@ -326,23 +354,27 @@ class Context:
         format: _FormatLiteral = "openai",
         *,
         encoders: dict[str, str] | None = None,
+        encoder_kwargs: dict[str, dict[str, Any]] | None = None,
     ) -> list[dict[str, Any]]:
-        """Encode every item into a single VLM message list.
+        """Encode every item into a role-aware VLM message list.
 
         Args:
-            format: Message shape. ``"openai"`` returns the
-                ``chat.completions``-style ``[{"role": "user", "content":
-                [...]}]`` list. ``"gemini"`` adapts image parts to the
-                ``inline_data`` Part shape.
+            format: Message shape. ``"openai"`` returns one
+                ``chat.completions``-style message per consecutive role
+                run. ``"gemini"`` adapts image parts to the
+                ``inline_data`` Part shape and folds non-user roles into
+                labelled text parts.
             encoders: Per-kind encoder overrides, e.g. ``{"image": "tile",
                 "video": "mosaic"}``. Unspecified kinds fall back to
-                sensible defaults (``image-resize``, ``video-frame-sample``,
-                ``document-rasterize``).
+                sensible defaults (``image-resize``, ``video-mosaic``,
+                ``document-rasterize``, ``audio-base64``).
+            encoder_kwargs: Per-kind keyword arguments forwarded to the
+                encoder's ``encode()`` method, e.g.
+                ``{"document": {"pages_per_message": 8}}``.
 
         Returns:
-            A list containing a single user turn; drop directly into
-            ``client.chat.completions.create(messages=...)`` (OpenAI) or
-            the Gemini ``generate_content`` call.
+            Message dicts for ``client.chat.completions.create`` (OpenAI)
+            or the Gemini ``generate_content`` call.
 
         Raises:
             ValueError: If ``format`` is not ``"openai"`` or ``"gemini"``.
@@ -354,7 +386,9 @@ class Context:
 
         from mm.refs_messages import build_messages
 
-        return build_messages(self, format=format, encoders=encoders or {})
+        return build_messages(
+            self, format=format, encoders=encoders or {}, encoder_kwargs=encoder_kwargs or {}
+        )
 
     def to_md(self, mode: Literal["metadata", "fast", "accurate"] = "metadata") -> str:
         """Render a markdown table of every ref + source + content.
@@ -418,8 +452,8 @@ class Context:
     def _get_instance(self, ref_id: str) -> Any:
         """Instance ``ctx.get(ref)`` — local lookup.
 
-        - Incremental mode: returns the Path / PIL.Image / bytes / URL
-          stored at ``ref_id``.
+        - Incremental mode: returns the ``str``, ``Path``, or
+          ``PIL.Image.Image`` stored at ``ref_id``.
         - Directory-scan mode: returns the DB row for the global ref.
 
         Raises:
@@ -473,7 +507,7 @@ class Context:
         """
         return Context._classmethod_get(global_ref, db=db)
 
-    # ── Persistence (deferred for put-based) ──────────────────────────
+    # ── Persistence (deferred for role-aware) ─────────────────────────
 
     def save(self) -> None:
         """Persist the context.
@@ -481,7 +515,7 @@ class Context:
         For directory-scan contexts, writes the Arrow table to the
         global mm DB (existing behaviour).
 
-        For incremental put-based contexts, this is **not implemented
+        For incremental role-aware contexts, this is **not implemented
         yet**. Planned behaviour:
 
             - Write ``(session_id, ref_id, kind, uri, content_hash, metadata)``
@@ -495,11 +529,11 @@ class Context:
               ``(session_id, ref_id)``.
 
         Raises:
-            NotImplementedError: For incremental (put-based) contexts.
+            NotImplementedError: For incremental role-aware contexts.
         """
         if self._pyctx is not None:
             raise NotImplementedError(
-                "Context.save() is not implemented for incremental (put-based) contexts yet. "
+                "Context.save() is not implemented for incremental role-aware contexts yet. "
                 "See Context.save docstring for the planned behaviour."
             )
         refs = self._materialize_refs() if self._session_id else None
@@ -514,7 +548,7 @@ class Context:
         if self._pyctx is not None:
             raise RuntimeError(
                 "Context.files is only available on directory-scan contexts. "
-                "Use ctx.items() for incremental put-based contexts."
+                "Use ctx.items() for incremental role-aware contexts."
             )
         rows = self._table.to_pydict()
         result = []
@@ -802,7 +836,7 @@ class Context:
     def refs(self) -> dict[str, str]:
         """Mapping of ``path -> global_ref`` for every file (scan mode).
 
-        For put-based contexts, returns ``{ref_id: <session>/<ref>}`` for
+        For role-aware contexts, returns ``{ref_id: <session>/<ref>}`` for
         every stored item.
         """
         if self._pyctx is not None:
@@ -815,7 +849,7 @@ class Context:
     # ── Internals ────────────────────────────────────────────────────
 
     def _collect_metadata_contents(self) -> dict[str, str]:
-        """Extract ``cat``-like content for every put-based item - mode=metadata"""
+        """Extract ``cat``-like content for every role-aware item - mode=metadata"""
         from mm.cat_utils.extract_meta import extract_meta
         from mm.utils import file_kind
 
@@ -824,6 +858,9 @@ class Context:
             ref_id = item["ref_id"]
             src_kind = item["source_kind"]
             src = item["source_value"]
+            if src_kind == "in_memory" and item["kind"] == "text":
+                out[ref_id] = item.get("desc") or ""
+                continue
             if src_kind == "path":
                 p = Path(src)
                 if not p.exists():
@@ -840,7 +877,7 @@ class Context:
     def _require_pyctx(self, method: str) -> None:
         if self._pyctx is None:
             raise RuntimeError(
-                f"Context.{method}() requires an incremental (put-based) context. "
+                f"Context.{method}() requires an incremental role-aware context. "
                 "Construct with Context() / Context(session_id=...) (no root)."
             )
 
@@ -858,6 +895,54 @@ class Context:
             return self._pyctx.repr_markdown()
         sess = f", session='{self._session_id}'" if self._session_id else ""
         return f"Context(root='{self.root}', files={self.num_files}{sess})"
+
+    def render_html(
+        self,
+        *,
+        max_image_width: int = 320,
+        title: str | None = None,
+        encoders: dict[str, str] | None = None,
+        encoder_kwargs: dict[str, dict[str, Any]] | None = None,
+    ) -> str:
+        """Render the context as rich, self-contained HTML.
+
+        Each item is rendered with its native media view (image, video
+        player, audio player, document pages), user-supplied metadata
+        dict, and a collapsible section showing the encoded VLM
+        representation. Suitable for ``IPython.display.HTML()`` or
+        direct embedding.
+
+        Args:
+            max_image_width: Maximum rendered image width in pixels.
+            title: Optional title bar text. Defaults to an auto-generated
+                summary.
+            encoders: Per-kind encoder overrides, e.g.
+                ``{"image": "image-tile", "video": "video-mosaic"}``.
+            encoder_kwargs: Per-kind kwargs forwarded to the encoder's
+                ``encode()`` method.
+
+        Returns:
+            Self-contained HTML string.
+
+        Raises:
+            RuntimeError: If called on a directory-scan Context.
+        """
+        self._require_pyctx("render_html")
+        from mm.notebook import render_context
+
+        return render_context(
+            self,
+            max_image_width=max_image_width,
+            title=title,
+            encoders=encoders,
+            encoder_kwargs=encoder_kwargs,
+        )
+
+    def __enter__(self) -> "Context":
+        return self
+
+    def __exit__(self, *_: Any) -> None:
+        pass
 
     def __len__(self) -> int:
         return self.num_files
@@ -893,15 +978,21 @@ def _strip_session_prefix(ref: str, session_id: str | None) -> str:
     return rid
 
 
-def _classify_put_obj(
+def _validate_role(role: str) -> _RoleLiteral:
+    """Validate and narrow a chat role string."""
+    if role not in ("system", "developer", "user"):
+        raise ValueError(f"role must be 'system', 'developer', or 'user', got {role!r}")
+    return cast(_RoleLiteral, role)
+
+
+def _classify_add_obj(
     obj: Any,
 ) -> tuple[str, str, str, int | None, str | None, Any]:
     """Inspect ``obj`` and return ``(kind, source_kind, source_value, byte_len, desc, py_obj)``.
 
-    The tuple feeds directly into the Rust ``PyContext.put`` signature.
+    Only ``str``, ``pathlib.Path``, and ``PIL.Image.Image`` are accepted.
+    The tuple feeds directly into the Rust ``PyContext.add`` signature.
     """
-    from mm._mm import kind_for_name
-
     try:
         from PIL import Image as _PILImageMod  # noqa: PLC0415
 
@@ -917,41 +1008,20 @@ def _classify_put_obj(
         byte_len = _estimate_pil_bytes(obj, mode, w, h)
         return ("image", "in_memory", "image/pil", byte_len, desc, obj)
 
-    # bytes
-    if isinstance(obj, (bytes, bytearray, memoryview)):
-        raw = bytes(obj)
-        mime = _sniff_mime(raw)
-        kind = _mime_to_kind(mime)
-        desc = f"<bytes {len(raw)} {mime}>"
-        return (kind, "in_memory", mime, len(raw), desc, raw)
-
-    # str -> URL or path
+    # free-form text
     if isinstance(obj, str):
-        if obj.startswith(("http://", "https://", "file://", "data:")):
-            return (kind_for_name(obj), "url", obj, None, obj, None)
-        p = Path(obj)
-        if p.exists():
-            return _classify_path(p)
-        # Non-existing str: treat as URL / unresolved path — raise for clarity.
-        raise FileNotFoundError(
-            f"put({obj!r}): file does not exist. Pass a pathlib.Path for "
-            "on-disk files, a PIL.Image / bytes for in-memory objects, or an "
-            "http(s):// URL for remote references."
-        )
+        byte_len = len(obj.encode("utf-8"))
+        return ("text", "in_memory", "text/plain", byte_len, obj, obj)
 
     # pathlib.Path
     if isinstance(obj, Path):
         if not obj.exists():
-            raise FileNotFoundError(f"put({obj!r}): file does not exist")
+            raise FileNotFoundError(f"add({obj!r}): file does not exist")
         return _classify_path(obj)
 
-    # os.PathLike (covers most custom path types)
-    if isinstance(obj, os.PathLike):
-        return _classify_path(Path(obj))
-
     raise TypeError(
-        f"put() does not accept {type(obj).__name__}. Supported types: "
-        "pathlib.Path, str (file path or URL), bytes, PIL.Image.Image."
+        f"add() does not accept {type(obj).__name__}. Supported types: "
+        "str, pathlib.Path, PIL.Image.Image."
     )
 
 
@@ -967,38 +1037,3 @@ def _estimate_pil_bytes(img: "PILImage.Image", mode: str, w: int, h: int) -> int
     """Cheap upper-bound on in-memory decoded byte length."""
     bpp = {"1": 1, "L": 1, "P": 1, "RGB": 3, "RGBA": 4, "CMYK": 4, "I": 4, "F": 4}.get(mode, 3)
     return int(w) * int(h) * bpp
-
-
-def _sniff_mime(data: bytes) -> str:
-    """Best-effort MIME detection for raw bytes.
-
-    Uses the existing ``infer``-backed ``_mm.content_hash``-style path
-    if available; else a handful of magic prefixes.
-    """
-    if data.startswith(b"\x89PNG"):
-        return "image/png"
-    if data.startswith(b"\xff\xd8\xff"):
-        return "image/jpeg"
-    if data.startswith(b"GIF8"):
-        return "image/gif"
-    if data.startswith(b"RIFF") and len(data) >= 12 and data[8:12] == b"WEBP":
-        return "image/webp"
-    if data.startswith(b"%PDF"):
-        return "application/pdf"
-    if data.startswith(b"ID3") or (len(data) >= 2 and data[0] == 0xFF and (data[1] & 0xE0) == 0xE0):
-        return "audio/mpeg"
-    if len(data) >= 12 and data[4:8] == b"ftyp":
-        return "video/mp4"
-    return "application/octet-stream"
-
-
-def _mime_to_kind(mime: str) -> str:
-    if mime.startswith("image/"):
-        return "image"
-    if mime.startswith("video/"):
-        return "video"
-    if mime.startswith("audio/"):
-        return "audio"
-    if mime in ("application/pdf",) or mime.startswith(("application/vnd.openxmlformats",)):
-        return "document"
-    return "other"

@@ -29,18 +29,18 @@ class VideoKeyframes:
     two-step pipeline.
 
     Kwargs:
-        max_frames: Cap the number of keyframes (default None = all).
+        max_keyframes: Cap the number of keyframes (default None = all).
         max_width: Frame resize width in pixels (default 1024).
-        max_frames_per_message: Frames per Message batch (default 16).
+        max_keyframes_per_message: Keyframes per Message batch (default 16).
     """
 
     name: str = "video-keyframes"
     media_types: tuple[str, ...] = ("video",)
 
     def encode(self, path: Path, **kwargs: Any) -> Iterable[Message]:
-        max_frames: int | None = kwargs.get("max_frames", None)
+        max_keyframes: int | None = kwargs.get("max_keyframes", None)
         max_width: int = kwargs.get("max_width", 1024)
-        max_frames_per_message: int = kwargs.get("max_frames_per_message", 16)
+        max_keyframes_per_message: int = kwargs.get("max_keyframes_per_message", 16)
         provider: str = _resolve_provider()
 
         from mm.video import VideoReader, _pyav_available
@@ -50,7 +50,7 @@ class VideoKeyframes:
             return
 
         with VideoReader(path) as reader:
-            kf_stream = reader.keyframes(width=max_width, max_frames=max_frames)
+            kf_stream = reader.keyframes(width=max_width, max_frames=max_keyframes)
 
             if len(kf_stream) == 0:
                 yield _to_message(
@@ -64,7 +64,7 @@ class VideoKeyframes:
                 len(kf_stream),
             )
 
-            for batch in kf_stream.batched(max_frames_per_message):
+            for batch in kf_stream.batched(max_keyframes_per_message):
                 t_start = batch[0].timestamp
                 t_end = batch[-1].timestamp
                 parts: list[dict[str, Any]] = [
