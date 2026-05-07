@@ -101,7 +101,7 @@ DESIGN_HEAD = """
 </script>
 <script>
 (function() {
-  var KIND_GLYPH = { image: '◧', video: '▶', audio: '♪', pdf: '◫', text: 'T', other: '·' };
+  var KIND_GLYPH = { image: '◧', video: '▶', audio: '♪', document: '◫', text: 'T', other: '·' };
 
   function fmtSize(n) {
     if (n < 1024) return n + ' B';
@@ -255,7 +255,7 @@ DESIGN_HEAD = """
       pv.innerHTML = '<div class="mm-fv-frame mm-fv-frame-center">' +
                        '<audio src="' + url + '" controls></audio>' +
                      '</div>';
-    } else if (f.kind === 'pdf') {
+    } else if (f.kind === 'document' && f.ext === 'pdf') {
       pv.innerHTML = '<iframe class="mm-fv-iframe" src="' + url + '"></iframe>';
     } else if (f.kind === 'text') {
       pv.innerHTML = '<pre class="mm-fv-text">Loading…</pre>';
@@ -468,14 +468,14 @@ DESIGN_HEAD = """
     flex-direction: column;
     align-items: center;
     text-align: center;
-    margin: 22px 0 30px;
+    padding: 12px 0 24px !important;
     padding: 0;
   }
   .mm-hero-logo {
     width: 80px;
     height: 80px;
     display: block;
-    margin: 0 auto 12px;
+    margin: 0 auto 16px !important;
     filter: drop-shadow(0 2px 10px rgba(1, 9, 23, 0.07));
   }
   .mm-hero-title {
@@ -485,7 +485,10 @@ DESIGN_HEAD = """
     letter-spacing: -0.025em;
     line-height: 1.05;
     color: var(--mm-text);
-    margin: 0 0 6px;
+    margin: 0 0 14px !important;
+  }
+  .mm-hero h3 {
+    margin: 12px 0 0;
   }
 
   .mm-section { padding: 2px 2px 10px; }
@@ -848,7 +851,7 @@ DESIGN_HEAD = """
   }
   .gradio-container #mm-terminal {
     width: 100%;
-    height: 600px;
+    height: clamp(680px, 78vh, 880px);
   }
   .gradio-container #mm-terminal .xterm,
   .gradio-container #mm-terminal .xterm-viewport,

@@ -21,7 +21,5 @@ RUN pip install --no-cache-dir --user -r requirements.txt \
 
 COPY --chown=user:user app.py /home/user/app/app.py
 COPY --chown=user:user gradio_app /home/user/app/gradio_app
-
 EXPOSE 7860
-
 CMD ["python", "app.py"]
