@@ -7,6 +7,7 @@ from pathlib import Path
 
 import pytest
 from mm.cli import app
+from mm.constants import OFFICE_EXTS
 from mm.peek import FileMetadata
 from typer.testing import CliRunner
 
@@ -146,33 +147,66 @@ def _build_pdf(path: Path, *, author: str, title: str, subject: str, pages: int 
     path.write_bytes(bytes(body))
 
 
-def _build_docx(path: Path, *, author: str, title: str, subject: str) -> None:
-    from docx import Document
+class _StubOfficeMetadata:
+    __slots__ = (
+        "author",
+        "title",
+        "subject",
+        "description",
+        "keywords",
+        "created",
+        "modified",
+        "pages",
+    )
 
-    doc = Document()
-    cp = doc.core_properties
-    cp.author = author
-    cp.title = title
-    cp.subject = subject
-    doc.save(str(path))
+    def __init__(self, *, author: str, title: str, subject: str, pages: int | None) -> None:
+        self.author = author
+        self.title = title
+        self.subject = subject
+        self.description = ""
+        self.keywords: list[str] = []
+        self.created = ""
+        self.modified = ""
+        self.pages = pages
 
 
-def _build_pptx(path: Path, *, author: str, title: str, subject: str, slides: int = 2) -> None:
-    from pptx import Presentation
+_OFFICE_FIXTURES: dict[str, _StubOfficeMetadata] = {}
 
-    prs = Presentation()
-    blank = prs.slide_layouts[6]
-    for _ in range(slides):
-        prs.slides.add_slide(blank)
-    cp = prs.core_properties
-    cp.author = author
-    cp.title = title
-    cp.subject = subject
-    prs.save(str(path))
+
+def _build_office_doc(
+    path: Path,
+    *,
+    author: str,
+    title: str,
+    subject: str,
+    pages: int | None = None,
+) -> None:
+    ext = path.suffix.lower()
+    if ext not in OFFICE_EXTS:
+        raise ValueError(f"unsupported office extension: {ext}")
+    path.write_bytes(b"")
+    _OFFICE_FIXTURES[str(path.resolve())] = _StubOfficeMetadata(
+        author=author, title=title, subject=subject, pages=pages
+    )
+
+
+def _stub_office_metadata(path: str) -> _StubOfficeMetadata:
+    key = str(Path(path).resolve())
+    try:
+        return _OFFICE_FIXTURES[key]
+    except KeyError:
+        raise RuntimeError(f"no fixture registered for {path}") from None
 
 
 class TestDocumentProperties:
-    """``mm peek`` surfaces author/title/subject + pages for PDF/DOCX/PPTX."""
+    """``mm peek`` surfaces author/title/subject + pages for PDF and office docs."""
+
+    @pytest.fixture(autouse=True)
+    def _patch_office_metadata(self, monkeypatch):
+        from mm import _mm
+
+        _OFFICE_FIXTURES.clear()
+        monkeypatch.setattr(_mm, "office_metadata", _stub_office_metadata)
 
     def test_pdf_props_and_pages(self, tmp_path: Path):
         pdf = tmp_path / "paper.pdf"
@@ -198,28 +232,38 @@ class TestDocumentProperties:
         assert fm.doc_subject is None
         assert fm.pages is None
 
-    def test_docx_props_no_pages(self, tmp_path: Path):
-        docx = tmp_path / "spec.docx"
-        _build_docx(docx, author="Bob", title="Spec", subject="research")
-        fm = FileMetadata.from_path(docx, full=True)
+    @pytest.mark.parametrize(
+        "ext, pages",
+        [
+            (".docx", None),
+            (".odt", None),
+            (".pptx", 4),
+            (".odp", 5),
+            (".xlsx", 3),
+            (".ods", 2),
+        ],
+    )
+    def test_office_doc_props(self, tmp_path: Path, ext: str, pages: int | None):
+        path = tmp_path / f"sample{ext}"
+        _build_office_doc(path, author="Bob", title="Spec", subject="research", pages=pages)
+        fm = FileMetadata.from_path(path, full=True)
+        assert fm.kind == "document"
         assert fm.doc_author == "Bob"
         assert fm.doc_title == "Spec"
         assert fm.doc_subject == "research"
-        # python-docx exposes no page count.
-        assert fm.pages is None
+        assert fm.pages == pages
         assert fm.doc_creator is None
         assert fm.doc_producer is None
 
-    def test_pptx_props_and_slide_count(self, tmp_path: Path):
-        pptx = tmp_path / "deck.pptx"
-        _build_pptx(pptx, author="Carol", title="Deck", subject="launch", slides=4)
-        fm = FileMetadata.from_path(pptx, full=True)
-        assert fm.doc_author == "Carol"
-        assert fm.doc_title == "Deck"
-        assert fm.doc_subject == "launch"
-        assert fm.pages == 4
-        assert fm.doc_creator is None
-        assert fm.doc_producer is None
+    def test_office_props_needs_full(self, tmp_path: Path):
+        docx = tmp_path / "spec.docx"
+        _build_office_doc(docx, author="Bob", title="Spec", subject="research")
+        fm = FileMetadata.from_path(docx)
+        assert fm.kind == "document"
+        assert fm.doc_author is None
+        assert fm.doc_title is None
+        assert fm.doc_subject is None
+        assert fm.pages is None
 
     def test_non_document_kind_has_null_doc_fields(self, tiny_png: Path):
         fm = FileMetadata.from_path(tiny_png)

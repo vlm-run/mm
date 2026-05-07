@@ -26,6 +26,7 @@ from mm.cat_utils.base_utils import (
 )
 from mm.cat_utils.extract_meta import extract_meta, extract_text
 from mm.cat_utils.run_encoder import run_encoder
+from mm.constants import BinaryFileKind
 from mm.encoders.encoders_utils import do_list_encoders
 from mm.pipe import read_paths_from_stdin
 from mm.pipelines.pipelines_utils import (
@@ -35,7 +36,7 @@ from mm.pipelines.pipelines_utils import (
     resolve_pipeline,
 )
 from mm.pipelines.schema import PipelineSpec
-from mm.utils import BinaryFileKind, Format, file_kind
+from mm.utils import Format, file_kind
 
 # Track total bytes processed for throughput calculation
 _total_bytes_processed = 0

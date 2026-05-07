@@ -490,7 +490,8 @@ fn meta_to_py(m: mm_core::office::OfficeMetadata) -> OfficeMetadata {
 #[pyfunction]
 fn office_content(path: String) -> PyResult<String> {
     let p = std::path::Path::new(&path);
-    mm_core::office::content(p).map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(e.to_string()))
+    mm_core::office::content(p)
+        .map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(e.to_string()))
 }
 
 /// Extract just the metadata of a docx/pptx/xlsx/odt/ods/odp/doc/pdf.

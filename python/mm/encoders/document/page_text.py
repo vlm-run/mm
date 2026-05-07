@@ -1,7 +1,8 @@
 """Document page-text encoder: structured text extraction per page.
 
-Extracts text from PDF pages via pypdfium2 (or DOCX/PPTX via
-python-docx/python-pptx) and yields it as structured text messages.
+Extracts text from PDF pages via pypdfium2, and from office documents
+(docx/odt/pptx/odp/xlsx/ods) via the libreoffice-pure-backed
+``mm._mm.office_content`` surface. Yields structured text messages.
 No rasterization — much lighter than ``rasterize`` or ``rasterize-text``.
 
 This is the default document encoder for fast mode.
@@ -13,6 +14,7 @@ import logging
 from pathlib import Path
 from typing import Any, Iterable, Optional
 
+from mm.constants import OFFICE_EXTS
 from mm.encoders import Message, register
 
 logger = logging.getLogger(__name__)
@@ -22,15 +24,13 @@ def _to_message(parts: list[dict[str, Any]]) -> Message:
     return {"role": "user", "content": parts}
 
 
-# TODO: use only _encode_pdf
-
-
 class DocumentPageText:
-    """Extract text per page from PDF/DOCX/PPTX, yield as text messages.
+    """Extract text from PDF / office docs, yield as text messages.
 
     For PDFs, uses pypdfium2 to extract text page by page, batching
-    ``pages_per_message`` pages into each Message.  For DOCX/PPTX,
-    uses python-docx/python-pptx and yields the full text.
+    ``pages_per_message`` pages into each Message.  For office docs
+    (docx/odt/pptx/odp/xlsx/ods), uses the libreoffice-pure–backed
+    ``office_content`` and yields the full text in one Message.
 
     Kwargs:
         pages_per_message: Pages per Message for PDFs (default 4).
@@ -48,10 +48,8 @@ class DocumentPageText:
 
         if ext == ".pdf":
             yield from self._encode_pdf(path, pages_per_message, max_pages)
-        elif ext == ".docx":
-            yield from self._encode_docx(path)
-        elif ext == ".pptx":
-            yield from self._encode_pptx(path)
+        elif ext in OFFICE_EXTS:
+            yield from self._encode_office(path)
         else:
             try:
                 text = path.read_text(errors="replace")
@@ -145,62 +143,17 @@ class DocumentPageText:
         finally:
             pdf.close()
 
-    def _encode_docx(self, path: Path) -> Iterable[Message]:
+    def _encode_office(self, path: Path) -> Iterable[Message]:
         try:
             from mm._mm import office_content
 
             text = office_content(str(path))
-        except ImportError:
-            yield _to_message(
-                [
-                    {
-                        "type": "text",
-                        "text": "[python-docx not installed — pip install python-docx]",
-                    }
-                ]
-            )
-            return
         except Exception as e:
             yield _to_message(
                 [
                     {
                         "type": "text",
-                        "text": f"[DOCX extraction failed for {path.name}: {e}]",
-                    }
-                ]
-            )
-            return
-
-        yield _to_message(
-            [
-                {
-                    "type": "text",
-                    "text": f"Document {path.name}:\n\n{text}",
-                }
-            ]
-        )
-
-    def _encode_pptx(self, path: Path) -> Iterable[Message]:
-        try:
-            from mm._mm import office_content
-
-            text = office_content(str(path))
-        except ImportError:
-            yield _to_message(
-                [
-                    {
-                        "type": "text",
-                        "text": "[python-pptx not installed — pip install python-pptx]",
-                    }
-                ]
-            )
-            return
-        except Exception as e:
-            yield _to_message(
-                [
-                    {
-                        "type": "text",
-                        "text": f"[PPTX extraction failed for {path.name}: {e}]",
+                        "text": f"[Office Doc extraction failed for {path.name}: {e}]",
                     }
                 ]
             )
