@@ -33,7 +33,7 @@ profile_app = typer.Typer(
 def profile_list(
     format: Annotated[
         Optional[BaseFormat],
-        typer.Option("--format", help="Output format: json, tsv, csv"),
+        typer.Option("--format", "-f", help="Output format: rich (default), json, tsv, csv"),
     ] = None,
 ) -> None:
     """List all configuration profiles.

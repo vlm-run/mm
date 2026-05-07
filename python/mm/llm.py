@@ -18,12 +18,15 @@ import base64
 import re
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from openai import OpenAI
 
 from mm.pipelines.schema import PipelineSpec
 from mm.utils import BinaryFileKind
+
+if TYPE_CHECKING:
+    from openai.types.chat import ChatCompletion
 
 
 @dataclass
@@ -246,7 +249,7 @@ class LlmBackend:
         eb: dict[str, Any] = {}
         if think:
             eb["think"] = True
-        if reasoning_effort != "none":
+        if eb["think"] and reasoning_effort != "none":
             eb["reasoning_effort"] = reasoning_effort
         if extra_body:
             eb = deep_merge(eb, extra_body)
@@ -255,7 +258,8 @@ class LlmBackend:
             kwargs["extra_body"] = eb
 
         try:
-            response = self.client.chat.completions.create(**kwargs)
+            response: ChatCompletion = self.client.chat.completions.create(**kwargs)
+            assert isinstance(response, ChatCompletion)
             if response.usage:
                 self.last_usage = LlmUsage(
                     prompt_tokens=response.usage.prompt_tokens or 0,
