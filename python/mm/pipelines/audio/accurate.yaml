@@ -2,7 +2,7 @@ kind: audio
 mode: accurate
 
 encode:
-  strategy: transcribe
+  strategy: audio-transcribe
   strategy_opts:
     whisper_model: medium
     audio_speed: 1.0
