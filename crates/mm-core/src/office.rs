@@ -1,8 +1,10 @@
 //! Office document conversion and parsing via [`libreoffice-pure`].
 //!
-//! Two surfaces:
+//! Surfaces:
 //! - [`convert_to_pdf`] — any supported document → PDF on disk.
-//! - [`parse`] — any supported document → plain content + core metadata.
+//! - [`content`]        — content only (skips metadata work).
+//! - [`metadata`]       — metadata only (skips content rendering).
+//! - [`parse_full`]     — content + metadata.
 
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -57,13 +59,64 @@ pub fn convert_to_pdf(input: &Path, output: &Path) -> Result<PathBuf, OfficeErro
     Ok(output.to_path_buf())
 }
 
-/// Parse a document and return its plain content plus core metadata.
+/// Extract just the textual content of a supported document.
+pub fn content(input: &Path) -> Result<String, OfficeError> {
+    Ok(load(input)?.content())
+}
+
+/// Extract just the core metadata of a supported document.
+pub fn metadata(input: &Path) -> Result<OfficeMetadata, OfficeError> {
+    let doc = load(input)?;
+    let pages = doc.pages();
+    Ok(meta_from(doc.meta_ref(), pages))
+}
+
+/// Extract content + metadata in one pass.
 ///
-/// Supported formats: `docx`, `doc`, `odt`, `pdf`, `xlsx`, `ods`, `pptx`, `odp`.
-/// Spreadsheet/presentation content is rendered as Markdown; word-processing and
-/// PDF content is rendered as plain text. `pages` reflects sheet/slide counts;
-/// it is `None` for word-processing inputs (no pagination without layout).
-pub fn parse(input: &Path) -> Result<OfficeDoc, OfficeError> {
+/// Supported formats: `docx`, `doc`, `odt`, `xlsx`, `ods`, `pptx`, `odp`.
+pub fn parse_full(input: &Path) -> Result<OfficeDoc, OfficeError> {
+    let doc = load(input)?;
+    let pages = doc.pages();
+    let metadata = meta_from(doc.meta_ref(), pages);
+    Ok(OfficeDoc {
+        content: doc.content(),
+        metadata,
+    })
+}
+
+enum Family {
+    Writer(lo_core::TextDocument),
+    Calc(lo_core::Workbook),
+    Impress(lo_core::Presentation),
+}
+
+impl Family {
+    fn content(&self) -> String {
+        match self {
+            Family::Writer(d) => lo_writer::to_plain_text(d),
+            Family::Calc(w) => lo_calc::to_markdown(w),
+            Family::Impress(p) => lo_impress::to_markdown(p),
+        }
+    }
+
+    fn meta_ref(&self) -> &Metadata {
+        match self {
+            Family::Writer(d) => &d.meta,
+            Family::Calc(w) => &w.meta,
+            Family::Impress(p) => &p.meta,
+        }
+    }
+
+    fn pages(&self) -> Option<usize> {
+        match self {
+            Family::Writer(_) => None,
+            Family::Calc(w) => Some(w.sheets.len()),
+            Family::Impress(p) => Some(p.slides.len()),
+        }
+    }
+}
+
+fn load(input: &Path) -> Result<Family, OfficeError> {
     let path_str = input
         .to_str()
         .ok_or_else(|| OfficeError::InvalidPath(input.to_path_buf()))?;
@@ -76,47 +129,31 @@ pub fn parse(input: &Path) -> Result<OfficeDoc, OfficeError> {
         .unwrap_or("document")
         .to_string();
 
+    let backend = |e: lo_core::LoError| OfficeError::Backend(e.to_string());
     match format.as_str() {
-        "docx" => writer_doc(lo_writer::from_docx_bytes(title, &bytes)),
-        "doc" => writer_doc(lo_writer::from_doc_bytes(title, &bytes)),
-        "odt" => writer_doc(lo_writer::from_odt_bytes(title, &bytes)),
-        "pdf" => writer_doc(lo_writer::from_pdf_bytes(title, &bytes)),
-        "xlsx" => calc_doc(lo_calc::from_xlsx_bytes(title, &bytes)),
-        "ods" => calc_doc(lo_calc::from_ods_bytes(title, &bytes)),
-        "pptx" => impress_doc(lo_impress::from_pptx_bytes(title, &bytes)),
-        "odp" => impress_doc(lo_impress::from_odp_bytes(title, &bytes)),
+        "docx" => lo_writer::from_docx_bytes(title, &bytes)
+            .map(Family::Writer)
+            .map_err(backend),
+        "doc" => lo_writer::from_doc_bytes(title, &bytes)
+            .map(Family::Writer)
+            .map_err(backend),
+        "odt" => lo_writer::from_odt_bytes(title, &bytes)
+            .map(Family::Writer)
+            .map_err(backend),
+        "xlsx" => lo_calc::from_xlsx_bytes(title, &bytes)
+            .map(Family::Calc)
+            .map_err(backend),
+        "ods" => lo_calc::from_ods_bytes(title, &bytes)
+            .map(Family::Calc)
+            .map_err(backend),
+        "pptx" => lo_impress::from_pptx_bytes(title, &bytes)
+            .map(Family::Impress)
+            .map_err(backend),
+        "odp" => lo_impress::from_odp_bytes(title, &bytes)
+            .map(Family::Impress)
+            .map_err(backend),
         other => Err(OfficeError::UnsupportedFormat(other.to_string())),
     }
-}
-
-fn writer_doc(
-    res: Result<lo_core::TextDocument, lo_core::LoError>,
-) -> Result<OfficeDoc, OfficeError> {
-    let doc = res.map_err(|e| OfficeError::Backend(e.to_string()))?;
-    Ok(OfficeDoc {
-        content: lo_writer::to_plain_text(&doc),
-        metadata: meta_from(&doc.meta, None),
-    })
-}
-
-fn calc_doc(res: Result<lo_core::Workbook, lo_core::LoError>) -> Result<OfficeDoc, OfficeError> {
-    let wb = res.map_err(|e| OfficeError::Backend(e.to_string()))?;
-    let pages = Some(wb.sheets.len());
-    Ok(OfficeDoc {
-        content: lo_calc::to_markdown(&wb),
-        metadata: meta_from(&wb.meta, pages),
-    })
-}
-
-fn impress_doc(
-    res: Result<lo_core::Presentation, lo_core::LoError>,
-) -> Result<OfficeDoc, OfficeError> {
-    let pres = res.map_err(|e| OfficeError::Backend(e.to_string()))?;
-    let pages = Some(pres.slides.len());
-    Ok(OfficeDoc {
-        content: lo_impress::to_markdown(&pres),
-        metadata: meta_from(&pres.meta, pages),
-    })
 }
 
 fn meta_from(m: &Metadata, pages: Option<usize>) -> OfficeMetadata {
@@ -140,14 +177,22 @@ mod tests {
     fn unsupported_format_rejected() {
         let path = Path::new("/tmp/mm-office-test.bogus");
         std::fs::write(path, b"hello").unwrap();
-        let err = parse(path).unwrap_err();
+        let err = parse_full(path).unwrap_err();
         assert!(matches!(err, OfficeError::UnsupportedFormat(_)));
         let _ = std::fs::remove_file(path);
     }
 
     #[test]
     fn missing_file_io_error() {
-        let err = parse(Path::new("/nonexistent/doc.docx")).unwrap_err();
+        let err = parse_full(Path::new("/nonexistent/doc.docx")).unwrap_err();
+        assert!(matches!(err, OfficeError::Io(_)));
+    }
+
+    #[test]
+    fn content_and_metadata_are_independent() {
+        let err = content(Path::new("/nonexistent/doc.docx")).unwrap_err();
+        assert!(matches!(err, OfficeError::Io(_)));
+        let err = metadata(Path::new("/nonexistent/doc.docx")).unwrap_err();
         assert!(matches!(err, OfficeError::Io(_)));
     }
 }

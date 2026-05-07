@@ -84,7 +84,7 @@ VIDEO_EXTS = frozenset(
     }
 )
 AUDIO_EXTS = frozenset({".mp3", ".wav", ".flac", ".aac", ".ogg", ".m4a", ".wma", ".opus"})
-DOCUMENT_EXTS = frozenset({".pdf", ".docx", ".pptx"})
+DOCUMENT_EXTS = frozenset({".pdf", ".docx", ".doc", ".odt", ".pptx", ".odp", ".xlsx", ".ods"})
 CODE_EXTS = frozenset(
     {
         ".py",

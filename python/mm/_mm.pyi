@@ -120,6 +120,40 @@ def gemini_document_part(path: str) -> str:
     """Serialize document as Gemini inline_data Part JSON string."""
     ...
 
+class OfficeMetadata:
+    """Office document metadata extracted via libreoffice-pure."""
+
+    author: str
+    title: str
+    subject: str
+    description: str
+    keywords: list[str]
+    created: str
+    modified: str
+    pages: int | None
+
+class OfficeDoc:
+    """Office document content + metadata extracted via libreoffice-pure."""
+
+    content: str
+    meta: OfficeMetadata
+
+def office_content(path: str) -> str:
+    """Extract just the content of a docx/doc/odt/pdf/xlsx/ods/pptx/odp file."""
+    ...
+
+def office_metadata(path: str) -> OfficeMetadata:
+    """Extract just the metadata of a docx/doc/odt/pdf/xlsx/ods/pptx/odp file."""
+    ...
+
+def office_parse_full(path: str) -> OfficeDoc:
+    """Parse a docx/doc/odt/pdf/xlsx/ods/pptx/odp file and return content + metadata."""
+    ...
+
+def office_to_pdf(input: str, output: str) -> str:
+    """Convert a supported office document to PDF; return the output path."""
+    ...
+
 # Incremental multimodal context (Rust-backed Context core)
 
 class PyContext:

@@ -61,7 +61,9 @@ AUDIO_EXTS: frozenset[str] = frozenset(
     )
 )
 
-DOCUMENT_EXTS: frozenset[str] = frozenset((".pdf", ".docx", ".pptx"))
+DOCUMENT_EXTS: frozenset[str] = frozenset(
+    (".pdf", ".docx", ".doc", ".odt", ".pptx", ".odp", ".xlsx", ".ods")
+)
 
 
 # -- Extension → MIME mapping ------------------------------------------------

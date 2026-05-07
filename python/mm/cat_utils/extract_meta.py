@@ -124,11 +124,9 @@ def _local_document(path: Path) -> str:
         return _local_pdf(path)
 
     try:
-        from mm.docs_extract import extract_docx, extract_pptx
+        from mm._mm import office_content
 
-        if ext == ".pptx":
-            return extract_pptx(str(path))
-        return extract_docx(str(path))
+        return office_content(str(path))
     except Exception as e:
         return f"[Document extraction failed for {path.name}: {e}]"
 
