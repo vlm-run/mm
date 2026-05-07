@@ -29,7 +29,7 @@ encode:
   #             video-chunks, video-clips, video-keyframes, video-shots,
   #             video-shot-mosaic, video-summary, video-captions,
   #             video-transcript, video-gemini, video-gemini-chunked
-  #   audio:    transcribe, audio-gemini
+  #   audio:    audio-transcribe, audio-gemini
   #   document: page-text, rasterize, rasterize-text, document-gemini
   # null = use the kind-specific default.
   strategy: resize
