@@ -109,7 +109,7 @@ def list_mmbench_files() -> dict:
                 "name": p.name,
                 "size": p.stat().st_size,
                 "ext": ext,
-                "kind": file_kind(ext),
+                "kind": file_kind(p),
             }
         )
     return {"root": str(base), "files": files}
