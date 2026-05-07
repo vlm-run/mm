@@ -22,6 +22,9 @@ def _to_message(parts: list[dict[str, Any]]) -> Message:
     return {"role": "user", "content": parts}
 
 
+# TODO: use only _encode_pdf
+
+
 class DocumentPageText:
     """Extract text per page from PDF/DOCX/PPTX, yield as text messages.
 
@@ -144,9 +147,9 @@ class DocumentPageText:
 
     def _encode_docx(self, path: Path) -> Iterable[Message]:
         try:
-            from mm.docs_extract import extract_docx
+            from mm._mm import office_content
 
-            text = extract_docx(str(path))
+            text = office_content(str(path))
         except ImportError:
             yield _to_message(
                 [
@@ -179,9 +182,9 @@ class DocumentPageText:
 
     def _encode_pptx(self, path: Path) -> Iterable[Message]:
         try:
-            from mm.docs_extract import extract_pptx
+            from mm._mm import office_content
 
-            text = extract_pptx(str(path))
+            text = office_content(str(path))
         except ImportError:
             yield _to_message(
                 [
