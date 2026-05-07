@@ -7,7 +7,7 @@ __all__ = [
     "Ref",
     "RefNotFoundError",
     "render_context",
-    "render_messages_html",
+    "render_messages",
     "uuid7",
 ]
 __version__ = version("mm-ctx")
@@ -17,7 +17,7 @@ _LAZY_IMPORTS = {
     "Ref": ("mm.refs", "Ref"),
     "RefNotFoundError": ("mm.refs", "RefNotFoundError"),
     "render_context": ("mm.notebook", "render_context"),
-    "render_messages_html": ("mm.notebook", "render_messages_html"),
+    "render_messages": ("mm.notebook", "render_messages"),
     "uuid7": ("mm.refs", "uuid7"),
 }
 

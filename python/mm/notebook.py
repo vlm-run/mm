@@ -11,24 +11,26 @@ Two rendering paths:
    files, metadata dicts, and encoded VLM parts. Shows native media
    players, collapsible encoded-parts galleries, and per-context stats.
 
-2. **``render_messages_html(messages)``** — the lightweight path. Renders
+2. **``render_messages(messages)``** — the lightweight path. Renders
    an arbitrary OpenAI-format message list (useful for multi-turn
    conversations or assistant responses).
 
 Example::
 
     import mm
+    from pathlib import Path
 
     ctx = mm.Context()
-    ctx.put("photo.jpg", metadata={"note": "hero shot"})
-    ctx.put("clip.mp4")
+    ctx.add("Describe the media below.", role="user")
+    ctx.add(Path("photo.jpg"), role="user", metadata={"note": "hero shot"})
+    ctx.add(Path("clip.mp4"), role="user")
     ctx.render_html()          # returns HTML string
     ctx                        # auto-renders in Jupyter via _repr_html_
 
     # Or for raw OpenAI-format message lists:
-    from mm.notebook import render_messages_html
+    from mm.notebook import render_messages
     msgs = [{"role": "assistant", "content": "I see a car."}]
-    render_messages_html(msgs)
+    render_messages(msgs)
 """
 
 from __future__ import annotations
@@ -64,6 +66,8 @@ def render_context(
     *,
     max_image_width: int = 320,
     title: str | None = None,
+    encoders: dict[str, str] | None = None,
+    encoder_kwargs: dict[str, dict[str, Any]] | None = None,
 ) -> str:
     """Render a Context as rich, self-contained HTML.
 
@@ -73,16 +77,20 @@ def render_context(
     representation.
 
     Args:
-        ctx: An incremental (put-based) ``mm.Context``.
+        ctx: An incremental role-aware ``mm.Context``.
         max_image_width: Maximum rendered width for images in pixels.
         title: Optional title bar text.
+        encoders: Per-kind encoder overrides, e.g.
+            ``{"image": "image-tile", "video": "video-mosaic"}``.
+        encoder_kwargs: Per-kind kwargs forwarded to the encoder's
+            ``encode()`` method.
 
     Returns:
         Self-contained HTML string for ``IPython.display.HTML()``.
     """
     scope = f"mm-{uuid.uuid4().hex[:8]}"
     items = ctx.items()
-    messages = ctx.to_messages(format="openai")
+    messages = ctx.to_messages(format="openai", encoders=encoders, encoder_kwargs=encoder_kwargs)
     encoded_parts_by_ref = _split_encoded_parts(messages)
 
     item_blocks: list[str] = []
@@ -111,7 +119,7 @@ def render_context(
     )
 
 
-def render_messages_html(
+def render_messages(
     messages: list[dict[str, Any]],
     *,
     max_image_width: int = 320,
@@ -268,6 +276,7 @@ def _render_item(
 ) -> str:
     """Render a single Context item as an HTML block."""
     ref_id = item["ref_id"]
+    role = item.get("role", "user")
     kind = item["kind"]
     source_kind = item["source_kind"]
     source_value = item["source_value"]
@@ -287,13 +296,18 @@ def _render_item(
             meta = meta_raw
 
     filename = Path(source_value).name if source_kind == "path" else source_value
-    file_size = _get_file_size(source_value) if source_kind == "path" else item.get("byte_len")
+    encoded_size = _encoded_bytes_from_parts(encoded_parts) or None
+    display_size = encoded_size or (
+        _get_file_size(source_value) if source_kind == "path" else item.get("byte_len")
+    )
 
     _track_item_stats(kind, stats)
 
-    header = _render_item_header(ref_id, kind, filename, file_size, scope)
+    header = _render_item_header(ref_id, role, kind, filename, display_size, scope)
     meta_html = _render_metadata_dict(meta, scope) if meta else ""
-    native_html = _render_native_view(item, scope, max_image_width, stats)
+    native_html = _render_native_view(
+        item, scope, max_image_width, stats, encoded_size=encoded_size
+    )
     encoded_html = _render_encoded_section(
         encoded_parts, scope, max_image_width, stats, item_kind=kind
     )
@@ -316,6 +330,7 @@ def _track_item_stats(kind: str, stats: _Stats) -> None:
 
 def _render_item_header(
     ref_id: str,
+    role: str,
     kind: str,
     filename: str,
     file_size: int | None,
@@ -337,6 +352,7 @@ def _render_item_header(
     return (
         f'<div class="{scope}-item-header">'
         f'<span class="{scope}-kind {scope}-kind-{html.escape(kind)}">{kind_label}</span>'
+        f'<span class="{scope}-role {scope}-role-{html.escape(role)}">{html.escape(role)}</span>'
         f'<span class="{scope}-ref">{html.escape(ref_id)}</span>'
         f'<span class="{scope}-filename">{html.escape(filename)}{size_str}</span>'
         f"</div>"
@@ -363,6 +379,8 @@ def _render_native_view(
     scope: str,
     max_image_width: int,
     stats: _Stats,
+    *,
+    encoded_size: int | None = None,
 ) -> str:
     """Render the native media view for an item (image, video player, etc.)."""
     kind = item["kind"]
@@ -370,7 +388,9 @@ def _render_native_view(
     source_value = item["source_value"]
 
     if kind == "image" and source_kind == "path":
-        return _render_native_image(Path(source_value), scope, max_image_width)
+        return _render_native_image(
+            Path(source_value), scope, max_image_width, encoded_size=encoded_size
+        )
 
     if kind == "video" and source_kind == "path":
         return _render_native_video(Path(source_value), scope, max_image_width)
@@ -389,7 +409,9 @@ def _render_native_view(
     return ""
 
 
-def _render_native_image(path: Path, scope: str, max_width: int) -> str:
+def _render_native_image(
+    path: Path, scope: str, max_width: int, *, encoded_size: int | None = None
+) -> str:
     if not path.exists():
         return ""
     try:
@@ -401,7 +423,8 @@ def _render_native_image(path: Path, scope: str, max_width: int) -> str:
     b64 = base64.b64encode(data).decode()
     dims = _image_dims_from_bytes(data)
     src = f"data:{mime};base64,{b64}"
-    info = _format_image_label(mime, len(data), dims)
+    byte_size = encoded_size if encoded_size is not None else len(data)
+    info = _format_image_label(mime, byte_size, dims)
 
     return (
         f'<div class="{scope}-native">'
@@ -542,6 +565,9 @@ def _render_encoded_section(
         if url and url.startswith("data:"):
             _, _, b64 = url.partition(",")
             total_b64_bytes += math.ceil(len(b64) * 3 / 4)
+        if _classify_part(part) == "audio":
+            _, _, ab = _extract_audio_info(part)
+            total_b64_bytes += ab
         if part.get("type") == "text":
             stats.total_text_chars += len(part.get("text", ""))
 
@@ -555,6 +581,7 @@ def _render_encoded_section(
 
     groups = _group_parts(content_parts)
     n_images = sum(len(g[1]) for g in groups if g[0] == "image")
+    n_audio = sum(len(g[1]) for g in groups if g[0] == "audio")
     n_text = sum(len(g[1]) for g in groups if g[0] == "text")
     encoded_text_chars = sum(
         len(p.get("text", "")) for p in content_parts if p.get("type") == "text"
@@ -566,6 +593,8 @@ def _render_encoded_section(
     summary: list[str] = []
     if n_images:
         summary.append(f"{n_images} {_encoded_noun(item_kind, n_images)}")
+    if n_audio:
+        summary.append(f"{n_audio} audio clip{'s' if n_audio != 1 else ''}")
     if n_text and item_kind != "text":
         summary.append(f"{encoded_text_chars:,} chars")
     est_tokens = int(encoded_text_chars * _TOKENS_PER_CHAR) + n_images * _TOKENS_PER_IMAGE
@@ -584,6 +613,9 @@ def _render_encoded_section(
     for group_type, group_items in groups:
         if group_type == "image":
             rendered.append(_render_image_gallery(group_items, scope, max_image_width))
+        elif group_type == "audio":
+            for item in group_items:
+                rendered.append(_render_audio_part(item, scope))
         else:
             for item in group_items:
                 rendered.append(_render_text_part(item, scope))
@@ -623,7 +655,7 @@ def _render_message_block(
     show_role: bool,
     stats: _Stats,
 ) -> str:
-    """Render a single message (role + content parts) for render_messages_html."""
+    """Render a single message (role + content parts) for render_messages."""
     badge = ""
     if show_role:
         badge = (
@@ -643,6 +675,11 @@ def _render_message_block(
                     _, _, b64 = url.partition(",")
                     stats.total_bytes += math.ceil(len(b64) * 3 / 4)
             rendered.append(_render_image_gallery(group_items, scope, max_image_width))
+        elif group_type == "audio":
+            for item in group_items:
+                _, _, byte_size = _extract_audio_info(item)
+                stats.total_bytes += byte_size
+            rendered.append("\n".join(_render_audio_part(item, scope) for item in group_items))
         else:
             for item in group_items:
                 if item.get("type") == "text":
@@ -670,7 +707,12 @@ def _group_parts(
 def _classify_part(part: dict[str, Any]) -> str:
     if part.get("type") == "image_url":
         return "image"
+    if part.get("type") == "input_audio":
+        return "audio"
     if "inline_data" in part:
+        mime = part["inline_data"].get("mime_type", "")
+        if mime.startswith("audio/"):
+            return "audio"
         return "image"
     return "text"
 
@@ -695,7 +737,15 @@ def _render_image_gallery(
 
         caption = _image_size_label(url, dims)
 
-        thumb_width = min(80, max_image_width) if len(parts) > 1 else min(240, max_image_width)
+        n = len(parts)
+        if n == 1:
+            thumb_width = min(240, max_image_width)
+        elif n <= 4:
+            thumb_width = min(200, max_image_width)
+        elif n <= 8:
+            thumb_width = min(160, max_image_width)
+        else:
+            thumb_width = min(100, max_image_width)
         items.append(
             f'<figure class="{scope}-fig">'
             f"{_zoomable_image(url, scope, thumb_width)}"
@@ -774,6 +824,78 @@ def _render_text_part(part: dict[str, Any], scope: str) -> str:
     return (
         f'<div class="{scope}-text">'
         f'<pre class="{scope}-pre">{escaped}</pre>'
+        f'<div class="{scope}-cap">{html.escape(annotation)}</div>'
+        f"</div>"
+    )
+
+
+_AUDIO_MIME_MAP: dict[str, str] = {
+    "mp3": "audio/mpeg",
+    "wav": "audio/wav",
+    "flac": "audio/flac",
+    "ogg": "audio/ogg",
+    "m4a": "audio/mp4",
+    "aac": "audio/aac",
+    "opus": "audio/opus",
+    "webm": "audio/webm",
+}
+
+
+def _extract_audio_info(part: dict[str, Any]) -> tuple[str, str, int]:
+    """Extract (mime, format_label, byte_size) from an audio part.
+
+    Lightweight — does NOT build a data URI, just computes the decoded size
+    from the base64 string length.
+    """
+    if part.get("type") == "input_audio":
+        audio = part.get("input_audio", {})
+        fmt = audio.get("format", "mp3")
+        mime = _AUDIO_MIME_MAP.get(fmt, f"audio/{fmt}")
+        byte_size = math.ceil(len(audio.get("data", "")) * 3 / 4)
+        return mime, fmt, byte_size
+    if "inline_data" in part:
+        data = part["inline_data"]
+        mime = data.get("mime_type", "audio/mpeg")
+        fmt = mime.split("/")[-1]
+        byte_size = math.ceil(len(data.get("data", "")) * 3 / 4)
+        return mime, fmt, byte_size
+    return "", "unknown", 0
+
+
+_AUDIO_EMBED_MAX_BYTES = 10 * 1024 * 1024  # 10 MB
+
+
+def _render_audio_part(part: dict[str, Any], scope: str) -> str:
+    """Render an encoded audio part with an inline player when feasible.
+
+    Embeds a ``<audio>`` player for files up to ``_AUDIO_EMBED_MAX_BYTES``.
+    Larger files get a compact badge to avoid bloating the HTML output.
+    """
+    mime, fmt, byte_size = _extract_audio_info(part)
+    if not mime:
+        return ""
+    annotation = f"{mime} · {_fmt_bytes(byte_size)}"
+
+    if byte_size > _AUDIO_EMBED_MAX_BYTES:
+        return (
+            f'<div class="{scope}-audio-part">'
+            f'<div class="{scope}-audio-badge">&#9835; {html.escape(fmt.upper())}</div>'
+            f'<div class="{scope}-cap">{html.escape(annotation)} (too large to embed)</div>'
+            f"</div>"
+        )
+
+    b64 = ""
+    if part.get("type") == "input_audio":
+        b64 = part.get("input_audio", {}).get("data", "")
+    elif "inline_data" in part:
+        b64 = part["inline_data"].get("data", "")
+    data_uri = f"data:{mime};base64,{b64}"
+
+    return (
+        f'<div class="{scope}-audio-part">'
+        f'<audio controls preload="metadata" class="{scope}-audio">'
+        f'<source src="{data_uri}" type="{mime}">'
+        f"</audio>"
         f'<div class="{scope}-cap">{html.escape(annotation)}</div>'
         f"</div>"
     )
@@ -916,6 +1038,17 @@ def _decode_b64_prefix(data_url: str, n_bytes: int) -> bytes | None:
         return base64.b64decode(chunk + "=" * pad)
     except ValueError:
         return None
+
+
+def _encoded_bytes_from_parts(parts: list[dict[str, Any]]) -> int:
+    """Total decoded byte size of base64 image payloads in a part list."""
+    total = 0
+    for part in parts:
+        url = _extract_image_url(part)
+        if url and url.startswith("data:"):
+            _, _, b64 = url.partition(",")
+            total += math.ceil(len(b64) * 3 / 4)
+    return total
 
 
 def _get_file_size(path_str: str) -> int | None:
@@ -1143,6 +1276,20 @@ def _css(scope: str) -> str:
         max-width: 320px;
         height: 28px;
     }}
+    .{s}-audio-part {{
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 8px;
+        background: var(--mm-bg-alt);
+        border-radius: 4px;
+        margin: 2px 0;
+    }}
+    .{s}-audio-badge {{
+        font-weight: 600;
+        font-size: 12px;
+        color: var(--mm-kind-audio);
+    }}
     .{s}-placeholder {{
         padding: 6px 10px;
         background: var(--mm-bg-soft);
@@ -1224,8 +1371,8 @@ def _css(scope: str) -> str:
     /* ── mosaic grid ── */
     .{s}-grid {{
         display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(70px, 1fr));
-        gap: 2px;
+        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+        gap: 4px;
     }}
     .{s}-grid .{s}-fig {{ margin: 0; }}
     .{s}-grid .{s}-img {{
@@ -1233,7 +1380,7 @@ def _css(scope: str) -> str:
         max-width: none;
         border-radius: 2px;
     }}
-    .{s}-grid .{s}-cap {{ font-size: 8px; }}
+    .{s}-grid .{s}-cap {{ font-size: 9px; }}
     .{s}-gallery {{
         display: flex;
         flex-wrap: wrap;
@@ -1266,7 +1413,7 @@ def _css(scope: str) -> str:
         color: var(--mm-text);
     }}
 
-    /* ── role badges (render_messages_html) ── */
+    /* ── role badges (render_messages) ── */
     .{s}-role {{
         display: inline-block;
         font-size: 9px;

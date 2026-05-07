@@ -1,8 +1,9 @@
-"""Tests for the new put-based :class:`mm.Context` API.
+"""Tests for the role-aware :class:`mm.Context` API.
 
 Covers:
 
-- ``put`` for Path, str path, URL, bytes, PIL.Image
+- ``add`` for str, Path, and PIL.Image
+- rejected bytes raise TypeError
 - metadata sugar params (``note``/``summary``/``tags``/``metadata``)
 - ``get`` round-trip (in-memory PIL objects come back identity-equal)
 - ``RefNotFoundError`` message + "did you mean" suggestions
@@ -10,7 +11,7 @@ Covers:
 - ``to_md(mode="metadata")`` table
 - ``print_tree(layout="insertion")`` rendering
 - ``NotImplementedError`` for non-``insertion`` layouts + for
-  :meth:`Context.save` on put-based contexts
+  :meth:`Context.save` on role-aware contexts
 - ``__repr__`` markdown smoke test
 - :func:`mm.uuid7` shape
 - ``mm.Ref`` typing alias is a ``str`` at runtime
@@ -62,56 +63,71 @@ class TestConstruction:
         assert a.session_id != b.session_id
 
 
-# ── put ───────────────────────────────────────────────────────────────
+# ── add ───────────────────────────────────────────────────────────────
 
 
-class TestPut:
-    def test_put_path(self, tiny_png: Path):
+class TestAdd:
+    def test_add_path(self, tiny_png: Path):
         ctx = mm.Context()
-        ref = ctx.put(tiny_png)
+        ref = ctx.add(tiny_png)
         assert ref.startswith("img_")
         assert len(ctx) == 1
 
-    def test_put_str_path(self, tiny_png: Path):
+    def test_add_str_inlines_text(self):
         ctx = mm.Context()
-        ref = ctx.put(str(tiny_png))
-        assert ref.startswith("img_")
+        ref = ctx.add("Describe the image in detail.")
+        assert ref.startswith("txt_")
+        it = next(i for i in ctx.items() if i["ref_id"] == ref)
+        assert it["kind"] == "text"
+        assert it["source_kind"] == "in_memory"
+        assert it["source_value"] == "text/plain"
 
-    def test_put_pil_image(self):
+    def test_add_path_like_str_is_literal_text(self, tiny_png: Path):
+        ctx = mm.Context()
+        ref = ctx.add(str(tiny_png))
+        assert ref.startswith("txt_")
+        assert ctx.get(ref) == str(tiny_png)
+
+    def test_add_pil_image(self):
         ctx = mm.Context()
         img = Image.new("RGB", (10, 10), "blue")
-        ref = ctx.put(img)
+        ref = ctx.add(img)
         assert ref.startswith("img_")
 
-    def test_put_bytes_png(self):
+    def test_add_bytes_raises_typeerror(self):
         ctx = mm.Context()
-        ref = ctx.put(b"\x89PNG\r\n\x1a\nrest")
-        assert ref.startswith("img_")
+        with pytest.raises(TypeError, match="bytes"):
+            ctx.add(b"\x89PNG\r\n\x1a\nrest")
 
-    def test_put_bytes_unknown_kind(self):
+    def test_add_url_string_is_literal_text(self):
         ctx = mm.Context()
-        ref = ctx.put(b"random bytes no magic")
-        # Falls back to "other" -> prefix "obj"
-        assert ref.startswith("obj_")
+        ref = ctx.add("https://example.com/foo.jpg")
+        assert ref.startswith("txt_")
+        assert ctx.get(ref) == "https://example.com/foo.jpg"
 
-    def test_put_url(self):
-        ctx = mm.Context()
-        ref = ctx.put("https://example.com/foo.jpg")
-        assert ref.startswith("img_")
-
-    def test_put_missing_path_raises(self, tmp_path: Path):
+    def test_add_missing_path_raises(self, tmp_path: Path):
         ctx = mm.Context()
         with pytest.raises(FileNotFoundError):
-            ctx.put(tmp_path / "missing.png")
+            ctx.add(tmp_path / "missing.png")
 
-    def test_put_unsupported_type_raises(self):
+    def test_add_unsupported_type_raises(self):
         ctx = mm.Context()
         with pytest.raises(TypeError):
-            ctx.put(12345)
+            ctx.add(12345)
 
-    def test_put_metadata_round_trips(self, tiny_png: Path):
+    def test_add_rejects_invalid_role(self):
         ctx = mm.Context()
-        ref = ctx.put(
+        with pytest.raises(ValueError, match="role"):
+            ctx.add("hello", role="assistant")  # type: ignore[arg-type]
+
+    def test_add_rejects_non_user_media(self, tiny_png: Path):
+        ctx = mm.Context()
+        with pytest.raises(ValueError, match="Only free-form string text"):
+            ctx.add(tiny_png, role="system")
+
+    def test_add_metadata_round_trips(self, tiny_png: Path):
+        ctx = mm.Context()
+        ref = ctx.add(
             tiny_png,
             metadata={
                 "note": "product hero",
@@ -129,16 +145,16 @@ class TestPut:
         assert m["scene"] == 3
         assert m["actor"] == "A"
 
-    def test_put_metadata_accepts_arbitrary_keys(self, tiny_png: Path):
+    def test_add_metadata_accepts_arbitrary_keys(self, tiny_png: Path):
         ctx = mm.Context()
-        ref = ctx.put(tiny_png, metadata={"b": 1, "a": 2, "c": 3})
+        ref = ctx.add(tiny_png, metadata={"b": 1, "a": 2, "c": 3})
         it = next(i for i in ctx.items() if i["ref_id"] == ref)
         assert set(it["metadata"].keys()) == {"a", "b", "c"}
         assert it["metadata"]["a"] == 2
 
-    def test_put_no_metadata_empty_dict(self, tiny_png: Path):
+    def test_add_no_metadata_empty_dict(self, tiny_png: Path):
         ctx = mm.Context()
-        ref = ctx.put(tiny_png)
+        ref = ctx.add(tiny_png)
         it = next(i for i in ctx.items() if i["ref_id"] == ref)
         assert it["metadata"] == {}
 
@@ -149,7 +165,7 @@ class TestPut:
 class TestGet:
     def test_get_path_returns_path(self, tiny_png: Path):
         ctx = mm.Context()
-        ref = ctx.put(tiny_png)
+        ref = ctx.add(tiny_png)
         got = ctx.get(ref)
         assert isinstance(got, Path)
         # Path is resolved to absolute — compare by resolve().
@@ -158,32 +174,25 @@ class TestGet:
     def test_get_pil_returns_same_instance(self):
         ctx = mm.Context()
         img = Image.new("RGB", (5, 5), "green")
-        ref = ctx.put(img)
+        ref = ctx.add(img)
         got = ctx.get(ref)
-        assert got is img, "put PIL objects must come back identity-equal"
+        assert got is img, "added PIL objects must come back identity-equal"
 
-    def test_get_url_returns_string(self):
+    def test_get_text_returns_same_string(self):
         ctx = mm.Context()
-        url = "https://example.com/x.jpg"
-        ref = ctx.put(url)
-        assert ctx.get(ref) == url
-
-    def test_get_bytes_returns_bytes(self):
-        ctx = mm.Context()
-        payload = b"\x89PNG\r\n\x1a\ndata"
-        ref = ctx.put(payload)
-        got = ctx.get(ref)
-        assert got == payload
+        text = "Analyze this context."
+        ref = ctx.add(text)
+        assert ctx.get(ref) == text
 
     def test_get_accepts_global_ref(self, tiny_png: Path):
         ctx = mm.Context(session_id="xyz")
-        ref = ctx.put(tiny_png)
+        ref = ctx.add(tiny_png)
         got = ctx.get(f"xyz/{ref}")
         assert isinstance(got, Path)
 
     def test_get_rejects_wrong_session(self, tiny_png: Path):
         ctx = mm.Context(session_id="right")
-        ref = ctx.put(tiny_png)
+        ref = ctx.add(tiny_png)
         with pytest.raises(ValueError, match="belongs to session"):
             ctx.get(f"other-session/{ref}")
 
@@ -197,7 +206,7 @@ class TestGet:
 
     def test_refnotfound_suggests_close_match(self, tiny_png: Path):
         ctx = mm.Context()
-        ref = ctx.put(tiny_png)
+        ref = ctx.add(tiny_png)
         # Perturb one hex digit
         bad = ref[:-1] + ("z" if ref[-1] != "z" else "0")
         # The suggestion is best-effort — one-edit-distance refs should match.
@@ -216,7 +225,7 @@ class TestGet:
 class TestToMessages:
     def test_openai_single_user_turn(self, tiny_png: Path):
         ctx = mm.Context()
-        ctx.put(tiny_png, metadata={"note": "ref-a"})
+        ctx.add(tiny_png, metadata={"note": "ref-a"})
         msgs = ctx.to_messages(format="openai")
         assert len(msgs) == 1
         assert msgs[0]["role"] == "user"
@@ -227,14 +236,14 @@ class TestToMessages:
 
     def test_metadata_emitted_as_text(self, tiny_png: Path):
         ctx = mm.Context()
-        ref = ctx.put(tiny_png, metadata={"note": "hero"})
+        ref = ctx.add(tiny_png, metadata={"note": "hero"})
         msgs = ctx.to_messages(format="openai")
         texts = [p["text"] for p in msgs[0]["content"] if p.get("type") == "text"]
         assert any(f"[ref={ref}]" in t and "hero" in t for t in texts)
 
     def test_gemini_uses_inline_data(self, tiny_png: Path):
         ctx = mm.Context()
-        ctx.put(tiny_png)
+        ctx.add(tiny_png)
         msgs = ctx.to_messages(format="gemini")
         assert len(msgs) == 1
         parts = msgs[0]["parts"]
@@ -247,18 +256,86 @@ class TestToMessages:
 
     def test_encoders_override(self, tiny_png: Path):
         ctx = mm.Context()
-        ctx.put(tiny_png)
+        ctx.add(tiny_png)
         # Should not raise — 'tile' is a registered image encoder.
         msgs = ctx.to_messages(format="openai", encoders={"image": "tile"})
         assert len(msgs) == 1
 
-    def test_url_image_openai_passes_through(self):
+    def test_encoder_kwargs_forwarded(self, tiny_png: Path):
+        """encoder_kwargs are forwarded to the encoder's encode() method."""
         ctx = mm.Context()
-        url = "https://example.com/a.jpg"
-        ctx.put(url)
+        ctx.add(tiny_png)
+        msgs = ctx.to_messages(
+            format="openai",
+            encoders={"image": "image-resize"},
+            encoder_kwargs={"image": {"max_width": 16}},
+        )
+        assert len(msgs) == 1
+        parts = msgs[0]["content"]
+        img_parts = [p for p in parts if p.get("type") == "image_url"]
+        assert len(img_parts) >= 1
+
+    def test_encoder_kwargs_ignored_for_unrelated_kind(self, tiny_png: Path):
+        """encoder_kwargs for a different kind don't interfere."""
+        ctx = mm.Context()
+        ctx.add(tiny_png)
+        msgs_without = ctx.to_messages(format="openai")
+        msgs_with = ctx.to_messages(
+            format="openai",
+            encoder_kwargs={"video": {"fps": 0.5}},
+        )
+        without_parts = [p for p in msgs_without[0]["content"] if p.get("type") == "image_url"]
+        with_parts = [p for p in msgs_with[0]["content"] if p.get("type") == "image_url"]
+        assert len(without_parts) == len(with_parts)
+
+    def test_encoder_kwargs_empty_dict_is_noop(self, tiny_png: Path):
+        ctx = mm.Context()
+        ctx.add(tiny_png)
+        msgs = ctx.to_messages(format="openai", encoder_kwargs={})
+        assert len(msgs) == 1
+
+    def test_encoder_kwargs_with_gemini_format(self, tiny_png: Path):
+        ctx = mm.Context()
+        ctx.add(tiny_png)
+        msgs = ctx.to_messages(
+            format="gemini",
+            encoder_kwargs={"image": {"max_width": 16}},
+        )
+        assert len(msgs) == 1
+
+    def test_string_content_is_inlined(self):
+        ctx = mm.Context()
+        text = "This is an instruction, not a URL: https://example.com/a.jpg"
+        ref = ctx.add(text)
         msgs = ctx.to_messages(format="openai")
-        urls = [p["image_url"]["url"] for p in msgs[0]["content"] if p.get("type") == "image_url"]
-        assert url in urls
+        texts = [p["text"] for p in msgs[0]["content"] if p.get("type") == "text"]
+        assert any(f"[ref={ref}]" in t for t in texts)
+        assert text in texts
+
+    def test_openai_emits_role_aware_turns(self, tiny_png: Path):
+        ctx = mm.Context()
+        ctx.add("You are terse.", role="system")
+        ctx.add("Prefer JSON.", role="developer")
+        ctx.add("Describe this.", role="user")
+        ctx.add(tiny_png, role="user")
+        msgs = ctx.to_messages(format="openai")
+        assert [m["role"] for m in msgs] == ["system", "developer", "user"]
+        assert "You are terse." in [
+            p["text"] for p in msgs[0]["content"] if p.get("type") == "text"
+        ]
+        assert "Prefer JSON." in [p["text"] for p in msgs[1]["content"] if p.get("type") == "text"]
+        assert any(p.get("type") == "image_url" for p in msgs[2]["content"])
+
+    def test_gemini_folds_non_user_roles(self):
+        ctx = mm.Context()
+        ctx.add("You are terse.", role="system")
+        ctx.add("Answer as JSON.", role="developer")
+        msgs = ctx.to_messages(format="gemini")
+        assert len(msgs) == 1
+        assert msgs[0]["role"] == "user"
+        texts = [p["text"] for p in msgs[0]["parts"] if "text" in p]
+        assert "[role=system]" in texts
+        assert "[role=developer]" in texts
 
 
 # ── to_md ─────────────────────────────────────────────────────────────
@@ -267,18 +344,18 @@ class TestToMessages:
 class TestToMd:
     def test_table_shape(self, tiny_png: Path, tiny_txt: Path):
         ctx = mm.Context()
-        ctx.put(tiny_png)
-        ctx.put(tiny_txt)
+        ctx.add(tiny_png)
+        ctx.add(tiny_txt)
         md = ctx.to_md(mode="metadata")
-        assert md.startswith("| ref | kind | source | content |")
+        assert md.startswith("| ref | role | kind | source | content |")
         assert "img_" in md
         assert "code_" in md
 
     def test_default_mode_is_metadata(self, tiny_png: Path, tiny_txt: Path):
         """Calling ``to_md()`` with no args must match ``mode='metadata'``."""
         ctx = mm.Context()
-        ctx.put(tiny_png)
-        ctx.put(tiny_txt)
+        ctx.add(tiny_png)
+        ctx.add(tiny_txt)
         assert ctx.to_md() == ctx.to_md(mode="metadata")
 
     def test_metadata_tier_content_renders(self, tiny_png: Path, tiny_txt: Path, isolated_db: Path):
@@ -290,32 +367,33 @@ class TestToMd:
         renders an empty content column.
         """
         ctx = mm.Context()
-        ctx.put(tiny_png)
-        ctx.put(tiny_txt)
+        ctx.add(tiny_png)
+        ctx.add(tiny_txt)
         md = ctx.to_md()
         # image row carries extract_meta output
         assert "32x32" in md
         # text row carries the raw file body
         assert 'print("hello")' in md
 
-    def test_renders_inmemory_and_url_items(self, tiny_png: Path):
-        """In-memory (PIL/bytes) + URL items skip ``_collect_metadata_contents``
-        and fall through to the Rust-side fallback. The table must still
-        render a row for each.
+    def test_renders_inmemory_items(self, tiny_png: Path):
+        """In-memory text/PIL items must still render a row.
+
+        Text strings are collected as metadata-tier content; PIL falls
+        through to the Rust-side fallback.
         """
         ctx = mm.Context()
-        path_ref = ctx.put(tiny_png)
-        pil_ref = ctx.put(Image.new("RGB", (8, 8), "blue"))
-        bytes_ref = ctx.put(b"\x89PNG\r\n\x1a\nrest")
-        url_ref = ctx.put("https://example.com/x.jpg")
+        path_ref = ctx.add(tiny_png)
+        text_ref = ctx.add("inline note")
+        pil_ref = ctx.add(Image.new("RGB", (8, 8), "blue"))
         md = ctx.to_md()
-        for ref in (path_ref, pil_ref, bytes_ref, url_ref):
+        for ref in (path_ref, text_ref, pil_ref):
             assert ref in md, f"{ref} missing from to_md output"
+        assert "inline note" in md
 
     @pytest.mark.parametrize("mode", ["fast", "accurate"])
     def test_unimplemented_modes_raise(self, tiny_png: Path, mode: str):
         ctx = mm.Context()
-        ctx.put(tiny_png)
+        ctx.add(tiny_png)
         with pytest.raises(NotImplementedError) as excinfo:
             ctx.to_md(mode=mode)
         # Error message must echo the actual mode passed (regression guard
@@ -332,8 +410,8 @@ class TestPrintTree:
         import re
 
         ctx = mm.Context(session_id="tree-sess")
-        ctx.put(tiny_png, metadata={"note": "one"})
-        ctx.put(Image.new("RGB", (8, 8)), metadata={"summary": "two"})
+        ctx.add(tiny_png, metadata={"note": "one"})
+        ctx.add(Image.new("RGB", (8, 8)), metadata={"summary": "two"})
         ctx.print_tree()
         raw = capsys.readouterr().out
         # Strip ANSI control sequences that rich injects.
@@ -357,10 +435,11 @@ class TestPrintTree:
 class TestRepr:
     def test_repr_is_markdown(self, tiny_png: Path):
         ctx = mm.Context(session_id="repr-sess")
-        ref = ctx.put(tiny_png)
+        ref = ctx.add(tiny_png)
         text = repr(ctx)
         assert text.startswith("Context(session=repr-sess, items=1)")
         assert "| ref |" in text
+        assert "| role |" in text
         assert ref in text
 
     def test_empty_repr(self):
@@ -387,7 +466,7 @@ class TestTypingHelpers:
         # Typed alias — at runtime it's just ``str``.
         ctx = mm.Context()
         img = Image.new("RGB", (2, 2))
-        ref: mm.Ref = ctx.put(img)
+        ref: mm.Ref = ctx.add(img)
         assert isinstance(ref, str)
 
 
@@ -395,22 +474,53 @@ class TestTypingHelpers:
 
 
 class TestSaveStub:
-    def test_save_put_based_raises(self, tiny_png: Path):
+    def test_save_role_aware_raises(self, tiny_png: Path):
         ctx = mm.Context()
-        ctx.put(tiny_png)
+        ctx.add(tiny_png)
         with pytest.raises(NotImplementedError, match="not implemented"):
             ctx.save()
+
+
+# ── remove() ───────────────────────────────────────────────────────────
+
+
+class TestRemove:
+    def test_remove_deletes_item(self, tiny_png: Path):
+        ctx = mm.Context()
+        first = ctx.add(tiny_png)
+        second = ctx.add("caption")
+        ctx.remove(first)
+        assert ctx.ref_ids() == [second]
+        with pytest.raises(RefNotFoundError):
+            ctx.get(first)
+
+    def test_remove_accepts_global_ref(self, tiny_png: Path):
+        ctx = mm.Context(session_id="remove-sess")
+        ref = ctx.add(tiny_png)
+        ctx.remove(f"remove-sess/{ref}")
+        assert ctx.ref_ids() == []
+
+    def test_remove_rejects_wrong_session(self, tiny_png: Path):
+        ctx = mm.Context(session_id="right")
+        ref = ctx.add(tiny_png)
+        with pytest.raises(ValueError, match="belongs to session"):
+            ctx.remove(f"wrong/{ref}")
+
+    def test_remove_missing_raises_refnotfounderror(self):
+        ctx = mm.Context()
+        with pytest.raises(RefNotFoundError):
+            ctx.remove("img_zzzzzz")
 
 
 # ── Guardrails: mode mismatch ─────────────────────────────────────────
 
 
 class TestModeGuardrails:
-    def test_put_on_dirscan_raises(self, tmp_path: Path):
+    def test_add_on_dirscan_raises(self, tmp_path: Path):
         (tmp_path / "a.py").write_text("x = 1")
         ctx = mm.Context(tmp_path)
-        with pytest.raises(RuntimeError, match="put-based"):
-            ctx.put("a.py")
+        with pytest.raises(RuntimeError, match="role-aware"):
+            ctx.add(tmp_path / "a.py")
 
     def test_to_messages_on_dirscan_raises(self, tmp_path: Path):
         (tmp_path / "a.py").write_text("x = 1")
@@ -418,7 +528,13 @@ class TestModeGuardrails:
         with pytest.raises(RuntimeError):
             ctx.to_messages()
 
-    def test_files_on_putbased_raises(self):
+    def test_remove_on_dirscan_raises(self, tmp_path: Path):
+        (tmp_path / "a.py").write_text("x = 1")
+        ctx = mm.Context(tmp_path)
+        with pytest.raises(RuntimeError, match="role-aware"):
+            ctx.remove("img_aaaaaa")
+
+    def test_files_on_role_aware_raises(self):
         ctx = mm.Context()
         with pytest.raises(RuntimeError):
             _ = ctx.files

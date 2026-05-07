@@ -52,11 +52,18 @@ class ModeData(TypedDict, total=False):
     beam_size: int
 
 
+class TranscriptionData(TypedDict, total=False):
+    backend: str
+    base_url: str
+    api_key: str
+
+
 class ConfigData(TypedDict, total=False):
     active_profile: str
     profile: dict[str, ProfileData]
     mode: dict[str, ModeData]
     pipelines: dict[str, dict[str, str]]
+    transcription: TranscriptionData
 
 
 WhisperModel = Literal["tiny", "medium"]  # can extend with more sizes if needed
@@ -81,11 +88,30 @@ _MODE_DEFAULTS: dict[Mode, ModeConfig] = {
 
 
 @dataclass
+class TranscriptionConfig:
+    """Transcription backend settings.
+
+    Resolved from ``[transcription]`` in mm.toml.  All fields are
+    ``None`` by default, meaning auto-detect / not configured.
+
+    Set via::
+
+        mm config set transcription.backend openai
+        mm config set transcription.base_url http://localhost:11434/v1
+    """
+
+    backend: str | None = None
+    base_url: str | None = None
+    api_key: str | None = None
+
+
+@dataclass
 class VlmctxConfig:
     """Full resolved configuration."""
 
     mode_fast: ModeConfig = field(default_factory=lambda: replace(_MODE_DEFAULTS["fast"]))
     mode_accurate: ModeConfig = field(default_factory=lambda: replace(_MODE_DEFAULTS["accurate"]))
+    transcription: TranscriptionConfig = field(default_factory=TranscriptionConfig)
 
 
 # ── CLI overrides ───────────────────────────────────────────────────
@@ -139,6 +165,21 @@ def get_mode_config(mode: Mode) -> ModeConfig:
         whisper_model=cast(WhisperModel, mode_section.get("whisper_model", defaults.whisper_model)),
         audio_speed=float(mode_section.get("audio_speed", defaults.audio_speed)),
         beam_size=int(mode_section.get("beam_size", defaults.beam_size)),
+    )
+
+
+def get_transcription_config() -> TranscriptionConfig:
+    """Resolve transcription settings from ``[transcription]`` in mm.toml.
+
+    Returns:
+        TranscriptionConfig with backend, base_url, and api_key.
+    """
+    file_data = _read_config_file()
+    section = file_data.get("transcription", {})
+    return TranscriptionConfig(
+        backend=section.get("backend") or None,
+        base_url=section.get("base_url") or None,
+        api_key=section.get("api_key") or None,
     )
 
 
@@ -212,6 +253,15 @@ def write_full_config(file_data: ConfigData) -> Path:
                     lines.append(f'{mk} = "{_toml_str(str(mv))}"')
             lines.append("")
 
+    # [transcription] section
+    tx = file_data.get("transcription", {})
+    if tx:
+        lines.append("[transcription]")
+        for tk in ("backend", "base_url", "api_key"):
+            if tk in tx and tx[tk]:
+                lines.append(f'{tk} = "{_toml_str(str(tx[tk]))}"')
+        lines.append("")
+
     path = _find_config_path()
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text("\n".join(lines) + "\n")
@@ -245,34 +295,64 @@ def write_platform_config() -> Path:
     )
 
 
-def update_mode_config(key: str, value: str) -> Path:
-    """Update a mode-specific key (e.g. mode.fast.whisper_model) and return path."""
+def update_config_key(key: str, value: str) -> Path:
+    """Update a config key (e.g. ``mode.fast.whisper_model``, ``transcription.backend``).
+
+    Supports:
+      - ``mode.<fast|accurate>.<field>`` — per-mode settings
+      - ``transcription.<backend|base_url|api_key>`` — transcription backend settings
+
+    Returns the path to the written config file.
+    """
     from mm.profile import load_profile_config
 
     file_data = load_profile_config()
-
     parts = key.split(".")
-    if len(parts) != 3 or parts[0] != "mode":
-        raise ValueError(f"Invalid mode key: {key}")
 
-    mode_name, field = parts[1], parts[2]
-    if mode_name not in ("fast", "accurate"):
-        raise ValueError(f"Invalid mode key: {key}")
+    if parts[0] == "mode" and len(parts) == 3:
+        mode_name, fld = parts[1], parts[2]
+        if mode_name not in ("fast", "accurate"):
+            raise ValueError(f"Invalid mode key: {key}")
 
-    if "mode" not in file_data:
-        file_data["mode"] = {}
-    if mode_name not in file_data["mode"]:
-        file_data["mode"][mode_name] = {}
+        if "mode" not in file_data:
+            file_data["mode"] = {}
+        if mode_name not in file_data["mode"]:
+            file_data["mode"][mode_name] = {}
 
-    mode_data = file_data["mode"][mode_name]
+        mode_data = file_data["mode"][mode_name]
+        if fld == "audio_speed":
+            mode_data["audio_speed"] = float(value)
+        elif fld == "beam_size":
+            mode_data["beam_size"] = int(value)
+        elif fld == "whisper_model":
+            mode_data["whisper_model"] = value
+        else:
+            raise ValueError(f"Invalid mode key: {key}")
 
-    if field == "audio_speed":
-        mode_data["audio_speed"] = float(value)
-    elif field == "beam_size":
-        mode_data["beam_size"] = int(value)
-    elif field == "whisper_model":
-        mode_data["whisper_model"] = value
+    elif parts[0] == "transcription" and len(parts) == 2:
+        fld = parts[1]
+        if fld not in ("backend", "base_url", "api_key"):
+            raise ValueError(f"Invalid transcription key: {key}")
+
+        if "transcription" not in file_data:
+            file_data["transcription"] = {}
+        tx = file_data["transcription"]
+        if fld == "backend":
+            tx["backend"] = value
+        elif fld == "base_url":
+            tx["base_url"] = value
+        elif fld == "api_key":
+            tx["api_key"] = value
+
     else:
-        raise ValueError(f"Invalid mode key: {key}")
+        raise ValueError(f"Invalid config key: {key}")
 
     return write_full_config(file_data)
+
+
+def update_mode_config(key: str, value: str) -> Path:
+    """Update a mode-specific key (e.g. mode.fast.whisper_model) and return path.
+
+    .. deprecated:: Use :func:`update_config_key` instead.
+    """
+    return update_config_key(key, value)

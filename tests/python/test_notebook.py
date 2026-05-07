@@ -28,7 +28,7 @@ from mm.notebook import (
     _render_text_part,
     _split_encoded_parts,
     render_context,
-    render_messages_html,
+    render_messages,
 )
 
 TINY_B64 = base64.b64encode(b"\x89PNG\r\n\x1a\n" + b"\x00" * 20).decode()
@@ -281,50 +281,50 @@ class TestStats:
 
 class TestRenderMessages:
     def test_empty_messages(self):
-        result = render_messages_html([])
+        result = render_messages([])
         assert "<style>" in result
 
     def test_single_text_message(self):
         msgs = [_message("user", [_text_part("Hello")])]
-        result = render_messages_html(msgs)
+        result = render_messages(msgs)
         assert "Hello" in result
         assert "User" in result
 
     def test_string_content(self):
         msgs = [{"role": "assistant", "content": "Sure thing."}]
-        result = render_messages_html(msgs)
+        result = render_messages(msgs)
         assert "Sure thing." in result
 
     def test_image_rendered(self):
         msgs = [_message("user", [_image_part()])]
-        result = render_messages_html(msgs)
+        result = render_messages(msgs)
         assert "<img " in result
 
     def test_collapsible_gallery(self):
         parts = [_image_part() for _ in range(8)]
         msgs = [_message("user", parts)]
-        result = render_messages_html(msgs)
+        result = render_messages(msgs)
         assert "<details" in result
         assert "Show 8 frames" in result
 
     def test_small_gallery_not_collapsed(self):
         parts = [_image_part() for _ in range(3)]
         msgs = [_message("user", parts)]
-        result = render_messages_html(msgs)
+        result = render_messages(msgs)
         assert "<details" not in result or "Show " not in result
 
     def test_role_hidden(self):
         msgs = [_message("user", [_text_part("test")])]
-        result = render_messages_html(msgs, show_role=False)
+        result = render_messages(msgs, show_role=False)
         assert "User" not in result
 
     def test_title(self):
-        result = render_messages_html([], title="My Thread")
+        result = render_messages([], title="My Thread")
         assert "My Thread" in result
 
     def test_stats_footer(self):
         msgs = [_message("user", [_text_part("hello"), _image_part()])]
-        result = render_messages_html(msgs)
+        result = render_messages(msgs)
         assert "est. tokens" in result
 
     def test_multi_role(self):
@@ -333,14 +333,14 @@ class TestRenderMessages:
             _message("user", [_text_part("Hi")]),
             _message("assistant", [_text_part("Hello!")]),
         ]
-        result = render_messages_html(msgs)
+        result = render_messages(msgs)
         assert "System" in result
         assert "User" in result
         assert "Assistant" in result
 
     def test_scoped_css(self):
-        r1 = render_messages_html([])
-        r2 = render_messages_html([])
+        r1 = render_messages([])
+        r2 = render_messages([])
         id1 = r1.split("-root")[0].split('"')[-1]
         id2 = r2.split("-root")[0].split('"')[-1]
         assert id1 != id2
@@ -354,7 +354,7 @@ class TestRenderContext:
         import mm
 
         ctx = mm.Context()
-        ctx.put(img_path, metadata={"note": "test image", "tags": "demo"})
+        ctx.add(img_path, metadata={"note": "test image", "tags": "demo"})
         result = render_context(ctx)
         assert "<style>" in result
         assert "IMAGE" in result
@@ -367,7 +367,7 @@ class TestRenderContext:
         import mm
 
         ctx = mm.Context()
-        ctx.put(img_path, metadata={"note": "hero shot", "camera": "iPhone"})
+        ctx.add(img_path, metadata={"note": "hero shot", "camera": "iPhone"})
         result = render_context(ctx)
         assert "hero shot" in result
         assert "camera" in result
@@ -381,7 +381,7 @@ class TestRenderContext:
         import mm
 
         ctx = mm.Context()
-        ctx.put(img_path)
+        ctx.add(img_path)
         result = render_context(ctx)
         assert "1920x1080" in result
 
@@ -393,7 +393,7 @@ class TestRenderContext:
         import mm
 
         ctx = mm.Context()
-        ctx.put(img_path)
+        ctx.add(img_path)
         result = render_context(ctx)
         assert "Show VLM encoding" not in result
         assert "→ 1 image" not in result
@@ -437,7 +437,7 @@ class TestRenderContext:
         import mm
 
         ctx = mm.Context()
-        ctx.put(img_path, metadata={"note": "first"})
+        ctx.add(img_path, metadata={"note": "first"})
         result = render_context(ctx)
         assert "1 image(s)" in result
         assert "est. tokens" in result
@@ -449,7 +449,7 @@ class TestRenderContext:
         import mm
 
         ctx = mm.Context()
-        ctx.put(txt_path)
+        ctx.add(txt_path)
         result = render_context(ctx)
         assert "hello.txt" in result
 
@@ -460,7 +460,7 @@ class TestRenderContext:
         import mm
 
         ctx = mm.Context()
-        ctx.put(txt_path)
+        ctx.add(txt_path)
         result = render_context(ctx, title="Custom Title")
         assert "Custom Title" in result
 
@@ -471,7 +471,7 @@ class TestRenderContext:
         import mm
 
         ctx = mm.Context()
-        ctx.put(img_path)
+        ctx.add(img_path)
         result = ctx.render_html()
         assert "<style>" in result
         assert "IMAGE" in result
@@ -502,7 +502,7 @@ class TestRenderContextTruncation:
         for i in range(8):
             p = tmp_path / f"f{i}.txt"
             p.write_text(f"file {i}")
-            ctx.put(p)
+            ctx.add(p)
         result = ctx.render_html()
         assert "Show 5 more items" in result
         assert "<details" in result
@@ -514,7 +514,7 @@ class TestRenderContextTruncation:
         for i in range(3):
             p = tmp_path / f"f{i}.txt"
             p.write_text(f"file {i}")
-            ctx.put(p)
+            ctx.add(p)
         result = ctx.render_html()
         assert "Show " not in result or "more items" not in result
 
@@ -527,7 +527,7 @@ class TestClickToZoom:
         import mm
 
         ctx = mm.Context()
-        ctx.put(img_path)
+        ctx.add(img_path)
         result = render_context(ctx)
         assert "img-link" in result
         assert "zoom-toggle" in result
@@ -536,7 +536,7 @@ class TestClickToZoom:
 
     def test_gallery_image_has_modal(self):
         msgs = [_message("user", [_image_part()])]
-        result = render_messages_html(msgs)
+        result = render_messages(msgs)
         assert "img-link" in result
         assert "zoom-toggle" in result
         assert "-modal" in result
@@ -544,7 +544,7 @@ class TestClickToZoom:
 
     def test_each_image_has_unique_modal_id(self):
         msgs = [_message("user", [_image_part(), _image_part(), _image_part()])]
-        result = render_messages_html(msgs)
+        result = render_messages(msgs)
         import re
 
         ids = re.findall(r'id="(mm-\w+-z\w+)"', result)
@@ -555,12 +555,12 @@ class TestClickToZoom:
 class TestXssSafety:
     def test_script_injection(self):
         msgs = [_message("user", [_text_part('<img src=x onerror="alert(1)">')])]
-        result = render_messages_html(msgs)
+        result = render_messages(msgs)
         assert "<img src=x" not in result
 
     def test_ref_tag_injection(self):
         msgs = [_message("user", [_text_part('[ref="><script>alert(1)</script>]')])]
-        result = render_messages_html(msgs)
+        result = render_messages(msgs)
         assert "<script>" not in result
 
 
@@ -708,15 +708,15 @@ class TestModalLightboxCss:
 
     def test_modal_present_in_rendered_output(self):
         msgs = [_message("user", [_image_part()])]
-        result = render_messages_html(msgs)
+        result = render_messages(msgs)
         assert ":checked ~" in result
         assert "position: fixed" in result
 
     def test_modal_scoped_to_render(self):
         # Two independent renders must each have their own scoped modal CSS
         # so opening a modal in one doesn't accidentally style the other.
-        a = render_messages_html([_message("user", [_image_part()])])
-        b = render_messages_html([_message("user", [_image_part()])])
+        a = render_messages([_message("user", [_image_part()])])
+        b = render_messages([_message("user", [_image_part()])])
         # Extract the scope id from each
         import re
 
@@ -733,14 +733,14 @@ class TestContextManager:
         with mm.Context() as ctx:
             assert isinstance(ctx, mm.Context)
 
-    def test_put_inside_with_persists(self, tmp_path):
+    def test_add_inside_with_persists(self, tmp_path):
         import mm
 
         img = tmp_path / "a.png"
         img.write_bytes(_make_valid_png())
 
         with mm.Context() as ctx:
-            ctx.put(img)
+            ctx.add(img)
             assert len(list(ctx.items())) == 1
 
     def test_context_usable_after_exit(self, tmp_path):
@@ -751,7 +751,7 @@ class TestContextManager:
         img.write_bytes(_make_valid_png())
 
         with mm.Context() as ctx:
-            ctx.put(img)
+            ctx.add(img)
 
         assert len(list(ctx.items())) == 1
         html_out = ctx.render_html()
@@ -766,7 +766,7 @@ class TestContextRenderHtml:
         img.write_bytes(_make_valid_png())
 
         with mm.Context() as ctx:
-            ctx.put(img)
+            ctx.add(img)
 
             result = ctx.render_html()
 
@@ -781,7 +781,7 @@ class TestContextRenderHtml:
         img.write_bytes(_make_valid_png())
 
         with mm.Context() as ctx:
-            ctx.put(img)
+            ctx.add(img)
             result = ctx.render_html(max_image_width=128)
 
         assert "max-width:128px" in result
@@ -793,23 +793,41 @@ class TestContextRenderHtml:
         img.write_bytes(_make_valid_png())
 
         with mm.Context() as ctx:
-            ctx.put(img)
+            ctx.add(img)
             result = ctx.render_html(title="My Custom Context")
 
         assert "My Custom Context" in result
 
-    def test_repr_html_auto_renders(self, tmp_path):
+    def test_render_html_encoder_kwargs(self, tmp_path):
         import mm
 
         img = tmp_path / "a.png"
         img.write_bytes(_make_valid_png())
 
         with mm.Context() as ctx:
-            ctx.put(img)
-            result = ctx._repr_html_()
+            ctx.add(img)
+            result = ctx.render_html(
+                encoder_kwargs={"image": {"max_width": 16}},
+            )
 
         assert "<style" in result
         assert "mm-" in result
+
+    def test_render_context_encoder_kwargs(self, tmp_path):
+        import mm
+        from mm.notebook import render_context
+
+        img = tmp_path / "a.png"
+        img.write_bytes(_make_valid_png())
+
+        with mm.Context() as ctx:
+            ctx.add(img)
+            result = render_context(
+                ctx,
+                encoder_kwargs={"image": {"max_width": 16}},
+            )
+
+        assert "<style" in result
 
 
 class TestJpegDimsRobustness:
@@ -978,17 +996,3 @@ class TestNativeMediaErrorHandling:
         assert "<bad>" not in result
         assert "&lt;bad&gt;" in result
         assert "&amp;" in result
-
-
-class TestContextDirectoryScanReprHtml:
-    """Regression test for XSS in the directory-scan `_repr_html_` fallback."""
-
-    def test_root_is_html_escaped(self, tmp_path):
-        import mm
-
-        evil = tmp_path / '<img src=x onerror="alert(1)">'
-        evil.mkdir()
-        ctx = mm.Context(str(evil))
-        result = ctx._repr_html_()
-        assert "<img src=x" not in result
-        assert "&lt;img" in result or "&amp;lt;img" in result

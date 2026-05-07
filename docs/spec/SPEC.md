@@ -68,8 +68,11 @@ mm
 │   ├── [x] think=false + reasoning_effort="none" + temperature=0.1
 │   ├── [x] Accurate-mode errors propagate directly (no silent fallback to fast mode)
 │   ├── [x] --mode fast|accurate per-modality extraction strategies (default 'fast')
-│   ├── [x] Audio transcription via ffmpeg + whisper (2x speed, greedy beam=1)
-│   ├── [x] Whisper backend auto-select: MLX Metal GPU > CTranslate2 CPU/CUDA
+│   ├── [x] Audio transcription via ffmpeg + modular backends (2x speed, greedy beam=1)
+│   ├── [x] Transcription backend ABC with pluggable registry (mm.common.audio)
+│   ├── [x] Backend auto-select: MLX Metal GPU (10) > CTranslate2 CPU/CUDA (20) > OpenAI API (30)
+│   ├── [x] OpenAI-compatible transcription backend (/v1/audio/transcriptions, custom base_url)
+│   ├── [x] TranscriptionConfig in mm.toml (backend, base_url, api_key)
 │   ├── [x] Parallel visual + audio extraction (ThreadPoolExecutor)
 │   ├── [x] Video: mosaic (4x4 @ 1500px) + transcript → LLM markdown
 │   ├── [x] Image: fast (10 words + 5 tags) / accurate (200 words + 10 tags + objects)
@@ -89,6 +92,7 @@ mm
 │   ├── [x] info() — Rich summary panel
 │   ├── [x] save() — persist to .mm/index.parquet
 │   ├── [x] Context(session_id=...) / Context.new_session() — external session id
+│   ├── [x] add(str | Path | PIL.Image.Image, role) — role-aware refs; strings inline as text
 │   ├── [x] ref_for(path) / global_ref(path) / refs — kind-prefixed deterministic ref ids
 │   └── [x] Context.resolve("<session_id>/<ref_id>") — global cross-user lookup
 │
@@ -155,7 +159,7 @@ mm
 │
 ├── Tests
 │   ├── Rust: 75 tests (meta, walk, detect, schema, table, code, image, video, audio, document, hash)
-│   ├── Python: 582 tests (CLI, Context API, refs/sessions, pipe, metadata/fast/accurate, config, whisper, scenes, docling, bench)
+│   ├── Python: 587 tests (CLI, Context API, refs/sessions, pipe, metadata/fast/accurate, config, transcription backends, scenes, docling, bench)
 │   ├── Criterion benchmarks: metadata_walk, metadata_index, hash_strategies, metadata_extract, find_filter
 │   ├── mm bench: 24 commands (metadata×10, fast×8, accurate×6) with bits/s throughput
 │   └── pytest-benchmark: 11 benchmarks (metadata, fast, ffmpeg, e2e)

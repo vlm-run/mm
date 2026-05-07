@@ -173,9 +173,9 @@ def accurate_video(path: Path, spec: PipelineSpec, opts: CatOpts) -> RunResult:
         if not ekw.get("transcribe"):
             return ""
 
-        from mm.whisper import whisper_available
+        from mm.common.audio import transcribe_available
 
-        if not whisper_available():
+        if not transcribe_available():
             return ""
 
         whisper_model = ekw.get("whisper_model") or "medium"
@@ -186,11 +186,11 @@ def accurate_video(path: Path, spec: PipelineSpec, opts: CatOpts) -> RunResult:
         audio_result = extract_audio(path, speed=audio_speed)
         timing["audio_extraction_ms"] = (time.monotonic() - t_audio) * 1000
 
-        from mm.whisper import transcribe
+        from mm.common.audio import transcribe
 
         whisper_result = transcribe(
             audio_result.path,
-            model_size=whisper_model,
+            model=whisper_model,
             beam_size=beam_size,
             audio_speed=audio_speed,
         )

@@ -9,7 +9,7 @@
 //! The benchmarks are grouped so you can target one area:
 //!
 //! ```sh
-//! cargo bench -p mm-core --bench refs -- refs/put_path
+//! cargo bench -p mm-core --bench refs -- refs/add_path
 //! cargo bench -p mm-core --bench refs -- refs/get
 //! cargo bench -p mm-core --bench refs -- refs/render
 //! cargo bench -p mm-core --bench refs -- refs/ref_not_found
@@ -25,7 +25,7 @@ use std::collections::HashMap;
 use compact_str::CompactString;
 use criterion::{BenchmarkId, Criterion, Throughput, black_box, criterion_group, criterion_main};
 use mm_core::meta::FileKind;
-use mm_core::refs::{Context, ItemSource, MetaValue, make_ref_id, uuid7};
+use mm_core::refs::{Context, ItemSource, MetaValue, PromptRole, make_ref_id, uuid7};
 
 // ── Helpers ─────────────────────────────────────────────────────────────
 
@@ -41,7 +41,8 @@ fn build_ctx(n: usize) -> Context {
     let mut ctx = Context::new(uuid7());
     for i in 0..n {
         let kind = KINDS[i % KINDS.len()];
-        ctx.put(
+        ctx.add(
+            PromptRole::User,
             kind,
             ItemSource::Path {
                 path: CompactString::from(format!("/abs/path/f{:05}.bin", i)),
@@ -72,7 +73,8 @@ fn build_ctx_with_metadata(n: usize) -> Context {
                 MetaValue::StrList(vec!["a".into(), "b".into(), "c".into()]),
             ),
         ];
-        ctx.put(
+        ctx.add(
+            PromptRole::User,
             kind,
             ItemSource::Path {
                 path: CompactString::from(format!("/abs/path/f{:05}.bin", i)),
@@ -100,10 +102,10 @@ fn bench_uuid7(c: &mut Criterion) {
     c.bench_function("refs/uuid7", |b| b.iter(uuid7));
 }
 
-// ── put(...) throughput across scales ───────────────────────────────────
+// ── add(...) throughput across scales ───────────────────────────────────
 
-fn bench_put_path(c: &mut Criterion) {
-    let mut group = c.benchmark_group("refs/put_path");
+fn bench_add_path(c: &mut Criterion) {
+    let mut group = c.benchmark_group("refs/add_path");
     for n in [100usize, 1_000, 10_000, 100_000] {
         group.throughput(Throughput::Elements(n as u64));
         group.bench_with_input(BenchmarkId::from_parameter(n), &n, |b, &n| {
@@ -113,15 +115,16 @@ fn bench_put_path(c: &mut Criterion) {
     group.finish();
 }
 
-fn bench_put_inmem(c: &mut Criterion) {
-    let mut group = c.benchmark_group("refs/put_inmem");
+fn bench_add_inmem(c: &mut Criterion) {
+    let mut group = c.benchmark_group("refs/add_inmem");
     for n in [1_000usize, 10_000] {
         group.throughput(Throughput::Elements(n as u64));
         group.bench_with_input(BenchmarkId::from_parameter(n), &n, |b, &n| {
             b.iter(|| {
                 let mut ctx = Context::new("s");
                 for i in 0..n {
-                    ctx.put(
+                    ctx.add(
+                        PromptRole::User,
                         FileKind::Image,
                         ItemSource::InMemory {
                             mime: "image/png".into(),
@@ -137,8 +140,8 @@ fn bench_put_inmem(c: &mut Criterion) {
     group.finish();
 }
 
-fn bench_put_with_metadata(c: &mut Criterion) {
-    let mut group = c.benchmark_group("refs/put_with_metadata");
+fn bench_add_with_metadata(c: &mut Criterion) {
+    let mut group = c.benchmark_group("refs/add_with_metadata");
     for n in [1_000usize, 10_000] {
         group.throughput(Throughput::Elements(n as u64));
         group.bench_with_input(BenchmarkId::from_parameter(n), &n, |b, &n| {
@@ -263,14 +266,14 @@ fn bench_ref_not_found_message(c: &mut Criterion) {
     group.finish();
 }
 
-// ── Realistic mixed workload: put + get + render ────────────────────────
+// ── Realistic mixed workload: add + get + render ────────────────────────
 //
 // Simulates an agent that incrementally builds a context, reads items
 // back, and occasionally renders the tree. This is the shape we actually
 // care about when serving an agent-loop, not isolated micro-benches.
 
 fn bench_mixed_workload(c: &mut Criterion) {
-    let mut group = c.benchmark_group("refs/mixed_put_get_render");
+    let mut group = c.benchmark_group("refs/mixed_add_get_render");
     for n in [1_000usize, 10_000] {
         group.throughput(Throughput::Elements(n as u64));
         group.bench_with_input(BenchmarkId::from_parameter(n), &n, |b, &n| {
@@ -279,7 +282,8 @@ fn bench_mixed_workload(c: &mut Criterion) {
                 let mut last_ref: Option<CompactString> = None;
                 for i in 0..n {
                     let kind = KINDS[i % KINDS.len()];
-                    let ref_id = ctx.put(
+                    let ref_id = ctx.add(
+                        PromptRole::User,
                         kind,
                         ItemSource::Path {
                             path: CompactString::from(format!("/x/{}", i)),
@@ -331,9 +335,9 @@ criterion_group!(
     benches,
     bench_make_ref_id,
     bench_uuid7,
-    bench_put_path,
-    bench_put_inmem,
-    bench_put_with_metadata,
+    bench_add_path,
+    bench_add_inmem,
+    bench_add_with_metadata,
     bench_get_hit,
     bench_get_miss,
     bench_render_tree,
