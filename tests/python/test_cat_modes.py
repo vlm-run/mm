@@ -113,8 +113,10 @@ class TestExtractDispatch:
         fast_mock.assert_not_called()
         accurate_mock.assert_not_called()
 
-    def test_non_pdf_document_short_circuits_pipeline(self, tmp_path, isolated_db, monkeypatch):
-        """Non-PDF documents (.docx / .pptx) follow the ``extract_text`` flow."""
+    def test_non_pdf_document_fast_short_circuits_pipeline(
+        self, tmp_path, isolated_db, monkeypatch
+    ):
+        """In fast mode, non-PDF office docs follow the ``extract_text`` flow."""
         f = tmp_path / "notes.docx"
         f.write_bytes(b"PK\x03\x04 not-a-real-docx")  # zip magic + garbage
         with (
@@ -125,11 +127,48 @@ class TestExtractDispatch:
             patch("mm.commands.cat._run_fast") as fast_mock,
             patch("mm.commands.cat._run_accurate") as accurate_mock,
         ):
-            for mode in ("fast", "accurate"):
-                result = _extract(f, _make_opts(mode))
-                assert result == "docx body text"
+            result = _extract(f, _make_opts("fast"))
+            assert result == "docx body text"
         fast_mock.assert_not_called()
         accurate_mock.assert_not_called()
+
+    def test_non_pdf_document_accurate_routes_through_pdf(self, tmp_path, isolated_db, monkeypatch):
+        """In accurate mode, non-PDF office docs convert to a temp PDF and run
+        through the pipeline.
+        """
+        f = tmp_path / "notes.docx"
+        f.write_bytes(b"PK\x03\x04 not-a-real-docx")
+        seen_paths: list[Path] = []
+
+        def _fake_to_pdf(src: str, dst: str) -> str:
+            Path(dst).write_bytes(b"%PDF-1.4 stub\n%%EOF\n")
+            return dst
+
+        def _capture_run(path, kind, spec, opts, *, meta_path=None):
+            seen_paths.append(path)
+            assert path != f, "accurate must receive the temp PDF, not the docx"
+            assert path.suffix == ".pdf"
+            assert path.exists(), "temp PDF must exist while run_accurate runs"
+            assert meta_path == f
+            return RunResult(content="structured markdown")
+
+        cm1, cm2, cm3, cm4 = _mock_cache_miss()
+        with (
+            cm1,
+            cm2,
+            cm3,
+            cm4,
+            patch("mm._mm.office_to_pdf", side_effect=_fake_to_pdf),
+            patch("mm.commands.cat._run_accurate", side_effect=_capture_run) as accurate_mock,
+            patch("mm.commands.cat._run_fast") as fast_mock,
+        ):
+            result = _extract(f, _make_opts("accurate"))
+            assert result == "structured markdown"
+        fast_mock.assert_not_called()
+        accurate_mock.assert_called_once()
+        # Temp PDF cleaned up after _extract returns.
+        assert not seen_paths[0].exists(), f"temp PDF leaked: {seen_paths[0]}"
+        assert not seen_paths[0].parent.exists(), f"temp dir leaked: {seen_paths[0].parent}"
 
     def test_fast_image_dispatch(self, tmp_path):
         from mm.pipelines.schema import PipelineSpec
