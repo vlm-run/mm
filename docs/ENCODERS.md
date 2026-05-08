@@ -8,7 +8,7 @@ file → encoder → [{"role": "user", "content": [...]}] → LLM (if pipeline h
 
 ## Current Encoders
 
-### Image (2)
+### Image
 
 | Name | Description | Parameters |
 |------|-------------|------------|
@@ -67,16 +67,27 @@ graph LR
 ```
 
 
-### Video (8)
+### Video
 
 | Name | Description | Parameters |
 |------|-------------|------------|
 | `video-mosaic` | Scene-aware frame extraction + tiled mosaic grids. Default for fast mode. Uses PySceneDetect when available, falls back to uniform sampling. | `tile_cols=4`, `tile_rows=4`, `thumb_width=160`, `num_mosaics=8`, `num_frames=128` |
-| `video-frame-sample` | Extract frames at N fps via parallel ffmpeg seeking, batch into messages (max 16 frames each). Text header with time range per batch. | `fps=1.0`, `max_width=1024`, `max_frames_per_message=16` |
-| `video-frames-transcript` | Frame sampling + Whisper audio transcription. Transcript yielded first as context, then batched frames. Default for accurate mode. Falls back to frame-only when Whisper is unavailable. | `fps=1.0`, `max_width=1024`, `max_frames_per_message=16`, `whisper_model=medium`, `language=auto`, `audio_speed=1.0` |
-| `video-chunk` | Split into overlapping time-based chunks, extract frames per chunk. One message per chunk with time range header. | `chunk_duration=60`, `overlap=20`, `max_width=1024`, `frames_per_chunk=16` |
-| `video-shot-frames` | PySceneDetect shot detection, extract representative frames per shot. One message per shot, processed sequentially to avoid OOM. | `threshold=27.0`, `max_frames_per_shot=8`, `max_width=1024` |
-| `video-shot-mosaic` | PySceneDetect shot detection, build a mosaic grid per shot via `tile_frames_to_mosaics`. One message per shot. | `threshold=27.0`, `tile_cols=4`, `tile_rows=4`, `thumb_width=160` |
+| `video-mosaic-w-transcript` | `video-mosaic` + Whisper transcript prepended. | + transcript opts |
+| `video-frames` | Extract frames at N fps via parallel ffmpeg seeking, batch into messages (max 16 frames each). Text header with time range per batch. | `fps=1.0`, `max_width=1024`, `max_frames_per_message=16` |
+| `video-frames-w-transcript` | Frame sampling + Whisper audio transcription. Transcript yielded first as context, then batched frames. Default for accurate mode. Falls back to frame-only when Whisper is unavailable. | `fps=1.0`, `max_width=1024`, `max_frames_per_message=16`, `whisper_model=medium`, `language=auto`, `audio_speed=1.0` |
+| `video-keyframes` | Extract I-frames (keyframes) directly from the video bitstream. | `max_keyframes=None`, `max_width=1024`, `max_keyframes_per_message=16` |
+| `video-keyframes-w-transcript` | `video-keyframes` + Whisper transcript prepended. | + transcript opts |
+| `video-shots` | PySceneDetect shot detection, extract representative frames per shot. One message per shot. | `threshold=27.0`, `max_frames_per_shot=8`, `max_width=1024` |
+| `video-shots-w-transcript` | `video-shots` + Whisper transcript prepended. | + transcript opts |
+| `video-shot-mosaic` | PySceneDetect shot detection, build a mosaic grid per shot. One message per shot. | `threshold=27.0`, `tile_cols=4`, `tile_rows=4`, `thumb_width=160` |
+| `video-shot-mosaic-w-transcript` | `video-shot-mosaic` + Whisper transcript prepended. | + transcript opts |
+| `video-chunks` | Split into overlapping time-based chunks, extract frames per chunk. One message per chunk with time range header. | `chunk_duration=60`, `overlap=20`, `max_width=1024`, `frames_per_chunk=16` |
+| `video-clips` | Base64-encode video clips of uniform duration (no frame extraction). | `duration=0`, `max_size_mb=None` |
+| `video-clips-w-transcript` | `video-clips` + Whisper transcript prepended. | + transcript opts |
+| `video-summary` | Adaptive N-frame visual summary of a video. | `num_frames=12`, `use_scene_detection=True`, `max_width=1024` |
+| `video-summary-w-transcript` | `video-summary` + Whisper transcript prepended. | + transcript opts |
+| `video-transcript` | Whisper transcript only (no frames / no images). | `whisper_model=medium`, `language=auto`, `audio_speed=1.0` |
+| `video-captions` | Extract embedded subtitle stream from video; falls back to Whisper. | `subtitle_stream=0`, `fallback_to_whisper=True`, `whisper_model=medium`, `language=auto`, `audio_speed=1.0` |
 | `video-gemini` | Gemini native `inline_data` passthrough. Sends the entire video file. Rust fast-path with Python fallback. | — |
 | `video-gemini-chunked` | Gemini passthrough with duration-based chunking via ffmpeg. Each chunk as a separate Gemini Part. | `max_seconds=120`, `overlap=10` |
 
@@ -104,7 +115,7 @@ graph LR
   style encode fill:#f1f8e9,stroke:#66bb6a,stroke-width:1px,rx:10
 ```
 
-#### `video-frame-sample`
+#### `video-frames`
 
 ```mermaid
 %%{init: {'theme': 'base', 'themeVariables': { 'fontSize': '14px', 'primaryColor': '#e8f4fd', 'primaryBorderColor': '#4a90d9', 'lineColor': '#666'}}}%%
@@ -128,7 +139,7 @@ graph LR
   style encode fill:#f1f8e9,stroke:#66bb6a,stroke-width:1px,rx:10
 ```
 
-#### `video-frames-transcript`
+#### `video-frames-w-transcript`
 
 ```mermaid
 %%{init: {'theme': 'base', 'themeVariables': { 'fontSize': '14px', 'primaryColor': '#e8f4fd', 'primaryBorderColor': '#4a90d9', 'lineColor': '#666'}}}%%
@@ -156,7 +167,7 @@ graph LR
   style encode fill:#f1f8e9,stroke:#66bb6a,stroke-width:1px,rx:10
 ```
 
-#### `video-chunk`
+#### `video-chunks`
 
 ```mermaid
 %%{init: {'theme': 'base', 'themeVariables': { 'fontSize': '14px', 'primaryColor': '#e8f4fd', 'primaryBorderColor': '#4a90d9', 'lineColor': '#666'}}}%%
@@ -186,7 +197,7 @@ graph LR
   style encode fill:#f1f8e9,stroke:#66bb6a,stroke-width:1px,rx:10
 ```
 
-#### `video-shot-frames`
+#### `video-shots`
 
 ```mermaid
 %%{init: {'theme': 'base', 'themeVariables': { 'fontSize': '14px', 'primaryColor': '#e8f4fd', 'primaryBorderColor': '#4a90d9', 'lineColor': '#666'}}}%%
@@ -299,11 +310,12 @@ graph LR
   style encode fill:#f1f8e9,stroke:#66bb6a,stroke-width:1px,rx:10
 ```
 
-### Audio (2)
+### Audio
 
 | Name | Description | Parameters |
 |------|-------------|------------|
-| `audio-transcribe` | Extract audio via ffmpeg, transcribe with Whisper (lightning-whisper-mlx / faster-whisper). Returns timestamped transcript as text message. | `whisper_model=medium`, `language=auto`, `audio_speed=1.0` |
+| `audio-base64` | Send the raw audio file as a base64-encoded `input_audio` part. Default for Python `Context.to_messages()`. | `format` (auto-detected from extension) |
+| `audio-transcribe` | Extract audio via ffmpeg, transcribe with Whisper (lightning-whisper-mlx / faster-whisper). Returns timestamped transcript as text message. | `whisper_model=medium`, `language=auto`, `audio_speed=1.0`, optional `backend`/`base_url`/`api_key` for remote |
 | `audio-gemini` | Gemini native `inline_data` passthrough for audio files. Splits into overlapping chunks for files longer than `max_seconds`. | `max_seconds=120`, `overlap=10` |
 
 #### `audio-transcribe`
@@ -364,7 +376,7 @@ graph LR
   style encode2 fill:#f1f8e9,stroke:#66bb6a,stroke-width:1px,rx:10
 ```
 
-### Document (4)
+### Document
 
 | Name | Description | Parameters |
 |------|-------------|------------|

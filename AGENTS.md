@@ -61,8 +61,7 @@ Rust core for speed, Python for developer experience, Unix philosophy for compos
 - faster-whisper — Whisper transcription (CTranslate2 backend)
 - scenedetect[opencv] — shot/scene boundary detection
 - ctranslate2 — CTranslate2 inference runtime (for faster-whisper)
-- python-docx — DOCX text extraction
-- python-pptx — PPTX text extraction
+- libreoffice-rs — Office Docs text extraction
 
 **Python (mm[gemini]):**
 - google-genai — Gemini embedding generation (text, image, audio, video, document)

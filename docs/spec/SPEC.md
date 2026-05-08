@@ -76,7 +76,7 @@ mm
 │   ├── [x] Parallel visual + audio extraction (ThreadPoolExecutor)
 │   ├── [x] Video: mosaic (4x4 @ 1500px) + transcript → LLM markdown
 │   ├── [x] Image: fast (10 words + 5 tags) / accurate (200 words + 10 tags + objects)
-│   ├── [x] Document extraction via pypdfium2 (PDF) / python-docx (DOCX) / python-pptx (PPTX)
+│   ├── [x] Document extraction via pypdfium2 (PDF) / libreoffice-rs (DOCX/PPTX/PPTX/ODS/ODT/ODP)
 │   └── [x] Embedding generation via Gemini API (text, image, audio, video, document → chunks_vec)
 │
 ├── Python API (Context class)
@@ -179,7 +179,7 @@ For each modality (image, video, documents like PDFs), I’d like to have a few 
     - mode=fast -> describe the image in 10 words or less, and extract 5-keyword tags
     - mode=accurate -> describe the image in detail (200 words) + extract up to 10-keyword tags + extract up to 10-objects/people/faces/logos in the image
 - documents: (PDFs, Word documents, etc.)
-    - pypdfium2 for PDF text extraction, python-docx/python-pptx for Office formats
+    - pypdfium2 for PDF text extraction, libreoffice-rs for Office formats
     - ignore image/video/audio as we have other ways to extract metadata/semantics for them (detailed extraction is not needed)
 - audio:
     - mode=fast

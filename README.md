@@ -170,9 +170,11 @@ mm peek paper.pdf --full                                        # include docume
 # mm cat: content extraction. Default --mode fast.
 mm cat wordpress-pdf-invoice-plugin-sample.pdf                  # PDF page-text via pypdfium2 (fast pipeline)
 mm cat src/main.py                                              # passthrough text + chunk + embed (kind=text)
-mm cat notes.docx                                               # python-docx text
+mm cat notes.docx                                               # libreoffice-rs text
 mm cat bench.jpg                                                # short VLM caption (fast pipeline)
 mm cat wordpress-pdf-invoice-plugin-sample.pdf -n 20            # first 20 lines
+mm cat -y *.jpg *.png                                           # batch (skip ≥9-path confirmation)
+mm cat photo.png --no-generate                                  # snapshot encoder output (no LLM call)
 
 # --mode accurate: full LLM pipeline for image/video/audio/PDF (requires a configured profile)
 mm cat bench.jpg -m accurate                                    # LLM caption + tags + objects
@@ -237,7 +239,7 @@ messages: list[ChatCompletionMessageParam] = ctx.to_messages(
 )
 ```
 
-Unspecified kinds fall back to sensible defaults (`image-resize`, `video-frame-sample`, `document-rasterize`).
+Unspecified kinds fall back to sensible defaults (`image-resize`, `video-frames`, `document-rasterize`).
 
 ### Round-trip and resolve
 
@@ -313,15 +315,17 @@ The skill exposes mm's capabilities to any tool that supports the skills protoco
 
 | Command | Purpose | Key flags |
 |---------|---------|-----------|
-| `find`  | Find/list files, tree view, schema | `--name`, `-i` (ignore case), `--kind`, `--ext`, `--min-size`, `--max-size`, `--sort`, `--reverse`, `--columns`, `--tree`, `--depth`, `--schema`, `--limit`, `--no-ignore`, `--format` |
-| `peek` | Raw file metadata (dimensions / EXIF / codec / mime / hash). | `--full` (include document author/title/subject/pages), `--format` (rich / json / pretty-json / tsv / csv) |
-| `cat` | Content extraction (auto-detected by file type × mode) | `--mode fast/accurate` (default `fast`), `-p` (pipeline), `-n`, `--no-cache`, `-v`, `--encode.*` (incl. `--encode.strategy_opts KEY=VALUE`), `--generate.*`, `--list-pipelines`, `--list-encoders`, `--print-pipeline <kind>/<mode>`, `--format` |
-| `grep` | Content search across files | `--kind`, `--ext`, `-C`, `--count`, `-i`, `--semantic`, `--pre-index`, `--no-ignore`, `--format` |
-| `sql` | SQL queries on file index, results, chunks, and embeddings | `--dir`, `--pre-index`, `--format`, `--list-tables` |
-| `wc` | Count files, size, lines (est.), tokens (est.) | `--kind`, `--by-kind`, `--format` |
-| `bench` | Benchmark suite | `--rounds`, `--warmup`, `--mode`, `--format` |
-| `config` | Extraction mode settings | `show`, `init`, `set`, `reset-db`, `reset-profiles`, `reset` |
-| `profile` | Manage LLM provider profiles | `list`, `add`, `update`, `use`, `remove`, `--format` |
+| `find`  | Find/list files; tabular, tree, or schema view | `-n` / `--name`, `-i` / `--ignore-case`, `-k` / `--kind`, `-e` / `--ext`, `--min-size`, `--max-size`, `-s` / `--sort`, `-r` / `--reverse`, `-c` / `--columns`, `--tree`, `-d` / `--depth`, `--schema`, `--limit`, `--no-ignore`, `-f` / `--format` |
+| `peek`  | Local file metadata (dimensions / EXIF / codec / duration / mime / hash) | `--full` (adds `doc_author/title/subject/keywords/creator/producer/pages`), `-f` / `--format` (rich / json / pretty-json / tsv / csv / stdout) |
+| `cat`   | Content extraction (auto-detected by kind × mode); pipeline-driven | `-m` / `--mode fast`/`accurate`, `-p` / `--pipeline` (encoder name or YAML), `-n` (head/tail), `-o` / `--output-dir`, `--no-cache`, `--no-generate`, `-v` / `--verbose`, `-y` / `--yes`, `--encode.strategy`, `--encode.pyfunc`, `--encode.strategy_opts KEY=VALUE`, `--prompt` (= `--generate.prompt`), `--model` (= `--generate.model`), `--generate.max-tokens`, `--generate.temperature`, `--generate.json-mode`, `--generate.extra-body`, `--list-pipelines`, `--list-encoders`, `--print-pipeline <kind>/<mode>`, `-f` / `--format` |
+| `grep`  | Text + semantic content search | `-k` / `--kind`, `-e` / `--ext`, `-C` (context lines), `-c` / `--count`, `-i` / `--ignore-case`, `-s` / `--semantic`, `--pre-index`, `--no-ignore`, `-f` / `--format` |
+| `sql`   | SQL on `files` / `extractions` / `chunks` (auto-routed) | `-d` / `--dir`, `--pre-index`, `--list-tables`, `-f` / `--format` |
+| `wc`    | Count files, bytes, lines (est.), tokens (est.) | `-k` / `--kind`, `--by-kind`, `-f` / `--format` |
+| `bench` | Benchmark suite with statistical analysis | `-r` / `--rounds`, `-w` / `--warmup`, `-m` / `--mode metadata`/`fast`/`accurate`/`all`, `-c` / `--command`, `-g` / `--group`, `--model`, `--task`, `-b` / `--bench-file`, `--dry-run`, `--host-info`, `--with-generate`, `--timeout`, `-f` / `--format` (incl. `stdout`) |
+| `config` | Configuration | `show`, `init [-f]`, `set <key> <value>`, `reset-db [-y]`, `reset-profiles [-y]`, `reset [-y]` |
+| `profile` | LLM provider profiles | `list [-f FORMAT]`, `add NAME -b URL -m MODEL [-k KEY]`, `update NAME [-b/-k/-m]`, `use NAME`, `remove NAME` |
+
+Top-level: `mm [-p / --profile NAME] [--color auto/always/never] [-v / --version] <command>`.
 
 ### find — locate/list, tree, and schema
 
@@ -364,13 +368,14 @@ mm peek paper.pdf --full                                         # include docum
 mm cat wordpress-pdf-invoice-plugin-sample.pdf                  # PDF page-text via pypdfium2 (fast pipeline)
 mm cat wordpress-pdf-invoice-plugin-sample.pdf -n 20            # first 20 lines (head)
 mm cat src/main.py                                              # passthrough text
-mm cat notes.docx                                               # python-docx tex
+mm cat notes.docx                                               # libreoffice-rs text
 mm cat bench.jpg                                                # short VLM caption (fast pipeline)
 mm cat bench.jpg -m accurate                                    # full LLM caption + tags + objects
 mm cat Timelapse.mp4 -m accurate                                # mosaic → LLM description
-mm cat bench.jpg -p resize                                      # use named encoder
+mm cat bench.jpg -p image-tile                                  # use named encoder
 mm cat bench.jpg -m accurate -p my-pipeline.yaml                # custom pipeline YAML
 mm cat Timelapse.mp4 -m accurate --no-cache                     # force fresh LLM call
+mm cat bench.jpg -m accurate --no-generate                      # snapshot encoder output (no LLM)
 mm cat bench.jpg -m accurate -v                                 # verbose (shows pipeline tree)
 mm cat --list-pipelines                                         # list registered pipelines
 mm cat --list-encoders                                          # list registered encoders
@@ -477,12 +482,14 @@ mm sql --list-tables                              # show available tables
 
 ### Output modes
 
-- **TTY**: Rich formatted tables/panels
-- **Piped**: plain TSV/text (machine-readable, no ANSI)
-- `**--format json`**: JSON output on any command that supports it
-- `**--format csv**`: Comma-separated values
-- `**--format dataset-jsonl**`: JSONL for dataset export
-- `**--format dataset-hf**`: HuggingFace Datasets format (requires `--output-dir`)
+- **TTY**: Rich-formatted tables/panels.
+- **Piped / non-TTY**: plain TSV/text (machine-readable, no ANSI).
+- `--format json`: compact in pipes, indented in TTY.
+- `--format pretty-json`: always indented (good for piping into markdown / docs).
+- `--format tsv` / `csv`: delimited.
+- `--format dataset-jsonl`: JSONL for fine-tuning datasets.
+- `--format dataset-hf`: HuggingFace Datasets format (requires `--output-dir`).
+- `--format stdout`: plain stdout (cat / config show / bench snapshot).
 
 ### Verbose mode (`--verbose` / `-v`)
 
@@ -538,7 +545,7 @@ mm uses a global SQLite database at `~/.local/share/mm/mm.db` with sqlite-vec fo
 | ------------------ | ----------------------------------------------------------------- | --------------------------- |
 | `files`            | File metadata + content (one row per file, `uri` = absolute path) | —                           |
 | `extractions` | LLM-generated summaries (many per file)                           | FK → `files.uri`            |
-| `chunks`           | ~2048-char content chunks (mode = 'fast' or 'accurate')           | FK → `extractions.id`  |
+| `chunks`           | Content chunks (mode = 'metadata', 'fast', or 'accurate')         | FK → `extractions.id`  |
 | `chunks_vec`       | Embedding vectors (sqlite-vec virtual table)                      | FK → `chunks.id`            |
 | `cache`            | Key-value result cache                                            | —                           |
 

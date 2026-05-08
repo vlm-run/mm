@@ -137,7 +137,7 @@ mm peek report.pdf --full      # opt in to document author / title / subject / k
 # mm cat: content extraction. Default --mode fast.
 mm cat report.pdf              # PDF page-text via pypdfium2 (fast pipeline)
 mm cat src/main.py             # passthrough text
-mm cat notes.docx              # python-docx text
+mm cat notes.docx              # libreoffice-rs text
 mm cat image.jpg               # short VLM caption (fast pipeline)
 mm cat video.mp4               # mosaic → short VLM description (fast pipeline)
 
@@ -153,15 +153,20 @@ text.
 
 ### Pipeline customization
 
-`-p`, `--encode.*`, and `--generate.*` apply to image / video / audio / PDF (the kinds that run a pipeline); they're a no-op for `kind=text` and non-PDF documents.
+`-p`, `--encode.*`, `--generate.*`, `--prompt`, `--model` apply to image / video / audio / PDF (the kinds that run a pipeline); they are no-ops for `kind=text` and non-PDF documents.
 
 ```bash
-mm cat photo.png -m fast -p image-tile                     # use named encoder
-mm cat photo.png -m accurate -p my-pipeline.yaml           # custom pipeline YAML
-mm cat photo.png -m accurate --encode.strategy image-tile  # override encoder
-mm cat photo.png -m accurate --generate.max-tokens 1024    # override generation
-mm cat --list-encoders                                     # list all registered encoders
-mm cat --list-pipelines                                    # list built-in pipelines
+mm cat photo.png -m fast -p image-tile                       # named encoder
+mm cat photo.png -m accurate -p my-pipeline.yaml             # custom pipeline YAML
+mm cat photo.png -m accurate --encode.strategy image-tile    # override encoder
+mm cat photo.png -m accurate --encode.strategy_opts max_width=768
+mm cat photo.png -m accurate --prompt "List 3 objects."      # = --generate.prompt
+mm cat photo.png -m accurate --model qwen3.5-0.8b            # = --generate.model
+mm cat photo.png -m accurate --generate.max-tokens 1024
+mm cat photo.png -m accurate --no-cache --no-generate        # encoder-only snapshot
+mm cat --list-encoders                                       # registered encoders
+mm cat --list-pipelines                                      # built-in pipelines
+mm cat --print-pipeline image/accurate                       # built-in pipeline source
 ```
 
 ### Override surfaces
@@ -222,8 +227,9 @@ mm --profile vlmrt cat photo.jpg -m accurate \
 mm wc ~/docs                            # file count, bytes, lines, token estimate
 mm find ~/videos                        # list with tags, duration, resolution
 mm cat -m accurate video.mp4            # full context: transcript + scenes
-mm find ~/images --kind image | mm cat -m accurate --format json  # batch captioning
-mm find ~/images --kind image | mm peek --format json              # batch metadata (no LLM)
+mm find ~/images --kind image | mm cat -m accurate --format json    # batch captioning
+mm find ~/images --kind image | mm peek --format json               # batch metadata (no LLM)
+mm cat -y ~/images/*.jpg                # skip ≥9-path confirmation prompt
 ```
 
 ### Agentic integration
