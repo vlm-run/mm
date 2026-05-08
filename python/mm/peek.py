@@ -58,6 +58,7 @@ def _doc_props(path: Path) -> dict[str, Any]:
                 "doc_author": v.author or None,
                 "doc_title": v.title or None,
                 "doc_subject": v.subject or None,
+                "doc_keywords": v.keywords or None,
                 "doc_creator": None,
                 "doc_producer": None,
                 "pages": v.pages if v.pages is not None else None,
@@ -117,6 +118,7 @@ class FileMetadata:
     doc_author: str | None = None
     doc_title: str | None = None
     doc_subject: str | None = None
+    doc_keywords: str | None = None
     doc_creator: str | None = None
     doc_producer: str | None = None
 
@@ -180,6 +182,7 @@ class FileMetadata:
             doc_author=doc.get("doc_author"),
             doc_title=doc.get("doc_title"),
             doc_subject=doc.get("doc_subject"),
+            doc_keywords=doc.get("doc_keywords"),
             doc_creator=doc.get("doc_creator"),
             doc_producer=doc.get("doc_producer"),
             content_hash=r.content_hash,

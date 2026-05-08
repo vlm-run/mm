@@ -96,6 +96,7 @@ class TestFileMetadataShape:
             "doc_author",
             "doc_title",
             "doc_subject",
+            "doc_keywords",
             "doc_creator",
             "doc_producer",
             "content_hash",
@@ -221,7 +222,7 @@ class TestDocumentProperties:
         assert fm.doc_producer is None
         assert fm.pages == 3
 
-    def test_pdf_props_and_pages_needs_full(self, tmp_path: Path):
+    def test_pdf_props_and_pages_needs_full_flag(self, tmp_path: Path):
         pdf = tmp_path / "paper.pdf"
         _build_pdf(pdf, author="Alice", title="A Paper", subject="physics", pages=3)
         fm = FileMetadata.from_path(pdf)
@@ -255,7 +256,7 @@ class TestDocumentProperties:
         assert fm.doc_creator is None
         assert fm.doc_producer is None
 
-    def test_office_props_needs_full(self, tmp_path: Path):
+    def test_office_props_needs_full_flag(self, tmp_path: Path):
         docx = tmp_path / "spec.docx"
         _build_office_doc(docx, author="Bob", title="Spec", subject="research")
         fm = FileMetadata.from_path(docx)
