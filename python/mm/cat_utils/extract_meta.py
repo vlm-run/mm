@@ -124,9 +124,14 @@ def _local_document(path: Path) -> str:
         return _local_pdf(path)
 
     try:
-        from mm._mm import office_content
+        from mm.constants import OFFICE_EXTS
 
-        return office_content(str(path))
+        if ext in OFFICE_EXTS:
+            from mm._mm import office_content
+
+            return office_content(str(path))
+        else:
+            return path.read_text(errors="replace")
     except Exception as e:
         return f"[Document extraction failed for {path.name}: {e}]"
 
