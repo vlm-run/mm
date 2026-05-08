@@ -118,7 +118,7 @@ class FileMetadata:
     doc_author: str | None = None
     doc_title: str | None = None
     doc_subject: str | None = None
-    doc_keywords: str | None = None
+    doc_keywords: list[str] | None = None
     doc_creator: str | None = None
     doc_producer: str | None = None
 

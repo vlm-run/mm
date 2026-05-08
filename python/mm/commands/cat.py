@@ -467,12 +467,17 @@ def cat_cmd(
 
 def _extract(path: Path, opts: CatOpts) -> str:
     """Pipeline-driven extraction dispatch with unified extraction caching."""
+    global _was_cached
     kind = file_kind(path)
     ext = path.suffix.lower()
-    global _was_cached
 
-    is_office_accurate = opts.mode == "accurate" and kind == "document" and ext in OFFICE_EXTS
-    if not is_office_accurate and (kind == "text" or (kind == "document" and ext != ".pdf")):
+    if kind == "text" or (
+        kind == "document"
+        and (
+            (ext != ".pdf" and ext not in OFFICE_EXTS)
+            or (ext in OFFICE_EXTS and opts.mode != "accurate")
+        )
+    ):
         content, cached = extract_text(path, kind)
         if cached:
             _was_cached = True
@@ -530,7 +535,7 @@ def _extract(path: Path, opts: CatOpts) -> str:
     # (regardless of opts.verbose) so we can persist it for replay on a
     # future cached + verbose run. The merged ``spec`` is threaded down so
     # the LLM call sites read ``spec.generate.{model, extra_body}`` directly.
-    if is_office_accurate:
+    if ext in OFFICE_EXTS and opts.mode == "accurate":
         with tempfile.TemporaryDirectory(prefix="mm-office-") as tmpdir:
             from mm._mm import office_to_pdf
 
