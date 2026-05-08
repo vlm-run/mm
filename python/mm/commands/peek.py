@@ -53,9 +53,9 @@ def peek_cmd(
 
     Examples:
       mm peek photo.png                   # dimensions, EXIF, content hash
-      mm peek paper.pdf                   # mime, hash (no extracted text — use ``mm cat`` for that)
-      mm peek a.png b.mp4 --format json   # return the metadata as a JSON object
-      mm peek paper.pdf --full            # include author/title/subject/creator/producer/pages
+      mm peek paper.pdf                   # mime, hash (use ``mm cat`` for text)
+      mm peek a.png b.mp4 --format json   # multi-file JSON
+      mm peek paper.pdf --full            # +author/title/subject/keywords/creator/producer/pages
     """
     from mm.pipe import read_paths_from_stdin
 
