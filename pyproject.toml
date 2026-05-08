@@ -74,7 +74,6 @@ dependencies = [
     "Pillow>=10.0",
     "openai>=1.0",
     "pyyaml>=6.0",
-    "google-genai>=1.0",
     "av>=13.0",
     "faster-whisper>=1.0",
     "scenedetect[opencv]>=0.6",
