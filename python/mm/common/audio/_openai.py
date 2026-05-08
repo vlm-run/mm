@@ -3,7 +3,7 @@
 Calls ``/v1/audio/transcriptions`` on any OpenAI-compatible server
 (OpenAI, Ollama, vLLM, etc.).  The ``base_url`` and ``api_key`` can
 be passed explicitly; when omitted, ``base_url`` defaults to the
-mm gateway and ``api_key`` defaults to an empty string.
+``mm.profile.TRANSCRIPTION_BASE_URL`` and ``api_key`` defaults to an empty string.
 """
 
 from __future__ import annotations
