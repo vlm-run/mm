@@ -44,12 +44,18 @@ def _mock_servers():
     mock_post_resp.json.return_value = {"embeddings": [_FAKE_VECTOR]}
 
     def _fake_post(*args, json=None, **kwargs):
-        """Return one vector per Part in the request."""
-        n = len(json) if isinstance(json, list) else 1
+        """Return one vector per `input` in the gateway-shape response."""
+        inputs = json.get("input") if isinstance(json, dict) else None
+        n = len(inputs) if isinstance(inputs, list) else 1
         resp = MagicMock()
         resp.status_code = 200
         resp.raise_for_status = MagicMock()
-        resp.json.return_value = {"embeddings": [_FAKE_VECTOR] * n}
+        resp.json.return_value = {
+            "object": "list",
+            "data": [
+                {"object": "embedding", "index": i, "embedding": _FAKE_VECTOR} for i in range(n)
+            ],
+        }
         return resp
 
     # Mock OpenAI chat completions (used by test_accurate_chat_completion)
@@ -136,6 +142,7 @@ class TestEmbeddings:
         from mm.store.embed import embed_texts
 
         vecs = embed_texts(["What is machine learning?", "A cat on a mat."])
+        assert vecs is not None
         assert len(vecs) == 2
         assert len(vecs[0]) > 0
 
