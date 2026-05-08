@@ -222,16 +222,30 @@ class TestOpenAIBackend:
             )
             mock_client.audio.transcriptions.create.assert_called_once()
 
-    def test_no_base_url_returns_error(self, tmp_path):
+    def test_default_base_url_is_gateway(self, tmp_path):
         audio = tmp_path / "test.wav"
         audio.write_bytes(b"\x00" * 100)
 
-        with patch("mm.common.audio._openai._resolve_profile_url", return_value=("", "")):
+        mock_resp = MagicMock()
+        mock_resp.text = ""
+        mock_resp.language = ""
+        mock_resp.segments = []
+
+        mock_client = MagicMock()
+        mock_client.audio.transcriptions.create.return_value = mock_resp
+
+        with patch("openai.OpenAI", return_value=mock_client) as MockOpenAI:
             from mm.common.audio._openai import OpenAIBackend
+            from mm.profile import GATEWAY_BASE_URL
 
             be = OpenAIBackend()
-            result = be.transcribe(audio)
-            assert "no base_url" in result.text
+            be.transcribe(audio)
+
+            MockOpenAI.assert_called_once_with(
+                base_url=GATEWAY_BASE_URL,
+                api_key="noop",
+                timeout=120.0,
+            )
 
     def test_timestamp_scaling(self, tmp_path):
         audio = tmp_path / "test.wav"

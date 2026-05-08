@@ -82,7 +82,19 @@ RESERVED_DEFAULTS = {
     "openrouter": OPENROUTER_DEFAULTS,
 }
 
-EMBEDDING_BASEURL = "https://mm-ctx.ngrok.io/v1"
+GATEWAY_BASE_URL = "https://gateway.vlm.run/v1"
+EMBEDDING_BASE_URL = os.environ.get("MM_EMBEDDING_BASE_URL", GATEWAY_BASE_URL)
+TRANSCRIPTION_BASE_URL = os.environ.get("MM_TRANSCRIPTION_BASE_URL", GATEWAY_BASE_URL)
+EMBEDDING_MODEL = os.environ.get("MM_EMBEDDING_MODEL", "qwen/qwen3-vl-embedding-2b")
+
+
+def gateway_api_key() -> str:
+    """Return the API key configured on the built-in ``gateway`` profile."""
+    try:
+        file_data = load_profile_config()
+        return str(get_profile_section(file_data, "gateway").get("api_key", ""))
+    except Exception:
+        return ""
 
 
 class ProfileUpdateData(TypedDict, total=False):

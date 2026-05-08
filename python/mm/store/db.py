@@ -31,6 +31,7 @@ from __future__ import annotations
 
 import json
 import sqlite3
+import threading
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -67,6 +68,7 @@ class MmDatabase:
         self._db_path = db_path or self.DB_PATH
         self._conn: sqlite3.Connection | None = None
         self._vec_loaded: bool = False
+        self._init_lock = threading.Lock()
 
     @property
     def _vec_available(self) -> bool:
@@ -75,22 +77,26 @@ class MmDatabase:
 
     @property
     def _connect(self) -> sqlite3.Connection:
-        if self._conn is None:
+        if self._conn is not None:
+            return self._conn
+        with self._init_lock:
+            if self._conn is not None:
+                return self._conn
             self._db_path.parent.mkdir(parents=True, exist_ok=True)
-            self._conn = sqlite3.connect(str(self._db_path), check_same_thread=False)
-            self._conn.row_factory = sqlite3.Row
-            self._vec_loaded = False
+            conn = sqlite3.connect(str(self._db_path), check_same_thread=False)
+            conn.row_factory = sqlite3.Row
             try:
                 import sqlite_vec
 
-                self._conn.enable_load_extension(True)
-                sqlite_vec.load(self._conn)
-                self._conn.enable_load_extension(False)
+                conn.enable_load_extension(True)
+                sqlite_vec.load(conn)
+                conn.enable_load_extension(False)
                 self._vec_loaded = True
             except (AttributeError, ImportError, OSError):
-                pass
-            self._conn.execute("PRAGMA journal_mode=WAL")
-            self._conn.execute("PRAGMA foreign_keys=ON")
+                self._vec_loaded = False
+            conn.execute("PRAGMA journal_mode=WAL")
+            conn.execute("PRAGMA foreign_keys=ON")
+            self._conn = conn
             self._ensure_tables()
         return self._conn
 

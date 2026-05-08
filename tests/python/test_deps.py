@@ -11,19 +11,19 @@ from mm.deps import try_import_or_raise
 
 class TestTryImportOrRaise:
     def test_succeeds_for_stdlib_module(self):
-        mod = try_import_or_raise("json", extra="gemini")
+        mod = try_import_or_raise("json", extra="mlx")
         assert hasattr(mod, "dumps")
 
     def test_raises_for_missing_module(self):
-        with pytest.raises(ImportError, match=r"pip install mm-ctx\[gemini\]"):
-            try_import_or_raise("nonexistent_fake_pkg_1234", extra="gemini")
+        with pytest.raises(ImportError, match=r"pip install mm-ctx\[mlx\]"):
+            try_import_or_raise("nonexistent_fake_pkg_1234", extra="mlx")
 
     def test_error_mentions_package_name(self):
-        with pytest.raises(ImportError, match="google-genai"):
+        with pytest.raises(ImportError, match="lightning-whisper-mlx"):
             try_import_or_raise(
                 "nonexistent_fake_pkg_1234",
-                extra="gemini",
-                package="google-genai",
+                extra="mlx",
+                package="lightning-whisper-mlx",
             )
 
     def test_error_mentions_correct_extra_mlx(self):
@@ -39,37 +39,8 @@ class TestTryImportOrRaise:
             try_import_or_raise("nonexistent_fake_pkg_1234", extra="custom")
 
     def test_returns_module_object(self):
-        mod = try_import_or_raise("os.path", extra="gemini")
+        mod = try_import_or_raise("os.path", extra="mlx")
         assert hasattr(mod, "join")
-
-
-class TestGeminiGuard:
-    """Verify that store/embed.py raises ImportError when google-genai is absent."""
-
-    def test_text_part_raises_without_genai(self):
-        with _hide_module("google.genai.types", "google.genai", "google"):
-            from mm.store.embed import text_part
-
-            with pytest.raises(ImportError, match=r"pip install mm-ctx\[gemini\]"):
-                text_part("hello")
-
-    def test_image_part_raises_without_genai(self, tmp_path):
-        img = tmp_path / "test.png"
-        img.write_bytes(b"\x89PNG\r\n\x1a\n" + b"\x00" * 100)
-        with _hide_module("google.genai.types", "google.genai", "google"):
-            from mm.store.embed import image_part
-
-            with pytest.raises(ImportError, match=r"pip install mm-ctx\[gemini\]"):
-                image_part(img)
-
-    def test_document_part_raises_without_genai(self, tmp_path):
-        pdf = tmp_path / "test.pdf"
-        pdf.write_bytes(b"%PDF-1.4" + b"\x00" * 100)
-        with _hide_module("google.genai.types", "google.genai", "google"):
-            from mm.store.embed import document_part
-
-            with pytest.raises(ImportError, match=r"pip install mm-ctx\[gemini\]"):
-                document_part(pdf)
 
 
 class TestMlxGuard:
