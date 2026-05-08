@@ -50,7 +50,7 @@
 - Image: fast (10 words + 5 tags) / accurate (200 words + 10 tags + objects)
 - Video: parallel mosaic (4x4 @ 1500px) + audio transcription → VLM + transcript concat
 - Audio: ffmpeg 2x speed + whisper tiny (MLX Metal GPU on macOS)
-- Document: PDF text extraction via pypdfium2, DOCX/PPTX via python-docx/python-pptx
+- Document: PDF text extraction via pypdfium2, DOCX/PPTX/XLSX via libreoffice-rs
 - Whisper backend auto-select: MLX Metal GPU > CTranslate2 CPU/CUDA
 - `~/.config/mm/mm.toml` config with `[mode.fast]` / `[mode.accurate]` sections
 - `beam_size` config (fast=1 greedy, accurate=5 beam search)

@@ -76,8 +76,7 @@ Multi-file: `mm cat a.mp4 b.mp4 -y` runs each video sequentially; the same **≥
 
 ### Document (DOCX / PPTX) and Text / Code / Config
 
-Passthrough in all modes — raw file content extracted via python-docx /
-python-pptx (DOCX/PPTX) or `read_text` (text/code/config). No pipeline, no LLM; mode is a no-op.
+Passthrough in all modes — raw file content extracted via libreoffice-rs(DOCX/PPTX/XLSX/ODS/ODT/ODP) or `read_text` (text/code/config). No pipeline, no LLM; mode is a no-op.
 
 ## Caching
 

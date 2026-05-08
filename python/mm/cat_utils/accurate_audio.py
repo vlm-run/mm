@@ -16,8 +16,8 @@ from mm.pipelines.schema import PipelineSpec
 
 def accurate_audio(path: Path, spec: PipelineSpec, opts: CatOpts) -> RunResult:
     """Audio extraction with transcription."""
-    from mm.ffmpeg import extract_audio, ffmpeg_available
     from mm.common.audio import transcribe, transcribe_available
+    from mm.ffmpeg import extract_audio, ffmpeg_available
 
     if not ffmpeg_available():
         return RunResult(content=f"[ffmpeg not found — cannot process {path.name}]")

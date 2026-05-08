@@ -108,7 +108,6 @@ class LlmBackend:
 
         ctx = context or {}
         tpl = pipeline_spec if pipeline_spec is not None else load(kind, mode)
-
         if tpl.generate is None:
             return ""
 

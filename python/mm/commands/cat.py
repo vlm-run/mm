@@ -5,13 +5,10 @@ from __future__ import annotations
 import tempfile
 import time
 from pathlib import Path
-from typing import Annotated, Any, Optional
+from typing import TYPE_CHECKING, Annotated, Any, Optional
 
 import typer
 
-from mm.cat_utils.accurate_audio import accurate_audio
-from mm.cat_utils.accurate_image import accurate_image
-from mm.cat_utils.accurate_video import accurate_video
 from mm.cat_utils.base_utils import (
     CatOpts,
     RunResult,
@@ -25,19 +22,13 @@ from mm.cat_utils.base_utils import (
     override_extra,
     spec_extra_body,
 )
-from mm.cat_utils.extract_meta import extract_meta, extract_text
-from mm.cat_utils.run_encoder import run_encoder
-from mm.constants import OFFICE_EXTS, BinaryFileKind
-from mm.encoders.encoders_utils import do_list_encoders
+from mm.cat_utils.extract_meta import extract_meta
 from mm.pipe import read_paths_from_stdin
-from mm.pipelines.pipelines_utils import (
-    do_list_pipelines,
-    do_print_pipeline,
-    load_pipeline_args,
-    resolve_pipeline,
-)
-from mm.pipelines.schema import PipelineSpec
 from mm.utils import Format, file_kind
+
+if TYPE_CHECKING:
+    from mm.constants import BinaryFileKind
+    from mm.pipelines.schema import PipelineSpec
 
 # Track total bytes processed for throughput calculation
 _total_bytes_processed = 0
@@ -293,12 +284,18 @@ def cat_cmd(
         --generate.extra-body '{"video_fps":1.0,"video_max_frames":8}'
     """
     if list_pipelines:
+        from mm.pipelines.pipelines_utils import do_list_pipelines
+
         do_list_pipelines()
         return
     if list_encoders:
+        from mm.encoders.encoders_utils import do_list_encoders
+
         do_list_encoders()
         return
     if print_pipeline is not None:
+        from mm.pipelines.pipelines_utils import do_print_pipeline
+
         do_print_pipeline(print_pipeline)
         return
 
@@ -357,6 +354,8 @@ def cat_cmd(
     # -- Load explicit pipeline/-p args (YAML files or named encoders) keyed by kind --
     pipeline_specs: dict[str, PipelineSpec] = {}
     if pipeline:
+        from mm.pipelines.pipelines_utils import load_pipeline_args
+
         pipeline_specs = load_pipeline_args(pipeline)
 
     from mm.display import resolve_format
@@ -467,6 +466,8 @@ def cat_cmd(
 
 def _extract(path: Path, opts: CatOpts) -> str:
     """Pipeline-driven extraction dispatch with unified extraction caching."""
+    from mm.constants import OFFICE_EXTS
+
     global _was_cached
     kind = file_kind(path)
     ext = path.suffix.lower()
@@ -478,12 +479,15 @@ def _extract(path: Path, opts: CatOpts) -> str:
             or (ext in OFFICE_EXTS and opts.mode != "accurate")
         )
     ):
+        from mm.cat_utils.extract_meta import extract_text
+
         content, cached = extract_text(path, kind)
         if cached:
             _was_cached = True
         return content
 
     from mm.pipelines import apply_overrides
+    from mm.pipelines.pipelines_utils import resolve_pipeline
     from mm.profile import get_profile
     from mm.store.utils import get_content_hash, shared_db
 
@@ -582,6 +586,8 @@ def _run_fast(path: Path, kind: BinaryFileKind, spec: PipelineSpec, opts: CatOpt
 
         spec = dataclasses.replace(spec, generate=None)
     if spec.encode.strategy:
+        from mm.cat_utils.run_encoder import run_encoder
+
         return run_encoder(path, kind, spec, opts)
 
     content = extract_meta(path, kind, no_cache=opts.no_cache)
@@ -641,6 +647,10 @@ def _accurate_dispatch(
     path: Path, kind: BinaryFileKind, spec: PipelineSpec, opts: CatOpts
 ) -> RunResult:
     """Dispatch accurate-mode extraction based on file kind."""
+    from mm.cat_utils.accurate_audio import accurate_audio
+    from mm.cat_utils.accurate_image import accurate_image
+    from mm.cat_utils.accurate_video import accurate_video
+
     if kind == "image":
         return accurate_image(path, spec, opts)
     if kind == "video":
@@ -649,6 +659,8 @@ def _accurate_dispatch(
         return accurate_audio(path, spec, opts)
 
     if spec.encode.strategy:
+        from mm.cat_utils.run_encoder import run_encoder
+
         return run_encoder(path, kind, spec, opts)
 
     content = extract_meta(path, kind)

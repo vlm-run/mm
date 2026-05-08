@@ -78,7 +78,7 @@ uv run mm cat input.mp4
 # Extract video accurately (mosaic + whisper + VLM)
 uv run mm cat input.mp4 -m accurate
 # Extract video accurately (frame-sample encoder at fps=1)
-uv run mm cat input.mp4 --encode.strategy video-frame-sample -m accurate
+uv run mm cat input.mp4 --encode.strategy video-frames -m accurate
 ```
 
 ---
