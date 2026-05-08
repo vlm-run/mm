@@ -53,6 +53,17 @@ irm https://vlm-run.github.io/mm/install/install.ps1 | iex
 ```
 </details>
 
+### Optional extras and audio transcription
+
+| Install | Best for | Audio transcription path |
+|---------|----------|--------------------------|
+| `mm-ctx[mlx]` | Apple Silicon / macOS with MLX | `lightning-whisper-mlx` first, then `ctranslate2/faster-whisper`, then OpenAI `/audio/transcriptions` |
+| `mm-ctx` on a CUDA GPU runtime | Linux/Windows GPU hosts | `ctranslate2/faster-whisper` first, then OpenAI `/audio/transcriptions` |
+| `mm-ctx` default / CPU | Portable local installs | `ctranslate2/faster-whisper` on CPU, then OpenAI `/audio/transcriptions` |
+
+For audio transcription, `mm` prefers the fastest local backend available in this order:
+MLX on Apple Silicon, ctranslate2/faster-whisper, then OpenAI transcription endpoint.
+
 ## CLI
 
 Commands that mirror familiar Unix tools but operate on multimodal semantics.
