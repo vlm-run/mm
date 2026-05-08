@@ -247,7 +247,7 @@ class LlmBackend:
         eb: dict[str, Any] = {}
         if think:
             eb["think"] = True
-        if "think" in eb and reasoning_effort != "none":
+        if reasoning_effort != "none":
             eb["reasoning_effort"] = reasoning_effort
         if extra_body:
             eb = deep_merge(eb, extra_body)
@@ -257,7 +257,6 @@ class LlmBackend:
 
         try:
             response: ChatCompletion = self.client.chat.completions.create(**kwargs)
-            assert isinstance(response, ChatCompletion)
             if response.usage:
                 self.last_usage = LlmUsage(
                     prompt_tokens=response.usage.prompt_tokens or 0,
