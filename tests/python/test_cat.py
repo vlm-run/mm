@@ -394,3 +394,142 @@ class TestEffectiveModel:
 
         spec = PipelineSpec(kind="image", mode="fast", generate=None)
         assert effective_model(spec, "profile-default") == "profile-default"
+
+
+class TestNoGeneratePreview:
+    """``--no-generate`` is a printer for the encoder/pipeline that *would* run."""
+
+    def test_audio_does_not_invoke_whisper_or_ffmpeg(self, monkeypatch, mixed_dir, isolated_db):
+        """Audio --no-generate must not transcribe or extract audio."""
+        from mm import ffmpeg as ffmpeg_mod
+        from mm.common import audio as audio_mod
+
+        def _boom(*a, **kw):  # noqa: ARG001
+            raise AssertionError("--no-generate must not invoke Whisper / ffmpeg on audio files")
+
+        monkeypatch.setattr(audio_mod, "transcribe", _boom)
+        monkeypatch.setattr(ffmpeg_mod, "extract_audio", _boom)
+
+        for mode in ("fast", "accurate"):
+            r = runner.invoke(
+                app, ["cat", str(mixed_dir / "track.mp3"), "--no-generate", "-m", mode]
+            )
+            assert r.exit_code == 0, r.output
+            assert "pipeline preview (--no-generate)" in r.output
+            assert "audio-transcribe" in r.output
+
+    def test_video_does_not_invoke_ffmpeg_or_llm(self, monkeypatch, mixed_dir, isolated_db):
+        """Video --no-generate must not extract frames or call the LLM."""
+        from mm import ffmpeg as ffmpeg_mod
+        from mm import llm
+
+        class _Sentinel:
+            def __init__(self, *a, **kw):  # noqa: ARG002
+                raise AssertionError("--no-generate must not construct LlmBackend")
+
+        def _boom(*a, **kw):  # noqa: ARG001
+            raise AssertionError("--no-generate must not run ffmpeg")
+
+        monkeypatch.setattr(llm, "LlmBackend", _Sentinel)
+        for name in ("extract_frames_at_timestamps", "extract_uniform_mosaics", "extract_audio"):
+            if hasattr(ffmpeg_mod, name):
+                monkeypatch.setattr(ffmpeg_mod, name, _boom)
+
+        for mode in ("fast", "accurate"):
+            r = runner.invoke(
+                app, ["cat", str(mixed_dir / "clip.mp4"), "--no-generate", "-m", mode]
+            )
+            assert r.exit_code == 0, r.output
+            assert "video" in r.stdout
+
+    def test_image_does_not_call_llm(self, monkeypatch, mixed_dir, isolated_db):
+        from mm import llm
+
+        class _Sentinel:
+            def __init__(self, *a, **kw):  # noqa: ARG002
+                raise AssertionError("--no-generate must not construct LlmBackend")
+
+        monkeypatch.setattr(llm, "LlmBackend", _Sentinel)
+
+        for mode in ("fast", "accurate"):
+            r = runner.invoke(
+                app, ["cat", str(mixed_dir / "photo.png"), "--no-generate", "-m", mode]
+            )
+            assert r.exit_code == 0, r.output
+            assert "resize" in r.stdout  # default image encoder
+
+    def test_pdf_does_not_invoke_pdfium_or_cache(self, monkeypatch, tmp_path: Path, isolated_db):
+        """PDF --no-generate must not open the PDF or touch the cache."""
+        pdf_path = tmp_path / "doc.pdf"
+        _minimal_single_page_pdf(pdf_path)
+
+        from mm.cat_utils import extract_meta as em
+        from mm.store import utils as store_utils
+
+        def _boom_meta(*a, **kw):  # noqa: ARG001
+            raise AssertionError("--no-generate must not invoke extract_meta on PDF")
+
+        def _boom_db(*a, **kw):  # noqa: ARG001
+            raise AssertionError("--no-generate must not access the SQLite store")
+
+        monkeypatch.setattr(em, "extract_meta", _boom_meta)
+        monkeypatch.setattr(store_utils, "shared_db", _boom_db)
+
+        for mode in ("fast", "accurate"):
+            r = runner.invoke(app, ["cat", str(pdf_path), "--no-generate", "-m", mode])
+            assert r.exit_code == 0, r.output
+            assert "page-text" in r.stdout
+            assert "pipeline preview (--no-generate)" in r.stdout
+
+    def test_office_accurate_preview_routes_through_pdf(self, tmp_path: Path, isolated_db):
+        """``.docx`` in accurate mode routes through office→PDF; preview should flag that."""
+        docx = tmp_path / "notes.docx"
+        docx.write_bytes(b"PK\x03\x04")  # minimal zip header (not a real .docx, fine for preview)
+
+        r = runner.invoke(app, ["cat", str(docx), "--no-generate", "-m", "accurate"])
+        assert r.exit_code == 0, r.output
+        assert "office→PDF" in r.stdout
+        assert "page-text" in r.stdout
+
+    def test_overrides_reflected_in_preview(self, mixed_dir: Path, isolated_db):
+        """``--encode.strategy_opts`` and ``--prompt`` show up in the preview."""
+        r = runner.invoke(
+            app,
+            [
+                "cat",
+                str(mixed_dir / "photo.png"),
+                "--no-generate",
+                "-m",
+                "accurate",
+                "--encode.strategy_opts",
+                "max_width=512",
+                "--prompt",
+                "Just three words.",
+            ],
+        )
+        assert r.exit_code == 0, r.output
+        assert "max_width=512" in r.stdout
+        assert "Just three words." in r.stdout
+        assert "[skipped via --no-generate]" in r.stdout
+
+    def test_named_encoder_via_p_reflected(self, mixed_dir: Path, isolated_db):
+        """``-p <encoder>`` overrides the strategy in the preview."""
+        r = runner.invoke(
+            app,
+            ["cat", str(mixed_dir / "photo.png"), "--no-generate", "-p", "tile"],
+        )
+        assert r.exit_code == 0, r.output
+        assert "tile" in r.stdout
+
+    def test_json_format_wraps_preview(self, mixed_dir: Path, isolated_db):
+        """``--format json`` still wraps the preview text under ``content``."""
+        r = runner.invoke(
+            app,
+            ["cat", str(mixed_dir / "photo.png"), "--no-generate", "--format", "json"],
+        )
+        assert r.exit_code == 0, r.output
+        data = json.loads(r.stdout)
+        assert data and isinstance(data, list)
+        assert {"path", "mode", "content"}.issubset(data[0])
+        assert "pipeline preview" in data[0]["content"]
+        assert "resize" in data[0]["content"]
