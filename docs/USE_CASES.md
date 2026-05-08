@@ -302,5 +302,5 @@ For a construction project with permits (PDF), site photos (JPEG), and walkthrou
 
 <details><summary>53. Batch-extract metadata for a digital asset manager</summary>
 
-`mm find ~/dam --format json > metadata.json` for file-level scan metadata. `mm find ~/dam | mm peek --format json > content.json` for richer local extraction (text, dimensions, duration, hash, EXIF).
+`mm find ~/dam --format json > metadata.json` for file-level scan metadata. `mm find ~/dam | mm peek --format json > content.json` for richer local extraction (text, dimensions, duration, hash, EXIF). Add `--full` to also pull document author / title / subject / keywords / page count from PDFs and Office files.
 </details>
