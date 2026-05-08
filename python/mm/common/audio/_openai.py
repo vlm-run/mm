@@ -2,7 +2,8 @@
 
 Calls ``/v1/audio/transcriptions`` on any OpenAI-compatible server
 (OpenAI, Ollama, vLLM, etc.).  The ``base_url`` and ``api_key`` can
-be passed explicitly or resolved from the active mm profile.
+be passed explicitly; when omitted, ``base_url`` defaults to the
+mm gateway and ``api_key`` defaults to an empty string.
 """
 
 from __future__ import annotations
@@ -20,17 +21,6 @@ from mm.common.audio._base import (
 logger = logging.getLogger(__name__)
 
 
-def _resolve_profile_url() -> tuple[str, str]:
-    """Return ``(base_url, api_key)`` from the active mm profile."""
-    try:
-        from mm.profile import get_profile
-
-        p = get_profile()
-        return p.base_url.rstrip("/"), p.api_key or ""
-    except Exception:
-        return "", ""
-
-
 class OpenAIBackend(TranscriptionBackend):
     """Transcription via any OpenAI-compatible ``/v1/audio/transcriptions`` endpoint.
 
@@ -38,8 +28,8 @@ class OpenAIBackend(TranscriptionBackend):
     vLLM, or any server that implements the endpoint.
 
     The ``base_url`` and ``api_key`` can be set explicitly in the
-    constructor or via ``encoder_kwargs``; when omitted they fall back
-    to the active mm profile.
+    constructor or via ``encoder_kwargs``; when omitted ``base_url``
+    falls back to ``mm.profile.GATEWAY_BASE_URL``.
     """
 
     name = "openai"
@@ -73,19 +63,10 @@ class OpenAIBackend(TranscriptionBackend):
     ) -> TranscriptionResult:
         from openai import OpenAI
 
-        base_url = self._base_url
-        api_key = self._api_key or ""
-        if not base_url:
-            from mm.profile import GATEWAY_BASE_URL
+        from mm.profile import GATEWAY_BASE_URL
 
-            base_url = GATEWAY_BASE_URL
-        if not base_url:
-            return TranscriptionResult(
-                text="[openai backend: no base_url configured — "
-                "set base_url or configure an mm profile]",
-                model_size=model,
-                backend="openai",
-            )
+        base_url = self._base_url or GATEWAY_BASE_URL
+        api_key = self._api_key or ""
 
         client = OpenAI(
             base_url=base_url,
