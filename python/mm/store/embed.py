@@ -16,6 +16,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
+from mm.decorators import retry
 from mm.deps import try_import_or_raise
 
 _VIDEO_MAX_SECONDS = 120
@@ -23,6 +24,7 @@ _VIDEO_OVERLAP_SECONDS = 10
 _AUDIO_MAX_SECONDS = 80
 _AUDIO_OVERLAP_SECONDS = 5
 _EMBEDDINGS_PATH = "/embeddings"
+_EMBEDDING_ATTEMPTS = 2
 
 
 def import_genai_types():
@@ -123,8 +125,9 @@ def video_parts(path: Path) -> list[dict[str, Any]]:
     return parts
 
 
-def embed_parts(parts: list[dict[str, Any]]) -> list[list[float]]:
-    """Send Parts to the server and return embedding vectors."""
+@retry(retries=_EMBEDDING_ATTEMPTS, delay=1, backoff=2)
+def _request_embeddings(parts: list[dict[str, Any]]) -> list[list[float]]:
+    """Send Parts to the embedding server and return vectors."""
     import httpx
 
     from mm import __version__
@@ -140,6 +143,11 @@ def embed_parts(parts: list[dict[str, Any]]) -> list[list[float]]:
     response.raise_for_status()
     result: list[list[float]] = response.json()["embeddings"]
     return result
+
+
+def embed_parts(parts: list[dict[str, Any]]) -> list[list[float]]:
+    """Embed Parts via the server, retrying transient request failures once."""
+    return _request_embeddings(parts)
 
 
 def embed_texts(texts: list[str]) -> list[list[float]]:

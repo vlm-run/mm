@@ -155,6 +155,22 @@ class TestEmbedParts:
         headers = call_args[1].get("headers", {})
         assert headers["User-Agent"].startswith("mm-ctx/")
 
+    def test_embed_parts_retries_once(self):
+        import httpx
+
+        parts = [text_part("retry")]
+        success = MagicMock()
+        success.raise_for_status = MagicMock()
+        success.json.return_value = {"embeddings": _mock_embeddings_response(parts)}
+
+        with patch(
+            "httpx.post", side_effect=[httpx.ConnectError("temporary"), success]
+        ) as mock_post:
+            vectors = embed_parts(parts)
+
+        assert len(vectors) == 1
+        assert mock_post.call_count == 2
+
 
 # ---------------------------------------------------------------------------
 # End-to-end: embed_file_chunks
