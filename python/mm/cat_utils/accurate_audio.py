@@ -9,7 +9,6 @@ from mm.cat_utils.base_utils import (
     make_llm_from_spec,
     spec_extra_body,
 )
-from mm.cat_utils.extract_meta import extract_meta
 from mm.cat_utils.run_encoder import run_encoder
 from mm.pipelines.schema import PipelineSpec
 
@@ -29,9 +28,6 @@ def accurate_audio(path: Path, spec: PipelineSpec, opts: CatOpts) -> RunResult:
                 "For MLX on Apple Silicon: pip install mm[mlx]]"
             )
         )
-
-    if spec.generate is None:
-        return RunResult(content=extract_meta(path, "audio"))
 
     # The hard-coded whisper+LLM fast path only implements `transcribe`.
     # Anything else (e.g. audio-gemini) must be routed through the

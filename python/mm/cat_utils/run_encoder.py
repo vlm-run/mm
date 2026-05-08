@@ -87,8 +87,8 @@ def _extract_llm_parts(msg: dict) -> list[dict]:
     return parts
 
 
-def run_encoder(path: Path, kind: BinaryFileKind, spec: PipelineSpec, opts: CatOpts) -> RunResult:
-    """Run a named encoder strategy and output JSON messages or pipe to LLM."""
+def _encode_only_text(path: Path, spec: PipelineSpec) -> RunResult:
+    """Encode the file and return only the text parts. No LLM call."""
     from mm.encoders import get as get_encoder
 
     assert spec.encode.strategy is not None
@@ -97,23 +97,36 @@ def run_encoder(path: Path, kind: BinaryFileKind, spec: PipelineSpec, opts: CatO
     messages = list(strat.encode(path, **spec.encode.strategy_opts))
     encode_elapsed = (time.monotonic() - t_encode) * 1000
 
-    if spec.generate is None:
-        text_parts: list[str] = []
-        for msg in messages:
-            content = msg.get("content", [])
-            if isinstance(content, list):
-                for part in content:
-                    if isinstance(part, dict) and part.get("type") == "text":
-                        text = part.get("text", "")
-                        if text:
-                            text_parts.append(text)
-            elif isinstance(content, str):
-                if content:
-                    text_parts.append(content)
+    text_parts: list[str] = []
+    for msg in messages:
+        content = msg.get("content", [])
+        if isinstance(content, list):
+            for part in content:
+                if isinstance(part, dict) and part.get("type") == "text":
+                    text = part.get("text", "")
+                    if text:
+                        text_parts.append(text)
+        elif isinstance(content, str) and content:
+            text_parts.append(content)
 
-        result = "\n\n".join(text_parts) if text_parts else ""
-        encode_output = _format_encode_verbose(spec.encode.strategy, messages, encode_elapsed)
-        return RunResult(content=result, verbose_suffix=_format_pipeline_tree(encode_output))
+    encode_output = _format_encode_verbose(spec.encode.strategy, messages, encode_elapsed)
+    return RunResult(
+        content="\n\n".join(text_parts), verbose_suffix=_format_pipeline_tree(encode_output)
+    )
+
+
+def run_encoder(path: Path, kind: BinaryFileKind, spec: PipelineSpec, opts: CatOpts) -> RunResult:
+    """Run a named encoder strategy and output JSON messages or pipe to LLM."""
+    if spec.generate is None:
+        return _encode_only_text(path, spec)
+
+    from mm.encoders import get as get_encoder
+
+    assert spec.encode.strategy is not None
+    t_encode = time.monotonic()
+    strat = get_encoder(spec.encode.strategy)
+    messages = list(strat.encode(path, **spec.encode.strategy_opts))
+    encode_elapsed = (time.monotonic() - t_encode) * 1000
 
     from mm.profile import get_active_profile_name
 

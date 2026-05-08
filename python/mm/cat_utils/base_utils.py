@@ -40,9 +40,25 @@ class CatOpts:
     pipelines: dict[str, PipelineSpec]
     verbose: bool
 
+    _DEFAULTS: dict[str, Any] = {
+        "n": None,
+        "output_dir": None,
+        "mode": "fast",
+        "no_cache": False,
+        "no_generate": False,
+        "format": "rich",
+        "verbose": False,
+    }
+
     def __init__(self, **kwargs: object) -> None:
-        for k, v in kwargs.items():
-            setattr(self, k, v)
+        merged: dict[str, Any] = dict(self._DEFAULTS)
+        # Mutable defaults are filled per-instance to avoid shared state.
+        merged.setdefault("encode_overrides", {})
+        merged.setdefault("generate_overrides", {})
+        merged.setdefault("pipelines", {})
+        merged.update(kwargs)
+        for k in self.__slots__:
+            setattr(self, k, merged[k])
 
 
 @dataclass(slots=True)

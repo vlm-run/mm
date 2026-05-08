@@ -486,6 +486,9 @@ def _extract(path: Path, opts: CatOpts) -> str:
             _was_cached = True
         return content
 
+    if opts.no_generate:
+        return _no_generate_preview(path, kind, ext, opts)
+
     from mm.pipelines import apply_overrides
     from mm.pipelines.pipelines_utils import resolve_pipeline
     from mm.profile import get_profile
@@ -579,12 +582,47 @@ def _format_run(run: RunResult, verbose: bool) -> str:
     return run.content
 
 
+def _no_generate_preview(path: Path, kind: str, ext: str, opts: CatOpts) -> str:
+    """Render the resolved pipeline for ``path × opts.mode`` without invoking it."""
+    from mm.constants import OFFICE_EXTS
+    from mm.pipelines import apply_overrides
+    from mm.pipelines.pipelines_utils import resolve_pipeline
+    from mm.profile import get_profile
+
+    spec = resolve_pipeline(opts, kind)
+    spec = apply_overrides(spec, opts.encode_overrides or None, opts.generate_overrides or None)
+    header = f"\n# {path} (kind={kind}, mode={opts.mode}) — pipeline preview (--no-generate)"
+
+    encode = spec.encode
+    strategy = encode.strategy or "<unspecified>"
+    enc_opts = encode.strategy_opts or {}
+    enc_opts_str = (
+        ", ".join(f"{k}={v}" for k, v in sorted(enc_opts.items())) if enc_opts else "<defaults>"
+    )
+
+    if spec.generate is not None:
+        gen = spec.generate
+        first_line = (gen.prompt or "").strip().splitlines()[0] if gen.prompt else ""
+        if len(first_line) > 60:
+            first_line = first_line[:60] + "…"
+        prompt_part = f' · prompt="{first_line}"' if first_line else ""
+        eff = gen.model or get_profile().model
+        gen_line = f"generate: model={eff}{prompt_part}  [skipped via --no-generate]"
+    else:
+        gen_line = "generate: <none>  [encode-only pipeline]"
+
+    if ext in OFFICE_EXTS and opts.mode == "accurate":
+        header += " [routes through office→PDF before encode]"
+
+    middle: list[str] = [f"  ├─ encode: {strategy} · {enc_opts_str}"]
+    if encode.pyfunc:
+        middle.append(f"  ├─ pyfunc: {encode.pyfunc}")
+
+    return "\n".join([header, "pipeline", *middle, f"  └─ {gen_line}"])
+
+
 def _run_fast(path: Path, kind: BinaryFileKind, spec: PipelineSpec, opts: CatOpts) -> RunResult:
     """Fast mode: run the kind's fast pipeline."""
-    if getattr(opts, "no_generate", False):
-        import dataclasses
-
-        spec = dataclasses.replace(spec, generate=None)
     if spec.encode.strategy:
         from mm.cat_utils.run_encoder import run_encoder
 
@@ -633,11 +671,6 @@ def _run_accurate(
     ``_extract``; this function does no further override application
     ``meta_path`` reference to the original office file
     """
-    if getattr(opts, "no_generate", False):
-        import dataclasses
-
-        spec = dataclasses.replace(spec, generate=None)
-
     extract_meta(meta_path or path, kind, no_cache=opts.no_cache)
 
     return _accurate_dispatch(path, kind, spec, opts)
