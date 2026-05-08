@@ -203,6 +203,7 @@ def index_missing(
 
     workers = min(4, total)
     successful = 0
+    errored = 0
     completed = 0
     timed_out = False
 
@@ -211,10 +212,13 @@ def index_missing(
         futures = {pool.submit(_dispatch, uri): uri for uri in to_index}
         try:
             for fut in as_completed(futures, timeout=INDEX_TIMEOUT_S):
+                completed += 1
                 if fut.result() is not None:
                     successful += 1
-                completed += 1
-                console.print(f"[dim]  {completed}/{total} done...[/dim]")
+                    console.print(f"[dim]  {completed}/{total} done...[/dim]")
+                else:
+                    errored += 1
+                    console.print(f"[dim]  {completed}/{total} errored...[/dim]")
         except TimeoutError:
             timed_out = True
             pending = [futures[f] for f in futures if not f.done()]
@@ -230,7 +234,10 @@ def index_missing(
         pool.shutdown(wait=not timed_out, cancel_futures=True)
 
     if not timed_out:
-        console.print(f"[green]Indexed {successful} file{'s' if successful != 1 else ''}.[/green]")
+        suffix = f" [red]({errored} errored)[/red]" if errored else "."
+        console.print(
+            f"[green]Indexed {successful} file{'s' if successful != 1 else ''}[/green]{suffix}"
+        )
     return successful
 
 
