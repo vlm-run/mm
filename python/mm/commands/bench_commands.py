@@ -475,7 +475,7 @@ def build_encoder_cat_commands(
         output across runs. Each command is single-file (``batch=0``) and
         ``smallest=True`` so the snapshot picks the cheapest representative.
     """
-    from mm.encoders import _ensure_discovered, _REGISTRY
+    from mm.encoders import _REGISTRY, _ensure_discovered
 
     _ensure_discovered()
 

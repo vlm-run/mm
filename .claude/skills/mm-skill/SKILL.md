@@ -17,6 +17,7 @@ description: >
 `mm` is a fast, multimodal context tool for agents. Rust core for speed, Python for developer experience, Unix philosophy for composability.
 
 Two interfaces:
+
 - **CLI** — Unix-style commands (`find`, `cat`, `grep`, `wc`, `peek`) for exploring and extracting. See [cli.md](cli.md) for the CLI exploration workflow.
 - **Python API** — `mm.Context` for building role-aware VLM prompts, encoder system, transcription backends. See [api.md](api.md) for the full Python API reference.
 
@@ -125,6 +126,7 @@ mm peek video.mp4                                    # resolution, duration, FPS
 mm peek paper.pdf                                    # mime, content hash
 mm peek photo.png video.mp4 --format json            # multi-file JSON (one row per file)
 mm peek photo.png --format tsv                       # flat TSV; every kind has the same column set
+mm peek photo.png --full                             # include document author/title/subject/keywords/pages
 ```
 
 Behaviour by file type (single Rust scan, sub-100ms):
@@ -200,25 +202,25 @@ mm cat --print-pipeline image/accurate          # takes <kind>/<mode>
 
 Use either the bare name or the kind-prefixed display name.
 
-| Name                      | Media    | Description                                          |
-| ------------------------- | -------- | ---------------------------------------------------- |
-| `image-resize`            | image    | **Default.** Fit to 1024px bounding box              |
-| `image-tile`              | image    | Resized overview + tile crops in one Message         |
-| `video-frame-sample`      | video    | Extract frames at _fps_ (requires ffmpeg)            |
-| `video-frames-transcript` | video    | Frames + Whisper transcript (accurate mode default)  |
-| `video-chunk`             | video    | Chunk into time-based segments with overlap          |
-| `video-mosaic`            | video    | Build mosaic grids from sampled frames               |
-| `video-shot-frames`       | video    | Scene detection → representative frames per shot     |
-| `video-shot-mosaic`       | video    | Scene detection → mosaic grid per shot               |
-| `video-gemini`            | video    | Pass video file as a Gemini Part                     |
-| `video-gemini-chunked`    | video    | Chunk video into Gemini Parts                        |
+| Name                      | Media    | Description                                                     |
+| ------------------------- | -------- | --------------------------------------------------------------- |
+| `image-resize`            | image    | **Default.** Fit to 1024px bounding box                         |
+| `image-tile`              | image    | Resized overview + tile crops in one Message                    |
+| `video-frame-sample`      | video    | Extract frames at _fps_ (requires ffmpeg)                       |
+| `video-frames-transcript` | video    | Frames + Whisper transcript (accurate mode default)             |
+| `video-chunk`             | video    | Chunk into time-based segments with overlap                     |
+| `video-mosaic`            | video    | Build mosaic grids from sampled frames                          |
+| `video-shot-frames`       | video    | Scene detection → representative frames per shot                |
+| `video-shot-mosaic`       | video    | Scene detection → mosaic grid per shot                          |
+| `video-gemini`            | video    | Pass video file as a Gemini Part                                |
+| `video-gemini-chunked`    | video    | Chunk video into Gemini Parts                                   |
 | `audio-base64`            | audio    | **Default (Python API).** Raw base64 audio for native VLM input |
-| `audio-transcribe`        | audio    | Whisper transcript (supports `backend`/`base_url` kwargs) |
-| `audio-gemini`            | audio    | Pass audio file as a Gemini Part                     |
-| `document-page-text`      | document | Extract text per page from PDF/DOCX/PPTX             |
-| `document-rasterize`      | document | Render PDF pages as images (requires pypdfium2)      |
-| `document-rasterize-text` | document | Rasterize + extract text, interleaved                |
-| `document-gemini`         | document | Pass document file as a Gemini Part                  |
+| `audio-transcribe`        | audio    | Whisper transcript (supports `backend`/`base_url` kwargs)       |
+| `audio-gemini`            | audio    | Pass audio file as a Gemini Part                                |
+| `document-page-text`      | document | Extract text per page from PDF/DOCX/PPTX                        |
+| `document-rasterize`      | document | Render PDF pages as images (requires pypdfium2)                 |
+| `document-rasterize-text` | document | Rasterize + extract text, interleaved                           |
+| `document-gemini`         | document | Pass document file as a Gemini Part                             |
 
 ### Writing custom encoders
 

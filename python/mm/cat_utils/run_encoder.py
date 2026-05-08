@@ -8,8 +8,8 @@ from mm.cat_utils.base_utils import (
     make_llm_from_spec,
     spec_extra_body,
 )
+from mm.constants import BinaryFileKind
 from mm.pipelines.schema import PipelineSpec
-from mm.utils import BinaryFileKind
 
 
 def _format_pipeline_tree(encode_info: str, generate_info: str | None = None) -> str:

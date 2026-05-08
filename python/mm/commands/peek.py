@@ -163,6 +163,7 @@ def _emit_rich(rows: list[FileMetadata]) -> None:
             ("author", "doc_author"),
             ("title", "doc_title"),
             ("subject", "doc_subject"),
+            ("keywords", "doc_keywords"),
             ("creator", "doc_creator"),
             ("producer", "doc_producer"),
         ):

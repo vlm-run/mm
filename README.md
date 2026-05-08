@@ -165,6 +165,7 @@ mm peek bench.jpg                                               # image dimensio
 mm peek Timelapse.mp4                                           # video resolution, duration, codecs
 mm peek wordpress-pdf-invoice-plugin-sample.pdf                 # mime, content hash
 mm peek bench.jpg Timelapse.mp4 --format json                   # multi-file JSON
+mm peek paper.pdf --full                                        # include document author / title / page count
 
 # mm cat: content extraction. Default --mode fast.
 mm cat wordpress-pdf-invoice-plugin-sample.pdf                  # PDF page-text via pypdfium2 (fast pipeline)
@@ -313,7 +314,7 @@ The skill exposes mm's capabilities to any tool that supports the skills protoco
 | Command | Purpose | Key flags |
 |---------|---------|-----------|
 | `find`  | Find/list files, tree view, schema | `--name`, `-i` (ignore case), `--kind`, `--ext`, `--min-size`, `--max-size`, `--sort`, `--reverse`, `--columns`, `--tree`, `--depth`, `--schema`, `--limit`, `--no-ignore`, `--format` |
-| `peek` | Raw file metadata (dimensions / EXIF / codec / mime / hash). | `--format` (rich / json / pretty-json / tsv / csv) |
+| `peek` | Raw file metadata (dimensions / EXIF / codec / mime / hash). | `--full` (include document author/title/subject/pages), `--format` (rich / json / pretty-json / tsv / csv) |
 | `cat` | Content extraction (auto-detected by file type × mode) | `--mode fast/accurate` (default `fast`), `-p` (pipeline), `-n`, `--no-cache`, `-v`, `--encode.*` (incl. `--encode.strategy_opts KEY=VALUE`), `--generate.*`, `--list-pipelines`, `--list-encoders`, `--print-pipeline <kind>/<mode>`, `--format` |
 | `grep` | Content search across files | `--kind`, `--ext`, `-C`, `--count`, `-i`, `--semantic`, `--pre-index`, `--no-ignore`, `--format` |
 | `sql` | SQL queries on file index, results, chunks, and embeddings | `--dir`, `--pre-index`, `--format`, `--list-tables` |
@@ -352,6 +353,7 @@ mm peek Timelapse.mp4                                            # video resolut
 mm peek wordpress-pdf-invoice-plugin-sample.pdf                  # mime, content hash
 mm peek bench.jpg Timelapse.mp4 --format json                    # multi-file JSON
 mm peek bench.jpg --format tsv                                   # flat TSV (every kind has the same column set)
+mm peek paper.pdf --full                                         # include document author / title / subject / page count
 ```
 
 ### cat — content extraction

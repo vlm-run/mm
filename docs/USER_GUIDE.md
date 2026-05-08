@@ -128,6 +128,7 @@ mm peek report.pdf             # mime, content hash
 mm peek image.jpg              # image dimensions, MIME, hash, EXIF
 mm peek video.mp4              # video resolution, duration, codecs (<100ms)
 mm peek image.jpg video.mp4 --format json   # multi-file JSON
+mm peek report.pdf --full      # opt in to document author / title / subject / keywords / page count
 ```
 
 ### File inspection and extraction

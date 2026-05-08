@@ -11,8 +11,8 @@ from typing import Literal
 
 # -- Media kind type ---------------------------------------------------------
 
-FileKind = Literal["image", "video", "audio", "document", "text"]
-"""Coarse media classification returned by ``file_kind()``."""
+BinaryFileKind = Literal["image", "video", "audio", "document"]
+FileKind = Literal["text"] | BinaryFileKind
 
 
 # -- Extension sets ----------------------------------------------------------
@@ -61,7 +61,26 @@ AUDIO_EXTS: frozenset[str] = frozenset(
     )
 )
 
-DOCUMENT_EXTS: frozenset[str] = frozenset((".pdf", ".docx", ".pptx"))
+OFFICE_EXTS: frozenset[str] = frozenset((".docx", ".odt", ".pptx", ".odp", ".xlsx", ".ods"))
+DOCUMENT_EXTS: frozenset[str] = frozenset((".pdf", ".doc", *OFFICE_EXTS))
+CODE_EXTS: frozenset[str] = frozenset(
+    (
+        ".py",
+        ".rs",
+        ".js",
+        ".ts",
+        ".go",
+        ".c",
+        ".cpp",
+        ".h",
+        ".java",
+        ".rb",
+        ".sh",
+        ".toml",
+        ".yaml",
+        ".yml",
+    )
+)
 
 
 # -- Extension → MIME mapping ------------------------------------------------

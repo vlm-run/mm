@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import tempfile
 import time
 from pathlib import Path
 from typing import Annotated, Any, Optional
@@ -26,6 +27,7 @@ from mm.cat_utils.base_utils import (
 )
 from mm.cat_utils.extract_meta import extract_meta, extract_text
 from mm.cat_utils.run_encoder import run_encoder
+from mm.constants import OFFICE_EXTS, BinaryFileKind
 from mm.encoders.encoders_utils import do_list_encoders
 from mm.pipe import read_paths_from_stdin
 from mm.pipelines.pipelines_utils import (
@@ -35,7 +37,7 @@ from mm.pipelines.pipelines_utils import (
     resolve_pipeline,
 )
 from mm.pipelines.schema import PipelineSpec
-from mm.utils import BinaryFileKind, Format, file_kind
+from mm.utils import Format, file_kind
 
 # Track total bytes processed for throughput calculation
 _total_bytes_processed = 0
@@ -465,10 +467,17 @@ def cat_cmd(
 
 def _extract(path: Path, opts: CatOpts) -> str:
     """Pipeline-driven extraction dispatch with unified extraction caching."""
+    global _was_cached
     kind = file_kind(path)
     ext = path.suffix.lower()
-    global _was_cached
-    if kind == "text" or (kind == "document" and ext != ".pdf"):
+
+    if kind == "text" or (
+        kind == "document"
+        and (
+            (ext != ".pdf" and ext not in OFFICE_EXTS)
+            or (ext in OFFICE_EXTS and opts.mode != "accurate")
+        )
+    ):
         content, cached = extract_text(path, kind)
         if cached:
             _was_cached = True
@@ -526,7 +535,14 @@ def _extract(path: Path, opts: CatOpts) -> str:
     # (regardless of opts.verbose) so we can persist it for replay on a
     # future cached + verbose run. The merged ``spec`` is threaded down so
     # the LLM call sites read ``spec.generate.{model, extra_body}`` directly.
-    if opts.mode == "accurate":
+    if ext in OFFICE_EXTS and opts.mode == "accurate":
+        with tempfile.TemporaryDirectory(prefix="mm-office-") as tmpdir:
+            from mm._mm import office_to_pdf
+
+            tmp_pdf = Path(tmpdir) / f"{path.stem}.pdf"
+            office_to_pdf(str(path), str(tmp_pdf))
+            run = _run_accurate(tmp_pdf, kind, spec, opts, meta_path=path)
+    elif opts.mode == "accurate":
         run = _run_accurate(path, kind, spec, opts)
     else:
         run = _run_fast(path, kind, spec, opts)
@@ -597,18 +613,26 @@ def _run_fast(path: Path, kind: BinaryFileKind, spec: PipelineSpec, opts: CatOpt
     return RunResult(content=result, verbose_suffix=suffix)
 
 
-def _run_accurate(path: Path, kind: BinaryFileKind, spec: PipelineSpec, opts: CatOpts) -> RunResult:
+def _run_accurate(
+    path: Path,
+    kind: BinaryFileKind,
+    spec: PipelineSpec,
+    opts: CatOpts,
+    *,
+    meta_path: Path | None = None,
+) -> RunResult:
     """Accurate mode: LLM-powered semantic extraction.
 
     ``spec`` is the merged (YAML + CLI) pipeline spec resolved by
-    ``_extract``; this function does no further override application.
+    ``_extract``; this function does no further override application
+    ``meta_path`` reference to the original office file
     """
     if getattr(opts, "no_generate", False):
         import dataclasses
 
         spec = dataclasses.replace(spec, generate=None)
 
-    extract_meta(path, kind, no_cache=opts.no_cache)
+    extract_meta(meta_path or path, kind, no_cache=opts.no_cache)
 
     return _accurate_dispatch(path, kind, spec, opts)
 

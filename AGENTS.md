@@ -227,7 +227,7 @@ uv run mm <command> [args]
 | Command   | Purpose | Key flags |
 |-----------|---------|-----------|
 | `find`    | Find/list files, tree view, schema | `--name`, `-i` (ignore case), `--kind`, `--ext`, `--min-size`, `--max-size`, `--sort`, `--columns`, `--tree`, `--depth`, `--schema`, `--limit`, `--no-ignore`, `--format` |
-| `peek`    | Raw file metadata (dimensions / EXIF / codec / mime / hash). | `--format` (rich / json / pretty-json / tsv / csv) |
+| `peek`    | Raw file metadata (dimensions / EXIF / codec / mime / hash). | `--full` (include document author/title/subject/keywords/pages), `--format` (rich / json / pretty-json / tsv / csv) |
 | `cat`     | Content extraction (auto-detected by file type × mode) | `--mode fast/accurate` (default `fast`), `-p` (pipeline), `-n` (head/tail), `--encode.*`, `--generate.*`, `--format` |
 | `grep`    | Content search across files | `--kind`, `--ext`, `-C` (context), `--count`, `-i` (ignore case), `--no-ignore`, `--format` |
 | `sql`     | SQL on files, results, and chunks | `--dir`, `--format`, `--list-tables` |
@@ -265,6 +265,7 @@ The following commands were merged into the core commands:
 - `mm peek photo.png` — image dims / EXIF / hash (Rich panel by default)
 - `mm peek paper.pdf clip.mp4 main.py --format json` — multi-file JSON output
 - `mm peek video.mp4 --format tsv` — flat TSV (every kind has the same column set; nullable fields render empty)
+- `mm peek paper.pdf --full` — opt in to document-only fields (`doc_author`, `doc_title`, `doc_subject`, `doc_keywords`, `doc_creator`, `doc_producer`, `pages`)
 
 ### cat modes (auto-detected from file type × mode)
 
