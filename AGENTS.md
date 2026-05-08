@@ -63,9 +63,6 @@ Rust core for speed, Python for developer experience, Unix philosophy for compos
 - ctranslate2 — CTranslate2 inference runtime (for faster-whisper)
 - libreoffice-rs — Office Docs text extraction
 
-**Python (mm[gemini]):**
-- google-genai — Gemini embedding generation (text, image, audio, video, document)
-
 **Python (mm[mlx]):**
 - mlx — Apple Metal GPU acceleration
 - lightning-whisper-mlx — MLX Whisper backend (~3-4x faster on Apple Silicon)
@@ -442,6 +439,5 @@ Every commit that changes performance numbers or adds/modifies benchmarks should
 
 - Python `Context.cat()` for PDFs uses Rust extractor (raw bytes) instead of pypdfium2. The CLI `cat` correctly uses pypdfium2.
 - Accurate mode requires an external LLM server; no built-in model. Default: local Ollama with `gemma4:e2b`.
-- Audio embedding fails for files >80s if sent as a single Part (Gemini limit). Use `audio_parts()` to auto-chunk.
 - `upsert_files()` reads the full `files` table to preserve content columns — will need optimization at >100K files.
 - sqlite-vec cold import is ~130ms. No daemon or sidecar cache needed.
