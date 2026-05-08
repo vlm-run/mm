@@ -82,7 +82,7 @@ RESERVED_DEFAULTS = {
     "openrouter": OPENROUTER_DEFAULTS,
 }
 
-EMBEDDING_BASEURL = "https://gateway.vlm.run/v1"
+GATEWAY_BASE_URL = "https://gateway.vlm.run/v1"
 
 
 class ProfileUpdateData(TypedDict, total=False):

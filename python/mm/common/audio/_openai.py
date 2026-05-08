@@ -76,7 +76,9 @@ class OpenAIBackend(TranscriptionBackend):
         base_url = self._base_url
         api_key = self._api_key or ""
         if not base_url:
-            base_url, api_key = _resolve_profile_url()
+            from mm.profile import GATEWAY_BASE_URL
+
+            base_url = GATEWAY_BASE_URL
         if not base_url:
             return TranscriptionResult(
                 text="[openai backend: no base_url configured — "

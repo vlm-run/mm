@@ -131,9 +131,9 @@ def _request_embeddings(parts: list[dict[str, Any]]) -> list[list[float]]:
     import httpx
 
     from mm import __version__
-    from mm.profile import EMBEDDING_BASEURL
+    from mm.profile import GATEWAY_BASE_URL
 
-    url = EMBEDDING_BASEURL + _EMBEDDINGS_PATH
+    url = GATEWAY_BASE_URL + _EMBEDDINGS_PATH
     response = httpx.post(
         url,
         json=parts,
