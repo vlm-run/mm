@@ -29,7 +29,7 @@ class OpenAIBackend(TranscriptionBackend):
 
     The ``base_url`` and ``api_key`` can be set explicitly in the
     constructor or via ``encoder_kwargs``; when omitted ``base_url``
-    falls back to ``mm.profile.GATEWAY_BASE_URL``.
+    falls back to ``mm.profile.TRANSCRIPTION_BASE_URL``.
     """
 
     name = "openai"
@@ -63,9 +63,9 @@ class OpenAIBackend(TranscriptionBackend):
     ) -> TranscriptionResult:
         from openai import OpenAI
 
-        from mm.profile import GATEWAY_BASE_URL
+        from mm.profile import TRANSCRIPTION_BASE_URL
 
-        base_url = self._base_url or GATEWAY_BASE_URL
+        base_url = self._base_url or TRANSCRIPTION_BASE_URL
         api_key = self._api_key or ""
 
         client = OpenAI(
