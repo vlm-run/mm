@@ -74,6 +74,19 @@ class TestEmbedTexts:
         url = mock_server.call_args[0][0]
         assert url.endswith(_EMBEDDINGS_PATH)
 
+    def test_embed_texts_default_url_is_gateway_openai(self, mock_server: MagicMock):
+        """Default embeddings URL must be the gateway's OpenAI-compatible route.
+
+        The gateway exposes embeddings at ``/v1/openai/embeddings``; a plain
+        ``/v1/embeddings`` path returns 404. See ``mm.profile.GATEWAY_BASE_URL``.
+        """
+        from mm.profile import EMBEDDING_BASE_URL
+
+        assert EMBEDDING_BASE_URL == "https://gateway.vlm.run/v1/openai"
+        embed_texts(["test"])
+        url = mock_server.call_args[0][0]
+        assert url == "https://gateway.vlm.run/v1/openai/embeddings"
+
     def test_embed_texts_user_agent(self, mock_server: MagicMock):
         embed_texts(["test"])
         headers = mock_server.call_args[1].get("headers", {})

@@ -247,6 +247,35 @@ class TestOpenAIBackend:
                 timeout=120.0,
             )
 
+    def test_default_base_url_is_gateway_openai_route(self, tmp_path):
+        """Default transcription URL must be the gateway's OpenAI-compatible route.
+
+        The OpenAI SDK appends ``/audio/transcriptions`` to ``base_url``, so
+        the resulting URL is ``https://gateway.vlm.run/v1/openai/audio/transcriptions``.
+        Plain ``/v1/audio/transcriptions`` (no ``/openai`` segment) returns 404.
+        """
+        audio = tmp_path / "test.wav"
+        audio.write_bytes(b"\x00" * 100)
+
+        mock_resp = MagicMock()
+        mock_resp.text = ""
+        mock_resp.language = ""
+        mock_resp.segments = []
+
+        mock_client = MagicMock()
+        mock_client.audio.transcriptions.create.return_value = mock_resp
+
+        with patch("openai.OpenAI", return_value=mock_client) as MockOpenAI:
+            from mm.common.audio._openai import OpenAIBackend
+            from mm.profile import TRANSCRIPTION_BASE_URL
+
+            assert TRANSCRIPTION_BASE_URL == "https://gateway.vlm.run/v1/openai"
+            be = OpenAIBackend()
+            be.transcribe(audio)
+
+            kwargs = MockOpenAI.call_args.kwargs
+            assert kwargs["base_url"] == "https://gateway.vlm.run/v1/openai"
+
     def test_timestamp_scaling(self, tmp_path):
         audio = tmp_path / "test.wav"
         audio.write_bytes(b"\x00" * 100)
