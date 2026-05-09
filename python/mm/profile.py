@@ -82,7 +82,7 @@ RESERVED_DEFAULTS = {
     "openrouter": OPENROUTER_DEFAULTS,
 }
 
-GATEWAY_BASE_URL = "https://gateway.vlm.run/v1/openai"
+GATEWAY_BASE_URL = GATEWAY_DEFAULTS["base_url"]
 EMBEDDING_BASE_URL = os.environ.get("MM_EMBEDDING_BASE_URL", GATEWAY_BASE_URL)
 TRANSCRIPTION_BASE_URL = os.environ.get("MM_TRANSCRIPTION_BASE_URL", GATEWAY_BASE_URL)
 EMBEDDING_MODEL = os.environ.get("MM_EMBEDDING_MODEL", "qwen/qwen3-vl-embedding-2b")
