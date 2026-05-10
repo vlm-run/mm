@@ -383,6 +383,7 @@ def cat_cmd(
     _total_bytes_processed = 0
     _was_cached = False
 
+    valid_paths: list[Path] = []
     for file_path in paths:
         p = Path(file_path)
         if not p.exists():
@@ -391,16 +392,25 @@ def cat_cmd(
 
             prune_missing(uris=[str(p.resolve())])
             continue
-
-        # Track bytes for throughput calculation
+        valid_paths.append(p)
         _total_bytes_processed += p.stat().st_size
 
+    def _process(p: Path) -> str:
         content = _extract(p, opts)
-
         if n is not None:
-            all_lines = content.splitlines()
-            content = "\n".join(all_lines[:n] if n >= 0 else all_lines[n:])
+            lines = content.splitlines()
+            content = "\n".join(lines[:n] if n >= 0 else lines[n:])
+        return content
 
+    contents: list[str] = []
+    if valid_paths:
+        from concurrent.futures import ThreadPoolExecutor
+
+        with ThreadPoolExecutor(max_workers=min(8, len(valid_paths))) as pool:
+            futures = [pool.submit(_process, p) for p in valid_paths]
+            contents = [f.result() for f in futures]
+
+    for p, content in zip(valid_paths, contents, strict=True):
         if fmt in ("json", "pretty-json", "dataset-jsonl", "dataset-hf"):
             if fmt in ("json", "pretty-json"):
                 # ``pretty-json`` shares the wire shape with ``json`` --

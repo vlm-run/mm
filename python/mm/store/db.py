@@ -66,39 +66,47 @@ class MmDatabase:
 
     def __init__(self, db_path: Path | None = None):
         self._db_path = db_path or self.DB_PATH
-        self._conn: sqlite3.Connection | None = None
-        self._vec_loaded: bool = False
-        self._init_lock = threading.Lock()
+        self._tls = threading.local()
+        self._schema_ready: bool = False
+        self._lock = threading.RLock()
 
     @property
     def _vec_available(self) -> bool:
         _ = self._connect
-        return self._vec_loaded
+        return getattr(self._tls, "vec_loaded", False)
+
+    @property
+    def _conn(self) -> sqlite3.Connection | None:
+        return getattr(self._tls, "conn", None)
 
     @property
     def _connect(self) -> sqlite3.Connection:
-        if self._conn is not None:
-            return self._conn
-        with self._init_lock:
-            if self._conn is not None:
-                return self._conn
-            self._db_path.parent.mkdir(parents=True, exist_ok=True)
-            conn = sqlite3.connect(str(self._db_path), check_same_thread=False)
-            conn.row_factory = sqlite3.Row
-            try:
-                import sqlite_vec
+        conn = getattr(self._tls, "conn", None)
+        if conn is not None:
+            return conn
 
-                conn.enable_load_extension(True)
-                sqlite_vec.load(conn)
-                conn.enable_load_extension(False)
-                self._vec_loaded = True
-            except (AttributeError, ImportError, OSError):
-                self._vec_loaded = False
-            conn.execute("PRAGMA journal_mode=WAL")
-            conn.execute("PRAGMA foreign_keys=ON")
-            self._conn = conn
-            self._ensure_tables()
-        return self._conn
+        self._db_path.parent.mkdir(parents=True, exist_ok=True)
+        conn = sqlite3.connect(str(self._db_path), check_same_thread=False)
+        conn.row_factory = sqlite3.Row
+        try:
+            import sqlite_vec
+
+            conn.enable_load_extension(True)
+            sqlite_vec.load(conn)
+            conn.enable_load_extension(False)
+            self._tls.vec_loaded = True
+        except (AttributeError, ImportError, OSError):
+            self._tls.vec_loaded = False
+        conn.execute("PRAGMA journal_mode=WAL")
+        conn.execute("PRAGMA foreign_keys=ON")
+        self._tls.conn = conn
+
+        if not self._schema_ready:
+            with self._lock:
+                if not self._schema_ready:
+                    self._ensure_tables()
+                    self._schema_ready = True
+        return conn
 
     def _ensure_tables(self) -> None:
         """Create tables, apply additive migrations, then create indexes.
@@ -676,7 +684,8 @@ class MmDatabase:
         n = min(len(vectors), len(chunk_ids))
         vec_inserts = [(chunk_ids[i], struct.pack(f"{dim}f", *vectors[i])) for i in range(n)]
         db.executemany(
-            "INSERT OR REPLACE INTO chunks_vec (chunk_id, embedding) VALUES (?, ?)", vec_inserts
+            "INSERT OR REPLACE INTO chunks_vec (chunk_id, embedding) VALUES (?, ?)",
+            vec_inserts,
         )
         db.commit()
 
