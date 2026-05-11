@@ -8,7 +8,7 @@ from time import perf_counter
 from typing import TYPE_CHECKING, Any, Literal
 
 if TYPE_CHECKING:
-    import pyarrow as pa
+    from pyarrow import Table
     from rich.console import Console
 
 
@@ -296,7 +296,7 @@ def _style_cell(col: str, val: Any):
     return Text(str(val))
 
 
-def autoselect_cols(table: pa.Table):
+def autoselect_cols(table: Table):
     """auto select a subset of columns to display based on terminal width, prioritizing the most useful ones."""
     import shutil
 
@@ -338,7 +338,7 @@ def autoselect_cols(table: pa.Table):
 
 
 def arrow_table_to_rich(
-    table: pa.Table,
+    table: Table,
     columns: list[str] | None = None,
     limit: int | None = None,
     title: str | None = None,

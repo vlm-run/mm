@@ -383,6 +383,7 @@ def cat_cmd(
     _total_bytes_processed = 0
     _was_cached = False
 
+    valid_paths: list[Path] = []
     for file_path in paths:
         p = Path(file_path)
         if not p.exists():
@@ -391,16 +392,18 @@ def cat_cmd(
 
             prune_missing(uris=[str(p.resolve())])
             continue
-
-        # Track bytes for throughput calculation
+        valid_paths.append(p)
         _total_bytes_processed += p.stat().st_size
 
+    def _process(p: Path) -> str:
         content = _extract(p, opts)
-
         if n is not None:
-            all_lines = content.splitlines()
-            content = "\n".join(all_lines[:n] if n >= 0 else all_lines[n:])
+            lines = content.splitlines()
+            content = "\n".join(lines[:n] if n >= 0 else lines[n:])
+        return content
 
+    def _render(p: Path, content: str) -> None:
+        nonlocal _emitted
         if fmt in ("json", "pretty-json", "dataset-jsonl", "dataset-hf"):
             if fmt in ("json", "pretty-json"):
                 # ``pretty-json`` shares the wire shape with ``json`` --
@@ -452,6 +455,19 @@ def cat_cmd(
 
                 output_console.print("\n".join(rich_lines))
             _emitted += 1
+
+    if valid_paths:
+        from concurrent.futures import ThreadPoolExecutor
+
+        with ThreadPoolExecutor(max_workers=min(8, len(valid_paths))) as pool:
+            futures = [pool.submit(_process, p) for p in valid_paths]
+            for p, fut in zip(valid_paths, futures, strict=True):
+                try:
+                    content = fut.result()
+                except Exception as exc:
+                    typer.echo(f"Error processing {p}: {exc}", err=True)
+                    continue
+                _render(p, content)
 
     if fmt in ("json", "pretty-json", "dataset-jsonl", "dataset-hf"):
         from mm.display import emit_rows
