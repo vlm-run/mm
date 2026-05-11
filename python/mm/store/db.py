@@ -38,7 +38,7 @@ from typing import TYPE_CHECKING, Any
 from mm.store.utils import get_extraction_id, now_us
 
 if TYPE_CHECKING:
-    import pyarrow as pa
+    from pyarrow import Table
 
 CHUNK_SIZE = 2048
 CHUNK_OVERLAP = 100
@@ -149,7 +149,7 @@ class MmDatabase:
 
     def upsert_files(
         self,
-        scanner_table: pa.Table,
+        scanner_table: Table,
         root: Path,
         *,
         session_id: str | None = None,
