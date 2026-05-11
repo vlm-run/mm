@@ -469,7 +469,7 @@ def cat_cmd(
                     continue
                 _render(p, content)
 
-    if fmt in ("json", "pretty-json", "dataset-jsonl", "dataset-hf"):
+    if fmt in ("json", "pretty-json", "dataset-jsonl", "dataset-hf") and results:
         from mm.display import emit_rows
 
         emit_rows(fmt, results, output_dir=str(output_dir) if output_dir else "mm_dataset")
