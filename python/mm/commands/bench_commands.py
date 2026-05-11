@@ -105,8 +105,17 @@ def _pick_smallest(files: list[FileEntry], kind: str, directory: Path) -> str | 
 
 
 def _pick_files(files: list[FileEntry], kind: str, limit: int) -> list[str]:
-    """Pick up to limit files matching kind."""
-    return [f.path for f in files if f.kind == kind][:limit]
+    """Pick exactly ``limit`` files matching ``kind``, exercising every candidate."""
+    candidates = [f.path for f in files if f.kind == kind]
+    n = len(candidates)
+    if n == 0:
+        return []
+    if n > limit:
+        candidates.sort(key=lambda p: Path(p).name)
+        return [candidates[(i * n) // limit] for i in range(limit)]
+    if n == limit:
+        return candidates
+    return [candidates[i % n] for i in range(limit)]
 
 
 @dataclass
