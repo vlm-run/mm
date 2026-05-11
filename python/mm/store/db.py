@@ -163,7 +163,7 @@ class MmDatabase:
         if files_cols:
             for old, new in FILES_RENAMES:
                 if old in files_cols and new not in files_cols:
-                    conn.execute(f"ALTER TABLE files RENAME COLUMN {old} TO {new}")
+                    conn.execute(f'ALTER TABLE "files" RENAME COLUMN "{old}" TO "{new}"')
 
         tables = {
             row["name"]
@@ -180,10 +180,10 @@ class MmDatabase:
             prev_fk = conn.execute("PRAGMA foreign_keys").fetchone()[0]
             conn.execute("PRAGMA foreign_keys=OFF")
             try:
-                conn.execute("DROP TABLE IF EXISTS chunks_vec")
-                conn.execute("DROP TABLE IF EXISTS chunks")
+                conn.execute('DROP TABLE IF EXISTS "chunks_vec"')
+                conn.execute('DROP TABLE IF EXISTS "chunks"')
                 for table in LEGACY_CACHE_TABLES:
-                    conn.execute(f"DROP TABLE IF EXISTS {table}")
+                    conn.execute(f'DROP TABLE IF EXISTS "{table}"')
             finally:
                 conn.execute(f"PRAGMA foreign_keys={'ON' if prev_fk else 'OFF'}")
 
