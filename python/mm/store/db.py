@@ -109,11 +109,16 @@ class MmDatabase:
         return conn
 
     def _ensure_tables(self) -> None:
-        """Create tables, apply additive migrations, then create indexes.
+        """Migrate legacy schemas, create tables, then create indexes.
 
-        Order matters: indexes can reference newly migrated columns
-        (``session_id``, ``ref_id``) that aren't present in legacy DBs
-        until the migration step runs.
+        Order matters:
+          1. Legacy rename/drop migrations run first so renames land on the
+             original tables instead of coexisting with empty parallel ones
+             created by ``CREATE TABLE IF NOT EXISTS``.
+          2. ``CREATE TABLE IF NOT EXISTS`` is a no-op on migrated tables and
+             a fresh-create on new databases.
+          3. Additive column migrations (``session_id``, ``ref_id``) run before
+             index creation since indexes reference those columns.
         """
         from mm.store.schema import (
             CHUNKS_DDL,
@@ -123,9 +128,66 @@ class MmDatabase:
         )
 
         assert self._conn is not None, "_ensure_tables called before _connect"
+        self._migrate_legacy()
         self._conn.executescript(FILES_DDL + EXTRACTIONS_DDL + CHUNKS_DDL)
         self._migrate_files()
         self._conn.executescript(FILES_INDEX_DDL)
+
+    def _migrate_legacy(self) -> None:
+        """Bring pre-extractions-rename databases forward to the current schema.
+
+        Two changes from the legacy schema (pre commit 8b758e6):
+          * ``files.fast_indexed_at`` was renamed to ``files.content_indexed_at``.
+            Renamed in place to preserve the indexed metadata cache.
+          * ``accurate_results`` was renamed to ``extractions`` and
+            ``chunks.accurate_result_id`` to ``chunks.extraction_id`` (with
+            relaxed nullability and a new ``mode`` CHECK constraint). The
+            extraction/chunk cache is rebuildable, so legacy ``accurate_results``
+            and ``chunks`` (plus the ``chunks_vec`` virtual table) are dropped
+            — the CREATE TABLE step in ``_ensure_tables`` recreates them with
+            the current schema.
+
+        Idempotent: each branch inspects the live schema and is a no-op once
+        the migration has already run.
+        """
+        from mm.store.schema import (
+            FILES_RENAMES,
+            LEGACY_CACHE_TABLES,
+            LEGACY_CHUNK_COLUMNS,
+        )
+
+        assert self._conn is not None, "_migrate_legacy called before _connect"
+        conn = self._conn
+
+        files_cols = {row["name"] for row in conn.execute("PRAGMA table_info(files)").fetchall()}
+        if files_cols:
+            for old, new in FILES_RENAMES:
+                if old in files_cols and new not in files_cols:
+                    conn.execute(f"ALTER TABLE files RENAME COLUMN {old} TO {new}")
+
+        tables = {
+            row["name"]
+            for row in conn.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()
+        }
+        chunks_cols = {row["name"] for row in conn.execute("PRAGMA table_info(chunks)").fetchall()}
+        legacy_chunks = bool(chunks_cols) and any(
+            col in chunks_cols for col in LEGACY_CHUNK_COLUMNS
+        )
+        legacy_cache = any(t in tables for t in LEGACY_CACHE_TABLES)
+        if legacy_chunks or legacy_cache:
+            # Drop FK-linked cache tables together. Disable FK enforcement so
+            # the order of drops doesn't matter.
+            prev_fk = conn.execute("PRAGMA foreign_keys").fetchone()[0]
+            conn.execute("PRAGMA foreign_keys=OFF")
+            try:
+                conn.execute("DROP TABLE IF EXISTS chunks_vec")
+                conn.execute("DROP TABLE IF EXISTS chunks")
+                for table in LEGACY_CACHE_TABLES:
+                    conn.execute(f"DROP TABLE IF EXISTS {table}")
+            finally:
+                conn.execute(f"PRAGMA foreign_keys={'ON' if prev_fk else 'OFF'}")
+
+        conn.commit()
 
     def _migrate_files(self) -> None:
         """Apply additive ``files`` migrations idempotently.

@@ -213,6 +213,22 @@ FILES_MIGRATIONS: tuple[tuple[str, str], ...] = (
     ("ref_id", "ALTER TABLE files ADD COLUMN ref_id TEXT"),
 )
 
+# FILES_RENAMES — column renames applied before the additive migrations and
+# the CREATE TABLE statements. Each entry is (old_name, new_name); the rename
+# fires only when old_name exists and new_name does not.
+FILES_RENAMES: tuple[tuple[str, str], ...] = (("fast_indexed_at", "content_indexed_at"),)
+
+# LEGACY_CACHE_TABLES — pre-extractions-rename tables whose presence signals a
+# legacy schema. The cache (extraction outputs + chunks + embeddings) is
+# rebuildable, so the migration drops these and lets CREATE TABLE IF NOT EXISTS
+# recreate them with the current schema. The ``files`` index is preserved.
+LEGACY_CACHE_TABLES: tuple[str, ...] = ("accurate_results",)
+
+# LEGACY_CHUNK_COLUMNS — chunks columns that, when present, mark the table as
+# pre-extractions-rename. Triggers a drop+recreate of ``chunks`` and
+# ``chunks_vec`` so the new (nullable, CHECK-constrained) schema applies.
+LEGACY_CHUNK_COLUMNS: tuple[str, ...] = ("accurate_result_id",)
+
 EXTRACTIONS_DDL = """\
 CREATE TABLE IF NOT EXISTS extractions (
     id           TEXT PRIMARY KEY,

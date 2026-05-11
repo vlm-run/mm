@@ -40,6 +40,198 @@ class TestSchema:
         assert ChunkCol.CHUNK_TEXT == "chunk_text"
 
 
+class TestLegacySchemaMigration:
+    """Verify pre-extractions-rename databases (pre commit 8b758e6) migrate forward.
+
+    Legacy schema had ``accurate_results`` instead of ``extractions``,
+    ``chunks.accurate_result_id`` instead of ``extraction_id``, and
+    ``files.fast_indexed_at`` instead of ``content_indexed_at``. Opening
+    such a DB used to fail with ``sqlite3.OperationalError: no such column:
+    extraction_id`` on the first ``put_extraction``.
+    """
+
+    LEGACY_DDL = """
+    CREATE TABLE files (
+        uri TEXT PRIMARY KEY, name TEXT NOT NULL, stem TEXT NOT NULL, ext TEXT NOT NULL,
+        size INTEGER NOT NULL, modified INTEGER NOT NULL, created INTEGER NOT NULL,
+        mime TEXT NOT NULL, kind TEXT NOT NULL, is_binary INTEGER NOT NULL,
+        depth INTEGER NOT NULL, parent TEXT NOT NULL, width INTEGER, height INTEGER,
+        content_hash TEXT, text_preview TEXT, line_count INTEGER, word_count INTEGER,
+        language TEXT, dimensions TEXT, pages INTEGER, duration_s REAL, fps REAL,
+        magic_mime TEXT, exif_camera TEXT, exif_date TEXT, exif_gps TEXT,
+        exif_orientation TEXT, video_codec TEXT, audio_codec TEXT, has_audio INTEGER,
+        phash TEXT, indexed_at INTEGER NOT NULL, fast_indexed_at INTEGER
+    );
+    CREATE TABLE accurate_results (
+        id TEXT PRIMARY KEY,
+        file_uri TEXT NOT NULL REFERENCES files(uri) ON DELETE CASCADE,
+        content_hash TEXT NOT NULL, profile TEXT NOT NULL, model TEXT NOT NULL,
+        mode TEXT NOT NULL, detail INTEGER NOT NULL, extra TEXT NOT NULL DEFAULT '',
+        summary TEXT NOT NULL, metadata TEXT, created_at INTEGER NOT NULL
+    );
+    CREATE TABLE chunks (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        accurate_result_id TEXT NOT NULL REFERENCES accurate_results(id) ON DELETE CASCADE,
+        file_uri TEXT NOT NULL, content_hash TEXT NOT NULL, profile TEXT NOT NULL,
+        model TEXT NOT NULL, mode TEXT NOT NULL DEFAULT 'accurate',
+        chunk_idx INTEGER NOT NULL, chunk_text TEXT NOT NULL, created_at INTEGER NOT NULL
+    );
+    """
+
+    @staticmethod
+    def _seed_legacy_db(db_path: Path) -> None:
+        import sqlite3
+
+        conn = sqlite3.connect(str(db_path))
+        conn.executescript(TestLegacySchemaMigration.LEGACY_DDL)
+        conn.execute(
+            "INSERT INTO files (uri,name,stem,ext,size,modified,created,mime,kind,"
+            "is_binary,depth,parent,width,height,content_hash,text_preview,"
+            "fast_indexed_at,indexed_at) VALUES "
+            "(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            (
+                "/legacy/img.jpg",
+                "img.jpg",
+                "img",
+                ".jpg",
+                100,
+                1_000_000,
+                1_000_000,
+                "image/jpeg",
+                "image",
+                1,
+                0,
+                "/legacy",
+                64,
+                64,
+                "h1",
+                "preview",
+                1_000_001,
+                1_000_000,
+            ),
+        )
+        conn.execute(
+            "INSERT INTO accurate_results (id,file_uri,content_hash,profile,model,mode,"
+            "detail,extra,summary,metadata,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+            (
+                "legacy-eid",
+                "/legacy/img.jpg",
+                "h1",
+                "default",
+                "qwen",
+                "accurate",
+                0,
+                "",
+                "stale summary",
+                "{}",
+                1_000_002,
+            ),
+        )
+        conn.execute(
+            "INSERT INTO chunks (accurate_result_id,file_uri,content_hash,profile,model,"
+            "mode,chunk_idx,chunk_text,created_at) VALUES (?,?,?,?,?,?,?,?,?)",
+            (
+                "legacy-eid",
+                "/legacy/img.jpg",
+                "h1",
+                "default",
+                "qwen",
+                "accurate",
+                0,
+                "stale chunk",
+                1_000_003,
+            ),
+        )
+        conn.commit()
+        conn.close()
+
+    def test_legacy_db_migrates_on_open(self, tmp_path: Path):
+        import sqlite3
+
+        db_path = tmp_path / "legacy.db"
+        self._seed_legacy_db(db_path)
+
+        db = MmDatabase(db_path=db_path)
+        _ = db._connect
+
+        conn = sqlite3.connect(str(db_path))
+        tables = {r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+        assert "extractions" in tables
+        assert "accurate_results" not in tables
+
+        files_cols = {r[1] for r in conn.execute("PRAGMA table_info(files)")}
+        assert "content_indexed_at" in files_cols
+        assert "fast_indexed_at" not in files_cols
+        assert "session_id" in files_cols
+        assert "ref_id" in files_cols
+
+        chunks_cols = {r[1] for r in conn.execute("PRAGMA table_info(chunks)")}
+        assert "extraction_id" in chunks_cols
+        assert "accurate_result_id" not in chunks_cols
+
+        # files metadata is preserved across the migration (fast_indexed_at -> content_indexed_at)
+        row = conn.execute(
+            "SELECT uri, text_preview, content_indexed_at FROM files WHERE uri = ?",
+            ("/legacy/img.jpg",),
+        ).fetchone()
+        assert row is not None and row[1] == "preview" and row[2] == 1_000_001
+
+        # extraction cache is rebuildable, so legacy rows are dropped
+        assert conn.execute("SELECT COUNT(*) FROM extractions").fetchone()[0] == 0
+        assert conn.execute("SELECT COUNT(*) FROM chunks").fetchone()[0] == 0
+        conn.close()
+
+    def test_legacy_db_supports_put_extraction_after_migration(self, tmp_path: Path):
+        """End-to-end: the exact failure mode the user reported \u2014 ``mm cat`` on a
+        legacy DB hits ``no such column: extraction_id``. After migration,
+        ``put_extraction`` should succeed.
+        """
+        db_path = tmp_path / "legacy.db"
+        self._seed_legacy_db(db_path)
+
+        db = MmDatabase(db_path=db_path)
+        eid = db.put_extraction(
+            uri="/legacy/img.jpg",
+            content_hash="h1",
+            profile="default",
+            model="qwen",
+            content="A clownfish",
+            mode="fast",
+        )
+        assert eid
+        assert db.get_extraction(eid) == "A clownfish"
+
+    def test_migration_is_idempotent(self, tmp_path: Path):
+        db_path = tmp_path / "legacy.db"
+        self._seed_legacy_db(db_path)
+
+        db = MmDatabase(db_path=db_path)
+        _ = db._connect
+        # re-open: must remain valid
+        db2 = MmDatabase(db_path=db_path)
+        eid = db2.put_extraction(
+            uri="/legacy/img.jpg",
+            content_hash="h1",
+            profile="default",
+            model="qwen",
+            content="A second extraction",
+            mode="fast",
+        )
+        assert db2.get_extraction(eid) == "A second extraction"
+
+    def test_fresh_db_unaffected_by_migration(self, tmp_path: Path):
+        """The migration should be a no-op on databases created from scratch."""
+        import sqlite3
+
+        db = MmDatabase(db_path=tmp_path / "fresh.db")
+        _ = db._connect
+
+        conn = sqlite3.connect(str(tmp_path / "fresh.db"))
+        chunks_cols = {r[1] for r in conn.execute("PRAGMA table_info(chunks)")}
+        assert "extraction_id" in chunks_cols
+        conn.close()
+
+
 # ---------------------------------------------------------------------------
 # Files table (metadata + fast)
 # ---------------------------------------------------------------------------
