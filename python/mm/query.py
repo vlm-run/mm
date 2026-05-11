@@ -6,10 +6,10 @@ import sqlite3
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    import pyarrow as pa
+    from pyarrow import Table
 
 
-def query_arrow_table(table: pa.Table, sql: str, table_name: str = "files") -> pa.Table:
+def query_arrow_table(table: Table, sql: str, table_name: str = "files") -> Table:
     """Run a SQL query against a PyArrow table using an in-memory SQLite DB."""
     import pyarrow as pa
 
@@ -52,12 +52,12 @@ def query_arrow_table(table: pa.Table, sql: str, table_name: str = "files") -> p
 
 
 def _arrow_to_sqlite_type(arrow_type) -> str:
-    import pyarrow as pa
+    from pyarrow import types
 
-    if pa.types.is_integer(arrow_type) or pa.types.is_boolean(arrow_type):
+    if types.is_integer(arrow_type) or types.is_boolean(arrow_type):
         return "INTEGER"
-    if pa.types.is_floating(arrow_type):
+    if types.is_floating(arrow_type):
         return "REAL"
-    if pa.types.is_timestamp(arrow_type):
+    if types.is_timestamp(arrow_type):
         return "INTEGER"
     return "TEXT"
