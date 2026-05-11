@@ -45,12 +45,7 @@ class OpenAIBackend(TranscriptionBackend):
         self._api_key = api_key
 
     def available(self) -> bool:
-        try:
-            import openai  # noqa: F401
-
-            return True
-        except ImportError:
-            return False
+        return True
 
     def transcribe(
         self,
@@ -63,14 +58,14 @@ class OpenAIBackend(TranscriptionBackend):
     ) -> TranscriptionResult:
         from openai import OpenAI
 
-        from mm.profile import TRANSCRIPTION_BASE_URL
+        from mm.profile import TRANSCRIPTION_BASE_URL, gateway_api_key
 
         base_url = self._base_url or TRANSCRIPTION_BASE_URL
-        api_key = self._api_key or ""
+        api_key = self._api_key or gateway_api_key() or "noop"
 
         client = OpenAI(
             base_url=base_url,
-            api_key=api_key or "noop",
+            api_key=api_key,
             timeout=120.0,
         )
 

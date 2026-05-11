@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import importlib.util
 import sys
+import threading
 from pathlib import Path
 from typing import Any, Iterable, Protocol, runtime_checkable
 
@@ -60,6 +61,7 @@ class MessageStrategy(Protocol):
 
 _REGISTRY: dict[str, MessageStrategy] = {}
 _DISCOVERED = False
+_DISCOVERY_LOCK = threading.Lock()
 _LOADED_SOURCES: dict[str, list[str]] = {}
 """Maps a source key (file path or code hash) to the encoder names it registered."""
 
@@ -275,9 +277,12 @@ def _ensure_discovered() -> None:
     global _DISCOVERED
     if _DISCOVERED:
         return
-    _DISCOVERED = True
-    _register_builtins()
-    discover_encoders()
+    with _DISCOVERY_LOCK:
+        if _DISCOVERED:
+            return
+        _register_builtins()
+        discover_encoders()
+        _DISCOVERED = True
 
 
 def _register_builtins() -> None:
