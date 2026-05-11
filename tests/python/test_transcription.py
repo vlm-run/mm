@@ -234,7 +234,10 @@ class TestOpenAIBackend:
         mock_client = MagicMock()
         mock_client.audio.transcriptions.create.return_value = mock_resp
 
-        with patch("openai.OpenAI", return_value=mock_client) as MockOpenAI:
+        with (
+            patch("mm.profile.gateway_api_key", return_value="noop"),
+            patch("openai.OpenAI", return_value=mock_client) as MockOpenAI,
+        ):
             from mm.common.audio._openai import OpenAIBackend
             from mm.profile import GATEWAY_BASE_URL
 

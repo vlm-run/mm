@@ -16,6 +16,8 @@ from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Literal, TypedDict, cast
 
+from mm.common.audio._base import BackendLabel
+
 # ── Config paths ────────────────────────────────────────────────────
 
 CONFIG_DIR_XDG = Path.home() / ".config" / "mm"
@@ -53,7 +55,7 @@ class ModeData(TypedDict, total=False):
 
 
 class TranscriptionData(TypedDict, total=False):
-    backend: str
+    backend: BackendLabel
     base_url: str
     api_key: str
 
@@ -100,7 +102,7 @@ class TranscriptionConfig:
         mm config set transcription.base_url http://localhost:11434/v1
     """
 
-    backend: str | None = None
+    backend: BackendLabel | None = None
     base_url: str | None = None
     api_key: str | None = None
 
@@ -176,8 +178,9 @@ def get_transcription_config() -> TranscriptionConfig:
     """
     file_data = _read_config_file()
     section = file_data.get("transcription", {})
+    backend: BackendLabel | None = section.get("backend") or None
     return TranscriptionConfig(
-        backend=section.get("backend") or None,
+        backend=backend,
         base_url=section.get("base_url") or None,
         api_key=section.get("api_key") or None,
     )
@@ -258,8 +261,8 @@ def write_full_config(file_data: ConfigData) -> Path:
     if tx:
         lines.append("[transcription]")
         for tk in ("backend", "base_url", "api_key"):
-            if tk in tx and tx[tk]:
-                lines.append(f'{tk} = "{_toml_str(str(tx[tk]))}"')
+            if val := tx.get(tk):
+                lines.append(f'{tk} = "{_toml_str(str(val))}"')
         lines.append("")
 
     path = _find_config_path()
@@ -338,7 +341,7 @@ def update_config_key(key: str, value: str) -> Path:
             file_data["transcription"] = {}
         tx = file_data["transcription"]
         if fld == "backend":
-            tx["backend"] = value
+            tx["backend"] = cast(BackendLabel, value)
         elif fld == "base_url":
             tx["base_url"] = value
         elif fld == "api_key":
