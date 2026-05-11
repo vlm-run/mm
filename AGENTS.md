@@ -59,7 +59,7 @@ Rust core for speed, Python for developer experience, Unix philosophy for compos
 - tomli — TOML config parsing (Python <3.11)
 - pyyaml — YAML template parsing
 - faster-whisper — Whisper transcription (CTranslate2 backend)
-- scenedetect[opencv] — shot/scene boundary detection
+- scenedetect — shot/scene boundary detection (opencv-python bundled since 0.7)
 - ctranslate2 — CTranslate2 inference runtime (for faster-whisper)
 - libreoffice-rs — Office Docs text extraction
 
