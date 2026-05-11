@@ -402,15 +402,8 @@ def cat_cmd(
             content = "\n".join(lines[:n] if n >= 0 else lines[n:])
         return content
 
-    contents: list[str] = []
-    if valid_paths:
-        from concurrent.futures import ThreadPoolExecutor
-
-        with ThreadPoolExecutor(max_workers=min(8, len(valid_paths))) as pool:
-            futures = [pool.submit(_process, p) for p in valid_paths]
-            contents = [f.result() for f in futures]
-
-    for p, content in zip(valid_paths, contents, strict=True):
+    def _render(p: Path, content: str) -> None:
+        nonlocal _emitted
         if fmt in ("json", "pretty-json", "dataset-jsonl", "dataset-hf"):
             if fmt in ("json", "pretty-json"):
                 # ``pretty-json`` shares the wire shape with ``json`` --
@@ -462,6 +455,19 @@ def cat_cmd(
 
                 output_console.print("\n".join(rich_lines))
             _emitted += 1
+
+    if valid_paths:
+        from concurrent.futures import ThreadPoolExecutor
+
+        with ThreadPoolExecutor(max_workers=min(8, len(valid_paths))) as pool:
+            futures = [pool.submit(_process, p) for p in valid_paths]
+            for p, fut in zip(valid_paths, futures, strict=True):
+                try:
+                    content = fut.result()
+                except Exception as exc:
+                    typer.echo(f"Error processing {p}: {exc}", err=True)
+                    continue
+                _render(p, content)
 
     if fmt in ("json", "pretty-json", "dataset-jsonl", "dataset-hf"):
         from mm.display import emit_rows
