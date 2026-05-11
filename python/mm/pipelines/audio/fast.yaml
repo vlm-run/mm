@@ -3,6 +3,7 @@ mode: fast
 
 encode:
   strategy: audio-transcribe
+  backend: null
   strategy_opts:
     whisper_model: tiny
     audio_speed: 2.0

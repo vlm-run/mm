@@ -50,13 +50,21 @@ Multi-file: `mm cat a.mp4 b.mp4 -y` runs each video sequentially; the same **≥
 | Output | raw timestamped transcript | ~80-word summary from transcript |
 | Tokens | — | 512 max |
 
-**Transcription backends** (auto-detected by priority, override via `encoder_kwargs` or `mm config set transcription.backend`):
+**Transcription backends** (auto-detected by priority, override via --encode.backend or `mm config set transcription.backend`):
 
 | Backend | Priority | Device | Notes |
 |---|---|---|---|
 | `mlx` | 10 | Apple Metal GPU | Requires `mm[mlx]` extra |
 | `ctranslate2` | 20 | CPU (int8) / CUDA (float16) | Included in core install |
 | `openai` | 30 | Remote API | Any OpenAI-compatible `/v1/audio/transcriptions` endpoint |
+
+**Selecting a backend** — precedence from most to least specific:
+
+1. **CLI flag** (one-off): `mm cat audio.mp3 --encode.backend openai`
+2. **Pipeline YAML** (`encode.backend:` top-level)
+3. **Global default** (`mm config set transcription.backend openai`), persisted in `[transcription]` of `~/.config/mm/mm.toml`
+4. **Environment** (`MM_TRANSCRIPTION_BASE_URL`, openai backend only)
+5. **Auto-detect** (mlx → ctranslate2 → openai)`
 
 **Python API** encoders for audio:
 

@@ -3,6 +3,7 @@ mode: accurate
 
 encode:
   strategy: audio-transcribe
+  backend: null
   strategy_opts:
     whisper_model: medium
     audio_speed: 1.0
