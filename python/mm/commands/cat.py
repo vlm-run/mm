@@ -602,9 +602,11 @@ def _no_generate_preview(path: Path, kind: str, ext: str, opts: CatOpts) -> str:
 
     if spec.generate is not None:
         gen = spec.generate
-        first_line = (gen.prompt or "").strip().splitlines()[0] if gen.prompt else ""
+        lines = (gen.prompt or "").strip().splitlines()
+        first_line = lines[0] if lines else ""
         if len(first_line) > 60:
             first_line = first_line[:60] + "…"
+
         prompt_part = f' · prompt="{first_line}"' if first_line else ""
         eff = gen.model or get_profile().model
         gen_line = f"generate: model={eff}{prompt_part}  [skipped via --no-generate]"

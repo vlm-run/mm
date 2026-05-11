@@ -15,6 +15,9 @@ from mm.pipelines.schema import PipelineSpec
 
 def accurate_image(path: Path, spec: PipelineSpec, opts: CatOpts) -> RunResult:
     """Image extraction with mode-specific LLM prompts."""
+    if spec.generate is None:
+        raise RuntimeError("spec.generate cannot be None")
+
     if spec.encode.strategy:
         return run_encoder(path, "image", spec, opts)
 

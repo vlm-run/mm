@@ -49,6 +49,9 @@ def _parse_tile(tile: str) -> tuple[int, int]:
 
 def accurate_video(path: Path, spec: PipelineSpec, opts: CatOpts) -> RunResult:
     """Video extraction with mode-aware mosaic + whisper + LLM pipeline."""
+    if spec.generate is None:
+        raise RuntimeError("spec.generate cannot be None")
+
     import shutil
 
     from mm.ffmpeg import (
