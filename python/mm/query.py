@@ -11,8 +11,7 @@ if TYPE_CHECKING:
 
 def query_arrow_table(table: Table, sql: str, table_name: str = "files") -> Table:
     """Run a SQL query against a PyArrow table using an in-memory SQLite DB."""
-    from pyarrow import array, table, types
-    from pyarrow import string as pa_string
+    import pyarrow as pa
 
     db = sqlite3.connect(":memory:")
     col_names = table.column_names
@@ -29,9 +28,9 @@ def query_arrow_table(table: Table, sql: str, table_name: str = "files") -> Tabl
         col_lists = [table.column(c).to_pylist() for c in col_names]
         # Convert booleans and timestamps to SQLite-compatible types
         for ci, field in enumerate(table.schema):
-            if types.is_boolean(field.type):
+            if pa.types.is_boolean(field.type):
                 col_lists[ci] = [int(v) if v is not None else None for v in col_lists[ci]]
-            elif types.is_timestamp(field.type):
+            elif pa.types.is_timestamp(field.type):
                 col_lists[ci] = [
                     int(v.timestamp() * 1_000_000) if v is not None else None for v in col_lists[ci]
                 ]
@@ -47,9 +46,9 @@ def query_arrow_table(table: Table, sql: str, table_name: str = "files") -> Tabl
 
     # Convert back to Arrow using per-column lists (faster than row-by-row)
     if not result_rows:
-        return table({col: array([], type=pa_string()) for col in columns})
+        return pa.table({col: pa.array([], type=pa.string()) for col in columns})
     col_data = {col: [row[ci] for row in result_rows] for ci, col in enumerate(columns)}
-    return table(col_data)
+    return pa.table(col_data)
 
 
 def _arrow_to_sqlite_type(arrow_type) -> str:
