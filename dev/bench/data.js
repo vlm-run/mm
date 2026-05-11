@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1778529727204,
+  "lastUpdate": 1778540384662,
   "repoUrl": "https://github.com/vlm-run/mm",
   "entries": {
     "mm Rust Benchmarks": [
@@ -10578,6 +10578,425 @@ window.BENCHMARK_DATA = {
           {
             "name": "wc/count_entries/500",
             "value": 2220426.5434782607,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "20521315+nwaughachukwuma@users.noreply.github.com",
+            "name": "Chukwuma Nwaugha",
+            "username": "nwaughachukwuma"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "4e2737d101d63b689cda95a4de2df7668e54cd73",
+          "message": "expose --encode.backend flag to allow selecting/overrding the transcription backend (#124)\n\n## Summary\n\nSelecting a transcription backend is now **explicit, typed, and globally\nconfigurable**. Previously the only way to pin a backend (mlx /\nctranslate2 / openai) was the verbose `--encode.strategy_opts\nbackend=openai`, the global `[transcription]` section in `mm.toml` was\nwritten by `mm config set […]` but never read at runtime, and the\nbackend name was a loose `str` everywhere.\n\n> - **`BackendLabel = Literal[\"mlx\", \"ctranslate2\", \"openai\"]`**.\nMistyped backend names now fail at command entry.\n\n>```bash\n> $ uv run mm cat sample_files/audio.mp3 --encode.backend gemini \n> Try 'mm cat --help' for help.\n> ╭─ Error Invalid value for '--encode.backend' (env var: 'None'):\n'gemini' is not one of 'mlx', > 'ctranslate2', 'openai'.\n> ```\n\n## Changes\n\n- **`--encode.backend` is a first-class CLI flag on `mm cat`**\n(`commands/cat.py`), validated against `{mlx, ctranslate2, openai}`\nbefore dispatch and threaded into `enc_overrides` via\n`collect_overrides(backend=encode_backend)`. `--encode.strategy_opts\nbackend=…` still works as a fallback.\n- **`backend` is now a top-level field on the pipeline `Encode` schema**\n(`pipelines/schema.py`), alongside `strategy` / `pyfunc` /\n`strategy_opts`. `from_dict` / `to_dict` round-trip it,\n`apply_overrides` accepts it via `_ENCODE_TOP_LEVEL`\n(`pipelines/__init__.py`), and `run_encoder.py` splats it into encoder\nkwargs (only when set, never overriding a kwarg already present). Audio\nfast/accurate YAMLs declare `backend: null` so the field is visible via\n`--print-pipeline`.\n- **`[transcription]` config is now actively used.**\n`mm.common.audio.transcribe()` falls back to\n`get_transcription_config()` for any unset `backend` / `base_url` /\n`api_key` before dispatching to `detect_backend()`. Single resolution\npoint — all four call sites (`AudioTranscribe`, `accurate_audio`,\n`accurate_video`, video `_transcript`) benefit. `AudioTranscribe.encode`\nalso resolves config *before* the `ffmpeg_available` /\n`transcribe_available` gates, so global config doesn't get masked by a\nbail-out message.\n- Docs update\n\n## Outcomes\n\n```bash\nuv run mm cat sample_files/audio.mp3 --encode.backend mlx\n```\n> [transcript via MLX whisper, regardless of what `[transcription]`\ndefaults say]\n\n```bash\nuv run mm cat sample_files/audio.mp3 --encode.backend invalid\n```\n> Error: --encode.backend must be one of mlx, ctranslate2, openai (got\n'invalid').\n\n```bash\nmm config set transcription.backend openai\nmm config set transcription.base_url http://localhost:11434/v1\nuv run mm cat sample_files/audio.mp3\n```\n> [transcript via the locally-configured openai-compatible endpoint — no\nCLI flag needed]\n\n```bash\nuv run mm cat --print-pipeline audio/fast\n```\n> ```yaml\n> kind: audio\n> mode: fast\n> encode:\n>   strategy: audio-transcribe\n>   backend: null\n>   strategy_opts:\n>     whisper_model: tiny\n>     audio_speed: 2.0\n> ```\n\n## How to test\n\n```bash\nmake develop\nuv run pytest tests/python/test_transcription.py -v\nuv run pytest tests/python -k \"pipeline or schema or encode or cat\" -q\n\n# Smoke checks — CLI flag\nmm cat sample_files/audio.mp3 --encode.backend mlx\nmm cat sample_files/audio.mp3 --encode.backend ctranslate2\nmm cat sample_files/audio.mp3 --encode.backend openai \\\n  --encode.strategy_opts base_url=http://localhost:11434/v1 \\\n  --encode.strategy_opts model=whisper-1\n\nmm cat sample_files/audio.mp3 --encode.backend invalid    # rejected with clear error\n\n# Smoke checks — global default\nmm config set transcription.backend ctranslate2\nmm cat sample_files/audio.mp3                              # picks up global default\n\n# Smoke checks — schema visibility\nmm cat --print-pipeline audio/fast                         # backend: null appears\n```",
+          "timestamp": "2026-05-11T23:35:04+01:00",
+          "tree_id": "ca612a3023ea36259911a07d960ce9f06b766071",
+          "url": "https://github.com/vlm-run/mm/commit/4e2737d101d63b689cda95a4de2df7668e54cd73"
+        },
+        "date": 1778540336668,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "directory_hash/directory_hash/1000_files",
+            "value": 3147103.591772152,
+            "unit": "ns"
+          },
+          {
+            "name": "directory_hash/directory_hash/100_files",
+            "value": 490903.56587588374,
+            "unit": "ns"
+          },
+          {
+            "name": "directory_hash/directory_hash/500_files",
+            "value": 1673072.1006944445,
+            "unit": "ns"
+          },
+          {
+            "name": "find_filter/kind_and_name/1000",
+            "value": 449261.7625825826,
+            "unit": "ns"
+          },
+          {
+            "name": "find_filter/kind_and_name/5000",
+            "value": 2295446.1363636362,
+            "unit": "ns"
+          },
+          {
+            "name": "find_filter/name_regex/1000",
+            "value": 507575.5361018897,
+            "unit": "ns"
+          },
+          {
+            "name": "find_filter/name_regex/5000",
+            "value": 2267545.3181818184,
+            "unit": "ns"
+          },
+          {
+            "name": "find_filter/name_substring/1000",
+            "value": 428567.2520175439,
+            "unit": "ns"
+          },
+          {
+            "name": "find_filter/name_substring/5000",
+            "value": 2201564.2826086953,
+            "unit": "ns"
+          },
+          {
+            "name": "find_filter/no_filter/1000",
+            "value": 3304513.4375,
+            "unit": "ns"
+          },
+          {
+            "name": "find_filter/no_filter/5000",
+            "value": 16930553.833333332,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_large_files/fast_fingerprint/100MB",
+            "value": 23710.711121431363,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_large_files/fast_fingerprint/200MB",
+            "value": 26437.669386422975,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_large_files/fast_fingerprint/50MB",
+            "value": 24411.163719125438,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_large_files/full_hash_mmap/100MB",
+            "value": 4691700.017216117,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_large_files/full_hash_mmap/200MB",
+            "value": 9374207.379166666,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_large_files/full_hash_mmap/50MB",
+            "value": 2371777.8119517546,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_strategies/fast_fingerprint/10MB",
+            "value": 24049.574845679013,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_strategies/fast_fingerprint/1KB",
+            "value": 13233.539843414843,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_strategies/fast_fingerprint/1MB",
+            "value": 22793.81164772727,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_strategies/fast_fingerprint/64KB",
+            "value": 17536.15948764947,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_strategies/full_hash_mmap/10MB",
+            "value": 485641.69525745255,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_strategies/full_hash_mmap/1KB",
+            "value": 12210.984306217902,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_strategies/full_hash_mmap/1MB",
+            "value": 85692.25477602109,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_strategies/full_hash_mmap/64KB",
+            "value": 17525.541817959533,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_strategies/full_hash_read/10MB",
+            "value": 904950.7942307692,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_strategies/full_hash_read/1KB",
+            "value": 6163.720280125015,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_strategies/full_hash_read/1MB",
+            "value": 97599.50605263158,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_strategies/full_hash_read/64KB",
+            "value": 11174.865140511722,
+            "unit": "ns"
+          },
+          {
+            "name": "metadata_code_extract/10",
+            "value": 60972.35522875817,
+            "unit": "ns"
+          },
+          {
+            "name": "metadata_code_extract/100",
+            "value": 631123.465625,
+            "unit": "ns"
+          },
+          {
+            "name": "metadata_image_extract/10",
+            "value": 2047040.58,
+            "unit": "ns"
+          },
+          {
+            "name": "metadata_image_extract/50",
+            "value": 13134054.875,
+            "unit": "ns"
+          },
+          {
+            "name": "metadata_index/1000",
+            "value": 4456647.791666666,
+            "unit": "ns"
+          },
+          {
+            "name": "metadata_index/10000",
+            "value": 34085387.75,
+            "unit": "ns"
+          },
+          {
+            "name": "metadata_walk/1000",
+            "value": 4333905.375,
+            "unit": "ns"
+          },
+          {
+            "name": "metadata_walk/10000",
+            "value": 33777625.25,
+            "unit": "ns"
+          },
+          {
+            "name": "phash/hamming_distance",
+            "value": 0.3516622672277649,
+            "unit": "ns"
+          },
+          {
+            "name": "phash/phash/1024x1024",
+            "value": 21123033.6,
+            "unit": "ns"
+          },
+          {
+            "name": "phash/phash/2048x2048",
+            "value": 85119288.375,
+            "unit": "ns"
+          },
+          {
+            "name": "phash/phash/256x256",
+            "value": 1417596.3187340153,
+            "unit": "ns"
+          },
+          {
+            "name": "phash/phash/64x64",
+            "value": 151187.77582386363,
+            "unit": "ns"
+          },
+          {
+            "name": "refs_add_inmem/1000",
+            "value": 4183806.666666667,
+            "unit": "ns"
+          },
+          {
+            "name": "refs_add_inmem/10000",
+            "value": 41831554.25,
+            "unit": "ns"
+          },
+          {
+            "name": "refs_add_path/100",
+            "value": 430158.5654609018,
+            "unit": "ns"
+          },
+          {
+            "name": "refs_add_path/1000",
+            "value": 4241019.083333334,
+            "unit": "ns"
+          },
+          {
+            "name": "refs_add_path/10000",
+            "value": 42185778,
+            "unit": "ns"
+          },
+          {
+            "name": "refs_add_path/100000",
+            "value": 433065525.5,
+            "unit": "ns"
+          },
+          {
+            "name": "refs_add_with_metadata/1000",
+            "value": 4556746.5,
+            "unit": "ns"
+          },
+          {
+            "name": "refs_add_with_metadata/10000",
+            "value": 45708036.75,
+            "unit": "ns"
+          },
+          {
+            "name": "refs_closest_ref_10k",
+            "value": 2749645.3157894737,
+            "unit": "ns"
+          },
+          {
+            "name": "refs_get_hit/1000",
+            "value": 31.58479535596973,
+            "unit": "ns"
+          },
+          {
+            "name": "refs_get_hit/10000",
+            "value": 33.750540756625426,
+            "unit": "ns"
+          },
+          {
+            "name": "refs_get_hit/100000",
+            "value": 45.77043185676895,
+            "unit": "ns"
+          },
+          {
+            "name": "refs_get_miss/1000",
+            "value": 276916.2522958551,
+            "unit": "ns"
+          },
+          {
+            "name": "refs_get_miss/10000",
+            "value": 2903524.0555555555,
+            "unit": "ns"
+          },
+          {
+            "name": "refs_make_ref_id/Audio",
+            "value": 3901.9694005270094,
+            "unit": "ns"
+          },
+          {
+            "name": "refs_make_ref_id/Code",
+            "value": 3912.03812261006,
+            "unit": "ns"
+          },
+          {
+            "name": "refs_make_ref_id/Document",
+            "value": 3896.2397890090865,
+            "unit": "ns"
+          },
+          {
+            "name": "refs_make_ref_id/Image",
+            "value": 3858.5675538495307,
+            "unit": "ns"
+          },
+          {
+            "name": "refs_make_ref_id/Video",
+            "value": 4034.9751792423895,
+            "unit": "ns"
+          },
+          {
+            "name": "refs_mixed_add_get_render/1000",
+            "value": 4880801.318181818,
+            "unit": "ns"
+          },
+          {
+            "name": "refs_mixed_add_get_render/10000",
+            "value": 48686044.75,
+            "unit": "ns"
+          },
+          {
+            "name": "refs_ref_not_found_message/100",
+            "value": 28491.99805900621,
+            "unit": "ns"
+          },
+          {
+            "name": "refs_ref_not_found_message/1000",
+            "value": 275818.7371933622,
+            "unit": "ns"
+          },
+          {
+            "name": "refs_ref_not_found_message/10000",
+            "value": 2952728.852941177,
+            "unit": "ns"
+          },
+          {
+            "name": "refs_render_tree_insertion/100",
+            "value": 25244.270107142856,
+            "unit": "ns"
+          },
+          {
+            "name": "refs_render_tree_insertion/1000",
+            "value": 279947.17364253395,
+            "unit": "ns"
+          },
+          {
+            "name": "refs_render_tree_insertion/10000",
+            "value": 2863530.527777778,
+            "unit": "ns"
+          },
+          {
+            "name": "refs_render_tree_insertion_with_meta/1000",
+            "value": 1150405.8917525774,
+            "unit": "ns"
+          },
+          {
+            "name": "refs_repr_markdown/100",
+            "value": 18765.063649390973,
+            "unit": "ns"
+          },
+          {
+            "name": "refs_repr_markdown/1000",
+            "value": 183666.476746633,
+            "unit": "ns"
+          },
+          {
+            "name": "refs_repr_markdown/10000",
+            "value": 1828787.046875,
+            "unit": "ns"
+          },
+          {
+            "name": "refs_to_md_with_contents/1000",
+            "value": 404765.51666666666,
+            "unit": "ns"
+          },
+          {
+            "name": "refs_uuid7",
+            "value": 4375.776448029854,
+            "unit": "ns"
+          },
+          {
+            "name": "wc/count_and_serialize/100",
+            "value": 459870.9710884354,
+            "unit": "ns"
+          },
+          {
+            "name": "wc/count_and_serialize/500",
+            "value": 2207895.8913043477,
+            "unit": "ns"
+          },
+          {
+            "name": "wc/count_entries/100",
+            "value": 454137.06382978725,
+            "unit": "ns"
+          },
+          {
+            "name": "wc/count_entries/500",
+            "value": 2167816.7391304346,
             "unit": "ns"
           }
         ]
