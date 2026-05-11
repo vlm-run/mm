@@ -61,8 +61,7 @@ class OpenAIBackend(TranscriptionBackend):
         from mm.profile import TRANSCRIPTION_BASE_URL, gateway_api_key
 
         base_url = self._base_url or TRANSCRIPTION_BASE_URL
-        api_key = self._api_key or gateway_api_key() or "noop"
-
+        api_key = self._api_key or gateway_api_key()
         client = OpenAI(
             base_url=base_url,
             api_key=api_key,
@@ -72,7 +71,7 @@ class OpenAIBackend(TranscriptionBackend):
         t0 = time.monotonic()
         with open(audio_path, "rb") as f:
             resp = client.audio.transcriptions.create(
-                model=model,
+                model="nvidia/parakeet-tdt-0.6b-v3",
                 file=f,
                 response_format="verbose_json",
                 timestamp_granularities=["segment"],
