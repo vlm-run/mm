@@ -150,7 +150,7 @@ def cat_cmd(
         Optional[BackendLabel],
         typer.Option(
             "--encode.backend",
-            help="Override encoder backend - options: are mlx|ctranslate2|openai",
+            help="Override encoder backend - options: are mlx, ctranslate2, or openai",
         ),
     ] = None,
     encode_strategy_opts: Annotated[

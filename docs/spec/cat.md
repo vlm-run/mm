@@ -64,7 +64,7 @@ Multi-file: `mm cat a.mp4 b.mp4 -y` runs each video sequentially; the same **≥
 2. **Pipeline YAML** (`encode.backend:` top-level)
 3. **Global default** (`mm config set transcription.backend openai`), persisted in `[transcription]` of `~/.config/mm/mm.toml`
 4. **Environment** (`MM_TRANSCRIPTION_BASE_URL`, openai backend only)
-5. **Auto-detect** (mlx → ctranslate2 → openai)`
+5. **Auto-detect** (mlx → ctranslate2 → openai)
 
 **Python API** encoders for audio:
 
