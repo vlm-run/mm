@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1778482383808,
+  "lastUpdate": 1778529727204,
   "repoUrl": "https://github.com/vlm-run/mm",
   "entries": {
     "mm Rust Benchmarks": [
@@ -10159,6 +10159,425 @@ window.BENCHMARK_DATA = {
           {
             "name": "wc/count_entries/500",
             "value": 2203357.0652173916,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "sudeep.pillai@gmail.com",
+            "name": "Sudeep Pillai",
+            "username": "spillai"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "c35910f79459860248f8d1309ecc64e4c173ae26",
+          "message": "chore(video): simplify fast pipeline prompt (#127)\n\n## Summary\nReplace the multiline mosaic-aware prompt in\n`python/mm/pipelines/video/fast.yaml` with a single concise instruction:\n`Describe what's in this video in 50 words or less`. Drops the explicit\n`## FORMAT` / tags section so the model returns a free-form ≤50-word\ndescription.\n\n## Review & Testing Checklist for Human\n- [ ] Confirm the new wording is what you intended (the prompt now omits\nthe prior `--30 words description--` + `Tags: Up to 5 tags` formatting\nhints).\n- [ ] Sanity-check `mm cat <video> --mode fast` output to make sure\nresponses are still useful without the mosaic context line.\n\n### Notes\nOnly `python/mm/pipelines/video/fast.yaml` changed; other pipelines\n(image/audio/document, video `accurate.yaml`) are untouched.\n\nLink to Devin session:\nhttps://app.devin.ai/sessions/217ae5ca3a8b48b788d597c9fccb6311\nRequested by: @spillai\n\n---------\n\nCo-authored-by: Chukwuma Nwaugha <nwaughac@gmail.com>",
+          "timestamp": "2026-05-11T20:37:58+01:00",
+          "tree_id": "d6ad5212a49017c2ca714b0e86de83ed22a583a1",
+          "url": "https://github.com/vlm-run/mm/commit/c35910f79459860248f8d1309ecc64e4c173ae26"
+        },
+        "date": 1778529685925,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "directory_hash/directory_hash/1000_files",
+            "value": 3060088.3720598714,
+            "unit": "ns"
+          },
+          {
+            "name": "directory_hash/directory_hash/100_files",
+            "value": 457553.02722222224,
+            "unit": "ns"
+          },
+          {
+            "name": "directory_hash/directory_hash/500_files",
+            "value": 1601371.06,
+            "unit": "ns"
+          },
+          {
+            "name": "find_filter/kind_and_name/1000",
+            "value": 452886.29572649574,
+            "unit": "ns"
+          },
+          {
+            "name": "find_filter/kind_and_name/5000",
+            "value": 2230478,
+            "unit": "ns"
+          },
+          {
+            "name": "find_filter/name_regex/1000",
+            "value": 500293.31695536315,
+            "unit": "ns"
+          },
+          {
+            "name": "find_filter/name_regex/5000",
+            "value": 2210219.0869565215,
+            "unit": "ns"
+          },
+          {
+            "name": "find_filter/name_substring/1000",
+            "value": 438566.3630597015,
+            "unit": "ns"
+          },
+          {
+            "name": "find_filter/name_substring/5000",
+            "value": 2147603.3958333335,
+            "unit": "ns"
+          },
+          {
+            "name": "find_filter/no_filter/1000",
+            "value": 3215751.3125,
+            "unit": "ns"
+          },
+          {
+            "name": "find_filter/no_filter/5000",
+            "value": 18325318.833333336,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_large_files/fast_fingerprint/100MB",
+            "value": 22470.660495356038,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_large_files/fast_fingerprint/200MB",
+            "value": 23307.97812134315,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_large_files/fast_fingerprint/50MB",
+            "value": 22764.714186307872,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_large_files/full_hash_mmap/100MB",
+            "value": 6106883.229838709,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_large_files/full_hash_mmap/200MB",
+            "value": 11837053.617559524,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_large_files/full_hash_mmap/50MB",
+            "value": 3107498.530214425,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_strategies/fast_fingerprint/10MB",
+            "value": 22771.978153629316,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_strategies/fast_fingerprint/1KB",
+            "value": 12065.176923558898,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_strategies/fast_fingerprint/1MB",
+            "value": 21091.38921900624,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_strategies/fast_fingerprint/64KB",
+            "value": 16224.448586483773,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_strategies/full_hash_mmap/10MB",
+            "value": 454456.23868312757,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_strategies/full_hash_mmap/1KB",
+            "value": 10901.202221274983,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_strategies/full_hash_mmap/1MB",
+            "value": 77669.4478021978,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_strategies/full_hash_mmap/64KB",
+            "value": 16143.199044425688,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_strategies/full_hash_read/10MB",
+            "value": 867572.4312042124,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_strategies/full_hash_read/1KB",
+            "value": 5208.1513199732235,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_strategies/full_hash_read/1MB",
+            "value": 82898.88948607698,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_strategies/full_hash_read/64KB",
+            "value": 9997.433703252033,
+            "unit": "ns"
+          },
+          {
+            "name": "metadata_code_extract/10",
+            "value": 52481.610175438596,
+            "unit": "ns"
+          },
+          {
+            "name": "metadata_code_extract/100",
+            "value": 556164.972972973,
+            "unit": "ns"
+          },
+          {
+            "name": "metadata_image_extract/10",
+            "value": 2020414.34,
+            "unit": "ns"
+          },
+          {
+            "name": "metadata_image_extract/50",
+            "value": 12844628.25,
+            "unit": "ns"
+          },
+          {
+            "name": "metadata_index/1000",
+            "value": 4394981.458333333,
+            "unit": "ns"
+          },
+          {
+            "name": "metadata_index/10000",
+            "value": 32945728.75,
+            "unit": "ns"
+          },
+          {
+            "name": "metadata_walk/1000",
+            "value": 4300738.125,
+            "unit": "ns"
+          },
+          {
+            "name": "metadata_walk/10000",
+            "value": 32508708.25,
+            "unit": "ns"
+          },
+          {
+            "name": "phash/hamming_distance",
+            "value": 0.31143610382777087,
+            "unit": "ns"
+          },
+          {
+            "name": "phash/phash/1024x1024",
+            "value": 21659839.214285716,
+            "unit": "ns"
+          },
+          {
+            "name": "phash/phash/2048x2048",
+            "value": 87910508.125,
+            "unit": "ns"
+          },
+          {
+            "name": "phash/phash/256x256",
+            "value": 1322421.6010494754,
+            "unit": "ns"
+          },
+          {
+            "name": "phash/phash/64x64",
+            "value": 137886.2035755743,
+            "unit": "ns"
+          },
+          {
+            "name": "refs_add_inmem/1000",
+            "value": 3803020.0714285714,
+            "unit": "ns"
+          },
+          {
+            "name": "refs_add_inmem/10000",
+            "value": 38094272,
+            "unit": "ns"
+          },
+          {
+            "name": "refs_add_path/100",
+            "value": 402954.6926440329,
+            "unit": "ns"
+          },
+          {
+            "name": "refs_add_path/1000",
+            "value": 3825110.0357142854,
+            "unit": "ns"
+          },
+          {
+            "name": "refs_add_path/10000",
+            "value": 38191981,
+            "unit": "ns"
+          },
+          {
+            "name": "refs_add_path/100000",
+            "value": 390255901.5,
+            "unit": "ns"
+          },
+          {
+            "name": "refs_add_with_metadata/1000",
+            "value": 4156370.115384615,
+            "unit": "ns"
+          },
+          {
+            "name": "refs_add_with_metadata/10000",
+            "value": 41653840.75,
+            "unit": "ns"
+          },
+          {
+            "name": "refs_closest_ref_10k",
+            "value": 2737787.4473684207,
+            "unit": "ns"
+          },
+          {
+            "name": "refs_get_hit/1000",
+            "value": 27.03183222741083,
+            "unit": "ns"
+          },
+          {
+            "name": "refs_get_hit/10000",
+            "value": 38.128905609962246,
+            "unit": "ns"
+          },
+          {
+            "name": "refs_get_hit/100000",
+            "value": 46.148623216255004,
+            "unit": "ns"
+          },
+          {
+            "name": "refs_get_miss/1000",
+            "value": 272991.290999698,
+            "unit": "ns"
+          },
+          {
+            "name": "refs_get_miss/10000",
+            "value": 2737843.289473684,
+            "unit": "ns"
+          },
+          {
+            "name": "refs_make_ref_id/Audio",
+            "value": 3536.5868867243867,
+            "unit": "ns"
+          },
+          {
+            "name": "refs_make_ref_id/Code",
+            "value": 3529.245943336368,
+            "unit": "ns"
+          },
+          {
+            "name": "refs_make_ref_id/Document",
+            "value": 3609.1292434210527,
+            "unit": "ns"
+          },
+          {
+            "name": "refs_make_ref_id/Image",
+            "value": 3500.350376452112,
+            "unit": "ns"
+          },
+          {
+            "name": "refs_make_ref_id/Video",
+            "value": 3534.282731292517,
+            "unit": "ns"
+          },
+          {
+            "name": "refs_mixed_add_get_render/1000",
+            "value": 4438609.75,
+            "unit": "ns"
+          },
+          {
+            "name": "refs_mixed_add_get_render/10000",
+            "value": 45013991.25,
+            "unit": "ns"
+          },
+          {
+            "name": "refs_ref_not_found_message/100",
+            "value": 29239.648862469043,
+            "unit": "ns"
+          },
+          {
+            "name": "refs_ref_not_found_message/1000",
+            "value": 277976.9666666667,
+            "unit": "ns"
+          },
+          {
+            "name": "refs_ref_not_found_message/10000",
+            "value": 2938053.6470588236,
+            "unit": "ns"
+          },
+          {
+            "name": "refs_render_tree_insertion/100",
+            "value": 27692.801689814813,
+            "unit": "ns"
+          },
+          {
+            "name": "refs_render_tree_insertion/1000",
+            "value": 267369.1060267857,
+            "unit": "ns"
+          },
+          {
+            "name": "refs_render_tree_insertion/10000",
+            "value": 3133591.9375,
+            "unit": "ns"
+          },
+          {
+            "name": "refs_render_tree_insertion_with_meta/1000",
+            "value": 1266274.6272855136,
+            "unit": "ns"
+          },
+          {
+            "name": "refs_repr_markdown/100",
+            "value": 19864.888661551577,
+            "unit": "ns"
+          },
+          {
+            "name": "refs_repr_markdown/1000",
+            "value": 188573.91104363473,
+            "unit": "ns"
+          },
+          {
+            "name": "refs_repr_markdown/10000",
+            "value": 1882626.9577020202,
+            "unit": "ns"
+          },
+          {
+            "name": "refs_to_md_with_contents/1000",
+            "value": 452194.42555555556,
+            "unit": "ns"
+          },
+          {
+            "name": "refs_uuid7",
+            "value": 4016.4257668599776,
+            "unit": "ns"
+          },
+          {
+            "name": "wc/count_and_serialize/100",
+            "value": 474152.0764705882,
+            "unit": "ns"
+          },
+          {
+            "name": "wc/count_and_serialize/500",
+            "value": 2195032.1086956523,
+            "unit": "ns"
+          },
+          {
+            "name": "wc/count_entries/100",
+            "value": 466305.20549242425,
+            "unit": "ns"
+          },
+          {
+            "name": "wc/count_entries/500",
+            "value": 2220426.5434782607,
             "unit": "ns"
           }
         ]
