@@ -14,10 +14,9 @@ from __future__ import annotations
 import tomllib
 from dataclasses import dataclass, field, replace
 from pathlib import Path
-from typing import TYPE_CHECKING, Literal, TypedDict, cast
+from typing import Literal, TypedDict, cast
 
-if TYPE_CHECKING:
-    from mm.common.audio._base import BackendLabel
+from mm.common.audio._base import BackendLabel
 
 # ── Config paths ────────────────────────────────────────────────────
 
