@@ -278,7 +278,7 @@ def _run_benchmarks(
     rounds: int,
     warmup: int,
     on_progress: Callable[[str, str], None] | None = None,
-    commands: list | None = None,
+    commands: list[BenchCommand] | None = None,
     dry_run: bool = False,
 ) -> tuple[list[BenchResult], dict[str, Any]]:
     """Run benchmark commands, return (results, target_info).
@@ -312,7 +312,7 @@ def _run_benchmarks(
         "dry_run": dry_run,
     }
 
-    for cmd in commands:
+    def _exec_run(cmd: BenchCommand) -> BenchResult:
         if on_progress:
             on_progress(cmd.group, cmd.name)
 
@@ -322,48 +322,39 @@ def _run_benchmarks(
             # dim styling) but never invoke the argv. Short-circuits
             # before ``resolve_command`` so missing-input errors on
             # disabled rows can't accidentally mask the disable intent.
-            results.append(
-                BenchResult(
-                    cmd.name,
-                    cmd.group,
-                    skipped=True,
-                    skip_reason="disabled",
-                    disabled=True,
-                    tags=dict(cmd.tags),
-                    cmd_template=cmd.cmd_template,
-                    requires_kind=cmd.requires_kind,
-                )
+            return BenchResult(
+                cmd.name,
+                cmd.group,
+                skipped=True,
+                skip_reason="disabled",
+                disabled=True,
+                tags=dict(cmd.tags),
+                cmd_template=cmd.cmd_template,
+                requires_kind=cmd.requires_kind,
             )
-            continue
 
         if num_files == 0:
-            results.append(
-                BenchResult(
-                    cmd.name,
-                    cmd.group,
-                    skipped=True,
-                    skip_reason="empty directory",
-                    tags=dict(cmd.tags),
-                    cmd_template=cmd.cmd_template,
-                    requires_kind=cmd.requires_kind,
-                )
+            return BenchResult(
+                cmd.name,
+                cmd.group,
+                skipped=True,
+                skip_reason="empty directory",
+                tags=dict(cmd.tags),
+                cmd_template=cmd.cmd_template,
+                requires_kind=cmd.requires_kind,
             )
-            continue
 
         resolved = resolve_command(cmd, directory, files)
         if resolved is None:
-            results.append(
-                BenchResult(
-                    cmd.name,
-                    cmd.group,
-                    skipped=True,
-                    skip_reason=cmd.skip_reason,
-                    tags=dict(cmd.tags),
-                    cmd_template=cmd.cmd_template,
-                    requires_kind=cmd.requires_kind,
-                )
+            return BenchResult(
+                cmd.name,
+                cmd.group,
+                skipped=True,
+                skip_reason=cmd.skip_reason,
+                tags=dict(cmd.tags),
+                cmd_template=cmd.cmd_template,
+                requires_kind=cmd.requires_kind,
             )
-            continue
 
         argv, fc, tb, media, data_paths = resolved
 
@@ -394,7 +385,10 @@ def _run_benchmarks(
             r.last_stderr = last_proc.stderr or ""
             r.returncode = last_proc.returncode
 
-        results.append(r)
+        return r
+
+    for cmd in commands:
+        results.append(_exec_run(cmd))
 
     target_info["total_wall_ms"] = (time.perf_counter_ns() - t_wall) / 1_000_000
     return results, target_info
@@ -1837,10 +1831,6 @@ def bench_cmd(
 
     from mm.bench_utils import collect_host_info, render_host_info
 
-    # Distinct name -- ``host_info`` here is the typer ``bool`` flag
-    # arg ``--host-info``; we resolved the early-return path above and
-    # now need the full host-info dict for both the live header line
-    # and the markdown recording.
     host_info_data = collect_host_info()
     render_host_info(host_info_data, fmt=fmt, to_stderr=True)
 
