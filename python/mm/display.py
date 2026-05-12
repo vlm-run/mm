@@ -65,14 +65,6 @@ class _LazyConsole:
 console = _LazyConsole(_get_console)
 output_console = _LazyConsole(_get_output_console)
 
-KIND_STYLES: dict[str, str] = {
-    "image": "",
-    "video": "",
-    "document": "",
-    "code": "",
-    "other": "",
-}
-
 KIND_ICONS: dict[str, str] = {
     "image": "img",
     "video": "vid",
