@@ -2,21 +2,26 @@
 
 :root,
 [data-md-color-scheme="default"] {
-  --bg: #F5FAFF;
+  /* Brand tokens */
+  --bg: #F5FAFF;                 /* bg-body */
   --surface: #FFFFFF;
-  --surface-tint: #E6EDFC;
-  --border: #D5E2F7;
-  --border-strong: #AAC2EC;
-  --text: #010917;
-  --text-secondary: #596983;
-  --text-muted: #A29F9F;
-  --accent: #1E5ACA;
-  --accent-deep: #102955;
-  --accent-hover: #2756A8;
-  --accent-bright: #4E8CFF;
-  --accent-soft: #749ADF;
+  --surface-tint: #E8F2FF;       /* derived — between bg and border */
+  --border: #D1E9FF;             /* border-border */
+  --border-strong: #A8C8F0;      /* derived — stronger than border */
+  --text: #010917;               /* bg-dark used as primary text on light */
+  --text-navy: #102A56;          /* text-navy (rgb(16, 42, 86)) */
+  --text-secondary: #576782;     /* text-muted */
+  --text-muted: #717680;         /* accordion muted (rgb(113, 118, 128)) */
+  --accent: #1265FF;             /* text-primary / bg-primary */
+  --accent-deep: #102255;        /* bg-enterprise */
+  --accent-hover: #0F52D6;       /* derived — darker accent for hover */
+  --accent-bright: #4D8BFF;      /* text-primary-light */
+  --accent-soft: #6497F6;        /* capability blue */
+  --capability-blue: #6497F6;
+  --capability-green: #B9F664;
+  --capability-purple: #B176FF;
   --font-sans: Geist, Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  --font-mono: 'Fragment Mono', 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
+  --font-mono: 'Geist Mono', 'Fragment Mono', 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
 
   /* Material variable overrides */
   --md-default-bg-color: var(--bg);
@@ -32,7 +37,7 @@
   --md-primary-bg-color--light: var(--text-secondary);
 
   --md-accent-fg-color: var(--accent);
-  --md-accent-fg-color--transparent: rgba(30, 90, 202, 0.1);
+  --md-accent-fg-color--transparent: rgba(18, 101, 255, 0.1);
   --md-accent-bg-color: var(--surface);
   --md-accent-bg-color--light: var(--surface-tint);
 
@@ -51,20 +56,24 @@
 }
 
 [data-md-color-scheme="slate"] {
-  /* Dark scheme — derived from the same brand tokens */
-  --bg: #0A1428;
-  --surface: #102955;
-  --surface-tint: #1A3266;
-  --border: #2A4A85;
-  --border-strong: #4E8CFF;
+  /* Dark scheme — uses bg-dark / bg-enterprise / dark-border tokens */
+  --bg: #010917;                 /* bg-dark */
+  --surface: #102255;            /* bg-enterprise */
+  --surface-tint: #182231;       /* border-dark-border used as elevated surface */
+  --border: #182231;             /* border-dark-border */
+  --border-strong: #4D8BFF;
   --text: #F5FAFF;
-  --text-secondary: #AAC2EC;
-  --text-muted: #749ADF;
-  --accent: #4E8CFF;
-  --accent-deep: #1E5ACA;
-  --accent-hover: #749ADF;
-  --accent-bright: #4E8CFF;
-  --accent-soft: #749ADF;
+  --text-navy: #4D8BFF;
+  --text-secondary: #A8C8F0;
+  --text-muted: #717680;
+  --accent: #4D8BFF;             /* text-primary-light reads better on dark */
+  --accent-deep: #102255;
+  --accent-hover: #1265FF;
+  --accent-bright: #6497F6;
+  --accent-soft: #6497F6;
+  --capability-blue: #6497F6;
+  --capability-green: #B9F664;
+  --capability-purple: #B176FF;
 
   --md-default-bg-color: var(--bg);
   --md-default-fg-color: var(--text);
@@ -79,7 +88,7 @@
   --md-primary-bg-color--light: var(--text-secondary);
 
   --md-accent-fg-color: var(--accent);
-  --md-accent-fg-color--transparent: rgba(78, 140, 255, 0.15);
+  --md-accent-fg-color--transparent: rgba(77, 139, 255, 0.15);
   --md-accent-bg-color: var(--surface);
   --md-accent-bg-color--light: var(--surface-tint);
 
@@ -90,7 +99,7 @@
   --md-code-fg-color: var(--text);
 
   --md-footer-bg-color: var(--accent-deep);
-  --md-footer-bg-color--dark: #0A1428;
+  --md-footer-bg-color--dark: var(--bg);
   --md-footer-fg-color: var(--text);
 }
 
