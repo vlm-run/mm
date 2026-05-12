@@ -13,16 +13,8 @@ Local backends are **opt-in only** — they are never auto-selected:
   then ``--encode.backend ctranslate2``.
 
 Custom backends can be registered by subclassing
-:class:`TranscriptionBackend` and calling :func:`register_backend`::
-
-    from mm.common.audio import TranscriptionBackend, register_backend
-
-    class GeminiBackend(TranscriptionBackend):
-        name = "gemini"
-        def available(self) -> bool: ...
-        def transcribe(self, audio_path, *, model=None, **kw): ...
-
-    register_backend(GeminiBackend())
+:class:`TranscriptionBackend` and calling :func:`register_backend`.
+See :mod:`mm.common.audio._base` for a full Gemini example.
 """
 
 from __future__ import annotations

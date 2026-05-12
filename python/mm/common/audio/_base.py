@@ -1,20 +1,59 @@
 """Base types and registry for transcription backends.
 
 Third-party backends can subclass :class:`TranscriptionBackend` and
-call :func:`register_backend` to add themselves to the registry::
+call :func:`register_backend` to add themselves to the registry.
 
-    from mm.common.audio import TranscriptionBackend, register_backend
+Example — a Gemini backend using the OpenAI-compatible endpoint
+(https://ai.google.dev/gemini-api/docs/openai#audio-understanding)::
 
-    class MyBackend(TranscriptionBackend):
-        name = "my-backend"
+    from pathlib import Path
+    from mm.common.audio import (
+        TranscriptionBackend, TranscriptionResult, register_backend,
+    )
+
+    class GeminiBackend(TranscriptionBackend):
+        name = "gemini"
+
+        GEMINI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta/openai"
+
+        def __init__(self, *, api_key: str | None = None) -> None:
+            self._api_key = api_key
 
         def available(self) -> bool:
-            return True
+            return self._api_key is not None
 
-        def transcribe(self, audio_path, *, model=None, **kw):
-            ...
+        def clone_with_config(self, *, base_url=None, api_key=None):
+            return GeminiBackend(api_key=api_key or self._api_key)
 
-    register_backend(MyBackend())
+        def transcribe(
+            self,
+            audio_path: Path,
+            *,
+            model: str | None = None,
+            language: str | None = None,
+            beam_size: int = 1,
+            audio_speed: float = 1.0,
+        ) -> TranscriptionResult:
+            from openai import OpenAI
+
+            client = OpenAI(
+                base_url=self.GEMINI_BASE_URL,
+                api_key=self._api_key,
+            )
+            with open(audio_path, "rb") as f:
+                resp = client.audio.transcriptions.create(
+                    model=model or "gemini-2.0-flash",
+                    file=f,
+                    response_format="verbose_json",
+                )
+            return TranscriptionResult(
+                text=getattr(resp, "text", ""),
+                backend="gemini",
+            )
+
+    register_backend(GeminiBackend(api_key="..."))
+
+Then use it via ``mm cat audio.mp3 --encode.backend gemini``.
 """
 
 from __future__ import annotations
@@ -61,20 +100,7 @@ class TranscriptionBackend(abc.ABC):
     runtime ``base_url`` / ``api_key`` overrides (like the built-in
     ``openai`` backend does).
 
-    Example::
-
-        class GeminiBackend(TranscriptionBackend):
-            name = "gemini"
-
-            def available(self) -> bool:
-                try:
-                    import google.generativeai
-                    return True
-                except ImportError:
-                    return False
-
-            def transcribe(self, audio_path, *, model=None, **kw):
-                ...
+    See the module docstring for a full Gemini example.
     """
 
     name: str
