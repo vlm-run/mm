@@ -379,13 +379,13 @@ class TestOpenAIBackend:
         ):
             from mm.common.audio._openai import GATEWAY_AUDIO_URL, OpenAIBackend
 
-            be = OpenAIBackend()
+            be = OpenAIBackend(api_key="vlmrun")
             result = be.transcribe(audio)
 
             assert result.text == "gateway transcription"
             MockOpenAI.assert_called_once_with(
                 base_url=GATEWAY_AUDIO_URL,
-                api_key="noop",
+                api_key="vlmrun",
                 timeout=120.0,
             )
 
@@ -445,7 +445,7 @@ class TestOpenAIBackend:
         with patch("openai.OpenAI", return_value=mock_client):
             from mm.common.audio._openai import OpenAIBackend
 
-            be = OpenAIBackend(base_url="http://localhost/v1")
+            be = OpenAIBackend(base_url="http://localhost/v1", api_key="test-key")
             result = be.transcribe(audio, model="whisper-1", audio_speed=2.0)
             assert result.segments[0].start == 2.0
             assert result.segments[0].end == 4.0
@@ -491,7 +491,7 @@ class TestOpenAIBackend:
         ):
             from mm.common.audio._openai import OpenAIBackend
 
-            be = OpenAIBackend()
+            be = OpenAIBackend(api_key="vlmrun")
             be.transcribe(audio)
             call_kwargs = mock_client.audio.transcriptions.create.call_args
             assert call_kwargs[1]["model"] == "nvidia/parakeet-tdt-0.6b-v3"
@@ -517,11 +517,11 @@ class TestOpenAIBackend:
         ):
             from mm.common.audio._openai import OpenAIBackend
 
-            be = OpenAIBackend()
+            be = OpenAIBackend(api_key="vlmrun")
             be.transcribe(audio)
             MockOpenAI.assert_called_once_with(
                 base_url="https://gateway.vlm.run/v1/openai",
-                api_key="noop",
+                api_key="vlmrun",
                 timeout=120.0,
             )
 
@@ -645,6 +645,7 @@ class TestTopLevelTranscribe:
                 model="whisper-1",
                 backend="openai",
                 base_url="http://localhost:11434/v1",
+                api_key="test-key",
             )
             assert result.backend == "openai"
             assert result.text == "ok"
@@ -671,6 +672,6 @@ class TestTopLevelTranscribe:
             from mm.common.audio._base import _reset
 
             _reset()
-            transcribe(audio, backend="openai")
+            transcribe(audio, backend="openai", api_key="vlmrun")
             call_kwargs = mock_client.audio.transcriptions.create.call_args
             assert call_kwargs[1]["model"] == GATEWAY_MODEL

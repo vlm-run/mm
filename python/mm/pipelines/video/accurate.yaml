@@ -9,6 +9,8 @@ encode:
     max_frames_per_message: 16
     transcribe: true
     audio_speed: 1.0
+    audio_model: nvidia/parakeet-tdt-0.6b-v3
+    audio_backend: openai
 
 generate:
   prompt: >-

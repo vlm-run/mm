@@ -5,9 +5,9 @@
 # to their defaults.
 #
 # Many visual strategies have a "-w-transcript" variant that prepends
-# a Whisper audio transcript before the visual output.  Transcript
-# kwargs (language, audio_speed) live in strategy_opts; the transcription
-# model is set at the encode level via the ``model`` field.
+# an audio transcript before the visual output.  Transcript kwargs
+# (language, audio_speed, audio_model, audio_backend) live in
+# strategy_opts.
 
 kind: video
 mode: fast        # fast | accurate
@@ -15,9 +15,6 @@ mode: fast        # fast | accurate
 # ── encode ──────────────────────────────────────────────────────────
 
 encode:
-  # model: nvidia/parakeet-tdt-0.6b-v3   # transcription model (default for gateway)
-  # backend: openai                      # "openai" | "mlx" | "ctranslate2"
-
   # ── video-frames ────────────────────────────────────────────────
   # Uniform frame extraction at a given FPS.
   # strategy: video-frames
@@ -27,7 +24,7 @@ encode:
   #   max_frames_per_message: 16      # frames per Message batch
 
   # ── video-frames-w-transcript ───────────────────────────────────
-  # Same as video-frames but with Whisper transcript prepended.
+  # Same as video-frames but with audio transcript prepended.
   strategy: video-frames-w-transcript
   strategy_opts:
     fps: 1.0
@@ -35,6 +32,8 @@ encode:
     max_frames_per_message: 16
     # language: auto                        # language code or "auto"
     # audio_speed: 1.0                      # playback speed multiplier
+    # audio_model: nvidia/parakeet-tdt-0.6b-v3  # transcription model
+    # audio_backend: openai                 # "openai" | "mlx" | "ctranslate2"
 
   # ── video-mosaic ────────────────────────────────────────────────
   # Tiles extracted frames into mosaic grids.  Uses scene detection

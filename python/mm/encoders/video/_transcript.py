@@ -37,6 +37,9 @@ def transcript_messages(
     model: str | None = None,
     language: str = "auto",
     audio_speed: float = 1.0,
+    backend: str | None = None,
+    base_url: str | None = None,
+    api_key: str | None = None,
 ) -> list[Message]:
     """Extract audio and return transcript Messages.
 
@@ -70,6 +73,9 @@ def transcript_messages(
         language=resolved_lang,
         beam_size=5,
         audio_speed=audio_speed,
+        backend=backend,
+        base_url=base_url,
+        api_key=api_key,
     )
 
     try:
@@ -123,9 +129,12 @@ def encode_with_transcript(
     from concurrent.futures import ThreadPoolExecutor
 
     transcript_kwargs = {
-        "model": kwargs.get("model"),
+        "model": kwargs.get("audio_model") or kwargs.get("model"),
         "language": kwargs.get("language", "auto"),
         "audio_speed": kwargs.get("audio_speed", 1.0),
+        "backend": kwargs.get("audio_backend") or kwargs.get("backend"),
+        "base_url": kwargs.get("audio_base_url") or kwargs.get("base_url"),
+        "api_key": kwargs.get("audio_api_key") or kwargs.get("api_key"),
     }
 
     with ThreadPoolExecutor(max_workers=1) as pool:

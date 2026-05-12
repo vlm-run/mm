@@ -178,9 +178,12 @@ def accurate_video(path: Path, spec: PipelineSpec, opts: CatOpts) -> RunResult:
         if not transcribe_available():
             return ""
 
-        model: str | None = ekw.get("model") or None
+        model: str | None = ekw.get("audio_model") or ekw.get("model") or None
         audio_speed = ekw.get("audio_speed") or 1.0
         beam_size = 5
+        backend: str | None = ekw.get("audio_backend") or ekw.get("backend") or None
+        base_url: str | None = ekw.get("audio_base_url") or ekw.get("base_url") or None
+        api_key: str | None = ekw.get("audio_api_key") or ekw.get("api_key") or None
 
         t_audio = time.monotonic()
         audio_result = extract_audio(path, speed=audio_speed)
@@ -193,6 +196,9 @@ def accurate_video(path: Path, spec: PipelineSpec, opts: CatOpts) -> RunResult:
             model=model,
             beam_size=beam_size,
             audio_speed=audio_speed,
+            backend=backend,
+            base_url=base_url,
+            api_key=api_key,
         )
         timing["audio_transcription_ms"] = whisper_result.elapsed_ms
 

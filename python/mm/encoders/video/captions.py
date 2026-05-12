@@ -123,7 +123,7 @@ class VideoCaptions:
             )
             from mm.encoders.video._transcript import transcript_messages
 
-            model: str | None = kwargs.get("model")
+            model: str | None = kwargs.get("audio_model") or kwargs.get("model")
             language: str = kwargs.get("language", "auto")
             audio_speed: float = kwargs.get("audio_speed", 1.0)
 
@@ -133,6 +133,9 @@ class VideoCaptions:
                     model=model,
                     language=language,
                     audio_speed=audio_speed,
+                    backend=kwargs.get("audio_backend") or kwargs.get("backend"),
+                    base_url=kwargs.get("audio_base_url") or kwargs.get("base_url"),
+                    api_key=kwargs.get("audio_api_key") or kwargs.get("api_key"),
                 )
             )
             if msgs:
