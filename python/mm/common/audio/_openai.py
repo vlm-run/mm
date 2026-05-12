@@ -126,12 +126,20 @@ class OpenAIBackend(TranscriptionBackend):
 
         base_url, api_key = self._resolve_url_and_key()
 
+        if not api_key:
+            raise ValueError(
+                f"No api_key configured for transcription endpoint {base_url!r}. "
+                "Set one via --encode.strategy_opts api_key=<key>, "
+                "the [transcription] section in mm.toml, or the active profile "
+                "(mm profile set <name> --api-key <key>)."
+            )
+
         if model is None:
             model = self._default_model(base_url)
 
         client = OpenAI(
             base_url=base_url,
-            api_key=api_key or "noop",
+            api_key=api_key,
             timeout=120.0,
         )
 

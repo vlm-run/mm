@@ -32,10 +32,13 @@ def accurate_audio(path: Path, spec: PipelineSpec, opts: CatOpts) -> RunResult:
             )
         )
 
+    _AUDIO_NATIVE = {"transcribe", "audio-transcribe"}
+
     if spec.generate is None:
+        if spec.encode.strategy:
+            return run_encoder(path, "audio", spec, opts)
         return RunResult(content=extract_meta(path, "audio"))
 
-    _AUDIO_NATIVE = {"transcribe", "audio-transcribe"}
     if spec.encode.strategy and spec.encode.strategy not in _AUDIO_NATIVE:
         return run_encoder(path, "audio", spec, opts)
 
