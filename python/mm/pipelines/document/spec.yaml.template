@@ -1,0 +1,66 @@
+# Document pipeline spec — all available strategies and their options.
+#
+# Copy this file to ~/.config/mm/pipelines/document/{mode}.yaml
+# and customise the values you need.  Omitted strategy_opts fall back
+# to their defaults.  The generate block is optional — leave it out
+# for encode-only (text extraction) pipelines.
+
+kind: document
+mode: fast        # fast | accurate
+
+# ── encode ──────────────────────────────────────────────────────────
+
+encode:
+
+  # ── page-text (default) ─────────────────────────────────────────
+  # Extracts text per page from PDF/DOCX/PPTX.  No rasterization —
+  # fast and lightweight.
+  strategy: page-text
+  strategy_opts:
+    pages_per_message: 128    # pages batched into each Message
+    # max_pages: null         # total page cap (null = unlimited)
+
+  # ── rasterize ───────────────────────────────────────────────────
+  # Renders PDF pages as JPEG images.  Best when layout matters
+  # more than raw text (charts, forms, diagrams).
+  # strategy: rasterize
+  # strategy_opts:
+  #   max_width: 1024         # render width in pixels
+  #   pages_per_message: 4    # pages per Message
+  #   max_pages: null         # total page cap (null = unlimited)
+
+  # ── rasterize-text ──────────────────────────────────────────────
+  # Rasterized page images interleaved with extracted page text.
+  # Gives the VLM both visual layout and raw text for OCR fallback.
+  # strategy: rasterize-text
+  # strategy_opts:
+  #   max_width: 1024         # render width in pixels
+  #   pages_per_message: 4    # pages per Message
+  #   max_pages: null         # total page cap (null = unlimited)
+
+  # ── document-gemini ─────────────────────────────────────────────
+  # Passes the document directly as a Gemini inline_data Part.
+  # No strategy_opts — the raw file is sent as-is.
+  # strategy: document-gemini
+
+  # Custom post-processing transform (optional).
+  # pyfunc: null
+
+# ── generate (optional — omit for encode-only) ──────────────────
+
+generate:
+  prompt: >-
+    Structure this document ({filename}) into a clean markdown readable format.
+    The conversion should be lossless and well-organized/formatted with proper
+    headings, lists, etc.
+
+    ```text
+    {content}
+    ```
+  max_tokens: 16384
+  # model: null              # pin a specific LLM model (overrides profile)
+  # temperature: null        # sampling temperature (null = model default)
+  # json_mode: false         # request JSON-formatted response
+  # think: false             # enable extended thinking
+  # reasoning_effort: none   # none | low | medium | high
+  # extra_body: {}           # provider-specific pass-through kwargs

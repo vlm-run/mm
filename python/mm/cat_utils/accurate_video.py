@@ -178,7 +178,7 @@ def accurate_video(path: Path, spec: PipelineSpec, opts: CatOpts) -> RunResult:
         if not transcribe_available():
             return ""
 
-        whisper_model = ekw.get("whisper_model") or "medium"
+        model = ekw.get("model") or None
         audio_speed = ekw.get("audio_speed") or 1.0
         beam_size = 5
 
@@ -190,7 +190,7 @@ def accurate_video(path: Path, spec: PipelineSpec, opts: CatOpts) -> RunResult:
 
         whisper_result = transcribe(
             audio_result.path,
-            model=whisper_model,
+            model=model,
             beam_size=beam_size,
             audio_speed=audio_speed,
         )

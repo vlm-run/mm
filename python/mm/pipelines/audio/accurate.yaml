@@ -5,7 +5,6 @@ encode:
   strategy: audio-transcribe
   backend: openai
   strategy_opts:
-    whisper_model: medium
     audio_speed: 1.0
 
 generate:

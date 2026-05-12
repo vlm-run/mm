@@ -87,16 +87,16 @@ class AudioBase64:
 class AudioTranscribe:
     """Transcribe audio and return the transcript as a text message.
 
-    Uses the modular transcription backend system.  By default, picks
-    the best local backend (MLX > CTranslate2).  Set ``backend`` to
-    ``"openai"`` + ``base_url`` to use a remote transcription service.
+    Uses the modular transcription backend system.  By default, calls
+    the VLM Run gateway's OpenAI-compatible endpoint.  Override
+    ``base_url`` to point at localhost or OpenAI directly.
 
     Kwargs:
-        whisper_model: Model name or size (default "medium").
+        model: Model name (default chosen by backend).
         language: Language code or "auto" for detection (default "auto").
         audio_speed: Playback speed multiplier (default 1.0).
-        backend: Transcription backend name (``"mlx"``, ``"ctranslate2"``,
-            ``"openai"``).  ``None`` for auto-detect.
+        backend: Transcription backend name (``"openai"``, ``"mlx"``,
+            ``"ctranslate2"``).  ``None`` for auto-detect.
         base_url: Custom base URL for the ``openai`` backend.
         api_key: API key for the ``openai`` backend.
     """
@@ -105,7 +105,7 @@ class AudioTranscribe:
     media_types: tuple[str, ...] = ("audio",)
 
     def encode(self, path: Path, **kwargs: Any) -> Iterable[Message]:
-        whisper_model: str = kwargs.get("whisper_model", "medium")
+        model: str | None = kwargs.get("model")
         language: str = kwargs.get("language", "auto")
         audio_speed: float = kwargs.get("audio_speed", 1.0)
 
@@ -135,7 +135,7 @@ class AudioTranscribe:
             )
             return
 
-        if not transcribe_available() and backend is None:
+        if not transcribe_available():
             yield _to_message(
                 [
                     {
@@ -154,7 +154,7 @@ class AudioTranscribe:
 
         whisper_result = transcribe(
             audio_result.path,
-            model=whisper_model,
+            model=model,
             beam_size=5,
             audio_speed=audio_speed,
             backend=backend,
@@ -192,7 +192,7 @@ class AudioTranscribe:
                     "text": (
                         f"Transcript of {path.name}"
                         f" (lang={whisper_result.language},"
-                        f" model={whisper_model},"
+                        f" model={whisper_result.model_size},"
                         f" {whisper_result.elapsed_ms / 1000:.1f}s):\n\n" + "\n".join(segment_lines)
                     ),
                 }
@@ -209,7 +209,7 @@ class AudioTranscribe:
             "audio_transcribe [path=%s, words=%d, model=%s, %.0fms]",
             path.name,
             len(transcript.split()),
-            whisper_model,
+            whisper_result.model_size,
             whisper_result.elapsed_ms,
         )
         yield _to_message(parts)

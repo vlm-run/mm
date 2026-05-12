@@ -97,7 +97,7 @@ class VideoFramesWithTranscript:
 
     Kwargs:
         fps, max_width, max_frames_per_message: Same as ``VideoFrames``.
-        whisper_model: Whisper model size (default "medium").
+        model: Transcription model name (default chosen by backend).
         language: Language code or "auto" (default "auto").
         audio_speed: Playback speed multiplier (default 1.0).
     """

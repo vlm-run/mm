@@ -22,25 +22,52 @@ class TestTranscriptionResult:
 
 
 class TestRegistry:
-    def test_list_backends_returns_tuples(self):
-        from mm.common.audio import list_backends
+    def test_openai_always_registered(self):
+        from mm.common.audio import ACTIVE_VARIANT, list_backends
 
         backends = list_backends()
-        assert len(backends) >= 3
         names = [name for name, _ in backends]
-        assert "mlx" in names
-        assert "ctranslate2" in names
+        assert len(backends) >= 1
         assert "openai" in names
+        assert ACTIVE_VARIANT in names
 
-    def test_list_backends_sorted_by_priority(self):
-        from mm.common.audio import list_backends
+    def test_active_variant_is_valid(self):
+        from mm.common.audio import ACTIVE_VARIANT
 
-        backends = list_backends()
-        names = [name for name, _ in backends]
-        assert names.index("mlx") < names.index("ctranslate2")
-        assert names.index("ctranslate2") < names.index("openai")
+        assert ACTIVE_VARIANT in ("openai", "mlx", "ctranslate2")
 
     def test_detect_backend_by_name(self):
+        from mm.common.audio import ACTIVE_VARIANT, detect_backend
+        from mm.common.audio._base import _reset
+
+        _reset()
+        be = detect_backend(name=ACTIVE_VARIANT)
+        assert be is not None
+        assert be.name == ACTIVE_VARIANT
+
+    def test_detect_backend_unknown_returns_none(self):
+        from mm.common.audio import detect_backend
+
+        assert detect_backend(name="nonexistent") is None
+
+    def test_detect_backend_auto(self):
+        from mm.common.audio import ACTIVE_VARIANT, detect_backend
+        from mm.common.audio._base import _reset
+
+        _reset()
+        be = detect_backend()
+        assert be is not None
+        assert be.name == ACTIVE_VARIANT
+
+    def test_transcribe_available(self):
+        from mm.common.audio import transcribe_available
+
+        assert transcribe_available() is True
+
+
+class TestDetectWithOverrides:
+    def test_openai_always_selectable(self):
+        """backend='openai' works even when local backends are installed."""
         from mm.common.audio import detect_backend
         from mm.common.audio._base import _reset
 
@@ -49,27 +76,6 @@ class TestRegistry:
         assert be is not None
         assert be.name == "openai"
 
-    def test_detect_backend_unknown_returns_none(self):
-        from mm.common.audio import detect_backend
-
-        assert detect_backend(name="nonexistent") is None
-
-    def test_detect_backend_auto(self):
-        from mm.common.audio import detect_backend
-        from mm.common.audio._base import _reset
-
-        _reset()
-        be = detect_backend()
-        # At least one backend should be available in the test env
-        assert be is None or be.name in ("mlx", "ctranslate2", "openai")
-
-    def test_transcribe_available(self):
-        from mm.common.audio import transcribe_available
-
-        assert isinstance(transcribe_available(), bool)
-
-
-class TestDetectWithOverrides:
     def test_openai_with_custom_url(self):
         from mm.common.audio import detect_backend
 
@@ -77,13 +83,6 @@ class TestDetectWithOverrides:
         assert be is not None
         assert be.name == "openai"
         assert be._base_url == "http://localhost:9999/v1"
-
-    def test_non_openai_ignores_url(self):
-        from mm.common.audio import detect_backend
-
-        be = detect_backend(name="ctranslate2", base_url="http://example.com")
-        assert be is not None
-        assert be.name == "ctranslate2"
 
 
 class TestTranscribeNoBackend:
@@ -93,7 +92,7 @@ class TestTranscribeNoBackend:
 
         _reset()
         with patch("mm.common.audio.detect_backend", return_value=None):
-            result = transcribe("/tmp/test.wav", model="tiny")
+            result = transcribe("/tmp/test.wav", model="whisper-1")
             assert "no transcription backend" in result.text
 
 
@@ -222,62 +221,71 @@ class TestOpenAIBackend:
             )
             mock_client.audio.transcriptions.create.assert_called_once()
 
-    def test_default_base_url_is_gateway(self, tmp_path):
+    def test_falls_back_to_gateway_url(self, tmp_path):
+        """When no base_url is set and no profile/config overrides exist, uses the gateway."""
         audio = tmp_path / "test.wav"
         audio.write_bytes(b"\x00" * 100)
 
         mock_resp = MagicMock()
-        mock_resp.text = ""
-        mock_resp.language = ""
+        mock_resp.text = "gateway transcription"
+        mock_resp.language = "en"
         mock_resp.segments = []
 
         mock_client = MagicMock()
         mock_client.audio.transcriptions.create.return_value = mock_resp
 
         with (
-            patch("mm.profile.gateway_api_key", return_value="noop"),
             patch("openai.OpenAI", return_value=mock_client) as MockOpenAI,
+            patch("mm.common.audio._openai._resolve_transcription_config", return_value=("", "")),
+            patch("mm.common.audio._openai._resolve_profile_url", return_value=("", "")),
         ):
-            from mm.common.audio._openai import OpenAIBackend
-            from mm.profile import GATEWAY_BASE_URL
+            from mm.common.audio._openai import GATEWAY_AUDIO_URL, OpenAIBackend
 
             be = OpenAIBackend()
-            be.transcribe(audio)
+            result = be.transcribe(audio)
 
+            assert result.text == "gateway transcription"
             MockOpenAI.assert_called_once_with(
-                base_url=GATEWAY_BASE_URL,
+                base_url=GATEWAY_AUDIO_URL,
                 api_key="noop",
                 timeout=120.0,
             )
 
-    def test_default_base_url_is_gateway_openai_route(self, tmp_path):
-        """Default transcription URL must be the gateway's OpenAI-compatible route.
-
-        The OpenAI SDK appends ``/audio/transcriptions`` to ``base_url``, so
-        the resulting URL is ``https://gateway.vlm.run/v1/openai/audio/transcriptions``.
-        Plain ``/v1/audio/transcriptions`` (no ``/openai`` segment) returns 404.
-        """
+    def test_prefers_transcription_config_over_profile(self, tmp_path):
+        """[transcription] config takes precedence over the active profile."""
         audio = tmp_path / "test.wav"
         audio.write_bytes(b"\x00" * 100)
 
         mock_resp = MagicMock()
-        mock_resp.text = ""
-        mock_resp.language = ""
+        mock_resp.text = "from config"
+        mock_resp.language = "en"
         mock_resp.segments = []
 
         mock_client = MagicMock()
         mock_client.audio.transcriptions.create.return_value = mock_resp
 
-        with patch("openai.OpenAI", return_value=mock_client) as MockOpenAI:
+        with (
+            patch("openai.OpenAI", return_value=mock_client) as MockOpenAI,
+            patch(
+                "mm.common.audio._openai._resolve_transcription_config",
+                return_value=("http://localhost:9000/v1", "cfg-key"),
+            ),
+            patch(
+                "mm.common.audio._openai._resolve_profile_url",
+                return_value=("http://profile.example.com/v1", "profile-key"),
+            ),
+        ):
             from mm.common.audio._openai import OpenAIBackend
-            from mm.profile import TRANSCRIPTION_BASE_URL
 
-            assert TRANSCRIPTION_BASE_URL == "https://gateway.vlm.run/v1/openai"
             be = OpenAIBackend()
-            be.transcribe(audio)
+            result = be.transcribe(audio)
 
-            kwargs = MockOpenAI.call_args.kwargs
-            assert kwargs["base_url"] == "https://gateway.vlm.run/v1/openai"
+            assert result.text == "from config"
+            MockOpenAI.assert_called_once_with(
+                base_url="http://localhost:9000/v1",
+                api_key="cfg-key",
+                timeout=120.0,
+            )
 
     def test_timestamp_scaling(self, tmp_path):
         audio = tmp_path / "test.wav"
@@ -427,3 +435,29 @@ class TestTopLevelTranscribe:
             )
             assert result.backend == "openai"
             assert result.text == "ok"
+
+    def test_default_model_is_parakeet_for_openai(self, tmp_path):
+        """When using the openai backend, model defaults to nvidia/parakeet-tdt-0.6b-v3."""
+        audio = tmp_path / "test.wav"
+        audio.write_bytes(b"\x00" * 100)
+
+        mock_resp = MagicMock()
+        mock_resp.text = "hello"
+        mock_resp.language = "en"
+        mock_resp.segments = []
+
+        mock_client = MagicMock()
+        mock_client.audio.transcriptions.create.return_value = mock_resp
+
+        with (
+            patch("openai.OpenAI", return_value=mock_client),
+            patch("mm.common.audio._openai._resolve_transcription_config", return_value=("", "")),
+            patch("mm.common.audio._openai._resolve_profile_url", return_value=("", "")),
+        ):
+            from mm.common.audio import GATEWAY_MODEL, transcribe
+            from mm.common.audio._base import _reset
+
+            _reset()
+            transcribe(audio, backend="openai")
+            call_kwargs = mock_client.audio.transcriptions.create.call_args
+            assert call_kwargs[1]["model"] == GATEWAY_MODEL

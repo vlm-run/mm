@@ -5,5 +5,4 @@ encode:
   strategy: audio-transcribe
   backend: openai
   strategy_opts:
-    whisper_model: tiny
     audio_speed: 2.0

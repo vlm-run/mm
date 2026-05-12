@@ -70,7 +70,7 @@ class TestPipelineSpecSchema:
                     "strategy_opts": {
                         "max_width": 512,
                         "transcribe": True,
-                        "whisper_model": "medium",
+                        "model": "nvidia/parakeet-tdt-0.6b-v3",
                     },
                 },
                 "generate": {
@@ -84,7 +84,7 @@ class TestPipelineSpecSchema:
         assert spec.encode.strategy == "frame-sample"
         assert spec.encode.strategy_opts["max_width"] == 512
         assert spec.encode.strategy_opts["transcribe"] is True
-        assert spec.encode.strategy_opts["whisper_model"] == "medium"
+        assert spec.encode.strategy_opts["model"] == "nvidia/parakeet-tdt-0.6b-v3"
         assert spec.generate is not None
         assert spec.generate.max_tokens == 1024
         assert spec.generate.temperature == 0.7

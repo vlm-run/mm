@@ -128,7 +128,7 @@ class VideoSummary:
 class VideoSummaryWithTranscript:
     """Adaptive video summary with Whisper transcript prepended.
 
-    Kwargs: Same as ``VideoSummary`` plus ``whisper_model``,
+    Kwargs: Same as ``VideoSummary`` plus ``model``,
     ``language``, ``audio_speed``.
     """
 

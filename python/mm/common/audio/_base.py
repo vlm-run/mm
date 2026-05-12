@@ -116,8 +116,8 @@ def detect_backend(
 
 
 def transcribe_available() -> bool:
-    """Return True if at least one local backend can run."""
-    return any(b.available() for b in _BACKENDS if b.name != "openai")
+    """Return True if at least one backend (local or remote) can run."""
+    return any(b.available() for b in _BACKENDS)
 
 
 def _reset() -> None:

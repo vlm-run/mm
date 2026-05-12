@@ -36,7 +36,7 @@ class MLXBackend(TranscriptionBackend):
     """
 
     name = "mlx"
-    priority = 10
+    priority = 20
 
     def available(self) -> bool:
         try:
