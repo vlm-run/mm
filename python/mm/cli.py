@@ -94,7 +94,9 @@ _LLM_COMMANDS = {"cat", "bench"}
 
 
 @app.callback(
-    invoke_without_command=True, help=f"mm v{__version__} — Fast, multimodal context for agents."
+    invoke_without_command=True,
+    help="Fast, multimodal context for agents.",
+    epilog=f"mm v{__version__}",
 )
 def _main(
     ctx: typer.Context,
