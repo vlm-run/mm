@@ -52,7 +52,7 @@ def wc_cmd(
     from mm.pipe import read_paths_from_stdin
 
     if not Path(directory).exists():
-        console.print(f"[red]Directory not found: {directory}[/red]")
+        console.print(f"Directory not found: {directory}")
         raise typer.Exit(1)
 
     import json as json_mod
@@ -183,7 +183,7 @@ def wc_cmd(
 
     # ── Rich output ─────────────────────────────────────────────────
 
-    from mm.display import KIND_STYLES, output_console
+    from mm.display import output_console
 
     if by_kind:
         from rich import box
@@ -197,25 +197,23 @@ def wc_cmd(
             caption_style="dim",
             caption_justify="right",
             show_header=True,
-            header_style="bold white",
+            header_style="bold",
             padding=(0, 1),
-            border_style="dim",
             expand=False,
             box=box.ROUNDED,
         )
-        tbl.add_column("kind", style="cyan", no_wrap=True)
+        tbl.add_column("kind", no_wrap=True)
         tbl.add_column(F_FILES, justify="right")
-        tbl.add_column(F_SIZE, justify="right", style="bright_blue")
+        tbl.add_column(F_SIZE, justify="right")
         tbl.add_column(F_LINES, justify="right")
-        tbl.add_column(F_TOKENS, justify="right", style="bright_green")
-        tbl.add_column(F_TOK_MB, justify="right", style="dim")
+        tbl.add_column(F_TOKENS, justify="right")
+        tbl.add_column(F_TOK_MB, justify="right")
 
         for k in sorted(kind_stats.keys()):
             s = kind_stats[k]
-            style = KIND_STYLES.get(k, "dim")
             tok_mb_str = format_number(s[F_TOK_MB]) if s.get(F_TOK_MB) else "—"
             tbl.add_row(
-                Text(k, style=style),
+                k,
                 f"{int(s[F_FILES]):,}",
                 format_size(int(s[F_SIZE])),
                 format_number(int(s[F_LINES])),
@@ -248,20 +246,19 @@ def wc_cmd(
             caption_style="dim",
             caption_justify="right",
             show_header=True,
-            header_style="bold white",
+            header_style="bold",
             padding=(0, 1),
-            border_style="dim",
             expand=False,
             box=box.ROUNDED,
         )
-        tbl.add_column("metric", style="dim")
+        tbl.add_column("metric")
         tbl.add_column("value", justify="right")
-        tbl.add_row(F_FILES, f"[bold bright_blue]{total_files:,}[/bold bright_blue]")
-        tbl.add_row(F_SIZE, f"[bold bright_blue]{format_size(total_size)}[/bold bright_blue]")
+        tbl.add_row(F_FILES, f"[bold]{total_files:,}[/bold]")
+        tbl.add_row(F_SIZE, f"[bold]{format_size(total_size)}[/bold]")
         tbl.add_row(F_LINES, f"[bold]{format_number(total_lines)}[/bold]")
         tbl.add_row(
             F_TOKENS,
-            f"[bold bright_green]{format_number(total_tokens)}[/bold bright_green]",
+            f"[bold]{format_number(total_tokens)}[/bold]",
         )
         tbl.add_row(
             F_TOK_MB,

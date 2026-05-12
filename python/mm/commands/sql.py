@@ -138,7 +138,7 @@ def _query_files(query: str, directory: Path, fmt: str, *, pre_index: bool = Fal
         from mm.display import console
 
         _emit([], [], fmt)
-        console.print("\n[bold]No indexed files[/bold]\n[dim]---[/dim]")
+        console.print("\n[bold]No indexed files[/bold]\n---")
 
     # Compute diff: files on disk but not in DB (when NOT pre-indexing)
     if not pre_index:
@@ -169,24 +169,22 @@ def _show_unindexed_diff(unindexed: list[str], prefix: str, query: str, director
     err = Console(stderr=True, force_terminal=False)
 
     diff_table = Table(
-        title=f"{len(unindexed)} unindexed file{'s' if len(unindexed) != 1 else ''}",
+        title=f"[bold]{len(unindexed)} unindexed file{'s' if len(unindexed) != 1 else ''}[/bold]",
         box=box.ROUNDED,
-        border_style="yellow",
-        header_style="bold yellow",
-        title_style="yellow",
+        header_style="bold",
         title_justify="left",
     )
-    diff_table.add_column("path", style="white", overflow="fold")
+    diff_table.add_column("path", overflow="fold")
     for uri in unindexed[:5]:
         rel = uri[len(prefix) + 1 :] if uri.startswith(prefix) else uri
         diff_table.add_row(rel)
     if len(unindexed) > 5:
-        diff_table.add_row(f"[dim]... and {len(unindexed) - 5} more[/dim]")
+        diff_table.add_row(f"... and {len(unindexed) - 5} more")
     err.print()
     err.print(diff_table)
 
     cmd = f'mm sql "{query}" --dir {directory} --pre-index'
-    output_console.print(f"\n[dim]To include these files, run:[/dim]\n  [bold]{cmd}[/bold]")
+    output_console.print(f"\nTo include these files, run:\n  [bold]{cmd}[/bold]")
 
 
 def _query_dicts_as_files(rows: list[dict[str, Any]], query: str) -> tuple[list[str], list[tuple]]:
@@ -278,12 +276,11 @@ def _list_tables(fmt: str) -> None:
         from mm.display import output_console
 
         t = Table(
-            title="Available tables",
+            title="[bold]Available tables[/bold]",
             box=box.ROUNDED,
-            border_style="dim",
-            header_style="bold white",
+            header_style="bold",
         )
-        t.add_column("table", style="bold")
+        t.add_column("table")
         t.add_column("source")
         t.add_column("stored", justify="right")
         for r in rows:
@@ -343,8 +340,7 @@ def _emit(columns: list[str], rows: list[tuple], fmt: str) -> None:
             caption_justify="right",
             show_lines=False,
             padding=(0, 1),
-            border_style="dim",
-            header_style="bold white",
+            header_style="bold",
             box=box.ROUNDED,
         )
         for h in headers:

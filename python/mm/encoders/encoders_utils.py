@@ -30,8 +30,8 @@ def do_list_encoders() -> None:
         params: list[tuple[str, str]] = entry["params"]
 
         line = Text(no_wrap=True, overflow="ellipsis")
-        line.append(prefixed.ljust(name_w), style="bold white")
-        line.append(desc, style="white")
+        line.append(prefixed.ljust(name_w), style="bold")
+        line.append(desc)
         lines.append(line)
 
         if params:
@@ -40,7 +40,7 @@ def do_list_encoders() -> None:
             param_parts: list[str] = []
             for pname, default in params:
                 param_parts.append(f"{pname}={default}")
-            param_line.append(", ".join(param_parts), style="green")
+            param_line.append(", ".join(param_parts))
             lines.append(param_line)
 
     body = Text("\n").join(lines)
@@ -48,7 +48,12 @@ def do_list_encoders() -> None:
     panel_w = max_line + 8
     console = Console(width=max(panel_w, 80))
     panel = Panel(
-        body, title="Encoders", title_align="left", box=box.ROUNDED, padding=(1, 2), width=panel_w
+        body,
+        title="[bold]Encoders[/bold]",
+        title_align="left",
+        box=box.ROUNDED,
+        padding=(1, 2),
+        width=panel_w,
     )
     console.print()
     console.print(panel)
