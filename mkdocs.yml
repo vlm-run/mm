@@ -1,0 +1,85 @@
+site_name: mm
+site_description: Fast, multimodal context for agents.
+site_url: https://vlm-run.github.io/mm/
+repo_url: https://pypi.org/project/mm-ctx/
+repo_name: mm-ctx
+edit_uri: ""
+docs_dir: docs
+site_dir: site
+
+theme:
+  name: material
+  features:
+    - navigation.instant
+    - navigation.tracking
+    - navigation.top
+    - navigation.expand
+    - toc.follow
+    - content.code.copy
+    - content.code.annotate
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  font:
+    text: Geist
+    code: Geist Mono
+  icon:
+    repo: fontawesome/brands/python
+
+extra_css:
+  - stylesheets/extra.css
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - md_in_html
+  - tables
+  - footnotes
+  - toc:
+      permalink: true
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+
+hooks:
+  - scripts/docs_hooks.py
+
+nav:
+  - Home: index.md
+  - User guide: USER_GUIDE.md
+  - Python API: api.md
+  - Use cases: USE_CASES.md
+  - Encoders: ENCODERS.md
+  - Pipelines: PIPELINES.md
+  - Fixtures: FIXTURES.md
+  - Roadmap: ROADMAP.md
+  - Spec:
+      - Overview: spec/SPEC.md
+      - cat: spec/cat.md
+      - CLI use: spec/cli-use.md
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/vlm-run/mm
+    - icon: fontawesome/brands/python
+      link: https://pypi.org/project/mm-ctx/
+    - icon: fontawesome/brands/discord
+      link: https://discord.gg/6aqcyvPF79

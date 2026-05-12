@@ -101,6 +101,10 @@ dev = [
     "maturin>=1.7",
     "logfire>=3.0",
 ]
+docs = [
+    "mkdocs>=1.6",
+    "mkdocs-material>=9.5",
+]
 all = [
     "mm-ctx[experimental]",
     "mm-ctx[mlx]; sys_platform == 'darwin'",
