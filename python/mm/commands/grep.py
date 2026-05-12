@@ -274,12 +274,11 @@ def grep_cmd(
                 caption_justify="right",
                 show_lines=False,
                 padding=(0, 1),
-                border_style="dim",
-                header_style="bold white",
+                header_style="bold",
                 box=box.ROUNDED,
             )
-            t.add_column("file", style="white")
-            t.add_column("matches", justify="right", style="bright_blue")
+            t.add_column("file")
+            t.add_column("matches", justify="right")
             for path, cnt in sorted(file_counts.items(), key=lambda x: -x[1]):
                 t.add_row(path, str(cnt))
             output_console.print(t)
@@ -301,10 +300,10 @@ def grep_cmd(
         for m in all_matches:
             if m["path"] != current_file:
                 current_file = m["path"]
-                output_console.print(f"[bold magenta]{current_file}[/bold magenta]")
+                output_console.print(f"[bold]{current_file}[/bold]")
 
             line_text = Text()
-            line_text.append(f" {m['line_number']:>4} ", style="dim green")
+            line_text.append(f" {m['line_number']:>4} ")
 
             line = m["line"]
             parts = regex.split(line)
@@ -312,13 +311,13 @@ def grep_cmd(
             for j, part in enumerate(parts):
                 line_text.append(part)
                 if j < len(found):
-                    line_text.append(found[j], style="bold red on bright_black")
+                    line_text.append(found[j], style="bold")
             output_console.print(line_text)
 
         output_console.print()
         output_console.print(
-            f"[dim]{total_matches} match{'es' if total_matches != 1 else ''} "
-            f"in {total_files} file{'s' if total_files != 1 else ''}[/dim]"
+            f"{total_matches} match{'es' if total_matches != 1 else ''} "
+            f"in {total_files} file{'s' if total_files != 1 else ''}"
         )
     else:
         for m in all_matches:

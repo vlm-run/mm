@@ -235,7 +235,7 @@ def render_host_info_rich(info: dict[str, Any], *, to_stderr: bool = False) -> N
     target = console if to_stderr else output_console
 
     table = Table(box=None, show_header=False, padding=(0, 1))
-    table.add_column(style="dim", justify="right", no_wrap=True)
+    table.add_column(justify="right", no_wrap=True)
     table.add_column()
 
     table.add_row("Platform", f"{info['platform']}/{info['arch']} ({info['kernel']})")
@@ -274,7 +274,7 @@ def render_host_info_rich(info: dict[str, Any], *, to_stderr: bool = False) -> N
         table.add_row("base_url", p["base_url"])
         table.add_row("model", p["model"])
 
-    target.print(Panel(table, title="mm host info", box=box.ROUNDED, border_style="dim"))
+    target.print(Panel(table, title="[bold]mm host info[/bold]", box=box.ROUNDED))
 
 
 def render_host_info(info: dict[str, Any], *, fmt: str, to_stderr: bool = False) -> None:
