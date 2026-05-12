@@ -432,6 +432,24 @@ class TestBenchCommands:
         for c in peek_cmds:
             assert c.group == "metadata"
 
+    def test_fast_group_includes_folder_cat_benchmarks(self):
+        """``mm cat <folder>`` must be present in the fast bench registry."""
+        from mm.commands.bench_commands import FAST_COMMANDS
+
+        folder_cmds = [c for c in FAST_COMMANDS if "<folder>" in c.name]
+        # Default + --no-ignore variants both exist and exercise ``{dir}``.
+        assert len(folder_cmds) >= 2
+        for c in folder_cmds:
+            assert c.group == "fast"
+            assert "{dir}" in c.cmd_template
+            assert c.requires_kind is None
+            # ``-y`` is required so non-interactive bench rounds don't hang
+            # on the >=9-paths confirmation prompt.
+            assert "-y" in c.cmd_template
+        names = {c.name for c in folder_cmds}
+        assert "mm cat <folder>" in names
+        assert "mm cat <folder> --no-ignore" in names
+
     def test_accurate_group_is_accurate_mode_only(self):
         """Accurate group contains only --mode accurate commands."""
         from mm.commands.bench_commands import ACCURATE_COMMANDS
