@@ -12,9 +12,8 @@ theme:
   features:
     - navigation.instant
     - navigation.tracking
-    - navigation.tabs
-    - navigation.sections
     - navigation.top
+    - navigation.expand
     - toc.follow
     - content.code.copy
     - content.code.annotate
@@ -22,23 +21,22 @@ theme:
   palette:
     - media: "(prefers-color-scheme: light)"
       scheme: default
-      primary: black
-      accent: black
       toggle:
         icon: material/brightness-7
         name: Switch to dark mode
     - media: "(prefers-color-scheme: dark)"
       scheme: slate
-      primary: black
-      accent: white
       toggle:
         icon: material/brightness-4
         name: Switch to light mode
   font:
-    text: Inter
-    code: JetBrains Mono
+    text: Geist
+    code: Fragment Mono
   icon:
     repo: fontawesome/brands/github
+
+extra_css:
+  - stylesheets/extra.css
 
 markdown_extensions:
   - admonition
