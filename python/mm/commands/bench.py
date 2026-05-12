@@ -10,6 +10,7 @@ import statistics
 import subprocess
 import sys
 import time
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Annotated, Any, Callable, Optional
@@ -312,7 +313,7 @@ def _run_benchmarks(
         "dry_run": dry_run,
     }
 
-    def _exec_run(cmd: BenchCommand):
+    def _exec_run(cmd: BenchCommand) -> BenchResult:
         if on_progress:
             on_progress(cmd.group, cmd.name)
 
@@ -322,48 +323,39 @@ def _run_benchmarks(
             # dim styling) but never invoke the argv. Short-circuits
             # before ``resolve_command`` so missing-input errors on
             # disabled rows can't accidentally mask the disable intent.
-            results.append(
-                BenchResult(
-                    cmd.name,
-                    cmd.group,
-                    skipped=True,
-                    skip_reason="disabled",
-                    disabled=True,
-                    tags=dict(cmd.tags),
-                    cmd_template=cmd.cmd_template,
-                    requires_kind=cmd.requires_kind,
-                )
+            return BenchResult(
+                cmd.name,
+                cmd.group,
+                skipped=True,
+                skip_reason="disabled",
+                disabled=True,
+                tags=dict(cmd.tags),
+                cmd_template=cmd.cmd_template,
+                requires_kind=cmd.requires_kind,
             )
-            return
 
         if num_files == 0:
-            results.append(
-                BenchResult(
-                    cmd.name,
-                    cmd.group,
-                    skipped=True,
-                    skip_reason="empty directory",
-                    tags=dict(cmd.tags),
-                    cmd_template=cmd.cmd_template,
-                    requires_kind=cmd.requires_kind,
-                )
+            return BenchResult(
+                cmd.name,
+                cmd.group,
+                skipped=True,
+                skip_reason="empty directory",
+                tags=dict(cmd.tags),
+                cmd_template=cmd.cmd_template,
+                requires_kind=cmd.requires_kind,
             )
-            return
 
         resolved = resolve_command(cmd, directory, files)
         if resolved is None:
-            results.append(
-                BenchResult(
-                    cmd.name,
-                    cmd.group,
-                    skipped=True,
-                    skip_reason=cmd.skip_reason,
-                    tags=dict(cmd.tags),
-                    cmd_template=cmd.cmd_template,
-                    requires_kind=cmd.requires_kind,
-                )
+            return BenchResult(
+                cmd.name,
+                cmd.group,
+                skipped=True,
+                skip_reason=cmd.skip_reason,
+                tags=dict(cmd.tags),
+                cmd_template=cmd.cmd_template,
+                requires_kind=cmd.requires_kind,
             )
-            return
 
         argv, fc, tb, media, data_paths = resolved
 
@@ -394,10 +386,15 @@ def _run_benchmarks(
             r.last_stderr = last_proc.stderr or ""
             r.returncode = last_proc.returncode
 
-        results.append(r)
+        return r
 
-    for cmd in commands:
-        _exec_run(cmd)
+    with ThreadPoolExecutor(max_workers=min(8, len(commands))) as pool:
+        futures = [pool.submit(_exec_run, cmd) for cmd in commands]
+        for p, fut in zip(commands, futures, strict=True):
+            try:
+                results.append(fut.result())
+            except Exception as exc:
+                typer.echo(f"Error processing {p}: {exc}", err=True)
 
     target_info["total_wall_ms"] = (time.perf_counter_ns() - t_wall) / 1_000_000
     return results, target_info
