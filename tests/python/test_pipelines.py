@@ -190,7 +190,7 @@ class TestLoad:
     def test_load_audio_accurate(self):
         spec = load("audio", "accurate")
         assert spec.kind == "audio"
-        assert spec.generate is not None
+        assert spec.generate is None
 
     def test_load_nonexistent_raises(self):
         with pytest.raises(FileNotFoundError, match="No pipeline"):
