@@ -345,26 +345,23 @@ def cat_cmd(
     paths: list[str] = []
     seen: set[str] = set()
     for entry in raw_paths:
-        p = Path(entry)
-        if not p.exists():
-            paths.append(entry)
-            continue
-        if p.is_dir():
-            try:
-                expanded = expand_path_arg(p, no_ignore=no_ignore)
-            except FileNotFoundError:
+        try:
+            expanded = expand_path_arg(entry, no_ignore=no_ignore)
+        except FileNotFoundError:
+            # Defer "not found" reporting to the downstream processing loop
+            # so the user sees the canonical "Error: <path> not found."
+            # message (and the prune-from-cache side-effect) instead of a
+            # bare traceback. Keep the original entry so the error message
+            # echoes the user's input form.
+            if entry not in seen:
+                seen.add(entry)
                 paths.append(entry)
-                continue
-            for f in expanded:
-                key = str(f)
-                if key not in seen:
-                    seen.add(key)
-                    paths.append(key)
-        else:
-            key = str(p)
+            continue
+        for f in expanded:
+            key = str(f)
             if key not in seen:
                 seen.add(key)
-                paths.append(entry)
+                paths.append(key)
 
     if not paths:
         typer.echo("Error: No files specified.", err=True)

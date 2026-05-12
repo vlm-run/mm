@@ -96,12 +96,17 @@ def file_kind_with_code(path: Path) -> str:
 def expand_path_arg(path: Path | str, *, no_ignore: bool = False) -> list[Path]:
     """Expand a single CLI path argument into the file list it represents.
 
-    Files are returned as a one-element list (passed through unchanged so
-    the caller can preserve order). Directories are walked recursively via
-    the Rust ``Scanner`` (gitignore-aware by default; pass ``no_ignore=True``
-    to include ignored entries) and the resulting absolute paths are
-    returned sorted by their relative path within the directory so the
+    Files are returned as a one-element list. Directories are walked
+    recursively via the Rust ``Scanner`` (gitignore-aware by default; pass
+    ``no_ignore=True`` to include ignored entries) and the resulting paths
+    are returned sorted by their relative path within the directory so the
     output is deterministic across runs.
+
+    Returned paths are always absolute (``Path.resolve()`` applied) so the
+    helper has a single, predictable contract regardless of whether the
+    caller passed a file or a directory. This is what lets the de-dup
+    logic in :func:`expand_path_args` and :mod:`mm.commands.cat` use the
+    string form as a reliable set key.
 
     Args:
         path: A filesystem path. May be a file or a directory.
@@ -109,8 +114,8 @@ def expand_path_arg(path: Path | str, *, no_ignore: bool = False) -> list[Path]:
             directories. Has no effect on file inputs.
 
     Returns:
-        Ordered list of ``Path`` objects. Empty if ``path`` is a directory
-        with no scannable files.
+        Ordered list of resolved ``Path`` objects. Empty if ``path`` is a
+        directory with no scannable files.
 
     Raises:
         FileNotFoundError: If ``path`` does not exist on disk.
@@ -121,7 +126,7 @@ def expand_path_arg(path: Path | str, *, no_ignore: bool = False) -> list[Path]:
     if not p.exists():
         raise FileNotFoundError(str(p))
     if p.is_file():
-        return [p]
+        return [p.resolve()]
 
     from mm._mm import Scanner
 

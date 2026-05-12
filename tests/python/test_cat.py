@@ -247,12 +247,34 @@ class TestErrors:
 class TestExpandPathArg:
     """``mm.utils.expand_path_arg`` / ``expand_path_args`` unit tests."""
 
-    def test_file_returns_self(self, tmp_path: Path):
+    def test_file_returns_resolved_path(self, tmp_path: Path):
         from mm.utils import expand_path_arg
 
         f = tmp_path / "x.md"
         f.write_text("x\n")
-        assert expand_path_arg(f) == [f]
+        result = expand_path_arg(f)
+        # Resolved -- absolute, no symlinks/``.``/``..`` segments -- so the
+        # returned form is a reliable de-dup key alongside directory walks.
+        assert result == [f.resolve()]
+        assert result[0].is_absolute()
+
+    def test_file_relative_input_returns_absolute(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ):
+        """A relative file input still resolves to an absolute path.
+
+        Without this guarantee, callers that mix file and directory args
+        would see mismatched de-dup keys (directory walks always yield
+        absolute paths via the Rust ``Scanner``).
+        """
+        from mm.utils import expand_path_arg
+
+        f = tmp_path / "x.md"
+        f.write_text("x\n")
+        monkeypatch.chdir(tmp_path)
+        result = expand_path_arg("x.md")
+        assert result == [f.resolve()]
+        assert result[0].is_absolute()
 
     def test_directory_returns_inside_files(self, tmp_path: Path):
         from mm.utils import expand_path_arg
@@ -280,6 +302,25 @@ class TestExpandPathArg:
         # ``a.md`` shows up once even though it's reachable from both inputs.
         assert names.count("a.md") == 1
         assert "b.md" in names
+
+    def test_expand_path_args_dedupes_mixed_relative_and_absolute(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ):
+        """Regression: relative file + absolute directory still de-dupe.
+
+        Directory walks return absolute paths, so the file branch must
+        also normalize to an absolute path before de-dup. Otherwise mixing
+        ``mm cat ./folder ./folder/a.md`` would process ``a.md`` twice.
+        """
+        from mm.utils import expand_path_args
+
+        a = tmp_path / "a.md"
+        a.write_text("a\n")
+        monkeypatch.chdir(tmp_path)
+        # Mix relative file arg with an absolute directory arg.
+        result = expand_path_args([tmp_path, "a.md"])
+        names = [p.name for p in result]
+        assert names.count("a.md") == 1
 
 
 class TestCatDirectoryArg:
@@ -327,6 +368,21 @@ class TestCatDirectoryArg:
         """
         (tmp_path / "a.md").write_text("alpha-marker\n")
         r = runner.invoke(app, ["cat", str(tmp_path), str(tmp_path / "a.md"), "-y"])
+        assert r.exit_code == 0, r.output
+        assert r.output.count("alpha-marker") == 1
+
+    def test_mixed_relative_file_and_absolute_directory_dedupes(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, isolated_db
+    ):
+        """Regression: ``mm cat <abs-folder> <relative-file>`` de-dupes.
+
+        Before the fix, the directory branch produced absolute paths but
+        the file branch keyed on the user's raw (relative) string, so the
+        same file was processed twice.
+        """
+        (tmp_path / "a.md").write_text("alpha-marker\n")
+        monkeypatch.chdir(tmp_path)
+        r = runner.invoke(app, ["cat", str(tmp_path), "a.md", "-y"])
         assert r.exit_code == 0, r.output
         assert r.output.count("alpha-marker") == 1
 
