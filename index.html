@@ -1,0 +1,2400 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Fast, multimodal context for agents.">
+      
+      
+      
+        <link rel="canonical" href="https://vlm-run.github.io/mm/">
+      
+      
+      
+        <link rel="next" href="USER_GUIDE/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>mm</title>
+      
+    
+    
+      <link rel="stylesheet" href="assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Geist:300,300i,400,400i,700,700i%7CGeist+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Geist";--md-code-font:"Geist Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="stylesheets/extra.css">
+    
+    <script>__md_scope=new URL(".",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#installation" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="." title="mm" class="md-header__button md-logo" aria-label="mm" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            mm
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Home
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://pypi.org/project/mm-ctx/" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.8 200.5c-7.7-30.9-22.3-54.2-53.4-54.2h-40.1v47.4c0 36.8-31.2 67.8-66.8 67.8H172.7c-29.2 0-53.4 25-53.4 54.3v101.8c0 29 25.2 46 53.4 54.3 33.8 9.9 66.3 11.7 106.8 0 26.9-7.8 53.4-23.5 53.4-54.3v-40.7H226.2v-13.6h160.2c31.1 0 42.6-21.7 53.4-54.2 11.2-33.5 10.7-65.7 0-108.6M286.2 444.7a20.4 20.4 0 1 1 0-40.7 20.4 20.4 0 1 1 0 40.7M167.8 248.1h106.8c29.7 0 53.4-24.5 53.4-54.3V91.9c0-29-24.4-50.7-53.4-55.6-35.8-5.9-74.7-5.6-106.8.1-45.2 8-53.4 24.7-53.4 55.6v40.7h106.9v13.6h-147c-31.1 0-58.3 18.7-66.8 54.2-9.8 40.7-10.2 66.1 0 108.6 7.6 31.6 25.7 54.2 56.8 54.2H101v-48.8c0-35.3 30.5-66.4 66.8-66.4m-6.6-183.4a20.4 20.4 0 1 1 0 40.8 20.4 20.4 0 1 1 0-40.8"/></svg>
+  </div>
+  <div class="md-source__repository">
+    mm-ctx
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="." title="mm" class="md-nav__button md-logo" aria-label="mm" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    mm
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://pypi.org/project/mm-ctx/" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.8 200.5c-7.7-30.9-22.3-54.2-53.4-54.2h-40.1v47.4c0 36.8-31.2 67.8-66.8 67.8H172.7c-29.2 0-53.4 25-53.4 54.3v101.8c0 29 25.2 46 53.4 54.3 33.8 9.9 66.3 11.7 106.8 0 26.9-7.8 53.4-23.5 53.4-54.3v-40.7H226.2v-13.6h160.2c31.1 0 42.6-21.7 53.4-54.2 11.2-33.5 10.7-65.7 0-108.6M286.2 444.7a20.4 20.4 0 1 1 0-40.7 20.4 20.4 0 1 1 0 40.7M167.8 248.1h106.8c29.7 0 53.4-24.5 53.4-54.3V91.9c0-29-24.4-50.7-53.4-55.6-35.8-5.9-74.7-5.6-106.8.1-45.2 8-53.4 24.7-53.4 55.6v40.7h106.9v13.6h-147c-31.1 0-58.3 18.7-66.8 54.2-9.8 40.7-10.2 66.1 0 108.6 7.6 31.6 25.7 54.2 56.8 54.2H101v-48.8c0-35.3 30.5-66.4 66.8-66.4m-6.6-183.4a20.4 20.4 0 1 1 0 40.8 20.4 20.4 0 1 1 0-40.8"/></svg>
+  </div>
+  <div class="md-source__repository">
+    mm-ctx
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="." class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#installation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Installation
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Installation">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#optional-extras-and-audio-transcription" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Optional extras and audio transcription
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#cli" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        CLI
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="CLI">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#sample-files" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Sample files
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#multimodal-directory" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Multimodal directory
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#quick-start" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Quick start
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#python-api" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Python API
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Python API">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#build-a-prompt" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Build a prompt
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#emit-vlm-ready-messages-openai-gemini" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Emit VLM-ready messages (OpenAI / Gemini)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#round-trip-and-resolve" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Round-trip and resolve
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#render" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Render
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#integrations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Integrations
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Integrations">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#claude-code" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Claude Code
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#npx-skills" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        npx skills
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#universal-assistants-openclaw-nemoclaw-opencode-codex-gemini-cli" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Universal assistants (OpenClaw, NemoClaw, OpenCode, Codex, Gemini CLI)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#command-reference" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Command reference
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#find-locatelist-tree-and-schema" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        find — locate/list, tree, and schema
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#peek-raw-file-metadata" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        peek — raw file metadata
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cat-content-extraction" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        cat — content extraction
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="cat — content extraction">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#override-surfaces" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Override surfaces
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#wc-count-files-size-tokens" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        wc — count files, size, tokens
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#grep-content-search" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        grep — content search
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sql-query-the-index" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        sql — query the index
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#output-modes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Output modes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#verbose-mode-verbose-v" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Verbose mode (--verbose / -v)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#processing-tiers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Processing tiers
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#performance" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Performance
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#storage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Storage
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Storage">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#pipelines-encode-generate" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Pipelines — encode + generate
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#llm-configuration-using-profiles" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        LLM Configuration using Profiles
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="LLM Configuration using Profiles">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#quick-setup" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Quick setup
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#managing-profiles" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Managing profiles
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#selecting-a-profile-per-command" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Selecting a profile per-command
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#resolution-order" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Resolution order
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#config-file-format" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Config file format
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#license" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        License
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="USER_GUIDE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    User guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Python API
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="USE_CASES/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Use cases
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="ENCODERS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Encoders
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="PIPELINES/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Pipelines
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="FIXTURES/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Fixtures
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="ROADMAP/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Roadmap
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_9" >
+        
+          
+          <label class="md-nav__link" for="__nav_9" id="__nav_9_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Spec
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_9">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Spec
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="spec/SPEC/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="spec/cat/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    cat
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="spec/cli-use/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CLI use
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#installation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Installation
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Installation">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#optional-extras-and-audio-transcription" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Optional extras and audio transcription
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#cli" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        CLI
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="CLI">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#sample-files" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Sample files
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#multimodal-directory" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Multimodal directory
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#quick-start" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Quick start
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#python-api" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Python API
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Python API">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#build-a-prompt" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Build a prompt
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#emit-vlm-ready-messages-openai-gemini" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Emit VLM-ready messages (OpenAI / Gemini)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#round-trip-and-resolve" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Round-trip and resolve
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#render" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Render
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#integrations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Integrations
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Integrations">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#claude-code" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Claude Code
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#npx-skills" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        npx skills
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#universal-assistants-openclaw-nemoclaw-opencode-codex-gemini-cli" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Universal assistants (OpenClaw, NemoClaw, OpenCode, Codex, Gemini CLI)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#command-reference" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Command reference
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#find-locatelist-tree-and-schema" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        find — locate/list, tree, and schema
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#peek-raw-file-metadata" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        peek — raw file metadata
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cat-content-extraction" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        cat — content extraction
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="cat — content extraction">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#override-surfaces" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Override surfaces
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#wc-count-files-size-tokens" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        wc — count files, size, tokens
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#grep-content-search" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        grep — content search
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sql-query-the-index" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        sql — query the index
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#output-modes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Output modes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#verbose-mode-verbose-v" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Verbose mode (--verbose / -v)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#processing-tiers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Processing tiers
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#performance" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Performance
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#storage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Storage
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Storage">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#pipelines-encode-generate" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Pipelines — encode + generate
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#llm-configuration-using-profiles" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        LLM Configuration using Profiles
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="LLM Configuration using Profiles">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#quick-setup" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Quick setup
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#managing-profiles" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Managing profiles
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#selecting-a-profile-per-command" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Selecting a profile per-command
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#resolution-order" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Resolution order
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#config-file-format" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Config file format
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#license" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        License
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<div align="center">
+<p align="center" style="width: 100%;">
+    <img src="https://raw.githubusercontent.com/vlm-run/.github/refs/heads/main/profile/assets/vlm-black.svg" alt="VLM Run Logo" width="80" style="margin-bottom: -5px; color: #2e3138; vertical-align:
+middle; padding-right: 5px;"><br>
+</p>
+  <h1>mm-ctx</h1>
+</div>
+<div align="center">
+  <h3>Fast, multimodal context for agents</h3>
+</div>
+<div align="center">
+  <a href="https://pypi.org/project/mm-ctx/"><img alt="PyPI Version" src="https://img.shields.io/pypi/v/mm-ctx.svg"></a>
+  <a href="https://www.pepy.tech/projects/mm-ctx"><img alt="PyPI Downloads" src="https://img.shields.io/pypi/dm/mm-ctx"></a>
+  <a href="https://pypi.org/project/mm-ctx/"><img src="https://img.shields.io/pypi/pyversions/mm-ctx.svg" alt="versions"></a>
+  <a href="https://pypi.org/project/mm-ctx/"><img src="https://img.shields.io/pypi/l/mm-ctx" alt="License"></a>
+  <a href="https://discord.gg/6aqcyvPF79"><img src="https://img.shields.io/badge/discord-chat-purple?color=%235765F2&label=discord&logo=discord" alt="Discord"></a>
+  <a href="https://twitter.com/vlmrun"><img src="https://img.shields.io/twitter/follow/vlmrun.svg?style=social&logo=twitter" alt="Twitter Follow"></a>
+</div>
+
+<p><br /></p>
+<p align="center">
+  <img src="assets/mm-terminal-window.png" alt="mm terminal demo" width="880" style="border-radius: 12px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);">
+</p>
+
+<hr />
+<p>Familiar UNIX CLI tools like <code>find</code>, <code>grep</code>, <code>cat</code> — with multimodal powers.</p>
+<p><code>mm</code> offers both a CLI and a Python API that enable agents to work with file types that LLMs can't natively read, including images, video, audio, PDFs, and other binary formats. Rust core for speed, Python for dev-ex, UNIX philosophy for composability.</p>
+<h2 id="installation">Installation<a class="headerlink" href="#installation" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="c1"># with pip</span>
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>pip<span class="w"> </span>install<span class="w"> </span>mm-ctx
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="c1"># with uv</span>
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>uv<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span>mm-ctx
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="c1"># or run directly without installing</span>
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>uvx<span class="w"> </span>--from<span class="w"> </span>mm-ctx<span class="w"> </span>mm<span class="w"> </span>--help
+</code></pre></div>
+<details>
+<summary>Alternative methods</summary>
+
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="c1"># macOS / Linux (shell installer)</span>
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>curl<span class="w"> </span>-LsSf<span class="w"> </span>https://vlm-run.github.io/mm/install/install.sh<span class="w"> </span><span class="p">|</span><span class="w"> </span>sh
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="c1"># Windows (PowerShell)</span>
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>irm<span class="w"> </span>https://vlm-run.github.io/mm/install/install.ps1<span class="w"> </span><span class="p">|</span><span class="w"> </span>iex
+</code></pre></div>
+</details>
+
+<h3 id="optional-extras-and-audio-transcription">Optional extras and audio transcription<a class="headerlink" href="#optional-extras-and-audio-transcription" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Install</th>
+<th>Best for</th>
+<th>Audio transcription path</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>mm-ctx[mlx]</code></td>
+<td>Apple Silicon / macOS with MLX</td>
+<td><code>lightning-whisper-mlx</code> first, then <code>ctranslate2/faster-whisper</code>, then OpenAI <code>/audio/transcriptions</code></td>
+</tr>
+<tr>
+<td><code>mm-ctx</code> on a CUDA GPU runtime</td>
+<td>Linux/Windows GPU hosts</td>
+<td><code>ctranslate2/faster-whisper</code> first, then OpenAI <code>/audio/transcriptions</code></td>
+</tr>
+<tr>
+<td><code>mm-ctx</code> default / CPU</td>
+<td>Portable local installs</td>
+<td><code>ctranslate2/faster-whisper</code> on CPU, then OpenAI <code>/audio/transcriptions</code></td>
+</tr>
+</tbody>
+</table>
+<p>For audio transcription, <code>mm</code> prefers the fastest local backend available in this order:
+MLX on Apple Silicon, ctranslate2/faster-whisper, then OpenAI transcription endpoint.</p>
+<h2 id="cli">CLI<a class="headerlink" href="#cli" title="Permanent link">&para;</a></h2>
+<p>Commands that mirror familiar Unix tools but operate on multimodal semantics.
+Indexing is implicit — every command auto-builds a metadata index on first use.</p>
+<p>Metadata commands (<code>find</code>, <code>wc</code> with <code>--format json</code>) run in <strong>~60ms</strong> on 700 files via the Rust fast path.</p>
+<h3 id="sample-files">Sample files<a class="headerlink" href="#sample-files" title="Permanent link">&para;</a></h3>
+<p>Download sample files from vlm.run to try the examples below:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>mkdir<span class="w"> </span>mm-samples<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">cd</span><span class="w"> </span>mm-samples
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>curl<span class="w"> </span>-LO<span class="w"> </span>https://storage.googleapis.com/vlm-data-public-prod/hub/examples/image.caption/bench.jpg
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>curl<span class="w"> </span>-LO<span class="w"> </span>https://storage.googleapis.com/vlm-data-public-prod/hub/examples/document.invoice/wordpress-pdf-invoice-plugin-sample.pdf
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>curl<span class="w"> </span>-LO<span class="w"> </span>https://storage.googleapis.com/vlm-data-public-prod/hub/examples/video/Timelapse.mp4
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>curl<span class="w"> </span>-LO<span class="w"> </span>https://storage.googleapis.com/vlm-data-public-prod/hub/examples/mixed-files/mp3_44100Hz_320kbps_stereo.mp3
+</code></pre></div>
+<h3 id="multimodal-directory">Multimodal directory<a class="headerlink" href="#multimodal-directory" title="Permanent link">&para;</a></h3>
+<p>With all 4 files downloaded, <code>mm</code> treats the folder as a multimodal workspace:</p>
+<p><div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>$<span class="w"> </span>mm<span class="w"> </span>find<span class="w"> </span>mm-samples/<span class="w"> </span>--tree
+</code></pre></div>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>mm-samples  (4 files, 3.5 MB)
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>├── Timelapse.mp4  [3.0 MB]
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>├── bench.jpg  [253.8 KB]
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>├── mp3_44100Hz_320kbps_stereo.mp3  [286.0 KB]
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>└── wordpress-pdf-invoice-plugin-sample.pdf  [42.6 KB]
+</code></pre></div></p>
+<p><div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>$<span class="w"> </span>mm<span class="w"> </span>wc<span class="w"> </span>mm-samples/<span class="w"> </span>--by-kind
+</code></pre></div>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>kind      files  size      lines (est.)  tokens (est.)  tok_per_mb
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>audio     1      286.0 KB  0             85             304
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>document  1      42.6 KB   29            176            4.2K
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>image     1      253.8 KB  0             425            1.7K
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>video     1      3.0 MB    0             85             29
+<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>—————
+<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a>total     4      3.5 MB    29            771            218
+</code></pre></div></p>
+<p><div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>$<span class="w"> </span>mm<span class="w"> </span>find<span class="w"> </span>mm-samples/<span class="w"> </span>--columns<span class="w"> </span>name,kind,size,ext
+</code></pre></div>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>name                                     kind      size     ext
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>bench.jpg                                image     259865   .jpg
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>Timelapse.mp4                            video     3113073  .mp4
+<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>mp3_44100Hz_320kbps_stereo.mp3           audio     292853   .mp3
+<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>wordpress-pdf-invoice-plugin-sample.pdf  document  43627    .pdf
+</code></pre></div></p>
+<p><div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>$<span class="w"> </span>mm<span class="w"> </span>cat<span class="w"> </span>mm-samples/wordpress-pdf-invoice-plugin-sample.pdf<span class="w"> </span>-n<span class="w"> </span><span class="m">10</span>
+</code></pre></div>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>wordpress-pdf-invoice-plugin-sample.pdf — pages 1-1 of 1:
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>
+<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>--- Page 1 ---
+<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>INVOICE
+<a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a>Sliced Invoices
+<a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a>Suite 5a-1204 123 Somewhere Street
+<a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a>Your City AZ 12345
+<a id="__codelineno-10-8" name="__codelineno-10-8" href="#__codelineno-10-8"></a>admin@slicedinvoices.com
+<a id="__codelineno-10-9" name="__codelineno-10-9" href="#__codelineno-10-9"></a>Invoice Number: INV-3337
+<a id="__codelineno-10-10" name="__codelineno-10-10" href="#__codelineno-10-10"></a>Invoice Date: January 25, 2016
+<a id="__codelineno-10-11" name="__codelineno-10-11" href="#__codelineno-10-11"></a>Due Date: January 31, 2016
+<a id="__codelineno-10-12" name="__codelineno-10-12" href="#__codelineno-10-12"></a>Total Due: $93.50
+<a id="__codelineno-10-13" name="__codelineno-10-13" href="#__codelineno-10-13"></a>0.8s • 42.6 KB • 53.2 KB/s
+</code></pre></div></p>
+<p><div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>$<span class="w"> </span>mm<span class="w"> </span>cat<span class="w"> </span>mm-samples/bench.jpg<span class="w"> </span>-m<span class="w"> </span>accurate
+</code></pre></div>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>&lt;description&gt;
+<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>This outdoor daytime photograph captures a peaceful park scene on a sunny day. The primary focus is a modern dark gray metal slat bench  positioned in the foreground on a patch of green grass. The bench is set upon a small concrete pad, and its curved backrest and armrests  create a sleek, contemporary silhouette. Behind the bench, a paved walkway cuts through a well-maintained lawn.
+<a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a>&lt;/description&gt;
+<a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a>
+<a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a>Tags: park, bench, outdoors, summer, grass, trees, street, urban, leisure, sunlight
+<a id="__codelineno-12-6" name="__codelineno-12-6" href="#__codelineno-12-6"></a>
+<a id="__codelineno-12-7" name="__codelineno-12-7" href="#__codelineno-12-7"></a>Objects: metal bench, tree, car, white SUV, red car, concrete pad, walkway, grass, street, building
+</code></pre></div></p>
+<p><div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>$<span class="w"> </span>mm<span class="w"> </span>grep<span class="w"> </span><span class="s2">&quot;invoice&quot;</span><span class="w"> </span>mm-samples/
+</code></pre></div>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a>wordpress-pdf-invoice-plugin-sample.pdf
+<a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a>    2 Payment is due within 30 days from date of invoice. Late payment is subject to fees of 5% per month.
+<a id="__codelineno-14-3" name="__codelineno-14-3" href="#__codelineno-14-3"></a>    3 Thanks for choosing DEMO - Sliced Invoices | admin@slicedinvoices.com
+<a id="__codelineno-14-4" name="__codelineno-14-4" href="#__codelineno-14-4"></a>   10 admin@slicedinvoices.com
+</code></pre></div></p>
+<h3 id="quick-start">Quick start<a class="headerlink" href="#quick-start" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a>mm<span class="w"> </span>--version<span class="w">                                                    </span><span class="c1"># print version</span>
+<a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a>mm<span class="w"> </span>find<span class="w"> </span>mm-samples/<span class="w"> </span>--tree<span class="w"> </span>--depth<span class="w"> </span><span class="m">1</span><span class="w">                            </span><span class="c1"># directory overview with sizes</span>
+<a id="__codelineno-15-3" name="__codelineno-15-3" href="#__codelineno-15-3"></a>mm<span class="w"> </span>wc<span class="w"> </span>mm-samples/<span class="w"> </span>--by-kind<span class="w">                                     </span><span class="c1"># file/byte/token counts by kind</span>
+<a id="__codelineno-15-4" name="__codelineno-15-4" href="#__codelineno-15-4"></a>
+<a id="__codelineno-15-5" name="__codelineno-15-5" href="#__codelineno-15-5"></a><span class="c1"># mm peek: raw file metadata (dimensions / EXIF / codec / mime / hash).</span>
+<a id="__codelineno-15-6" name="__codelineno-15-6" href="#__codelineno-15-6"></a>mm<span class="w"> </span>peek<span class="w"> </span>bench.jpg<span class="w">                                               </span><span class="c1"># image dimensions, EXIF, hash</span>
+<a id="__codelineno-15-7" name="__codelineno-15-7" href="#__codelineno-15-7"></a>mm<span class="w"> </span>peek<span class="w"> </span>Timelapse.mp4<span class="w">                                           </span><span class="c1"># video resolution, duration, codecs</span>
+<a id="__codelineno-15-8" name="__codelineno-15-8" href="#__codelineno-15-8"></a>mm<span class="w"> </span>peek<span class="w"> </span>wordpress-pdf-invoice-plugin-sample.pdf<span class="w">                 </span><span class="c1"># mime, content hash</span>
+<a id="__codelineno-15-9" name="__codelineno-15-9" href="#__codelineno-15-9"></a>mm<span class="w"> </span>peek<span class="w"> </span>bench.jpg<span class="w"> </span>Timelapse.mp4<span class="w"> </span>--format<span class="w"> </span>json<span class="w">                   </span><span class="c1"># multi-file JSON</span>
+<a id="__codelineno-15-10" name="__codelineno-15-10" href="#__codelineno-15-10"></a>mm<span class="w"> </span>peek<span class="w"> </span>paper.pdf<span class="w"> </span>--full<span class="w">                                        </span><span class="c1"># include document author / title / page count</span>
+<a id="__codelineno-15-11" name="__codelineno-15-11" href="#__codelineno-15-11"></a>
+<a id="__codelineno-15-12" name="__codelineno-15-12" href="#__codelineno-15-12"></a><span class="c1"># mm cat: content extraction. Default --mode fast.</span>
+<a id="__codelineno-15-13" name="__codelineno-15-13" href="#__codelineno-15-13"></a>mm<span class="w"> </span>cat<span class="w"> </span>wordpress-pdf-invoice-plugin-sample.pdf<span class="w">                  </span><span class="c1"># PDF page-text via pypdfium2 (fast pipeline)</span>
+<a id="__codelineno-15-14" name="__codelineno-15-14" href="#__codelineno-15-14"></a>mm<span class="w"> </span>cat<span class="w"> </span>src/main.py<span class="w">                                              </span><span class="c1"># passthrough text + chunk + embed (kind=text)</span>
+<a id="__codelineno-15-15" name="__codelineno-15-15" href="#__codelineno-15-15"></a>mm<span class="w"> </span>cat<span class="w"> </span>notes.docx<span class="w">                                               </span><span class="c1"># libreoffice-rs text</span>
+<a id="__codelineno-15-16" name="__codelineno-15-16" href="#__codelineno-15-16"></a>mm<span class="w"> </span>cat<span class="w"> </span>bench.jpg<span class="w">                                                </span><span class="c1"># short VLM caption (fast pipeline)</span>
+<a id="__codelineno-15-17" name="__codelineno-15-17" href="#__codelineno-15-17"></a>mm<span class="w"> </span>cat<span class="w"> </span>wordpress-pdf-invoice-plugin-sample.pdf<span class="w"> </span>-n<span class="w"> </span><span class="m">20</span><span class="w">            </span><span class="c1"># first 20 lines</span>
+<a id="__codelineno-15-18" name="__codelineno-15-18" href="#__codelineno-15-18"></a>mm<span class="w"> </span>cat<span class="w"> </span>-y<span class="w"> </span>*.jpg<span class="w"> </span>*.png<span class="w">                                           </span><span class="c1"># batch (skip ≥9-path confirmation)</span>
+<a id="__codelineno-15-19" name="__codelineno-15-19" href="#__codelineno-15-19"></a>mm<span class="w"> </span>cat<span class="w"> </span>photo.png<span class="w"> </span>--no-generate<span class="w">                                  </span><span class="c1"># snapshot encoder output (no LLM call)</span>
+<a id="__codelineno-15-20" name="__codelineno-15-20" href="#__codelineno-15-20"></a>
+<a id="__codelineno-15-21" name="__codelineno-15-21" href="#__codelineno-15-21"></a><span class="c1"># --mode accurate: full LLM pipeline for image/video/audio/PDF (requires a configured profile)</span>
+<a id="__codelineno-15-22" name="__codelineno-15-22" href="#__codelineno-15-22"></a>mm<span class="w"> </span>cat<span class="w"> </span>bench.jpg<span class="w"> </span>-m<span class="w"> </span>accurate<span class="w">                                    </span><span class="c1"># LLM caption + tags + objects</span>
+<a id="__codelineno-15-23" name="__codelineno-15-23" href="#__codelineno-15-23"></a>mm<span class="w"> </span>cat<span class="w"> </span>Timelapse.mp4<span class="w"> </span>-m<span class="w"> </span>accurate<span class="w">                                </span><span class="c1"># keyframe mosaic → LLM description</span>
+<a id="__codelineno-15-24" name="__codelineno-15-24" href="#__codelineno-15-24"></a>mm<span class="w"> </span>cat<span class="w"> </span>mp3_44100Hz_320kbps_stereo.mp3<span class="w"> </span>-m<span class="w"> </span>accurate<span class="w">               </span><span class="c1"># Whisper transcript → LLM summary</span>
+<a id="__codelineno-15-25" name="__codelineno-15-25" href="#__codelineno-15-25"></a>mm<span class="w"> </span>cat<span class="w"> </span>wordpress-pdf-invoice-plugin-sample.pdf<span class="w"> </span>-m<span class="w"> </span>accurate<span class="w">      </span><span class="c1"># LLM-structured invoice</span>
+</code></pre></div>
+<h2 id="python-api">Python API<a class="headerlink" href="#python-api" title="Permanent link">&para;</a></h2>
+<p><code>mm</code> is also a library. <code>mm.Context</code> is the one class you need to build a multimodal prompt incrementally, then hand the whole thing to a VLM. Backed by a Rust core: O(1) insert/lookup, sub-millisecond render at 10K items.</p>
+<p>The public namespace is intentionally tiny:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">mm</span>
+<a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a><span class="n">mm</span><span class="o">.</span><span class="n">Context</span>              <span class="c1"># the one class you use</span>
+<a id="__codelineno-16-3" name="__codelineno-16-3" href="#__codelineno-16-3"></a><span class="n">mm</span><span class="o">.</span><span class="n">Ref</span>                  <span class="c1"># Annotated[str, &quot;mm.Ref&quot;] typed alias for ref ids</span>
+<a id="__codelineno-16-4" name="__codelineno-16-4" href="#__codelineno-16-4"></a><span class="n">mm</span><span class="o">.</span><span class="n">RefNotFoundError</span>     <span class="c1"># KeyError subclass raised by ctx.get on miss</span>
+<a id="__codelineno-16-5" name="__codelineno-16-5" href="#__codelineno-16-5"></a><span class="n">mm</span><span class="o">.</span><span class="n">uuid7</span><span class="p">()</span>              <span class="c1"># UUIDv7 helper (time-ordered default session_id)</span>
+</code></pre></div>
+<h3 id="build-a-prompt">Build a prompt<a class="headerlink" href="#build-a-prompt" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">mm</span>
+<a id="__codelineno-17-2" name="__codelineno-17-2" href="#__codelineno-17-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<a id="__codelineno-17-3" name="__codelineno-17-3" href="#__codelineno-17-3"></a><span class="kn">from</span><span class="w"> </span><span class="nn">PIL</span><span class="w"> </span><span class="kn">import</span> <span class="n">Image</span>
+<a id="__codelineno-17-4" name="__codelineno-17-4" href="#__codelineno-17-4"></a>
+<a id="__codelineno-17-5" name="__codelineno-17-5" href="#__codelineno-17-5"></a><span class="n">ctx</span> <span class="o">=</span> <span class="n">mm</span><span class="o">.</span><span class="n">Context</span><span class="p">(</span><span class="n">session_id</span><span class="o">=</span><span class="n">mm</span><span class="o">.</span><span class="n">uuid7</span><span class="p">())</span>      <span class="c1"># or omit; auto-mints a UUIDv7</span>
+<a id="__codelineno-17-6" name="__codelineno-17-6" href="#__codelineno-17-6"></a>
+<a id="__codelineno-17-7" name="__codelineno-17-7" href="#__codelineno-17-7"></a><span class="n">sys</span><span class="p">:</span>  <span class="n">mm</span><span class="o">.</span><span class="n">Ref</span> <span class="o">=</span> <span class="n">ctx</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="s2">&quot;You are a terse visual analyst.&quot;</span><span class="p">,</span> <span class="n">role</span><span class="o">=</span><span class="s2">&quot;system&quot;</span><span class="p">)</span>
+<a id="__codelineno-17-8" name="__codelineno-17-8" href="#__codelineno-17-8"></a><span class="n">txt</span><span class="p">:</span>  <span class="n">mm</span><span class="o">.</span><span class="n">Ref</span> <span class="o">=</span> <span class="n">ctx</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="s2">&quot;Summarize these assets.&quot;</span><span class="p">,</span> <span class="n">role</span><span class="o">=</span><span class="s2">&quot;user&quot;</span><span class="p">)</span>
+<a id="__codelineno-17-9" name="__codelineno-17-9" href="#__codelineno-17-9"></a><span class="n">img</span><span class="p">:</span>  <span class="n">mm</span><span class="o">.</span><span class="n">Ref</span> <span class="o">=</span> <span class="n">ctx</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="s2">&quot;photo.jpg&quot;</span><span class="p">),</span> <span class="n">role</span><span class="o">=</span><span class="s2">&quot;user&quot;</span><span class="p">)</span>
+<a id="__codelineno-17-10" name="__codelineno-17-10" href="#__codelineno-17-10"></a><span class="n">img2</span><span class="p">:</span> <span class="n">mm</span><span class="o">.</span><span class="n">Ref</span> <span class="o">=</span> <span class="n">ctx</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">Image</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="s2">&quot;x.png&quot;</span><span class="p">),</span> <span class="n">role</span><span class="o">=</span><span class="s2">&quot;user&quot;</span><span class="p">,</span>
+<a id="__codelineno-17-11" name="__codelineno-17-11" href="#__codelineno-17-11"></a>                       <span class="n">metadata</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;note&quot;</span><span class="p">:</span> <span class="s2">&quot;product hero shot&quot;</span><span class="p">})</span>
+<a id="__codelineno-17-12" name="__codelineno-17-12" href="#__codelineno-17-12"></a><span class="n">doc</span><span class="p">:</span>  <span class="n">mm</span><span class="o">.</span><span class="n">Ref</span> <span class="o">=</span> <span class="n">ctx</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="s2">&quot;paper.pdf&quot;</span><span class="p">),</span> <span class="n">role</span><span class="o">=</span><span class="s2">&quot;user&quot;</span><span class="p">,</span>
+<a id="__codelineno-17-13" name="__codelineno-17-13" href="#__codelineno-17-13"></a>                       <span class="n">metadata</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;summary&quot;</span><span class="p">:</span> <span class="s2">&quot;Attention is all you need&quot;</span><span class="p">,</span>
+<a id="__codelineno-17-14" name="__codelineno-17-14" href="#__codelineno-17-14"></a>                                 <span class="s2">&quot;tags&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;nlp&quot;</span><span class="p">,</span> <span class="s2">&quot;transformer&quot;</span><span class="p">]})</span>
+<a id="__codelineno-17-15" name="__codelineno-17-15" href="#__codelineno-17-15"></a><span class="n">vid</span><span class="p">:</span>  <span class="n">mm</span><span class="o">.</span><span class="n">Ref</span> <span class="o">=</span> <span class="n">ctx</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="s2">&quot;clip.mp4&quot;</span><span class="p">),</span> <span class="n">role</span><span class="o">=</span><span class="s2">&quot;user&quot;</span><span class="p">,</span>
+<a id="__codelineno-17-16" name="__codelineno-17-16" href="#__codelineno-17-16"></a>                       <span class="n">metadata</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;scene&quot;</span><span class="p">:</span> <span class="mi">3</span><span class="p">,</span> <span class="s2">&quot;actor&quot;</span><span class="p">:</span> <span class="s2">&quot;A&quot;</span><span class="p">})</span>
+</code></pre></div>
+<p><code>ctx.add(obj, *, role="user", metadata=...)</code> accepts free-form <code>str</code> text, a <code>pathlib.Path</code>, or a <code>PIL.Image.Image</code>. Strings can use <code>system</code>, <code>developer</code>, or <code>user</code>; media must use <code>user</code>. Strings are always inlined as text; use <code>Path("file.ext")</code> for on-disk files. Every <code>add</code> returns a short kind-prefixed ref id like <code>img_a1b2c3</code>, typed as <code>mm.Ref</code>, and can be removed with <code>ctx.remove(ref)</code>.</p>
+<h3 id="emit-vlm-ready-messages-openai-gemini">Emit VLM-ready messages (OpenAI / Gemini)<a class="headerlink" href="#emit-vlm-ready-messages-openai-gemini" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">openai.types.chat</span><span class="w"> </span><span class="kn">import</span> <span class="n">ChatCompletionMessageParam</span>
+<a id="__codelineno-18-2" name="__codelineno-18-2" href="#__codelineno-18-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">google.genai</span><span class="w"> </span><span class="kn">import</span> <span class="n">types</span> <span class="k">as</span> <span class="n">genai_types</span>
+<a id="__codelineno-18-3" name="__codelineno-18-3" href="#__codelineno-18-3"></a>
+<a id="__codelineno-18-4" name="__codelineno-18-4" href="#__codelineno-18-4"></a><span class="n">messages_openai</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">ChatCompletionMessageParam</span><span class="p">]</span> <span class="o">=</span> <span class="n">ctx</span><span class="o">.</span><span class="n">to_messages</span><span class="p">(</span><span class="nb">format</span><span class="o">=</span><span class="s2">&quot;openai&quot;</span><span class="p">)</span>
+<a id="__codelineno-18-5" name="__codelineno-18-5" href="#__codelineno-18-5"></a><span class="n">messages_gemini</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">genai_types</span><span class="o">.</span><span class="n">ContentDict</span><span class="p">]</span>    <span class="o">=</span> <span class="n">ctx</span><span class="o">.</span><span class="n">to_messages</span><span class="p">(</span><span class="nb">format</span><span class="o">=</span><span class="s2">&quot;gemini&quot;</span><span class="p">)</span>
+</code></pre></div>
+<p>Drop <code>messages_openai</code> directly into <code>client.chat.completions.create(messages=...)</code>, or <code>messages_gemini</code> into <code>model.generate_content(contents=...)</code>. Per-kind encoder overrides:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-19-1" name="__codelineno-19-1" href="#__codelineno-19-1"></a><span class="n">messages</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">ChatCompletionMessageParam</span><span class="p">]</span> <span class="o">=</span> <span class="n">ctx</span><span class="o">.</span><span class="n">to_messages</span><span class="p">(</span>
+<a id="__codelineno-19-2" name="__codelineno-19-2" href="#__codelineno-19-2"></a>    <span class="nb">format</span><span class="o">=</span><span class="s2">&quot;openai&quot;</span><span class="p">,</span>
+<a id="__codelineno-19-3" name="__codelineno-19-3" href="#__codelineno-19-3"></a>    <span class="n">encoders</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;image&quot;</span><span class="p">:</span> <span class="s2">&quot;tile&quot;</span><span class="p">,</span> <span class="s2">&quot;video&quot;</span><span class="p">:</span> <span class="s2">&quot;mosaic&quot;</span><span class="p">},</span>
+<a id="__codelineno-19-4" name="__codelineno-19-4" href="#__codelineno-19-4"></a><span class="p">)</span>
+</code></pre></div>
+<p>Unspecified kinds fall back to sensible defaults (<code>image-resize</code>, <code>video-frames</code>, <code>document-rasterize</code>).</p>
+<h3 id="round-trip-and-resolve">Round-trip and resolve<a class="headerlink" href="#round-trip-and-resolve" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-20-1" name="__codelineno-20-1" href="#__codelineno-20-1"></a><span class="n">obj</span><span class="p">:</span> <span class="n">Path</span> <span class="o">|</span> <span class="n">Image</span><span class="o">.</span><span class="n">Image</span> <span class="o">|</span> <span class="nb">bytes</span> <span class="o">|</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">ctx</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">img</span><span class="p">)</span>   <span class="c1"># instance: returns the stored object</span>
+<a id="__codelineno-20-2" name="__codelineno-20-2" href="#__codelineno-20-2"></a><span class="n">row</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="n">mm</span><span class="o">.</span><span class="n">Context</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">ctx</span><span class="o">.</span><span class="n">session_id</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">img</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>  <span class="c1"># classmethod: cross-session DB lookup</span>
+</code></pre></div>
+<p>Instance <code>ctx.get(ref)</code> returns the exact Python object you added — identity is preserved for in-memory items (no copy, no rehydrate). Classmethod <code>mm.Context.get("&lt;session&gt;/&lt;ref&gt;")</code> resolves against the global <code>~/.local/share/mm/mm.db</code> when you only have a ref string and no live <code>Context</code>.</p>
+<p>Missed a ref? <code>ctx.get("img_a1b2cZ")</code> raises <code>mm.RefNotFoundError</code> (a <code>KeyError</code> subclass) with a Levenshtein-based "did you mean" and the full context table inline — agent-friendly by default.</p>
+<h3 id="render">Render<a class="headerlink" href="#render" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-21-1" name="__codelineno-21-1" href="#__codelineno-21-1"></a><span class="n">ctx</span><span class="o">.</span><span class="n">print_tree</span><span class="p">()</span>                  <span class="c1"># insertion-order tree with metadata</span>
+<a id="__codelineno-21-2" name="__codelineno-21-2" href="#__codelineno-21-2"></a><span class="nb">print</span><span class="p">(</span><span class="n">ctx</span><span class="o">.</span><span class="n">to_md</span><span class="p">(</span><span class="n">mode</span><span class="o">=</span><span class="s2">&quot;metadata&quot;</span><span class="p">))</span> <span class="c1"># markdown: ref | kind | source | content</span>
+<a id="__codelineno-21-3" name="__codelineno-21-3" href="#__codelineno-21-3"></a><span class="nb">print</span><span class="p">(</span><span class="nb">repr</span><span class="p">(</span><span class="n">ctx</span><span class="p">))</span>                  <span class="c1"># markdown summary: ref | kind | source</span>
+</code></pre></div>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-22-1" name="__codelineno-22-1" href="#__codelineno-22-1"></a>Context(session=019da4…, items=4)
+<a id="__codelineno-22-2" name="__codelineno-22-2" href="#__codelineno-22-2"></a>├── [1] img_a1b2c3  image     /abs/path/photo.jpg
+<a id="__codelineno-22-3" name="__codelineno-22-3" href="#__codelineno-22-3"></a>├── [2] img_9f0e12  image     PIL.Image(RGB, 1024×768)
+<a id="__codelineno-22-4" name="__codelineno-22-4" href="#__codelineno-22-4"></a>│        └─ note: &quot;product hero shot&quot;
+<a id="__codelineno-22-5" name="__codelineno-22-5" href="#__codelineno-22-5"></a>├── [3] doc_d4e5f6  document  /abs/path/paper.pdf
+<a id="__codelineno-22-6" name="__codelineno-22-6" href="#__codelineno-22-6"></a>│        ├─ summary: &quot;Attention is all you need&quot;
+<a id="__codelineno-22-7" name="__codelineno-22-7" href="#__codelineno-22-7"></a>│        └─ tags: [nlp, transformer]
+<a id="__codelineno-22-8" name="__codelineno-22-8" href="#__codelineno-22-8"></a>└── [4] vid_7890ab  video     /abs/path/clip.mp4
+<a id="__codelineno-22-9" name="__codelineno-22-9" href="#__codelineno-22-9"></a>         ├─ scene: 3
+<a id="__codelineno-22-10" name="__codelineno-22-10" href="#__codelineno-22-10"></a>         └─ actor: &quot;A&quot;
+</code></pre></div>
+<p><code>Context("~/data")</code> continues to support the directory-scan surface (<code>to_polars</code>, <code>to_pandas</code>, <code>to_arrow</code>, <code>sql</code>, <code>show</code>, <code>info</code>). See <a href="api/"><code>docs/api.md</code></a> for the full spec — <code>print_tree</code> layouts, cross-session resolution, and the deferred <code>save()</code> API.</p>
+<h2 id="integrations">Integrations<a class="headerlink" href="#integrations" title="Permanent link">&para;</a></h2>
+<h3 id="claude-code">Claude Code<a class="headerlink" href="#claude-code" title="Permanent link">&para;</a></h3>
+<p>Install the <code>mm-cli-skill</code> via the skill marketplace:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-23-1" name="__codelineno-23-1" href="#__codelineno-23-1"></a>claude
+<a id="__codelineno-23-2" name="__codelineno-23-2" href="#__codelineno-23-2"></a>&gt;<span class="w"> </span>/plugin<span class="w"> </span>marketplace<span class="w"> </span>add<span class="w"> </span>vlm-run/skills
+<a id="__codelineno-23-3" name="__codelineno-23-3" href="#__codelineno-23-3"></a>&gt;<span class="w"> </span>/plugin<span class="w"> </span>install<span class="w"> </span>mm-cli-skill@vlm-run/skills
+<a id="__codelineno-23-4" name="__codelineno-23-4" href="#__codelineno-23-4"></a>&gt;<span class="w"> </span>Organize<span class="w"> </span>my<span class="w"> </span>~/Downloads<span class="w"> </span>folder<span class="w"> </span>using<span class="w"> </span>mm
+</code></pre></div>
+<h3 id="npx-skills">npx skills<a class="headerlink" href="#npx-skills" title="Permanent link">&para;</a></h3>
+<p>Install mm-cli-skill globally so any CLI assistant or agentic tool can discover it:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-24-1" name="__codelineno-24-1" href="#__codelineno-24-1"></a>npx<span class="w"> </span>skills<span class="w"> </span>add<span class="w"> </span>vlm-run/skills@mm-cli-skill
+</code></pre></div>
+<h3 id="universal-assistants-openclaw-nemoclaw-opencode-codex-gemini-cli">Universal assistants (OpenClaw, NemoClaw, OpenCode, Codex, Gemini CLI)<a class="headerlink" href="#universal-assistants-openclaw-nemoclaw-opencode-codex-gemini-cli" title="Permanent link">&para;</a></h3>
+<p>Install the mm-cli-skill globally first, then start your preferred tool:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-25-1" name="__codelineno-25-1" href="#__codelineno-25-1"></a><span class="c1"># One-time setup</span>
+<a id="__codelineno-25-2" name="__codelineno-25-2" href="#__codelineno-25-2"></a>npx<span class="w"> </span>skills<span class="w"> </span>add<span class="w"> </span>vlm-run/skills@mm-cli-skill
+<a id="__codelineno-25-3" name="__codelineno-25-3" href="#__codelineno-25-3"></a>
+<a id="__codelineno-25-4" name="__codelineno-25-4" href="#__codelineno-25-4"></a><span class="c1"># Then use any CLI assistant — it will discover mm automatically</span>
+<a id="__codelineno-25-5" name="__codelineno-25-5" href="#__codelineno-25-5"></a>openclaw<span class="w"> </span><span class="s2">&quot;Organize my ~/Downloads folder using mm&quot;</span>
+<a id="__codelineno-25-6" name="__codelineno-25-6" href="#__codelineno-25-6"></a>codex<span class="w"> </span><span class="s2">&quot;Find all PDFs in ~/docs and summarize them with mm&quot;</span>
+</code></pre></div>
+<p>The skill exposes mm's capabilities to any tool that supports the skills protocol.</p>
+<h3 id="command-reference">Command reference<a class="headerlink" href="#command-reference" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Command</th>
+<th>Purpose</th>
+<th>Key flags</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>find</code></td>
+<td>Find/list files; tabular, tree, or schema view</td>
+<td><code>-n</code> / <code>--name</code>, <code>-i</code> / <code>--ignore-case</code>, <code>-k</code> / <code>--kind</code>, <code>-e</code> / <code>--ext</code>, <code>--min-size</code>, <code>--max-size</code>, <code>-s</code> / <code>--sort</code>, <code>-r</code> / <code>--reverse</code>, <code>-c</code> / <code>--columns</code>, <code>--tree</code>, <code>-d</code> / <code>--depth</code>, <code>--schema</code>, <code>--limit</code>, <code>--no-ignore</code>, <code>-f</code> / <code>--format</code></td>
+</tr>
+<tr>
+<td><code>peek</code></td>
+<td>Local file metadata (dimensions / EXIF / codec / duration / mime / hash)</td>
+<td><code>--full</code> (adds <code>doc_author/title/subject/keywords/creator/producer/pages</code>), <code>-f</code> / <code>--format</code> (rich / json / pretty-json / tsv / csv / stdout)</td>
+</tr>
+<tr>
+<td><code>cat</code></td>
+<td>Content extraction (auto-detected by kind × mode); pipeline-driven</td>
+<td><code>-m</code> / <code>--mode fast</code>/<code>accurate</code>, <code>-p</code> / <code>--pipeline</code> (encoder name or YAML), <code>-n</code> (head/tail), <code>-o</code> / <code>--output-dir</code>, <code>--no-cache</code>, <code>--no-generate</code>, <code>-v</code> / <code>--verbose</code>, <code>-y</code> / <code>--yes</code>, <code>--encode.strategy</code>, <code>--encode.pyfunc</code>, <code>--encode.strategy_opts KEY=VALUE</code>, <code>--prompt</code> (= <code>--generate.prompt</code>), <code>--model</code> (= <code>--generate.model</code>), <code>--generate.max-tokens</code>, <code>--generate.temperature</code>, <code>--generate.json-mode</code>, <code>--generate.extra-body</code>, <code>--list-pipelines</code>, <code>--list-encoders</code>, <code>--print-pipeline &lt;kind&gt;/&lt;mode&gt;</code>, <code>-f</code> / <code>--format</code></td>
+</tr>
+<tr>
+<td><code>grep</code></td>
+<td>Text + semantic content search</td>
+<td><code>-k</code> / <code>--kind</code>, <code>-e</code> / <code>--ext</code>, <code>-C</code> (context lines), <code>-c</code> / <code>--count</code>, <code>-i</code> / <code>--ignore-case</code>, <code>-s</code> / <code>--semantic</code>, <code>--pre-index</code>, <code>--no-ignore</code>, <code>-f</code> / <code>--format</code></td>
+</tr>
+<tr>
+<td><code>sql</code></td>
+<td>SQL on <code>files</code> / <code>extractions</code> / <code>chunks</code> (auto-routed)</td>
+<td><code>-d</code> / <code>--dir</code>, <code>--pre-index</code>, <code>--list-tables</code>, <code>-f</code> / <code>--format</code></td>
+</tr>
+<tr>
+<td><code>wc</code></td>
+<td>Count files, bytes, lines (est.), tokens (est.)</td>
+<td><code>-k</code> / <code>--kind</code>, <code>--by-kind</code>, <code>-f</code> / <code>--format</code></td>
+</tr>
+<tr>
+<td><code>bench</code></td>
+<td>Benchmark suite with statistical analysis</td>
+<td><code>-r</code> / <code>--rounds</code>, <code>-w</code> / <code>--warmup</code>, <code>-m</code> / <code>--mode metadata</code>/<code>fast</code>/<code>accurate</code>/<code>all</code>, <code>-c</code> / <code>--command</code>, <code>-g</code> / <code>--group</code>, <code>--model</code>, <code>--task</code>, <code>-b</code> / <code>--bench-file</code>, <code>--dry-run</code>, <code>--host-info</code>, <code>--with-generate</code>, <code>--timeout</code>, <code>-f</code> / <code>--format</code> (incl. <code>stdout</code>)</td>
+</tr>
+<tr>
+<td><code>config</code></td>
+<td>Configuration</td>
+<td><code>show</code>, <code>init [-f]</code>, <code>set &lt;key&gt; &lt;value&gt;</code>, <code>reset-db [-y]</code>, <code>reset-profiles [-y]</code>, <code>reset [-y]</code></td>
+</tr>
+<tr>
+<td><code>profile</code></td>
+<td>LLM provider profiles</td>
+<td><code>list [-f FORMAT]</code>, <code>add NAME -b URL -m MODEL [-k KEY]</code>, <code>update NAME [-b/-k/-m]</code>, <code>use NAME</code>, <code>remove NAME</code></td>
+</tr>
+</tbody>
+</table>
+<p>Top-level: <code>mm [-p / --profile NAME] [--color auto/always/never] [-v / --version] &lt;command&gt;</code>.</p>
+<h3 id="find-locatelist-tree-and-schema">find — locate/list, tree, and schema<a class="headerlink" href="#find-locatelist-tree-and-schema" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-26-1" name="__codelineno-26-1" href="#__codelineno-26-1"></a>mm<span class="w"> </span>find<span class="w"> </span>~/data<span class="w"> </span>--kind<span class="w"> </span>image<span class="w">                               </span><span class="c1"># all images</span>
+<a id="__codelineno-26-2" name="__codelineno-26-2" href="#__codelineno-26-2"></a>mm<span class="w"> </span>find<span class="w"> </span>~/data<span class="w"> </span>--kind<span class="w"> </span>video<span class="w"> </span>--sort<span class="w"> </span>size<span class="w"> </span>--reverse<span class="w">         </span><span class="c1"># videos by size</span>
+<a id="__codelineno-26-3" name="__codelineno-26-3" href="#__codelineno-26-3"></a>mm<span class="w"> </span>find<span class="w"> </span>~/data<span class="w"> </span>--ext<span class="w"> </span>.pdf<span class="w"> </span>--min-size<span class="w"> </span>10mb<span class="w">                 </span><span class="c1"># large PDFs</span>
+<a id="__codelineno-26-4" name="__codelineno-26-4" href="#__codelineno-26-4"></a>mm<span class="w"> </span>find<span class="w"> </span>~/data<span class="w"> </span>--kind<span class="w"> </span>image<span class="w"> </span>--limit<span class="w"> </span><span class="m">5</span><span class="w"> </span>--format<span class="w"> </span>json<span class="w">       </span><span class="c1"># JSON output</span>
+<a id="__codelineno-26-5" name="__codelineno-26-5" href="#__codelineno-26-5"></a>mm<span class="w"> </span>find<span class="w"> </span>~/data<span class="w"> </span>--name<span class="w"> </span><span class="s2">&quot;test_.*\.py&quot;</span><span class="w">                       </span><span class="c1"># regex name match</span>
+<a id="__codelineno-26-6" name="__codelineno-26-6" href="#__codelineno-26-6"></a>mm<span class="w"> </span>find<span class="w"> </span>~/data<span class="w"> </span>-n<span class="w"> </span>config<span class="w">                                  </span><span class="c1"># substring name match</span>
+<a id="__codelineno-26-7" name="__codelineno-26-7" href="#__codelineno-26-7"></a>mm<span class="w"> </span>find<span class="w"> </span>~/data<span class="w"> </span>-n<span class="w"> </span>CONFIG<span class="w"> </span>-i<span class="w">                               </span><span class="c1"># case-insensitive (-i)</span>
+<a id="__codelineno-26-8" name="__codelineno-26-8" href="#__codelineno-26-8"></a>
+<a id="__codelineno-26-9" name="__codelineno-26-9" href="#__codelineno-26-9"></a>mm<span class="w"> </span>find<span class="w"> </span>~/data<span class="w"> </span>--sort<span class="w"> </span>size<span class="w"> </span>--reverse<span class="w"> </span>--limit<span class="w"> </span><span class="m">20</span><span class="w">        </span><span class="c1"># tabular listing</span>
+<a id="__codelineno-26-10" name="__codelineno-26-10" href="#__codelineno-26-10"></a>mm<span class="w"> </span>find<span class="w"> </span>~/data<span class="w"> </span>--kind<span class="w"> </span>document<span class="w"> </span>--columns<span class="w"> </span>name,size,ext
+<a id="__codelineno-26-11" name="__codelineno-26-11" href="#__codelineno-26-11"></a>mm<span class="w"> </span>find<span class="w"> </span>~/data<span class="w"> </span>--tree<span class="w"> </span>--depth<span class="w"> </span><span class="m">2</span><span class="w">                        </span><span class="c1"># hierarchical tree view</span>
+<a id="__codelineno-26-12" name="__codelineno-26-12" href="#__codelineno-26-12"></a>mm<span class="w"> </span>find<span class="w"> </span>~/data<span class="w"> </span>--tree<span class="w"> </span>--kind<span class="w"> </span>video<span class="w">                     </span><span class="c1"># tree filtered to videos</span>
+<a id="__codelineno-26-13" name="__codelineno-26-13" href="#__codelineno-26-13"></a>mm<span class="w"> </span>find<span class="w"> </span>~/data<span class="w"> </span>--schema<span class="w">                                </span><span class="c1"># column names, types, descriptions</span>
+<a id="__codelineno-26-14" name="__codelineno-26-14" href="#__codelineno-26-14"></a>mm<span class="w"> </span>find<span class="w"> </span>~/data<span class="w"> </span>--format<span class="w"> </span>json<span class="w">                           </span><span class="c1"># full metadata JSON</span>
+<a id="__codelineno-26-15" name="__codelineno-26-15" href="#__codelineno-26-15"></a>mm<span class="w"> </span>find<span class="w"> </span>~/data<span class="w"> </span>--no-ignore<span class="w">                             </span><span class="c1"># include gitignored files</span>
+</code></pre></div>
+<h3 id="peek-raw-file-metadata">peek — raw file metadata<a class="headerlink" href="#peek-raw-file-metadata" title="Permanent link">&para;</a></h3>
+<p><code>mm peek</code> returns locally-extracted metadata (dimensions / EXIF / codec / duration / mime / hash …).</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-27-1" name="__codelineno-27-1" href="#__codelineno-27-1"></a>mm<span class="w"> </span>peek<span class="w"> </span>bench.jpg<span class="w">                                                </span><span class="c1"># image dims / EXIF / hash (Rich panel)</span>
+<a id="__codelineno-27-2" name="__codelineno-27-2" href="#__codelineno-27-2"></a>mm<span class="w"> </span>peek<span class="w"> </span>Timelapse.mp4<span class="w">                                            </span><span class="c1"># video resolution, duration, codecs</span>
+<a id="__codelineno-27-3" name="__codelineno-27-3" href="#__codelineno-27-3"></a>mm<span class="w"> </span>peek<span class="w"> </span>wordpress-pdf-invoice-plugin-sample.pdf<span class="w">                  </span><span class="c1"># mime, content hash</span>
+<a id="__codelineno-27-4" name="__codelineno-27-4" href="#__codelineno-27-4"></a>mm<span class="w"> </span>peek<span class="w"> </span>bench.jpg<span class="w"> </span>Timelapse.mp4<span class="w"> </span>--format<span class="w"> </span>json<span class="w">                    </span><span class="c1"># multi-file JSON</span>
+<a id="__codelineno-27-5" name="__codelineno-27-5" href="#__codelineno-27-5"></a>mm<span class="w"> </span>peek<span class="w"> </span>bench.jpg<span class="w"> </span>--format<span class="w"> </span>tsv<span class="w">                                   </span><span class="c1"># flat TSV (every kind has the same column set)</span>
+<a id="__codelineno-27-6" name="__codelineno-27-6" href="#__codelineno-27-6"></a>mm<span class="w"> </span>peek<span class="w"> </span>paper.pdf<span class="w"> </span>--full<span class="w">                                         </span><span class="c1"># include document author / title / subject / page count</span>
+</code></pre></div>
+<h3 id="cat-content-extraction">cat — content extraction<a class="headerlink" href="#cat-content-extraction" title="Permanent link">&para;</a></h3>
+<p><code>--mode</code> is one of <code>fast</code> (default) or <code>accurate</code>. Mode is a no-op for <code>kind=text</code> and non-PDF documents (<code>.docx</code> / <code>.pptx</code>): they always return passthrough text.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-28-1" name="__codelineno-28-1" href="#__codelineno-28-1"></a>mm<span class="w"> </span>cat<span class="w"> </span>wordpress-pdf-invoice-plugin-sample.pdf<span class="w">                  </span><span class="c1"># PDF page-text via pypdfium2 (fast pipeline)</span>
+<a id="__codelineno-28-2" name="__codelineno-28-2" href="#__codelineno-28-2"></a>mm<span class="w"> </span>cat<span class="w"> </span>wordpress-pdf-invoice-plugin-sample.pdf<span class="w"> </span>-n<span class="w"> </span><span class="m">20</span><span class="w">            </span><span class="c1"># first 20 lines (head)</span>
+<a id="__codelineno-28-3" name="__codelineno-28-3" href="#__codelineno-28-3"></a>mm<span class="w"> </span>cat<span class="w"> </span>src/main.py<span class="w">                                              </span><span class="c1"># passthrough text</span>
+<a id="__codelineno-28-4" name="__codelineno-28-4" href="#__codelineno-28-4"></a>mm<span class="w"> </span>cat<span class="w"> </span>notes.docx<span class="w">                                               </span><span class="c1"># libreoffice-rs text</span>
+<a id="__codelineno-28-5" name="__codelineno-28-5" href="#__codelineno-28-5"></a>mm<span class="w"> </span>cat<span class="w"> </span>bench.jpg<span class="w">                                                </span><span class="c1"># short VLM caption (fast pipeline)</span>
+<a id="__codelineno-28-6" name="__codelineno-28-6" href="#__codelineno-28-6"></a>mm<span class="w"> </span>cat<span class="w"> </span>bench.jpg<span class="w"> </span>-m<span class="w"> </span>accurate<span class="w">                                    </span><span class="c1"># full LLM caption + tags + objects</span>
+<a id="__codelineno-28-7" name="__codelineno-28-7" href="#__codelineno-28-7"></a>mm<span class="w"> </span>cat<span class="w"> </span>Timelapse.mp4<span class="w"> </span>-m<span class="w"> </span>accurate<span class="w">                                </span><span class="c1"># mosaic → LLM description</span>
+<a id="__codelineno-28-8" name="__codelineno-28-8" href="#__codelineno-28-8"></a>mm<span class="w"> </span>cat<span class="w"> </span>bench.jpg<span class="w"> </span>-p<span class="w"> </span>image-tile<span class="w">                                  </span><span class="c1"># use named encoder</span>
+<a id="__codelineno-28-9" name="__codelineno-28-9" href="#__codelineno-28-9"></a>mm<span class="w"> </span>cat<span class="w"> </span>bench.jpg<span class="w"> </span>-m<span class="w"> </span>accurate<span class="w"> </span>-p<span class="w"> </span>my-pipeline.yaml<span class="w">                </span><span class="c1"># custom pipeline YAML</span>
+<a id="__codelineno-28-10" name="__codelineno-28-10" href="#__codelineno-28-10"></a>mm<span class="w"> </span>cat<span class="w"> </span>Timelapse.mp4<span class="w"> </span>-m<span class="w"> </span>accurate<span class="w"> </span>--no-cache<span class="w">                     </span><span class="c1"># force fresh LLM call</span>
+<a id="__codelineno-28-11" name="__codelineno-28-11" href="#__codelineno-28-11"></a>mm<span class="w"> </span>cat<span class="w"> </span>bench.jpg<span class="w"> </span>-m<span class="w"> </span>accurate<span class="w"> </span>--no-generate<span class="w">                      </span><span class="c1"># snapshot encoder output (no LLM)</span>
+<a id="__codelineno-28-12" name="__codelineno-28-12" href="#__codelineno-28-12"></a>mm<span class="w"> </span>cat<span class="w"> </span>bench.jpg<span class="w"> </span>-m<span class="w"> </span>accurate<span class="w"> </span>-v<span class="w">                                 </span><span class="c1"># verbose (shows pipeline tree)</span>
+<a id="__codelineno-28-13" name="__codelineno-28-13" href="#__codelineno-28-13"></a>mm<span class="w"> </span>cat<span class="w"> </span>--list-pipelines<span class="w">                                         </span><span class="c1"># list registered pipelines</span>
+<a id="__codelineno-28-14" name="__codelineno-28-14" href="#__codelineno-28-14"></a>mm<span class="w"> </span>cat<span class="w"> </span>--list-encoders<span class="w">                                          </span><span class="c1"># list registered encoders</span>
+<a id="__codelineno-28-15" name="__codelineno-28-15" href="#__codelineno-28-15"></a>mm<span class="w"> </span>cat<span class="w"> </span>--print-pipeline<span class="w"> </span>image/accurate<span class="w">                          </span><span class="c1"># print a built-in pipeline&#39;s YAML source</span>
+<a id="__codelineno-28-16" name="__codelineno-28-16" href="#__codelineno-28-16"></a>mm<span class="w"> </span>cat<span class="w"> </span>bench.jpg<span class="w"> </span>-m<span class="w"> </span>accurate<span class="w"> </span>--encode.strategy_opts<span class="w"> </span><span class="nv">max_width</span><span class="o">=</span><span class="m">768</span><span class="w">  </span><span class="c1"># override a single strategy_opts entry</span>
+</code></pre></div>
+<h4 id="override-surfaces">Override surfaces<a class="headerlink" href="#override-surfaces" title="Permanent link">&para;</a></h4>
+<p><code>mm cat</code> resolves each LLM call from three layers, with <strong>right-most wins</strong> on conflict:</p>
+<table>
+<thead>
+<tr>
+<th>Layer</th>
+<th>Configures</th>
+<th>How to set</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Profile</strong> (<code>mm.toml</code>)</td>
+<td><code>base_url</code>, <code>api_key</code>, default <code>model</code></td>
+<td><code>mm profile add &lt;name&gt; --base-url ... --model ...</code>; selected per-invocation with <code>mm --profile &lt;name&gt; &lt;subcommand&gt; ...</code></td>
+</tr>
+<tr>
+<td><strong>Pipeline YAML</strong> (<code>generate:</code> block)</td>
+<td><code>model</code>, <code>prompt</code>, <code>max_tokens</code>, <code>temperature</code>, <code>json_mode</code>, <code>extra_body</code> (deep-merged)</td>
+<td>Built-in pipelines under <code>python/mm/pipelines/</code> or custom YAMLs passed via <code>mm cat -p path.yaml</code></td>
+</tr>
+<tr>
+<td><strong>CLI flags on <code>cat</code></strong></td>
+<td>per-field overrides</td>
+<td>See table below</td>
+</tr>
+</tbody>
+</table>
+<p>CLI override flags (each takes precedence over both pipeline YAML and profile):</p>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Alias</th>
+<th>Pipeline field</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--model NAME</code></td>
+<td><code>--generate.model NAME</code></td>
+<td><code>generate.model</code></td>
+</tr>
+<tr>
+<td><code>--prompt TEXT</code></td>
+<td><code>--generate.prompt TEXT</code></td>
+<td><code>generate.prompt</code></td>
+</tr>
+<tr>
+<td><code>--generate.max-tokens N</code></td>
+<td>—</td>
+<td><code>generate.max_tokens</code></td>
+</tr>
+<tr>
+<td><code>--generate.temperature F</code></td>
+<td>—</td>
+<td><code>generate.temperature</code></td>
+</tr>
+<tr>
+<td><code>--generate.json-mode BOOL</code></td>
+<td>—</td>
+<td><code>generate.json_mode</code></td>
+</tr>
+<tr>
+<td><code>--generate.extra-body '&lt;json&gt;'</code></td>
+<td>—</td>
+<td><code>generate.extra_body</code> (deep-merged onto YAML; CLI keys win)</td>
+</tr>
+</tbody>
+</table>
+<p>Use <code>--generate.extra-body</code> for any provider-specific knobs (vlmrt's <code>method</code>, <code>method_params</code>, <code>video_fps</code>, <code>image_resolution</code>, <code>vlmrun.metadata</code>, etc.). The merged <code>model</code> + <code>extra_body</code> participate in the L2 cache key, so changing a knob correctly invalidates cached results. <code>base_url</code> and <code>api_key</code> are profile-only — there is no CLI override for them.</p>
+<p>Examples against a vlmrt deployment (<code>mm profile add vlmrt --base-url http://gpu-box:8001/v1 --model qwen3.5-0.8b</code>):</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-29-1" name="__codelineno-29-1" href="#__codelineno-29-1"></a><span class="c1"># Florence-2 — document OCR (skip server-side LLM refinement)</span>
+<a id="__codelineno-29-2" name="__codelineno-29-2" href="#__codelineno-29-2"></a>mm<span class="w"> </span>--profile<span class="w"> </span>vlmrt<span class="w"> </span>cat<span class="w"> </span>page.png<span class="w"> </span>-m<span class="w"> </span>accurate<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-29-3" name="__codelineno-29-3" href="#__codelineno-29-3"></a><span class="w">  </span>--model<span class="w"> </span>florence-2-base-ft<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-29-4" name="__codelineno-29-4" href="#__codelineno-29-4"></a><span class="w">  </span>--generate.extra-body<span class="w"> </span><span class="s1">&#39;{&quot;method&quot;:&quot;ocr&quot;,&quot;refine_with_llm&quot;:false}&#39;</span>
+<a id="__codelineno-29-5" name="__codelineno-29-5" href="#__codelineno-29-5"></a>
+<a id="__codelineno-29-6" name="__codelineno-29-6" href="#__codelineno-29-6"></a><span class="c1"># Florence-2 — detailed caption</span>
+<a id="__codelineno-29-7" name="__codelineno-29-7" href="#__codelineno-29-7"></a>mm<span class="w"> </span>--profile<span class="w"> </span>vlmrt<span class="w"> </span>cat<span class="w"> </span>photo.jpg<span class="w"> </span>-m<span class="w"> </span>accurate<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-29-8" name="__codelineno-29-8" href="#__codelineno-29-8"></a><span class="w">  </span>--model<span class="w"> </span>florence-2-base-ft<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-29-9" name="__codelineno-29-9" href="#__codelineno-29-9"></a><span class="w">  </span>--generate.extra-body<span class="w"> </span><span class="s1">&#39;{&quot;method&quot;:&quot;detailed_caption&quot;}&#39;</span>
+<a id="__codelineno-29-10" name="__codelineno-29-10" href="#__codelineno-29-10"></a>
+<a id="__codelineno-29-11" name="__codelineno-29-11" href="#__codelineno-29-11"></a><span class="c1"># Qwen3.5-0.8B — free-form VQA on an image with a custom prompt</span>
+<a id="__codelineno-29-12" name="__codelineno-29-12" href="#__codelineno-29-12"></a>mm<span class="w"> </span>--profile<span class="w"> </span>vlmrt<span class="w"> </span>cat<span class="w"> </span>photo.jpg<span class="w"> </span>-m<span class="w"> </span>accurate<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-29-13" name="__codelineno-29-13" href="#__codelineno-29-13"></a><span class="w">  </span>--model<span class="w"> </span>qwen3.5-0.8b<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-29-14" name="__codelineno-29-14" href="#__codelineno-29-14"></a><span class="w">  </span>--prompt<span class="w"> </span><span class="s2">&quot;What objects are visible? Reply as a comma-separated list.&quot;</span>
+<a id="__codelineno-29-15" name="__codelineno-29-15" href="#__codelineno-29-15"></a>
+<a id="__codelineno-29-16" name="__codelineno-29-16" href="#__codelineno-29-16"></a><span class="c1"># Qwen3.5-0.8B — video summarisation with explicit frame sampling</span>
+<a id="__codelineno-29-17" name="__codelineno-29-17" href="#__codelineno-29-17"></a>mm<span class="w"> </span>--profile<span class="w"> </span>vlmrt<span class="w"> </span>cat<span class="w"> </span>clip.mp4<span class="w"> </span>-m<span class="w"> </span>accurate<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-29-18" name="__codelineno-29-18" href="#__codelineno-29-18"></a><span class="w">  </span>--model<span class="w"> </span>qwen3.5-0.8b<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-29-19" name="__codelineno-29-19" href="#__codelineno-29-19"></a><span class="w">  </span>--generate.extra-body<span class="w"> </span><span class="s1">&#39;{&quot;video_fps&quot;:1.0,&quot;video_max_frames&quot;:8,&quot;video_resolution&quot;:&quot;448x336&quot;}&#39;</span>
+<a id="__codelineno-29-20" name="__codelineno-29-20" href="#__codelineno-29-20"></a>
+<a id="__codelineno-29-21" name="__codelineno-29-21" href="#__codelineno-29-21"></a><span class="c1"># PaddleOCR-v5 — full detect + recognise (English, default threshold)</span>
+<a id="__codelineno-29-22" name="__codelineno-29-22" href="#__codelineno-29-22"></a>mm<span class="w"> </span>--profile<span class="w"> </span>vlmrt<span class="w"> </span>cat<span class="w"> </span>storefront.jpg<span class="w"> </span>-m<span class="w"> </span>accurate<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-29-23" name="__codelineno-29-23" href="#__codelineno-29-23"></a><span class="w">  </span>--model<span class="w"> </span>paddleocr-v5<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-29-24" name="__codelineno-29-24" href="#__codelineno-29-24"></a><span class="w">  </span>--generate.extra-body<span class="w"> </span><span class="s1">&#39;{&quot;method&quot;:&quot;ocr&quot;}&#39;</span>
+<a id="__codelineno-29-25" name="__codelineno-29-25" href="#__codelineno-29-25"></a>
+<a id="__codelineno-29-26" name="__codelineno-29-26" href="#__codelineno-29-26"></a><span class="c1"># PaddleOCR-v5 — Chinese OCR with a tighter score threshold</span>
+<a id="__codelineno-29-27" name="__codelineno-29-27" href="#__codelineno-29-27"></a>mm<span class="w"> </span>--profile<span class="w"> </span>vlmrt<span class="w"> </span>cat<span class="w"> </span>storefront.jpg<span class="w"> </span>-m<span class="w"> </span>accurate<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-29-28" name="__codelineno-29-28" href="#__codelineno-29-28"></a><span class="w">  </span>--model<span class="w"> </span>paddleocr-v5<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-29-29" name="__codelineno-29-29" href="#__codelineno-29-29"></a><span class="w">  </span>--generate.extra-body<span class="w"> </span><span class="s1">&#39;{&quot;method&quot;:&quot;ocr&quot;,&quot;method_params&quot;:{&quot;lang&quot;:&quot;ch&quot;,&quot;score_threshold&quot;:0.6}}&#39;</span>
+<a id="__codelineno-29-30" name="__codelineno-29-30" href="#__codelineno-29-30"></a>
+<a id="__codelineno-29-31" name="__codelineno-29-31" href="#__codelineno-29-31"></a><span class="c1"># Moondream2 — multi-object detection</span>
+<a id="__codelineno-29-32" name="__codelineno-29-32" href="#__codelineno-29-32"></a>mm<span class="w"> </span>--profile<span class="w"> </span>vlmrt<span class="w"> </span>cat<span class="w"> </span>photo.jpg<span class="w"> </span>-m<span class="w"> </span>accurate<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-29-33" name="__codelineno-29-33" href="#__codelineno-29-33"></a><span class="w">  </span>--model<span class="w"> </span>moondream2<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-29-34" name="__codelineno-29-34" href="#__codelineno-29-34"></a><span class="w">  </span>--generate.extra-body<span class="w"> </span><span class="s1">&#39;{&quot;method&quot;:&quot;detect&quot;,&quot;method_params&quot;:{&quot;object&quot;:&quot;fish&quot;}}&#39;</span>
+</code></pre></div>
+<h3 id="wc-count-files-size-tokens">wc — count files, size, tokens<a class="headerlink" href="#wc-count-files-size-tokens" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-30-1" name="__codelineno-30-1" href="#__codelineno-30-1"></a>mm<span class="w"> </span>wc<span class="w"> </span>~/data<span class="w"> </span>--by-kind
+<a id="__codelineno-30-2" name="__codelineno-30-2" href="#__codelineno-30-2"></a>mm<span class="w"> </span>wc<span class="w"> </span>~/data<span class="w"> </span>--by-kind<span class="w"> </span>--format<span class="w"> </span>json
+</code></pre></div>
+<h3 id="grep-content-search">grep — content search<a class="headerlink" href="#grep-content-search" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-31-1" name="__codelineno-31-1" href="#__codelineno-31-1"></a>mm<span class="w"> </span>grep<span class="w"> </span><span class="s2">&quot;attention&quot;</span><span class="w"> </span>~/data<span class="w"> </span>--kind<span class="w"> </span>document
+<a id="__codelineno-31-2" name="__codelineno-31-2" href="#__codelineno-31-2"></a>mm<span class="w"> </span>grep<span class="w"> </span><span class="s2">&quot;TODO&quot;</span><span class="w"> </span>~/data<span class="w"> </span>--kind<span class="w"> </span>code
+<a id="__codelineno-31-3" name="__codelineno-31-3" href="#__codelineno-31-3"></a>mm<span class="w"> </span>grep<span class="w"> </span><span class="s2">&quot;invoice&quot;</span><span class="w"> </span>~/data<span class="w"> </span>--count<span class="w">               </span><span class="c1"># match counts per file</span>
+<a id="__codelineno-31-4" name="__codelineno-31-4" href="#__codelineno-31-4"></a>mm<span class="w"> </span>grep<span class="w"> </span><span class="s2">&quot;Quantum Phase&quot;</span><span class="w"> </span>~/data<span class="w"> </span>-i<span class="w">              </span><span class="c1"># case-insensitive search</span>
+<a id="__codelineno-31-5" name="__codelineno-31-5" href="#__codelineno-31-5"></a>mm<span class="w"> </span>grep<span class="w"> </span><span class="s2">&quot;secret&quot;</span><span class="w"> </span>~/data<span class="w"> </span>--no-ignore<span class="w">            </span><span class="c1"># search gitignored files</span>
+<a id="__codelineno-31-6" name="__codelineno-31-6" href="#__codelineno-31-6"></a>mm<span class="w"> </span>grep<span class="w"> </span><span class="s2">&quot;revenue forecast&quot;</span><span class="w"> </span>~/data<span class="w"> </span>-s<span class="w">             </span><span class="c1"># semantic (vector) search</span>
+<a id="__codelineno-31-7" name="__codelineno-31-7" href="#__codelineno-31-7"></a>mm<span class="w"> </span>grep<span class="w"> </span><span class="s2">&quot;architecture&quot;</span><span class="w"> </span>~/data<span class="w"> </span>-s<span class="w"> </span>--pre-index<span class="w">      </span><span class="c1"># auto-index before search</span>
+</code></pre></div>
+<h3 id="sql-query-the-index">sql — query the index<a class="headerlink" href="#sql-query-the-index" title="Permanent link">&para;</a></h3>
+<p>Queries file metadata via scan + SQLite, or results and chunks from the persistent SQLite store.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-32-1" name="__codelineno-32-1" href="#__codelineno-32-1"></a>mm<span class="w"> </span>find<span class="w"> </span>~/data<span class="w"> </span>--schema<span class="w">                          </span><span class="c1"># see available columns</span>
+<a id="__codelineno-32-2" name="__codelineno-32-2" href="#__codelineno-32-2"></a>mm<span class="w"> </span>sql<span class="w"> </span><span class="s2">&quot;SELECT kind, COUNT(*) as n, ROUND(SUM(size)/1e6,1) as mb \</span>
+<a id="__codelineno-32-3" name="__codelineno-32-3" href="#__codelineno-32-3"></a><span class="s2">  FROM files GROUP BY kind ORDER BY mb DESC&quot;</span><span class="w"> </span>--dir<span class="w"> </span>~/data
+<a id="__codelineno-32-4" name="__codelineno-32-4" href="#__codelineno-32-4"></a>
+<a id="__codelineno-32-5" name="__codelineno-32-5" href="#__codelineno-32-5"></a><span class="c1"># Query stored tables directly (auto-detected from table name)</span>
+<a id="__codelineno-32-6" name="__codelineno-32-6" href="#__codelineno-32-6"></a>mm<span class="w"> </span>sql<span class="w"> </span><span class="s2">&quot;SELECT file_uri, summary FROM extractions LIMIT 10&quot;</span>
+<a id="__codelineno-32-7" name="__codelineno-32-7" href="#__codelineno-32-7"></a>mm<span class="w"> </span>sql<span class="w"> </span><span class="s2">&quot;SELECT file_uri, chunk_idx, LENGTH(chunk_text) FROM chunks&quot;</span>
+<a id="__codelineno-32-8" name="__codelineno-32-8" href="#__codelineno-32-8"></a>mm<span class="w"> </span>sql<span class="w"> </span><span class="s2">&quot;SELECT * FROM files WHERE kind=&#39;image&#39;&quot;</span><span class="w"> </span>--dir<span class="w"> </span>~/data<span class="w"> </span>--pre-index<span class="w">  </span><span class="c1"># index before query</span>
+<a id="__codelineno-32-9" name="__codelineno-32-9" href="#__codelineno-32-9"></a>mm<span class="w"> </span>sql<span class="w"> </span>--list-tables<span class="w">                              </span><span class="c1"># show available tables</span>
+</code></pre></div>
+<h3 id="output-modes">Output modes<a class="headerlink" href="#output-modes" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>TTY</strong>: Rich-formatted tables/panels.</li>
+<li><strong>Piped / non-TTY</strong>: plain TSV/text (machine-readable, no ANSI).</li>
+<li><code>--format json</code>: compact in pipes, indented in TTY.</li>
+<li><code>--format pretty-json</code>: always indented (good for piping into markdown / docs).</li>
+<li><code>--format tsv</code> / <code>csv</code>: delimited.</li>
+<li><code>--format dataset-jsonl</code>: JSONL for fine-tuning datasets.</li>
+<li><code>--format dataset-hf</code>: HuggingFace Datasets format (requires <code>--output-dir</code>).</li>
+<li><code>--format stdout</code>: plain stdout (cat / config show / bench snapshot).</li>
+</ul>
+<h3 id="verbose-mode-verbose-v">Verbose mode (<code>--verbose</code> / <code>-v</code>)<a class="headerlink" href="#verbose-mode-verbose-v" title="Permanent link">&para;</a></h3>
+<p><code>mm cat &lt;file&gt; [OPTIONS] --verbose</code> shows the pipeline execution tree after content:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-33-1" name="__codelineno-33-1" href="#__codelineno-33-1"></a>pipeline
+<a id="__codelineno-33-2" name="__codelineno-33-2" href="#__codelineno-33-2"></a>  ├─ encode: resize · 0.0s → 1 parts (1 image)
+<a id="__codelineno-33-3" name="__codelineno-33-3" href="#__codelineno-33-3"></a>  └─ generate: ollama · 2.3s · 354→195 tokens
+</code></pre></div>
+<h2 id="processing-tiers">Processing tiers<a class="headerlink" href="#processing-tiers" title="Permanent link">&para;</a></h2>
+<p><code>mm</code> separates <strong>what</strong> by command and <strong>how much LLM</strong> by mode. <code>mm peek</code> surfaces local file metadata; <code>mm cat</code> extracts content and accepts <code>--mode fast|accurate</code> (default <code>fast</code>).</p>
+<table>
+<thead>
+<tr>
+<th>Tier</th>
+<th>Command</th>
+<th>What</th>
+<th>LLM?</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>metadata</strong></td>
+<td><code>mm peek</code></td>
+<td>image dims/EXIF/hash, video resolution/duration/codec, audio codec, mime, magika</td>
+<td>never</td>
+</tr>
+<tr>
+<td><strong>fast</strong> (default)</td>
+<td><code>mm cat -m fast</code></td>
+<td>Output of the kind's <code>fast</code> pipeline</td>
+<td>maybe¹</td>
+</tr>
+<tr>
+<td><strong>accurate</strong></td>
+<td><code>mm cat -m accurate</code></td>
+<td>Output of the kind's <code>accurate</code> pipeline</td>
+<td>yes</td>
+</tr>
+</tbody>
+</table>
+<p>¹ Per-kind fast pipelines: image/video include a short LLM caption stage;
+audio/document/code do not. See <code>pipelines/{kind}/fast.yaml</code>.</p>
+<p>Metadata-tier extraction (used by <code>find</code>, <code>wc</code>, the <code>cat</code> default, and as the
+input for fast/accurate pipelines) is Rust-native (~60ms / 700 files).</p>
+<h2 id="performance">Performance<a class="headerlink" href="#performance" title="Permanent link">&para;</a></h2>
+<p>Benchmarked on Apple Silicon (M-series), 702 files (7.2GB):</p>
+<table>
+<thead>
+<tr>
+<th>Operation</th>
+<th>Latency</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Metadata scan (702 files)</td>
+<td>8ms</td>
+</tr>
+<tr>
+<td>CLI cold start (<code>find --format json</code>)</td>
+<td>60ms</td>
+</tr>
+<tr>
+<td>CLI cold start (<code>find --schema --format json</code>)</td>
+<td>109ms</td>
+</tr>
+<tr>
+<td>CLI cold start (<code>sql</code>)</td>
+<td>300ms</td>
+</tr>
+<tr>
+<td>Fast code extraction</td>
+<td>~52ms</td>
+</tr>
+<tr>
+<td>Fast image extraction</td>
+<td>~61ms</td>
+</tr>
+<tr>
+<td>Fast PDF text extraction</td>
+<td>~220ms</td>
+</tr>
+<tr>
+<td>Fast video metadata</td>
+<td>&lt;100ms</td>
+</tr>
+<tr>
+<td>PDF page mosaic (per page)</td>
+<td>~10ms</td>
+</tr>
+<tr>
+<td>Video keyframe mosaic (48 frames)</td>
+<td>~1s</td>
+</tr>
+</tbody>
+</table>
+<h2 id="storage">Storage<a class="headerlink" href="#storage" title="Permanent link">&para;</a></h2>
+<p>mm uses a global SQLite database at <code>~/.local/share/mm/mm.db</code> with sqlite-vec for vector search:</p>
+<table>
+<thead>
+<tr>
+<th>Table</th>
+<th>Contents</th>
+<th>Relationship</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>files</code></td>
+<td>File metadata + content (one row per file, <code>uri</code> = absolute path)</td>
+<td>—</td>
+</tr>
+<tr>
+<td><code>extractions</code></td>
+<td>LLM-generated summaries (many per file)</td>
+<td>FK → <code>files.uri</code></td>
+</tr>
+<tr>
+<td><code>chunks</code></td>
+<td>Content chunks (mode = 'metadata', 'fast', or 'accurate')</td>
+<td>FK → <code>extractions.id</code></td>
+</tr>
+<tr>
+<td><code>chunks_vec</code></td>
+<td>Embedding vectors (sqlite-vec virtual table)</td>
+<td>FK → <code>chunks.id</code></td>
+</tr>
+<tr>
+<td><code>cache</code></td>
+<td>Key-value result cache</td>
+<td>—</td>
+</tr>
+</tbody>
+</table>
+<p>The <code>files</code> table includes metadata columns (path, size, kind, etc.) and content columns (content_hash, text_preview, line_count, duration_s, exif_*, video_codec, etc.).</p>
+<p>Use <code>mm config reset-db</code> to clear all databases and caches.</p>
+<h3 id="pipelines-encode-generate">Pipelines — encode + generate<a class="headerlink" href="#pipelines-encode-generate" title="Permanent link">&para;</a></h3>
+<p>Pipelines are YAML configs under <code>pipelines/{kind}/{mode}.yaml</code> that pair an <strong>encoder</strong> with optional LLM <strong>generation</strong> parameters. When <code>generate</code> is <code>null</code>, the pipeline is encode-only (no LLM call). Encoders are Python classes under <code>encoders/</code> that convert media files into VLM-ready Messages. See <code>[docs/PIPELINES.md](PIPELINES.md)</code> and <code>[docs/ENCODERS.md](ENCODERS.md)</code> for the full pipeline and encoder reference.</p>
+<p>Pipeline fields can be overridden from the CLI:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-34-1" name="__codelineno-34-1" href="#__codelineno-34-1"></a>mm<span class="w"> </span>cat<span class="w"> </span>photo.jpg<span class="w"> </span>-m<span class="w"> </span>accurate<span class="w"> </span>--encode.strategy<span class="w"> </span>tile<span class="w"> </span>--generate.max-tokens<span class="w"> </span><span class="m">1024</span>
+<a id="__codelineno-34-2" name="__codelineno-34-2" href="#__codelineno-34-2"></a>mm<span class="w"> </span>cat<span class="w"> </span>photo.jpg<span class="w"> </span>-m<span class="w"> </span>accurate<span class="w"> </span>--generate.temperature<span class="w"> </span><span class="m">0</span>.5
+<a id="__codelineno-34-3" name="__codelineno-34-3" href="#__codelineno-34-3"></a>
+<a id="__codelineno-34-4" name="__codelineno-34-4" href="#__codelineno-34-4"></a><span class="c1"># Override individual strategy_opts entries (repeatable KEY=VALUE form;</span>
+<a id="__codelineno-34-5" name="__codelineno-34-5" href="#__codelineno-34-5"></a><span class="c1"># values are coerced to int/float/bool when possible).</span>
+<a id="__codelineno-34-6" name="__codelineno-34-6" href="#__codelineno-34-6"></a>mm<span class="w"> </span>cat<span class="w"> </span>photo.jpg<span class="w"> </span>-m<span class="w"> </span>accurate<span class="w"> </span>--encode.strategy_opts<span class="w"> </span><span class="nv">max_width</span><span class="o">=</span><span class="m">768</span>
+<a id="__codelineno-34-7" name="__codelineno-34-7" href="#__codelineno-34-7"></a>mm<span class="w"> </span>cat<span class="w"> </span>video.mp4<span class="w"> </span>-m<span class="w"> </span>accurate<span class="w"> </span>--encode.strategy_opts<span class="w"> </span><span class="nv">max_width</span><span class="o">=</span><span class="m">768</span><span class="w"> </span>--encode.strategy_opts<span class="w"> </span><span class="nv">fps</span><span class="o">=</span><span class="m">5</span>
+<a id="__codelineno-34-8" name="__codelineno-34-8" href="#__codelineno-34-8"></a>
+<a id="__codelineno-34-9" name="__codelineno-34-9" href="#__codelineno-34-9"></a><span class="c1"># Print a built-in pipeline&#39;s YAML as a starting point for your own.</span>
+<a id="__codelineno-34-10" name="__codelineno-34-10" href="#__codelineno-34-10"></a>mm<span class="w"> </span>cat<span class="w"> </span>--print-pipeline<span class="w"> </span>image/accurate
+</code></pre></div>
+<p>Load explicit pipeline YAML(s) with <code>-p</code> (repeatable, dispatched by <code>kind</code> field):</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-35-1" name="__codelineno-35-1" href="#__codelineno-35-1"></a>mm<span class="w"> </span>cat<span class="w"> </span>photo.jpg<span class="w"> </span>-p<span class="w"> </span>my-image-pipeline.yaml
+<a id="__codelineno-35-2" name="__codelineno-35-2" href="#__codelineno-35-2"></a>mm<span class="w"> </span>cat<span class="w"> </span>*.jpg<span class="w"> </span>*.mp4<span class="w"> </span>-p<span class="w"> </span>image-pipeline.yaml<span class="w"> </span>-p<span class="w"> </span>video-pipeline.yaml
+<a id="__codelineno-35-3" name="__codelineno-35-3" href="#__codelineno-35-3"></a>mm<span class="w"> </span>cat<span class="w"> </span>photo.jpg<span class="w"> </span>-p<span class="w"> </span>~/custom.yaml<span class="w"> </span>--generate.max-tokens<span class="w"> </span><span class="m">512</span>
+</code></pre></div>
+<p>Custom pipeline paths can also be set in <code>~/.config/mm/mm.toml</code>:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-36-1" name="__codelineno-36-1" href="#__codelineno-36-1"></a><span class="k">[pipelines]</span>
+<a id="__codelineno-36-2" name="__codelineno-36-2" href="#__codelineno-36-2"></a><span class="n">image</span><span class="p">.</span><span class="n">fast</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;/path/to/my-image-fast.yaml&quot;</span>
+<a id="__codelineno-36-3" name="__codelineno-36-3" href="#__codelineno-36-3"></a><span class="n">video</span><span class="p">.</span><span class="n">accurate</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;/path/to/my-video-accurate.yaml&quot;</span>
+</code></pre></div>
+<h2 id="llm-configuration-using-profiles">LLM Configuration using Profiles<a class="headerlink" href="#llm-configuration-using-profiles" title="Permanent link">&para;</a></h2>
+<p>For accurate mode, <code>mm</code> uses the <code>openai</code> Python SDK to call any OpenAI-compatible API. Provider settings are managed through <strong>profiles</strong> — named configurations stored in <code>~/.config/mm/mm.toml</code>.</p>
+<h3 id="quick-setup">Quick setup<a class="headerlink" href="#quick-setup" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-37-1" name="__codelineno-37-1" href="#__codelineno-37-1"></a>mm<span class="w"> </span>config<span class="w"> </span>init<span class="w">                </span><span class="c1"># create config with default profile (local Ollama)</span>
+<a id="__codelineno-37-2" name="__codelineno-37-2" href="#__codelineno-37-2"></a>mm<span class="w"> </span>config<span class="w"> </span>show<span class="w">                </span><span class="c1"># show resolved config with sources</span>
+</code></pre></div>
+<h3 id="managing-profiles">Managing profiles<a class="headerlink" href="#managing-profiles" title="Permanent link">&para;</a></h3>
+<p>Each profile stores <code>base_url</code>, <code>api_key</code>, and <code>model</code>. You can have as many as you need — one per provider, one per use-case, etc.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-38-1" name="__codelineno-38-1" href="#__codelineno-38-1"></a><span class="c1"># Add custom profiles</span>
+<a id="__codelineno-38-2" name="__codelineno-38-2" href="#__codelineno-38-2"></a>mm<span class="w"> </span>profile<span class="w"> </span>add<span class="w"> </span>openai<span class="w"> </span>--base-url<span class="w"> </span>https://api.openai.com/v1<span class="w"> </span>--api-key<span class="w"> </span>sk-...<span class="w"> </span>--model<span class="w"> </span>gpt-4o
+<a id="__codelineno-38-3" name="__codelineno-38-3" href="#__codelineno-38-3"></a>mm<span class="w"> </span>profile<span class="w"> </span>add<span class="w"> </span>openrouter<span class="w"> </span>--base-url<span class="w"> </span>https://openrouter.ai/api/v1<span class="w"> </span>--model<span class="w"> </span>qwen/qwen3.5-27b
+<a id="__codelineno-38-4" name="__codelineno-38-4" href="#__codelineno-38-4"></a>
+<a id="__codelineno-38-5" name="__codelineno-38-5" href="#__codelineno-38-5"></a><span class="c1"># Update reserved profiles (ollama, gemini, vlmrun)</span>
+<a id="__codelineno-38-6" name="__codelineno-38-6" href="#__codelineno-38-6"></a>mm<span class="w"> </span>profile<span class="w"> </span>update<span class="w"> </span>ollama<span class="w"> </span>--base-url<span class="w"> </span>http://localhost:11434<span class="w"> </span>--model<span class="w"> </span>qwen3.5:9B
+<a id="__codelineno-38-7" name="__codelineno-38-7" href="#__codelineno-38-7"></a>
+<a id="__codelineno-38-8" name="__codelineno-38-8" href="#__codelineno-38-8"></a><span class="c1"># List all profiles (● = active)</span>
+<a id="__codelineno-38-9" name="__codelineno-38-9" href="#__codelineno-38-9"></a>mm<span class="w"> </span>profile<span class="w"> </span>list
+<a id="__codelineno-38-10" name="__codelineno-38-10" href="#__codelineno-38-10"></a>
+<a id="__codelineno-38-11" name="__codelineno-38-11" href="#__codelineno-38-11"></a><span class="c1"># Switch the active profile</span>
+<a id="__codelineno-38-12" name="__codelineno-38-12" href="#__codelineno-38-12"></a>mm<span class="w"> </span>profile<span class="w"> </span>use<span class="w"> </span>openai
+<a id="__codelineno-38-13" name="__codelineno-38-13" href="#__codelineno-38-13"></a>
+<a id="__codelineno-38-14" name="__codelineno-38-14" href="#__codelineno-38-14"></a><span class="c1"># Update a field on an existing profile</span>
+<a id="__codelineno-38-15" name="__codelineno-38-15" href="#__codelineno-38-15"></a>mm<span class="w"> </span>profile<span class="w"> </span>update<span class="w"> </span>openai<span class="w"> </span>--model<span class="w"> </span>gpt-4o-mini<span class="w"> </span>--api-key<span class="w"> </span>sk-new-key
+<a id="__codelineno-38-16" name="__codelineno-38-16" href="#__codelineno-38-16"></a>
+<a id="__codelineno-38-17" name="__codelineno-38-17" href="#__codelineno-38-17"></a><span class="c1"># Remove a profile (cannot remove the active one)</span>
+<a id="__codelineno-38-18" name="__codelineno-38-18" href="#__codelineno-38-18"></a>mm<span class="w"> </span>profile<span class="w"> </span>remove<span class="w"> </span>openai
+</code></pre></div>
+<h3 id="selecting-a-profile-per-command">Selecting a profile per-command<a class="headerlink" href="#selecting-a-profile-per-command" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-39-1" name="__codelineno-39-1" href="#__codelineno-39-1"></a><span class="c1"># --profile flag (one-off override, does not change active profile)</span>
+<a id="__codelineno-39-2" name="__codelineno-39-2" href="#__codelineno-39-2"></a>mm<span class="w"> </span>--profile<span class="w"> </span>openai<span class="w"> </span>cat<span class="w"> </span>photo.png<span class="w"> </span>-m<span class="w"> </span>accurate
+<a id="__codelineno-39-3" name="__codelineno-39-3" href="#__codelineno-39-3"></a>
+<a id="__codelineno-39-4" name="__codelineno-39-4" href="#__codelineno-39-4"></a><span class="c1"># Environment variable</span>
+<a id="__codelineno-39-5" name="__codelineno-39-5" href="#__codelineno-39-5"></a><span class="nv">MM_PROFILE</span><span class="o">=</span>openai<span class="w"> </span>mm<span class="w"> </span>cat<span class="w"> </span>photo.png<span class="w"> </span>-m<span class="w"> </span>accurate
+</code></pre></div>
+<h3 id="resolution-order">Resolution order<a class="headerlink" href="#resolution-order" title="Permanent link">&para;</a></h3>
+<p>Provider settings (base_url, api_key, model) come from the active profile, falling back to built-in defaults.</p>
+<p>The active profile is resolved as:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-40-1" name="__codelineno-40-1" href="#__codelineno-40-1"></a>--profile flag  &gt;  MM_PROFILE env  &gt;  active_profile in config file  &gt;  &quot;ollama&quot;
+</code></pre></div>
+<h3 id="config-file-format">Config file format<a class="headerlink" href="#config-file-format" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-41-1" name="__codelineno-41-1" href="#__codelineno-41-1"></a><span class="c1"># ~/.config/mm/mm.toml</span>
+<a id="__codelineno-41-2" name="__codelineno-41-2" href="#__codelineno-41-2"></a><span class="n">active_profile</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;ollama&quot;</span>
+<a id="__codelineno-41-3" name="__codelineno-41-3" href="#__codelineno-41-3"></a>
+<a id="__codelineno-41-4" name="__codelineno-41-4" href="#__codelineno-41-4"></a><span class="k">[profile.ollama]</span>
+<a id="__codelineno-41-5" name="__codelineno-41-5" href="#__codelineno-41-5"></a><span class="n">base_url</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;http://localhost:11434&quot;</span>
+<a id="__codelineno-41-6" name="__codelineno-41-6" href="#__codelineno-41-6"></a><span class="n">api_key</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;&quot;</span>
+<a id="__codelineno-41-7" name="__codelineno-41-7" href="#__codelineno-41-7"></a><span class="n">model</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;qwen3.5:0.8&quot;</span>
+<a id="__codelineno-41-8" name="__codelineno-41-8" href="#__codelineno-41-8"></a>
+<a id="__codelineno-41-9" name="__codelineno-41-9" href="#__codelineno-41-9"></a><span class="k">[profile.gemini]</span>
+<a id="__codelineno-41-10" name="__codelineno-41-10" href="#__codelineno-41-10"></a><span class="n">base_url</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;https://openrouter.ai/api/v1&quot;</span>
+<a id="__codelineno-41-11" name="__codelineno-41-11" href="#__codelineno-41-11"></a><span class="n">api_key</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;&lt;OPENROUTER_API_KEY&gt;&quot;</span>
+<a id="__codelineno-41-12" name="__codelineno-41-12" href="#__codelineno-41-12"></a><span class="n">model</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;google/gemini-2.5-flash-lite&quot;</span>
+<a id="__codelineno-41-13" name="__codelineno-41-13" href="#__codelineno-41-13"></a>
+<a id="__codelineno-41-14" name="__codelineno-41-14" href="#__codelineno-41-14"></a><span class="k">[profile.vlmrun]</span>
+<a id="__codelineno-41-15" name="__codelineno-41-15" href="#__codelineno-41-15"></a><span class="n">base_url</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;https://api.vlm.run/v1/openai&quot;</span>
+<a id="__codelineno-41-16" name="__codelineno-41-16" href="#__codelineno-41-16"></a><span class="n">api_key</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;&lt;VLMRUN_API_KEY&gt;&quot;</span>
+<a id="__codelineno-41-17" name="__codelineno-41-17" href="#__codelineno-41-17"></a><span class="n">model</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;Qwen/Qwen3.5-0.8B&quot;</span>
+</code></pre></div>
+<h2 id="license">License<a class="headerlink" href="#license" title="Permanent link">&para;</a></h2>
+<p>MIT</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+        
+<div class="md-social">
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://github.com/vlm-run/mm" target="_blank" rel="noopener" title="github.com" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+    </a>
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://pypi.org/project/mm-ctx/" target="_blank" rel="noopener" title="pypi.org" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.8 200.5c-7.7-30.9-22.3-54.2-53.4-54.2h-40.1v47.4c0 36.8-31.2 67.8-66.8 67.8H172.7c-29.2 0-53.4 25-53.4 54.3v101.8c0 29 25.2 46 53.4 54.3 33.8 9.9 66.3 11.7 106.8 0 26.9-7.8 53.4-23.5 53.4-54.3v-40.7H226.2v-13.6h160.2c31.1 0 42.6-21.7 53.4-54.2 11.2-33.5 10.7-65.7 0-108.6M286.2 444.7a20.4 20.4 0 1 1 0-40.7 20.4 20.4 0 1 1 0 40.7M167.8 248.1h106.8c29.7 0 53.4-24.5 53.4-54.3V91.9c0-29-24.4-50.7-53.4-55.6-35.8-5.9-74.7-5.6-106.8.1-45.2 8-53.4 24.7-53.4 55.6v40.7h106.9v13.6h-147c-31.1 0-58.3 18.7-66.8 54.2-9.8 40.7-10.2 66.1 0 108.6 7.6 31.6 25.7 54.2 56.8 54.2H101v-48.8c0-35.3 30.5-66.4 66.8-66.4m-6.6-183.4a20.4 20.4 0 1 1 0 40.8 20.4 20.4 0 1 1 0-40.8"/></svg>
+    </a>
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://discord.gg/6aqcyvPF79" target="_blank" rel="noopener" title="discord.gg" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M492.5 69.8c-.2-.3-.4-.6-.8-.7-38.1-17.5-78.4-30-119.7-37.1-.4-.1-.8 0-1.1.1s-.6.4-.8.8c-5.5 9.9-10.5 20.2-14.9 30.6-44.6-6.8-89.9-6.8-134.4 0-4.5-10.5-9.5-20.7-15.1-30.6-.2-.3-.5-.6-.8-.8s-.7-.2-1.1-.2C162.5 39 122.2 51.5 84.1 69c-.3.1-.6.4-.8.7C7.1 183.5-13.8 294.6-3.6 404.2c0 .3.1.5.2.8s.3.4.5.6c44.4 32.9 94 58 146.8 74.2.4.1.8.1 1.1 0s.7-.4.9-.7c11.3-15.4 21.4-31.8 30-48.8.1-.2.2-.5.2-.8s0-.5-.1-.8-.2-.5-.4-.6-.4-.3-.7-.4c-15.8-6.1-31.2-13.4-45.9-21.9-.3-.2-.5-.4-.7-.6s-.3-.6-.3-.9 0-.6.2-.9.3-.5.6-.7c3.1-2.3 6.2-4.7 9.1-7.1.3-.2.6-.4.9-.4s.7 0 1 .1c96.2 43.9 200.4 43.9 295.5 0 .3-.1.7-.2 1-.2s.7.2.9.4c2.9 2.4 6 4.9 9.1 7.2.2.2.4.4.6.7s.2.6.2.9-.1.6-.3.9-.4.5-.6.6c-14.7 8.6-30 15.9-45.9 21.8-.2.1-.5.2-.7.4s-.3.4-.4.7-.1.5-.1.8.1.5.2.8c8.8 17 18.8 33.3 30 48.8.2.3.6.6.9.7s.8.1 1.1 0c52.9-16.2 102.6-41.3 147.1-74.2.2-.2.4-.4.5-.6s.2-.5.2-.8c12.3-126.8-20.5-236.9-86.9-334.5zm-302 267.7c-29 0-52.8-26.6-52.8-59.2s23.4-59.2 52.8-59.2c29.7 0 53.3 26.8 52.8 59.2 0 32.7-23.4 59.2-52.8 59.2m195.4 0c-29 0-52.8-26.6-52.8-59.2s23.4-59.2 52.8-59.2c29.7 0 53.3 26.8 52.8 59.2 0 32.7-23.2 59.2-52.8 59.2"/></svg>
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": ".", "features": ["navigation.instant", "navigation.tracking", "navigation.top", "navigation.expand", "toc.follow", "content.code.copy", "content.code.annotate"], "search": "assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>

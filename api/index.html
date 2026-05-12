@@ -1,0 +1,1920 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Fast, multimodal context for agents.">
+      
+      
+      
+        <link rel="canonical" href="https://vlm-run.github.io/mm/api/">
+      
+      
+        <link rel="prev" href="../USER_GUIDE/">
+      
+      
+        <link rel="next" href="../USE_CASES/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>Python API - mm</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Geist:300,300i,400,400i,700,700i%7CGeist+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Geist";--md-code-font:"Geist Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../stylesheets/extra.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#mm-python-api" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="mm" class="md-header__button md-logo" aria-label="mm" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            mm
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Python API
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://pypi.org/project/mm-ctx/" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.8 200.5c-7.7-30.9-22.3-54.2-53.4-54.2h-40.1v47.4c0 36.8-31.2 67.8-66.8 67.8H172.7c-29.2 0-53.4 25-53.4 54.3v101.8c0 29 25.2 46 53.4 54.3 33.8 9.9 66.3 11.7 106.8 0 26.9-7.8 53.4-23.5 53.4-54.3v-40.7H226.2v-13.6h160.2c31.1 0 42.6-21.7 53.4-54.2 11.2-33.5 10.7-65.7 0-108.6M286.2 444.7a20.4 20.4 0 1 1 0-40.7 20.4 20.4 0 1 1 0 40.7M167.8 248.1h106.8c29.7 0 53.4-24.5 53.4-54.3V91.9c0-29-24.4-50.7-53.4-55.6-35.8-5.9-74.7-5.6-106.8.1-45.2 8-53.4 24.7-53.4 55.6v40.7h106.9v13.6h-147c-31.1 0-58.3 18.7-66.8 54.2-9.8 40.7-10.2 66.1 0 108.6 7.6 31.6 25.7 54.2 56.8 54.2H101v-48.8c0-35.3 30.5-66.4 66.8-66.4m-6.6-183.4a20.4 20.4 0 1 1 0 40.8 20.4 20.4 0 1 1 0-40.8"/></svg>
+  </div>
+  <div class="md-source__repository">
+    mm-ctx
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="mm" class="md-nav__button md-logo" aria-label="mm" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    mm
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://pypi.org/project/mm-ctx/" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.8 200.5c-7.7-30.9-22.3-54.2-53.4-54.2h-40.1v47.4c0 36.8-31.2 67.8-66.8 67.8H172.7c-29.2 0-53.4 25-53.4 54.3v101.8c0 29 25.2 46 53.4 54.3 33.8 9.9 66.3 11.7 106.8 0 26.9-7.8 53.4-23.5 53.4-54.3v-40.7H226.2v-13.6h160.2c31.1 0 42.6-21.7 53.4-54.2 11.2-33.5 10.7-65.7 0-108.6M286.2 444.7a20.4 20.4 0 1 1 0-40.7 20.4 20.4 0 1 1 0 40.7M167.8 248.1h106.8c29.7 0 53.4-24.5 53.4-54.3V91.9c0-29-24.4-50.7-53.4-55.6-35.8-5.9-74.7-5.6-106.8.1-45.2 8-53.4 24.7-53.4 55.6v40.7h106.9v13.6h-147c-31.1 0-58.3 18.7-66.8 54.2-9.8 40.7-10.2 66.1 0 108.6 7.6 31.6 25.7 54.2 56.8 54.2H101v-48.8c0-35.3 30.5-66.4 66.8-66.4m-6.6-183.4a20.4 20.4 0 1 1 0 40.8 20.4 20.4 0 1 1 0-40.8"/></svg>
+  </div>
+  <div class="md-source__repository">
+    mm-ctx
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../USER_GUIDE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    User guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Python API
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Python API
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#tldr" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        TL;DR
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#core-types" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Core types
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Core types">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#mmref" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        mm.Ref
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#mmuuid7-str" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        mm.uuid7() -&gt; str
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#mmrefnotfounderror" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        mm.RefNotFoundError
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#mmcontext" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        mm.Context
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="mm.Context">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ctxaddobj-roleuser-metadatanone-mmref" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ctx.add(obj, *, role="user", metadata=None) -&gt; mm.Ref
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="ctx.add(obj, *, role=&#34;user&#34;, metadata=None) -&gt; mm.Ref">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#example" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Example
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ctxgetref-str-path-pilimageimage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ctx.get(ref) -&gt; str | Path | PIL.Image.Image
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ctxremoveref-none" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ctx.remove(ref) -&gt; None
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#contextgetglobal_ref-session_idnone-dbnone-classmethod" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Context.get(global_ref, *, session_id=None, db=None) (classmethod)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ctxto_messagesformatopenai-encodersnone-listdict" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ctx.to_messages(format="openai", *, encoders=None) -&gt; list[dict]
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ctxto_mdmodemetadata-str" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ctx.to_md(mode="metadata") -&gt; str
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ctxprint_treelayoutinsertion-none" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ctx.print_tree(layout="insertion") -&gt; None
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#__repr__-markdown" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        __repr__ → markdown
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ctxsave-deferred" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ctx.save() (deferred)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#performance-architecture" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Performance architecture
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Performance architecture">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#memory-budget" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Memory budget
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#benchmarks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Benchmarks
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Benchmarks">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#rust-criterion-cratesmm-corebenchesrefsrs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Rust / Criterion — crates/mm-core/benches/refs.rs
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#python-pytest-benchmark-testspythontest_refs_api_perfpy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Python / pytest-benchmark — tests/python/test_refs_api_perf.py
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#indicative-numbers-apple-m-series-release-build" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Indicative numbers (Apple M-series, release build)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#error-types" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Error types
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#recipe-openai-chat-completion" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Recipe: OpenAI chat completion
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#recipe-gemini-generate_content" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Recipe: Gemini generate_content
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../USE_CASES/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Use cases
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ENCODERS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Encoders
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../PIPELINES/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Pipelines
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../FIXTURES/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Fixtures
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ROADMAP/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Roadmap
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_9" >
+        
+          
+          <label class="md-nav__link" for="__nav_9" id="__nav_9_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Spec
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_9">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Spec
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../spec/SPEC/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../spec/cat/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    cat
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../spec/cli-use/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CLI use
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#tldr" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        TL;DR
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#core-types" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Core types
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Core types">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#mmref" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        mm.Ref
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#mmuuid7-str" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        mm.uuid7() -&gt; str
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#mmrefnotfounderror" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        mm.RefNotFoundError
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#mmcontext" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        mm.Context
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="mm.Context">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ctxaddobj-roleuser-metadatanone-mmref" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ctx.add(obj, *, role="user", metadata=None) -&gt; mm.Ref
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="ctx.add(obj, *, role=&#34;user&#34;, metadata=None) -&gt; mm.Ref">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#example" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Example
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ctxgetref-str-path-pilimageimage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ctx.get(ref) -&gt; str | Path | PIL.Image.Image
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ctxremoveref-none" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ctx.remove(ref) -&gt; None
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#contextgetglobal_ref-session_idnone-dbnone-classmethod" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Context.get(global_ref, *, session_id=None, db=None) (classmethod)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ctxto_messagesformatopenai-encodersnone-listdict" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ctx.to_messages(format="openai", *, encoders=None) -&gt; list[dict]
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ctxto_mdmodemetadata-str" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ctx.to_md(mode="metadata") -&gt; str
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ctxprint_treelayoutinsertion-none" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ctx.print_tree(layout="insertion") -&gt; None
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#__repr__-markdown" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        __repr__ → markdown
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ctxsave-deferred" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ctx.save() (deferred)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#performance-architecture" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Performance architecture
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Performance architecture">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#memory-budget" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Memory budget
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#benchmarks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Benchmarks
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Benchmarks">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#rust-criterion-cratesmm-corebenchesrefsrs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Rust / Criterion — crates/mm-core/benches/refs.rs
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#python-pytest-benchmark-testspythontest_refs_api_perfpy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Python / pytest-benchmark — tests/python/test_refs_api_perf.py
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#indicative-numbers-apple-m-series-release-build" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Indicative numbers (Apple M-series, release build)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#error-types" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Error types
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#recipe-openai-chat-completion" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Recipe: OpenAI chat completion
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#recipe-gemini-generate_content" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Recipe: Gemini generate_content
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="mm-python-api">mm Python API<a class="headerlink" href="#mm-python-api" title="Permanent link">&para;</a></h1>
+<p><code>mm.Context</code> is the main entry point for building a multimodal prompt
+incrementally, then handing the whole thing to a VLM. This doc covers
+the public Python surface; under the hood everything runs through the
+Rust <a href="../crates/mm-python/src/refs.rs"><code>_mm.PyContext</code></a> core so memory
+is compact and insert/lookup/render is sub-millisecond at 10K items.</p>
+<blockquote>
+<p>Looking for the directory-scan surface (<code>Context("~/data")</code> +
+<code>to_polars</code>/<code>sql</code>/<code>show</code>)? That mode is preserved unchanged — see
+<a href="../USER_GUIDE/">USER_GUIDE.md</a>. This doc is about the new
+<strong>incremental role-aware</strong> mode.</p>
+</blockquote>
+<h2 id="tldr">TL;DR<a class="headerlink" href="#tldr" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">mm</span>
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="kn">from</span><span class="w"> </span><span class="nn">PIL</span><span class="w"> </span><span class="kn">import</span> <span class="n">Image</span>
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="n">ctx</span> <span class="o">=</span> <span class="n">mm</span><span class="o">.</span><span class="n">Context</span><span class="p">(</span><span class="n">session_id</span><span class="o">=</span><span class="n">mm</span><span class="o">.</span><span class="n">uuid7</span><span class="p">())</span>          <span class="c1"># or omit; auto-mints a UUIDv7</span>
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="n">sys</span><span class="p">:</span>  <span class="n">mm</span><span class="o">.</span><span class="n">Ref</span> <span class="o">=</span> <span class="n">ctx</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="s2">&quot;You are a terse visual analyst.&quot;</span><span class="p">,</span> <span class="n">role</span><span class="o">=</span><span class="s2">&quot;system&quot;</span><span class="p">)</span>
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a><span class="n">txt</span><span class="p">:</span>  <span class="n">mm</span><span class="o">.</span><span class="n">Ref</span> <span class="o">=</span> <span class="n">ctx</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="s2">&quot;Summarize these assets.&quot;</span><span class="p">,</span> <span class="n">role</span><span class="o">=</span><span class="s2">&quot;user&quot;</span><span class="p">)</span>
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a><span class="n">img</span><span class="p">:</span>  <span class="n">mm</span><span class="o">.</span><span class="n">Ref</span> <span class="o">=</span> <span class="n">ctx</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="s2">&quot;photo.jpg&quot;</span><span class="p">),</span> <span class="n">role</span><span class="o">=</span><span class="s2">&quot;user&quot;</span><span class="p">)</span>
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a><span class="n">img2</span><span class="p">:</span> <span class="n">mm</span><span class="o">.</span><span class="n">Ref</span> <span class="o">=</span> <span class="n">ctx</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">Image</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="s2">&quot;x.png&quot;</span><span class="p">),</span> <span class="n">role</span><span class="o">=</span><span class="s2">&quot;user&quot;</span><span class="p">,</span>
+<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>                       <span class="n">metadata</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;note&quot;</span><span class="p">:</span> <span class="s2">&quot;product hero shot&quot;</span><span class="p">})</span>
+<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a><span class="n">doc</span><span class="p">:</span>  <span class="n">mm</span><span class="o">.</span><span class="n">Ref</span> <span class="o">=</span> <span class="n">ctx</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="s2">&quot;paper.pdf&quot;</span><span class="p">),</span> <span class="n">role</span><span class="o">=</span><span class="s2">&quot;user&quot;</span><span class="p">,</span>
+<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>                       <span class="n">metadata</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;summary&quot;</span><span class="p">:</span> <span class="s2">&quot;Attention is all you need&quot;</span><span class="p">,</span>
+<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>                                 <span class="s2">&quot;tags&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;nlp&quot;</span><span class="p">,</span> <span class="s2">&quot;transformer&quot;</span><span class="p">]})</span>
+<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a><span class="n">vid</span><span class="p">:</span>  <span class="n">mm</span><span class="o">.</span><span class="n">Ref</span> <span class="o">=</span> <span class="n">ctx</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="s2">&quot;clip.mp4&quot;</span><span class="p">),</span> <span class="n">role</span><span class="o">=</span><span class="s2">&quot;user&quot;</span><span class="p">,</span>
+<a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>                       <span class="n">metadata</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;scene&quot;</span><span class="p">:</span> <span class="mi">3</span><span class="p">,</span> <span class="s2">&quot;actor&quot;</span><span class="p">:</span> <span class="s2">&quot;A&quot;</span><span class="p">})</span>
+<a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a>
+<a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a><span class="kn">from</span><span class="w"> </span><span class="nn">openai.types.chat</span><span class="w"> </span><span class="kn">import</span> <span class="n">ChatCompletionMessageParam</span>
+<a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a><span class="kn">from</span><span class="w"> </span><span class="nn">google.genai</span><span class="w"> </span><span class="kn">import</span> <span class="n">types</span> <span class="k">as</span> <span class="n">genai_types</span>
+<a id="__codelineno-0-20" name="__codelineno-0-20" href="#__codelineno-0-20"></a>
+<a id="__codelineno-0-21" name="__codelineno-0-21" href="#__codelineno-0-21"></a><span class="n">messages_openai</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">ChatCompletionMessageParam</span><span class="p">]</span> <span class="o">=</span> <span class="n">ctx</span><span class="o">.</span><span class="n">to_messages</span><span class="p">(</span><span class="nb">format</span><span class="o">=</span><span class="s2">&quot;openai&quot;</span><span class="p">)</span>
+<a id="__codelineno-0-22" name="__codelineno-0-22" href="#__codelineno-0-22"></a><span class="n">messages_gemini</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">genai_types</span><span class="o">.</span><span class="n">ContentDict</span><span class="p">]</span>    <span class="o">=</span> <span class="n">ctx</span><span class="o">.</span><span class="n">to_messages</span><span class="p">(</span><span class="nb">format</span><span class="o">=</span><span class="s2">&quot;gemini&quot;</span><span class="p">)</span>
+<a id="__codelineno-0-23" name="__codelineno-0-23" href="#__codelineno-0-23"></a>
+<a id="__codelineno-0-24" name="__codelineno-0-24" href="#__codelineno-0-24"></a><span class="n">obj</span> <span class="o">=</span> <span class="n">ctx</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">img</span><span class="p">)</span>                               <span class="c1"># str | Path | PIL.Image.Image</span>
+<a id="__codelineno-0-25" name="__codelineno-0-25" href="#__codelineno-0-25"></a><span class="n">row</span> <span class="o">=</span> <span class="n">mm</span><span class="o">.</span><span class="n">Context</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">ctx</span><span class="o">.</span><span class="n">session_id</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">img</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>  <span class="c1"># cross-session DB lookup</span>
+<a id="__codelineno-0-26" name="__codelineno-0-26" href="#__codelineno-0-26"></a>
+<a id="__codelineno-0-27" name="__codelineno-0-27" href="#__codelineno-0-27"></a><span class="n">ctx</span><span class="o">.</span><span class="n">print_tree</span><span class="p">()</span>                                 <span class="c1"># T4 tree with metadata</span>
+<a id="__codelineno-0-28" name="__codelineno-0-28" href="#__codelineno-0-28"></a><span class="nb">print</span><span class="p">(</span><span class="n">ctx</span><span class="o">.</span><span class="n">to_md</span><span class="p">(</span><span class="n">mode</span><span class="o">=</span><span class="s2">&quot;metadata&quot;</span><span class="p">))</span>                <span class="c1"># markdown table w/ cat content</span>
+<a id="__codelineno-0-29" name="__codelineno-0-29" href="#__codelineno-0-29"></a><span class="nb">print</span><span class="p">(</span><span class="nb">repr</span><span class="p">(</span><span class="n">ctx</span><span class="p">))</span>                                 <span class="c1"># markdown __repr__</span>
+</code></pre></div>
+<h2 id="core-types">Core types<a class="headerlink" href="#core-types" title="Permanent link">&para;</a></h2>
+<h3 id="mmref"><code>mm.Ref</code><a class="headerlink" href="#mmref" title="Permanent link">&para;</a></h3>
+<p>A typed alias for ref id strings. Runtime is just <code>str</code>; IDEs and mypy
+see a distinct type thanks to <code>typing.Annotated</code>.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Annotated</span>
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="n">Ref</span> <span class="o">=</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="s2">&quot;mm.Ref&quot;</span><span class="p">]</span>   <span class="c1"># e.g. &quot;img_a1b2c3&quot;</span>
+</code></pre></div>
+<h3 id="mmuuid7-str"><code>mm.uuid7() -&gt; str</code><a class="headerlink" href="#mmuuid7-str" title="Permanent link">&para;</a></h3>
+<p>Canonical UUIDv7 (time-ordered) in the hyphenated form
+<code>xxxxxxxx-xxxx-7xxx-Nxxx-xxxxxxxxxxxx</code>. Python 3.12's stdlib <code>uuid</code>
+doesn't ship <code>uuid7</code>, so <code>mm</code> provides its own — implemented in Rust
+(see <code>crates/mm-core/src/refs.rs</code>). Preferred default for new session
+ids because two uuids compared lexicographically sort in creation
+order.</p>
+<h3 id="mmrefnotfounderror"><code>mm.RefNotFoundError</code><a class="headerlink" href="#mmrefnotfounderror" title="Permanent link">&para;</a></h3>
+<p><code>KeyError</code> subclass raised by <code>ctx.get(ref)</code> on miss. The message is
+an agent-friendly markdown table: closest-match suggestion (Levenshtein
+distance ≤ 4 within the same kind) followed by the full context's ref
+listing.</p>
+<h2 id="mmcontext"><code>mm.Context</code><a class="headerlink" href="#mmcontext" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="n">Context</span><span class="p">(</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>    <span class="n">root</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">Path</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>    <span class="o">*</span><span class="p">,</span>
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>    <span class="n">session_id</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>    <span class="c1"># ...directory-scan-only kwargs (n_threads, no_ignore, …) elided</span>
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="p">)</span>
+</code></pre></div>
+<ul>
+<li><strong>Incremental mode</strong> (the one this doc covers): pass no <code>root</code>. A
+  fresh <code>session_id</code> is minted via <code>mm.uuid7()</code> when omitted.</li>
+<li><strong>Directory-scan mode</strong>: pass a <code>root</code> path to get the legacy
+  Arrow-backed scan surface. Both modes share <code>session_id</code> + <code>refs</code>.</li>
+</ul>
+<h3 id="ctxaddobj-roleuser-metadatanone-mmref"><code>ctx.add(obj, *, role="user", metadata=None) -&gt; mm.Ref</code><a class="headerlink" href="#ctxaddobj-roleuser-metadatanone-mmref" title="Permanent link">&para;</a></h3>
+<p>Attach an item. Accepted types:</p>
+<table>
+<thead>
+<tr>
+<th>Input</th>
+<th>Stored as</th>
+<th><code>get()</code> returns</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>str</code></td>
+<td><code>ItemSource::InMemory</code></td>
+<td>the same <code>str</code></td>
+</tr>
+<tr>
+<td><code>pathlib.Path</code></td>
+<td><code>ItemSource::Path</code></td>
+<td>new <code>pathlib.Path</code></td>
+</tr>
+<tr>
+<td><code>PIL.Image.Image</code></td>
+<td><code>ItemSource::InMemory</code></td>
+<td><strong>the exact object</strong></td>
+</tr>
+</tbody>
+</table>
+<p>Strings are always treated as free-form text and inlined into
+<code>to_messages()</code>. Path-like strings and URL-looking strings are not
+resolved or fetched; use <code>Path("file.ext")</code> for on-disk files.</p>
+<p><code>role</code> is one of <code>"system"</code>, <code>"developer"</code>, or <code>"user"</code>. Strings can use
+any role. <code>Path</code> and <code>PIL.Image.Image</code> currently require <code>role="user"</code>
+because multimodal system/developer messages are not portable across
+providers.</p>
+<p><code>metadata</code> is a single optional JSON-serialisable <code>dict</code> holding any
+extra context you want to ride along with the item. Common keys by
+convention:</p>
+<ul>
+<li><code>note</code> — short human-readable note.</li>
+<li><code>summary</code> — longer summary / caption. Used as the "pre-extracted"
+  content fallback in <code>to_md(mode="metadata")</code>.</li>
+<li><code>tags</code> — free-form list of strings.</li>
+<li>…plus anything else your pipeline needs (<code>{"scene": 3, "actor": "A"}</code>).</li>
+</ul>
+<p>The dict is emitted as a leading text block per item in <code>to_messages</code>
+so VLMs see it inline, and is also surfaced in <code>__repr__</code>, <code>to_md</code>,
+and <code>print_tree</code>.</p>
+<p>Returns the generated ref id (<code>&lt;prefix&gt;_&lt;6 hex&gt;</code>), typed as <code>mm.Ref</code>.</p>
+<h4 id="example">Example<a class="headerlink" href="#example" title="Permanent link">&para;</a></h4>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="n">text</span> <span class="o">=</span> <span class="n">ctx</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="s2">&quot;Compare the image and document below.&quot;</span><span class="p">,</span> <span class="n">role</span><span class="o">=</span><span class="s2">&quot;user&quot;</span><span class="p">)</span>
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="n">img</span> <span class="o">=</span> <span class="n">ctx</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="s2">&quot;photo.jpg&quot;</span><span class="p">),</span> <span class="n">role</span><span class="o">=</span><span class="s2">&quot;user&quot;</span><span class="p">,</span> <span class="n">metadata</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;note&quot;</span><span class="p">:</span> <span class="s2">&quot;hero shot&quot;</span><span class="p">})</span>
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="n">doc</span> <span class="o">=</span> <span class="n">ctx</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="s2">&quot;paper.pdf&quot;</span><span class="p">),</span> <span class="n">role</span><span class="o">=</span><span class="s2">&quot;user&quot;</span><span class="p">,</span>
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>              <span class="n">metadata</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;summary&quot;</span><span class="p">:</span> <span class="s2">&quot;Attention is all you need&quot;</span><span class="p">,</span>
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>                        <span class="s2">&quot;tags&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;nlp&quot;</span><span class="p">,</span> <span class="s2">&quot;transformer&quot;</span><span class="p">]})</span>
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a><span class="n">vid</span> <span class="o">=</span> <span class="n">ctx</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="s2">&quot;clip.mp4&quot;</span><span class="p">),</span> <span class="n">role</span><span class="o">=</span><span class="s2">&quot;user&quot;</span><span class="p">,</span> <span class="n">metadata</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;scene&quot;</span><span class="p">:</span> <span class="mi">3</span><span class="p">})</span>
+</code></pre></div>
+<h3 id="ctxgetref-str-path-pilimageimage"><code>ctx.get(ref) -&gt; str | Path | PIL.Image.Image</code><a class="headerlink" href="#ctxgetref-str-path-pilimageimage" title="Permanent link">&para;</a></h3>
+<p>Local lookup by ref. Accepts a bare ref (<code>"img_a1b2c3"</code>) or a global
+ref (<code>"&lt;session_id&gt;/&lt;ref_id&gt;"</code>); the session segment must match this
+context's <code>session_id</code>.</p>
+<ul>
+<li>Free-form text returns the same <code>str</code>.</li>
+<li>Path-backed items return a freshly-constructed <code>pathlib.Path</code>.</li>
+<li>In-memory PIL images return the <strong>exact Python object</strong> that was added
+  (no copy, no rehydrate — identity is preserved).</li>
+</ul>
+<p>Raises <code>RefNotFoundError</code> on miss. The error message prints the full
+ref table + a "did you mean" suggestion:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>RefNotFoundError: ref &#39;img_a1b2cZ&#39; not found in session 019da4…. Did you mean: img_a1b2c3?
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>Available refs:
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>Context(session=019da4…, items=3)
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>
+<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>| ref        | role | kind  | source                |
+<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>|------------|------|-------|-----------------------|
+<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a>| img_a1b2c3 | user | image | /abs/path/photo.jpg   |
+<a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a>| doc_d4e5f6 | user | doc   | /abs/path/paper.pdf   |
+<a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a>| vid_7890ab | user | video | /abs/path/clip.mp4    |
+</code></pre></div>
+<h3 id="ctxremoveref-none"><code>ctx.remove(ref) -&gt; None</code><a class="headerlink" href="#ctxremoveref-none" title="Permanent link">&para;</a></h3>
+<p>Remove an item by bare ref (<code>"img_a1b2c3"</code>) or matching global ref
+(<code>"&lt;session_id&gt;/&lt;ref_id&gt;"</code>). Raises <code>RefNotFoundError</code> on miss and
+<code>ValueError</code> when the global ref belongs to a different session.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="n">ref</span> <span class="o">=</span> <span class="n">ctx</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="s2">&quot;photo.jpg&quot;</span><span class="p">))</span>
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="n">ctx</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">ref</span><span class="p">)</span>
+</code></pre></div>
+<h3 id="contextgetglobal_ref-session_idnone-dbnone-classmethod"><code>Context.get(global_ref, *, session_id=None, db=None)</code> (classmethod)<a class="headerlink" href="#contextgetglobal_ref-session_idnone-dbnone-classmethod" title="Permanent link">&para;</a></h3>
+<p>Cross-session resolver. Parses a <code>"&lt;session&gt;/&lt;ref&gt;"</code> global ref (or
+accepts a bare ref + <code>session_id=...</code>) and returns the <code>files</code> row dict
+from the global <code>~/.local/share/mm/mm.db</code>, or <code>None</code> on miss.</p>
+<p>Use this when you have a ref from a persisted context and no live
+<code>Context</code> instance. Replaces the (still-supported) legacy
+<code>Context.resolve()</code>.</p>
+<h3 id="ctxto_messagesformatopenai-encodersnone-listdict"><code>ctx.to_messages(format="openai", *, encoders=None) -&gt; list[dict]</code><a class="headerlink" href="#ctxto_messagesformatopenai-encodersnone-listdict" title="Permanent link">&para;</a></h3>
+<p>Encode every item into a role-aware message list, ready to drop
+into the respective SDK call. The returned shape is a plain Python
+list of dicts, typed to match the target SDK:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">openai.types.chat</span><span class="w"> </span><span class="kn">import</span> <span class="n">ChatCompletionMessageParam</span>
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">google.genai</span><span class="w"> </span><span class="kn">import</span> <span class="n">types</span> <span class="k">as</span> <span class="n">genai_types</span>
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="n">messages_openai</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">ChatCompletionMessageParam</span><span class="p">]</span> <span class="o">=</span> <span class="n">ctx</span><span class="o">.</span><span class="n">to_messages</span><span class="p">(</span><span class="nb">format</span><span class="o">=</span><span class="s2">&quot;openai&quot;</span><span class="p">)</span>
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a><span class="n">messages_gemini</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">genai_types</span><span class="o">.</span><span class="n">ContentDict</span><span class="p">]</span>    <span class="o">=</span> <span class="n">ctx</span><span class="o">.</span><span class="n">to_messages</span><span class="p">(</span><span class="nb">format</span><span class="o">=</span><span class="s2">&quot;gemini&quot;</span><span class="p">)</span>
+</code></pre></div>
+<ul>
+<li><code>format="openai"</code> → one message per consecutive role run, e.g.
+  <code>[{"role": "system", ...}, {"role": "developer", ...}, {"role": "user", ...}]</code>.</li>
+<li><code>format="gemini"</code> → <code>[{"role": "user", "parts": [{"inline_data": …}, {"text": …}]}]</code>
+  — non-user roles are folded into labelled text parts because Gemini role semantics differ.</li>
+</ul>
+<p>Per-kind encoder overrides:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="n">messages</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">ChatCompletionMessageParam</span><span class="p">]</span> <span class="o">=</span> <span class="n">ctx</span><span class="o">.</span><span class="n">to_messages</span><span class="p">(</span>
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>    <span class="nb">format</span><span class="o">=</span><span class="s2">&quot;openai&quot;</span><span class="p">,</span>
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>    <span class="n">encoders</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;image&quot;</span><span class="p">:</span> <span class="s2">&quot;tile&quot;</span><span class="p">,</span> <span class="s2">&quot;video&quot;</span><span class="p">:</span> <span class="s2">&quot;mosaic&quot;</span><span class="p">},</span>
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a><span class="p">)</span>
+</code></pre></div>
+<p>Unspecified kinds use sensible defaults (<code>image-resize</code>,
+<code>video-frames</code>, <code>document-rasterize</code>). Encoder names come from
+the <code>mm.encoders</code> registry — see <code>--list-encoders</code>.</p>
+<p>User metadata is emitted as a leading text part per item
+(<code>[ref=&lt;id&gt;] note: &lt;text&gt;</code>), so VLMs see your context inline.</p>
+<h3 id="ctxto_mdmodemetadata-str"><code>ctx.to_md(mode="metadata") -&gt; str</code><a class="headerlink" href="#ctxto_mdmodemetadata-str" title="Permanent link">&para;</a></h3>
+<p>Markdown table with one row per ref: <code>ref | role | kind | source | content</code>.
+<code>mode="metadata"</code> populates each row with the metadata-tier content
+(<code>files.text_preview</code> — produced by <code>extract_meta</code>; no LLM call) for
+non-text kinds, and raw text for code/text files. (Mirrors what the CLI's
+<code>mm peek</code> surfaces locally for binary kinds — same source data.)</p>
+<p><code>mode="fast"</code> and <code>mode="accurate"</code> are reserved for the LLM-backed
+pipelines and currently raise <code>NotImplementedError</code>.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="nb">print</span><span class="p">(</span><span class="n">ctx</span><span class="o">.</span><span class="n">to_md</span><span class="p">())</span>
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="c1"># | ref        | role | kind  | source              | content                              |</span>
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="c1"># |------------|------|-------|---------------------|--------------------------------------|</span>
+<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a><span class="c1"># | img_a1b2c3 | user | image | /abs/path/photo.jpg | 3024×4032, jpeg, EXIF: Canon EOS…    |</span>
+<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a><span class="c1"># | doc_d4e5f6 | user | doc   | /abs/path/paper.pdf | # Title…\n## Abstract…               |</span>
+</code></pre></div>
+<h3 id="ctxprint_treelayoutinsertion-none"><code>ctx.print_tree(layout="insertion") -&gt; None</code><a class="headerlink" href="#ctxprint_treelayoutinsertion-none" title="Permanent link">&para;</a></h3>
+<p>Print a <a href="https://rich.readthedocs.io/en/stable/tree.html"><code>rich.Tree</code></a>
+rendering of the context. The default <code>"insertion"</code> layout (T4) shows
+items in insertion order with metadata on sub-branches — best for the
+"build a prompt incrementally" workflow where metadata is the whole
+point.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>Context(session=019da4…, items=5)
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>├── [1] img_a1b2c3  user  image  /abs/path/photo.jpg
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>├── [2] img_9f0e12  user  image  PIL.Image(RGB, 1024×768)
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>│        └─ note: &quot;product hero shot&quot;
+<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>├── [3] doc_d4e5f6  user  document  /abs/path/paper.pdf
+<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a>│        ├─ summary: &quot;Attention is all you need&quot;
+<a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a>│        └─ tags: [nlp, transformer]
+<a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a>├── [4] vid_7890ab  user  video  /abs/path/clip.mp4
+<a id="__codelineno-9-9" name="__codelineno-9-9" href="#__codelineno-9-9"></a>│        └─ metadata: {&quot;scene&quot;: 3, &quot;actor&quot;: &quot;A&quot;}
+<a id="__codelineno-9-10" name="__codelineno-9-10" href="#__codelineno-9-10"></a>└── [5] txt_111222  system  text  You are concise.
+</code></pre></div>
+<p>Other layouts are declared in the docstring so they're discoverable,
+but raise <code>NotImplementedError</code> for now:</p>
+<ul>
+<li><code>"paths"</code> — directory hierarchy with refs on the right. [TODO]</li>
+<li><code>"kind"</code> — grouped by kind (images, documents, videos, …). [TODO]</li>
+<li><code>"flat"</code> — ref-first flat list. [TODO; likely ships as
+  <code>print_table()</code> instead of a tree]</li>
+<li><code>"hybrid"</code> — paths + per-item dim metadata line. [TODO]</li>
+</ul>
+<h3 id="__repr__-markdown"><code>__repr__</code> → markdown<a class="headerlink" href="#__repr__-markdown" title="Permanent link">&para;</a></h3>
+<p><code>repr(ctx)</code> returns a markdown summary: <code>session_id</code>, item count, and
+the <code>ref | role | kind | source</code> table. Works well in Jupyter / doc snippets
+and doubles as the body of <code>RefNotFoundError</code>.</p>
+<h3 id="ctxsave-deferred"><code>ctx.save()</code> (deferred)<a class="headerlink" href="#ctxsave-deferred" title="Permanent link">&para;</a></h3>
+<p>Not implemented for role-aware contexts. Planned behaviour:</p>
+<ul>
+<li>Write <code>(session_id, ref_id, role, kind, uri, content_hash, metadata)</code> to
+  the <code>files</code> table in <code>~/.local/share/mm/mm.db</code>.</li>
+<li>For in-memory objects, spool to a content-addressed cache directory
+  <code>~/.local/share/mm/blobs/&lt;xxh3&gt;.&lt;ext&gt;</code> and record the blob URI.</li>
+<li>Make <code>Context.get("&lt;session&gt;/&lt;ref&gt;")</code> resolve via the DB across
+  processes.</li>
+<li>Idempotent on repeat calls for the same <code>(session_id, ref_id)</code>.</li>
+</ul>
+<p>Directory-scan <code>Context(root)</code> retains its existing <code>save()</code> (writes
+the Arrow table to the global DB).</p>
+<h2 id="performance-architecture">Performance architecture<a class="headerlink" href="#performance-architecture" title="Permanent link">&para;</a></h2>
+<p>The hot path is Rust. Python is a thin façade.</p>
+<ul>
+<li><strong><code>crates/mm-core/src/refs.rs</code></strong> owns <code>RefId</code>, <code>Kind</code>, <code>Item</code>,
+  <code>ItemSource</code>, <code>Context</code> (Rust struct), <code>make_ref_id</code>, <code>uuid7</code>.</li>
+<li><code>RefId</code> = <code>CompactString</code> — the canonical <code>&lt;prefix&gt;_&lt;6 hex&gt;</code>
+    shape fits inside the 24-byte inline SSO buffer, so refs never
+    heap-allocate on the hot path.</li>
+<li><code>Item</code> = <code>{ ref_id, kind, source, metadata: Option&lt;Box&lt;MetaMap&gt;&gt; }</code>.
+    Items without user metadata pay only one pointer's worth of memory
+    and zero allocations.</li>
+<li><code>by_ref: HashMap&lt;RefId, u32&gt;</code> gives O(1) ref→index lookup.</li>
+<li><strong><code>crates/mm-python/src/refs.rs</code></strong> exposes <code>PyContext</code> and keeps
+  in-memory Python objects alive in a parallel <code>Vec&lt;Option&lt;Py&lt;PyAny&gt;&gt;&gt;</code>
+  indexed by item position. That's why <code>ctx.get(ref)</code> returns the
+  exact object the caller passed to <code>ctx.add</code> — no copy, no rehydrate.</li>
+<li><strong>Rendering</strong> (<code>__repr__</code>, <code>print_tree</code>, <code>to_md</code> table assembly,
+  <code>RefNotFoundError</code> message, "did you mean" Levenshtein search) all
+  happen in Rust, so Python only pays one FFI boundary crossing to get
+  a ready-to-print string.</li>
+</ul>
+<h3 id="memory-budget">Memory budget<a class="headerlink" href="#memory-budget" title="Permanent link">&para;</a></h3>
+<p>Per item, excluding the user's stored object:</p>
+<ul>
+<li>path-backed: ~56 bytes;</li>
+<li>in-memory text/PIL: ~64 bytes + one <code>Py&lt;PyAny&gt;</code> refcount bump.</li>
+</ul>
+<p>A 10K-item context without metadata fits in &lt; 1 MB on the Rust side.</p>
+<h2 id="benchmarks">Benchmarks<a class="headerlink" href="#benchmarks" title="Permanent link">&para;</a></h2>
+<p>Two complementary suites keep the hot path honest:</p>
+<h3 id="rust-criterion-cratesmm-corebenchesrefsrs">Rust / Criterion — <code>crates/mm-core/benches/refs.rs</code><a class="headerlink" href="#rust-criterion-cratesmm-corebenchesrefsrs" title="Permanent link">&para;</a></h3>
+<p>Pure-Rust, no PyO3 boundary. Targets the <code>mm_core::refs::Context</code>
+primitives.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>cargo<span class="w"> </span>bench<span class="w"> </span>-p<span class="w"> </span>mm-core<span class="w"> </span>--bench<span class="w"> </span>refs
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a><span class="c1"># Or target a group:</span>
+<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>cargo<span class="w"> </span>bench<span class="w"> </span>-p<span class="w"> </span>mm-core<span class="w"> </span>--bench<span class="w"> </span>refs<span class="w"> </span>--<span class="w"> </span>refs/add_path
+<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>cargo<span class="w"> </span>bench<span class="w"> </span>-p<span class="w"> </span>mm-core<span class="w"> </span>--bench<span class="w"> </span>refs<span class="w"> </span>--<span class="w"> </span>refs/get
+<a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a>cargo<span class="w"> </span>bench<span class="w"> </span>-p<span class="w"> </span>mm-core<span class="w"> </span>--bench<span class="w"> </span>refs<span class="w"> </span>--<span class="w"> </span>refs/render
+<a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a>cargo<span class="w"> </span>bench<span class="w"> </span>-p<span class="w"> </span>mm-core<span class="w"> </span>--bench<span class="w"> </span>refs<span class="w"> </span>--<span class="w"> </span>refs/ref_not_found
+<a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a>cargo<span class="w"> </span>bench<span class="w"> </span>-p<span class="w"> </span>mm-core<span class="w"> </span>--bench<span class="w"> </span>refs<span class="w"> </span>--<span class="w"> </span>refs/mixed
+</code></pre></div>
+<p>Coverage:</p>
+<table>
+<thead>
+<tr>
+<th>Group</th>
+<th>Scales</th>
+<th>What it measures</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>refs/make_ref_id/{kind}</code></td>
+<td>per-kind</td>
+<td>ID generation (<code>OsRng</code> + base36 encode)</td>
+</tr>
+<tr>
+<td><code>refs/uuid7</code></td>
+<td>—</td>
+<td><code>mm.uuid7()</code> generation latency</td>
+</tr>
+<tr>
+<td><code>refs/add_path</code></td>
+<td>100 / 1K / 10K / 100K</td>
+<td>Path-backed <code>add</code> throughput</td>
+</tr>
+<tr>
+<td><code>refs/add_inmem</code></td>
+<td>1K / 10K</td>
+<td>In-memory (PIL) <code>add</code> throughput</td>
+</tr>
+<tr>
+<td><code>refs/add_with_metadata</code></td>
+<td>1K / 10K</td>
+<td>Same, with <code>note</code>+<code>summary</code>+<code>tags</code> populated</td>
+</tr>
+<tr>
+<td><code>refs/get_hit</code></td>
+<td>1K / 10K / 100K</td>
+<td><code>by_ref: HashMap</code> lookup (realistic hit)</td>
+</tr>
+<tr>
+<td><code>refs/get_miss</code></td>
+<td>1K / 10K</td>
+<td>Miss — short-circuits before suggestion</td>
+</tr>
+<tr>
+<td><code>refs/render_tree_insertion</code></td>
+<td>100 / 1K / 10K</td>
+<td>Rust tree rendering (excludes Rich)</td>
+</tr>
+<tr>
+<td><code>refs/render_tree_insertion_with_meta</code></td>
+<td>1K</td>
+<td>Same, with 3 metadata branches per item</td>
+</tr>
+<tr>
+<td><code>refs/repr_markdown</code></td>
+<td>100 / 1K / 10K</td>
+<td><code>repr(ctx)</code> table generation</td>
+</tr>
+<tr>
+<td><code>refs/to_md_with_contents</code></td>
+<td>1K</td>
+<td><code>to_md()</code> rendering given pre-extracted text</td>
+</tr>
+<tr>
+<td><code>refs/ref_not_found_message</code></td>
+<td>100 / 1K / 10K</td>
+<td>Full <code>RefNotFoundError</code> body (typo shape)</td>
+</tr>
+<tr>
+<td><code>refs/closest_ref_10k</code></td>
+<td>10K</td>
+<td>Levenshtein-across-all-prefix-matching-refs</td>
+</tr>
+<tr>
+<td><code>refs/mixed_add_get_render</code></td>
+<td>1K / 10K</td>
+<td>Agent-loop shape (add→get→repr→tree)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="python-pytest-benchmark-testspythontest_refs_api_perfpy">Python / pytest-benchmark — <code>tests/python/test_refs_api_perf.py</code><a class="headerlink" href="#python-pytest-benchmark-testspythontest_refs_api_perfpy" title="Permanent link">&para;</a></h3>
+<p>Full PyO3 round-trip (Python → Rust → Python). Marked
+<code>pytest.mark.slow</code> so the default <code>make test-python</code> stays fast; run
+via <code>make test-python-full</code> or:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>pytest<span class="w"> </span>tests/python/test_refs_api_perf.py<span class="w"> </span>-m<span class="w"> </span>slow
+<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>pytest<span class="w"> </span>tests/python/test_refs_api_perf.py<span class="w"> </span>-m<span class="w"> </span>slow<span class="w"> </span>--benchmark-only
+<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a>pytest<span class="w"> </span>tests/python/test_refs_api_perf.py<span class="w"> </span>-m<span class="w"> </span>slow<span class="w"> </span>--benchmark-disable<span class="w">  </span><span class="c1"># budgets only</span>
+</code></pre></div>
+<p>Two classes of tests live here:</p>
+<ol>
+<li><code>TestBench*</code> — <code>pytest-benchmark</code> micro-benches for
+   <code>add</code> (path / PIL / + metadata), <code>get</code> (hit / miss),
+   <code>print_tree</code>, <code>repr</code>, <code>to_md</code>, <code>to_messages</code> (openai + gemini),
+   <code>uuid7</code>, and <code>RefNotFoundError</code> construction.</li>
+<li>Latency-budget regression guards (<code>test_*_under_budget</code>) that fail
+   fast if a change pushes the Python-bound path past its budget. Each
+   budget is overridable via an env var (see docstring at the top of
+   the file).</li>
+</ol>
+<h3 id="indicative-numbers-apple-m-series-release-build">Indicative numbers (Apple M-series, release build)<a class="headerlink" href="#indicative-numbers-apple-m-series-release-build" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Operation</th>
+<th>Median</th>
+<th>Throughput</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ctx.get(ref)</code> hit, 10K-item context</td>
+<td><strong>~800ns</strong></td>
+<td>~1.2 M ops/s</td>
+</tr>
+<tr>
+<td><code>mm.uuid7()</code></td>
+<td>~1.3 µs</td>
+<td>~770 K ops/s</td>
+</tr>
+<tr>
+<td><code>new_session_id()</code></td>
+<td>~1.3 µs</td>
+<td>~770 K ops/s</td>
+</tr>
+<tr>
+<td><code>ctx.add(Path)</code>, amortised</td>
+<td>~32 µs</td>
+<td>~31 K adds/s</td>
+</tr>
+<tr>
+<td><code>ctx.add(PIL.Image)</code>, amortised</td>
+<td>~7 µs</td>
+<td>~140 K adds/s</td>
+</tr>
+<tr>
+<td><code>repr(ctx)</code> @ 10K items</td>
+<td>~3 ms</td>
+<td>—</td>
+</tr>
+<tr>
+<td><code>ctx.print_tree()</code> @ 10K items</td>
+<td>~930 ms*</td>
+<td>—</td>
+</tr>
+<tr>
+<td><code>RefNotFoundError</code> msg @ 10K items</td>
+<td>~11 ms</td>
+<td>—</td>
+</tr>
+</tbody>
+</table>
+<p>* <code>print_tree</code> is dominated by Rich's ANSI line printer — the Rust
+tree-string generation itself is ~5ms at 10K. Strip to raw output with
+<code>print(ctx._pyctx.render_tree_insertion())</code> if you need the faster
+path.</p>
+<p>The <code>ctx.add(Path)</code> amortised cost includes <code>Path.resolve()</code> + a stat
+to sniff the MIME; <code>ctx.add(PIL.Image)</code> skips those and lands inside
+the ~7µs PyO3-boundary budget dominated by the <code>Py&lt;PyAny&gt;</code> clone + one
+JSON metadata roundtrip.</p>
+<h2 id="error-types">Error types<a class="headerlink" href="#error-types" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong><code>mm.RefNotFoundError</code></strong> — <code>KeyError</code> subclass. Raised by
+  <code>ctx.get(ref)</code> on miss; message is a markdown table + suggestion.</li>
+<li><strong><code>ValueError</code></strong> — malformed global ref, mismatched session id, or
+  <code>metadata=</code> containing non-JSON-serialisable keys.</li>
+<li><strong><code>TypeError</code></strong> — <code>add()</code> received something other than <code>str</code>, <code>Path</code>,
+  or <code>PIL.Image.Image</code>.</li>
+<li><strong><code>FileNotFoundError</code></strong> — <code>add()</code> received a <code>Path</code> that doesn't exist.</li>
+<li><strong><code>NotImplementedError</code></strong> — <code>print_tree(layout="paths"|"kind"|…)</code>,
+  <code>to_md(mode="accurate")</code>, or <code>save()</code> on an incremental context.</li>
+</ul>
+<h2 id="recipe-openai-chat-completion">Recipe: OpenAI chat completion<a class="headerlink" href="#recipe-openai-chat-completion" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">mm</span>
+<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">openai</span><span class="w"> </span><span class="kn">import</span> <span class="n">OpenAI</span>
+<a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a><span class="kn">from</span><span class="w"> </span><span class="nn">openai.types.chat</span><span class="w"> </span><span class="kn">import</span> <span class="n">ChatCompletionMessageParam</span>
+<a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a>
+<a id="__codelineno-12-6" name="__codelineno-12-6" href="#__codelineno-12-6"></a><span class="n">ctx</span> <span class="o">=</span> <span class="n">mm</span><span class="o">.</span><span class="n">Context</span><span class="p">()</span>
+<a id="__codelineno-12-7" name="__codelineno-12-7" href="#__codelineno-12-7"></a><span class="n">ctx</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="s2">&quot;Summarise the attached context.&quot;</span><span class="p">,</span> <span class="n">role</span><span class="o">=</span><span class="s2">&quot;system&quot;</span><span class="p">)</span>
+<a id="__codelineno-12-8" name="__codelineno-12-8" href="#__codelineno-12-8"></a><span class="n">ctx</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="s2">&quot;whiteboard.jpg&quot;</span><span class="p">),</span> <span class="n">role</span><span class="o">=</span><span class="s2">&quot;user&quot;</span><span class="p">,</span> <span class="n">metadata</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;note&quot;</span><span class="p">:</span> <span class="s2">&quot;meeting notes&quot;</span><span class="p">})</span>
+<a id="__codelineno-12-9" name="__codelineno-12-9" href="#__codelineno-12-9"></a><span class="n">ctx</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="s2">&quot;slides.pdf&quot;</span><span class="p">),</span> <span class="n">role</span><span class="o">=</span><span class="s2">&quot;user&quot;</span><span class="p">,</span> <span class="n">metadata</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;summary&quot;</span><span class="p">:</span> <span class="s2">&quot;Q3 plan&quot;</span><span class="p">})</span>
+<a id="__codelineno-12-10" name="__codelineno-12-10" href="#__codelineno-12-10"></a>
+<a id="__codelineno-12-11" name="__codelineno-12-11" href="#__codelineno-12-11"></a><span class="n">ctx_messages</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">ChatCompletionMessageParam</span><span class="p">]</span> <span class="o">=</span> <span class="n">ctx</span><span class="o">.</span><span class="n">to_messages</span><span class="p">(</span><span class="nb">format</span><span class="o">=</span><span class="s2">&quot;openai&quot;</span><span class="p">)</span>
+<a id="__codelineno-12-12" name="__codelineno-12-12" href="#__codelineno-12-12"></a>
+<a id="__codelineno-12-13" name="__codelineno-12-13" href="#__codelineno-12-13"></a><span class="n">client</span> <span class="o">=</span> <span class="n">OpenAI</span><span class="p">()</span>
+<a id="__codelineno-12-14" name="__codelineno-12-14" href="#__codelineno-12-14"></a><span class="n">resp</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">chat</span><span class="o">.</span><span class="n">completions</span><span class="o">.</span><span class="n">create</span><span class="p">(</span>
+<a id="__codelineno-12-15" name="__codelineno-12-15" href="#__codelineno-12-15"></a>    <span class="n">model</span><span class="o">=</span><span class="s2">&quot;gpt-4o&quot;</span><span class="p">,</span>
+<a id="__codelineno-12-16" name="__codelineno-12-16" href="#__codelineno-12-16"></a>    <span class="n">messages</span><span class="o">=</span><span class="p">[</span>
+<a id="__codelineno-12-17" name="__codelineno-12-17" href="#__codelineno-12-17"></a>        <span class="o">*</span><span class="n">ctx_messages</span><span class="p">,</span>
+<a id="__codelineno-12-18" name="__codelineno-12-18" href="#__codelineno-12-18"></a>    <span class="p">],</span>
+<a id="__codelineno-12-19" name="__codelineno-12-19" href="#__codelineno-12-19"></a><span class="p">)</span>
+<a id="__codelineno-12-20" name="__codelineno-12-20" href="#__codelineno-12-20"></a><span class="nb">print</span><span class="p">(</span><span class="n">resp</span><span class="o">.</span><span class="n">choices</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">message</span><span class="o">.</span><span class="n">content</span><span class="p">)</span>
+</code></pre></div>
+<h2 id="recipe-gemini-generate_content">Recipe: Gemini generate_content<a class="headerlink" href="#recipe-gemini-generate_content" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">mm</span>
+<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a><span class="kn">import</span><span class="w"> </span><span class="nn">google.generativeai</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">genai</span>
+<a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a><span class="kn">from</span><span class="w"> </span><span class="nn">google.genai</span><span class="w"> </span><span class="kn">import</span> <span class="n">types</span> <span class="k">as</span> <span class="n">genai_types</span>
+<a id="__codelineno-13-4" name="__codelineno-13-4" href="#__codelineno-13-4"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<a id="__codelineno-13-5" name="__codelineno-13-5" href="#__codelineno-13-5"></a>
+<a id="__codelineno-13-6" name="__codelineno-13-6" href="#__codelineno-13-6"></a><span class="n">ctx</span> <span class="o">=</span> <span class="n">mm</span><span class="o">.</span><span class="n">Context</span><span class="p">()</span>
+<a id="__codelineno-13-7" name="__codelineno-13-7" href="#__codelineno-13-7"></a><span class="n">ctx</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="s2">&quot;Summarise this lecture.&quot;</span><span class="p">,</span> <span class="n">role</span><span class="o">=</span><span class="s2">&quot;user&quot;</span><span class="p">)</span>
+<a id="__codelineno-13-8" name="__codelineno-13-8" href="#__codelineno-13-8"></a><span class="n">ctx</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="s2">&quot;clip.mp4&quot;</span><span class="p">),</span> <span class="n">role</span><span class="o">=</span><span class="s2">&quot;user&quot;</span><span class="p">,</span> <span class="n">metadata</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;summary&quot;</span><span class="p">:</span> <span class="s2">&quot;lecture on attention&quot;</span><span class="p">})</span>
+<a id="__codelineno-13-9" name="__codelineno-13-9" href="#__codelineno-13-9"></a>
+<a id="__codelineno-13-10" name="__codelineno-13-10" href="#__codelineno-13-10"></a><span class="n">contents</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">genai_types</span><span class="o">.</span><span class="n">ContentDict</span><span class="p">]</span> <span class="o">=</span> <span class="n">ctx</span><span class="o">.</span><span class="n">to_messages</span><span class="p">(</span><span class="nb">format</span><span class="o">=</span><span class="s2">&quot;gemini&quot;</span><span class="p">)</span>
+<a id="__codelineno-13-11" name="__codelineno-13-11" href="#__codelineno-13-11"></a>
+<a id="__codelineno-13-12" name="__codelineno-13-12" href="#__codelineno-13-12"></a><span class="n">model</span> <span class="o">=</span> <span class="n">genai</span><span class="o">.</span><span class="n">GenerativeModel</span><span class="p">(</span><span class="s2">&quot;gemini-2.0-pro&quot;</span><span class="p">)</span>
+<a id="__codelineno-13-13" name="__codelineno-13-13" href="#__codelineno-13-13"></a><span class="n">resp</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">generate_content</span><span class="p">(</span><span class="n">contents</span><span class="o">=</span><span class="n">contents</span><span class="p">)</span>
+<a id="__codelineno-13-14" name="__codelineno-13-14" href="#__codelineno-13-14"></a><span class="nb">print</span><span class="p">(</span><span class="n">resp</span><span class="o">.</span><span class="n">text</span><span class="p">)</span>
+</code></pre></div>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+        
+<div class="md-social">
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://github.com/vlm-run/mm" target="_blank" rel="noopener" title="github.com" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+    </a>
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://pypi.org/project/mm-ctx/" target="_blank" rel="noopener" title="pypi.org" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.8 200.5c-7.7-30.9-22.3-54.2-53.4-54.2h-40.1v47.4c0 36.8-31.2 67.8-66.8 67.8H172.7c-29.2 0-53.4 25-53.4 54.3v101.8c0 29 25.2 46 53.4 54.3 33.8 9.9 66.3 11.7 106.8 0 26.9-7.8 53.4-23.5 53.4-54.3v-40.7H226.2v-13.6h160.2c31.1 0 42.6-21.7 53.4-54.2 11.2-33.5 10.7-65.7 0-108.6M286.2 444.7a20.4 20.4 0 1 1 0-40.7 20.4 20.4 0 1 1 0 40.7M167.8 248.1h106.8c29.7 0 53.4-24.5 53.4-54.3V91.9c0-29-24.4-50.7-53.4-55.6-35.8-5.9-74.7-5.6-106.8.1-45.2 8-53.4 24.7-53.4 55.6v40.7h106.9v13.6h-147c-31.1 0-58.3 18.7-66.8 54.2-9.8 40.7-10.2 66.1 0 108.6 7.6 31.6 25.7 54.2 56.8 54.2H101v-48.8c0-35.3 30.5-66.4 66.8-66.4m-6.6-183.4a20.4 20.4 0 1 1 0 40.8 20.4 20.4 0 1 1 0-40.8"/></svg>
+    </a>
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://discord.gg/6aqcyvPF79" target="_blank" rel="noopener" title="discord.gg" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M492.5 69.8c-.2-.3-.4-.6-.8-.7-38.1-17.5-78.4-30-119.7-37.1-.4-.1-.8 0-1.1.1s-.6.4-.8.8c-5.5 9.9-10.5 20.2-14.9 30.6-44.6-6.8-89.9-6.8-134.4 0-4.5-10.5-9.5-20.7-15.1-30.6-.2-.3-.5-.6-.8-.8s-.7-.2-1.1-.2C162.5 39 122.2 51.5 84.1 69c-.3.1-.6.4-.8.7C7.1 183.5-13.8 294.6-3.6 404.2c0 .3.1.5.2.8s.3.4.5.6c44.4 32.9 94 58 146.8 74.2.4.1.8.1 1.1 0s.7-.4.9-.7c11.3-15.4 21.4-31.8 30-48.8.1-.2.2-.5.2-.8s0-.5-.1-.8-.2-.5-.4-.6-.4-.3-.7-.4c-15.8-6.1-31.2-13.4-45.9-21.9-.3-.2-.5-.4-.7-.6s-.3-.6-.3-.9 0-.6.2-.9.3-.5.6-.7c3.1-2.3 6.2-4.7 9.1-7.1.3-.2.6-.4.9-.4s.7 0 1 .1c96.2 43.9 200.4 43.9 295.5 0 .3-.1.7-.2 1-.2s.7.2.9.4c2.9 2.4 6 4.9 9.1 7.2.2.2.4.4.6.7s.2.6.2.9-.1.6-.3.9-.4.5-.6.6c-14.7 8.6-30 15.9-45.9 21.8-.2.1-.5.2-.7.4s-.3.4-.4.7-.1.5-.1.8.1.5.2.8c8.8 17 18.8 33.3 30 48.8.2.3.6.6.9.7s.8.1 1.1 0c52.9-16.2 102.6-41.3 147.1-74.2.2-.2.4-.4.5-.6s.2-.5.2-.8c12.3-126.8-20.5-236.9-86.9-334.5zm-302 267.7c-29 0-52.8-26.6-52.8-59.2s23.4-59.2 52.8-59.2c29.7 0 53.3 26.8 52.8 59.2 0 32.7-23.4 59.2-52.8 59.2m195.4 0c-29 0-52.8-26.6-52.8-59.2s23.4-59.2 52.8-59.2c29.7 0 53.3 26.8 52.8 59.2 0 32.7-23.2 59.2-52.8 59.2"/></svg>
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.instant", "navigation.tracking", "navigation.top", "navigation.expand", "toc.follow", "content.code.copy", "content.code.annotate"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>

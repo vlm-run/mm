@@ -1,0 +1,1818 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Fast, multimodal context for agents.">
+      
+      
+      
+        <link rel="canonical" href="https://vlm-run.github.io/mm/USER_GUIDE/">
+      
+      
+        <link rel="prev" href="..">
+      
+      
+        <link rel="next" href="../api/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>User guide - mm</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Geist:300,300i,400,400i,700,700i%7CGeist+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Geist";--md-code-font:"Geist Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../stylesheets/extra.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#mm-user-guide" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="mm" class="md-header__button md-logo" aria-label="mm" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            mm
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              User guide
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://pypi.org/project/mm-ctx/" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.8 200.5c-7.7-30.9-22.3-54.2-53.4-54.2h-40.1v47.4c0 36.8-31.2 67.8-66.8 67.8H172.7c-29.2 0-53.4 25-53.4 54.3v101.8c0 29 25.2 46 53.4 54.3 33.8 9.9 66.3 11.7 106.8 0 26.9-7.8 53.4-23.5 53.4-54.3v-40.7H226.2v-13.6h160.2c31.1 0 42.6-21.7 53.4-54.2 11.2-33.5 10.7-65.7 0-108.6M286.2 444.7a20.4 20.4 0 1 1 0-40.7 20.4 20.4 0 1 1 0 40.7M167.8 248.1h106.8c29.7 0 53.4-24.5 53.4-54.3V91.9c0-29-24.4-50.7-53.4-55.6-35.8-5.9-74.7-5.6-106.8.1-45.2 8-53.4 24.7-53.4 55.6v40.7h106.9v13.6h-147c-31.1 0-58.3 18.7-66.8 54.2-9.8 40.7-10.2 66.1 0 108.6 7.6 31.6 25.7 54.2 56.8 54.2H101v-48.8c0-35.3 30.5-66.4 66.8-66.4m-6.6-183.4a20.4 20.4 0 1 1 0 40.8 20.4 20.4 0 1 1 0-40.8"/></svg>
+  </div>
+  <div class="md-source__repository">
+    mm-ctx
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="mm" class="md-nav__button md-logo" aria-label="mm" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    mm
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://pypi.org/project/mm-ctx/" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.8 200.5c-7.7-30.9-22.3-54.2-53.4-54.2h-40.1v47.4c0 36.8-31.2 67.8-66.8 67.8H172.7c-29.2 0-53.4 25-53.4 54.3v101.8c0 29 25.2 46 53.4 54.3 33.8 9.9 66.3 11.7 106.8 0 26.9-7.8 53.4-23.5 53.4-54.3v-40.7H226.2v-13.6h160.2c31.1 0 42.6-21.7 53.4-54.2 11.2-33.5 10.7-65.7 0-108.6M286.2 444.7a20.4 20.4 0 1 1 0-40.7 20.4 20.4 0 1 1 0 40.7M167.8 248.1h106.8c29.7 0 53.4-24.5 53.4-54.3V91.9c0-29-24.4-50.7-53.4-55.6-35.8-5.9-74.7-5.6-106.8.1-45.2 8-53.4 24.7-53.4 55.6v40.7h106.9v13.6h-147c-31.1 0-58.3 18.7-66.8 54.2-9.8 40.7-10.2 66.1 0 108.6 7.6 31.6 25.7 54.2 56.8 54.2H101v-48.8c0-35.3 30.5-66.4 66.8-66.4m-6.6-183.4a20.4 20.4 0 1 1 0 40.8 20.4 20.4 0 1 1 0-40.8"/></svg>
+  </div>
+  <div class="md-source__repository">
+    mm-ctx
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    User guide
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    User guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#prerequisites" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Prerequisites
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Prerequisites">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#installation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Installation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#vlm-access" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        VLM access
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#profile-setup" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Profile setup
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#integrations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Integrations
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Integrations">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#claude-code" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Claude Code
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#npx-skills" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        npx skills
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#universal-assistants-openclaw-nemoclaw-opencode-codex-gemini-cli" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Universal assistants (OpenClaw, NemoClaw, OpenCode, Codex, Gemini CLI)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#use-cases" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Use cases
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Use cases">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#directory-actions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Directory actions
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#semantic-search" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Semantic search
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#raw-file-metadata" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Raw file metadata
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#file-inspection-and-extraction" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        File inspection and extraction
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#pipeline-customization" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Pipeline customization
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#override-surfaces" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Override surfaces
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#batch-operations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Batch operations
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#agentic-integration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Agentic integration
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#auto-labeling" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Auto-labeling
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#other-examples" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Other examples
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#benchmark" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Benchmark
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Benchmark">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#custom-benchmark-suites-bench-file" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Custom benchmark suites: --bench-file
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#table-layout-group-model-base-command-extra-args-metrics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Table layout: Group | Model | Base Command | Extra Args | &lt;metrics&gt;
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#bench-recording-benchmarksresultsyymmdd-mm-bench-profile-hhmmmd" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Bench recording: benchmarks/results/&lt;YYMMDD&gt;-mm-bench-&lt;profile&gt;-&lt;HHMM&gt;.md
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#inspecting-a-plan-dry-run" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Inspecting a plan: --dry-run
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Python API
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../USE_CASES/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Use cases
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ENCODERS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Encoders
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../PIPELINES/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Pipelines
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../FIXTURES/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Fixtures
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ROADMAP/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Roadmap
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_9" >
+        
+          
+          <label class="md-nav__link" for="__nav_9" id="__nav_9_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Spec
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_9">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Spec
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../spec/SPEC/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../spec/cat/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    cat
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../spec/cli-use/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CLI use
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#prerequisites" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Prerequisites
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Prerequisites">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#installation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Installation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#vlm-access" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        VLM access
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#profile-setup" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Profile setup
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#integrations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Integrations
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Integrations">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#claude-code" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Claude Code
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#npx-skills" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        npx skills
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#universal-assistants-openclaw-nemoclaw-opencode-codex-gemini-cli" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Universal assistants (OpenClaw, NemoClaw, OpenCode, Codex, Gemini CLI)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#use-cases" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Use cases
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Use cases">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#directory-actions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Directory actions
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#semantic-search" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Semantic search
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#raw-file-metadata" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Raw file metadata
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#file-inspection-and-extraction" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        File inspection and extraction
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#pipeline-customization" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Pipeline customization
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#override-surfaces" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Override surfaces
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#batch-operations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Batch operations
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#agentic-integration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Agentic integration
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#auto-labeling" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Auto-labeling
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#other-examples" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Other examples
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#benchmark" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Benchmark
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Benchmark">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#custom-benchmark-suites-bench-file" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Custom benchmark suites: --bench-file
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#table-layout-group-model-base-command-extra-args-metrics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Table layout: Group | Model | Base Command | Extra Args | &lt;metrics&gt;
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#bench-recording-benchmarksresultsyymmdd-mm-bench-profile-hhmmmd" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Bench recording: benchmarks/results/&lt;YYMMDD&gt;-mm-bench-&lt;profile&gt;-&lt;HHMM&gt;.md
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#inspecting-a-plan-dry-run" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Inspecting a plan: --dry-run
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="mm-user-guide">mm — User Guide<a class="headerlink" href="#mm-user-guide" title="Permanent link">&para;</a></h1>
+<p>Fast, multimodal context for agents.
+Rust core for speed. Python for developer experience. Unix philosophy for composability.</p>
+<hr />
+<h2 id="prerequisites">Prerequisites<a class="headerlink" href="#prerequisites" title="Permanent link">&para;</a></h2>
+<h3 id="installation">Installation<a class="headerlink" href="#installation" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>pip<span class="w"> </span>install<span class="w"> </span>mm-ctx
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="c1"># with uv</span>
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>uv<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span>mm-ctx
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="c1"># or run directly without installing</span>
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>uvx<span class="w"> </span>--from<span class="w"> </span>mm-ctx<span class="w"> </span>mm<span class="w"> </span>--help
+</code></pre></div>
+<p>Alternative methods:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="c1"># macOS / Linux (shell installer)</span>
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>curl<span class="w"> </span>-LsSf<span class="w"> </span>https://vlm-run.github.io/mm/install/install.sh<span class="w"> </span><span class="p">|</span><span class="w"> </span>sh
+</code></pre></div>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="c"># Windows (PowerShell)</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="nb">irm </span><span class="n">https</span><span class="p">://</span><span class="n">vlm-run</span><span class="p">.</span><span class="n">github</span><span class="p">.</span><span class="n">io</span><span class="p">/</span><span class="n">mm</span><span class="p">/</span><span class="n">install</span><span class="p">/</span><span class="n">install</span><span class="p">.</span><span class="n">ps1</span> <span class="p">|</span> <span class="nb">iex</span>
+</code></pre></div>
+<h3 id="vlm-access">VLM access<a class="headerlink" href="#vlm-access" title="Permanent link">&para;</a></h3>
+<p>mm requires access to a VLM on a live server for accurate-mode (LLM-powered) operations. Recommended models:</p>
+<table>
+<thead>
+<tr>
+<th>Provider</th>
+<th>Models</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Qwen</td>
+<td><code>qwen3vl-2b\|4b\|8b\|32b</code>, <code>qwen3.5:2b\|9b\|27b</code></td>
+</tr>
+<tr>
+<td>Gemini</td>
+<td><code>gemini-2.5-flash-lite</code>, <code>gemini-3.1-flash-lite-preview</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="profile-setup">Profile setup<a class="headerlink" href="#profile-setup" title="Permanent link">&para;</a></h3>
+<p>mm uses profiles to store provider credentials. There are 3 reserved profiles: <code>ollama</code>, <code>gemini</code>, and <code>vlmrun</code>.</p>
+<p>You can populate a reserved profile or create a new one:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="c1"># Use an existing reserved profile</span>
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>mm<span class="w"> </span>profile<span class="w"> </span>update<span class="w"> </span>ollama<span class="w"> </span>--base-url<span class="w"> </span>http://localhost:11434/v1<span class="w"> </span>--model<span class="w"> </span>qwen3vl-8b
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="c1"># Or create a custom profile</span>
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>mm<span class="w"> </span>profile<span class="w"> </span>add<span class="w"> </span>fermi<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a><span class="w">  </span>--base-url<span class="w"> </span>https://openrouter.ai/api/v1<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a><span class="w">  </span>--api-key<span class="w"> </span><span class="s2">&quot;your-openrouter-api-key&quot;</span><span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a><span class="w">  </span>--model<span class="w"> </span>google/gemini-2.5-flash-lite
+<a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a>
+<a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a><span class="c1"># Set the active profile</span>
+<a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a>mm<span class="w"> </span>profile<span class="w"> </span>use<span class="w"> </span>fermi
+</code></pre></div>
+<hr />
+<h2 id="integrations">Integrations<a class="headerlink" href="#integrations" title="Permanent link">&para;</a></h2>
+<h3 id="claude-code">Claude Code<a class="headerlink" href="#claude-code" title="Permanent link">&para;</a></h3>
+<p>Install the <code>mm-cli-skill</code> via the skill marketplace:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>claude
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>&gt;<span class="w"> </span>/plugin<span class="w"> </span>marketplace<span class="w"> </span>add<span class="w"> </span>vlm-run/skills
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>&gt;<span class="w"> </span>/plugin<span class="w"> </span>install<span class="w"> </span>mm-cli-skill@vlm-run/skills
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>&gt;<span class="w"> </span>Organize<span class="w"> </span>my<span class="w"> </span>~/Downloads<span class="w"> </span>folder<span class="w"> </span>using<span class="w"> </span>mm
+</code></pre></div>
+<h3 id="npx-skills">npx skills<a class="headerlink" href="#npx-skills" title="Permanent link">&para;</a></h3>
+<p>Install mm-cli-skill globally so any CLI assistant or agentic tool can discover it:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>npx<span class="w"> </span>skills<span class="w"> </span>add<span class="w"> </span>vlm-run/skills@mm-cli-skill
+</code></pre></div>
+<h3 id="universal-assistants-openclaw-nemoclaw-opencode-codex-gemini-cli">Universal assistants (OpenClaw, NemoClaw, OpenCode, Codex, Gemini CLI)<a class="headerlink" href="#universal-assistants-openclaw-nemoclaw-opencode-codex-gemini-cli" title="Permanent link">&para;</a></h3>
+<p>Install the mm-cli-skill globally first, then start your preferred tool:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="c1"># One-time setup</span>
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>npx<span class="w"> </span>skills<span class="w"> </span>add<span class="w"> </span>vlm-run/skills@mm-cli-skill
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="c1"># Then use any CLI assistant — it will discover mm automatically</span>
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>openclaw<span class="w"> </span><span class="s2">&quot;Organize my ~/Downloads folder using mm&quot;</span>
+<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>codex<span class="w"> </span><span class="s2">&quot;Find all PDFs in ~/docs and summarize them with mm&quot;</span>
+</code></pre></div>
+<p>The skill exposes mm's capabilities to any tool that supports the skills protocol.</p>
+<hr />
+<h2 id="use-cases">Use cases<a class="headerlink" href="#use-cases" title="Permanent link">&para;</a></h2>
+<p>Use mm directly or through a CLI assistant (e.g. <code>claude "Organize ~/Downloads using mm"</code>).</p>
+<h3 id="directory-actions">Directory actions<a class="headerlink" href="#directory-actions" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Organize files by type, date, or inferred content</li>
+<li>Flatten or restructure nested folders based on content signals</li>
+<li>Cluster photos by person, location, or event</li>
+</ul>
+<h3 id="semantic-search">Semantic search<a class="headerlink" href="#semantic-search" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>mm<span class="w"> </span>grep<span class="w"> </span><span class="s2">&quot;photo of me and my dog in a park&quot;</span><span class="w"> </span>~/photos<span class="w"> </span>-s
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>mm<span class="w"> </span>grep<span class="w"> </span><span class="s2">&quot;revenue forecast&quot;</span><span class="w"> </span>~/reports<span class="w"> </span>-s<span class="w"> </span>--kind<span class="w"> </span>document
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>mm<span class="w"> </span>grep<span class="w"> </span><span class="s2">&quot;architecture overview&quot;</span><span class="w"> </span>~/docs<span class="w"> </span>-s<span class="w"> </span>--pre-index<span class="w">   </span><span class="c1"># auto-index unindexed files</span>
+</code></pre></div>
+<p>Returns matching files via vector similarity (embeddings). Use <code>--semantic/-s</code> for semantic search, <code>--pre-index</code> to auto-index unindexed files before searching.</p>
+<h3 id="raw-file-metadata">Raw file metadata<a class="headerlink" href="#raw-file-metadata" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="c1"># mm peek: dimensions / EXIF / codec / duration / mime / hash.</span>
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>mm<span class="w"> </span>peek<span class="w"> </span>report.pdf<span class="w">             </span><span class="c1"># mime, content hash</span>
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>mm<span class="w"> </span>peek<span class="w"> </span>image.jpg<span class="w">              </span><span class="c1"># image dimensions, MIME, hash, EXIF</span>
+<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>mm<span class="w"> </span>peek<span class="w"> </span>video.mp4<span class="w">              </span><span class="c1"># video resolution, duration, codecs (&lt;100ms)</span>
+<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>mm<span class="w"> </span>peek<span class="w"> </span>image.jpg<span class="w"> </span>video.mp4<span class="w"> </span>--format<span class="w"> </span>json<span class="w">   </span><span class="c1"># multi-file JSON</span>
+<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a>mm<span class="w"> </span>peek<span class="w"> </span>report.pdf<span class="w"> </span>--full<span class="w">      </span><span class="c1"># opt in to document author / title / subject / keywords / page count</span>
+</code></pre></div>
+<h3 id="file-inspection-and-extraction">File inspection and extraction<a class="headerlink" href="#file-inspection-and-extraction" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="c1"># mm cat: content extraction. Default --mode fast.</span>
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>mm<span class="w"> </span>cat<span class="w"> </span>report.pdf<span class="w">              </span><span class="c1"># PDF page-text via pypdfium2 (fast pipeline)</span>
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>mm<span class="w"> </span>cat<span class="w"> </span>src/main.py<span class="w">             </span><span class="c1"># passthrough text</span>
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>mm<span class="w"> </span>cat<span class="w"> </span>notes.docx<span class="w">              </span><span class="c1"># libreoffice-rs text</span>
+<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>mm<span class="w"> </span>cat<span class="w"> </span>image.jpg<span class="w">               </span><span class="c1"># short VLM caption (fast pipeline)</span>
+<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a>mm<span class="w"> </span>cat<span class="w"> </span>video.mp4<span class="w">               </span><span class="c1"># mosaic → short VLM description (fast pipeline)</span>
+<a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a>
+<a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a><span class="c1"># --mode accurate: LLM-heavy pipeline for image/video/audio/PDF (requires a configured profile).</span>
+<a id="__codelineno-9-9" name="__codelineno-9-9" href="#__codelineno-9-9"></a>mm<span class="w"> </span>cat<span class="w"> </span>image.jpg<span class="w"> </span>-m<span class="w"> </span>accurate<span class="w">   </span><span class="c1"># LLM-powered caption + tags + objects</span>
+<a id="__codelineno-9-10" name="__codelineno-9-10" href="#__codelineno-9-10"></a>mm<span class="w"> </span>cat<span class="w"> </span>video.mp4<span class="w"> </span>-m<span class="w"> </span>accurate<span class="w">   </span><span class="c1"># keyframe mosaic → LLM description</span>
+<a id="__codelineno-9-11" name="__codelineno-9-11" href="#__codelineno-9-11"></a>mm<span class="w"> </span>cat<span class="w"> </span>audio.mp3<span class="w"> </span>-m<span class="w"> </span>accurate<span class="w">   </span><span class="c1"># transcript → LLM summary</span>
+<a id="__codelineno-9-12" name="__codelineno-9-12" href="#__codelineno-9-12"></a>mm<span class="w"> </span>cat<span class="w"> </span>report.pdf<span class="w"> </span>-m<span class="w"> </span>accurate<span class="w">  </span><span class="c1"># text → LLM markdown structuring</span>
+</code></pre></div>
+<p><code>kind=text</code> and non-PDF documents (<code>.docx</code> / <code>.pptx</code>) ignore <code>--mode</code> entirely: they always return passthrough
+text.</p>
+<h3 id="pipeline-customization">Pipeline customization<a class="headerlink" href="#pipeline-customization" title="Permanent link">&para;</a></h3>
+<p><code>-p</code>, <code>--encode.*</code>, <code>--generate.*</code>, <code>--prompt</code>, <code>--model</code> apply to image / video / audio / PDF (the kinds that run a pipeline); they are no-ops for <code>kind=text</code> and non-PDF documents.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>mm<span class="w"> </span>cat<span class="w"> </span>photo.png<span class="w"> </span>-m<span class="w"> </span>fast<span class="w"> </span>-p<span class="w"> </span>image-tile<span class="w">                       </span><span class="c1"># named encoder</span>
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>mm<span class="w"> </span>cat<span class="w"> </span>photo.png<span class="w"> </span>-m<span class="w"> </span>accurate<span class="w"> </span>-p<span class="w"> </span>my-pipeline.yaml<span class="w">             </span><span class="c1"># custom pipeline YAML</span>
+<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>mm<span class="w"> </span>cat<span class="w"> </span>photo.png<span class="w"> </span>-m<span class="w"> </span>accurate<span class="w"> </span>--encode.strategy<span class="w"> </span>image-tile<span class="w">    </span><span class="c1"># override encoder</span>
+<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>mm<span class="w"> </span>cat<span class="w"> </span>photo.png<span class="w"> </span>-m<span class="w"> </span>accurate<span class="w"> </span>--encode.strategy_opts<span class="w"> </span><span class="nv">max_width</span><span class="o">=</span><span class="m">768</span>
+<a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a>mm<span class="w"> </span>cat<span class="w"> </span>photo.png<span class="w"> </span>-m<span class="w"> </span>accurate<span class="w"> </span>--prompt<span class="w"> </span><span class="s2">&quot;List 3 objects.&quot;</span><span class="w">      </span><span class="c1"># = --generate.prompt</span>
+<a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a>mm<span class="w"> </span>cat<span class="w"> </span>photo.png<span class="w"> </span>-m<span class="w"> </span>accurate<span class="w"> </span>--model<span class="w"> </span>qwen3.5-0.8b<span class="w">            </span><span class="c1"># = --generate.model</span>
+<a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a>mm<span class="w"> </span>cat<span class="w"> </span>photo.png<span class="w"> </span>-m<span class="w"> </span>accurate<span class="w"> </span>--generate.max-tokens<span class="w"> </span><span class="m">1024</span>
+<a id="__codelineno-10-8" name="__codelineno-10-8" href="#__codelineno-10-8"></a>mm<span class="w"> </span>cat<span class="w"> </span>photo.png<span class="w"> </span>-m<span class="w"> </span>accurate<span class="w"> </span>--no-cache<span class="w"> </span>--no-generate<span class="w">        </span><span class="c1"># encoder-only snapshot</span>
+<a id="__codelineno-10-9" name="__codelineno-10-9" href="#__codelineno-10-9"></a>mm<span class="w"> </span>cat<span class="w"> </span>--list-encoders<span class="w">                                       </span><span class="c1"># registered encoders</span>
+<a id="__codelineno-10-10" name="__codelineno-10-10" href="#__codelineno-10-10"></a>mm<span class="w"> </span>cat<span class="w"> </span>--list-pipelines<span class="w">                                      </span><span class="c1"># built-in pipelines</span>
+<a id="__codelineno-10-11" name="__codelineno-10-11" href="#__codelineno-10-11"></a>mm<span class="w"> </span>cat<span class="w"> </span>--print-pipeline<span class="w"> </span>image/accurate<span class="w">                       </span><span class="c1"># built-in pipeline source</span>
+</code></pre></div>
+<h3 id="override-surfaces">Override surfaces<a class="headerlink" href="#override-surfaces" title="Permanent link">&para;</a></h3>
+<p>Every <code>mm cat</code> invocation resolves its LLM call from three layers, with
+<strong>CLI &gt; pipeline YAML &gt; profile</strong> precedence on conflict:</p>
+<ol>
+<li><strong>Profile</strong> (<code>mm.toml</code>) — owns <code>base_url</code>, <code>api_key</code>, default <code>model</code>.
+   Switch profiles globally per-call with <code>mm --profile &lt;name&gt; &lt;subcommand&gt;</code>.</li>
+<li><strong>Pipeline YAML</strong> (<code>generate:</code> block) — <code>model</code>, <code>prompt</code>, <code>max_tokens</code>,
+   <code>temperature</code>, <code>json_mode</code>, <code>extra_body</code>. Each pipeline can pin
+   provider-specific defaults so a single command stays terse.</li>
+<li><strong>CLI flags on <code>cat</code></strong> — per-field, per-invocation overrides:</li>
+</ol>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Alias</th>
+<th>Pipeline field</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--model NAME</code></td>
+<td><code>--generate.model</code></td>
+<td><code>generate.model</code></td>
+</tr>
+<tr>
+<td><code>--prompt TEXT</code></td>
+<td><code>--generate.prompt</code></td>
+<td><code>generate.prompt</code></td>
+</tr>
+<tr>
+<td><code>--generate.max-tokens N</code></td>
+<td>—</td>
+<td><code>generate.max_tokens</code></td>
+</tr>
+<tr>
+<td><code>--generate.temperature F</code></td>
+<td>—</td>
+<td><code>generate.temperature</code></td>
+</tr>
+<tr>
+<td><code>--generate.json-mode BOOL</code></td>
+<td>—</td>
+<td><code>generate.json_mode</code></td>
+</tr>
+<tr>
+<td><code>--generate.extra-body '&lt;json&gt;'</code></td>
+<td>—</td>
+<td><code>generate.extra_body</code> (deep-merged)</td>
+</tr>
+</tbody>
+</table>
+<p><code>base_url</code> and <code>api_key</code> are profile-only — there is no CLI override for them.
+The merged <code>model</code> + <code>extra_body</code> participate in the L2 cache key, so changing
+a knob correctly invalidates cached results.</p>
+<p>Using these flags to drive an arbitrary OpenAI-compatible deployment
+(e.g. <a href="https://github.com/vlm-run/vlm-playground/blob/main/projects/vlmrt/docs/openai-chat-completions-compat.md">vlmrt</a>,
+where each model dispatches by <code>extra_body.method</code>):</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="c1"># Florence-2 — document OCR</span>
+<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>mm<span class="w"> </span>--profile<span class="w"> </span>vlmrt<span class="w"> </span>cat<span class="w"> </span>page.png<span class="w"> </span>-m<span class="w"> </span>accurate<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a><span class="w">  </span>--model<span class="w"> </span>florence-2-base-ft<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a><span class="w">  </span>--generate.extra-body<span class="w"> </span><span class="s1">&#39;{&quot;method&quot;:&quot;ocr&quot;}&#39;</span>
+<a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a>
+<a id="__codelineno-11-6" name="__codelineno-11-6" href="#__codelineno-11-6"></a><span class="c1"># Qwen3.5-0.8B — free-form video summarisation, custom frame sampling</span>
+<a id="__codelineno-11-7" name="__codelineno-11-7" href="#__codelineno-11-7"></a>mm<span class="w"> </span>--profile<span class="w"> </span>vlmrt<span class="w"> </span>cat<span class="w"> </span>clip.mp4<span class="w"> </span>-m<span class="w"> </span>accurate<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-11-8" name="__codelineno-11-8" href="#__codelineno-11-8"></a><span class="w">  </span>--model<span class="w"> </span>qwen3.5-0.8b<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-11-9" name="__codelineno-11-9" href="#__codelineno-11-9"></a><span class="w">  </span>--generate.extra-body<span class="w"> </span><span class="s1">&#39;{&quot;video_fps&quot;:1.0,&quot;video_max_frames&quot;:8}&#39;</span>
+<a id="__codelineno-11-10" name="__codelineno-11-10" href="#__codelineno-11-10"></a>
+<a id="__codelineno-11-11" name="__codelineno-11-11" href="#__codelineno-11-11"></a><span class="c1"># PaddleOCR-v5 — Chinese scene-text OCR with tighter score threshold</span>
+<a id="__codelineno-11-12" name="__codelineno-11-12" href="#__codelineno-11-12"></a>mm<span class="w"> </span>--profile<span class="w"> </span>vlmrt<span class="w"> </span>cat<span class="w"> </span>storefront.jpg<span class="w"> </span>-m<span class="w"> </span>accurate<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-11-13" name="__codelineno-11-13" href="#__codelineno-11-13"></a><span class="w">  </span>--model<span class="w"> </span>paddleocr-v5<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-11-14" name="__codelineno-11-14" href="#__codelineno-11-14"></a><span class="w">  </span>--generate.extra-body<span class="w"> </span><span class="s1">&#39;{&quot;method&quot;:&quot;ocr&quot;,&quot;method_params&quot;:{&quot;lang&quot;:&quot;ch&quot;,&quot;score_threshold&quot;:0.6}}&#39;</span>
+<a id="__codelineno-11-15" name="__codelineno-11-15" href="#__codelineno-11-15"></a>
+<a id="__codelineno-11-16" name="__codelineno-11-16" href="#__codelineno-11-16"></a><span class="c1"># Moondream2 — multi-object detection with a custom prompt</span>
+<a id="__codelineno-11-17" name="__codelineno-11-17" href="#__codelineno-11-17"></a>mm<span class="w"> </span>--profile<span class="w"> </span>vlmrt<span class="w"> </span>cat<span class="w"> </span>photo.jpg<span class="w"> </span>-m<span class="w"> </span>accurate<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-11-18" name="__codelineno-11-18" href="#__codelineno-11-18"></a><span class="w">  </span>--model<span class="w"> </span>moondream2<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-11-19" name="__codelineno-11-19" href="#__codelineno-11-19"></a><span class="w">  </span>--prompt<span class="w"> </span><span class="s2">&quot;List every visible animal.&quot;</span><span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-11-20" name="__codelineno-11-20" href="#__codelineno-11-20"></a><span class="w">  </span>--generate.extra-body<span class="w"> </span><span class="s1">&#39;{&quot;method&quot;:&quot;detect&quot;,&quot;method_params&quot;:{&quot;object&quot;:&quot;fish&quot;}}&#39;</span>
+</code></pre></div>
+<h3 id="batch-operations">Batch operations<a class="headerlink" href="#batch-operations" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>mm<span class="w"> </span>wc<span class="w"> </span>~/docs<span class="w">                            </span><span class="c1"># file count, bytes, lines, token estimate</span>
+<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>mm<span class="w"> </span>find<span class="w"> </span>~/videos<span class="w">                        </span><span class="c1"># list with tags, duration, resolution</span>
+<a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a>mm<span class="w"> </span>cat<span class="w"> </span>-m<span class="w"> </span>accurate<span class="w"> </span>video.mp4<span class="w">            </span><span class="c1"># full context: transcript + scenes</span>
+<a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a>mm<span class="w"> </span>find<span class="w"> </span>~/images<span class="w"> </span>--kind<span class="w"> </span>image<span class="w"> </span><span class="p">|</span><span class="w"> </span>mm<span class="w"> </span>cat<span class="w"> </span>-m<span class="w"> </span>accurate<span class="w"> </span>--format<span class="w"> </span>json<span class="w">    </span><span class="c1"># batch captioning</span>
+<a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a>mm<span class="w"> </span>find<span class="w"> </span>~/images<span class="w"> </span>--kind<span class="w"> </span>image<span class="w"> </span><span class="p">|</span><span class="w"> </span>mm<span class="w"> </span>peek<span class="w"> </span>--format<span class="w"> </span>json<span class="w">               </span><span class="c1"># batch metadata (no LLM)</span>
+<a id="__codelineno-12-6" name="__codelineno-12-6" href="#__codelineno-12-6"></a>mm<span class="w"> </span>cat<span class="w"> </span>-y<span class="w"> </span>~/images/*.jpg<span class="w">                </span><span class="c1"># skip ≥9-path confirmation prompt</span>
+</code></pre></div>
+<h3 id="agentic-integration">Agentic integration<a class="headerlink" href="#agentic-integration" title="Permanent link">&para;</a></h3>
+<p>Use mm directly as a tool or as a skill for any coding assistants:</p>
+<ul>
+<li><em>"Find all invoices in ~/Downloads and create a markdown table with totals"</em></li>
+<li><em>"Clip the first scene from video.mp4"</em></li>
+<li><em>"Extract all faces from ~/events/wedding"</em></li>
+</ul>
+<h3 id="auto-labeling">Auto-labeling<a class="headerlink" href="#auto-labeling" title="Permanent link">&para;</a></h3>
+<p>Use mm as a labeling CLI for VLMs:</p>
+<ul>
+<li>Select provider with <code>--profile</code> or <code>MM_PROFILE</code> env for any OpenAI-compatible endpoint</li>
+<li><code>--format dataset-jsonl</code> — outputs image (base64) + completion pairs for fine-tuning (OpenAI/Fireworks format)</li>
+<li><code>--format dataset-hf</code> — builds HuggingFace datasets from input directories (requires <code>--output-dir</code>)</li>
+</ul>
+<p>Pipeline: unlabeled media &#8594; <code>mm cat -m accurate --format dataset-jsonl</code> &#8594; fine-tuning</p>
+<h3 id="other-examples">Other examples<a class="headerlink" href="#other-examples" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Photo organization by topic or year, with highlighted selections from events</li>
+<li><em>"Create a markdown file <code>260410.md</code> with a table of all invoices in ~/Downloads/invoices, including totals in USD"</em></li>
+</ul>
+<hr />
+<h2 id="benchmark">Benchmark<a class="headerlink" href="#benchmark" title="Permanent link">&para;</a></h2>
+<p>Run the built-in benchmark suite:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>mm<span class="w"> </span>bench<span class="w"> </span>~/data/mmbench-mini<span class="w"> </span>--format<span class="w"> </span>rich
+</code></pre></div>
+<p>A standalone benchmark script is also available at <code>./benchmarks/bench_cli.sh</code>. It downloads public multimodal test data before running.</p>
+<p><strong>Data sources:</strong>
+- <code>https://storage.googleapis.com/vlm-data-public-prod/mmbench/mmbench-mini.tar.gz</code>
+- <code>https://storage.googleapis.com/vlm-data-public-prod/mmbench/mmbench-tiny.tar.gz</code></p>
+<h3 id="custom-benchmark-suites-bench-file">Custom benchmark suites: <code>--bench-file</code><a class="headerlink" href="#custom-benchmark-suites-bench-file" title="Permanent link">&para;</a></h3>
+<p>For internal matrices, point <code>mm bench</code> at a Python file that exposes
+<code>BenchCommand</code> entries:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a>mm<span class="w"> </span>bench<span class="w"> </span>~/data/mmbench-tiny<span class="w"> </span>--bench-file<span class="w"> </span>benchmarks/vlmgw_bench_commands.py
+<a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a>mm<span class="w"> </span>bench<span class="w"> </span>~/data/mmbench-tiny<span class="w"> </span>-b<span class="w"> </span>benchmarks/vlmgw_bench_commands.py<span class="w"> </span>-r<span class="w"> </span><span class="m">1</span><span class="w"> </span>-w<span class="w"> </span><span class="m">0</span>
+</code></pre></div>
+<p>A benchfile must define <strong>one</strong> of:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">mm.commands.bench_commands</span><span class="w"> </span><span class="kn">import</span> <span class="n">BenchCommand</span>
+<a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a>
+<a id="__codelineno-15-3" name="__codelineno-15-3" href="#__codelineno-15-3"></a><span class="c1"># (a) static list</span>
+<a id="__codelineno-15-4" name="__codelineno-15-4" href="#__codelineno-15-4"></a><span class="n">COMMANDS</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">BenchCommand</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="o">...</span><span class="p">]</span>
+<a id="__codelineno-15-5" name="__codelineno-15-5" href="#__codelineno-15-5"></a>
+<a id="__codelineno-15-6" name="__codelineno-15-6" href="#__codelineno-15-6"></a><span class="c1"># (b) file-aware factory (preferred when commands depend on what&#39;s on disk)</span>
+<a id="__codelineno-15-7" name="__codelineno-15-7" href="#__codelineno-15-7"></a><span class="k">def</span><span class="w"> </span><span class="nf">commands</span><span class="p">(</span><span class="n">files</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">BenchCommand</span><span class="p">]:</span> <span class="o">...</span>
+</code></pre></div>
+<p>The factory takes precedence when both are present. The loaded set
+<strong>fully replaces</strong> the built-in <code>overhead + metadata + &lt;mode&gt;</code> matrix —
+<code>--mode</code> is ignored when <code>--bench-file</code> is set, and the benchfile's
+own <code>BenchCommand.group</code> drives display grouping. <code>--command</code>
+substring filtering and <code>--format</code> rendering still apply on top, so
+you can scope a slow benchfile to a single row with
+<code>--command image-resolution</code> or pipe its JSON to a custom renderer.</p>
+<p>A worked example covering all <code>mm cat</code> override surfaces (model alias,
+prompt overrides, <code>--generate.extra-body</code> deep-merge, video frame
+sampling, cache cold/warm) lives in <a href="../benchmarks/vlmgw_bench_commands.py"><code>benchmarks/vlmgw_bench_commands.py</code></a>.</p>
+<h3 id="table-layout-group-model-base-command-extra-args-metrics">Table layout: <code>Group | Model | Base Command | Extra Args | &lt;metrics&gt;</code><a class="headerlink" href="#table-layout-group-model-base-command-extra-args-metrics" title="Permanent link">&para;</a></h3>
+<p>The bench renderer surfaces up to four structured columns before the
+metrics — the eye lands on the <em>variation</em> between rows rather than
+on the boilerplate that's stable across them:</p>
+<ul>
+<li><code>Group</code> — the <code>BenchCommand.group</code> bucket (e.g. <code>model</code>,
+  <code>image-res</code>, <code>cache</code>, <code>404</code>).</li>
+<li><code>Model</code> — pulled from <code>BenchCommand.tags["model"]</code>. Conventionally
+  follows the <code>&lt;org&gt;/&lt;model-name&gt;</code> format (e.g.
+  <code>microsoft/florence-2-base-ft</code>, <code>vikhyatk/moondream2</code>,
+  <code>qwen/qwen3.5-0.8b</code>) so the column is unambiguous across providers.
+  The column is only shown when at least one row declares a <code>model</code>
+  tag, so the default suite stays compact.</li>
+<li><code>Base Command</code> — the <strong>stable</strong> part of the resolved invocation:
+  <code>mm cat &lt;img&gt; --mode fast --no-cache --format json</code> (or
+  <code>mm find &lt;dir&gt; --format json</code> for the find rows). <code>--profile</code> is
+  stripped (it's constant across every row of a given benchfile run)
+  and <code>--model</code> is stripped (already in its own column); file paths
+  are substituted with kind-based placeholders (<code>&lt;img&gt;</code> / <code>&lt;vid&gt;</code> /
+  <code>&lt;doc&gt;</code> / <code>&lt;aud&gt;</code> / <code>&lt;code&gt;</code> / <code>&lt;dir&gt;</code>) so paths don't drown out
+  the actual command shape.</li>
+<li><code>Extra Args</code> — the <strong>variant-specific</strong> knobs:
+  <code>--prompt …</code>, <code>--generate.…</code>, <code>--encode.…</code>. This column is only
+  rendered when at least one row has extras, so the default suite
+  collapses to <code>Group | Base Command | &lt;metrics&gt;</code>.</li>
+</ul>
+<p><code>BenchCommand.tags</code> can declare additional keys for downstream JSON
+consumers; only the <code>model</code> tag drives a dedicated rich-table
+column. High-cardinality / long-string metadata (full prompts, JSON
+blobs) lives in <code>Extra Args</code> rather than in tag columns — the
+column-per-tag mechanism is reserved for short, comparable
+identifiers like <code>model</code> and <code>provider</code>.</p>
+<h3 id="bench-recording-benchmarksresultsyymmdd-mm-bench-profile-hhmmmd">Bench recording: <code>benchmarks/results/&lt;YYMMDD&gt;-mm-bench-&lt;profile&gt;-&lt;HHMM&gt;.md</code><a class="headerlink" href="#bench-recording-benchmarksresultsyymmdd-mm-bench-profile-hhmmmd" title="Permanent link">&para;</a></h3>
+<p>Every non-dry-run <code>mm bench</code> invocation also writes a per-row
+markdown snapshot under <code>benchmarks/results/</code>. The plural
+<code>benchmarks/</code> directory continues to host author-curated benchfiles
+(<code>vlmgw_bench_commands.py</code>, ad-hoc shell helpers, …); the nested
+<code>results/</code> subfolder is reserved for generated recordings so a
+<code>rm -rf benchmarks/results/</code> only nukes auto-produced artefacts and
+never the curated inputs. The file contains, for each benchmarked
+command, the <em>exact same single-row Rich table</em> the live bench
+rendered — followed by a fenced block holding that row's captured
+stdout. This keeps a portable, diffable record of what was measured
+<em>and</em> what each command actually returned, which is particularly
+useful when chasing regressions across gateway versions or comparing
+two benchfiles side-by-side.</p>
+<p>Path derivation:</p>
+<ul>
+<li><code>benchmarks/results/&lt;YYMMDD&gt;-mm-bench-&lt;profile&gt;-&lt;HHMM&gt;.md</code> (relative
+  to the current working directory; <code>benchmarks/results/</code> is created
+  if missing).</li>
+<li><code>&lt;profile&gt;</code> is the <em>active mm profile name</em> (the same one that
+  drives <code>mm cat</code>'s default base URL / model — see the <code>--profile</code>
+  flag and <code>~/.config/mm/mm.toml</code>). When no profile is configured
+  the stem falls back to <code>default</code>.</li>
+<li><code>&lt;HHMM&gt;</code> is the 24-hour wall-clock time the run started. Two runs
+  in the same minute will collide, but iterating on a benchfile
+  every few minutes preserves history without manual <code>git mv</code>s.</li>
+<li>The recording is keyed on the deployment being measured, not on
+  the benchfile that wrote the matrix: re-running the same benchfile
+  against a different profile writes to a different file (different
+  <code>&lt;profile&gt;</code> slot), and two benchfiles aimed at the same profile
+  produce sibling files distinguished only by <code>&lt;HHMM&gt;</code>.</li>
+</ul>
+<p>Per-row layout:</p>
+<p><div class="highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a>╭──────┬──────────────────┬──────────────────────────────┬───────┬───────╮
+<a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a>│ ...  │ Model            │ Base Command                 │  Mean │  ...  │
+<a id="__codelineno-16-3" name="__codelineno-16-3" href="#__codelineno-16-3"></a>├──────┼──────────────────┼──────────────────────────────┼───────┼───────┤
+<a id="__codelineno-16-4" name="__codelineno-16-4" href="#__codelineno-16-4"></a>│ ...  │ qwen/qwen3.5-…   │ mm cat &lt;img&gt; --mode fast …   │ 2.91s │  ...  │
+<a id="__codelineno-16-5" name="__codelineno-16-5" href="#__codelineno-16-5"></a>╰──────┴──────────────────┴──────────────────────────────┴───────┴───────╯
+<a id="__codelineno-16-6" name="__codelineno-16-6" href="#__codelineno-16-6"></a>args: {&quot;img&quot;: &quot;1-vqa-car.jpg&quot;, &quot;mode&quot;: &quot;fast&quot;}
+<a id="__codelineno-16-7" name="__codelineno-16-7" href="#__codelineno-16-7"></a>```json
+<a id="__codelineno-16-8" name="__codelineno-16-8" href="#__codelineno-16-8"></a>{...captured stdout...}
+</code></pre></div>
+2.91s • 38.2 KB • 13.1 KB/s
+<div class="highlight"><pre><span></span><code><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a>- The Rich table is emitted as raw markdown content (no ` ```text `
+<a id="__codelineno-17-2" name="__codelineno-17-2" href="#__codelineno-17-2"></a>  wrapping fence) so renderers display its box-drawing characters
+<a id="__codelineno-17-3" name="__codelineno-17-3" href="#__codelineno-17-3"></a>  directly — matching the live `mm bench` view.
+<a id="__codelineno-17-4" name="__codelineno-17-4" href="#__codelineno-17-4"></a>- `args:` carries a JSON one-liner with the resolved data inputs
+<a id="__codelineno-17-5" name="__codelineno-17-5" href="#__codelineno-17-5"></a>  (under the kind alias `img` / `vid` / `aud` / `doc` / `code`) and
+<a id="__codelineno-17-6" name="__codelineno-17-6" href="#__codelineno-17-6"></a>  `mode` when the row uses `--mode &lt;X&gt;`. This restores the actual
+<a id="__codelineno-17-7" name="__codelineno-17-7" href="#__codelineno-17-7"></a>  basenames the `&lt;img&gt;` / `&lt;vid&gt;` placeholders in the Base Command
+<a id="__codelineno-17-8" name="__codelineno-17-8" href="#__codelineno-17-8"></a>  column collapse away. Omitted entirely when there&#39;s nothing to
+<a id="__codelineno-17-9" name="__codelineno-17-9" href="#__codelineno-17-9"></a>  surface (e.g. directory-level `mm find` rows).
+<a id="__codelineno-17-10" name="__codelineno-17-10" href="#__codelineno-17-10"></a>- The captured stdout is wrapped in a fenced block — `json` when it
+<a id="__codelineno-17-11" name="__codelineno-17-11" href="#__codelineno-17-11"></a>  starts with `{` / `[`, else `text`. ANSI-stripped; absolute paths
+<a id="__codelineno-17-12" name="__codelineno-17-12" href="#__codelineno-17-12"></a>  from the resolved argv are rewritten to basenames so the markdown
+<a id="__codelineno-17-13" name="__codelineno-17-13" href="#__codelineno-17-13"></a>  stays portable across machines.
+<a id="__codelineno-17-14" name="__codelineno-17-14" href="#__codelineno-17-14"></a>- The footer line `&lt;elapsed&gt; • &lt;bytes&gt; • &lt;bytes/s&gt;` reports the
+<a id="__codelineno-17-15" name="__codelineno-17-15" href="#__codelineno-17-15"></a>  *last* timed round (the one that produced the captured stdout),
+<a id="__codelineno-17-16" name="__codelineno-17-16" href="#__codelineno-17-16"></a>  complementing the aggregate stats already shown in the row table.
+<a id="__codelineno-17-17" name="__codelineno-17-17" href="#__codelineno-17-17"></a>- Skipped rows render their snapshot table with `skipped: &lt;reason&gt;`
+<a id="__codelineno-17-18" name="__codelineno-17-18" href="#__codelineno-17-18"></a>  and a `text` block carrying the same reason; no footer.
+<a id="__codelineno-17-19" name="__codelineno-17-19" href="#__codelineno-17-19"></a>- Non-zero exits produce a `text` block prefixed with `[exit N]`
+<a id="__codelineno-17-20" name="__codelineno-17-20" href="#__codelineno-17-20"></a>  followed by the last 5 stderr lines, plus the standard footer.
+<a id="__codelineno-17-21" name="__codelineno-17-21" href="#__codelineno-17-21"></a>
+<a id="__codelineno-17-22" name="__codelineno-17-22" href="#__codelineno-17-22"></a>The header carries the resolved invocation (rounds, warmup, file
+<a id="__codelineno-17-23" name="__codelineno-17-23" href="#__codelineno-17-23"></a>count + size, total wall), the host one-liner (hostname / CPU / OS
+<a id="__codelineno-17-24" name="__codelineno-17-24" href="#__codelineno-17-24"></a>/ Python / mm version), and the active profile.
+<a id="__codelineno-17-25" name="__codelineno-17-25" href="#__codelineno-17-25"></a>
+<a id="__codelineno-17-26" name="__codelineno-17-26" href="#__codelineno-17-26"></a>The path is logged to stderr (`Wrote recording to …`) regardless of
+<a id="__codelineno-17-27" name="__codelineno-17-27" href="#__codelineno-17-27"></a>`--format`, so you always see where the snapshot landed.
+<a id="__codelineno-17-28" name="__codelineno-17-28" href="#__codelineno-17-28"></a>
+<a id="__codelineno-17-29" name="__codelineno-17-29" href="#__codelineno-17-29"></a>Skipped when:
+<a id="__codelineno-17-30" name="__codelineno-17-30" href="#__codelineno-17-30"></a>
+<a id="__codelineno-17-31" name="__codelineno-17-31" href="#__codelineno-17-31"></a>- `--dry-run` (nothing measured to record).
+<a id="__codelineno-17-32" name="__codelineno-17-32" href="#__codelineno-17-32"></a>- `--host-info` (it&#39;s not a measurement run).
+<a id="__codelineno-17-33" name="__codelineno-17-33" href="#__codelineno-17-33"></a>- `--format stdout` (snapshot mode has its own destination via stdout
+<a id="__codelineno-17-34" name="__codelineno-17-34" href="#__codelineno-17-34"></a>  redirection, e.g. `tests/stdout/cat.md`).
+<a id="__codelineno-17-35" name="__codelineno-17-35" href="#__codelineno-17-35"></a>
+<a id="__codelineno-17-36" name="__codelineno-17-36" href="#__codelineno-17-36"></a>### Filtering: `--group`, `--model`, `--command`
+<a id="__codelineno-17-37" name="__codelineno-17-37" href="#__codelineno-17-37"></a>
+<a id="__codelineno-17-38" name="__codelineno-17-38" href="#__codelineno-17-38"></a>Four independent filters compose via AND, so you can scope a run to
+<a id="__codelineno-17-39" name="__codelineno-17-39" href="#__codelineno-17-39"></a>exactly the rows you want:
+<a id="__codelineno-17-40" name="__codelineno-17-40" href="#__codelineno-17-40"></a>
+<a id="__codelineno-17-41" name="__codelineno-17-41" href="#__codelineno-17-41"></a>- `--group/-g GROUP` — exact match (case-insensitive) against
+<a id="__codelineno-17-42" name="__codelineno-17-42" href="#__codelineno-17-42"></a>  `BenchCommand.group`. E.g. `--group cache` keeps only the cache rows.
+<a id="__codelineno-17-43" name="__codelineno-17-43" href="#__codelineno-17-43"></a>- `--model MODEL` — exact match (case-insensitive) against
+<a id="__codelineno-17-44" name="__codelineno-17-44" href="#__codelineno-17-44"></a>  `BenchCommand.tags[&quot;model&quot;]`. Cuts across groups, e.g.
+<a id="__codelineno-17-45" name="__codelineno-17-45" href="#__codelineno-17-45"></a>  `--model qwen/qwen3.5-0.8b` keeps every row pinned to qwen regardless
+<a id="__codelineno-17-46" name="__codelineno-17-46" href="#__codelineno-17-46"></a>  of which bucket it lives in (model / image-res / video-frames /
+<a id="__codelineno-17-47" name="__codelineno-17-47" href="#__codelineno-17-47"></a>  cache, etc.).
+<a id="__codelineno-17-48" name="__codelineno-17-48" href="#__codelineno-17-48"></a>- `--task TASK` — exact match (case-insensitive) against
+<a id="__codelineno-17-49" name="__codelineno-17-49" href="#__codelineno-17-49"></a>  `BenchCommand.tags[&quot;task&quot;]`. Conventional taxonomy: `cap` (caption),
+<a id="__codelineno-17-50" name="__codelineno-17-50" href="#__codelineno-17-50"></a>  `ocr`, `det` (detection), `seg` (segmentation), `llm` (text-only
+<a id="__codelineno-17-51" name="__codelineno-17-51" href="#__codelineno-17-51"></a>  generation), `pose`, `track`, `noop` (gateway round-trip cost).
+<a id="__codelineno-17-52" name="__codelineno-17-52" href="#__codelineno-17-52"></a>  Cuts across groups *and* models — `--task ocr` returns every OCR
+<a id="__codelineno-17-53" name="__codelineno-17-53" href="#__codelineno-17-53"></a>  variant in the matrix regardless of which provider serves it,
+<a id="__codelineno-17-54" name="__codelineno-17-54" href="#__codelineno-17-54"></a>  which is the natural slice when comparing capabilities across
+<a id="__codelineno-17-55" name="__codelineno-17-55" href="#__codelineno-17-55"></a>  deployments. Rows without a `task` tag (e.g. `404/*` and
+<a id="__codelineno-17-56" name="__codelineno-17-56" href="#__codelineno-17-56"></a>  `validation/*` infrastructure tests) are intentionally invisible
+<a id="__codelineno-17-57" name="__codelineno-17-57" href="#__codelineno-17-57"></a>  to this filter.
+<a id="__codelineno-17-58" name="__codelineno-17-58" href="#__codelineno-17-58"></a>- `--command/-c TERM` — substring filter on `BenchCommand.name`. The
+<a id="__codelineno-17-59" name="__codelineno-17-59" href="#__codelineno-17-59"></a>  name is a stable variant identifier (e.g. `florence2/caption`,
+<a id="__codelineno-17-60" name="__codelineno-17-60" href="#__codelineno-17-60"></a>  `qwen/image-512`) defined by the benchfile; it&#39;s used purely for
+<a id="__codelineno-17-61" name="__codelineno-17-61" href="#__codelineno-17-61"></a>  filtering and JSON output and isn&#39;t shown as a column in the rich
+<a id="__codelineno-17-62" name="__codelineno-17-62" href="#__codelineno-17-62"></a>  table (the resolved `Command` cell is more informative).
+<a id="__codelineno-17-63" name="__codelineno-17-63" href="#__codelineno-17-63"></a>
+<a id="__codelineno-17-64" name="__codelineno-17-64" href="#__codelineno-17-64"></a>```bash
+<a id="__codelineno-17-65" name="__codelineno-17-65" href="#__codelineno-17-65"></a># Just the model variants
+<a id="__codelineno-17-66" name="__codelineno-17-66" href="#__codelineno-17-66"></a>mm bench ~/data/mmbench-tiny -b benchmarks/vlmgw_bench_commands.py --group model
+<a id="__codelineno-17-67" name="__codelineno-17-67" href="#__codelineno-17-67"></a>
+<a id="__codelineno-17-68" name="__codelineno-17-68" href="#__codelineno-17-68"></a># Every row using qwen/qwen3.5-0.8b across all groups
+<a id="__codelineno-17-69" name="__codelineno-17-69" href="#__codelineno-17-69"></a>mm bench ~/data/mmbench-tiny -b benchmarks/vlmgw_bench_commands.py --model qwen/qwen3.5-0.8b
+<a id="__codelineno-17-70" name="__codelineno-17-70" href="#__codelineno-17-70"></a>
+<a id="__codelineno-17-71" name="__codelineno-17-71" href="#__codelineno-17-71"></a># Every OCR row across all providers (florence2, dots-ocr, paddleocr)
+<a id="__codelineno-17-72" name="__codelineno-17-72" href="#__codelineno-17-72"></a>mm bench ~/data/mmbench-tiny -b benchmarks/vlmgw_bench_commands.py --task ocr
+<a id="__codelineno-17-73" name="__codelineno-17-73" href="#__codelineno-17-73"></a>
+<a id="__codelineno-17-74" name="__codelineno-17-74" href="#__codelineno-17-74"></a># Just the qwen captioning rows (model AND task compose via AND)
+<a id="__codelineno-17-75" name="__codelineno-17-75" href="#__codelineno-17-75"></a>mm bench ~/data/mmbench-tiny -b benchmarks/vlmgw_bench_commands.py --task cap --model qwen/qwen3.5-0.8b
+<a id="__codelineno-17-76" name="__codelineno-17-76" href="#__codelineno-17-76"></a>
+<a id="__codelineno-17-77" name="__codelineno-17-77" href="#__codelineno-17-77"></a># Just the SAM3 rows in the model group
+<a id="__codelineno-17-78" name="__codelineno-17-78" href="#__codelineno-17-78"></a>mm bench ~/data/mmbench-tiny -b benchmarks/vlmgw_bench_commands.py -g model --model facebook/sam3
+</code></pre></div></p>
+<h3 id="inspecting-a-plan-dry-run">Inspecting a plan: <code>--dry-run</code><a class="headerlink" href="#inspecting-a-plan-dry-run" title="Permanent link">&para;</a></h3>
+<p><code>--dry-run</code> resolves the benchmark plan — directory pre-scan, file
+selection, placeholder substitution — without invoking any
+subprocess. Every row renders with <code>-</code> placeholders in the rich/tsv
+table and <code>"dry_run": true</code> in JSON, with the resolved shell command
+in <code>argv</code> for inspection:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a>mm<span class="w"> </span>bench<span class="w"> </span>~/data/mmbench-tiny<span class="w"> </span>-b<span class="w"> </span>benchmarks/vlmgw_bench_commands.py<span class="w"> </span>--dry-run
+<a id="__codelineno-18-2" name="__codelineno-18-2" href="#__codelineno-18-2"></a>mm<span class="w"> </span>bench<span class="w"> </span>~/data/mmbench-tiny<span class="w"> </span>-b<span class="w"> </span>benchmarks/vlmgw_bench_commands.py<span class="w"> </span>--dry-run<span class="w"> </span>--format<span class="w"> </span>json
+</code></pre></div>
+<p>Useful for verifying a new benchfile before committing to a long run,
+or for snapshotting the plan in CI without paying timing cost.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+        
+<div class="md-social">
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://github.com/vlm-run/mm" target="_blank" rel="noopener" title="github.com" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+    </a>
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://pypi.org/project/mm-ctx/" target="_blank" rel="noopener" title="pypi.org" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.8 200.5c-7.7-30.9-22.3-54.2-53.4-54.2h-40.1v47.4c0 36.8-31.2 67.8-66.8 67.8H172.7c-29.2 0-53.4 25-53.4 54.3v101.8c0 29 25.2 46 53.4 54.3 33.8 9.9 66.3 11.7 106.8 0 26.9-7.8 53.4-23.5 53.4-54.3v-40.7H226.2v-13.6h160.2c31.1 0 42.6-21.7 53.4-54.2 11.2-33.5 10.7-65.7 0-108.6M286.2 444.7a20.4 20.4 0 1 1 0-40.7 20.4 20.4 0 1 1 0 40.7M167.8 248.1h106.8c29.7 0 53.4-24.5 53.4-54.3V91.9c0-29-24.4-50.7-53.4-55.6-35.8-5.9-74.7-5.6-106.8.1-45.2 8-53.4 24.7-53.4 55.6v40.7h106.9v13.6h-147c-31.1 0-58.3 18.7-66.8 54.2-9.8 40.7-10.2 66.1 0 108.6 7.6 31.6 25.7 54.2 56.8 54.2H101v-48.8c0-35.3 30.5-66.4 66.8-66.4m-6.6-183.4a20.4 20.4 0 1 1 0 40.8 20.4 20.4 0 1 1 0-40.8"/></svg>
+    </a>
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://discord.gg/6aqcyvPF79" target="_blank" rel="noopener" title="discord.gg" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M492.5 69.8c-.2-.3-.4-.6-.8-.7-38.1-17.5-78.4-30-119.7-37.1-.4-.1-.8 0-1.1.1s-.6.4-.8.8c-5.5 9.9-10.5 20.2-14.9 30.6-44.6-6.8-89.9-6.8-134.4 0-4.5-10.5-9.5-20.7-15.1-30.6-.2-.3-.5-.6-.8-.8s-.7-.2-1.1-.2C162.5 39 122.2 51.5 84.1 69c-.3.1-.6.4-.8.7C7.1 183.5-13.8 294.6-3.6 404.2c0 .3.1.5.2.8s.3.4.5.6c44.4 32.9 94 58 146.8 74.2.4.1.8.1 1.1 0s.7-.4.9-.7c11.3-15.4 21.4-31.8 30-48.8.1-.2.2-.5.2-.8s0-.5-.1-.8-.2-.5-.4-.6-.4-.3-.7-.4c-15.8-6.1-31.2-13.4-45.9-21.9-.3-.2-.5-.4-.7-.6s-.3-.6-.3-.9 0-.6.2-.9.3-.5.6-.7c3.1-2.3 6.2-4.7 9.1-7.1.3-.2.6-.4.9-.4s.7 0 1 .1c96.2 43.9 200.4 43.9 295.5 0 .3-.1.7-.2 1-.2s.7.2.9.4c2.9 2.4 6 4.9 9.1 7.2.2.2.4.4.6.7s.2.6.2.9-.1.6-.3.9-.4.5-.6.6c-14.7 8.6-30 15.9-45.9 21.8-.2.1-.5.2-.7.4s-.3.4-.4.7-.1.5-.1.8.1.5.2.8c8.8 17 18.8 33.3 30 48.8.2.3.6.6.9.7s.8.1 1.1 0c52.9-16.2 102.6-41.3 147.1-74.2.2-.2.4-.4.5-.6s.2-.5.2-.8c12.3-126.8-20.5-236.9-86.9-334.5zm-302 267.7c-29 0-52.8-26.6-52.8-59.2s23.4-59.2 52.8-59.2c29.7 0 53.3 26.8 52.8 59.2 0 32.7-23.4 59.2-52.8 59.2m195.4 0c-29 0-52.8-26.6-52.8-59.2s23.4-59.2 52.8-59.2c29.7 0 53.3 26.8 52.8 59.2 0 32.7-23.2 59.2-52.8 59.2"/></svg>
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.instant", "navigation.tracking", "navigation.top", "navigation.expand", "toc.follow", "content.code.copy", "content.code.annotate"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>

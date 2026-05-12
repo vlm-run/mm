@@ -1,0 +1,1367 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Fast, multimodal context for agents.">
+      
+      
+      
+        <link rel="canonical" href="https://vlm-run.github.io/mm/USE_CASES/">
+      
+      
+        <link rel="prev" href="../api/">
+      
+      
+        <link rel="next" href="../ENCODERS/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>Use cases - mm</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Geist:300,300i,400,400i,700,700i%7CGeist+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Geist";--md-code-font:"Geist Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../stylesheets/extra.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#mm-use-cases" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="mm" class="md-header__button md-logo" aria-label="mm" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            mm
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Use cases
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://pypi.org/project/mm-ctx/" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.8 200.5c-7.7-30.9-22.3-54.2-53.4-54.2h-40.1v47.4c0 36.8-31.2 67.8-66.8 67.8H172.7c-29.2 0-53.4 25-53.4 54.3v101.8c0 29 25.2 46 53.4 54.3 33.8 9.9 66.3 11.7 106.8 0 26.9-7.8 53.4-23.5 53.4-54.3v-40.7H226.2v-13.6h160.2c31.1 0 42.6-21.7 53.4-54.2 11.2-33.5 10.7-65.7 0-108.6M286.2 444.7a20.4 20.4 0 1 1 0-40.7 20.4 20.4 0 1 1 0 40.7M167.8 248.1h106.8c29.7 0 53.4-24.5 53.4-54.3V91.9c0-29-24.4-50.7-53.4-55.6-35.8-5.9-74.7-5.6-106.8.1-45.2 8-53.4 24.7-53.4 55.6v40.7h106.9v13.6h-147c-31.1 0-58.3 18.7-66.8 54.2-9.8 40.7-10.2 66.1 0 108.6 7.6 31.6 25.7 54.2 56.8 54.2H101v-48.8c0-35.3 30.5-66.4 66.8-66.4m-6.6-183.4a20.4 20.4 0 1 1 0 40.8 20.4 20.4 0 1 1 0-40.8"/></svg>
+  </div>
+  <div class="md-source__repository">
+    mm-ctx
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="mm" class="md-nav__button md-logo" aria-label="mm" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    mm
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://pypi.org/project/mm-ctx/" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.8 200.5c-7.7-30.9-22.3-54.2-53.4-54.2h-40.1v47.4c0 36.8-31.2 67.8-66.8 67.8H172.7c-29.2 0-53.4 25-53.4 54.3v101.8c0 29 25.2 46 53.4 54.3 33.8 9.9 66.3 11.7 106.8 0 26.9-7.8 53.4-23.5 53.4-54.3v-40.7H226.2v-13.6h160.2c31.1 0 42.6-21.7 53.4-54.2 11.2-33.5 10.7-65.7 0-108.6M286.2 444.7a20.4 20.4 0 1 1 0-40.7 20.4 20.4 0 1 1 0 40.7M167.8 248.1h106.8c29.7 0 53.4-24.5 53.4-54.3V91.9c0-29-24.4-50.7-53.4-55.6-35.8-5.9-74.7-5.6-106.8.1-45.2 8-53.4 24.7-53.4 55.6v40.7h106.9v13.6h-147c-31.1 0-58.3 18.7-66.8 54.2-9.8 40.7-10.2 66.1 0 108.6 7.6 31.6 25.7 54.2 56.8 54.2H101v-48.8c0-35.3 30.5-66.4 66.8-66.4m-6.6-183.4a20.4 20.4 0 1 1 0 40.8 20.4 20.4 0 1 1 0-40.8"/></svg>
+  </div>
+  <div class="md-source__repository">
+    mm-ctx
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../USER_GUIDE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    User guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Python API
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Use cases
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Use cases
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#video-20" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Video (20)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Video (20)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#surveillance-and-security" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Surveillance and security
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#content-creation-and-media" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Content creation and media
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#education" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Education
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#media-management" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Media management
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#compliance" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Compliance
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#pipelines" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Pipelines
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#documents-8" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Documents (8)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#images-8" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Images (8)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#audio-5" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Audio (5)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#code-and-development-5" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Code and development (5)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#cross-modal-7" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Cross-modal (7)
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ENCODERS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Encoders
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../PIPELINES/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Pipelines
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../FIXTURES/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Fixtures
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ROADMAP/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Roadmap
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_9" >
+        
+          
+          <label class="md-nav__link" for="__nav_9" id="__nav_9_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Spec
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_9">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Spec
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../spec/SPEC/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../spec/cat/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    cat
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../spec/cli-use/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CLI use
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#video-20" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Video (20)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Video (20)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#surveillance-and-security" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Surveillance and security
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#content-creation-and-media" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Content creation and media
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#education" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Education
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#media-management" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Media management
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#compliance" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Compliance
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#pipelines" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Pipelines
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#documents-8" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Documents (8)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#images-8" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Images (8)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#audio-5" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Audio (5)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#code-and-development-5" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Code and development (5)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#cross-modal-7" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Cross-modal (7)
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="mm-use-cases">mm — Use Cases<a class="headerlink" href="#mm-use-cases" title="Permanent link">&para;</a></h1>
+<p>53 scenarios that leverage mm's multimodal awareness, Rust-speed metadata extraction, token estimation, and semantic search. Each maps to existing CLI commands.</p>
+<blockquote>
+<p><strong>Note on <code>mm peek</code> vs <code>mm cat</code>:</strong> <code>mm peek</code> returns local file metadata (image dims/EXIF/hash, video resolution/duration/codecs, audio metadata, mime, content hash). <code>mm cat</code> extracts content: PDF text, raw text/code passthrough, or a short LLM caption (<code>-m fast</code>) / LLM-heavy description (<code>-m accurate</code>) for image/video/audio/PDF. Examples below that need an LLM make the mode explicit.</p>
+</blockquote>
+<hr />
+<h2 id="video-20">Video (20)<a class="headerlink" href="#video-20" title="Permanent link">&para;</a></h2>
+<h3 id="surveillance-and-security">Surveillance and security<a class="headerlink" href="#surveillance-and-security" title="Permanent link">&para;</a></h3>
+<details><summary>1. Inventory NVR exports by camera and timestamp</summary>
+
+`mm find ~/nvr-export --kind video --sort modified` lists recordings chronologically. `mm cat` on each extracts resolution, duration, codec, and frame rate — all from native MP4/MKV parsing in Rust, no ffmpeg, <100ms per file.
+</details>
+
+<details><summary>2. Verify footage integrity after evidence transfer</summary>
+
+`mm cat evidence.mp4` returns the xxh3 content hash. Hash both sides of a transfer to confirm bit-for-bit integrity without re-watching hours of footage.
+</details>
+
+<details><summary>3. Identify which recordings are HD vs SD</summary>
+
+`mm find ~/footage --kind video | mm cat --format json` extracts resolution per file. Filter in jq or SQL: `mm sql "SELECT name, width, height FROM files WHERE kind='video'" --dir ~/footage`.
+</details>
+
+<details><summary>4. Estimate storage cost before archiving to S3</summary>
+
+`mm wc ~/security-cams --kind video --format json` gives total bytes across all video files. One number, directly usable for cost calculations.
+</details>
+
+<h3 id="content-creation-and-media">Content creation and media<a class="headerlink" href="#content-creation-and-media" title="Permanent link">&para;</a></h3>
+<details><summary>5. Catalog a YouTube download folder without playback</summary>
+
+`mm find ~/youtube --kind video | mm cat` extracts resolution, duration, codec, and audio track info for every file. No ffprobe installation needed — mm's Rust core parses MP4 and MKV natively.
+</details>
+
+<details><summary>6. Generate keyframe mosaic thumbnails</summary>
+
+`mm cat lecture.mp4 -m fast` runs the video fast pipeline (`mosaic` encoder → 4×4 keyframe grid + short LLM description). Useful for creating visual previews of long recordings — one glance shows the content arc without watching.
+</details>
+
+<details><summary>7. Produce alt-text for a product demo</summary>
+
+`mm cat demo.mp4 -m accurate` generates an LLM scene-by-scene description from keyframes. Pipe to clipboard: `mm cat demo.mp4 -m accurate | pbcopy`.
+</details>
+
+<details><summary>8. Compare codec and container usage across a library</summary>
+
+`mm find ~/videos --kind video | mm cat --format json` gives per-file codec info. Aggregate to see h264 vs h265 vs av1 distribution — useful before batch analysis and transcoding decisions, i.e., Iterate: `for f in ~/videos/*.mp4; do mm cat "$f"; done`.
+</details>
+
+<h3 id="education">Education<a class="headerlink" href="#education" title="Permanent link">&para;</a></h3>
+<details><summary>9. Build a lecture schedule from recording durations</summary>
+
+`mm find ~/lectures --kind video | mm cat --format json` returns duration in seconds per file. Sum by folder to estimate total course hours, plan viewing schedules, or allocate transcription budgets.
+</details>
+
+<details><summary>10. Estimate transcription cost for a video library</summary>
+
+`mm find ~/training --kind video | mm cat --format json` gives total duration. At known $/minute rates (Whisper, Rev, etc.), calculate the total transcription budget in one pipeline.
+</details>
+
+<details><summary>11. Generate accessibility descriptions for course videos</summary>
+
+`mm find ~/course --kind video | mm cat -m accurate` produces LLM-generated scene descriptions. These can serve as content summaries for students who can't watch the videos.
+</details>
+
+<h3 id="media-management">Media management<a class="headerlink" href="#media-management" title="Permanent link">&para;</a></h3>
+<details><summary>12. Detect duplicate videos across volumes</summary>
+
+Run `mm find /Volumes/Drive1 --kind video | mm cat --format json` on each volume. Compare xxh3 hashes to find exact duplicates without byte-by-byte comparison. Hash computation uses mmap — fast even on large files.
+</details>
+
+<details><summary>13. Assess a GoPro/drone SD card before import</summary>
+
+`mm find /Volumes/GOPRO --tree --depth 1` shows file/size breakdown instantly. `mm wc /Volumes/GOPRO --by-kind` gives the storage split between video, photos, and thumbnails.
+</details>
+
+<details><summary>14. Find the longest and shortest recordings</summary>
+
+`mm find ~/recordings --kind video | mm cat --format json` gives actual duration per file. Sort client-side or via SQL.
+</details>
+
+<h3 id="compliance">Compliance<a class="headerlink" href="#compliance" title="Permanent link">&para;</a></h3>
+<details><summary>15. Create a chain-of-custody file list for body camera footage</summary>
+
+`mm find ~/evidence --kind video --columns name,size,modified --sort modified --format csv > evidence_manifest.csv` — timestamped, sized, sortable. Attach to case files.
+</details>
+
+<details><summary>16. Estimate LLM token cost before processing video evidence</summary>
+
+`mm cat bodycam.mp4 --format json` gives duration and resolution.
+</details>
+
+<h3 id="pipelines">Pipelines<a class="headerlink" href="#pipelines" title="Permanent link">&para;</a></h3>
+<details><summary>17. Build a video metadata table for a media asset manager</summary>
+
+`mm find ~/dam --kind video | mm cat --format json > video_metadata.json` — structured metadata (resolution, duration, codec, fps, hash) for every video, ready for database import.
+</details>
+
+<details><summary>18. Pre-screen videos by size before expensive accurate-mode processing</summary>
+
+`mm find ~/inbox --kind video --max-size 100mb` filters to small files first. Run `mm cat -m accurate` only on the filtered set to control LLM costs.
+</details>
+
+<details><summary>19. Generate a searchable video index with scene descriptions</summary>
+
+`mm find ~/archive --kind video | mm cat -m accurate --format json > scenes.json` — each entry has keyframe-based scene descriptions. Load into a search index for text-based video retrieval.
+</details>
+
+<details><summary>20. Audit a video archive for codec migration planning</summary>
+
+`mm find ~/archive --kind video | mm cat --format json` reveals which files use legacy codecs (h264 baseline) vs modern (h265, av1). Prioritize transcoding by file size × codec age.
+</details>
+
+<hr />
+<h2 id="documents-8">Documents (8)<a class="headerlink" href="#documents-8" title="Permanent link">&para;</a></h2>
+<details><summary>21. Full-text search across a PDF collection</summary>
+
+`mm grep "force majeure" ~/contracts --kind document` searches extracted text from all PDFs/DOCX/PPTX. Returns file paths and matching lines — no manual opening of each file.
+</details>
+
+<details><summary>22. Estimate LLM ingestion cost for a document archive</summary>
+
+`mm wc ~/legal --kind document` gives total file count, bytes, and estimated tokens. Multiply tokens by provider $/Mtok for a budget estimate.
+</details>
+
+<details><summary>23. Identify scanned (image-only) PDFs that need OCR</summary>
+
+`mm cat scanned.pdf` returns `[No extractable text — this PDF may contain scanned images only]` for image-only PDFs. Batch-check: run across all PDFs and flag empty text responses.
+</details>
+
+<details><summary>24. Extract text from a large PDF for RAG chunking</summary>
+
+`mm cat report.pdf` extracts full text via pypdfium2. Pipe directly to a chunker or embedding pipeline. Works on 500+ page documents.
+</details>
+
+<details><summary>25. Compare document volume across directory groups</summary>
+
+`mm sql "SELECT parent, COUNT(*) as docs, ROUND(SUM(size)/1e6,1) as mb FROM files WHERE kind='document' GROUP BY parent ORDER BY mb DESC" --dir ~/shared` — shows which teams or projects have the most document mass.
+</details>
+
+<details><summary>26. Search for specific clauses across contract PDFs</summary>
+
+`mm grep "indemnification" ~/contracts --kind document -C 2` — returns matching lines with 2 lines of context, across all extractable documents in the directory.
+</details>
+
+<details><summary>27. Semantic search across documents</summary>
+
+`mm grep "revenue forecast" ~/reports -s --kind document` — vector similarity search across embedded document chunks. Finds conceptually related content, not just keyword matches.
+</details>
+
+<details><summary>28. Audit file formats in a document archive</summary>
+
+`mm sql "SELECT ext, COUNT(*) as n, ROUND(SUM(size)/1e6,1) as mb FROM files WHERE kind='document' GROUP BY ext ORDER BY n DESC" --dir ~/archive` — see PDF vs DOCX vs PPTX distribution.
+</details>
+
+<hr />
+<h2 id="images-8">Images (8)<a class="headerlink" href="#images-8" title="Permanent link">&para;</a></h2>
+<details><summary>29. Extract EXIF metadata for photo organization</summary>
+
+`mm find ~/photos --kind image | mm cat --format json` returns dimensions, MIME, hash, and EXIF fields (camera, date, GPS) per file. Use for sorting into date/location folders.
+</details>
+
+<details><summary>30. Find print-quality images by resolution</summary>
+
+`mm sql "SELECT name, width, height FROM files WHERE kind='image' AND width >= 3000 ORDER BY width DESC" --dir ~/assets` — filter for images that meet minimum print DPI requirements.
+</details>
+
+<details><summary>31. Caption images for fine-tuning datasets</summary>
+
+`mm find ~/unlabeled --kind image | mm cat -m accurate --format json` — LLM-generated descriptions for each image. Each entry is an image-caption pair, directly usable as JSONL training data.
+</details>
+
+<details><summary>32. Detect near-duplicate images</summary>
+
+mm computes perceptual hashes (pHash) via DCT in Rust. Two images with hamming distance < 8 are near-duplicates regardless of resize or mild compression — useful for deduplicating training sets or photo libraries.
+</details>
+
+<details><summary>33. Audit image format adoption in a web project</summary>
+
+`mm sql "SELECT ext, COUNT(*) as n, ROUND(SUM(size)/1e6,1) as mb FROM files WHERE kind='image' GROUP BY ext ORDER BY mb DESC" --dir ~/site/public` — see how much bandwidth is wasted on PNG vs WebP vs AVIF.
+</details>
+
+<details><summary>34. Estimate token cost for batch image processing</summary>
+
+Image token cost depends on resolution (tile-based). `mm find ~/products --kind image | mm cat --format json` gives per-image dimensions.
+</details>
+
+<details><summary>35. Separate photos from screenshots and synthetic images</summary>
+
+`mm find ~/photos --kind image | mm cat --format json` — images without camera/date/GPS EXIF fields are likely screenshots, downloads, or synthetic. Useful for separating real photos from non-photo images.
+</details>
+
+<details><summary>36. Semantic search across images</summary>
+
+`mm grep "sunset over ocean" ~/photos -s` — vector similarity search over image embeddings. Returns images whose LLM-generated captions are semantically close to the query.
+</details>
+
+<hr />
+<h2 id="audio-5">Audio (5)<a class="headerlink" href="#audio-5" title="Permanent link">&para;</a></h2>
+<details><summary>37. Catalog a podcast archive by duration</summary>
+
+`mm find ~/podcasts --kind audio | mm cat --format json` extracts duration, codec, and sample rate per file. Sort by duration to find the longest episodes or estimate total listening time.
+</details>
+
+<details><summary>38. Estimate transcription cost</summary>
+
+`mm find ~/audio --kind audio | mm cat --format json` gives per-file duration. Sum durations and multiply by $/minute for Whisper, Rev, or Deepgram pricing.
+</details>
+
+<details><summary>39. Find long recordings that need chunking</summary>
+
+Audio files over 80 seconds exceed Gemini's single-part embedding limit. `mm find ~/recordings --kind audio | mm cat --format json` identifies files that need `audio_parts()` chunking before embedding.
+</details>
+
+<details><summary>40. Summarize a meeting recording</summary>
+
+`mm cat meeting.mp3 -m accurate` runs the full pipeline: audio extraction, transcription, and LLM summarization. Returns a structured summary without manual transcription.
+</details>
+
+<details><summary>41. Assess a field recording SD card</summary>
+
+`mm find /Volumes/RECORDER --tree --depth 1` shows the directory structure. `mm wc /Volumes/RECORDER --kind audio` gives total duration and storage. Decide what to import before copying gigabytes.
+</details>
+
+<hr />
+<h2 id="code-and-development-5">Code and development (5)<a class="headerlink" href="#code-and-development-5" title="Permanent link">&para;</a></h2>
+<details><summary>42. Check if a codebase fits in an LLM context window</summary>
+
+`mm wc ~/project --kind code` gives file count, total bytes, and estimated tokens in one line. Instant answer: does this fit in 200K tokens?
+</details>
+
+<details><summary>43. Find refactoring candidates by file size</summary>
+
+`mm find ~/project --kind code --sort size --reverse --limit 10` — the largest source files are often the ones most in need of splitting.
+</details>
+
+<details><summary>44. Audit technical debt</summary>
+
+`mm grep "TODO\|FIXME\|HACK" ~/project --kind code --count` — per-file counts of debt markers. Pipe to an LLM for triage: `mm grep "TODO" --kind code | llm -s "Prioritize these by severity"`.
+</details>
+
+<details><summary>45. Compare code volume across languages</summary>
+
+`mm sql "SELECT ext, COUNT(*) as files, ROUND(SUM(size)/1e3,1) as kb FROM files WHERE kind='code' GROUP BY ext ORDER BY files DESC" --dir ~/project` — understand the language mix in a polyglot repo.
+</details>
+
+<details><summary>46. Generate a project overview for onboarding</summary>
+
+`mm find ~/project --tree --depth 3` produces a complete directory structure. Combined with `mm wc --by-kind`, a new team member immediately sees what types of content exist and how they're organized.
+</details>
+
+<hr />
+<h2 id="cross-modal-7">Cross-modal (7)<a class="headerlink" href="#cross-modal-7" title="Permanent link">&para;</a></h2>
+<details><summary>47. Triage a Downloads folder by media type</summary>
+
+`mm wc ~/Downloads --by-kind` shows the breakdown: how much is video, documents, images, etc. `mm find ~/Downloads --tree --depth 1` gives the visual layout. An agent uses this to propose an organization plan.
+</details>
+
+<details><summary>48. Semantic search across all media types simultaneously</summary>
+
+`mm grep "quarterly revenue" ~/shared -s` searches PDFs (extracted text), images (via LLM captions), and video (via keyframe descriptions) in a single query using vector similarity.
+</details>
+
+<details><summary>49. Build a multimodal evidence package</summary>
+
+For a construction project with permits (PDF), site photos (JPEG), and walkthrough video (MP4): `mm find ~/project --tree` shows everything, `mm wc --by-kind` quantifies it, and `mm cat` on each file gives structured metadata. One directory becomes a queryable index across all media types.
+</details>
+
+<details><summary>50. Create an invoice summary from mixed document formats</summary>
+
+`mm find ~/invoices --kind document | mm cat -m accurate --format json` — the LLM extracts amounts, dates, and vendor names from PDFs, DOCX, and scanned documents. Output is structured JSON ready for aggregation.
+</details>
+
+<details><summary>51. Estimate total LLM cost for a mixed-media directory</summary>
+
+`mm wc ~/data --by-kind --format json` gives token estimates broken down by kind.
+</details>
+
+<details><summary>52. Find all files modified today</summary>
+
+`mm sql "SELECT name, kind, size, modified FROM files WHERE modified >= date('now', 'start of day') ORDER BY modified DESC" --dir ~/project` — see what changed today across all media types without relying on git or filesystem watches.
+</details>
+
+<details><summary>53. Batch-extract metadata for a digital asset manager</summary>
+
+`mm find ~/dam --format json > metadata.json` for file-level scan metadata. `mm find ~/dam | mm peek --format json > content.json` for richer local extraction (text, dimensions, duration, hash, EXIF). Add `--full` to also pull document author / title / subject / keywords / page count from PDFs and Office files.
+</details>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+        
+<div class="md-social">
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://github.com/vlm-run/mm" target="_blank" rel="noopener" title="github.com" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+    </a>
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://pypi.org/project/mm-ctx/" target="_blank" rel="noopener" title="pypi.org" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.8 200.5c-7.7-30.9-22.3-54.2-53.4-54.2h-40.1v47.4c0 36.8-31.2 67.8-66.8 67.8H172.7c-29.2 0-53.4 25-53.4 54.3v101.8c0 29 25.2 46 53.4 54.3 33.8 9.9 66.3 11.7 106.8 0 26.9-7.8 53.4-23.5 53.4-54.3v-40.7H226.2v-13.6h160.2c31.1 0 42.6-21.7 53.4-54.2 11.2-33.5 10.7-65.7 0-108.6M286.2 444.7a20.4 20.4 0 1 1 0-40.7 20.4 20.4 0 1 1 0 40.7M167.8 248.1h106.8c29.7 0 53.4-24.5 53.4-54.3V91.9c0-29-24.4-50.7-53.4-55.6-35.8-5.9-74.7-5.6-106.8.1-45.2 8-53.4 24.7-53.4 55.6v40.7h106.9v13.6h-147c-31.1 0-58.3 18.7-66.8 54.2-9.8 40.7-10.2 66.1 0 108.6 7.6 31.6 25.7 54.2 56.8 54.2H101v-48.8c0-35.3 30.5-66.4 66.8-66.4m-6.6-183.4a20.4 20.4 0 1 1 0 40.8 20.4 20.4 0 1 1 0-40.8"/></svg>
+    </a>
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://discord.gg/6aqcyvPF79" target="_blank" rel="noopener" title="discord.gg" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M492.5 69.8c-.2-.3-.4-.6-.8-.7-38.1-17.5-78.4-30-119.7-37.1-.4-.1-.8 0-1.1.1s-.6.4-.8.8c-5.5 9.9-10.5 20.2-14.9 30.6-44.6-6.8-89.9-6.8-134.4 0-4.5-10.5-9.5-20.7-15.1-30.6-.2-.3-.5-.6-.8-.8s-.7-.2-1.1-.2C162.5 39 122.2 51.5 84.1 69c-.3.1-.6.4-.8.7C7.1 183.5-13.8 294.6-3.6 404.2c0 .3.1.5.2.8s.3.4.5.6c44.4 32.9 94 58 146.8 74.2.4.1.8.1 1.1 0s.7-.4.9-.7c11.3-15.4 21.4-31.8 30-48.8.1-.2.2-.5.2-.8s0-.5-.1-.8-.2-.5-.4-.6-.4-.3-.7-.4c-15.8-6.1-31.2-13.4-45.9-21.9-.3-.2-.5-.4-.7-.6s-.3-.6-.3-.9 0-.6.2-.9.3-.5.6-.7c3.1-2.3 6.2-4.7 9.1-7.1.3-.2.6-.4.9-.4s.7 0 1 .1c96.2 43.9 200.4 43.9 295.5 0 .3-.1.7-.2 1-.2s.7.2.9.4c2.9 2.4 6 4.9 9.1 7.2.2.2.4.4.6.7s.2.6.2.9-.1.6-.3.9-.4.5-.6.6c-14.7 8.6-30 15.9-45.9 21.8-.2.1-.5.2-.7.4s-.3.4-.4.7-.1.5-.1.8.1.5.2.8c8.8 17 18.8 33.3 30 48.8.2.3.6.6.9.7s.8.1 1.1 0c52.9-16.2 102.6-41.3 147.1-74.2.2-.2.4-.4.5-.6s.2-.5.2-.8c12.3-126.8-20.5-236.9-86.9-334.5zm-302 267.7c-29 0-52.8-26.6-52.8-59.2s23.4-59.2 52.8-59.2c29.7 0 53.3 26.8 52.8 59.2 0 32.7-23.4 59.2-52.8 59.2m195.4 0c-29 0-52.8-26.6-52.8-59.2s23.4-59.2 52.8-59.2c29.7 0 53.3 26.8 52.8 59.2 0 32.7-23.2 59.2-52.8 59.2"/></svg>
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.instant", "navigation.tracking", "navigation.top", "navigation.expand", "toc.follow", "content.code.copy", "content.code.annotate"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>
