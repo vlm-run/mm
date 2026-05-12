@@ -16,10 +16,13 @@ from __future__ import annotations
 import base64
 import logging
 from pathlib import Path
-from typing import Any, Iterable
+from typing import TYPE_CHECKING, Any, Iterable
 
 from mm.constants import guess_mime
 from mm.encoders import Message, register
+
+if TYPE_CHECKING:
+    from mm.common.audio._base import BackendLabel
 
 logger = logging.getLogger(__name__)
 
@@ -106,12 +109,20 @@ class AudioTranscribe:
         language: str = kwargs.get("language", "auto")
         audio_speed: float = kwargs.get("audio_speed", 1.0)
 
-        backend: str | None = kwargs.get("backend", None)
+        backend: BackendLabel | None = kwargs.get("backend", None)
         base_url: str | None = kwargs.get("base_url", None)
         api_key: str | None = kwargs.get("api_key", None)
 
-        from mm.video import extract_audio, ffmpeg_available
+        if backend is None or base_url is None or api_key is None:
+            from mm.config import get_transcription_config
+
+            cfg = get_transcription_config()
+            backend = backend or cfg.backend
+            base_url = base_url or cfg.base_url
+            api_key = api_key or cfg.api_key
+
         from mm.common.audio import transcribe, transcribe_available
+        from mm.video import extract_audio, ffmpeg_available
 
         if not ffmpeg_available() and backend != "openai":
             yield _to_message(

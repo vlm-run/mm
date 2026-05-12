@@ -4,7 +4,7 @@ build-backend = "maturin"
 
 [project]
 name = "mm-ctx"
-version = "0.12.1"
+version = "0.12.4"
 description = "Fast, multimodal context for agents."
 readme = "README.md"
 requires-python = ">=3.11,<3.14"
@@ -76,7 +76,7 @@ dependencies = [
     "pyyaml>=6.0",
     "av>=13.0",
     "faster-whisper>=1.0",
-    "scenedetect[opencv]>=0.6",
+    "scenedetect==0.7",
     "ctranslate2>=2.0",
     "cachetools>=5.3",
     "cachetools-ext>=0.0.8",

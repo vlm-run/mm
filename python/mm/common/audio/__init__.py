@@ -16,6 +16,7 @@ Public API::
 from __future__ import annotations
 
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from mm.common.audio._base import (
     TranscriptionBackend,
@@ -26,10 +27,12 @@ from mm.common.audio._base import (
     register_backend,
     transcribe_available,
 )
-
 from mm.common.audio._ctranslate2 import CTranslate2Backend
 from mm.common.audio._mlx import MLXBackend
 from mm.common.audio._openai import OpenAIBackend
+
+if TYPE_CHECKING:
+    from mm.common.audio._base import BackendLabel
 
 register_backend(MLXBackend())
 register_backend(CTranslate2Backend())
@@ -43,7 +46,7 @@ def transcribe(
     language: str | None = None,
     beam_size: int = 1,
     audio_speed: float = 1.0,
-    backend: str | None = None,
+    backend: BackendLabel | None = None,
     base_url: str | None = None,
     api_key: str | None = None,
 ) -> TranscriptionResult:
@@ -57,7 +60,9 @@ def transcribe(
         audio_speed: Speed multiplier the audio was extracted at.
             Timestamps are scaled back to original time.
         backend: Explicit backend name (``"mlx"``, ``"ctranslate2"``,
-            ``"openai"``).  ``None`` uses auto-detection.
+            ``"openai"``). When ``None`` the ``[transcription]`` section of
+            ``mm.toml`` is consulted; if still unset, the best available
+            local backend is auto-detected.
         base_url: Custom base URL for the ``openai`` backend.
         api_key: API key for the ``openai`` backend.
 
@@ -65,6 +70,14 @@ def transcribe(
         TranscriptionResult with text, segments, language, timing, and
         backend metadata.
     """
+    if backend is None or base_url is None or api_key is None:
+        from mm.config import get_transcription_config
+
+        cfg = get_transcription_config()
+        backend = backend or cfg.backend
+        base_url = base_url or cfg.base_url
+        api_key = api_key or cfg.api_key
+
     be = detect_backend(name=backend, base_url=base_url, api_key=api_key)
     if be is None:
         return TranscriptionResult(

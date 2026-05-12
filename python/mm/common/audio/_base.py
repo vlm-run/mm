@@ -5,6 +5,7 @@ from __future__ import annotations
 import abc
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Literal
 
 
 @dataclass
@@ -30,6 +31,9 @@ class TranscriptionResult:
     backend: str = ""
 
 
+BackendLabel = Literal["mlx", "ctranslate2", "openai"]
+
+
 class TranscriptionBackend(abc.ABC):
     """Abstract base for pluggable transcription backends.
 
@@ -38,7 +42,7 @@ class TranscriptionBackend(abc.ABC):
     run inference.
     """
 
-    name: str
+    name: BackendLabel
     priority: int
 
     @abc.abstractmethod
@@ -75,7 +79,7 @@ def list_backends() -> list[tuple[str, bool]]:
 
 def detect_backend(
     *,
-    name: str | None = None,
+    name: BackendLabel | None = None,
     base_url: str | None = None,
     api_key: str | None = None,
 ) -> TranscriptionBackend | None:

@@ -937,7 +937,7 @@ wheels = [
 
 [[package]]
 name = "mm-ctx"
-version = "0.12.1"
+version = "0.12.4"
 source = { editable = "." }
 dependencies = [
     { name = "av" },
@@ -955,7 +955,7 @@ dependencies = [
     { name = "pypdfium2" },
     { name = "pyyaml" },
     { name = "rich" },
-    { name = "scenedetect", extra = ["opencv"] },
+    { name = "scenedetect" },
     { name = "sqlite-vec" },
     { name = "typer" },
 ]
@@ -1011,7 +1011,7 @@ requires-dist = [
     { name = "pyyaml", specifier = ">=6.0" },
     { name = "rich", specifier = ">=13.0" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.4" },
-    { name = "scenedetect", extras = ["opencv"], specifier = ">=0.6" },
+    { name = "scenedetect", specifier = "==0.7" },
     { name = "sqlite-vec", specifier = ">=0.1.9" },
     { name = "ty", marker = "extra == 'dev'", specifier = ">=0.0.28" },
     { name = "typer", specifier = ">=0.12" },
@@ -2182,22 +2182,18 @@ wheels = [
 
 [[package]]
 name = "scenedetect"
-version = "0.6.7.1"
+version = "0.7"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "click" },
     { name = "numpy" },
+    { name = "opencv-python" },
     { name = "platformdirs" },
     { name = "tqdm" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/f0/b4/e77e1812ae89bc4864ff54efb6a8232eabebd471e372096cb711f03cca52/scenedetect-0.6.7.1.tar.gz", hash = "sha256:07833b0cb83a0106786a88136462580e9865e097f411f01501a688714c483a4e", size = 164208 }
+sdist = { url = "https://files.pythonhosted.org/packages/0a/72/24d145369ac027c9839150fd7ef059659367d8615510a5526af511415453/scenedetect-0.7.tar.gz", hash = "sha256:c907ac5e30e7771c73554f68c432277cf72b917408dd02ead6dc1425bc587407", size = 245286 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/b1/5b/2294ea44b3b2264a50b82a55a3822837a04cb779c873fc168844f36f5b46/scenedetect-0.6.7.1-py3-none-any.whl", hash = "sha256:3808ef4436ab0fc6fee8a155e95759b42e2446c925c45746a82ff119be4eb3e1", size = 130860 },
-]
-
-[package.optional-dependencies]
-opencv = [
-    { name = "opencv-python" },
+    { url = "https://files.pythonhosted.org/packages/93/73/3aed375e903bfe4622dd9bd984ef86f31e9e1a29a1b7d28f92b935b8e350/scenedetect-0.7-py3-none-any.whl", hash = "sha256:ae0fa86fd7c723fa9b56517888c4a8b8ff5b6e6d0f1990a13d59fc11910ee7e1", size = 134726 },
 ]
 
 [[package]]

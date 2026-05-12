@@ -12,7 +12,10 @@ parsed with :func:`PipelineSpec.from_dict`. Validation failures raise
 from __future__ import annotations
 
 from dataclasses import dataclass, field, fields
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from mm.common.audio._base import BackendLabel
 
 
 class PipelineValidationError(ValueError):
@@ -35,10 +38,15 @@ class Encode:
     before it reaches the LLM. Signature::
 
         def transform(parts: list[dict], context: dict) -> list[dict]
+
+    ``backend`` is an optional encoder-specific backend selector (e.g.
+    ``"mlx"``|``"ctranslate2"``|``"openai"`` for ``audio-transcribe``).
+    Encoders that don't have a backend concept ignore it.
     """
 
     strategy: str | None = None
     pyfunc: str | None = None
+    backend: BackendLabel | None = None
     strategy_opts: dict[str, Any] = field(default_factory=dict)
 
     @classmethod
@@ -52,9 +60,11 @@ class Encode:
             raise PipelineValidationError(
                 f"encode.strategy_opts must be a mapping, got {type(opts).__name__}"
             )
+        backend: BackendLabel | None = data.get("backend")
         return cls(
             strategy=data.get("strategy"),
             pyfunc=data.get("pyfunc"),
+            backend=backend,
             strategy_opts=dict(opts),
         )
 
@@ -64,6 +74,8 @@ class Encode:
             out["strategy"] = self.strategy
         if self.pyfunc is not None:
             out["pyfunc"] = self.pyfunc
+        if self.backend is not None:
+            out["backend"] = self.backend
         if self.strategy_opts:
             out["strategy_opts"] = dict(self.strategy_opts)
         return out

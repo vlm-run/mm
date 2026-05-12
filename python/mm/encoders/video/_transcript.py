@@ -50,8 +50,8 @@ def transcript_messages(
     callers can fall back to visual-only output.
     """
     try:
-        from mm.video import extract_audio
         from mm.common.audio import transcribe, transcribe_available
+        from mm.video import extract_audio
     except ImportError:
         return []
 
@@ -60,16 +60,16 @@ def transcript_messages(
 
     audio_result = extract_audio(path, speed=audio_speed)
 
-    lang_kwarg: dict[str, str] = {}
+    resolved_lang = None
     if language != "auto":
-        lang_kwarg["language"] = language
+        resolved_lang = language
 
     whisper_result = transcribe(
         audio_result.path,
         model=whisper_model,
+        language=resolved_lang,
         beam_size=5,
         audio_speed=audio_speed,
-        **lang_kwarg,
     )
 
     try:

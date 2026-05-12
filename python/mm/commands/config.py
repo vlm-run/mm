@@ -76,17 +76,16 @@ def show(
 
     # Mode settings
     mode_tbl = Table(
-        title="[bold]Extraction Modes",
+        title="[bold]Extraction Modes[/bold]",
         caption=str(config_path) if config_path else None,
         caption_style="dim",
         caption_justify="right",
         show_lines=False,
         padding=(0, 1),
-        border_style="dim",
-        header_style="bold white",
+        header_style="bold",
         box=box.ROUNDED,
     )
-    mode_tbl.add_column("mode", style="bold")
+    mode_tbl.add_column("mode")
     mode_tbl.add_column("whisper_model")
     mode_tbl.add_column("audio_speed", justify="right")
     mode_tbl.add_column("beam_size", justify="right")
@@ -122,12 +121,12 @@ def init(
 
     existing = _find_config_path()
     if existing.exists() and not force:
-        output_console.print(f"[yellow]Config already exists:[/yellow] {existing}")
-        output_console.print("[dim]Use --force to overwrite.[/dim]")
+        output_console.print(f"Config already exists: {existing}")
+        output_console.print("Use --force to overwrite.")
         raise typer.Exit(1)
 
     path = write_platform_config()
-    output_console.print(f"[green]Created[/green] {path}")
+    output_console.print(f"Created {path}")
 
 
 def _find_db_files() -> list:
@@ -183,7 +182,7 @@ def reset_db(
 
     existing = _find_db_files()
     if not existing:
-        output_console.print("[dim]Nothing to reset — no databases or caches found.[/dim]")
+        output_console.print("Nothing to reset — no databases or caches found.")
         return
 
     output_console.print("[bold]The following will be deleted:[/bold]")
@@ -196,12 +195,12 @@ def reset_db(
             default=False,
         )
         if not confirm:
-            output_console.print("[dim]Aborted.[/dim]")
+            output_console.print("Aborted.")
             raise typer.Exit(1)
 
     _delete_paths(existing)
 
-    output_console.print("[green]All databases and caches have been reset.[/green]")
+    output_console.print("All databases and caches have been reset.")
 
 
 @config_app.command("reset-profiles")
@@ -235,13 +234,11 @@ def reset_profiles(
     if not yes:
         confirm = typer.confirm("\nContinue?", default=False)
         if not confirm:
-            output_console.print("[dim]Aborted.[/dim]")
+            output_console.print("Aborted.")
             raise typer.Exit(1)
 
     path = reset_profiles()
-    output_console.print(
-        f"[green]All profiles have been reset to defaults.[/green]  [dim]({path})[/dim]"
-    )
+    output_console.print(f"All profiles have been reset to defaults.  ({path})")
 
 
 @config_app.command("reset")
@@ -282,17 +279,15 @@ def reset_all(
             default=False,
         )
         if not confirm:
-            output_console.print("[dim]Aborted.[/dim]")
+            output_console.print("Aborted.")
             raise typer.Exit(1)
 
     _delete_paths(existing_db)
     path = reset_profiles()
 
     if existing_db:
-        output_console.print("[green]All databases and caches have been reset.[/green]")
-    output_console.print(
-        f"[green]All profiles have been reset to defaults.[/green]  [dim]({path})[/dim]"
-    )
+        output_console.print("All databases and caches have been reset.")
+    output_console.print(f"All profiles have been reset to defaults.  ({path})")
 
 
 @config_app.command("set")
@@ -322,10 +317,10 @@ def set_key(
 
     _VALID_PREFIXES = ("mode.", "transcription.")
     if not any(key.startswith(p) for p in _VALID_PREFIXES):
-        output_console.print(f"[red]Unknown key:[/red] {key}")
+        output_console.print(f"Unknown key: {key}")
         output_console.print(
-            "[dim]Valid keys: mode.{fast,accurate}.{whisper_model,audio_speed,beam_size}, "
-            "transcription.{backend,base_url,api_key}[/dim]"
+            "Valid keys: mode.{fast,accurate}.{whisper_model,audio_speed,beam_size}, "
+            "transcription.{backend,base_url,api_key}"
         )
         raise typer.Exit(1)
 
@@ -336,18 +331,18 @@ def set_key(
         or parts[1] not in ("fast", "accurate")
         or parts[2] not in ("whisper_model", "audio_speed", "beam_size")
     ):
-        output_console.print(f"[red]Unknown key:[/red] {key}")
+        output_console.print(f"Unknown key: {key}")
         output_console.print(
-            "[dim]Valid keys: mode.{fast,accurate}.{whisper_model,audio_speed,beam_size}[/dim]"
+            "Valid keys: mode.{fast,accurate}.{whisper_model,audio_speed,beam_size}"
         )
         raise typer.Exit(1)
 
     if key.startswith("transcription.") and (
         len(parts) != 2 or parts[1] not in ("backend", "base_url", "api_key")
     ):
-        output_console.print(f"[red]Unknown key:[/red] {key}")
-        output_console.print("[dim]Valid keys: transcription.{backend,base_url,api_key}[/dim]")
+        output_console.print(f"Unknown key: {key}")
+        output_console.print("Valid keys: transcription.{backend,base_url,api_key}")
         raise typer.Exit(1)
 
     path = update_config_key(key, value)
-    output_console.print(f"[green]Set[/green] {key} = {value}  [dim]({path})[/dim]")
+    output_console.print(f"Set {key} = {value}  ({path})")
