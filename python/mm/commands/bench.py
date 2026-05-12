@@ -10,7 +10,6 @@ import statistics
 import subprocess
 import sys
 import time
-from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Annotated, Any, Callable, Optional
@@ -388,13 +387,8 @@ def _run_benchmarks(
 
         return r
 
-    with ThreadPoolExecutor(max_workers=min(8, len(commands))) as pool:
-        futures = [pool.submit(_exec_run, cmd) for cmd in commands]
-        for p, fut in zip(commands, futures, strict=True):
-            try:
-                results.append(fut.result())
-            except Exception as exc:
-                typer.echo(f"Error processing {p}: {exc}", err=True)
+    for cmd in commands:
+        results.append(_exec_run(cmd))
 
     target_info["total_wall_ms"] = (time.perf_counter_ns() - t_wall) / 1_000_000
     return results, target_info
