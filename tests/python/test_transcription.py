@@ -66,6 +66,143 @@ class TestRegistry:
         assert transcribe_available() is True
 
 
+class TestCustomBackend:
+    """Verify that third-party backends can be registered and used."""
+
+    def test_register_and_detect_custom_backend(self):
+        from mm.common.audio import (
+            TranscriptionBackend,
+            TranscriptionResult,
+            detect_backend,
+            register_backend,
+            unregister_backend,
+        )
+        from mm.common.audio._base import _reset
+
+        class FakeGeminiBackend(TranscriptionBackend):
+            name = "gemini"
+
+            def available(self) -> bool:
+                return True
+
+            def transcribe(self, audio_path, *, model=None, **kw):
+                return TranscriptionResult(text="gemini result", backend="gemini")
+
+        _reset()
+        register_backend(FakeGeminiBackend())
+        try:
+            be = detect_backend(name="gemini")
+            assert be is not None
+            assert be.name == "gemini"
+
+            from pathlib import Path
+
+            result = be.transcribe(Path("/tmp/test.wav"))
+            assert result.text == "gemini result"
+            assert result.backend == "gemini"
+        finally:
+            unregister_backend("gemini")
+            _reset()
+
+    def test_register_replaces_existing(self):
+        from mm.common.audio import (
+            TranscriptionBackend,
+            TranscriptionResult,
+            detect_backend,
+            list_backends,
+            register_backend,
+            unregister_backend,
+        )
+        from mm.common.audio._base import _reset
+
+        class V1(TranscriptionBackend):
+            name = "custom"
+
+            def available(self):
+                return True
+
+            def transcribe(self, audio_path, **kw):
+                return TranscriptionResult(text="v1")
+
+        class V2(TranscriptionBackend):
+            name = "custom"
+
+            def available(self):
+                return True
+
+            def transcribe(self, audio_path, **kw):
+                return TranscriptionResult(text="v2")
+
+        _reset()
+        register_backend(V1())
+        register_backend(V2())
+        try:
+            names = [n for n, _ in list_backends()]
+            assert names.count("custom") == 1
+            be = detect_backend(name="custom")
+            assert isinstance(be, V2)
+        finally:
+            unregister_backend("custom")
+            _reset()
+
+    def test_unregister_backend(self):
+        from mm.common.audio import (
+            TranscriptionBackend,
+            TranscriptionResult,
+            detect_backend,
+            register_backend,
+            unregister_backend,
+        )
+        from mm.common.audio._base import _reset
+
+        class Temp(TranscriptionBackend):
+            name = "temp"
+
+            def available(self):
+                return True
+
+            def transcribe(self, audio_path, **kw):
+                return TranscriptionResult(text="temp")
+
+        _reset()
+        register_backend(Temp())
+        assert detect_backend(name="temp") is not None
+        assert unregister_backend("temp") is True
+        assert detect_backend(name="temp") is None
+        assert unregister_backend("temp") is False
+        _reset()
+
+    def test_auto_detect_still_returns_openai(self):
+        """Custom backends don't affect auto-detection — openai is always the default."""
+        from mm.common.audio import (
+            TranscriptionBackend,
+            TranscriptionResult,
+            detect_backend,
+            register_backend,
+            unregister_backend,
+        )
+        from mm.common.audio._base import _reset
+
+        class Custom(TranscriptionBackend):
+            name = "custom"
+
+            def available(self):
+                return True
+
+            def transcribe(self, audio_path, **kw):
+                return TranscriptionResult(text="custom")
+
+        _reset()
+        register_backend(Custom())
+        try:
+            be = detect_backend()
+            assert be is not None
+            assert be.name == "openai"
+        finally:
+            unregister_backend("custom")
+            _reset()
+
+
 class TestDetectWithOverrides:
     def test_openai_always_selectable(self):
         """backend='openai' works even when local backends are installed."""

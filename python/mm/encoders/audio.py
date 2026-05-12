@@ -16,13 +16,10 @@ from __future__ import annotations
 import base64
 import logging
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Iterable
+from typing import Any, Iterable
 
 from mm.constants import guess_mime
 from mm.encoders import Message, register
-
-if TYPE_CHECKING:
-    from mm.common.audio._base import BackendLabel
 
 logger = logging.getLogger(__name__)
 
@@ -109,7 +106,7 @@ class AudioTranscribe:
         language: str = kwargs.get("language", "auto")
         audio_speed: float = kwargs.get("audio_speed", 1.0)
 
-        backend: BackendLabel | None = kwargs.get("backend", None)
+        backend: str | None = kwargs.get("backend", None)
         base_url: str | None = kwargs.get("base_url", None)
         api_key: str | None = kwargs.get("api_key", None)
 

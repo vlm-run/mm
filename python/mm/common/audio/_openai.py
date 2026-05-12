@@ -80,6 +80,17 @@ class OpenAIBackend(TranscriptionBackend):
     def available(self) -> bool:
         return True
 
+    def clone_with_config(
+        self,
+        *,
+        base_url: str | None = None,
+        api_key: str | None = None,
+    ) -> OpenAIBackend:
+        return OpenAIBackend(
+            base_url=base_url or self._base_url,
+            api_key=api_key or self._api_key,
+        )
+
     def _resolve_url_and_key(self) -> tuple[str, str]:
         """Walk the resolution chain and return ``(base_url, api_key)``."""
         if self._base_url:

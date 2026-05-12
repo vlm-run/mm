@@ -12,21 +12,22 @@ Local backends are **opt-in only** — they are never auto-selected:
 * ``ctranslate2`` — CPU int8 / CUDA float16.  ``pip install mm-ctx[gpu]``,
   then ``--encode.backend ctranslate2``.
 
-Public API::
+Custom backends can be registered by subclassing
+:class:`TranscriptionBackend` and calling :func:`register_backend`::
 
-    from mm.common.audio import transcribe, transcribe_available, list_backends
+    from mm.common.audio import TranscriptionBackend, register_backend
 
-    # Default — calls the gateway
-    result = transcribe("audio.wav")
+    class GeminiBackend(TranscriptionBackend):
+        name = "gemini"
+        def available(self) -> bool: ...
+        def transcribe(self, audio_path, *, model=None, **kw): ...
 
-    # Explicit local backend
-    result = transcribe("audio.wav", backend="mlx")
+    register_backend(GeminiBackend())
 """
 
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 from mm.common.audio._base import (
     TranscriptionBackend,
@@ -36,10 +37,8 @@ from mm.common.audio._base import (
     list_backends,
     register_backend,
     transcribe_available,
+    unregister_backend,
 )
-
-if TYPE_CHECKING:
-    from mm.common.audio._base import BackendLabel
 
 
 def _register_backends() -> None:
@@ -93,7 +92,7 @@ def transcribe(
     language: str | None = None,
     beam_size: int = 1,
     audio_speed: float = 1.0,
-    backend: BackendLabel | None = None,
+    backend: str | None = None,
     base_url: str | None = None,
     api_key: str | None = None,
 ) -> TranscriptionResult:
@@ -167,4 +166,5 @@ __all__ = [
     "register_backend",
     "transcribe",
     "transcribe_available",
+    "unregister_backend",
 ]

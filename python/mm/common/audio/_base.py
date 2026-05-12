@@ -1,11 +1,31 @@
-"""Base types and registry for transcription backends."""
+"""Base types and registry for transcription backends.
+
+Third-party backends can subclass :class:`TranscriptionBackend` and
+call :func:`register_backend` to add themselves to the registry::
+
+    from mm.common.audio import TranscriptionBackend, register_backend
+
+    class MyBackend(TranscriptionBackend):
+        name = "my-backend"
+
+        def available(self) -> bool:
+            return True
+
+        def transcribe(self, audio_path, *, model=None, **kw):
+            ...
+
+    register_backend(MyBackend())
+"""
 
 from __future__ import annotations
 
 import abc
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Literal
+
+#: Backend name.  Built-in values are ``"openai"``, ``"mlx"``, and
+#: ``"ctranslate2"``, but any string is accepted for custom backends.
+BackendLabel = str
 
 
 @dataclass
@@ -31,21 +51,37 @@ class TranscriptionResult:
     backend: str = ""
 
 
-BackendLabel = Literal["mlx", "ctranslate2", "openai"]
-
-
 class TranscriptionBackend(abc.ABC):
     """Abstract base for pluggable transcription backends.
 
-    Subclasses set ``name``, implement ``available()`` to probe the
-    current system, and ``transcribe()`` to run inference.
+    Subclasses must set :attr:`name` (any unique string) and implement
+    :meth:`available` and :meth:`transcribe`.
+
+    Override :meth:`clone_with_config` if the backend supports
+    runtime ``base_url`` / ``api_key`` overrides (like the built-in
+    ``openai`` backend does).
+
+    Example::
+
+        class GeminiBackend(TranscriptionBackend):
+            name = "gemini"
+
+            def available(self) -> bool:
+                try:
+                    import google.generativeai
+                    return True
+                except ImportError:
+                    return False
+
+            def transcribe(self, audio_path, *, model=None, **kw):
+                ...
     """
 
-    name: BackendLabel
+    name: str
 
     @abc.abstractmethod
     def available(self) -> bool:
-        """Return True if this backend can run on the current system."""
+        """Return ``True`` if this backend can run on the current system."""
 
     @abc.abstractmethod
     def transcribe(
@@ -59,6 +95,19 @@ class TranscriptionBackend(abc.ABC):
     ) -> TranscriptionResult:
         """Transcribe an audio file and return a result."""
 
+    def clone_with_config(
+        self,
+        *,
+        base_url: str | None = None,
+        api_key: str | None = None,
+    ) -> TranscriptionBackend:
+        """Return a copy of this backend with overridden URL / key.
+
+        The default implementation returns ``self`` unchanged — only
+        backends that accept remote configuration need to override this.
+        """
+        return self
+
 
 _BACKENDS: list[TranscriptionBackend] = []
 _ACTIVE: TranscriptionBackend | None = None
@@ -66,8 +115,25 @@ _DETECTED = False
 
 
 def register_backend(backend: TranscriptionBackend) -> None:
-    """Add a backend to the registry."""
+    """Add a backend to the registry, replacing any existing backend with the same name."""
+    for i, b in enumerate(_BACKENDS):
+        if b.name == backend.name:
+            _BACKENDS[i] = backend
+            return
     _BACKENDS.append(backend)
+
+
+def unregister_backend(name: str) -> bool:
+    """Remove a backend by name. Returns ``True`` if it was found."""
+    global _ACTIVE, _DETECTED
+    for i, b in enumerate(_BACKENDS):
+        if b.name == name:
+            _BACKENDS.pop(i)
+            if _ACTIVE is not None and _ACTIVE.name == name:
+                _ACTIVE = None
+                _DETECTED = False
+            return True
+    return False
 
 
 def list_backends() -> list[tuple[str, bool]]:
@@ -77,7 +143,7 @@ def list_backends() -> list[tuple[str, bool]]:
 
 def detect_backend(
     *,
-    name: BackendLabel | None = None,
+    name: str | None = None,
     base_url: str | None = None,
     api_key: str | None = None,
 ) -> TranscriptionBackend | None:
@@ -96,7 +162,7 @@ def detect_backend(
         for b in _BACKENDS:
             if b.name == name:
                 if base_url is not None or api_key is not None:
-                    b = _clone_with_url(b, base_url=base_url, api_key=api_key)
+                    b = b.clone_with_config(base_url=base_url, api_key=api_key)
                 return b
         return None
 
@@ -123,20 +189,3 @@ def _reset() -> None:
     global _ACTIVE, _DETECTED
     _ACTIVE = None
     _DETECTED = False
-
-
-def _clone_with_url(
-    backend: TranscriptionBackend,
-    *,
-    base_url: str | None,
-    api_key: str | None,
-) -> TranscriptionBackend:
-    """Return a copy of *backend* with overridden URL/key (OpenAI only)."""
-    from mm.common.audio._openai import OpenAIBackend
-
-    if isinstance(backend, OpenAIBackend):
-        return OpenAIBackend(
-            base_url=base_url or backend._base_url,
-            api_key=api_key or backend._api_key,
-        )
-    return backend

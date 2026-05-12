@@ -12,10 +12,7 @@ parsed with :func:`PipelineSpec.from_dict`. Validation failures raise
 from __future__ import annotations
 
 from dataclasses import dataclass, field, fields
-from typing import TYPE_CHECKING, Any
-
-if TYPE_CHECKING:
-    from mm.common.audio._base import BackendLabel
+from typing import Any
 
 
 class PipelineValidationError(ValueError):
@@ -50,7 +47,7 @@ class Encode:
 
     strategy: str | None = None
     pyfunc: str | None = None
-    backend: BackendLabel | None = None
+    backend: str | None = None
     model: str | None = None
     strategy_opts: dict[str, Any] = field(default_factory=dict)
 
@@ -65,7 +62,7 @@ class Encode:
             raise PipelineValidationError(
                 f"encode.strategy_opts must be a mapping, got {type(opts).__name__}"
             )
-        backend: BackendLabel | None = data.get("backend")
+        backend: str | None = data.get("backend")
         return cls(
             strategy=data.get("strategy"),
             pyfunc=data.get("pyfunc"),
