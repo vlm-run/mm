@@ -246,6 +246,77 @@ class TestBenchCommand:
         assert "mean_ms" in header
 
 
+class TestResolveBenchTarget:
+    """Unit tests for ``_resolve_bench_target`` target normalization."""
+
+    def test_directory_returns_no_filter(self, tmp_path: Path):
+        from mm.commands.bench import _resolve_bench_target
+
+        directory, files_filter = _resolve_bench_target(tmp_path)
+        assert directory == tmp_path
+        assert files_filter is None
+
+    def test_file_returns_parent_and_filter(self, tmp_path: Path):
+        from mm.commands.bench import _resolve_bench_target
+
+        f = tmp_path / "thing.md"
+        f.write_text("x\n")
+        directory, files_filter = _resolve_bench_target(f)
+        assert directory == tmp_path.resolve()
+        assert files_filter == frozenset({"thing.md"})
+
+    def test_missing_path_exits_with_typer_error(self, tmp_path: Path):
+        import typer
+        from mm.commands.bench import _resolve_bench_target
+
+        with pytest.raises(typer.Exit):
+            _resolve_bench_target(tmp_path / "does-not-exist")
+
+
+class TestBenchFileArgument:
+    """``mm bench <file>`` benches just that file with parent as ``{dir}``."""
+
+    def test_single_file_dry_run_narrows_to_one(self, tmp_path: Path):
+        (tmp_path / "a.md").write_text("alpha\n")
+        (tmp_path / "b.py").write_text("def beta(): pass\n")
+        r = runner.invoke(
+            app,
+            [
+                "bench",
+                str(tmp_path / "a.md"),
+                "--dry-run",
+                "--rounds",
+                "1",
+                "--warmup",
+                "0",
+                "--format",
+                "json",
+            ],
+        )
+        assert r.exit_code == 0, r.output
+        data = json.loads(r.stdout)
+        assert data["files"] == 1
+        # ``directory`` is the parent of the targeted file, not the file itself.
+        assert Path(data["directory"]) == tmp_path.resolve()
+
+    def test_missing_target_exits_nonzero(self, tmp_path: Path):
+        r = runner.invoke(
+            app,
+            [
+                "bench",
+                str(tmp_path / "does-not-exist"),
+                "--dry-run",
+                "--rounds",
+                "1",
+                "--warmup",
+                "0",
+            ],
+        )
+        assert r.exit_code != 0
+        combined = (r.output or "") + (getattr(r, "stderr", "") or "")
+        assert "not found" in combined.lower()
+
+
 class TestBenchResult:
     """Tests for BenchResult dataclass."""
 

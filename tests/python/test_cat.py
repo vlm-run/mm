@@ -244,6 +244,87 @@ class TestErrors:
             assert token in combined.lower()
 
 
+class TestExpandPathArg:
+    """``mm.utils.expand_path_arg`` / ``expand_path_args`` unit tests."""
+
+    def test_file_returns_self(self, tmp_path: Path):
+        from mm.utils import expand_path_arg
+
+        f = tmp_path / "x.md"
+        f.write_text("x\n")
+        assert expand_path_arg(f) == [f]
+
+    def test_directory_returns_inside_files(self, tmp_path: Path):
+        from mm.utils import expand_path_arg
+
+        (tmp_path / "a.md").write_text("a\n")
+        (tmp_path / "b.md").write_text("b\n")
+        names = sorted(p.name for p in expand_path_arg(tmp_path))
+        assert names == ["a.md", "b.md"]
+
+    def test_missing_path_raises_filenotfound(self, tmp_path: Path):
+        from mm.utils import expand_path_arg
+
+        with pytest.raises(FileNotFoundError):
+            expand_path_arg(tmp_path / "missing")
+
+    def test_expand_path_args_dedupes(self, tmp_path: Path):
+        from mm.utils import expand_path_args
+
+        a = tmp_path / "a.md"
+        a.write_text("a\n")
+        b = tmp_path / "b.md"
+        b.write_text("b\n")
+        result = expand_path_args([tmp_path, a])
+        names = [p.name for p in result]
+        # ``a.md`` shows up once even though it's reachable from both inputs.
+        assert names.count("a.md") == 1
+        assert "b.md" in names
+
+
+class TestCatDirectoryArg:
+    """``mm cat <folder>`` expands directories into their files."""
+
+    def test_directory_expands_to_files(self, tmp_path: Path, isolated_db):
+        (tmp_path / "a.md").write_text("# alpha\n")
+        (tmp_path / "b.py").write_text("def beta():\n    pass\n")
+        r = runner.invoke(app, ["cat", str(tmp_path), "-y"])
+        assert r.exit_code == 0, r.output
+        # Both files should appear in the multi-file output.
+        assert "alpha" in r.output
+        assert "beta" in r.output
+
+    def test_directory_recursive(self, tmp_path: Path, isolated_db):
+        (tmp_path / "top.md").write_text("rootfile\n")
+        sub = tmp_path / "nested"
+        sub.mkdir()
+        (sub / "leaf.md").write_text("leaffile\n")
+        r = runner.invoke(app, ["cat", str(tmp_path), "-y"])
+        assert r.exit_code == 0, r.output
+        assert "rootfile" in r.output
+        assert "leaffile" in r.output
+
+    def test_directory_no_ignore_includes_all(self, tmp_path: Path, isolated_db):
+        """``--no-ignore`` keeps the flag wiring exercised end-to-end."""
+        (tmp_path / "keep.md").write_text("kept\n")
+        (tmp_path / "secret.md").write_text("hidden\n")
+        (tmp_path / ".gitignore").write_text("secret.md\n")
+        r = runner.invoke(app, ["cat", str(tmp_path), "--no-ignore", "-y"])
+        assert r.exit_code == 0, r.output
+        assert "kept" in r.output
+        assert "hidden" in r.output
+
+    def test_mixed_file_and_directory_dedupe(self, tmp_path: Path, isolated_db):
+        """A file listed both directly and inside a folder appears once."""
+        (tmp_path / "a.md").write_text("alpha\n")
+        (tmp_path / "b.md").write_text("beta\n")
+        r = runner.invoke(app, ["cat", str(tmp_path), str(tmp_path / "a.md"), "-y"])
+        assert r.exit_code == 0, r.output
+        # Each file's banner ``<filename>`` should appear exactly once.
+        assert r.output.count("<a.md>") == 1
+        assert r.output.count("<b.md>") == 1
+
+
 # ── Override surfaces: --model / --prompt / --generate.extra-body ─────
 
 

@@ -6,6 +6,7 @@ Unified content extraction. Behaviour driven by **file type × mode × pipeline*
 
 - **Multimodal**: auto-detects kind from extension → image, video, audio, document, text
 - **Multi-file**: `mm cat a.jpg b.pdf c.mp4` — processes each sequentially
+- **Directories**: `mm cat ./my-folder` — recursively expands the folder to its files (gitignore-aware); mix with files. Pass `--no-ignore` to include files normally excluded by `.gitignore`.
 - **Large batches**: if the path count is **≥ 9** (i.e. more than 8 files; override with `MM_CAT_BATCH_CONFIRM_THRESHOLD`), `cat` asks for confirmation in a TTY; in non-interactive use it **exits with an error** unless you pass **`--yes` / `-y`**
 - **Stdin**: `find . -name '*.pdf' | mm cat` — reads newline-delimited paths from stdin
 - **Head/tail**: `-n 20` (first 20 lines), `-n -20` (last 20 lines)

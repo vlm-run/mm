@@ -93,6 +93,78 @@ def file_kind_with_code(path: Path) -> str:
     return "text"
 
 
+def expand_path_arg(path: Path | str, *, no_ignore: bool = False) -> list[Path]:
+    """Expand a single CLI path argument into the file list it represents.
+
+    Files are returned as a one-element list (passed through unchanged so
+    the caller can preserve order). Directories are walked recursively via
+    the Rust ``Scanner`` (gitignore-aware by default; pass ``no_ignore=True``
+    to include ignored entries) and the resulting absolute paths are
+    returned sorted by their relative path within the directory so the
+    output is deterministic across runs.
+
+    Args:
+        path: A filesystem path. May be a file or a directory.
+        no_ignore: When True, bypass ``.gitignore`` while walking
+            directories. Has no effect on file inputs.
+
+    Returns:
+        Ordered list of ``Path`` objects. Empty if ``path`` is a directory
+        with no scannable files.
+
+    Raises:
+        FileNotFoundError: If ``path`` does not exist on disk.
+    """
+    import json as _json
+
+    p = Path(path)
+    if not p.exists():
+        raise FileNotFoundError(str(p))
+    if p.is_file():
+        return [p]
+
+    from mm._mm import Scanner
+
+    root = p.resolve()
+    scanner = Scanner(str(root), None, no_ignore=no_ignore)
+    scanner.scan()
+    rows = _json.loads(scanner.to_json_fast(sort_by="path"))
+    return [root / row["path"] for row in rows]
+
+
+def expand_path_args(
+    paths: list[Path] | list[str],
+    *,
+    no_ignore: bool = False,
+) -> list[Path]:
+    """Expand a list of CLI path arguments, flattening directories into files.
+
+    Equivalent to calling :func:`expand_path_arg` on each entry and
+    concatenating the results, with duplicates removed while preserving
+    first-seen order.
+
+    Args:
+        paths: Mix of file and directory paths.
+        no_ignore: Forwarded to :func:`expand_path_arg`.
+
+    Returns:
+        De-duplicated, order-preserving list of file ``Path`` objects.
+
+    Raises:
+        FileNotFoundError: If any entry does not exist.
+    """
+    seen: set[str] = set()
+    out: list[Path] = []
+    for entry in paths:
+        for f in expand_path_arg(entry, no_ignore=no_ignore):
+            key = str(f)
+            if key in seen:
+                continue
+            seen.add(key)
+            out.append(f)
+    return out
+
+
 def is_binary_content(*, kind: str, content: str | None = None) -> bool:
     """Heuristic to determine if content is binary based on kind and content."""
     return kind in ("image", "document", "video", "audio") or bool(

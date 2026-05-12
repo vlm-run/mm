@@ -234,6 +234,37 @@ def _sanitize_files(files: list) -> list:
     return [f for f in files if not _is_filesystem_noise(Path(f.path).name)]
 
 
+def _resolve_bench_target(target: Path) -> tuple[Path, frozenset[str] | None]:
+    """Normalize a CLI ``mm bench`` target into ``(directory, files_filter)``.
+
+    Accepts either a directory (legacy behaviour: bench the whole tree) or
+    a single regular file (bench only that file, using its parent as
+    ``{dir}``). The returned ``files_filter`` is a frozenset of relative
+    paths (as emitted by ``Scanner``) that the harness should keep; ``None``
+    means "no filter".
+
+    Args:
+        target: Path passed on the command line.
+
+    Returns:
+        ``(directory, files_filter)`` tuple suitable for ``_run_benchmarks``
+        and ``_run_stdout_snapshot``.
+
+    Raises:
+        typer.Exit: If ``target`` doesn't exist or is neither a file nor a
+            directory.
+    """
+    if not target.exists():
+        typer.echo(f"Error: {target} not found.", err=True)
+        raise typer.Exit(code=1)
+    if target.is_file():
+        return target.parent.resolve(), frozenset({target.name})
+    if target.is_dir():
+        return target, None
+    typer.echo(f"Error: {target} is neither a file nor a directory.", err=True)
+    raise typer.Exit(code=1)
+
+
 # ── Timing harness ──────────────────────────────────────────────────
 
 
@@ -280,6 +311,7 @@ def _run_benchmarks(
     on_progress: Callable[[str, str], None] | None = None,
     commands: list | None = None,
     dry_run: bool = False,
+    files_filter: frozenset[str] | None = None,
 ) -> tuple[list[BenchResult], dict[str, Any]]:
     """Run benchmark commands, return (results, target_info).
 
@@ -288,6 +320,9 @@ def _run_benchmarks(
     are populated), but does not invoke ``_time_cmd``. Each row is marked
     ``is_dry_run=True`` so the renderer / JSON encoder can show ``-``
     placeholders instead of zero metrics.
+
+    When ``files_filter`` is provided the pre-scan is narrowed to only
+    those relative paths — used when the CLI target is a single file.
     """
     from mm.context import Context
 
@@ -300,6 +335,8 @@ def _run_benchmarks(
     # Pre-scan to get target info and pick representative files.
     ctx = Context(directory)
     files = _sanitize_files(ctx.files)
+    if files_filter is not None:
+        files = [f for f in files if f.path in files_filter]
     num_files = len(files)
     total_bytes = sum(f.size for f in files)
 
@@ -1359,6 +1396,7 @@ def _run_stdout_snapshot(
     command_filter: str | None,
     timeout_s: float,
     with_generate: bool,
+    files_filter: frozenset[str] | None = None,
 ) -> None:
     """Run each filtered ``mm cat`` encoder variant once and emit its stdout.
 
@@ -1399,6 +1437,8 @@ def _run_stdout_snapshot(
 
     ctx = Context(directory)
     files = _sanitize_files(ctx.files)
+    if files_filter is not None:
+        files = [f for f in files if f.path in files_filter]
     if not files:
         typer.echo(f"Error: no files found in {directory}", err=True)
         raise typer.Exit(code=1)
@@ -1564,7 +1604,17 @@ def _load_benchfile(
 
 
 def bench_cmd(
-    directory: Annotated[Path, typer.Argument(help="Directory to benchmark")] = Path("."),
+    target: Annotated[
+        Path,
+        typer.Argument(
+            help=(
+                "File or directory to benchmark. A directory is scanned for "
+                "representative files; a single file benchmarks just that "
+                "file (with its parent directory used for `{dir}` "
+                "substitutions)."
+            ),
+        ),
+    ] = Path("."),
     rounds: Annotated[int, typer.Option("--rounds", "-r", help="Measurement rounds")] = 3,
     warmup: Annotated[int, typer.Option("--warmup", "-w", help="Warmup rounds")] = 1,
     mode: Annotated[
@@ -1749,6 +1799,8 @@ def bench_cmd(
         render_host_info(collect_host_info(), fmt=fmt)
         return
 
+    directory, files_filter = _resolve_bench_target(target)
+
     if fmt == "stdout":
         _run_stdout_snapshot(
             directory=directory,
@@ -1756,6 +1808,7 @@ def bench_cmd(
             command_filter=command,
             timeout_s=timeout,
             with_generate=with_generate,
+            files_filter=files_filter,
         )
         return
 
@@ -1863,6 +1916,7 @@ def bench_cmd(
                 on_progress,
                 commands,
                 dry_run=dry_run,
+                files_filter=files_filter,
             )
         finally:
             status.stop()
@@ -1870,7 +1924,12 @@ def bench_cmd(
         _render_table(results, target_info)
     elif fmt == "json":
         results, target_info = _run_benchmarks(
-            directory, rounds, warmup, commands=commands, dry_run=dry_run
+            directory,
+            rounds,
+            warmup,
+            commands=commands,
+            dry_run=dry_run,
+            files_filter=files_filter,
         )
 
         from mm.display import json_dumps
@@ -1883,7 +1942,12 @@ def bench_cmd(
     else:
         # tsv/csv fallback
         results, target_info = _run_benchmarks(
-            directory, rounds, warmup, commands=commands, dry_run=dry_run
+            directory,
+            rounds,
+            warmup,
+            commands=commands,
+            dry_run=dry_run,
+            files_filter=files_filter,
         )
 
         from mm.display import emit_tsv

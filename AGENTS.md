@@ -274,6 +274,7 @@ The following commands were merged into the core commands:
 - `mm cat file -m accurate` — LLM-generated caption/description (image/video/audio/PDF); passthrough for code/text/docx/pptx
 - `mm cat video.mp4 -m accurate` — auto-generates keyframe mosaic → LLM description
 - `mm cat photo.png -p resize` — encode with named encoder
+- `mm cat ./my-folder` — recursively expand a folder into its files (gitignore-aware; pass `--no-ignore` to include ignored entries)
 - `mm cat photo.png -m accurate -p my-pipeline.yaml` — custom pipeline YAML
 
 ### Schema and SQL
