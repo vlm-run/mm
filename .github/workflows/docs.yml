@@ -10,6 +10,8 @@ on:
       - "mkdocs.yml"
       - "scripts/docs_hooks.py"
       - ".github/workflows/docs.yml"
+    tags:
+      - "docs-v*"
 
 concurrency:
   group: gh-pages
