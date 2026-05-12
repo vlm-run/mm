@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1778540384662,
+  "lastUpdate": 1778567302060,
   "repoUrl": "https://github.com/vlm-run/mm",
   "entries": {
     "mm Rust Benchmarks": [
@@ -10997,6 +10997,425 @@ window.BENCHMARK_DATA = {
           {
             "name": "wc/count_entries/500",
             "value": 2167816.7391304346,
+            "unit": "ns"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "nwaughac@gmail.com",
+            "name": "Chukwuma Nwaugha",
+            "username": "nwaughachukwuma"
+          },
+          "committer": {
+            "email": "nwaughac@gmail.com",
+            "name": "Chukwuma Nwaugha",
+            "username": "nwaughachukwuma"
+          },
+          "distinct": true,
+          "id": "199d52d0874ad6471259b34053731546deab9b7f",
+          "message": "fix fallback bug; bump project version to 0.12.4",
+          "timestamp": "2026-05-12T07:04:19+01:00",
+          "tree_id": "854792a5e136fd873fe2720bca2bec0936660808",
+          "url": "https://github.com/vlm-run/mm/commit/199d52d0874ad6471259b34053731546deab9b7f"
+        },
+        "date": 1778567246597,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "directory_hash/directory_hash/1000_files",
+            "value": 1749575.2059108526,
+            "unit": "ns"
+          },
+          {
+            "name": "directory_hash/directory_hash/100_files",
+            "value": 248472.31659679877,
+            "unit": "ns"
+          },
+          {
+            "name": "directory_hash/directory_hash/500_files",
+            "value": 906266.5185294119,
+            "unit": "ns"
+          },
+          {
+            "name": "find_filter/kind_and_name/1000",
+            "value": 403246.0714354878,
+            "unit": "ns"
+          },
+          {
+            "name": "find_filter/kind_and_name/5000",
+            "value": 2095908.1666666665,
+            "unit": "ns"
+          },
+          {
+            "name": "find_filter/name_regex/1000",
+            "value": 452715.0952610597,
+            "unit": "ns"
+          },
+          {
+            "name": "find_filter/name_regex/5000",
+            "value": 2076906.5,
+            "unit": "ns"
+          },
+          {
+            "name": "find_filter/name_substring/1000",
+            "value": 392508.10875160876,
+            "unit": "ns"
+          },
+          {
+            "name": "find_filter/name_substring/5000",
+            "value": 2026642.28,
+            "unit": "ns"
+          },
+          {
+            "name": "find_filter/no_filter/1000",
+            "value": 3033492.5588235296,
+            "unit": "ns"
+          },
+          {
+            "name": "find_filter/no_filter/5000",
+            "value": 15483432.125,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_large_files/fast_fingerprint/100MB",
+            "value": 14835.715226826072,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_large_files/fast_fingerprint/200MB",
+            "value": 15140.671313196408,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_large_files/fast_fingerprint/50MB",
+            "value": 15787.16642037552,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_large_files/full_hash_mmap/100MB",
+            "value": 9764470.144736841,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_large_files/full_hash_mmap/200MB",
+            "value": 19621273.18,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_large_files/full_hash_mmap/50MB",
+            "value": 4063606.0197530864,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_strategies/fast_fingerprint/10MB",
+            "value": 15948.793790030631,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_strategies/fast_fingerprint/1KB",
+            "value": 6856.877596059798,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_strategies/fast_fingerprint/1MB",
+            "value": 15303.629365079365,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_strategies/fast_fingerprint/64KB",
+            "value": 13106.290874592141,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_strategies/full_hash_mmap/10MB",
+            "value": 535590.066380719,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_strategies/full_hash_mmap/1KB",
+            "value": 6094.141350496839,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_strategies/full_hash_mmap/1MB",
+            "value": 75931.9418227058,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_strategies/full_hash_mmap/64KB",
+            "value": 12995.517192472671,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_strategies/full_hash_read/10MB",
+            "value": 1143191.3125,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_strategies/full_hash_read/1KB",
+            "value": 2262.859647143714,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_strategies/full_hash_read/1MB",
+            "value": 112724.72384259259,
+            "unit": "ns"
+          },
+          {
+            "name": "hash_strategies/full_hash_read/64KB",
+            "value": 6955.243864452762,
+            "unit": "ns"
+          },
+          {
+            "name": "metadata_code_extract/10",
+            "value": 25714.716286698378,
+            "unit": "ns"
+          },
+          {
+            "name": "metadata_code_extract/100",
+            "value": 279271.2738095238,
+            "unit": "ns"
+          },
+          {
+            "name": "metadata_image_extract/10",
+            "value": 2175629.782608696,
+            "unit": "ns"
+          },
+          {
+            "name": "metadata_image_extract/50",
+            "value": 14241862.375,
+            "unit": "ns"
+          },
+          {
+            "name": "metadata_index/1000",
+            "value": 3756825.8214285714,
+            "unit": "ns"
+          },
+          {
+            "name": "metadata_index/10000",
+            "value": 25351124.5,
+            "unit": "ns"
+          },
+          {
+            "name": "metadata_walk/1000",
+            "value": 3706323.0357142854,
+            "unit": "ns"
+          },
+          {
+            "name": "metadata_walk/10000",
+            "value": 24247403,
+            "unit": "ns"
+          },
+          {
+            "name": "phash/hamming_distance",
+            "value": 0.19648603557826347,
+            "unit": "ns"
+          },
+          {
+            "name": "phash/phash/1024x1024",
+            "value": 25308440.25,
+            "unit": "ns"
+          },
+          {
+            "name": "phash/phash/2048x2048",
+            "value": 97926420.375,
+            "unit": "ns"
+          },
+          {
+            "name": "phash/phash/256x256",
+            "value": 1570463.8845704948,
+            "unit": "ns"
+          },
+          {
+            "name": "phash/phash/64x64",
+            "value": 155268.10782380012,
+            "unit": "ns"
+          },
+          {
+            "name": "refs_add_inmem/1000",
+            "value": 1878770.5566846617,
+            "unit": "ns"
+          },
+          {
+            "name": "refs_add_inmem/10000",
+            "value": 18686737.666666668,
+            "unit": "ns"
+          },
+          {
+            "name": "refs_add_path/100",
+            "value": 193211.66324786324,
+            "unit": "ns"
+          },
+          {
+            "name": "refs_add_path/1000",
+            "value": 1895856.0176470587,
+            "unit": "ns"
+          },
+          {
+            "name": "refs_add_path/10000",
+            "value": 18812660,
+            "unit": "ns"
+          },
+          {
+            "name": "refs_add_path/100000",
+            "value": 199534777,
+            "unit": "ns"
+          },
+          {
+            "name": "refs_add_with_metadata/1000",
+            "value": 2202187.304347826,
+            "unit": "ns"
+          },
+          {
+            "name": "refs_add_with_metadata/10000",
+            "value": 22137135.5,
+            "unit": "ns"
+          },
+          {
+            "name": "refs_closest_ref_10k",
+            "value": 2914865.3055555555,
+            "unit": "ns"
+          },
+          {
+            "name": "refs_get_hit/1000",
+            "value": 25.037659417627047,
+            "unit": "ns"
+          },
+          {
+            "name": "refs_get_hit/10000",
+            "value": 26.23228488007974,
+            "unit": "ns"
+          },
+          {
+            "name": "refs_get_hit/100000",
+            "value": 33.634448462761384,
+            "unit": "ns"
+          },
+          {
+            "name": "refs_get_miss/1000",
+            "value": 289124.4642857143,
+            "unit": "ns"
+          },
+          {
+            "name": "refs_get_miss/10000",
+            "value": 2931127.222222222,
+            "unit": "ns"
+          },
+          {
+            "name": "refs_make_ref_id/Audio",
+            "value": 1666.5333314410834,
+            "unit": "ns"
+          },
+          {
+            "name": "refs_make_ref_id/Code",
+            "value": 1668.6815576737451,
+            "unit": "ns"
+          },
+          {
+            "name": "refs_make_ref_id/Document",
+            "value": 1670.1771808723488,
+            "unit": "ns"
+          },
+          {
+            "name": "refs_make_ref_id/Image",
+            "value": 1617.4164733741752,
+            "unit": "ns"
+          },
+          {
+            "name": "refs_make_ref_id/Video",
+            "value": 1666.2436393443622,
+            "unit": "ns"
+          },
+          {
+            "name": "refs_mixed_add_get_render/1000",
+            "value": 2540914.4,
+            "unit": "ns"
+          },
+          {
+            "name": "refs_mixed_add_get_render/10000",
+            "value": 25310909.5,
+            "unit": "ns"
+          },
+          {
+            "name": "refs_ref_not_found_message/100",
+            "value": 30237.368380777472,
+            "unit": "ns"
+          },
+          {
+            "name": "refs_ref_not_found_message/1000",
+            "value": 304815.55275735294,
+            "unit": "ns"
+          },
+          {
+            "name": "refs_ref_not_found_message/10000",
+            "value": 3063770.470588235,
+            "unit": "ns"
+          },
+          {
+            "name": "refs_render_tree_insertion/100",
+            "value": 27152.049140049137,
+            "unit": "ns"
+          },
+          {
+            "name": "refs_render_tree_insertion/1000",
+            "value": 265803.59408602153,
+            "unit": "ns"
+          },
+          {
+            "name": "refs_render_tree_insertion/10000",
+            "value": 2684484.5526315793,
+            "unit": "ns"
+          },
+          {
+            "name": "refs_render_tree_insertion_with_meta/1000",
+            "value": 1344652.8829787234,
+            "unit": "ns"
+          },
+          {
+            "name": "refs_repr_markdown/100",
+            "value": 19513.885620915033,
+            "unit": "ns"
+          },
+          {
+            "name": "refs_repr_markdown/1000",
+            "value": 188846.14896530737,
+            "unit": "ns"
+          },
+          {
+            "name": "refs_repr_markdown/10000",
+            "value": 1876237.4702380951,
+            "unit": "ns"
+          },
+          {
+            "name": "refs_to_md_with_contents/1000",
+            "value": 448498.4293248945,
+            "unit": "ns"
+          },
+          {
+            "name": "refs_uuid7",
+            "value": 2141.118108229773,
+            "unit": "ns"
+          },
+          {
+            "name": "wc/count_and_serialize/100",
+            "value": 348917.3094325853,
+            "unit": "ns"
+          },
+          {
+            "name": "wc/count_and_serialize/500",
+            "value": 1593248.0977011495,
+            "unit": "ns"
+          },
+          {
+            "name": "wc/count_entries/100",
+            "value": 335884.94444444444,
+            "unit": "ns"
+          },
+          {
+            "name": "wc/count_entries/500",
+            "value": 1588971.829160146,
             "unit": "ns"
           }
         ]
