@@ -30,7 +30,7 @@ theme:
         name: Switch to light mode
   font:
     text: Geist
-    code: Fragment Mono
+    code: Geist Mono
   icon:
     repo: fontawesome/brands/python
 
