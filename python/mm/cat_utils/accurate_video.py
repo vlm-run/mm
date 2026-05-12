@@ -178,7 +178,7 @@ def accurate_video(path: Path, spec: PipelineSpec, opts: CatOpts) -> RunResult:
         if not transcribe_available():
             return ""
 
-        model = ekw.get("model") or None
+        model: str | None = ekw.get("model") or None
         audio_speed = ekw.get("audio_speed") or 1.0
         beam_size = 5
 

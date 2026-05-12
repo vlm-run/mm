@@ -62,11 +62,10 @@ class Encode:
             raise PipelineValidationError(
                 f"encode.strategy_opts must be a mapping, got {type(opts).__name__}"
             )
-        backend: str | None = data.get("backend")
         return cls(
             strategy=data.get("strategy"),
             pyfunc=data.get("pyfunc"),
-            backend=backend,
+            backend=data.get("backend"),
             model=data.get("model"),
             strategy_opts=dict(opts),
         )
