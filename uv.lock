@@ -1063,8 +1063,6 @@ dependencies = [
     { name = "av" },
     { name = "cachetools" },
     { name = "cachetools-ext" },
-    { name = "ctranslate2" },
-    { name = "faster-whisper" },
     { name = "magika" },
     { name = "onnxruntime", marker = "platform_machine == 'x86_64' and sys_platform == 'darwin'" },
     { name = "openai" },
@@ -1082,7 +1080,9 @@ dependencies = [
 
 [package.optional-dependencies]
 all = [
+    { name = "ctranslate2" },
     { name = "datasets" },
+    { name = "faster-whisper" },
     { name = "lightning-whisper-mlx", marker = "sys_platform != 'emscripten' and sys_platform != 'win32'" },
     { name = "mlx", marker = "sys_platform != 'emscripten' and sys_platform != 'win32'" },
 ]
@@ -1102,6 +1102,10 @@ docs = [
 experimental = [
     { name = "datasets" },
 ]
+gpu = [
+    { name = "ctranslate2" },
+    { name = "faster-whisper" },
+]
 mlx = [
     { name = "lightning-whisper-mlx" },
     { name = "mlx" },
@@ -1112,9 +1116,9 @@ requires-dist = [
     { name = "av", specifier = ">=13.0" },
     { name = "cachetools", specifier = ">=5.3" },
     { name = "cachetools-ext", specifier = ">=0.0.8" },
-    { name = "ctranslate2", specifier = ">=2.0" },
+    { name = "ctranslate2", marker = "extra == 'gpu'", specifier = ">=2.0" },
     { name = "datasets", marker = "extra == 'experimental'", specifier = ">=2.0" },
-    { name = "faster-whisper", specifier = ">=1.0" },
+    { name = "faster-whisper", marker = "extra == 'gpu'", specifier = ">=1.0" },
     { name = "lightning-whisper-mlx", marker = "extra == 'mlx'", specifier = ">=0.0.10" },
     { name = "logfire", marker = "extra == 'dev'", specifier = ">=3.0" },
     { name = "magika", specifier = ">=1.0.3" },
@@ -1123,6 +1127,7 @@ requires-dist = [
     { name = "mkdocs-material", marker = "extra == 'docs'", specifier = ">=9.5" },
     { name = "mlx", marker = "extra == 'mlx'", specifier = ">=0.31.1" },
     { name = "mm-ctx", extras = ["experimental"], marker = "extra == 'all'" },
+    { name = "mm-ctx", extras = ["gpu"], marker = "extra == 'all'" },
     { name = "mm-ctx", extras = ["mlx"], marker = "sys_platform == 'darwin' and extra == 'all'" },
     { name = "onnxruntime", specifier = ">=1.16" },
     { name = "openai", specifier = ">=1.0" },
