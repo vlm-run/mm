@@ -278,7 +278,7 @@ def _run_benchmarks(
     rounds: int,
     warmup: int,
     on_progress: Callable[[str, str], None] | None = None,
-    commands: list | None = None,
+    commands: list[BenchCommand] | None = None,
     dry_run: bool = False,
 ) -> tuple[list[BenchResult], dict[str, Any]]:
     """Run benchmark commands, return (results, target_info).
@@ -312,7 +312,7 @@ def _run_benchmarks(
         "dry_run": dry_run,
     }
 
-    for cmd in commands:
+    def _exec_run(cmd: BenchCommand):
         if on_progress:
             on_progress(cmd.group, cmd.name)
 
@@ -334,7 +334,7 @@ def _run_benchmarks(
                     requires_kind=cmd.requires_kind,
                 )
             )
-            continue
+            return
 
         if num_files == 0:
             results.append(
@@ -348,7 +348,7 @@ def _run_benchmarks(
                     requires_kind=cmd.requires_kind,
                 )
             )
-            continue
+            return
 
         resolved = resolve_command(cmd, directory, files)
         if resolved is None:
@@ -363,7 +363,7 @@ def _run_benchmarks(
                     requires_kind=cmd.requires_kind,
                 )
             )
-            continue
+            return
 
         argv, fc, tb, media, data_paths = resolved
 
@@ -395,6 +395,9 @@ def _run_benchmarks(
             r.returncode = last_proc.returncode
 
         results.append(r)
+
+    for cmd in commands:
+        _exec_run(cmd)
 
     target_info["total_wall_ms"] = (time.perf_counter_ns() - t_wall) / 1_000_000
     return results, target_info
