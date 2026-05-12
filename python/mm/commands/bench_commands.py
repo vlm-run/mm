@@ -110,11 +110,9 @@ def _pick_files(files: list[FileEntry], kind: str, limit: int) -> list[str]:
     n = len(candidates)
     if n == 0:
         return []
-    if n > limit:
-        candidates.sort(key=lambda p: Path(p).name)
+    candidates.sort(key=lambda p: Path(p).name)
+    if n >= limit:
         return [candidates[(i * n) // limit] for i in range(limit)]
-    if n == limit:
-        return candidates
     return [candidates[i % n] for i in range(limit)]
 
 

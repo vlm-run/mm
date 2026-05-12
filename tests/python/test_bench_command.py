@@ -385,7 +385,7 @@ class TestPickFiles:
         from mm.commands.bench_commands import _pick_files
 
         files = self._entries("image", ["c.png", "a.png", "b.png"])
-        assert _pick_files(files, "image", 3) == ["c.png", "a.png", "b.png"]
+        assert _pick_files(files, "image", 3) == sorted(["c.png", "a.png", "b.png"])
 
     def test_cycles_when_count_lt_limit(self):
         from mm.commands.bench_commands import _pick_files

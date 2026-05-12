@@ -1837,10 +1837,6 @@ def bench_cmd(
 
     from mm.bench_utils import collect_host_info, render_host_info
 
-    # Distinct name -- ``host_info`` here is the typer ``bool`` flag
-    # arg ``--host-info``; we resolved the early-return path above and
-    # now need the full host-info dict for both the live header line
-    # and the markdown recording.
     host_info_data = collect_host_info()
     render_host_info(host_info_data, fmt=fmt, to_stderr=True)
 
