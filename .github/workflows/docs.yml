@@ -32,6 +32,24 @@ jobs:
         run: pip install "mkdocs>=1.6" "mkdocs-material>=9.5"
       - name: Build site
         run: mkdocs build
+      - name: Write /readme → / redirect
+        run: |
+          mkdir -p site/readme
+          cat > site/readme/index.html <<'EOF'
+          <!DOCTYPE html>
+          <html lang="en">
+          <head>
+            <meta charset="utf-8">
+            <title>Redirecting…</title>
+            <link rel="canonical" href="/mm/">
+            <meta http-equiv="refresh" content="0; url=/mm/">
+            <script>location.replace("/mm/" + location.hash);</script>
+          </head>
+          <body>
+            <p>Redirecting to <a href="/mm/">mm docs</a>…</p>
+          </body>
+          </html>
+          EOF
       - name: Deploy to GitHub Pages root
         uses: peaceiris/actions-gh-pages@v4
         with:
