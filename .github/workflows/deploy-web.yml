@@ -67,7 +67,9 @@ jobs:
           keep_files: true
 
   # Deploy rendered README to GitHub Pages at /readme
+  # Disabled: /readme now redirects to / via the docs workflow.
   deploy-readme:
+    if: false
     runs-on: ubuntu-latest
     permissions:
       contents: write
