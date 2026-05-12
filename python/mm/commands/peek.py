@@ -109,17 +109,16 @@ def _emit_rich(rows: list[FileMetadata]) -> None:
     from rich.panel import Panel
     from rich.table import Table
 
-    from mm.display import KIND_STYLES, format_size, output_console
+    from mm.display import format_size, output_console
 
     for r in rows:
         d = r.to_dict()
-        kind_style = KIND_STYLES.get(r.kind, "white")
 
         tbl = Table.grid(padding=(0, 1))
-        tbl.add_column(style="dim")
+        tbl.add_column()
         tbl.add_column()
 
-        tbl.add_row("kind", f"[{kind_style}]{r.kind}[/{kind_style}]")
+        tbl.add_row("kind", r.kind)
         tbl.add_row("size", format_size(r.size) or str(r.size))
         tbl.add_row("mime", r.mime)
         if r.magic_mime and r.magic_mime != r.mime:
@@ -171,10 +170,10 @@ def _emit_rich(rows: list[FileMetadata]) -> None:
 
         if r.aimeta:
             inner = Table.grid(padding=(0, 1))
-            inner.add_column(style="dim")
+            inner.add_column()
             inner.add_column()
             for k, v in r.aimeta.items():
                 inner.add_row(k, "" if v is None else str(v))
             tbl.add_row("aimeta", inner)
 
-        output_console.print(Panel(tbl, title=f"[bold]{r.name}[/bold]", border_style=kind_style))
+        output_console.print(Panel(tbl, title=f"[bold]{r.name}[/bold]"))

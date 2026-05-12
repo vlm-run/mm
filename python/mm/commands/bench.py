@@ -425,12 +425,7 @@ _LATENCY_THRESHOLDS: dict[str, tuple[float, float]] = {
 
 def _latency_style(ms: float, group: str) -> str:
     """Return a rich style based on latency relative to group thresholds."""
-    green, yellow = _LATENCY_THRESHOLDS.get(group, (200.0, 1000.0))
-    if ms <= green:
-        return "green"
-    if ms <= yellow:
-        return "yellow"
-    return "red"
+    return ""
 
 
 def _split_argv(joined: str) -> list[str]:
@@ -729,12 +724,11 @@ def _build_table(
         caption_style="dim",
         caption_justify="right",
         show_header=True,
-        header_style="bold white",
+        header_style="bold",
         padding=(0, 1),
-        border_style="dim",
         box=box.ROUNDED,
     )
-    table.add_column("Group", style="dim", width=10)
+    table.add_column("Group", width=10)
     if has_model:
         # ``Model`` carries identifiers like ``microsoft/Florence-2-base-ft``
         # which we want to keep visible in full -- folding rather than
@@ -745,13 +739,13 @@ def _build_table(
         # ``det`` / ``seg`` / ``llm`` / ``pose`` / ``track`` / ``noop``)
         # so a fixed narrow column keeps it visually compact and the
         # values left-aligned for grep-ability across rows.
-        table.add_column("Task", style="cyan", width=5)
+        table.add_column("Task", width=5)
     # Base / Extra both wrap so long invocations stay visible.
     table.add_column("Base Command", no_wrap=False, overflow="fold")
     if has_extra:
         table.add_column("Extra Args", no_wrap=False, overflow="fold")
     table.add_column("Mean", justify="right")
-    table.add_column("\u00b1Std", justify="right", style="dim")
+    table.add_column("\u00b1Std", justify="right")
     table.add_column("Min", justify="right")
     table.add_column("Max", justify="right")
     table.add_column("Speed", justify="right")
@@ -806,20 +800,19 @@ def _build_table(
             )
             continue
 
-        color = _latency_style(r.mean_ms, r.group)
         command_cells = [base_str]
         if has_extra:
             command_cells.append(extra_str)
         table.add_row(
             *prefix,
             *command_cells,
-            Text(_fmt_ms(r.mean_ms), style=f"bold {color}"),
+            Text(_fmt_ms(r.mean_ms), style="bold"),
             Text(_fmt_ms(r.std_ms)),
-            Text(_fmt_ms(r.min_ms), style=color),
-            Text(_fmt_ms(r.max_ms), style=color),
+            Text(_fmt_ms(r.min_ms)),
+            Text(_fmt_ms(r.max_ms)),
             Text(r.speed_str),
             Text(f"{r.mb_per_sec:.1f}" if r.mb_per_sec > 0 else "\u2014"),
-            Text(r.bits_per_sec_str, style="bright_cyan") if r.bits_per_sec > 0 else Text("\u2014"),
+            Text(r.bits_per_sec_str) if r.bits_per_sec > 0 else Text("\u2014"),
         )
 
     return table
@@ -1849,11 +1842,11 @@ def bench_cmd(
     if fmt == "rich":
         from mm.display import console
 
-        status = console.status("[dim]Starting benchmarks...[/dim]", spinner="dots")
+        status = console.status("Starting benchmarks...", spinner="dots")
         status.start()
 
         def on_progress(group: str, name: str) -> None:
-            status.update(f"[dim]{group}[/dim] [bold]{name}[/bold]")
+            status.update(f"{group} [bold]{name}[/bold]")
 
         try:
             results, target_info = _run_benchmarks(

@@ -92,22 +92,21 @@ def profile_list(
     from mm.display import output_console
 
     tbl = Table(
-        title="[bold]Profiles",
+        title="[bold]Profiles[/bold]",
         show_lines=False,
         padding=(0, 1),
-        border_style="dim",
-        header_style="bold white",
+        header_style="bold",
         box=box.ROUNDED,
     )
-    tbl.add_column("", width=2)  # active marker
-    tbl.add_column("profile", style="bold")
+    tbl.add_column("", width=2)
+    tbl.add_column("profile")
     tbl.add_column("base_url")
     tbl.add_column("model")
 
     for name in names:
         section = get_profile_section(file_data, name)
-        marker = Text("●", style="bold green") if name == active else Text(" ")
-        style = "bold" if name == active else "dim"
+        marker = Text("●", style="bold") if name == active else Text(" ")
+        style = "bold" if name == active else ""
         tbl.add_row(
             marker,
             Text(name, style=style),
@@ -134,11 +133,9 @@ def profile_use(
 
     try:
         path = set_active_profile(name)
-        output_console.print(
-            f"[green]Switched to profile:[/green] [bold]{name}[/bold]  [dim]({path})[/dim]"
-        )
+        output_console.print(f"Switched to profile: [bold]{name}[/bold]  ({path})")
     except ValueError as e:
-        output_console.print(f"[red]{e}[/red]")
+        output_console.print(f"{e}")
         raise typer.Exit(1)
 
 
@@ -162,11 +159,9 @@ def profile_add(
 
     try:
         path = add_profile(name, base_url=base_url, api_key=api_key, model=model)
-        output_console.print(
-            f"[green]Added profile:[/green] [bold]{name}[/bold]  [dim]({path})[/dim]"
-        )
+        output_console.print(f"Added profile: [bold]{name}[/bold]  ({path})")
     except ValueError as e:
-        output_console.print(f"[red]{e}[/red]")
+        output_console.print(f"{e}")
         raise typer.Exit(1)
 
 
@@ -194,7 +189,6 @@ def profile_update(
 
     try:
         path = update_profile(name, base_url=base_url, api_key=api_key, model=model)
-        # Show what was updated
         updated_fields = []
         if base_url is not None:
             updated_fields.append(f"base_url={base_url}")
@@ -203,10 +197,10 @@ def profile_update(
         if model is not None:
             updated_fields.append(f"model={model}")
         output_console.print(
-            f"[green]Updated profile:[/green] [bold]{name}[/bold] ({', '.join(updated_fields)})  [dim]({path})[/dim]"
+            f"Updated profile: [bold]{name}[/bold] ({', '.join(updated_fields)})  ({path})"
         )
     except ValueError as e:
-        output_console.print(f"[red]{e}[/red]")
+        output_console.print(f"{e}")
         raise typer.Exit(1)
 
 
@@ -227,7 +221,7 @@ def profile_remove(
 
     try:
         path = remove_profile(name)
-        output_console.print(f"[green]Removed profile:[/green] {name}  [dim]({path})[/dim]")
+        output_console.print(f"Removed profile: {name}  ({path})")
     except ValueError as e:
-        output_console.print(f"[red]{e}[/red]")
+        output_console.print(f"{e}")
         raise typer.Exit(1)
