@@ -425,7 +425,12 @@ _LATENCY_THRESHOLDS: dict[str, tuple[float, float]] = {
 
 def _latency_style(ms: float, group: str) -> str:
     """Return a rich style based on latency relative to group thresholds."""
-    return ""
+    green, yellow = _LATENCY_THRESHOLDS.get(group, (200.0, 1000.0))
+    if ms <= green:
+        return "green"
+    if ms <= yellow:
+        return "yellow"
+    return "red"
 
 
 def _split_argv(joined: str) -> list[str]:
@@ -800,16 +805,17 @@ def _build_table(
             )
             continue
 
+        color = _latency_style(r.mean_ms, r.group)
         command_cells = [base_str]
         if has_extra:
             command_cells.append(extra_str)
         table.add_row(
             *prefix,
             *command_cells,
-            Text(_fmt_ms(r.mean_ms), style="bold"),
+            Text(_fmt_ms(r.mean_ms), style=f"bold {color}"),
             Text(_fmt_ms(r.std_ms)),
-            Text(_fmt_ms(r.min_ms)),
-            Text(_fmt_ms(r.max_ms)),
+            Text(_fmt_ms(r.min_ms), style=color),
+            Text(_fmt_ms(r.max_ms), style=color),
             Text(r.speed_str),
             Text(f"{r.mb_per_sec:.1f}" if r.mb_per_sec > 0 else "\u2014"),
             Text(r.bits_per_sec_str) if r.bits_per_sec > 0 else Text("\u2014"),
