@@ -92,7 +92,7 @@ def gateway_api_key() -> str:
     """Return the API key configured on the built-in ``gateway`` profile."""
     try:
         file_data = load_profile_config()
-        return str(get_profile_section(file_data, "gateway").get("api_key", "vlmrun"))
+        return str(get_profile_section(file_data, "gateway").get("api_key") or "vlmrun")
     except Exception:
         return "vlmrun"
 
