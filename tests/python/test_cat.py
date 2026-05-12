@@ -415,11 +415,9 @@ class TestCatAudioOverrides:
         call_kwargs = self.mock_transcribe.call_args
         assert call_kwargs[1]["backend"] == "mlx"
 
-    def test_strategy_opts_model(self, isolated_db):
-        """mm cat audio.mp3 --encode.strategy_opts model=whisper-1."""
-        r = runner.invoke(
-            app, ["cat", str(self.audio), "--encode.strategy_opts", "model=whisper-1"]
-        )
+    def test_encode_model_flag(self, isolated_db):
+        """mm cat audio.mp3 --encode.model whisper-1 passes model='whisper-1'."""
+        r = runner.invoke(app, ["cat", str(self.audio), "--encode.model", "whisper-1"])
         assert r.exit_code == 0, r.output
         call_kwargs = self.mock_transcribe.call_args
         assert call_kwargs[1]["model"] == "whisper-1"

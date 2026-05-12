@@ -34,6 +34,12 @@ encode:
   # null = use the kind-specific default.
   strategy: resize
 
+  # Encoder model name — used by audio/video transcription encoders.
+  # model: nvidia/parakeet-tdt-0.6b-v3
+
+  # Encoder backend selector (audio transcription only).
+  # backend: openai   # "openai" | "mlx" | "ctranslate2"
+
   # Encoder-specific parameters, forwarded as kwargs to encoder.encode().
   # See `mm cat --list-encoders` for every encoder's accepted fields.
   strategy_opts:
@@ -51,11 +57,9 @@ encode:
     # fps: 1.0
     # max_width: 1024
     # max_frames_per_message: 16
-    # model: nvidia/parakeet-tdt-0.6b-v3
     # audio_speed: 1.0
 
     # Examples for audio-transcribe:
-    # model: nvidia/parakeet-tdt-0.6b-v3
     # audio_speed: 1.0
 
   # Custom Python transform — file path or inline `def`.

@@ -17,11 +17,11 @@ encode:
   # uses the VLM Run gateway (OpenAI-compatible).  Override base_url
   # to point at localhost or OpenAI directly.
   strategy: audio-transcribe
+  # model: nvidia/parakeet-tdt-0.6b-v3     # encoder model (default for gateway)
+  # backend: openai                        # "openai" | "mlx" | "ctranslate2"
   strategy_opts:
-    # model: nvidia/parakeet-tdt-0.6b-v3   # default for gateway
     # language: auto                        # language code or "auto"
     # audio_speed: 1.0                      # playback speed multiplier
-    # backend: null                         # "openai" | "mlx" | "ctranslate2" | null (auto)
     # base_url: null                        # custom OpenAI-compatible endpoint
     # api_key: null                         # API key for that endpoint
 

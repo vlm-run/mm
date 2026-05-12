@@ -6,7 +6,8 @@
 #
 # Many visual strategies have a "-w-transcript" variant that prepends
 # a Whisper audio transcript before the visual output.  Transcript
-# kwargs (model, language, audio_speed) are shared across all of them.
+# kwargs (language, audio_speed) live in strategy_opts; the transcription
+# model is set at the encode level via the ``model`` field.
 
 kind: video
 mode: fast        # fast | accurate
@@ -14,6 +15,8 @@ mode: fast        # fast | accurate
 # ── encode ──────────────────────────────────────────────────────────
 
 encode:
+  # model: nvidia/parakeet-tdt-0.6b-v3   # transcription model (default for gateway)
+  # backend: openai                      # "openai" | "mlx" | "ctranslate2"
 
   # ── video-frames ────────────────────────────────────────────────
   # Uniform frame extraction at a given FPS.
@@ -30,7 +33,6 @@ encode:
     fps: 1.0
     max_width: 1024
     max_frames_per_message: 16
-    # model: nvidia/parakeet-tdt-0.6b-v3   # transcription model (default for gateway)
     # language: auto                        # language code or "auto"
     # audio_speed: 1.0                      # playback speed multiplier
 
@@ -54,7 +56,6 @@ encode:
   #   thumb_width: 160
   #   num_mosaics: 8
   #   num_frames: 128
-  #   model: nvidia/parakeet-tdt-0.6b-v3
   #   language: auto
   #   audio_speed: 1.0
 
@@ -81,7 +82,6 @@ encode:
   # strategy_opts:
   #   duration: 0
   #   max_size_mb: null
-  #   model: nvidia/parakeet-tdt-0.6b-v3
   #   language: auto
   #   audio_speed: 1.0
 
@@ -101,7 +101,6 @@ encode:
   #   max_keyframes: null
   #   max_width: 1024
   #   max_keyframes_per_message: 16
-  #   model: nvidia/parakeet-tdt-0.6b-v3
   #   language: auto
   #   audio_speed: 1.0
 
@@ -120,7 +119,6 @@ encode:
   #   threshold: 27.0
   #   max_frames_per_shot: 8
   #   max_width: 1024
-  #   model: nvidia/parakeet-tdt-0.6b-v3
   #   language: auto
   #   audio_speed: 1.0
 
@@ -141,7 +139,6 @@ encode:
   #   tile_cols: 4
   #   tile_rows: 4
   #   thumb_width: 160
-  #   model: nvidia/parakeet-tdt-0.6b-v3
   #   language: auto
   #   audio_speed: 1.0
 
@@ -161,7 +158,6 @@ encode:
   #   num_frames: 12
   #   use_scene_detection: true
   #   max_width: 1024
-  #   model: nvidia/parakeet-tdt-0.6b-v3
   #   language: auto
   #   audio_speed: 1.0
 
@@ -169,7 +165,6 @@ encode:
   # Audio-only: transcribe the audio track, no visual frames.
   # strategy: video-transcript
   # strategy_opts:
-  #   model: nvidia/parakeet-tdt-0.6b-v3   # transcription model
   #   language: auto                        # language code or "auto"
   #   audio_speed: 1.0                      # playback speed multiplier
 
@@ -180,7 +175,6 @@ encode:
   # strategy_opts:
   #   subtitle_stream: 0              # which subtitle stream index
   #   fallback_to_whisper: true       # use Whisper if no subtitles
-  #   model: nvidia/parakeet-tdt-0.6b-v3   # transcription model for fallback
   #   language: auto
   #   audio_speed: 1.0
 

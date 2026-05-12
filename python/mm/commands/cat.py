@@ -153,6 +153,13 @@ def cat_cmd(
             help="Override encoder backend (mlx, ctranslate2, or openai)",
         ),
     ] = None,
+    encode_model: Annotated[
+        Optional[str],
+        typer.Option(
+            "--encode.model",
+            help="Override encoder model (e.g. nvidia/parakeet-tdt-0.6b-v3, whisper-1)",
+        ),
+    ] = None,
     encode_strategy_opts: Annotated[
         Optional[list[str]],
         typer.Option(
@@ -333,6 +340,7 @@ def cat_cmd(
             strategy=encode_strategy,
             pyfunc=encode_pyfunc,
             backend=encode_backend,
+            model=encode_model,
         )
     }
     if encode_strategy_opts:
