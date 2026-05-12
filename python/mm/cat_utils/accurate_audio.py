@@ -46,6 +46,9 @@ def accurate_audio(path: Path, spec: PipelineSpec, opts: CatOpts) -> RunResult:
     model: str | None = akw.get("model") or None
     audio_speed = akw.get("audio_speed") or 1.0
     beam_size = 5
+    backend = spec.encode.backend or akw.get("backend")
+    base_url: str | None = akw.get("base_url")
+    api_key: str | None = akw.get("api_key")
 
     t0 = time.monotonic()
     audio_result = extract_audio(path, speed=audio_speed)
@@ -54,6 +57,9 @@ def accurate_audio(path: Path, spec: PipelineSpec, opts: CatOpts) -> RunResult:
     whisper_result = transcribe(
         audio_result.path,
         model=model,
+        backend=backend,
+        base_url=base_url,
+        api_key=api_key,
         beam_size=beam_size,
         audio_speed=audio_speed,
     )

@@ -37,13 +37,11 @@ BackendLabel = Literal["mlx", "ctranslate2", "openai"]
 class TranscriptionBackend(abc.ABC):
     """Abstract base for pluggable transcription backends.
 
-    Subclasses set ``name`` and ``priority`` (lower = preferred), implement
-    ``available()`` to probe the current system, and ``transcribe()`` to
-    run inference.
+    Subclasses set ``name``, implement ``available()`` to probe the
+    current system, and ``transcribe()`` to run inference.
     """
 
     name: BackendLabel
-    priority: int
 
     @abc.abstractmethod
     def available(self) -> bool:
@@ -54,7 +52,7 @@ class TranscriptionBackend(abc.ABC):
         self,
         audio_path: Path,
         *,
-        model: str = "tiny",
+        model: str | None = None,
         language: str | None = None,
         beam_size: int = 1,
         audio_speed: float = 1.0,
@@ -68,13 +66,13 @@ _DETECTED = False
 
 
 def register_backend(backend: TranscriptionBackend) -> None:
-    """Add a backend to the registry (sorted by priority on access)."""
+    """Add a backend to the registry."""
     _BACKENDS.append(backend)
 
 
 def list_backends() -> list[tuple[str, bool]]:
     """Return ``(name, available)`` for every registered backend."""
-    return [(b.name, b.available()) for b in sorted(_BACKENDS, key=lambda b: b.priority)]
+    return [(b.name, b.available()) for b in _BACKENDS]
 
 
 def detect_backend(
@@ -83,14 +81,14 @@ def detect_backend(
     base_url: str | None = None,
     api_key: str | None = None,
 ) -> TranscriptionBackend | None:
-    """Find a backend by name, or auto-detect the best available one.
+    """Find a backend by name, or return the default (openai) backend.
 
     When *name* is given the named backend is returned (even if
     ``available()`` is False — the caller requested it explicitly).
 
-    When *name* is ``None`` the registry is walked in priority order and
-    the first backend whose ``available()`` returns ``True`` is returned
-    and cached for subsequent calls.
+    When *name* is ``None`` the ``openai`` backend is returned.
+    Local backends (mlx, ctranslate2) are never auto-selected — the
+    user must explicitly request them via ``--encode.backend``.
     """
     global _ACTIVE, _DETECTED
 
@@ -105,8 +103,8 @@ def detect_backend(
     if _DETECTED:
         return _ACTIVE
 
-    for b in sorted(_BACKENDS, key=lambda b: b.priority):
-        if b.available():
+    for b in _BACKENDS:
+        if b.name == "openai" and b.available():
             _ACTIVE = b
             _DETECTED = True
             return b

@@ -53,7 +53,6 @@ class CTranslate2Backend(TranscriptionBackend):
     """
 
     name = "ctranslate2"
-    priority = 30
 
     def available(self) -> bool:
         from mm._bootstrap import preload_media_libs
@@ -70,11 +69,12 @@ class CTranslate2Backend(TranscriptionBackend):
         self,
         audio_path: Path,
         *,
-        model: str = "tiny",
+        model: str | None = None,
         language: str | None = None,
         beam_size: int = 1,
         audio_speed: float = 1.0,
     ) -> TranscriptionResult:
+        model = model or "tiny"
         t0 = time.monotonic()
         device, _ = _get_device()
 

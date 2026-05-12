@@ -50,14 +50,15 @@ class TestRegistry:
 
         assert detect_backend(name="nonexistent") is None
 
-    def test_detect_backend_auto(self):
-        from mm.common.audio import ACTIVE_VARIANT, detect_backend
+    def test_detect_backend_auto_selects_openai(self):
+        """Auto-detection always returns openai, even if local backends are installed."""
+        from mm.common.audio import detect_backend
         from mm.common.audio._base import _reset
 
         _reset()
         be = detect_backend()
         assert be is not None
-        assert be.name == ACTIVE_VARIANT
+        assert be.name == "openai"
 
     def test_transcribe_available(self):
         from mm.common.audio import transcribe_available
@@ -311,6 +312,81 @@ class TestOpenAIBackend:
             result = be.transcribe(audio, model="whisper-1", audio_speed=2.0)
             assert result.segments[0].start == 2.0
             assert result.segments[0].end == 4.0
+
+    def test_default_model_whisper_for_openai_url(self, tmp_path):
+        """When base_url contains api.openai.com, model defaults to whisper-1."""
+        audio = tmp_path / "test.wav"
+        audio.write_bytes(b"\x00" * 100)
+
+        mock_resp = MagicMock()
+        mock_resp.text = "hello"
+        mock_resp.language = "en"
+        mock_resp.segments = []
+
+        mock_client = MagicMock()
+        mock_client.audio.transcriptions.create.return_value = mock_resp
+
+        with patch("openai.OpenAI", return_value=mock_client):
+            from mm.common.audio._openai import OpenAIBackend
+
+            be = OpenAIBackend(base_url="https://api.openai.com/v1", api_key="sk-test")
+            be.transcribe(audio)
+            call_kwargs = mock_client.audio.transcriptions.create.call_args
+            assert call_kwargs[1]["model"] == "whisper-1"
+
+    def test_default_model_parakeet_for_gateway(self, tmp_path):
+        """When base_url is the gateway, model defaults to parakeet."""
+        audio = tmp_path / "test.wav"
+        audio.write_bytes(b"\x00" * 100)
+
+        mock_resp = MagicMock()
+        mock_resp.text = "hello"
+        mock_resp.language = "en"
+        mock_resp.segments = []
+
+        mock_client = MagicMock()
+        mock_client.audio.transcriptions.create.return_value = mock_resp
+
+        with (
+            patch("openai.OpenAI", return_value=mock_client),
+            patch("mm.common.audio._openai._resolve_transcription_config", return_value=("", "")),
+            patch("mm.common.audio._openai._resolve_profile_url", return_value=("", "")),
+        ):
+            from mm.common.audio._openai import OpenAIBackend
+
+            be = OpenAIBackend()
+            be.transcribe(audio)
+            call_kwargs = mock_client.audio.transcriptions.create.call_args
+            assert call_kwargs[1]["model"] == "nvidia/parakeet-tdt-0.6b-v3"
+
+    def test_no_env_var_reading(self, tmp_path):
+        """OpenAI backend does not read OPENAI_API_KEY from environment."""
+        audio = tmp_path / "test.wav"
+        audio.write_bytes(b"\x00" * 100)
+
+        mock_resp = MagicMock()
+        mock_resp.text = "hello"
+        mock_resp.language = "en"
+        mock_resp.segments = []
+
+        mock_client = MagicMock()
+        mock_client.audio.transcriptions.create.return_value = mock_resp
+
+        with (
+            patch("openai.OpenAI", return_value=mock_client) as MockOpenAI,
+            patch("mm.common.audio._openai._resolve_transcription_config", return_value=("", "")),
+            patch("mm.common.audio._openai._resolve_profile_url", return_value=("", "")),
+            patch.dict("os.environ", {"OPENAI_API_KEY": "sk-from-env"}, clear=False),
+        ):
+            from mm.common.audio._openai import OpenAIBackend
+
+            be = OpenAIBackend()
+            be.transcribe(audio)
+            MockOpenAI.assert_called_once_with(
+                base_url="https://gateway.vlm.run/v1/openai",
+                api_key="noop",
+                timeout=120.0,
+            )
 
 
 class TestTranscriptionConfig:

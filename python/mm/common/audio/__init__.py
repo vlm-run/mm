@@ -1,27 +1,26 @@
 """Audio transcription with pluggable backends.
 
-All *available* backends are registered at import time.  The OpenAI-
-compatible backend is always present; local backends are added when
-their extras are installed:
+The ``openai`` backend is always the default and calls the VLM Run
+gateway (``https://gateway.vlm.run/v1/openai``) with
+``nvidia/parakeet-tdt-0.6b-v3``.  Users can point it at any
+OpenAI-compatible endpoint via ``--profile`` or ``--encode.strategy_opts``.
 
-* ``openai`` (priority 10, always available) — VLM Run gateway
-  (``https://gateway.vlm.run/v1/openai``, model ``nvidia/parakeet-tdt-0.6b-v3``).
-* ``mlx`` (priority 20) — Apple Metal GPU.  ``pip install mm-ctx[mlx]``
-* ``ctranslate2`` (priority 30) — CPU int8 / CUDA float16.  ``pip install mm-ctx[gpu]``
+Local backends are **opt-in only** — they are never auto-selected:
 
-Auto-detection picks the lowest-priority (= most preferred) available
-backend.  Callers can always override with ``backend="openai"`` to
-force the gateway even when a local backend is installed.
+* ``mlx`` — Apple Metal GPU.  ``pip install mm-ctx[mlx]``,
+  then ``--encode.backend mlx``.
+* ``ctranslate2`` — CPU int8 / CUDA float16.  ``pip install mm-ctx[gpu]``,
+  then ``--encode.backend ctranslate2``.
 
 Public API::
 
     from mm.common.audio import transcribe, transcribe_available, list_backends
 
-    # Auto-detect best backend
+    # Default — calls the gateway
     result = transcribe("audio.wav")
 
-    # Force gateway regardless of installed extras
-    result = transcribe("audio.wav", backend="openai")
+    # Explicit local backend
+    result = transcribe("audio.wav", backend="mlx")
 """
 
 from __future__ import annotations
@@ -43,17 +42,21 @@ if TYPE_CHECKING:
     from mm.common.audio._base import BackendLabel
 
 
-def _register_backends() -> str:
-    """Register all available backends and return the best one's name.
+def _register_backends() -> None:
+    """Register all available backends.
 
     The OpenAI backend is always registered.  Local backends (mlx,
-    ctranslate2) are added when their respective extras are installed.
-    Returns the name of the highest-priority (lowest number) backend.
+    ctranslate2) are added when their respective extras are installed
+    but are **never** auto-selected — the user must request them
+    explicitly via ``--encode.backend``.
     """
+    import logging
+
     from mm.common.audio._openai import OpenAIBackend
 
+    logger = logging.getLogger(__name__)
+
     register_backend(OpenAIBackend())
-    best = "openai"
 
     try:
         import lightning_whisper_mlx  # noqa: F401
@@ -63,9 +66,8 @@ def _register_backends() -> str:
             from mm.common.audio._mlx import MLXBackend
 
             register_backend(MLXBackend())
-            best = "mlx"
     except (ImportError, AttributeError):
-        pass
+        logger.debug("mlx backend not available (install mm-ctx[mlx])")
 
     try:
         import faster_whisper  # noqa: F401
@@ -73,15 +75,13 @@ def _register_backends() -> str:
         from mm.common.audio._ctranslate2 import CTranslate2Backend
 
         register_backend(CTranslate2Backend())
-        if best == "openai":
-            best = "ctranslate2"
     except ImportError:
-        pass
-
-    return best
+        logger.debug("ctranslate2 backend not available (install mm-ctx[gpu])")
 
 
-ACTIVE_VARIANT = _register_backends()
+_register_backends()
+
+ACTIVE_VARIANT = "openai"
 
 GATEWAY_MODEL = "nvidia/parakeet-tdt-0.6b-v3"
 
@@ -100,15 +100,15 @@ def transcribe(
     """Transcribe audio using the registered backend.
 
     By default, calls the VLM Run gateway's OpenAI-compatible
-    transcription endpoint with ``nvidia/parakeet-tdt-0.6b-v3``.
-    Override ``base_url`` to point at localhost or
-    ``https://api.openai.com/v1`` (set ``OPENAI_API_KEY``).
+    transcription endpoint.  The model is chosen automatically based
+    on the resolved ``base_url`` (``whisper-1`` for ``api.openai.com``,
+    ``nvidia/parakeet-tdt-0.6b-v3`` for the gateway).
 
     Args:
         audio_path: Path to audio file (WAV, MP3, etc.).
         model: Model name.  ``None`` picks a sensible default for
-            the active backend (``nvidia/parakeet-tdt-0.6b-v3`` for
-            the gateway, ``tiny`` for local backends).
+            the active backend (see above for openai, ``tiny`` for
+            local backends).
         language: ISO language code; ``None`` for auto-detection.
         beam_size: Beam size for local backends (1 = greedy).
         audio_speed: Speed multiplier the audio was extracted at.
@@ -116,7 +116,7 @@ def transcribe(
         backend: Explicit backend name (``"openai"``, ``"mlx"``,
             ``"ctranslate2"``). When ``None`` the ``[transcription]``
             section of ``mm.toml`` is consulted; if still unset, the
-            registered backend is used.
+            ``openai`` backend is used.
         base_url: Custom base URL for the ``openai`` backend.
         api_key: API key for the ``openai`` backend.
 
@@ -144,8 +144,8 @@ def transcribe(
             model_size=model or "",
         )
 
-    if model is None:
-        model = GATEWAY_MODEL if be.name == "openai" else "tiny"
+    if model is None and be.name != "openai":
+        model = "tiny"
 
     return be.transcribe(
         Path(audio_path) if not isinstance(audio_path, Path) else audio_path,

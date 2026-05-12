@@ -36,7 +36,6 @@ class MLXBackend(TranscriptionBackend):
     """
 
     name = "mlx"
-    priority = 20
 
     def available(self) -> bool:
         try:
@@ -51,11 +50,12 @@ class MLXBackend(TranscriptionBackend):
         self,
         audio_path: Path,
         *,
-        model: str = "tiny",
+        model: str | None = None,
         language: str | None = None,
         beam_size: int = 1,
         audio_speed: float = 1.0,
     ) -> TranscriptionResult:
+        model = model or "tiny"
         t0 = time.monotonic()
         batch_size = 12
 

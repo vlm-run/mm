@@ -11,12 +11,14 @@ Resolution order for ``base_url`` / ``api_key``:
 1. Explicit constructor args (passed via ``detect_backend`` overrides).
 2. ``[transcription]`` section in ``mm.toml``.
 3. The active mm profile's ``base_url`` (gateway by default).
+
+No environment variables are read — all overrides flow through CLI
+flags, profiles, or ``mm.toml`` config.
 """
 
 from __future__ import annotations
 
 import logging
-import os
 import time
 from pathlib import Path
 
@@ -65,7 +67,6 @@ class OpenAIBackend(TranscriptionBackend):
     """
 
     name = "openai"
-    priority = 10
 
     def __init__(
         self,
@@ -92,14 +93,20 @@ class OpenAIBackend(TranscriptionBackend):
         if url:
             return url, key
 
-        api_key = self._api_key or os.environ.get("OPENAI_API_KEY", "")
-        return GATEWAY_AUDIO_URL, api_key
+        return GATEWAY_AUDIO_URL, self._api_key or ""
+
+    @staticmethod
+    def _default_model(base_url: str) -> str:
+        """Pick a model based on the resolved base URL."""
+        if "api.openai.com" in base_url:
+            return "whisper-1"
+        return "nvidia/parakeet-tdt-0.6b-v3"
 
     def transcribe(
         self,
         audio_path: Path,
         *,
-        model: str = "nvidia/parakeet-tdt-0.6b-v3",
+        model: str | None = None,
         language: str | None = None,
         beam_size: int = 1,
         audio_speed: float = 1.0,
@@ -107,6 +114,9 @@ class OpenAIBackend(TranscriptionBackend):
         from openai import OpenAI
 
         base_url, api_key = self._resolve_url_and_key()
+
+        if model is None:
+            model = self._default_model(base_url)
 
         client = OpenAI(
             base_url=base_url,
