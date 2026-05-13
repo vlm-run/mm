@@ -240,7 +240,9 @@ def deep_merge(base: dict[str, Any], overlay: dict[str, Any]) -> dict[str, Any]:
     return out
 
 
-_ENCODE_TOP_LEVEL: frozenset[str] = frozenset({"strategy", "strategy_opts", "pyfunc", "backend"})
+_ENCODE_TOP_LEVEL: frozenset[str] = frozenset(
+    {"strategy", "strategy_opts", "pyfunc", "backend", "model"}
+)
 
 
 def apply_overrides(

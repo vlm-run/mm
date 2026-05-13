@@ -25,18 +25,20 @@ def accurate_audio(path: Path, spec: PipelineSpec, opts: CatOpts) -> RunResult:
     if not transcribe_available():
         return RunResult(
             content=(
-                "[no transcription backend available — faster-whisper should be in core mm install. "
-                "For MLX on Apple Silicon: pip install mm[mlx]]"
+                "[no transcription backend available — "
+                "the openai package is required for the default gateway backend; "
+                "for local MLX: pip install mm-ctx[mlx]; "
+                "for local GPU/CPU: pip install mm-ctx[gpu]]"
             )
         )
 
+    _AUDIO_NATIVE = {"transcribe", "audio-transcribe"}
+
     if spec.generate is None:
+        if spec.encode.strategy:
+            return run_encoder(path, "audio", spec, opts)
         return RunResult(content=extract_meta(path, "audio"))
 
-    # The hard-coded whisper+LLM fast path only implements `transcribe`.
-    # Anything else (e.g. audio-gemini) must be routed through the
-    # generic encoder runner so we only report stages that actually ran.
-    _AUDIO_NATIVE = {"transcribe", "audio-transcribe"}
     if spec.encode.strategy and spec.encode.strategy not in _AUDIO_NATIVE:
         return run_encoder(path, "audio", spec, opts)
 
@@ -44,9 +46,12 @@ def accurate_audio(path: Path, spec: PipelineSpec, opts: CatOpts) -> RunResult:
     t_total = time.monotonic()
 
     akw = spec.encode.strategy_opts
-    whisper_model = akw.get("whisper_model") or "medium"
+    model: str | None = spec.encode.model or akw.get("model") or None
     audio_speed = akw.get("audio_speed") or 1.0
     beam_size = 5
+    backend = spec.encode.backend or akw.get("backend")
+    base_url: str | None = akw.get("base_url")
+    api_key: str | None = akw.get("api_key")
 
     t0 = time.monotonic()
     audio_result = extract_audio(path, speed=audio_speed)
@@ -54,7 +59,10 @@ def accurate_audio(path: Path, spec: PipelineSpec, opts: CatOpts) -> RunResult:
 
     whisper_result = transcribe(
         audio_result.path,
-        model=whisper_model,
+        model=model,
+        backend=backend,
+        base_url=base_url,
+        api_key=api_key,
         beam_size=beam_size,
         audio_speed=audio_speed,
     )

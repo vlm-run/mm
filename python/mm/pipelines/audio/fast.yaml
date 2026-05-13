@@ -4,6 +4,6 @@ mode: fast
 encode:
   strategy: audio-transcribe
   backend: openai
+  model: nvidia/parakeet-tdt-0.6b-v3
   strategy_opts:
-    whisper_model: tiny
     audio_speed: 2.0

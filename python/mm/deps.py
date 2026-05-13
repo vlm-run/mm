@@ -12,6 +12,7 @@ from types import ModuleType
 
 _EXTRA_INSTALL_HINTS: dict[str, str] = {
     "mlx": "pip install mm-ctx[mlx]",
+    "gpu": "pip install mm-ctx[gpu]",
     "experimental": "pip install mm-ctx[experimental]",
 }
 

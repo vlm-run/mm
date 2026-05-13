@@ -296,7 +296,7 @@ class TestTranscriptCache:
     The decorator's behaviour itself is exercised in ``test_cache.py``;
     these tests verify the integration: that ``transcript_messages`` exposes
     the standard ``cache_info`` / ``cache_clear`` handles and that its
-    cache key includes ``whisper_model``.
+    cache key includes ``model``.
     """
 
     def test_exposes_cache_handles(self):
@@ -319,8 +319,8 @@ class TestTranscriptCache:
         clip = tmp_path / "fake.mp4"
         clip.write_bytes(b"\x00\x00\x00\x18ftypisom")
 
-        a = transcript_messages(clip, whisper_model="tiny", language="auto", audio_speed=1.0)
-        b = transcript_messages(clip, whisper_model="tiny", language="auto", audio_speed=1.0)
+        a = transcript_messages(clip, model="tiny", language="auto", audio_speed=1.0)
+        b = transcript_messages(clip, model="tiny", language="auto", audio_speed=1.0)
 
         info = transcript_messages.cache_info()
         assert info["hits"] >= 1
@@ -335,12 +335,12 @@ class TestTranscriptCache:
         clip = tmp_path / "fake2.mp4"
         clip.write_bytes(b"\x00\x00\x00\x18ftypisom")
 
-        a = transcript_messages(clip, whisper_model="tiny", language="auto", audio_speed=1.0)
-        b = transcript_messages(clip, whisper_model="medium", language="auto", audio_speed=1.0)
+        a = transcript_messages(clip, model="tiny", language="auto", audio_speed=1.0)
+        b = transcript_messages(clip, model="medium", language="auto", audio_speed=1.0)
         # Different models → separate cache entries.
         assert transcript_messages.cache_info()["currsize"] == 2
         # Same call should hit, not grow.
-        transcript_messages(clip, whisper_model="tiny", language="auto", audio_speed=1.0)
+        transcript_messages(clip, model="tiny", language="auto", audio_speed=1.0)
         assert transcript_messages.cache_info()["currsize"] == 2
         # Both empty because Whisper is stubbed unavailable.
         assert a == b == []
@@ -350,7 +350,7 @@ class TestTranscriptCache:
         clip = tmp_path / "fake3.mp4"
         clip.write_bytes(b"\x00\x00\x00\x18ftypisom")
 
-        transcript_messages(clip, whisper_model="tiny", language="auto", audio_speed=1.0)
+        transcript_messages(clip, model="tiny", language="auto", audio_speed=1.0)
         assert transcript_messages.cache_info()["currsize"] == 1
         transcript_messages.cache_clear()
         assert transcript_messages.cache_info() == {
@@ -367,13 +367,13 @@ class TestTranscriptCache:
         clip = tmp_path / "fake4.mp4"
         clip.write_bytes(b"\x00\x00\x00\x18ftypisom")
 
-        transcript_messages(clip, whisper_model="tiny", language="auto", audio_speed=1.0)
+        transcript_messages(clip, model="tiny", language="auto", audio_speed=1.0)
         before = transcript_messages.cache_info()["currsize"]
 
         future = clip.stat().st_mtime + 100.0
         os.utime(clip, (future, future))
 
-        transcript_messages(clip, whisper_model="tiny", language="auto", audio_speed=1.0)
+        transcript_messages(clip, model="tiny", language="auto", audio_speed=1.0)
         after = transcript_messages.cache_info()["currsize"]
 
         # New mtime → new cache entry, old one still present.

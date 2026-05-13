@@ -8,8 +8,9 @@ encode:
     max_width: 1024
     max_frames_per_message: 16
     transcribe: true
-    whisper_model: medium
     audio_speed: 1.0
+    audio_model: nvidia/parakeet-tdt-0.6b-v3
+    audio_backend: openai
 
 generate:
   prompt: >-

@@ -87,7 +87,7 @@ class VideoCaptions:
     Kwargs:
         subtitle_stream: Which subtitle stream index to use (default 0).
         fallback_to_whisper: Use Whisper if no subtitles found (default True).
-        whisper_model: Whisper model size for fallback (default "medium").
+        model: Transcription model name for fallback (default chosen by backend).
         language: Language code or "auto" for fallback (default "auto").
         audio_speed: Playback speed for fallback (default 1.0).
     """
@@ -123,16 +123,19 @@ class VideoCaptions:
             )
             from mm.encoders.video._transcript import transcript_messages
 
-            whisper_model: str = kwargs.get("whisper_model", "medium")
+            model: str | None = kwargs.get("audio_model") or kwargs.get("model")
             language: str = kwargs.get("language", "auto")
             audio_speed: float = kwargs.get("audio_speed", 1.0)
 
             msgs = list(
                 transcript_messages(
                     path,
-                    whisper_model=whisper_model,
+                    model=model,
                     language=language,
                     audio_speed=audio_speed,
+                    backend=kwargs.get("audio_backend") or kwargs.get("backend"),
+                    base_url=kwargs.get("audio_base_url") or kwargs.get("base_url"),
+                    api_key=kwargs.get("audio_api_key") or kwargs.get("api_key"),
                 )
             )
             if msgs:

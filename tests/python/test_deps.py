@@ -55,6 +55,18 @@ class TestMlxGuard:
                 _get_model("tiny", 12)
 
 
+class TestGpuGuard:
+    """Verify ctranslate2/faster-whisper guard when gpu extra is absent."""
+
+    def test_get_ct2_model_raises_without_faster_whisper(self):
+        with _hide_module("faster_whisper"):
+            from mm.common.audio._ctranslate2 import _MODEL_CACHE, _get_model
+
+            _MODEL_CACHE.clear()
+            with pytest.raises(ImportError, match=r"pip install mm.*\[gpu\]"):
+                _get_model("tiny")
+
+
 class TestExperimentalGuard:
     """Verify HF datasets guard in display.py."""
 

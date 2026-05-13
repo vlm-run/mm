@@ -4,15 +4,6 @@ mode: accurate
 encode:
   strategy: audio-transcribe
   backend: openai
+  model: nvidia/parakeet-tdt-0.6b-v3
   strategy_opts:
-    whisper_model: medium
     audio_speed: 1.0
-
-generate:
-  prompt: >-
-    Summarize this audio recording ({filename}) based on the transcript.
-    Provide a concise summary (~80 words) covering the main topics discussed.
-
-    Transcript:
-    {transcript}
-  max_tokens: 512

@@ -151,7 +151,7 @@ class VideoMosaicWithTranscript:
     Kwargs:
         tile_cols, tile_rows, thumb_width, num_mosaics, num_frames:
             Same as ``VideoMosaic``.
-        whisper_model: Whisper model size (default "medium").
+        model: Transcription model name (default chosen by backend).
         language: Language code or "auto" (default "auto").
         audio_speed: Playback speed multiplier (default 1.0).
     """

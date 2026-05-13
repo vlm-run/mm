@@ -161,7 +161,7 @@ class VideoClips:
 class VideoClipsWithTranscript:
     """Base64 video clips with Whisper transcript prepended.
 
-    Kwargs: Same as ``VideoClips`` plus ``whisper_model``, ``language``,
+    Kwargs: Same as ``VideoClips`` plus ``model``, ``language``,
     ``audio_speed``.
     """
 

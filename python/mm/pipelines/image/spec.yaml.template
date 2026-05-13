@@ -1,0 +1,53 @@
+# Image pipeline spec — all available strategies and their options.
+#
+# Copy this file to ~/.config/mm/pipelines/image/{mode}.yaml
+# and customise the values you need.  Omitted strategy_opts fall back
+# to their defaults.
+
+kind: image
+mode: fast        # fast | accurate
+
+# ── encode ──────────────────────────────────────────────────────────
+
+encode:
+
+  # ── resize (default) ────────────────────────────────────────────
+  # Fits the image into a bounding box while preserving aspect ratio
+  # and EXIF orientation.  Uses the Rust fast-path when available.
+  strategy: resize
+  strategy_opts:
+    max_width: 1024           # max dimension in pixels (width or height)
+
+  # ── tile ────────────────────────────────────────────────────────
+  # Resized overview + grid of tile crops in a single Message.
+  # Good for high-resolution images where fine detail matters.
+  # strategy: tile
+  # strategy_opts:
+  #   max_width: 1024         # tile dimension and overview bounding box
+
+  # Custom post-processing transform (optional).
+  # pyfunc: null
+
+# ── generate ────────────────────────────────────────────────────────
+
+generate:
+  prompt: >-
+    Describe this image in 10 words or less.
+    Then list exactly 5 keyword tags.
+
+    ## FORMAT
+    --description--
+
+    Tags: Up to 5 keyword tags
+
+    Example:
+    A cat sitting on a windowsill.
+
+    Tags: cat, windowsill, sunlight, pet, animal
+  max_tokens: 256
+  # model: null              # pin a specific LLM model (overrides profile)
+  # temperature: null        # sampling temperature (null = model default)
+  # json_mode: false         # request JSON-formatted response
+  # think: false             # enable extended thinking
+  # reasoning_effort: none   # none | low | medium | high
+  # extra_body: {}           # provider-specific pass-through kwargs

@@ -363,6 +363,81 @@ class TestCatPromptAlias:
         assert r.exit_code == 0, (r.output, getattr(r, "stderr", ""))
 
 
+class TestCatAudioOverrides:
+    """Verify --encode.backend and --encode.strategy_opts flow to transcribe()."""
+
+    @pytest.fixture(autouse=True)
+    def _audio_file(self, tmp_path: Path):
+        self.audio = tmp_path / "test.mp3"
+        self.audio.write_bytes(b"\xff\xfb\x90\x00" + b"\x00" * 200)
+
+    @pytest.fixture(autouse=True)
+    def _mock_audio(self, monkeypatch):
+        """Mock extract_audio and transcribe to capture call args."""
+        from unittest.mock import MagicMock
+
+        from mm.common.audio import TranscriptionResult
+
+        mock_audio_result = MagicMock()
+        mock_audio_result.path = Path("/tmp/extracted.wav")
+
+        self.mock_extract = MagicMock(return_value=mock_audio_result)
+        self.mock_ffmpeg_avail = MagicMock(return_value=True)
+        self.mock_transcribe_avail = MagicMock(return_value=True)
+        self.mock_transcribe = MagicMock(
+            return_value=TranscriptionResult(
+                text="Hello world",
+                segments=[],
+                language="en",
+                elapsed_ms=100.0,
+                model_size="test",
+                device="remote",
+                backend="openai",
+            )
+        )
+
+        monkeypatch.setattr("mm.video.extract_audio", self.mock_extract)
+        monkeypatch.setattr("mm.video.ffmpeg_available", self.mock_ffmpeg_avail)
+        monkeypatch.setattr("mm.common.audio.transcribe", self.mock_transcribe)
+        monkeypatch.setattr("mm.common.audio.transcribe_available", self.mock_transcribe_avail)
+
+    def test_default_backend_is_none(self, isolated_db):
+        """mm cat audio.mp3 — backend defaults to None (resolves to openai)."""
+        r = runner.invoke(app, ["cat", str(self.audio)])
+        assert r.exit_code == 0, r.output
+        call_kwargs = self.mock_transcribe.call_args
+        assert call_kwargs[1].get("backend") in (None, "openai")
+
+    def test_explicit_backend_mlx(self, isolated_db):
+        """mm cat audio.mp3 --encode.backend mlx passes backend='mlx'."""
+        r = runner.invoke(app, ["cat", str(self.audio), "--encode.backend", "mlx"])
+        assert r.exit_code == 0, r.output
+        call_kwargs = self.mock_transcribe.call_args
+        assert call_kwargs[1]["backend"] == "mlx"
+
+    def test_encode_model_flag(self, isolated_db):
+        """mm cat audio.mp3 --encode.model whisper-1 passes model='whisper-1'."""
+        r = runner.invoke(app, ["cat", str(self.audio), "--encode.model", "whisper-1"])
+        assert r.exit_code == 0, r.output
+        call_kwargs = self.mock_transcribe.call_args
+        assert call_kwargs[1]["model"] == "whisper-1"
+
+    def test_strategy_opts_base_url(self, isolated_db):
+        """mm cat audio.mp3 --encode.strategy_opts base_url=https://api.openai.com/v1."""
+        r = runner.invoke(
+            app,
+            [
+                "cat",
+                str(self.audio),
+                "--encode.strategy_opts",
+                "base_url=https://api.openai.com/v1",
+            ],
+        )
+        assert r.exit_code == 0, r.output
+        call_kwargs = self.mock_transcribe.call_args
+        assert call_kwargs[1]["base_url"] == "https://api.openai.com/v1"
+
+
 class TestEffectiveModel:
     """Pipeline-merged model takes precedence over profile default; profile is the fallback."""
 

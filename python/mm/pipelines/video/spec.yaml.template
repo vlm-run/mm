@@ -1,0 +1,227 @@
+# Video pipeline spec — all available strategies and their options.
+#
+# Copy this file to ~/.config/mm/pipelines/video/{mode}.yaml
+# and customise the values you need.  Omitted strategy_opts fall back
+# to their defaults.
+#
+# Many visual strategies have a "-w-transcript" variant that prepends
+# an audio transcript before the visual output.  Transcript kwargs
+# (language, audio_speed, audio_model, audio_backend) live in
+# strategy_opts.
+
+kind: video
+mode: fast        # fast | accurate
+
+# ── encode ──────────────────────────────────────────────────────────
+
+encode:
+  # ── video-frames ────────────────────────────────────────────────
+  # Uniform frame extraction at a given FPS.
+  # strategy: video-frames
+  # strategy_opts:
+  #   fps: 1.0                        # frames per second to sample
+  #   max_width: 1024                 # frame resize width (px)
+  #   max_frames_per_message: 16      # frames per Message batch
+
+  # ── video-frames-w-transcript ───────────────────────────────────
+  # Same as video-frames but with audio transcript prepended.
+  strategy: video-frames-w-transcript
+  strategy_opts:
+    fps: 1.0
+    max_width: 1024
+    max_frames_per_message: 16
+    # language: auto                        # language code or "auto"
+    # audio_speed: 1.0                      # playback speed multiplier
+    # audio_model: nvidia/parakeet-tdt-0.6b-v3  # transcription model
+    # audio_backend: openai                 # "openai" | "mlx" | "ctranslate2"
+
+  # ── video-mosaic ────────────────────────────────────────────────
+  # Tiles extracted frames into mosaic grids.  Uses scene detection
+  # (PySceneDetect) when available, else uniform sampling.
+  # strategy: video-mosaic
+  # strategy_opts:
+  #   tile_cols: 4                    # mosaic grid columns
+  #   tile_rows: 4                    # mosaic grid rows
+  #   thumb_width: 160                # per-frame thumbnail width (px)
+  #   num_mosaics: 8                  # max number of mosaic images
+  #   num_frames: 128                 # total frames to sample
+
+  # ── video-mosaic-w-transcript ───────────────────────────────────
+  # Same as video-mosaic with Whisper transcript prepended.
+  # strategy: video-mosaic-w-transcript
+  # strategy_opts:
+  #   tile_cols: 4
+  #   tile_rows: 4
+  #   thumb_width: 160
+  #   num_mosaics: 8
+  #   num_frames: 128
+  #   language: auto
+  #   audio_speed: 1.0
+
+  # ── video-chunks ────────────────────────────────────────────────
+  # Overlapping time-based chunks with extracted frames per chunk.
+  # strategy: video-chunks
+  # strategy_opts:
+  #   chunk_duration: 60              # seconds per chunk
+  #   overlap: 20                     # overlap between chunks (s)
+  #   max_width: 1024                 # frame resize width (px)
+  #   frames_per_chunk: 16            # frames extracted per chunk
+
+  # ── video-clips ─────────────────────────────────────────────────
+  # Base64-encode video clips of uniform duration.  Useful for
+  # models with native video input support.
+  # strategy: video-clips
+  # strategy_opts:
+  #   duration: 0                     # clip length in seconds (0 = whole video)
+  #   max_size_mb: null               # skip chunks exceeding this size (MB)
+
+  # ── video-clips-w-transcript ────────────────────────────────────
+  # Same as video-clips with Whisper transcript prepended.
+  # strategy: video-clips-w-transcript
+  # strategy_opts:
+  #   duration: 0
+  #   max_size_mb: null
+  #   language: auto
+  #   audio_speed: 1.0
+
+  # ── video-keyframes ─────────────────────────────────────────────
+  # Extract I-frames (keyframes) only — much faster than uniform
+  # sampling for capturing scene changes.
+  # strategy: video-keyframes
+  # strategy_opts:
+  #   max_keyframes: null             # cap keyframes (null = all)
+  #   max_width: 1024                 # frame resize width (px)
+  #   max_keyframes_per_message: 16   # keyframes per Message batch
+
+  # ── video-keyframes-w-transcript ────────────────────────────────
+  # Same as video-keyframes with Whisper transcript prepended.
+  # strategy: video-keyframes-w-transcript
+  # strategy_opts:
+  #   max_keyframes: null
+  #   max_width: 1024
+  #   max_keyframes_per_message: 16
+  #   language: auto
+  #   audio_speed: 1.0
+
+  # ── video-shots ─────────────────────────────────────────────────
+  # Scene-aware: detect shots via PySceneDetect, extract frames per shot.
+  # strategy: video-shots
+  # strategy_opts:
+  #   threshold: 27.0                 # scene detection threshold (higher = fewer shots)
+  #   max_frames_per_shot: 8          # max frames per shot
+  #   max_width: 1024                 # frame resize width (px)
+
+  # ── video-shots-w-transcript ────────────────────────────────────
+  # Same as video-shots with Whisper transcript prepended.
+  # strategy: video-shots-w-transcript
+  # strategy_opts:
+  #   threshold: 27.0
+  #   max_frames_per_shot: 8
+  #   max_width: 1024
+  #   language: auto
+  #   audio_speed: 1.0
+
+  # ── video-shot-mosaic ───────────────────────────────────────────
+  # Scene-aware: detect shots, tile frames into one mosaic per shot.
+  # strategy: video-shot-mosaic
+  # strategy_opts:
+  #   threshold: 27.0                 # scene detection threshold
+  #   tile_cols: 4                    # mosaic grid columns
+  #   tile_rows: 4                    # mosaic grid rows
+  #   thumb_width: 160                # per-frame thumbnail width (px)
+
+  # ── video-shot-mosaic-w-transcript ──────────────────────────────
+  # Same as video-shot-mosaic with Whisper transcript prepended.
+  # strategy: video-shot-mosaic-w-transcript
+  # strategy_opts:
+  #   threshold: 27.0
+  #   tile_cols: 4
+  #   tile_rows: 4
+  #   thumb_width: 160
+  #   language: auto
+  #   audio_speed: 1.0
+
+  # ── video-summary ───────────────────────────────────────────────
+  # Adaptive N-frame visual summary with scene-detection spread.
+  # Good for long videos where a compact overview is needed.
+  # strategy: video-summary
+  # strategy_opts:
+  #   num_frames: 12                  # frames in the summary
+  #   use_scene_detection: true       # try scene detection first
+  #   max_width: 1024                 # frame resize width (px)
+
+  # ── video-summary-w-transcript ──────────────────────────────────
+  # Same as video-summary with Whisper transcript prepended.
+  # strategy: video-summary-w-transcript
+  # strategy_opts:
+  #   num_frames: 12
+  #   use_scene_detection: true
+  #   max_width: 1024
+  #   language: auto
+  #   audio_speed: 1.0
+
+  # ── video-transcript ────────────────────────────────────────────
+  # Audio-only: transcribe the audio track, no visual frames.
+  # strategy: video-transcript
+  # strategy_opts:
+  #   language: auto                        # language code or "auto"
+  #   audio_speed: 1.0                      # playback speed multiplier
+
+  # ── video-captions ──────────────────────────────────────────────
+  # Extract embedded subtitles (SRT/VTT/SSA).  Falls back to
+  # Whisper transcription when no subtitle streams are found.
+  # strategy: video-captions
+  # strategy_opts:
+  #   subtitle_stream: 0              # which subtitle stream index
+  #   fallback_to_whisper: true       # use Whisper if no subtitles
+  #   language: auto
+  #   audio_speed: 1.0
+
+  # ── video-gemini ────────────────────────────────────────────────
+  # Pass the video directly as a Gemini inline_data Part.
+  # No strategy_opts — the raw file is sent as-is.
+  # strategy: video-gemini
+
+  # ── video-gemini-chunked ────────────────────────────────────────
+  # Duration-based chunking for Gemini inline_data.
+  # strategy: video-gemini-chunked
+  # strategy_opts:
+  #   max_seconds: 120                # max chunk length (s)
+  #   overlap: 10                     # overlap between chunks (s)
+
+  # Custom post-processing transform (optional).
+  # pyfunc: null
+
+# ── generate ────────────────────────────────────────────────────────
+
+generate:
+  prompt: >-
+    Analyze this video.
+
+    You have been provided with the audio transcript (with timestamps)
+    followed by sampled video frames. Use both modalities to produce a
+    comprehensive analysis.
+
+    Provide a detailed visual and audio analysis (~200 words), up to 10
+    keyword tags, and describe each major scene or segment.
+
+    Use this format:
+    ## Summary
+    {{detailed analysis}}
+
+    ## Tags
+    - tag1
+    - tag2
+    ...
+
+    ## Scenes
+    - Scene 1: {{description}}
+    - Scene 2: {{description}}
+    ...
+  max_tokens: 1536
+  # model: null              # pin a specific LLM model (overrides profile)
+  # temperature: null        # sampling temperature (null = model default)
+  # json_mode: false         # request JSON-formatted response
+  # think: false             # enable extended thinking
+  # reasoning_effort: none   # none | low | medium | high
+  # extra_body: {}           # provider-specific pass-through kwargs
