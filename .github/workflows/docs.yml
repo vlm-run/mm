@@ -29,7 +29,7 @@ jobs:
           python-version: "3.12"
           cache: pip
       - name: Install mkdocs
-        run: pip install "mkdocs>=1.6" "mkdocs-material>=9.5"
+        run: pip install "mkdocs>=1.6" "mkdocs-material>=9.5" "mkdocs-jupyter>=0.25"
       - name: Build site
         run: mkdocs build
       - name: Write /readme → / redirect
