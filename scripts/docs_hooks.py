@@ -35,6 +35,8 @@ def _sync_notebooks(docs_dir: Path) -> None:
     if not _NOTEBOOKS_SRC.is_dir():
         return
     dest = docs_dir / "notebooks"
+    if dest.is_dir():
+        shutil.rmtree(dest)
     dest.mkdir(parents=True, exist_ok=True)
     for nb in _NOTEBOOKS_SRC.glob("*.ipynb"):
         shutil.copy2(nb, dest / nb.name)
