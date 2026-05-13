@@ -7,6 +7,7 @@ on:
     paths:
       - "README.md"
       - "docs/**"
+      - "notebooks/**"
       - "mkdocs.yml"
       - "scripts/docs_hooks.py"
       - ".github/workflows/docs.yml"
@@ -24,6 +25,8 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@v6
+        with:
+          lfs: true
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
