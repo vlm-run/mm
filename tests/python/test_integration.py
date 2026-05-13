@@ -160,6 +160,7 @@ class TestChunkEmbedding:
         import pyarrow as pa
         from mm.store import MmDatabase
         from mm.store.embed import embed_file_chunks
+        from mm.store.schema import FileCol
 
         db = MmDatabase(db_path=tmp_session / "integ.db")
         table = pa.table(
@@ -184,7 +185,13 @@ class TestChunkEmbedding:
         db.upsert_files(table, root)
 
         uri = "/test/integ/doc.txt"
-        db.put_file_content(uri, "h1", "fast content")
+        db.put_file_content(
+            uri,
+            {
+                FileCol.CONTENT_HASH: "h1",
+                FileCol.TEXT_PREVIEW: "fast content",
+            },
+        )
 
         content = "Machine learning is transforming software engineering. " * 40
         extraction_id = db.put_extraction(uri, "h1", "default", "test-model", content)

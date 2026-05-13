@@ -4,6 +4,7 @@ from pathlib import Path
 
 import pyarrow as pa
 from mm.store import MmDatabase
+from mm.store.schema import FileCol
 from mm.store.utils import get_content_hash
 
 ROOT = Path("/test/data")
@@ -58,7 +59,13 @@ def ensure_fast(
 ) -> None:
     """Ensure fast (locally extracted) content exists for a file."""
     ensure_metadata(db, [uri], metadata_kinds)
-    db.put_file_content(uri, get_hash(uri), fast_content)
+    db.put_file_content(
+        uri,
+        {
+            FileCol.CONTENT_HASH: get_hash(uri),
+            FileCol.TEXT_PREVIEW: fast_content,
+        },
+    )
 
 
 def write_png(path: Path, width: int, height: int):

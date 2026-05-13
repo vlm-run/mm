@@ -4,11 +4,12 @@ import hashlib
 import time
 from functools import cache
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
-from mm.constants import IMAGE_EXTS
+from mm.constants import DOCUMENT_EXTS, IMAGE_EXTS
 
 if TYPE_CHECKING:
+    from mm._mm import Scanner
     from mm.store.db import MmDatabase
 
 
@@ -105,3 +106,69 @@ def prune_missing(
 
     missing = [u for u in candidates if not Path(u).exists()]
     return db.delete_files(missing)
+
+
+def fill_metadata(
+    db: MmDatabase,
+    uri: str,
+    p: Path,
+    scanner: Scanner,
+    *,
+    rel_path: str | None = None,
+) -> None:
+    """Run the Rust per-kind extractor and write every populated column."""
+    from mm.store.schema import FileCol
+
+    lookup = rel_path if rel_path is not None else p.name
+    try:
+        r = scanner.extract_metadata(lookup)
+    except Exception:
+        return
+
+    data: dict[str, Any] = {}
+    if r.content_hash is not None:
+        data[FileCol.CONTENT_HASH] = r.content_hash
+    if r.line_count is not None:
+        data[FileCol.LINE_COUNT] = r.line_count
+    if r.word_count is not None:
+        data[FileCol.WORD_COUNT] = r.word_count
+    if r.language is not None:
+        data[FileCol.LANGUAGE] = r.language
+    if r.dimensions is not None:
+        data[FileCol.DIMENSIONS] = r.dimensions
+    if r.pages is not None:
+        data[FileCol.PAGES] = r.pages
+    if r.duration_s is not None:
+        data[FileCol.DURATION_S] = r.duration_s
+    if r.fps is not None:
+        data[FileCol.FPS] = r.fps
+    if r.magic_mime is not None:
+        data[FileCol.MAGIC_MIME] = r.magic_mime
+    if r.exif_camera is not None:
+        data[FileCol.EXIF_CAMERA] = r.exif_camera
+    if r.exif_date is not None:
+        data[FileCol.EXIF_DATE] = r.exif_date
+    if r.exif_gps is not None:
+        data[FileCol.EXIF_GPS] = r.exif_gps
+    if r.exif_orientation is not None:
+        data[FileCol.EXIF_ORIENTATION] = r.exif_orientation
+    if r.video_codec is not None:
+        data[FileCol.VIDEO_CODEC] = r.video_codec
+    if r.audio_codec is not None:
+        data[FileCol.AUDIO_CODEC] = r.audio_codec
+    if r.has_audio is not None:
+        data[FileCol.HAS_AUDIO] = int(r.has_audio)
+    if r.phash is not None:
+        data[FileCol.PHASH] = f"{r.phash:016x}"
+
+    if r.pages is None and p.suffix.lower() in DOCUMENT_EXTS:
+        from mm.peek import _doc_props
+
+        props = _doc_props(p)
+        if props.get("pages") is not None:
+            data[FileCol.PAGES] = props["pages"]
+
+    if data:
+        sets = ", ".join(f"{k} = ?" for k in data)
+        db._connect.execute(f"UPDATE files SET {sets} WHERE uri = ?", (*data.values(), uri))
+        db._connect.commit()

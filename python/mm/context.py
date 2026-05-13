@@ -538,7 +538,13 @@ class Context:
             )
         refs = self._materialize_refs() if self._session_id else None
         assert self.root is not None
-        self.db.upsert_files(self._table, self.root, session_id=self._session_id, refs=refs)
+        self.db.upsert_files(
+            self._table,
+            self.root,
+            session_id=self._session_id,
+            refs=refs,
+            scanner=self._scanner,
+        )
 
     # ── Directory-scan API (preserved) ────────────────────────────────
 
