@@ -13,6 +13,10 @@
         <link rel="canonical" href="https://vlm-run.github.io/mm/notebooks/mm_cookbook_gateway/">
       
       
+        <link rel="prev" href="../../FIXTURES/">
+      
+      
+        <link rel="next" href="../mm_cookbook/">
       
       
         
@@ -23,7 +27,7 @@
     
     
       
-        <title>Mm cookbook gateway - mm</title>
+        <title>Cookbook (gateway) - mm</title>
       
     
     
@@ -76,7 +80,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#fast-multimodal-context-for-agents" class="md-skip">
+        <a href="#using-with-vlmrun-gateway-api" class="md-skip">
           Skip to content
         </a>
       
@@ -112,7 +116,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Mm cookbook gateway
+              Cookbook (gateway)
             
           </span>
         </div>
@@ -444,18 +448,20 @@
       
   
   
+    
   
   
+  
     
     
     
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8" checked>
         
           
           <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="0">
@@ -476,7 +482,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_8">
             <span class="md-nav__icon md-icon"></span>
             
@@ -486,6 +492,191 @@
 
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Cookbook (gateway)
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Cookbook (gateway)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-download-sample-files" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        📥 1. Download sample files
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-install" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        📦 2. Install
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-install" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🛠️ 3. Install
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-use-the-built-in-profile" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🌐 4. Use the built-in profile
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-and" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🔍 5. and
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-on-an-image" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🖼️ 6. on an image
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-on-a-video" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🎬 7. on a video
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-on-a-pdf" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        📄 8. on a PDF
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#9-on-audio" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🎧 9. on audio
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#10-semantic-search-across-a-folder" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🧭 10. — semantic search across a folder
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
             
               
                 
@@ -501,7 +692,7 @@
   <span class="md-ellipsis">
     
   
-    Cookbook
+    Cookbook (local vlm)
   
 
     
@@ -1762,14 +1953,7 @@ span.linenos.special { color: #000000; background-color: #ffffc0; padding-left: 
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<div align="center">
-<p align="center" style="width: 100%;">
-<img alt="VLM Run Logo" src="https://raw.githubusercontent.com/vlm-run/.github/refs/heads/main/profile/assets/vlm-black.svg" style="margin-bottom: -5px; color: #2e3138; vertical-align: middle; padding-right: 5px;" width="80"/><br/>
-</p>
-<p align="center"><a href="https://vlm.run"><b>Website</b></a> | <a href="https://vlm-run.github.io/mm/"><b>mm docs</b></a> | <a href="https://huggingface.co/spaces/vlm-run/mm-ctx"><b>Hugging Face Spaces</b></a> | <a href="https://discord.gg/AMApC2UzVY"><b>Discord</b></a>
-</p>
-</div>
-<h1 id="mm-fast-multimodal-context-for-agents"><code>mm</code> — fast, multimodal context for agents<a class="anchor-link" href="#mm-fast-multimodal-context-for-agents">¶</a></h1><p>A walkthrough of <a href="https://vlm-run.github.io/mm/"><code>mm</code></a>: a CLI that turns images, videos, PDFs, and audio into text-based context you can pipe into any LLM workflow.</p>
+<h1 id="using-mm-with-vlmrun-gateway-api">Using <code>mm</code> with vlm.run gateway API<a class="anchor-link" href="#using-mm-with-vlmrun-gateway-api">¶</a></h1><p>A walkthrough of <a href="https://vlm-run.github.io/mm/"><code>mm</code></a>: a CLI that turns images, videos, PDFs, and audio into text-based context you can pipe into any LLM workflow.</p>
 <p>This notebook covers:</p>
 <ol>
 <li>Installing <code>mm</code> and using the hosted <strong><code>gateway</code></strong> profile</li>
