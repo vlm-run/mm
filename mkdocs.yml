@@ -13,7 +13,6 @@ theme:
     - navigation.instant
     - navigation.tracking
     - navigation.top
-    - navigation.expand
     - toc.follow
     - content.code.copy
     - content.code.annotate
@@ -84,6 +83,11 @@ nav:
       - Overview: spec/SPEC.md
       - cat: spec/cat.md
       - CLI use: spec/cli-use.md
+  - Pipeline templates:
+      - Image: spec-templates/image.md
+      - Video: spec-templates/video.md
+      - Audio: spec-templates/audio.md
+      - Document: spec-templates/document.md
 
 extra:
   social:
