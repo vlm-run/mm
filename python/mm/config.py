@@ -211,6 +211,7 @@ def get_full_config() -> VlmctxConfig:
     return VlmctxConfig(
         mode_fast=get_mode_config("fast"),
         mode_accurate=get_mode_config("accurate"),
+        transcription=get_transcription_config(),
     )
 
 

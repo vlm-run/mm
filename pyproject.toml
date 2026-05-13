@@ -144,6 +144,7 @@ include = [
 ]
 exclude = [
     "**/*.md",
+    { path = "python/mm/pipelines/**/*.template", format = ["wheel"] },
 ]
 
 [tool.pytest.ini_options]
