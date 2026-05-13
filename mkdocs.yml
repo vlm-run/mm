@@ -75,7 +75,8 @@ nav:
   - Pipelines: PIPELINES.md
   - Fixtures: FIXTURES.md
   - Notebooks:
-      - Cookbook: notebooks/mm_cookbook.ipynb
+      - Cookbook (gateway): notebooks/mm_cookbook_gateway.ipynb
+      - Cookbook (local vlm): notebooks/mm_cookbook.ipynb
       - Context API: notebooks/mm-context-api.ipynb
       - Context visualization: notebooks/mm-context-viz.ipynb
   # - Roadmap: ROADMAP.md
