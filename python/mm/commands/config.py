@@ -37,6 +37,7 @@ def show(
 
     fmt = resolve_format(format.value if format else None)
     cfg = get_full_config()
+    masked_api_key = "••••" if cfg.transcription.api_key else None
 
     if fmt == "json":
         from mm.display import json_dumps
@@ -54,6 +55,11 @@ def show(
                     "beam_size": cfg.mode_accurate.beam_size,
                 },
             },
+            "transcription": {
+                "backend": cfg.transcription.backend,
+                "base_url": cfg.transcription.base_url,
+                "api_key": masked_api_key,
+            },
         }
         print(json_dumps(data))
         return
@@ -63,8 +69,13 @@ def show(
         print(f"key{sep}value")
         print(f"mode.fast.whisper_model{sep}{cfg.mode_fast.whisper_model}")
         print(f"mode.fast.audio_speed{sep}{cfg.mode_fast.audio_speed}")
+        print(f"mode.fast.beam_size{sep}{cfg.mode_fast.beam_size}")
         print(f"mode.accurate.whisper_model{sep}{cfg.mode_accurate.whisper_model}")
         print(f"mode.accurate.audio_speed{sep}{cfg.mode_accurate.audio_speed}")
+        print(f"mode.accurate.beam_size{sep}{cfg.mode_accurate.beam_size}")
+        print(f"transcription.backend{sep}{cfg.transcription.backend or ''}")
+        print(f"transcription.base_url{sep}{cfg.transcription.base_url or ''}")
+        print(f"transcription.api_key{sep}{masked_api_key or ''}")
         return
 
     from rich import box
@@ -103,6 +114,21 @@ def show(
         str(cfg.mode_accurate.beam_size),
     )
     output_console.print(mode_tbl)
+
+    # Transcription settings
+    tx_tbl = Table(
+        title="[bold]Transcription[/bold]",
+        show_lines=False,
+        padding=(0, 1),
+        header_style="bold",
+        box=box.ROUNDED,
+    )
+    tx_tbl.add_column("key")
+    tx_tbl.add_column("value")
+    tx_tbl.add_row("backend", cfg.transcription.backend or "[dim](unset)[/dim]")
+    tx_tbl.add_row("base_url", cfg.transcription.base_url or "[dim](unset)[/dim]")
+    tx_tbl.add_row("api_key", masked_api_key or "[dim](unset)[/dim]")
+    output_console.print(tx_tbl)
 
 
 @config_app.command()
