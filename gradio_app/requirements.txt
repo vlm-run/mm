@@ -1,4 +1,4 @@
-mm-ctx>=0.12.4
+mm-ctx>=0.12.5
 fastapi>=0.136
 uvicorn[standard]>=0.46
 pydantic>=2.0
