@@ -56,4 +56,5 @@ benchmarks/results/
 /site/
 /docs/index.md
 /docs/notebooks/
+/docs/spec-templates/
 .cache
