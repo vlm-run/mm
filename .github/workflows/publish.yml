@@ -1,7 +1,5 @@
 name: publish to pypi
 
-# TODO: set dependency on publish in `create-release` and `deploy-install-script` jobs once ready to publish to PyPI
-
 on:
   workflow_dispatch:
   push:

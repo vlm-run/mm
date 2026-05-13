@@ -161,3 +161,33 @@ jobs:
           uv venv --python ${{ matrix.python-version }}
           uv pip install -e ".[dev]"
       - run: make test-python-full
+
+  tag:
+    needs: [check-version, lint, test-rust, test-python, test-python-full]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.check-version.outputs.changed == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.RELEASE_PAT }}
+
+      - name: Tag release if new
+        run: |
+          VERSION=$(grep '^version' pyproject.toml | head -1 | sed 's/.*"\(.*\)"/\1/')
+          TAG="v${VERSION}"
+          echo "version=${VERSION} tag=${TAG}"
+
+          if git ls-remote --exit-code --tags origin "refs/tags/${TAG}" >/dev/null 2>&1; then
+            echo "Tag ${TAG} already exists on origin — skipping"
+            exit 0
+          fi
+
+          git config --global user.email "sudeep@vlm.run"
+          git config --global user.name "Sudeep Pillai"
+
+          echo "Creating tag ${TAG}"
+          git tag "${TAG}" -m "Release ${TAG}"
+          git push origin "${TAG}"
