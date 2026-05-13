@@ -40,7 +40,6 @@ from mm.store.utils import fill_metadata, get_extraction_id, now_us
 if TYPE_CHECKING:
     from pyarrow import Table
 
-
 CHUNK_SIZE = 2048
 CHUNK_OVERLAP = 100
 
