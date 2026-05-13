@@ -31,6 +31,9 @@ jobs:
             exit 0
           fi
 
+          git config --global user.email "sudeep@vlm.run"
+          git config --global user.name "Sudeep Pillai"
+
           echo "Creating tag ${TAG}"
           git tag "${TAG}" -m "Release ${TAG}"
           git push origin "${TAG}"
