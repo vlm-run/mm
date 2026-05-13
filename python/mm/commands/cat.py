@@ -114,13 +114,14 @@ def cat_cmd(
     no_cache: Annotated[
         bool, typer.Option("--no-cache", help="Bypass cache, force fresh run")
     ] = False,
-    no_generate: Annotated[
+    dry_run: Annotated[
         bool,
         typer.Option(
-            "--no-generate",
+            "--dry-run",
             help=(
-                "Skip the generate (LLM) step — emit only the encoder's text "
-                "parts. Useful for snapshotting encoder behaviour and offline tests."
+                "Snapshot the pipeline (encode + generate) that "
+                "*would* run, without executing it. For passthrough kinds "
+                "(text, code, .docx, .pptx), emit a short header/info block."
             ),
         ),
     ] = False,
@@ -384,7 +385,7 @@ def cat_cmd(
         output_dir=output_dir,
         mode=mode,
         no_cache=no_cache,
-        no_generate=no_generate,
+        dry_run=dry_run,
         format=fmt,
         encode_overrides=enc_overrides,
         generate_overrides=gen_overrides,
@@ -505,6 +506,9 @@ def _extract(path: Path, opts: CatOpts) -> str:
     kind = file_kind(path)
     ext = path.suffix.lower()
 
+    if opts.dry_run:
+        return _dry_run_preview(path, kind, ext, opts)
+
     if kind == "text" or (
         kind == "document"
         and (
@@ -518,9 +522,6 @@ def _extract(path: Path, opts: CatOpts) -> str:
         if cached:
             _was_cached = True
         return content
-
-    if opts.no_generate:
-        return _no_generate_preview(path, kind, ext, opts)
 
     from mm.pipelines import apply_overrides
     from mm.pipelines.pipelines_utils import resolve_pipeline
@@ -615,16 +616,36 @@ def _format_run(run: RunResult, verbose: bool) -> str:
     return run.content
 
 
-def _no_generate_preview(path: Path, kind: str, ext: str, opts: CatOpts) -> str:
-    """Render the resolved pipeline for ``path × opts.mode`` without invoking it."""
+def _dry_run_preview(path: Path, kind: str, ext: str, opts: CatOpts) -> str:
+    """Render the resolved pipeline for ``path × opts.mode`` without invoking it.
+    For passthrough kinds (``kind=text``, or non-PDF/non-office documents), emit a short header/info block.
+    """
     from mm.constants import OFFICE_EXTS
+    from mm.display import format_size
     from mm.pipelines import apply_overrides
     from mm.pipelines.pipelines_utils import resolve_pipeline
     from mm.profile import get_profile
 
+    is_passthrough = kind == "text" or (
+        kind == "document"
+        and (
+            (ext != ".pdf" and ext not in OFFICE_EXTS)
+            or (ext in OFFICE_EXTS and opts.mode != "accurate")
+        )
+    )
+    if is_passthrough:
+        size_str = format_size(path.stat().st_size)
+        header = f"\n# {path} (kind={kind}, mode={opts.mode}) — passthrough preview (--dry-run)"
+        info_lines = [
+            f"  ├─ size: {size_str}",
+            f"  ├─ ext: {ext or '<none>'}",
+            "  └─ passthrough: content emitted as-is  [skipped via --dry-run]",
+        ]
+        return "\n".join(["[dim]", header, "passthrough", *info_lines, "[/dim]"])
+
     spec = resolve_pipeline(opts, kind)
     spec = apply_overrides(spec, opts.encode_overrides or None, opts.generate_overrides or None)
-    header = f"\n# {path} (kind={kind}, mode={opts.mode}) — pipeline preview (--no-generate)"
+    header = f"\n# {path} (kind={kind}, mode={opts.mode}) — pipeline preview (--dry-run)"
 
     encode = spec.encode
     strategy = encode.strategy or "<unspecified>"
@@ -642,7 +663,7 @@ def _no_generate_preview(path: Path, kind: str, ext: str, opts: CatOpts) -> str:
 
         prompt_part = f' · prompt="{first_line}"' if first_line else ""
         eff = gen.model or get_profile().model
-        gen_line = f"generate: model={eff}{prompt_part}  [skipped via --no-generate]"
+        gen_line = f"generate: model={eff}{prompt_part}  [skipped via --dry-run]"
     else:
         gen_line = "generate: <none>  [encode-only pipeline]"
 
@@ -653,7 +674,7 @@ def _no_generate_preview(path: Path, kind: str, ext: str, opts: CatOpts) -> str:
     if encode.pyfunc:
         middle.append(f"  ├─ pyfunc: {encode.pyfunc}")
 
-    return "\n".join([header, "pipeline", *middle, f"  └─ {gen_line}"])
+    return "\n".join(["[dim]", header, "pipeline", *middle, f"  └─ {gen_line}", "[/dim]"])
 
 
 def _run_fast(path: Path, kind: BinaryFileKind, spec: PipelineSpec, opts: CatOpts) -> RunResult:

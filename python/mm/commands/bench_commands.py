@@ -455,7 +455,7 @@ def build_encoder_cat_commands(
     *,
     kinds: tuple[str, ...] = _DEFAULT_STDOUT_KINDS,
     mode: str = "fast",
-    no_generate: bool = True,
+    dry_run: bool = True,
 ) -> list[BenchCommand]:
     """Synthesise one ``mm cat`` BenchCommand per registered encoder.
 
@@ -471,11 +471,12 @@ def build_encoder_cat_commands(
         mode: ``"fast"`` (default) or ``"accurate"``. Controls the LLM
             ``--mode`` flag passed through to ``mm cat`` so the same encoder
             can be sampled at both quality tiers.
-        no_generate: When True (default) appends ``--no-generate`` so each
-            command emits raw encoder text without invoking the LLM. The
-            resulting snapshot is deterministic, fast, and offline-friendly
-            — ideal for ``tests/stdout/cat.md``. Set to False to capture
-            full LLM-rendered output (slow; depends on profile/model).
+        dry_run: When True (default) appends ``--dry-run`` so each
+            command renders the pipeline preview without invoking the LLM.
+            The resulting snapshot is deterministic, fast, and
+            offline-friendly — ideal for ``tests/stdout/cat.md``. Set to
+            False to capture full LLM-rendered output (slow; depends on
+            profile/model).
 
     Returns:
         BenchCommand list ordered by ``(kind, encoder name)`` for stable
@@ -490,7 +491,7 @@ def build_encoder_cat_commands(
     if not have_kind:
         return []
 
-    extras = " --no-generate" if no_generate else ""
+    extras = " --dry-run" if dry_run else ""
 
     cmds: list[BenchCommand] = []
     for encoder_name in sorted(_REGISTRY):

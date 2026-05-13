@@ -185,7 +185,7 @@ mm cat notes.docx                                               # libreoffice-rs
 mm cat bench.jpg                                                # short VLM caption (fast pipeline)
 mm cat wordpress-pdf-invoice-plugin-sample.pdf -n 20            # first 20 lines
 mm cat -y *.jpg *.png                                           # batch (skip ≥9-path confirmation)
-mm cat photo.png --no-generate                                  # snapshot encoder output (no LLM call)
+mm cat photo.png --dry-run                                      # snapshot encoder output (no LLM call)
 
 # --mode accurate: full LLM pipeline for image/video/audio/PDF (requires a configured profile)
 mm cat bench.jpg -m accurate                                    # LLM caption + tags + objects
@@ -328,7 +328,7 @@ The skill exposes mm's capabilities to any tool that supports the skills protoco
 |---------|---------|-----------|
 | `find`  | Find/list files; tabular, tree, or schema view | `-n` / `--name`, `-i` / `--ignore-case`, `-k` / `--kind`, `-e` / `--ext`, `--min-size`, `--max-size`, `-s` / `--sort`, `-r` / `--reverse`, `-c` / `--columns`, `--tree`, `-d` / `--depth`, `--schema`, `--limit`, `--no-ignore`, `-f` / `--format` |
 | `peek`  | Local file metadata (dimensions / EXIF / codec / duration / mime / hash) | `--full` (adds `doc_author/title/subject/keywords/creator/producer/pages`), `-f` / `--format` (rich / json / pretty-json / tsv / csv / stdout) |
-| `cat`   | Content extraction (auto-detected by kind × mode); pipeline-driven | `-m` / `--mode fast`/`accurate`, `-p` / `--pipeline` (encoder name or YAML), `-n` (head/tail), `-o` / `--output-dir`, `--no-cache`, `--no-generate`, `-v` / `--verbose`, `-y` / `--yes`, `--encode.strategy`, `--encode.pyfunc`, `--encode.strategy_opts KEY=VALUE`, `--prompt` (= `--generate.prompt`), `--model` (= `--generate.model`), `--generate.max-tokens`, `--generate.temperature`, `--generate.json-mode`, `--generate.extra-body`, `--list-pipelines`, `--list-encoders`, `--print-pipeline <kind>/<mode>`, `-f` / `--format` |
+| `cat`   | Content extraction (auto-detected by kind × mode); pipeline-driven | `-m` / `--mode fast`/`accurate`, `-p` / `--pipeline` (encoder name or YAML), `-n` (head/tail), `-o` / `--output-dir`, `--no-cache`, `--dry-run`, `-v` / `--verbose`, `-y` / `--yes`, `--encode.strategy`, `--encode.pyfunc`, `--encode.strategy_opts KEY=VALUE`, `--prompt` (= `--generate.prompt`), `--model` (= `--generate.model`), `--generate.max-tokens`, `--generate.temperature`, `--generate.json-mode`, `--generate.extra-body`, `--list-pipelines`, `--list-encoders`, `--print-pipeline <kind>/<mode>`, `-f` / `--format` |
 | `grep`  | Text + semantic content search | `-k` / `--kind`, `-e` / `--ext`, `-C` (context lines), `-c` / `--count`, `-i` / `--ignore-case`, `-s` / `--semantic`, `--pre-index`, `--no-ignore`, `-f` / `--format` |
 | `sql`   | SQL on `files` / `extractions` / `chunks` (auto-routed) | `-d` / `--dir`, `--pre-index`, `--list-tables`, `-f` / `--format` |
 | `wc`    | Count files, bytes, lines (est.), tokens (est.) | `-k` / `--kind`, `--by-kind`, `-f` / `--format` |
@@ -386,7 +386,7 @@ mm cat Timelapse.mp4 -m accurate                                # mosaic → LLM
 mm cat bench.jpg -p image-tile                                  # use named encoder
 mm cat bench.jpg -m accurate -p my-pipeline.yaml                # custom pipeline YAML
 mm cat Timelapse.mp4 -m accurate --no-cache                     # force fresh LLM call
-mm cat bench.jpg -m accurate --no-generate                      # snapshot encoder output (no LLM)
+mm cat bench.jpg -m accurate --dry-run                          # snapshot encoder output (no LLM)
 mm cat bench.jpg -m accurate -v                                 # verbose (shows pipeline tree)
 mm cat --list-pipelines                                         # list registered pipelines
 mm cat --list-encoders                                          # list registered encoders

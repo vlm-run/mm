@@ -163,7 +163,7 @@ mm cat photo.png -m accurate --encode.strategy_opts max_width=768
 mm cat photo.png -m accurate --prompt "List 3 objects."      # = --generate.prompt
 mm cat photo.png -m accurate --model qwen3.5-0.8b            # = --generate.model
 mm cat photo.png -m accurate --generate.max-tokens 1024
-mm cat photo.png -m accurate --no-cache --no-generate        # encoder-only snapshot
+mm cat photo.png -m accurate --no-cache --dry-run            # encoder-only snapshot
 mm cat --list-encoders                                       # registered encoders
 mm cat --list-pipelines                                      # built-in pipelines
 mm cat --print-pipeline image/accurate                       # built-in pipeline source

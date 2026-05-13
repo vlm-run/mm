@@ -15,9 +15,6 @@ from mm.pipelines.schema import PipelineSpec
 
 def accurate_audio(path: Path, spec: PipelineSpec, opts: CatOpts) -> RunResult:
     """Audio extraction with transcription."""
-    if spec.generate is None:
-        raise RuntimeError("spec.generate cannot be None")
-
     from mm.common.audio import transcribe, transcribe_available
     from mm.ffmpeg import extract_audio, ffmpeg_available
 
@@ -34,14 +31,7 @@ def accurate_audio(path: Path, spec: PipelineSpec, opts: CatOpts) -> RunResult:
             )
         )
 
-    _AUDIO_NATIVE = {"transcribe", "audio-transcribe"}
-
-    # if spec.generate is None:
-    #     if spec.encode.strategy:
-    #         return run_encoder(path, "audio", spec, opts)
-    #     return RunResult(content=extract_meta(path, "audio"))
-
-    if spec.encode.strategy and spec.encode.strategy not in _AUDIO_NATIVE:
+    if spec.encode.strategy:
         return run_encoder(path, "audio", spec, opts)
 
     timing: dict[str, float] = {}

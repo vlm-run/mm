@@ -549,7 +549,7 @@ class TestBuildEncoderCatCommands:
             assert cmd.smallest is True
             assert "{file}" in cmd.cmd_template
 
-    def test_no_generate_default_appends_flag(self, small_tree: Path):
+    def test_dry_run_default_appends_flag(self, small_tree: Path):
         from mm.commands.bench_commands import build_encoder_cat_commands
         from mm.context import Context
 
@@ -557,8 +557,8 @@ class TestBuildEncoderCatCommands:
         cmds = build_encoder_cat_commands(ctx.files, mode="fast")
 
         for cmd in cmds:
-            assert "--no-generate" in cmd.cmd_template, (
-                f"--no-generate should be the snapshot default: {cmd.cmd_template}"
+            assert "--dry-run" in cmd.cmd_template, (
+                f"--dry-run should be the snapshot default: {cmd.cmd_template}"
             )
 
     def test_with_generate_omits_flag(self, small_tree: Path):
@@ -566,10 +566,10 @@ class TestBuildEncoderCatCommands:
         from mm.context import Context
 
         ctx = Context(small_tree)
-        cmds = build_encoder_cat_commands(ctx.files, mode="fast", no_generate=False)
+        cmds = build_encoder_cat_commands(ctx.files, mode="fast", dry_run=False)
 
         for cmd in cmds:
-            assert "--no-generate" not in cmd.cmd_template
+            assert "--dry-run" not in cmd.cmd_template
 
     def test_results_sorted_for_stable_snapshots(self, small_tree: Path):
         from mm.commands.bench_commands import build_encoder_cat_commands
@@ -629,8 +629,8 @@ class TestBaseFormatStdout:
         assert r.exit_code in (0, 1)
 
 
-class TestNoGenerateFlag:
-    """`mm cat --no-generate` produces encoder text without LLM calls."""
+class TestDryRunFlag:
+    """`mm cat --dry-run` produces encoder text without LLM calls."""
 
     def test_flag_threads_through_to_catopts(self):
         from mm.cat_utils.base_utils import CatOpts
@@ -640,18 +640,18 @@ class TestNoGenerateFlag:
             output_dir=None,
             mode="fast",
             no_cache=True,
-            no_generate=True,
+            dry_run=True,
             format="json",
             encode_overrides={},
             generate_overrides={},
             pipelines={},
             verbose=False,
         )
-        assert opts.no_generate is True
+        assert opts.dry_run is True
 
     def test_flag_is_in_help(self):
         from mm.commands.bench import _strip_ansi
 
         r = runner.invoke(app, ["cat", "--help"])
         assert r.exit_code == 0
-        assert "--no-generate" in _strip_ansi(r.output)
+        assert "--dry-run" in _strip_ansi(r.output)

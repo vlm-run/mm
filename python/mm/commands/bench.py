@@ -1375,7 +1375,7 @@ def _run_stdout_snapshot(
         timeout_s: Wall-clock cap per command. Hitting it terminates the
             subprocess and records ``[timeout after Xs]`` for that block.
         with_generate: When False (default) each ``mm cat`` invocation gets
-            ``--no-generate`` so the snapshot is LLM-free, deterministic,
+            ``--dry-run`` so the snapshot is LLM-free, deterministic,
             and offline-friendly. When True, the full pipeline runs
             (including the LLM step) — useful for capturing real model
             output but slow and dependent on the active profile.
@@ -1396,7 +1396,7 @@ def _run_stdout_snapshot(
         typer.echo(f"Error: no files found in {directory}", err=True)
         raise typer.Exit(code=1)
 
-    commands = build_encoder_cat_commands(files, mode=mode, no_generate=not with_generate)
+    commands = build_encoder_cat_commands(files, mode=mode, dry_run=not with_generate)
     if command_filter:
         needle = command_filter.lower()
         commands = [c for c in commands if needle in c.name.lower()]
@@ -1636,7 +1636,7 @@ def bench_cmd(
             "--with-generate",
             help=(
                 "Stdout snapshot mode: include the LLM generate step in each "
-                "cat invocation. Default omits it (`--no-generate`) so the "
+                "cat invocation. Default omits it (`--dry-run`) so the "
                 "snapshot is fast, deterministic, and offline-friendly."
             ),
         ),

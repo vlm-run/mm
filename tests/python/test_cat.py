@@ -463,7 +463,7 @@ class TestEffectiveModel:
         )
         assert effective_model(spec, "profile-default") == "profile-default"
 
-    def test_no_generate_falls_back_to_profile(self):
+    def test_dry_run_falls_back_to_profile(self):
         from mm.cat_utils.base_utils import effective_model
         from mm.pipelines.schema import PipelineSpec
 
@@ -471,39 +471,37 @@ class TestEffectiveModel:
         assert effective_model(spec, "profile-default") == "profile-default"
 
 
-class TestNoGeneratePreview:
-    """``--no-generate`` is a printer for the encoder/pipeline that *would* run."""
+class TestDryRunPreview:
+    """``--dry-run`` is a printer for the encoder/pipeline that *would* run."""
 
     def test_audio_does_not_invoke_whisper_or_ffmpeg(self, monkeypatch, mixed_dir, isolated_db):
-        """Audio --no-generate must not transcribe or extract audio."""
+        """Audio --dry-run must not transcribe or extract audio."""
         from mm import ffmpeg as ffmpeg_mod
         from mm.common import audio as audio_mod
 
         def _boom(*a, **kw):  # noqa: ARG001
-            raise AssertionError("--no-generate must not invoke Whisper / ffmpeg on audio files")
+            raise AssertionError("--dry-run must not invoke Whisper / ffmpeg on audio files")
 
         monkeypatch.setattr(audio_mod, "transcribe", _boom)
         monkeypatch.setattr(ffmpeg_mod, "extract_audio", _boom)
 
         for mode in ("fast", "accurate"):
-            r = runner.invoke(
-                app, ["cat", str(mixed_dir / "track.mp3"), "--no-generate", "-m", mode]
-            )
+            r = runner.invoke(app, ["cat", str(mixed_dir / "track.mp3"), "--dry-run", "-m", mode])
             assert r.exit_code == 0, r.output
-            assert "pipeline preview (--no-generate)" in r.output
+            assert "pipeline preview (--dry-run)" in r.output
             assert "audio-transcribe" in r.output
 
     def test_video_does_not_invoke_ffmpeg_or_llm(self, monkeypatch, mixed_dir, isolated_db):
-        """Video --no-generate must not extract frames or call the LLM."""
+        """Video --dry-run must not extract frames or call the LLM."""
         from mm import ffmpeg as ffmpeg_mod
         from mm import llm
 
         class _Sentinel:
             def __init__(self, *a, **kw):  # noqa: ARG002
-                raise AssertionError("--no-generate must not construct LlmBackend")
+                raise AssertionError("--dry-run must not construct LlmBackend")
 
         def _boom(*a, **kw):  # noqa: ARG001
-            raise AssertionError("--no-generate must not run ffmpeg")
+            raise AssertionError("--dry-run must not run ffmpeg")
 
         monkeypatch.setattr(llm, "LlmBackend", _Sentinel)
         for name in ("extract_frames_at_timestamps", "extract_uniform_mosaics", "extract_audio"):
@@ -511,9 +509,7 @@ class TestNoGeneratePreview:
                 monkeypatch.setattr(ffmpeg_mod, name, _boom)
 
         for mode in ("fast", "accurate"):
-            r = runner.invoke(
-                app, ["cat", str(mixed_dir / "clip.mp4"), "--no-generate", "-m", mode]
-            )
+            r = runner.invoke(app, ["cat", str(mixed_dir / "clip.mp4"), "--dry-run", "-m", mode])
             assert r.exit_code == 0, r.output
             assert "video" in r.stdout
 
@@ -522,19 +518,17 @@ class TestNoGeneratePreview:
 
         class _Sentinel:
             def __init__(self, *a, **kw):  # noqa: ARG002
-                raise AssertionError("--no-generate must not construct LlmBackend")
+                raise AssertionError("--dry-run must not construct LlmBackend")
 
         monkeypatch.setattr(llm, "LlmBackend", _Sentinel)
 
         for mode in ("fast", "accurate"):
-            r = runner.invoke(
-                app, ["cat", str(mixed_dir / "photo.png"), "--no-generate", "-m", mode]
-            )
+            r = runner.invoke(app, ["cat", str(mixed_dir / "photo.png"), "--dry-run", "-m", mode])
             assert r.exit_code == 0, r.output
             assert "resize" in r.stdout  # default image encoder
 
     def test_pdf_does_not_invoke_pdfium_or_cache(self, monkeypatch, tmp_path: Path, isolated_db):
-        """PDF --no-generate must not open the PDF or touch the cache."""
+        """PDF --dry-run must not open the PDF or touch the cache."""
         pdf_path = tmp_path / "doc.pdf"
         _minimal_single_page_pdf(pdf_path)
 
@@ -542,29 +536,50 @@ class TestNoGeneratePreview:
         from mm.store import utils as store_utils
 
         def _boom_meta(*a, **kw):  # noqa: ARG001
-            raise AssertionError("--no-generate must not invoke extract_meta on PDF")
+            raise AssertionError("--dry-run must not invoke extract_meta on PDF")
 
         def _boom_db(*a, **kw):  # noqa: ARG001
-            raise AssertionError("--no-generate must not access the SQLite store")
+            raise AssertionError("--dry-run must not access the SQLite store")
 
         monkeypatch.setattr(em, "extract_meta", _boom_meta)
         monkeypatch.setattr(store_utils, "shared_db", _boom_db)
 
         for mode in ("fast", "accurate"):
-            r = runner.invoke(app, ["cat", str(pdf_path), "--no-generate", "-m", mode])
+            r = runner.invoke(app, ["cat", str(pdf_path), "--dry-run", "-m", mode])
             assert r.exit_code == 0, r.output
             assert "page-text" in r.stdout
-            assert "pipeline preview (--no-generate)" in r.stdout
+            assert "pipeline preview (--dry-run)" in r.stdout
 
     def test_office_accurate_preview_routes_through_pdf(self, tmp_path: Path, isolated_db):
         """``.docx`` in accurate mode routes through office→PDF; preview should flag that."""
         docx = tmp_path / "notes.docx"
         docx.write_bytes(b"PK\x03\x04")  # minimal zip header (not a real .docx, fine for preview)
 
-        r = runner.invoke(app, ["cat", str(docx), "--no-generate", "-m", "accurate"])
+        r = runner.invoke(app, ["cat", str(docx), "--dry-run", "-m", "accurate"])
         assert r.exit_code == 0, r.output
         assert "office→PDF" in r.stdout
         assert "page-text" in r.stdout
+
+    def test_passthrough_text_emits_header_not_content(self, tmp_path: Path, isolated_db):
+        """``--dry-run`` on a text file must emit the header/info, not the content."""
+        sample = tmp_path / "hello.txt"
+        body = "secret-content-token-xyz\nsecond line"
+        sample.write_text(body)
+
+        r = runner.invoke(app, ["cat", str(sample), "--dry-run"])
+        assert r.exit_code == 0, r.output
+        assert "passthrough preview (--dry-run)" in r.stdout
+        assert "passthrough: content emitted as-is" in r.stdout
+        assert body not in r.stdout, "file body must not leak in --dry-run preview"
+
+    def test_passthrough_docx_fast_emits_header_not_content(self, tmp_path: Path, isolated_db):
+        """``--dry-run`` on a .docx in fast mode must emit the passthrough header."""
+        docx = tmp_path / "notes.docx"
+        docx.write_bytes(b"PK\x03\x04")
+
+        r = runner.invoke(app, ["cat", str(docx), "--dry-run", "-m", "fast"])
+        assert r.exit_code == 0, r.output
+        assert "passthrough preview (--dry-run)" in r.stdout
 
     def test_overrides_reflected_in_preview(self, mixed_dir: Path, isolated_db):
         """``--encode.strategy_opts`` and ``--prompt`` show up in the preview."""
@@ -573,7 +588,7 @@ class TestNoGeneratePreview:
             [
                 "cat",
                 str(mixed_dir / "photo.png"),
-                "--no-generate",
+                "--dry-run",
                 "-m",
                 "accurate",
                 "--encode.strategy_opts",
@@ -585,13 +600,13 @@ class TestNoGeneratePreview:
         assert r.exit_code == 0, r.output
         assert "max_width=512" in r.stdout
         assert "Just three words." in r.stdout
-        assert "[skipped via --no-generate]" in r.stdout
+        assert "[skipped via --dry-run]" in r.stdout
 
     def test_named_encoder_via_p_reflected(self, mixed_dir: Path, isolated_db):
         """``-p <encoder>`` overrides the strategy in the preview."""
         r = runner.invoke(
             app,
-            ["cat", str(mixed_dir / "photo.png"), "--no-generate", "-p", "tile"],
+            ["cat", str(mixed_dir / "photo.png"), "--dry-run", "-p", "tile"],
         )
         assert r.exit_code == 0, r.output
         assert "tile" in r.stdout
@@ -600,7 +615,7 @@ class TestNoGeneratePreview:
         """``--format json`` still wraps the preview text under ``content``."""
         r = runner.invoke(
             app,
-            ["cat", str(mixed_dir / "photo.png"), "--no-generate", "--format", "json"],
+            ["cat", str(mixed_dir / "photo.png"), "--dry-run", "--format", "json"],
         )
         assert r.exit_code == 0, r.output
         data = json.loads(r.stdout)
