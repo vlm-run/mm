@@ -59,6 +59,14 @@ markdown_extensions:
 hooks:
   - scripts/docs_hooks.py
 
+plugins:
+  - search
+  - mkdocs-jupyter:
+      execute: false
+      allow_errors: false
+      include_source: true
+      ignore_h1_titles: true
+
 nav:
   - Home: index.md
   - User guide: USER_GUIDE.md
@@ -67,6 +75,10 @@ nav:
   - Encoders: ENCODERS.md
   - Pipelines: PIPELINES.md
   - Fixtures: FIXTURES.md
+  - Notebooks:
+      - Cookbook: notebooks/mm_cookbook.ipynb
+      - Context API: notebooks/mm-context-api.ipynb
+      - Context visualization: notebooks/mm-context-viz.ipynb
   # - Roadmap: ROADMAP.md
   - Spec:
       - Overview: spec/SPEC.md

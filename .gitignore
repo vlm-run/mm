@@ -55,3 +55,5 @@ benchmarks/results/
 # mkdocs
 /site/
 /docs/index.md
+/docs/notebooks/
+.cache
