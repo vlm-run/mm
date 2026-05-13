@@ -10,13 +10,13 @@
       
       
       
-        <link rel="canonical" href="https://vlm-run.github.io/mm/spec/cli-use/">
+        <link rel="canonical" href="https://vlm-run.github.io/mm/spec-templates/audio/">
       
       
-        <link rel="prev" href="../cat/">
+        <link rel="prev" href="../video/">
       
       
-        <link rel="next" href="../../spec-templates/image/">
+        <link rel="next" href="../document/">
       
       
         
@@ -27,7 +27,7 @@
     
     
       
-        <title>CLI use - mm</title>
+        <title>Audio - mm</title>
       
     
     
@@ -80,7 +80,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#benchmark-commands-mm-bench" class="md-skip">
+        <a href="#audio-pipeline-spec-template" class="md-skip">
           Skip to content
         </a>
       
@@ -116,7 +116,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              CLI use
+              Audio
             
           </span>
         </div>
@@ -586,20 +586,18 @@
       
   
   
-    
   
   
-  
     
     
     
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_9" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_9" >
         
           
           <label class="md-nav__link" for="__nav_9" id="__nav_9_label" tabindex="0">
@@ -620,7 +618,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_9">
             <span class="md-nav__icon md-icon"></span>
             
@@ -638,7 +636,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../SPEC/" class="md-nav__link">
+      <a href="../../spec/SPEC/" class="md-nav__link">
         
   
   
@@ -666,7 +664,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../cat/" class="md-nav__link">
+      <a href="../../spec/cat/" class="md-nav__link">
         
   
   
@@ -691,35 +689,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    CLI use
-  
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../../spec/cli-use/" class="md-nav__link">
         
   
   
@@ -735,85 +708,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#benchmark-commands-mm-bench" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Benchmark commands (mm bench)
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Benchmark commands (mm bench)">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#metadata-scan-directory-level" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Metadata scan (directory-level)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#fast-mode-content-extraction-file-level" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Fast mode — content extraction (file-level)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#accurate-mode-llm-pipelines" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Accurate mode (LLM pipelines)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#placeholders" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Placeholders
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -830,18 +724,20 @@
       
   
   
+    
   
   
+  
     
     
     
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_10" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_10" checked>
         
           
           <label class="md-nav__link" for="__nav_10" id="__nav_10_label" tabindex="0">
@@ -862,7 +758,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_10_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_10_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_10">
             <span class="md-nav__icon md-icon"></span>
             
@@ -880,7 +776,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../spec-templates/image/" class="md-nav__link">
+      <a href="../image/" class="md-nav__link">
         
   
   
@@ -908,7 +804,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../spec-templates/video/" class="md-nav__link">
+      <a href="../video/" class="md-nav__link">
         
   
   
@@ -933,10 +829,19 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../../spec-templates/audio/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -952,6 +857,7 @@
   
 
       </a>
+      
     </li>
   
 
@@ -964,7 +870,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../spec-templates/document/" class="md-nav__link">
+      <a href="../document/" class="md-nav__link">
         
   
   
@@ -1009,75 +915,8 @@
   
   
   
+    
   
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#benchmark-commands-mm-bench" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Benchmark commands (mm bench)
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Benchmark commands (mm bench)">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#metadata-scan-directory-level" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Metadata scan (directory-level)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#fast-mode-content-extraction-file-level" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Fast mode — content extraction (file-level)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#accurate-mode-llm-pipelines" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Accurate mode (LLM pipelines)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#placeholders" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Placeholders
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-    </ul>
   
 </nav>
                   </div>
@@ -1094,156 +933,72 @@
 
 
 
-  <h1>CLI use</h1>
-
-<p>Documents
- - Find where in the document "a specific term" is mentioned</p>
-<h2 id="benchmark-commands-mm-bench">Benchmark commands (<code>mm bench</code>)<a class="headerlink" href="#benchmark-commands-mm-bench" title="Permanent link">&para;</a></h2>
-<p>Each benchmark is a real CLI invocation measured end-to-end via subprocess.</p>
-<h3 id="metadata-scan-directory-level">Metadata scan (directory-level)<a class="headerlink" href="#metadata-scan-directory-level" title="Permanent link">&para;</a></h3>
-<table>
-<thead>
-<tr>
-<th>Name</th>
-<th>Command</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>mm find .</code></td>
-<td><code>mm find {dir} --format json</code></td>
-</tr>
-<tr>
-<td><code>mm find . (table)</code></td>
-<td><code>mm find {dir} --format tsv</code></td>
-</tr>
-<tr>
-<td><code>mm wc .</code></td>
-<td><code>mm wc {dir} --format json</code></td>
-</tr>
-<tr>
-<td><code>mm sql 'GROUP BY kind'</code></td>
-<td><code>mm sql 'SELECT kind, COUNT(*) ...' --dir {dir} --format json</code></td>
-</tr>
-<tr>
-<td><code>mm sql 'SUM(size) BY kind'</code></td>
-<td><code>mm sql 'SELECT kind, COUNT(*), SUM(size), AVG(size) ...' --dir {dir} --format json</code></td>
-</tr>
-<tr>
-<td><code>mm sql 'TOP 10 largest'</code></td>
-<td><code>mm sql 'SELECT name, kind, size ... LIMIT 10' --dir {dir} --format json</code></td>
-</tr>
-<tr>
-<td><code>mm sql 'GROUP BY ext'</code></td>
-<td><code>mm sql 'SELECT ext, COUNT(*), SUM(size) ...' --dir {dir} --format json</code></td>
-</tr>
-<tr>
-<td><code>mm find --kind image</code></td>
-<td><code>mm find {dir} --kind image --format json</code></td>
-</tr>
-<tr>
-<td><code>mm find --kind audio</code></td>
-<td><code>mm find {dir} --kind audio --format json</code> (skipped if no audio)</td>
-</tr>
-<tr>
-<td><code>mm find --kind document</code></td>
-<td><code>mm find {dir} --kind document --format json</code> (skipped if no documents)</td>
-</tr>
-</tbody>
-</table>
-<h3 id="fast-mode-content-extraction-file-level">Fast mode — content extraction (file-level)<a class="headerlink" href="#fast-mode-content-extraction-file-level" title="Permanent link">&para;</a></h3>
-<p>Use <code>--no-cache</code> to bypass caching.</p>
-<table>
-<thead>
-<tr>
-<th>Name</th>
-<th>Command</th>
-<th>Selection</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>mm cat &lt;code&gt; (x20)</code></td>
-<td><code>mm cat {files} --mode fast --format json</code></td>
-<td>first 20 code files</td>
-</tr>
-<tr>
-<td><code>mm cat &lt;image&gt;</code></td>
-<td><code>mm cat {file} --mode fast --format json</code></td>
-<td>first image</td>
-</tr>
-<tr>
-<td><code>mm cat &lt;image&gt; (x20)</code></td>
-<td><code>mm cat {files} --mode fast --format json</code></td>
-<td>first 20 images</td>
-</tr>
-<tr>
-<td><code>mm cat &lt;audio&gt;</code></td>
-<td><code>mm cat {file} --mode fast --format json</code></td>
-<td>first audio</td>
-</tr>
-<tr>
-<td><code>mm cat &lt;video&gt;</code></td>
-<td><code>mm cat {file} --mode fast --format json</code></td>
-<td>first video</td>
-</tr>
-<tr>
-<td><code>mm cat &lt;pdf&gt;</code></td>
-<td><code>mm cat {file} --mode fast --format json</code></td>
-<td>first document</td>
-</tr>
-<tr>
-<td><code>mm cat &lt;pdf&gt; (x10)</code></td>
-<td><code>mm cat {files} --mode fast --format json</code></td>
-<td>first 10 documents</td>
-</tr>
-<tr>
-<td><code>mm grep /pattern/</code></td>
-<td><code>mm grep 'import\|include\|require' {dir} --format json</code></td>
-<td>all text files</td>
-</tr>
-</tbody>
-</table>
-<h3 id="accurate-mode-llm-pipelines">Accurate mode (LLM pipelines)<a class="headerlink" href="#accurate-mode-llm-pipelines" title="Permanent link">&para;</a></h3>
-<p>Use <code>--no-cache</code> to bypass caching.</p>
-<table>
-<thead>
-<tr>
-<th>Name</th>
-<th>Command</th>
-<th>Selection</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>mm cat &lt;image&gt; --mode fast</code></td>
-<td><code>mm cat {file} --mode fast --format json</code></td>
-<td>first image</td>
-</tr>
-<tr>
-<td><code>mm cat &lt;image&gt; --mode accurate</code></td>
-<td><code>mm cat {file} --mode accurate --format json</code></td>
-<td>first image</td>
-</tr>
-<tr>
-<td><code>mm cat &lt;video&gt; --mode fast</code></td>
-<td><code>mm cat {file} --mode fast --format json</code></td>
-<td>first video</td>
-</tr>
-<tr>
-<td><code>mm cat &lt;audio&gt; --mode fast</code></td>
-<td><code>mm cat {file} --mode fast --format json</code></td>
-<td>smallest audio</td>
-</tr>
-</tbody>
-</table>
-<h3 id="placeholders">Placeholders<a class="headerlink" href="#placeholders" title="Permanent link">&para;</a></h3>
-<ul>
-<li><code>{dir}</code> — resolved absolute directory path</li>
-<li><code>{file}</code> — single file auto-picked by kind (first match, or smallest for accurate-mode audio)</li>
-<li><code>{files}</code> — space-separated list of files (batch commands, up to N)</li>
-</ul>
-<p>Commands are skipped when the required file kind is absent from the target directory.</p>
+<h1 id="audio-pipeline-spec-template">Audio pipeline spec template<a class="headerlink" href="#audio-pipeline-spec-template" title="Permanent link">&para;</a></h1>
+<p>Reference template for the <strong>audio</strong> pipeline. Every encode strategy and every <code>generate</code> option is documented inline. Copy this into <code>~/.config/mm/pipelines/audio/{mode}.yaml</code> (replacing <code>{mode}</code> with <code>fast</code> or <code>accurate</code>) and edit only the fields you want to override — omitted keys fall back to the built-in defaults.</p>
+<p>Source: <code>python/mm/pipelines/audio/spec.yaml.template</code></p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="c1"># Audio pipeline spec — all available strategies and their options.</span>
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="c1">#</span>
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="c1"># Copy this file to ~/.config/mm/pipelines/audio/{mode}.yaml</span>
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="c1"># and customise the values you need.  Omitted strategy_opts fall back</span>
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="c1"># to their defaults.  The generate block is optional — leave it out</span>
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="c1"># for encode-only (transcript-only) pipelines.</span>
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">audio</span>
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a><span class="nt">mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">fast</span><span class="w">        </span><span class="c1"># fast | accurate</span>
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>
+<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a><span class="c1"># ── encode ──────────────────────────────────────────────────────────</span>
+<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>
+<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a><span class="nt">encode</span><span class="p">:</span>
+<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>
+<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a><span class="w">  </span><span class="c1"># ── audio-transcribe (default) ──────────────────────────────────</span>
+<a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a><span class="w">  </span><span class="c1"># Transcribes audio via the modular backend system.  By default</span>
+<a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a><span class="w">  </span><span class="c1"># uses the VLM Run gateway (OpenAI-compatible).  Override base_url</span>
+<a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a><span class="w">  </span><span class="c1"># to point at localhost or OpenAI directly.</span>
+<a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a><span class="w">  </span><span class="nt">strategy</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">audio-transcribe</span>
+<a id="__codelineno-0-20" name="__codelineno-0-20" href="#__codelineno-0-20"></a><span class="w">  </span><span class="c1"># model: nvidia/parakeet-tdt-0.6b-v3     # encoder model (default for gateway)</span>
+<a id="__codelineno-0-21" name="__codelineno-0-21" href="#__codelineno-0-21"></a><span class="w">  </span><span class="c1"># backend: openai                        # &quot;openai&quot; | &quot;mlx&quot; | &quot;ctranslate2&quot;</span>
+<a id="__codelineno-0-22" name="__codelineno-0-22" href="#__codelineno-0-22"></a><span class="w">  </span><span class="nt">strategy_opts</span><span class="p">:</span>
+<a id="__codelineno-0-23" name="__codelineno-0-23" href="#__codelineno-0-23"></a><span class="w">    </span><span class="c1"># language: auto                        # language code or &quot;auto&quot;</span>
+<a id="__codelineno-0-24" name="__codelineno-0-24" href="#__codelineno-0-24"></a><span class="w">    </span><span class="c1"># audio_speed: 1.0                      # playback speed multiplier</span>
+<a id="__codelineno-0-25" name="__codelineno-0-25" href="#__codelineno-0-25"></a><span class="w">    </span><span class="c1"># base_url: null                        # custom OpenAI-compatible endpoint</span>
+<a id="__codelineno-0-26" name="__codelineno-0-26" href="#__codelineno-0-26"></a><span class="w">    </span><span class="c1"># api_key: null                         # API key for that endpoint</span>
+<a id="__codelineno-0-27" name="__codelineno-0-27" href="#__codelineno-0-27"></a>
+<a id="__codelineno-0-28" name="__codelineno-0-28" href="#__codelineno-0-28"></a><span class="w">  </span><span class="c1"># ── audio-base64 ────────────────────────────────────────────────</span>
+<a id="__codelineno-0-29" name="__codelineno-0-29" href="#__codelineno-0-29"></a><span class="w">  </span><span class="c1"># Sends raw audio as a base64 input_audio part (no transcription).</span>
+<a id="__codelineno-0-30" name="__codelineno-0-30" href="#__codelineno-0-30"></a><span class="w">  </span><span class="c1"># Best for models with native audio understanding.</span>
+<a id="__codelineno-0-31" name="__codelineno-0-31" href="#__codelineno-0-31"></a><span class="w">  </span><span class="c1"># strategy: audio-base64</span>
+<a id="__codelineno-0-32" name="__codelineno-0-32" href="#__codelineno-0-32"></a><span class="w">  </span><span class="c1"># strategy_opts:</span>
+<a id="__codelineno-0-33" name="__codelineno-0-33" href="#__codelineno-0-33"></a><span class="w">  </span><span class="c1">#   format: mp3             # mp3 | wav | flac | ogg | m4a | aac | opus | webm</span>
+<a id="__codelineno-0-34" name="__codelineno-0-34" href="#__codelineno-0-34"></a><span class="w">  </span><span class="c1">#                           # default: inferred from file extension</span>
+<a id="__codelineno-0-35" name="__codelineno-0-35" href="#__codelineno-0-35"></a>
+<a id="__codelineno-0-36" name="__codelineno-0-36" href="#__codelineno-0-36"></a><span class="w">  </span><span class="c1"># ── audio-gemini ────────────────────────────────────────────────</span>
+<a id="__codelineno-0-37" name="__codelineno-0-37" href="#__codelineno-0-37"></a><span class="w">  </span><span class="c1"># Passes audio as Gemini inline_data Part(s).  Long files are</span>
+<a id="__codelineno-0-38" name="__codelineno-0-38" href="#__codelineno-0-38"></a><span class="w">  </span><span class="c1"># automatically chunked.</span>
+<a id="__codelineno-0-39" name="__codelineno-0-39" href="#__codelineno-0-39"></a><span class="w">  </span><span class="c1"># strategy: audio-gemini</span>
+<a id="__codelineno-0-40" name="__codelineno-0-40" href="#__codelineno-0-40"></a><span class="w">  </span><span class="c1"># strategy_opts:</span>
+<a id="__codelineno-0-41" name="__codelineno-0-41" href="#__codelineno-0-41"></a><span class="w">  </span><span class="c1">#   max_seconds: 120        # max chunk length in seconds</span>
+<a id="__codelineno-0-42" name="__codelineno-0-42" href="#__codelineno-0-42"></a><span class="w">  </span><span class="c1">#   overlap: 10             # overlap between chunks in seconds</span>
+<a id="__codelineno-0-43" name="__codelineno-0-43" href="#__codelineno-0-43"></a>
+<a id="__codelineno-0-44" name="__codelineno-0-44" href="#__codelineno-0-44"></a><span class="w">  </span><span class="c1"># Custom post-processing transform (optional).</span>
+<a id="__codelineno-0-45" name="__codelineno-0-45" href="#__codelineno-0-45"></a><span class="w">  </span><span class="c1"># pyfunc: null</span>
+<a id="__codelineno-0-46" name="__codelineno-0-46" href="#__codelineno-0-46"></a>
+<a id="__codelineno-0-47" name="__codelineno-0-47" href="#__codelineno-0-47"></a><span class="c1"># ── generate (optional — omit for encode-only) ──────────────────</span>
+<a id="__codelineno-0-48" name="__codelineno-0-48" href="#__codelineno-0-48"></a>
+<a id="__codelineno-0-49" name="__codelineno-0-49" href="#__codelineno-0-49"></a><span class="nt">generate</span><span class="p">:</span>
+<a id="__codelineno-0-50" name="__codelineno-0-50" href="#__codelineno-0-50"></a><span class="w">  </span><span class="nt">prompt</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">&gt;-</span>
+<a id="__codelineno-0-51" name="__codelineno-0-51" href="#__codelineno-0-51"></a><span class="w">    </span><span class="no">Summarize this audio recording ({filename}) based on the transcript.</span>
+<a id="__codelineno-0-52" name="__codelineno-0-52" href="#__codelineno-0-52"></a><span class="w">    </span><span class="no">Provide a concise summary (~80 words) covering the main topics discussed.</span>
+<a id="__codelineno-0-53" name="__codelineno-0-53" href="#__codelineno-0-53"></a>
+<a id="__codelineno-0-54" name="__codelineno-0-54" href="#__codelineno-0-54"></a><span class="w">    </span><span class="no">Transcript:</span>
+<a id="__codelineno-0-55" name="__codelineno-0-55" href="#__codelineno-0-55"></a><span class="w">    </span><span class="no">{transcript}</span>
+<a id="__codelineno-0-56" name="__codelineno-0-56" href="#__codelineno-0-56"></a><span class="w">  </span><span class="nt">max_tokens</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">512</span>
+<a id="__codelineno-0-57" name="__codelineno-0-57" href="#__codelineno-0-57"></a><span class="w">  </span><span class="c1"># model: null              # pin a specific LLM model (overrides profile)</span>
+<a id="__codelineno-0-58" name="__codelineno-0-58" href="#__codelineno-0-58"></a><span class="w">  </span><span class="c1"># temperature: null        # sampling temperature (null = model default)</span>
+<a id="__codelineno-0-59" name="__codelineno-0-59" href="#__codelineno-0-59"></a><span class="w">  </span><span class="c1"># json_mode: false         # request JSON-formatted response</span>
+<a id="__codelineno-0-60" name="__codelineno-0-60" href="#__codelineno-0-60"></a><span class="w">  </span><span class="c1"># think: false             # enable extended thinking</span>
+<a id="__codelineno-0-61" name="__codelineno-0-61" href="#__codelineno-0-61"></a><span class="w">  </span><span class="c1"># reasoning_effort: none   # none | low | medium | high</span>
+<a id="__codelineno-0-62" name="__codelineno-0-62" href="#__codelineno-0-62"></a><span class="w">  </span><span class="c1"># extra_body: {}           # provider-specific pass-through kwargs</span>
+</code></pre></div>
 
 
 

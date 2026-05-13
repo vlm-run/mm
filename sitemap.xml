@@ -56,4 +56,20 @@
          <loc>https://vlm-run.github.io/mm/spec/cli-use/</loc>
          <lastmod>2026-05-13</lastmod>
     </url>
+    <url>
+         <loc>https://vlm-run.github.io/mm/spec-templates/audio/</loc>
+         <lastmod>2026-05-13</lastmod>
+    </url>
+    <url>
+         <loc>https://vlm-run.github.io/mm/spec-templates/document/</loc>
+         <lastmod>2026-05-13</lastmod>
+    </url>
+    <url>
+         <loc>https://vlm-run.github.io/mm/spec-templates/image/</loc>
+         <lastmod>2026-05-13</lastmod>
+    </url>
+    <url>
+         <loc>https://vlm-run.github.io/mm/spec-templates/video/</loc>
+         <lastmod>2026-05-13</lastmod>
+    </url>
 </urlset>
