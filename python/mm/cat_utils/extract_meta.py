@@ -25,7 +25,15 @@ def extract_meta(path: Path, kind: str, *, no_cache: bool = False) -> str:
 
     result = _handler()
     if content_hash and result and not result.startswith("["):
-        shared_db().put_file_content(str(path.resolve()), content_hash, result)
+        from mm.store.schema import FileCol
+
+        shared_db().put_file_content(
+            str(path.resolve()),
+            {
+                FileCol.CONTENT_HASH: content_hash,
+                FileCol.TEXT_PREVIEW: result,
+            },
+        )
     return result
 
 

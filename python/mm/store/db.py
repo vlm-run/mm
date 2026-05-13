@@ -35,10 +35,11 @@ import threading
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from mm.store.utils import get_extraction_id, now_us
+from mm.store.utils import fill_metadata, get_extraction_id, now_us
 
 if TYPE_CHECKING:
     from pyarrow import Table
+
 
 CHUNK_SIZE = 2048
 CHUNK_OVERLAP = 100
@@ -154,6 +155,7 @@ class MmDatabase:
         *,
         session_id: str | None = None,
         refs: dict[str, str] | None = None,
+        scanner: Any = None,
     ) -> int:
         """Write metadata scan results. Preserves existing content columns on re-upsert.
 
@@ -254,6 +256,19 @@ class MmDatabase:
 
         db.executemany(sql, rows)
         db.commit()
+
+        if n > 0:
+            from mm._mm import Scanner
+
+            if not scanner or not isinstance(scanner, Scanner):
+                scanner = Scanner(str(root))
+                scanner.scan()
+            uris = [row[0] for row in rows]
+            rel_paths = [paths[i] for i in range(n)]
+            for uri, rel_path in zip(uris, rel_paths):
+                fill_metadata(self, uri, Path(uri), scanner, rel_path=rel_path)
+            self._connect.commit()
+
         return int(db.execute("SELECT COUNT(*) FROM files").fetchone()[0])
 
     def get_file_by_ref(self, session_id: str, ref_id: str) -> dict[str, Any] | None:
@@ -283,7 +298,7 @@ class MmDatabase:
         return [dict(r) for r in self._connect.execute(q).fetchall()]
 
     def ensure_metadata(self, uri: str) -> None:
-        """Ensure a ``files`` row exists for *uri*, scanning via Rust if needed."""
+        """Ensure the ``files`` row for *uri*, scanning via Rust if needed."""
         if self.get_file(uri) is not None:
             return
 
@@ -300,7 +315,7 @@ class MmDatabase:
             idx = tbl["path"].to_pylist().index(p.name)
         except ValueError:
             return
-        self.upsert_files(tbl.slice(idx, 1), p.parent)
+        self.upsert_files(tbl.slice(idx, 1), p.parent, scanner=scanner)
 
     def delete_files(self, uris: list[str]) -> int:
         """Delete ``files`` rows by URI, cascading through chunks_vec manually.
@@ -360,26 +375,21 @@ class MmDatabase:
             return None
         return str(row[0]) if row[0] is not None else None
 
-    def update_file_fields(self, uri: str, data: dict[str, Any]) -> None:
-        """Fill content columns for a specific file."""
+    def put_file_content(self, uri: str, data: dict[str, Any]) -> None:
+        """Store locally-extracted content (``text_preview``) for *uri*.
+        Fill content columns for a specific file.
+        """
         from mm.store.schema import FileCol
 
         self.ensure_metadata(uri)
         if self.get_file(uri) is None:
             return
 
-        data[FileCol.CONTENT_INDEXED_AT] = now_us()
+        if FileCol.TEXT_PREVIEW in data:
+            data = {**data, FileCol.CONTENT_INDEXED_AT: now_us()}
         sets = ", ".join(f"{k} = ?" for k in data)
         self._connect.execute(f"UPDATE files SET {sets} WHERE uri = ?", (*data.values(), uri))
         self._connect.commit()
-
-    def put_file_content(self, uri: str, content_hash: str, content: str) -> None:
-        """Store locally-extracted content (``text_preview``) for *uri*."""
-        from mm.store.schema import FileCol
-
-        self.update_file_fields(
-            uri, {FileCol.CONTENT_HASH: content_hash, FileCol.TEXT_PREVIEW: content}
-        )
 
     # -- Extractions --
 
