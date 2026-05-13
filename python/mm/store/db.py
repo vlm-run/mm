@@ -35,7 +35,6 @@ import threading
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from mm._mm import Scanner
 from mm.store.utils import fill_metadata, get_extraction_id, now_us
 
 if TYPE_CHECKING:
@@ -156,7 +155,7 @@ class MmDatabase:
         *,
         session_id: str | None = None,
         refs: dict[str, str] | None = None,
-        scanner: Scanner | None = None,
+        scanner: Any = None,
     ) -> int:
         """Write metadata scan results. Preserves existing content columns on re-upsert.
 
@@ -259,7 +258,9 @@ class MmDatabase:
         db.commit()
 
         if n > 0:
-            if not scanner:
+            from mm._mm import Scanner
+
+            if not scanner or not isinstance(scanner, Scanner):
                 scanner = Scanner(str(root))
                 scanner.scan()
             uris = [row[0] for row in rows]
@@ -385,7 +386,7 @@ class MmDatabase:
             return
 
         if FileCol.TEXT_PREVIEW in data:
-            data[FileCol.CONTENT_INDEXED_AT] = now_us()
+            data = {**data, FileCol.CONTENT_INDEXED_AT: now_us()}
         sets = ", ".join(f"{k} = ?" for k in data)
         self._connect.execute(f"UPDATE files SET {sets} WHERE uri = ?", (*data.values(), uri))
         self._connect.commit()
