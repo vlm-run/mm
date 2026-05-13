@@ -266,6 +266,7 @@ class MmDatabase:
             rel_paths = [paths[i] for i in range(n)]
             for uri, rel_path in zip(uris, rel_paths):
                 fill_metadata(self, uri, Path(uri), scanner, rel_path=rel_path)
+            self._connect.commit()
 
         return int(db.execute("SELECT COUNT(*) FROM files").fetchone()[0])
 

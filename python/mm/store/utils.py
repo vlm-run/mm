@@ -115,6 +115,7 @@ def fill_metadata(
     scanner: Scanner,
     *,
     rel_path: str | None = None,
+    commit: bool = False,
 ) -> None:
     """Run the Rust per-kind extractor and write every populated column."""
     from mm.store.schema import FileCol
@@ -126,36 +127,27 @@ def fill_metadata(
         return
 
     data: dict[str, Any] = {}
-    if r.content_hash is not None:
-        data[FileCol.CONTENT_HASH] = r.content_hash
-    if r.line_count is not None:
-        data[FileCol.LINE_COUNT] = r.line_count
-    if r.word_count is not None:
-        data[FileCol.WORD_COUNT] = r.word_count
-    if r.language is not None:
-        data[FileCol.LANGUAGE] = r.language
-    if r.dimensions is not None:
-        data[FileCol.DIMENSIONS] = r.dimensions
-    if r.pages is not None:
-        data[FileCol.PAGES] = r.pages
-    if r.duration_s is not None:
-        data[FileCol.DURATION_S] = r.duration_s
-    if r.fps is not None:
-        data[FileCol.FPS] = r.fps
-    if r.magic_mime is not None:
-        data[FileCol.MAGIC_MIME] = r.magic_mime
-    if r.exif_camera is not None:
-        data[FileCol.EXIF_CAMERA] = r.exif_camera
-    if r.exif_date is not None:
-        data[FileCol.EXIF_DATE] = r.exif_date
-    if r.exif_gps is not None:
-        data[FileCol.EXIF_GPS] = r.exif_gps
-    if r.exif_orientation is not None:
-        data[FileCol.EXIF_ORIENTATION] = r.exif_orientation
-    if r.video_codec is not None:
-        data[FileCol.VIDEO_CODEC] = r.video_codec
-    if r.audio_codec is not None:
-        data[FileCol.AUDIO_CODEC] = r.audio_codec
+    metadata_map = {
+        "content_hash": FileCol.CONTENT_HASH,
+        "line_count": FileCol.LINE_COUNT,
+        "word_count": FileCol.WORD_COUNT,
+        "language": FileCol.LANGUAGE,
+        "dimensions": FileCol.DIMENSIONS,
+        "pages": FileCol.PAGES,
+        "duration_s": FileCol.DURATION_S,
+        "fps": FileCol.FPS,
+        "magic_mime": FileCol.MAGIC_MIME,
+        "exif_camera": FileCol.EXIF_CAMERA,
+        "exif_date": FileCol.EXIF_DATE,
+        "exif_gps": FileCol.EXIF_GPS,
+        "exif_orientation": FileCol.EXIF_ORIENTATION,
+        "video_codec": FileCol.VIDEO_CODEC,
+        "audio_codec": FileCol.AUDIO_CODEC,
+    }
+    for attr, col in metadata_map.items():
+        if (val := getattr(r, attr, None)) is not None:
+            data[col] = val
+
     if r.has_audio is not None:
         data[FileCol.HAS_AUDIO] = int(r.has_audio)
     if r.phash is not None:
@@ -171,4 +163,5 @@ def fill_metadata(
     if data:
         sets = ", ".join(f"{k} = ?" for k in data)
         db._connect.execute(f"UPDATE files SET {sets} WHERE uri = ?", (*data.values(), uri))
-        db._connect.commit()
+        if commit:
+            db._connect.commit()
