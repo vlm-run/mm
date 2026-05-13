@@ -65,7 +65,7 @@ OLLAMA_DEFAULTS = {
 GATEWAY_DEFAULTS = {
     "name": "gateway",
     "base_url": "https://gateway.vlm.run/v1/openai",
-    "api_key": "",
+    "api_key": "vlmrun",
     "model": "qwen/qwen3.5-0.8b",
 }
 
@@ -92,9 +92,11 @@ def gateway_api_key() -> str:
     """Return the API key configured on the built-in ``gateway`` profile."""
     try:
         file_data = load_profile_config()
-        return str(get_profile_section(file_data, "gateway").get("api_key", ""))
+        return str(
+            get_profile_section(file_data, "gateway").get("api_key") or GATEWAY_DEFAULTS["api_key"]
+        )
     except Exception:
-        return ""
+        return GATEWAY_DEFAULTS["api_key"]
 
 
 class ProfileUpdateData(TypedDict, total=False):

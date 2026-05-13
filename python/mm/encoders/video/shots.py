@@ -144,7 +144,7 @@ class VideoShots:
 class VideoShotsWithTranscript:
     """Detect shots and extract frames, with Whisper transcript prepended.
 
-    Kwargs: Same as ``VideoShots`` plus ``whisper_model``, ``language``,
+    Kwargs: Same as ``VideoShots`` plus ``model``, ``language``,
     ``audio_speed``.
     """
 
@@ -244,7 +244,7 @@ class VideoShotMosaic:
 class VideoShotMosaicWithTranscript:
     """Detect shots and build mosaics, with Whisper transcript prepended.
 
-    Kwargs: Same as ``VideoShotMosaic`` plus ``whisper_model``,
+    Kwargs: Same as ``VideoShotMosaic`` plus ``model``,
     ``language``, ``audio_speed``.
     """
 

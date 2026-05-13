@@ -35,10 +35,20 @@ class Encode:
     before it reaches the LLM. Signature::
 
         def transform(parts: list[dict], context: dict) -> list[dict]
+
+    ``backend`` is an optional encoder-specific backend selector (e.g.
+    ``"mlx"``|``"ctranslate2"``|``"openai"`` for ``audio-transcribe``).
+    Encoders that don't have a backend concept ignore it.
+
+    ``model`` is an optional encoder-level model name (e.g.
+    ``"nvidia/parakeet-tdt-0.6b-v3"`` for audio transcription).
+    Encoders that don't use a model ignore it.
     """
 
     strategy: str | None = None
     pyfunc: str | None = None
+    backend: str | None = None
+    model: str | None = None
     strategy_opts: dict[str, Any] = field(default_factory=dict)
 
     @classmethod
@@ -55,6 +65,8 @@ class Encode:
         return cls(
             strategy=data.get("strategy"),
             pyfunc=data.get("pyfunc"),
+            backend=data.get("backend"),
+            model=data.get("model"),
             strategy_opts=dict(opts),
         )
 
@@ -64,6 +76,10 @@ class Encode:
             out["strategy"] = self.strategy
         if self.pyfunc is not None:
             out["pyfunc"] = self.pyfunc
+        if self.backend is not None:
+            out["backend"] = self.backend
+        if self.model is not None:
+            out["model"] = self.model
         if self.strategy_opts:
             out["strategy_opts"] = dict(self.strategy_opts)
         return out

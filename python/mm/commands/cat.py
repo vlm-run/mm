@@ -23,6 +23,7 @@ from mm.cat_utils.base_utils import (
     spec_extra_body,
 )
 from mm.cat_utils.extract_meta import extract_meta
+from mm.common.audio._base import BackendLabel
 from mm.pipe import read_paths_from_stdin
 from mm.utils import Format, file_kind
 
@@ -144,6 +145,20 @@ def cat_cmd(
     encode_pyfunc: Annotated[
         Optional[str],
         typer.Option("--encode.pyfunc", help="Custom Python transform (.py file or inline code)"),
+    ] = None,
+    encode_backend: Annotated[
+        Optional[BackendLabel],
+        typer.Option(
+            "--encode.backend",
+            help="Override encoder backend (mlx, ctranslate2, or openai)",
+        ),
+    ] = None,
+    encode_model: Annotated[
+        Optional[str],
+        typer.Option(
+            "--encode.model",
+            help="Override encoder model (e.g. nvidia/parakeet-tdt-0.6b-v3, whisper-1)",
+        ),
     ] = None,
     encode_strategy_opts: Annotated[
         Optional[list[str]],
@@ -324,6 +339,8 @@ def cat_cmd(
         **collect_overrides(
             strategy=encode_strategy,
             pyfunc=encode_pyfunc,
+            backend=encode_backend,
+            model=encode_model,
         )
     }
     if encode_strategy_opts:

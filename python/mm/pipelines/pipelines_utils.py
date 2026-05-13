@@ -152,9 +152,9 @@ def do_list_pipelines() -> None:
 
     lines: list[Text] = []
     header = Text(no_wrap=True, overflow="ellipsis")
-    header.append("Kind".ljust(10), style="bold cyan")
-    header.append("Mode".ljust(10), style="bold cyan")
-    header.append("Encoder", style="bold cyan")
+    header.append("Kind".ljust(10), style="bold")
+    header.append("Mode".ljust(10), style="bold")
+    header.append("Encoder", style="bold")
     lines.append(header)
 
     prev_kind = ""
@@ -164,17 +164,17 @@ def do_list_pipelines() -> None:
         prev_kind = kind
 
         line = Text(no_wrap=True, overflow="ellipsis")
-        line.append(kind.ljust(10), style="white")
-        line.append(mode.ljust(10), style="green" if mode == "fast" else "yellow")
-        line.append(encoder, style="bold white")
+        line.append(kind.ljust(10))
+        line.append(mode.ljust(10))
+        line.append(encoder, style="bold")
         if params:
             param_str = ", ".join(f"{k}={v}" for k, v in params.items())
-            line.append(f"({param_str})", style="green")
+            line.append(f"({param_str})")
         lines.append(line)
 
         path_line = Text(no_wrap=True, overflow="ellipsis")
         path_line.append(" " * 20)
-        path_line.append(dp, style="dim")
+        path_line.append(dp)
         lines.append(path_line)
 
     body = Text("\n").join(lines)
@@ -182,7 +182,12 @@ def do_list_pipelines() -> None:
     panel_w = max_line + 8
     console = Console(width=max(panel_w, 80))
     panel = Panel(
-        body, title="Pipelines", title_align="left", box=box.ROUNDED, padding=(1, 2), width=panel_w
+        body,
+        title="[bold]Pipelines[/bold]",
+        title_align="left",
+        box=box.ROUNDED,
+        padding=(1, 2),
+        width=panel_w,
     )
     console.print()
     console.print(panel)

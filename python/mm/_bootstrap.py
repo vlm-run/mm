@@ -15,8 +15,8 @@ descriptor 2 — it is **not** a Python ``warnings`` entry and cannot be
 filtered by ``logging.disable()`` / ``warnings.filterwarnings``.
 
 We can't uninstall either dependency (``cv2`` is needed by
-PySceneDetect's default backend, ``av`` is needed by ``faster-whisper``
-for audio loading), so we preload both modules once under a temporary
+PySceneDetect's default backend, ``av`` is needed by video processing
+and optional local transcription backends), so we preload both modules once under a temporary
 fd-level redirect of stderr → /dev/null. Subsequent imports of
 ``scenedetect``/``faster_whisper`` find both modules cached in
 ``sys.modules`` and do **not** reload the dylibs, so no new ObjC

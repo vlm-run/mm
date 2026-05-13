@@ -23,7 +23,7 @@ class VideoTranscript:
     the ``video`` media type.  No visual frames are extracted.
 
     Kwargs:
-        whisper_model: Whisper model size (default "medium").
+        model: Transcription model name (default chosen by backend).
         language: Language code or "auto" (default "auto").
         audio_speed: Playback speed multiplier (default 1.0).
     """
@@ -32,14 +32,14 @@ class VideoTranscript:
     media_types: tuple[str, ...] = ("video",)
 
     def encode(self, path: Path, **kwargs: Any) -> Iterable[Message]:
-        whisper_model: str = kwargs.get("whisper_model", "medium")
+        model: str | None = kwargs.get("model")
         language: str = kwargs.get("language", "auto")
         audio_speed: float = kwargs.get("audio_speed", 1.0)
 
         msgs = list(
             transcript_messages(
                 path,
-                whisper_model=whisper_model,
+                model=model,
                 language=language,
                 audio_speed=audio_speed,
             )

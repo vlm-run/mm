@@ -240,7 +240,9 @@ def deep_merge(base: dict[str, Any], overlay: dict[str, Any]) -> dict[str, Any]:
     return out
 
 
-_ENCODE_TOP_LEVEL: frozenset[str] = frozenset({"strategy", "strategy_opts", "pyfunc"})
+_ENCODE_TOP_LEVEL: frozenset[str] = frozenset(
+    {"strategy", "strategy_opts", "pyfunc", "backend", "model"}
+)
 
 
 def apply_overrides(
@@ -251,8 +253,8 @@ def apply_overrides(
     """Return a new ``PipelineSpec`` with field-level overrides applied.
 
     Encode overrides:
-      * ``strategy``, ``strategy_opts`` and ``pyfunc`` replace the top-level fields.
-        (the encoder handles its own type coercion).
+      * ``strategy``, ``strategy_opts``, ``pyfunc`` and ``backend`` replace the
+        top-level fields (the encoder handles its own type coercion).
 
     Generate overrides are coerced to the dataclass field type. The
     ``extra_body`` override accepts a JSON string or a dict; it is

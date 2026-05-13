@@ -86,7 +86,7 @@ class VideoKeyframes:
 class VideoKeyframesWithTranscript:
     """Extract I-frames with Whisper transcript prepended.
 
-    Kwargs: Same as ``VideoKeyframes`` plus ``whisper_model``,
+    Kwargs: Same as ``VideoKeyframes`` plus ``model``,
     ``language``, ``audio_speed``.
     """
 

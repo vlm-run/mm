@@ -28,14 +28,14 @@ COLUMN_DOCS: dict[str, str] = {
 }
 
 KIND_TREE_STYLES: dict[str, str] = {
-    "image": "yellow",
-    "video": "magenta",
-    "code": "green",
-    "document": "cyan",
-    "audio": "red",
-    "data": "dim",
-    "config": "dim",
-    "text": "white",
+    "image": "",
+    "video": "",
+    "code": "",
+    "document": "",
+    "audio": "",
+    "data": "",
+    "config": "",
+    "text": "",
 }
 
 
@@ -368,11 +368,11 @@ def _add_to_rich_tree(node, rich_node, depth, max_depth, show_size, format_size)
         child_data = node["__dirs__"][dname]
         fc, fs = _count_subtree(child_data)
         label = Text()
-        label.append(f"{dname}/", style="bold bright_blue")
+        label.append(f"{dname}/", style="bold")
         if show_size:
-            label.append(f"  {fc:,} files, {format_size(fs)}", style="dim")
+            label.append(f"  {fc:,} files, {format_size(fs)}")
         else:
-            label.append(f"  {fc:,} files", style="dim")
+            label.append(f"  {fc:,} files")
         branch = rich_node.add(label)
         _add_to_rich_tree(child_data, branch, depth + 1, max_depth, show_size, format_size)
 
@@ -381,7 +381,7 @@ def _add_to_rich_tree(node, rich_node, depth, max_depth, show_size, format_size)
         style = KIND_TREE_STYLES.get(f["kind"], "")
         label.append(f["name"], style=style)
         if show_size:
-            label.append(f"  {format_size(f['size'])}", style="dim")
+            label.append(f"  {format_size(f['size'])}")
         rich_node.add(label)
 
 
@@ -481,7 +481,7 @@ def _find_tree(
 
         root_label = Text()
         root_label.append(f"{directory}", style="bold")
-        root_label.append(f"  {total_files:,} files, {format_size(total_bytes)}", style="dim")
+        root_label.append(f"  {total_files:,} files, {format_size(total_bytes)}")
         rich_tree = Tree(root_label)
         _add_to_rich_tree(
             tree_data,
@@ -494,8 +494,8 @@ def _find_tree(
         output_console.print(rich_tree)
         if effective_depth is not None and depth is None:
             output_console.print(
-                f"\n[dim]Showing depth {effective_depth} (capped for {total_files:,} files). "
-                f"Use [bold]--depth N[/bold] for more.[/dim]"
+                f"\nShowing depth {effective_depth} (capped for {total_files:,} files). "
+                f"Use [bold]--depth N[/bold] for more."
             )
 
 
@@ -559,18 +559,17 @@ def _find_schema(directory: Path, fmt: str, *, no_ignore: bool = False) -> None:
         caption_justify="right",
         show_lines=True,
         padding=(0, 1),
-        border_style="dim",
-        header_style="bold white",
+        header_style="bold",
         box=box.ROUNDED,
     )
-    rich_table.add_column("column", style="bold cyan", no_wrap=True)
-    rich_table.add_column("type", style="green", no_wrap=True)
-    rich_table.add_column("description", style="white")
+    rich_table.add_column("column", no_wrap=True)
+    rich_table.add_column("type", no_wrap=True)
+    rich_table.add_column("description")
 
     for field in table.schema:
         rich_table.add_row(field.name, str(field.type), _desc_with_example(field.name, table))
 
     output_console.print(rich_table)
     output_console.print(
-        f'\n[dim]Query with:[/dim] [bold]mm sql[/bold] [dim]"SELECT ... FROM files" --dir {directory}[/dim]'
+        f'\nQuery with: [bold]mm sql[/bold] "SELECT ... FROM files" --dir {directory}'
     )

@@ -93,7 +93,11 @@ _TIMED_COMMANDS = {"find", "cat", "grep", "peek", "sql", "wc"}
 _LLM_COMMANDS = {"cat", "bench"}
 
 
-@app.callback(invoke_without_command=True)
+@app.callback(
+    invoke_without_command=True,
+    help="Fast, multimodal context for agents.",
+    epilog=f"mm v{__version__}",
+)
 def _main(
     ctx: typer.Context,
     profile: Annotated[
@@ -105,7 +109,6 @@ def _main(
     ] = "auto",
     version: Annotated[bool, typer.Option("--version", "-v", help="Show version and exit")] = False,
 ) -> None:
-    """Fast, multimodal context for agents."""
     if version:
         typer.echo(f"mm v{__version__}")
         raise typer.Exit()

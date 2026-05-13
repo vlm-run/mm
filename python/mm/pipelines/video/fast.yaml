@@ -11,14 +11,7 @@ encode:
     num_frames: 128
 
 generate:
-  prompt: >-
-    You are provided with a mosaic of video frames extracted from a video.
-    Do not mention that this is a mosaic, and instead describe the video.
-
-    ## FORMAT
-    --30 words description--
-
-    Tags: Up to 5 tags
+  prompt: "Describe what's in this video in 50 words or less"
   max_tokens: 512
   think: false # disable thinking (default)
   reasoning_effort: "none" # no reasoning effort (default)

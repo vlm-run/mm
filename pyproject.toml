@@ -4,7 +4,7 @@ build-backend = "maturin"
 
 [project]
 name = "mm-ctx"
-version = "0.12.1"
+version = "0.12.4"
 description = "Fast, multimodal context for agents."
 readme = "README.md"
 requires-python = ">=3.11,<3.14"
@@ -75,9 +75,7 @@ dependencies = [
     "openai>=1.0",
     "pyyaml>=6.0",
     "av>=13.0",
-    "faster-whisper>=1.0",
-    "scenedetect[opencv]>=0.6",
-    "ctranslate2>=2.0",
+    "scenedetect==0.7",
     "cachetools>=5.3",
     "cachetools-ext>=0.0.8",
     "magika>=1.0.3",
@@ -88,6 +86,10 @@ dependencies = [
 mlx = [
     "mlx>=0.31.1",
     "lightning-whisper-mlx>=0.0.10",
+]
+gpu = [
+    "faster-whisper>=1.0",
+    "ctranslate2>=2.0",
 ]
 experimental = [
     "datasets>=2.0",
@@ -101,8 +103,13 @@ dev = [
     "maturin>=1.7",
     "logfire>=3.0",
 ]
+docs = [
+    "mkdocs>=1.6",
+    "mkdocs-material>=9.5",
+]
 all = [
     "mm-ctx[experimental]",
+    "mm-ctx[gpu]",
     "mm-ctx[mlx]; sys_platform == 'darwin'",
 ]
 

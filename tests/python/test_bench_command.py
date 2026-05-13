@@ -372,6 +372,89 @@ class TestBenchCommands:
             )
 
 
+class TestPickFiles:
+    """Batch picker spans the directory by sorted name and uniform stride."""
+
+    @staticmethod
+    def _entries(kind: str, names: list[str]):
+        from mm.context import FileEntry
+
+        return [FileEntry({"kind": kind, "path": n}) for n in names]
+
+    def test_returns_all_when_count_eq_limit(self):
+        from mm.commands.bench_commands import _pick_files
+
+        files = self._entries("image", ["c.png", "a.png", "b.png"])
+        assert _pick_files(files, "image", 3) == sorted(["c.png", "a.png", "b.png"])
+
+    def test_cycles_when_count_lt_limit(self):
+        from mm.commands.bench_commands import _pick_files
+
+        # 3 files, batch=5 → cycle in scan order, length 5.
+        files = self._entries("image", ["a.png", "b.png", "c.png"])
+        assert _pick_files(files, "image", 5) == [
+            "a.png",
+            "b.png",
+            "c.png",
+            "a.png",
+            "b.png",
+        ]
+
+    def test_cycle_fills_full_batch_with_few_candidates(self):
+        from collections import Counter
+
+        from mm.commands.bench_commands import _pick_files
+
+        # 3 images, batch=20 → 20 paths, every image used 6-7 times.
+        files = self._entries("image", ["a.png", "b.png", "c.png"])
+        picked = _pick_files(files, "image", 20)
+        assert len(picked) == 20
+        counts = Counter(picked)
+        assert set(counts) == {"a.png", "b.png", "c.png"}
+        # 20 // 3 = 6 baseline; remainder spreads to the first two slots.
+        assert min(counts.values()) >= 6
+        assert max(counts.values()) <= 7
+
+    def test_empty_kind_returns_empty(self):
+        from mm.commands.bench_commands import _pick_files
+
+        files = self._entries("video", ["v.mp4"])
+        assert _pick_files(files, "image", 20) == []
+
+    def test_filters_by_kind(self):
+        from mm.commands.bench_commands import _pick_files
+
+        files = self._entries("image", ["a.png", "b.png"]) + self._entries("video", ["v.mp4"])
+        # 2 images, batch=5 → cycle: [a, b, a, b, a].
+        assert _pick_files(files, "image", 5) == ["a.png", "b.png", "a.png", "b.png", "a.png"]
+
+    def test_strides_when_count_gt_limit(self):
+        from mm.commands.bench_commands import _pick_files
+
+        names = [f"img_{i:03d}.png" for i in range(100)]
+        picked = _pick_files(self._entries("image", names), "image", 10)
+        # Stride of 100/10 = 10 → indices 0, 10, 20, ..., 90.
+        assert picked == [f"img_{i:03d}.png" for i in (0, 10, 20, 30, 40, 50, 60, 70, 80, 90)]
+
+    def test_sorted_by_name_when_striding(self):
+        from mm.commands.bench_commands import _pick_files
+
+        names = ["z.png", "m.png", "a.png", "p.png", "b.png"]
+        picked = _pick_files(self._entries("image", names), "image", 3)
+        # sorted: a, b, m, p, z (n=5) → indices (i*5)//3 = 0, 1, 3 → a, b, p.
+        assert picked == ["a.png", "b.png", "p.png"]
+
+    def test_span_first_and_last_when_count_gt_limit(self):
+        from mm.commands.bench_commands import _pick_files
+
+        names = sorted(f"f_{i:04d}.pdf" for i in range(549))
+        picked = _pick_files(self._entries("document", names), "document", 20)
+        assert len(picked) == 20
+        assert picked[0] == names[0]
+        # Last stride index for n=549, limit=20 is (19*549)//20 = 521.
+        assert picked[-1] == names[521]
+
+
 class TestFmtMs:
     """Tests for _fmt_ms formatting."""
 

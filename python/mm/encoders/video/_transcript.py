@@ -34,11 +34,14 @@ logger = logging.getLogger(__name__)
 def transcript_messages(
     path: Path,
     *,
-    whisper_model: str = "medium",
+    model: str | None = None,
     language: str = "auto",
     audio_speed: float = 1.0,
+    backend: str | None = None,
+    base_url: str | None = None,
+    api_key: str | None = None,
 ) -> list[Message]:
-    """Extract audio and return Whisper transcript Messages.
+    """Extract audio and return transcript Messages.
 
     Cached on disk via :func:`mm.cache.memoize_file` — the second call
     with the same file + model + language + audio_speed is instant,
@@ -46,12 +49,12 @@ def transcript_messages(
     ``$MM_CACHE_DIR/transcripts/``).  mtime-aware: re-encoding the
     source video invalidates automatically.
 
-    Returns an empty list when Whisper or ffmpeg is unavailable so
-    callers can fall back to visual-only output.
+    Returns an empty list when the transcription backend or ffmpeg is
+    unavailable so callers can fall back to visual-only output.
     """
     try:
-        from mm.video import extract_audio
         from mm.common.audio import transcribe, transcribe_available
+        from mm.video import extract_audio
     except ImportError:
         return []
 
@@ -60,16 +63,19 @@ def transcript_messages(
 
     audio_result = extract_audio(path, speed=audio_speed)
 
-    lang_kwarg: dict[str, str] = {}
+    resolved_lang = None
     if language != "auto":
-        lang_kwarg["language"] = language
+        resolved_lang = language
 
     whisper_result = transcribe(
         audio_result.path,
-        model=whisper_model,
+        model=model,
+        language=resolved_lang,
         beam_size=5,
         audio_speed=audio_speed,
-        **lang_kwarg,
+        backend=backend,
+        base_url=base_url,
+        api_key=api_key,
     )
 
     try:
@@ -89,7 +95,7 @@ def transcript_messages(
         text = (
             f"Audio transcript of {path.name}"
             f" (lang={whisper_result.language},"
-            f" model={whisper_model},"
+            f" model={whisper_result.model_size},"
             f" {whisper_result.elapsed_ms:.0f}ms):\n\n" + "\n".join(segment_lines)
         )
     else:
@@ -117,15 +123,18 @@ def encode_with_transcript(
         path: Video file path.
         visual_encode_fn: Callable ``(path, **kwargs) -> Iterable[Message]``.
         **kwargs: Passed to both the transcript helper and the visual encoder.
-            Transcript-specific kwargs: ``whisper_model``, ``language``,
+            Transcript-specific kwargs: ``model``, ``language``,
             ``audio_speed``.
     """
     from concurrent.futures import ThreadPoolExecutor
 
     transcript_kwargs = {
-        "whisper_model": kwargs.get("whisper_model", "medium"),
+        "model": kwargs.get("audio_model") or kwargs.get("model"),
         "language": kwargs.get("language", "auto"),
         "audio_speed": kwargs.get("audio_speed", 1.0),
+        "backend": kwargs.get("audio_backend") or kwargs.get("backend"),
+        "base_url": kwargs.get("audio_base_url") or kwargs.get("base_url"),
+        "api_key": kwargs.get("audio_api_key") or kwargs.get("api_key"),
     }
 
     with ThreadPoolExecutor(max_workers=1) as pool:

@@ -1,5 +1,6 @@
 import time
 from pathlib import Path
+from typing import Any
 
 from mm.cat_utils.base_utils import (
     CatOpts,
@@ -94,7 +95,12 @@ def _encode_only_text(path: Path, spec: PipelineSpec) -> RunResult:
     assert spec.encode.strategy is not None
     t_encode = time.monotonic()
     strat = get_encoder(spec.encode.strategy)
-    messages = list(strat.encode(path, **spec.encode.strategy_opts))
+    encode_kwargs: dict[str, Any] = dict(spec.encode.strategy_opts)
+    if spec.encode.backend is not None:
+        encode_kwargs.setdefault("backend", spec.encode.backend)
+    if spec.encode.model is not None:
+        encode_kwargs.setdefault("model", spec.encode.model)
+    messages = list(strat.encode(path, **encode_kwargs))
     encode_elapsed = (time.monotonic() - t_encode) * 1000
 
     text_parts: list[str] = []

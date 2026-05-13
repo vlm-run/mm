@@ -51,3 +51,7 @@ mm-*-output.txt
 .agents
 
 benchmarks/results/
+
+# mkdocs
+/site/
+/docs/index.md
