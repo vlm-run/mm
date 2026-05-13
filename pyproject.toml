@@ -106,6 +106,7 @@ dev = [
 docs = [
     "mkdocs>=1.6",
     "mkdocs-material>=9.5",
+    "mkdocs-jupyter>=0.25",
 ]
 all = [
     "mm-ctx[experimental]",
