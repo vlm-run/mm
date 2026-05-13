@@ -77,10 +77,14 @@ def sql_cmd(
         raise typer.BadParameter("Provide a SQL query or use --list-tables")
 
     table_name = _detect_table(query)
-    if table_name != "files":
+    if _introspecting(query) or table_name != "files":
         _query_stored(query, fmt)
     else:
         _query_files(query, directory, fmt, pre_index=pre_index)
+
+
+def _introspecting(query: str):
+    return re.match(r"\s*PRAGMA\b", query, re.IGNORECASE)
 
 
 def _detect_table(query: str) -> str:
