@@ -3,7 +3,7 @@
 `mm.Context` is the main entry point for building a multimodal prompt
 incrementally, then handing the whole thing to a VLM. This doc covers
 the public Python surface; under the hood everything runs through the
-Rust [`_mm.PyContext`](../crates/mm-python/src/refs.rs) core so memory
+Rust `_mm.PyContext` core so memory
 is compact and insert/lookup/render is sub-millisecond at 10K items.
 
 > Looking for the directory-scan surface (`Context("~/data")` +

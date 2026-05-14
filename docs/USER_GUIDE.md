@@ -303,7 +303,7 @@ you can scope a slow benchfile to a single row with
 
 A worked example covering all `mm cat` override surfaces (model alias,
 prompt overrides, `--generate.extra-body` deep-merge, video frame
-sampling, cache cold/warm) lives in [`benchmarks/vlmgw_bench_commands.py`](../benchmarks/vlmgw_bench_commands.py).
+sampling, cache cold/warm) lives in `benchmarks/vlmgw_bench_commands.py`.
 
 ### Table layout: `Group | Model | Base Command | Extra Args | <metrics>`
 
