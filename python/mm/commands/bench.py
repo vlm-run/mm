@@ -249,7 +249,7 @@ def _time_cmd(
     """
 
     def _inject_no_cache():
-        return "cat" in argv and "--no-cache" not in argv
+        return len(argv) > 1 and argv[1] == "cat" and "--no-cache" not in argv
 
     argv = [*argv, "--no-cache"] if _inject_no_cache() else argv
 
@@ -388,7 +388,9 @@ def _run_benchmarks(
         return r
 
     for cmd in commands:
-        results.append(_exec_run(cmd))
+        result = _exec_run(cmd)
+        if not result.skipped:
+            results.append(_exec_run(cmd))
 
     target_info["total_wall_ms"] = (time.perf_counter_ns() - t_wall) / 1_000_000
     return results, target_info
@@ -777,6 +779,17 @@ def _build_table(
             prefix.append(r.tags.get("task", ""))
 
         if r.skipped:
+            command_cells: list[Any] = [base_str or r.name]
+            if has_extra:
+                command_cells.append(extra_str)
+            row_style = "dim" if r.disabled else None
+            table.add_row(
+                *prefix,
+                *command_cells,
+                Text(f"skipped: {r.skip_reason}", style="dim italic"),
+                *([""] * 6),
+                style=row_style,
+            )
             continue
 
         if r.is_dry_run:
