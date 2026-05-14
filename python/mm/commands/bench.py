@@ -389,8 +389,8 @@ def _run_benchmarks(
 
     for cmd in commands:
         result = _exec_run(cmd)
-        if not result.skipped:
-            results.append(_exec_run(cmd))
+        if not result.skipped or result.disabled:
+            results.append(result)
 
     target_info["total_wall_ms"] = (time.perf_counter_ns() - t_wall) / 1_000_000
     return results, target_info

@@ -129,6 +129,12 @@ def small_tree(tmp_path: Path) -> Path:
     png_header = bytes([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A])
     (tmp_path / "icon.png").write_bytes(png_header + b"\x00" * 100)
 
+    # WebM magic bytes so scanners classify this as kind=video
+    (tmp_path / "clip.webm").write_bytes(b"\x1a\x45\xdf\xa3" + b"\x00" * 64)
+
+    # PDF magic bytes so scanners classify this as kind=document
+    (tmp_path / "doc.pdf").write_bytes(b"%PDF-1.4\n" + b"\x00" * 64)
+
     return tmp_path
 
 
