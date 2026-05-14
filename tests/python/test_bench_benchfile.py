@@ -1700,8 +1700,8 @@ class TestRecordingHelpers:
     def test_format_recording_output_truncates_long_stdout(self):
         """Verbose model outputs are capped at the recorder's per-row budget."""
         from mm.commands.bench import (
-            BenchResult,
             _MAX_RECORDING_STDOUT_BYTES,
+            BenchResult,
             _format_recording_output,
         )
 
@@ -1985,7 +1985,6 @@ class TestRecordingFile:
         ``_derive_recording_stem(None)``.
         """
         from mm.bench_utils import collect_host_info
-
         from mm.commands.bench import _derive_recording_stem
 
         prof = (collect_host_info().get("profile") or {}).get("name")
