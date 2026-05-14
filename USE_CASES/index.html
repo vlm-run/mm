@@ -13,7 +13,7 @@
         <link rel="canonical" href="https://vlm-run.github.io/mm/USE_CASES/">
       
       
-        <link rel="prev" href="../api/">
+        <link rel="prev" href="../mm_context/">
       
       
         <link rel="next" href="../ENCODERS/">
@@ -52,6 +52,8 @@
         <style>:root{--md-text-font:"Geist";--md-code-font:"Geist Mono"}</style>
       
     
+    
+      <link rel="stylesheet" href="../assets/_mkdocstrings.css">
     
       <link rel="stylesheet" href="../stylesheets/extra.css">
     
@@ -315,9 +317,20 @@
   
   
   
-    <li class="md-nav__item">
-      <a href="../api/" class="md-nav__link">
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
         
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
   
   
   <span class="md-ellipsis">
@@ -331,7 +344,79 @@
   
   
 
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Python API
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Index
+  
+
+    
+  </span>
+  
+  
+
       </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../mm_context/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    mm.Context
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
     </li>
   
 
@@ -1290,17 +1375,17 @@
 <h3 id="surveillance-and-security">Surveillance and security<a class="headerlink" href="#surveillance-and-security" title="Permanent link">&para;</a></h3>
 <details><summary>1. Inventory NVR exports by camera and timestamp</summary>
 
-`mm find ~/nvr-export --kind video --sort modified` lists recordings chronologically. `mm cat` on each extracts resolution, duration, codec, and frame rate — all from native MP4/MKV parsing in Rust, no ffmpeg, <100ms per file.
+`mm find ~/nvr-export --kind video --sort modified` lists recordings chronologically. `mm peek` on each extracts resolution, duration, codec, and frame rate — all from native MP4/MKV parsing in Rust, no ffmpeg, <100ms per file.
 </details>
 
 <details><summary>2. Verify footage integrity after evidence transfer</summary>
 
-`mm cat evidence.mp4` returns the xxh3 content hash. Hash both sides of a transfer to confirm bit-for-bit integrity without re-watching hours of footage.
+`mm peek evidence.mp4` returns the xxh3 content hash. Hash both sides of a transfer to confirm bit-for-bit integrity without re-watching hours of footage.
 </details>
 
 <details><summary>3. Identify which recordings are HD vs SD</summary>
 
-`mm find ~/footage --kind video | mm cat --format json` extracts resolution per file. Filter in jq or SQL: `mm sql "SELECT name, width, height FROM files WHERE kind='video'" --dir ~/footage`.
+`mm find ~/footage --kind video | mm peek --format json` extracts dimensions per file. Filter with jq or use SQL: `mm sql "SELECT name, dimensions FROM files WHERE kind='video'" --dir ~/footage --pre-index`.
 </details>
 
 <details><summary>4. Estimate storage cost before archiving to S3</summary>
@@ -1311,7 +1396,7 @@
 <h3 id="content-creation-and-media">Content creation and media<a class="headerlink" href="#content-creation-and-media" title="Permanent link">&para;</a></h3>
 <details><summary>5. Catalog a YouTube download folder without playback</summary>
 
-`mm find ~/youtube --kind video | mm cat` extracts resolution, duration, codec, and audio track info for every file. No ffprobe installation needed — mm's Rust core parses MP4 and MKV natively.
+`mm find ~/youtube --kind video | mm peek --format json` extracts dimensions, duration_s, video_codec, and audio_codec info for every file. No ffprobe installation needed — mm's Rust core parses MP4 and MKV natively.
 </details>
 
 <details><summary>6. Generate keyframe mosaic thumbnails</summary>
@@ -1326,18 +1411,18 @@
 
 <details><summary>8. Compare codec and container usage across a library</summary>
 
-`mm find ~/videos --kind video | mm cat --format json` gives per-file codec info. Aggregate to see h264 vs h265 vs av1 distribution — useful before batch analysis and transcoding decisions, i.e., Iterate: `for f in ~/videos/*.mp4; do mm cat "$f"; done`.
+`mm find ~/videos --kind video | mm peek --format json` gives per-file codec info. Aggregate to see h264 vs h265 vs av1 distribution — useful before batch transcoding decisions.
 </details>
 
 <h3 id="education">Education<a class="headerlink" href="#education" title="Permanent link">&para;</a></h3>
 <details><summary>9. Build a lecture schedule from recording durations</summary>
 
-`mm find ~/lectures --kind video | mm cat --format json` returns duration in seconds per file. Sum by folder to estimate total course hours, plan viewing schedules, or allocate transcription budgets.
+`mm sql "SELECT name, duration_s FROM files WHERE kind='video' ORDER BY name" --dir ~/lectures --pre-index` returns duration per file from the local metadata index. Sum by folder to estimate total course hours or plan viewing schedules.
 </details>
 
 <details><summary>10. Estimate transcription cost for a video library</summary>
 
-`mm find ~/training --kind video | mm cat --format json` gives total duration. At known $/minute rates (Whisper, Rev, etc.), calculate the total transcription budget in one pipeline.
+`mm sql "SELECT ROUND(SUM(duration_s)/3600.0, 1) as total_hours FROM files WHERE kind='video'" --dir ~/training --pre-index` gives total duration in one query. At known $/minute rates (Whisper, Rev, etc.), calculate the total transcription budget instantly.
 </details>
 
 <details><summary>11. Generate accessibility descriptions for course videos</summary>
@@ -1348,7 +1433,7 @@
 <h3 id="media-management">Media management<a class="headerlink" href="#media-management" title="Permanent link">&para;</a></h3>
 <details><summary>12. Detect duplicate videos across volumes</summary>
 
-Run `mm find /Volumes/Drive1 --kind video | mm cat --format json` on each volume. Compare xxh3 hashes to find exact duplicates without byte-by-byte comparison. Hash computation uses mmap — fast even on large files.
+Run `mm find /Volumes/Drive1 --kind video | mm peek --format json` on each volume. Compare xxh3 hashes to find exact duplicates without byte-by-byte comparison. Hash computation uses mmap — fast even on large files.
 </details>
 
 <details><summary>13. Assess a GoPro/drone SD card before import</summary>
@@ -1358,7 +1443,7 @@ Run `mm find /Volumes/Drive1 --kind video | mm cat --format json` on each volume
 
 <details><summary>14. Find the longest and shortest recordings</summary>
 
-`mm find ~/recordings --kind video | mm cat --format json` gives actual duration per file. Sort client-side or via SQL.
+`mm sql "SELECT name, duration_s FROM files WHERE kind='video' ORDER BY duration_s DESC" --dir ~/recordings --pre-index` — sort by duration directly from the metadata index.
 </details>
 
 <h3 id="compliance">Compliance<a class="headerlink" href="#compliance" title="Permanent link">&para;</a></h3>
@@ -1369,13 +1454,13 @@ Run `mm find /Volumes/Drive1 --kind video | mm cat --format json` on each volume
 
 <details><summary>16. Estimate LLM token cost before processing video evidence</summary>
 
-`mm cat bodycam.mp4 --format json` gives duration and resolution.
+`mm peek bodycam.mp4` gives duration and resolution. Use duration to estimate transcription tokens and resolution to estimate per-frame vision tokens.
 </details>
 
 <h3 id="pipelines">Pipelines<a class="headerlink" href="#pipelines" title="Permanent link">&para;</a></h3>
 <details><summary>17. Build a video metadata table for a media asset manager</summary>
 
-`mm find ~/dam --kind video | mm cat --format json > video_metadata.json` — structured metadata (resolution, duration, codec, fps, hash) for every video, ready for database import.
+`mm find ~/dam --kind video | mm peek --format json > video_metadata.json` — structured metadata (resolution, duration, codec, fps, hash) for every video, ready for database import.
 </details>
 
 <details><summary>18. Pre-screen videos by size before expensive accurate-mode processing</summary>
@@ -1390,7 +1475,7 @@ Run `mm find /Volumes/Drive1 --kind video | mm cat --format json` on each volume
 
 <details><summary>20. Audit a video archive for codec migration planning</summary>
 
-`mm find ~/archive --kind video | mm cat --format json` reveals which files use legacy codecs (h264 baseline) vs modern (h265, av1). Prioritize transcoding by file size × codec age.
+`mm sql "SELECT name,video_codec from files where kind='video' ORDER BY video_codec" --dir ~/archive --pre-index` reveals which files use legacy codecs (h264 baseline) vs modern (h265, av1). Prioritize transcoding by file size × codec age.
 </details>
 
 <hr />
@@ -1417,7 +1502,7 @@ Run `mm find /Volumes/Drive1 --kind video | mm cat --format json` on each volume
 
 <details><summary>25. Compare document volume across directory groups</summary>
 
-`mm sql "SELECT parent, COUNT(*) as docs, ROUND(SUM(size)/1e6,1) as mb FROM files WHERE kind='document' GROUP BY parent ORDER BY mb DESC" --dir ~/shared` — shows which teams or projects have the most document mass.
+`mm sql "SELECT parent, COUNT(*) as docs, ROUND(SUM(size)/1e6,1) as mb FROM files WHERE kind='document' GROUP BY parent ORDER BY mb DESC" --dir ~/shared --pre-index` — shows which teams or projects have the most document mass.
 </details>
 
 <details><summary>26. Search for specific clauses across contract PDFs</summary>
@@ -1427,24 +1512,24 @@ Run `mm find /Volumes/Drive1 --kind video | mm cat --format json` on each volume
 
 <details><summary>27. Semantic search across documents</summary>
 
-`mm grep "revenue forecast" ~/reports -s --kind document` — vector similarity search across embedded document chunks. Finds conceptually related content, not just keyword matches.
+`mm grep "revenue forecast" ~/reports -s --kind document --pre-index` — vector similarity search across embedded document chunks. Finds conceptually related content, not just keyword matches.
 </details>
 
 <details><summary>28. Audit file formats in a document archive</summary>
 
-`mm sql "SELECT ext, COUNT(*) as n, ROUND(SUM(size)/1e6,1) as mb FROM files WHERE kind='document' GROUP BY ext ORDER BY n DESC" --dir ~/archive` — see PDF vs DOCX vs PPTX distribution.
+`mm sql "SELECT ext, COUNT(*) as n, ROUND(SUM(size)/1e6,1) as mb FROM files WHERE kind='document' GROUP BY ext ORDER BY n DESC" --dir ~/archive --pre-index` — see PDF vs DOCX vs PPTX distribution.
 </details>
 
 <hr />
 <h2 id="images-8">Images (8)<a class="headerlink" href="#images-8" title="Permanent link">&para;</a></h2>
 <details><summary>29. Extract EXIF metadata for photo organization</summary>
 
-`mm find ~/photos --kind image | mm cat --format json` returns dimensions, MIME, hash, and EXIF fields (camera, date, GPS) per file. Use for sorting into date/location folders.
+`mm find ~/photos --kind image | mm peek --format json` returns dimensions, MIME, hash, phash (perceptual hash), and EXIF fields (camera, date, GPS) per file. Use for sorting into date/location folders.
 </details>
 
 <details><summary>30. Find print-quality images by resolution</summary>
 
-`mm sql "SELECT name, width, height FROM files WHERE kind='image' AND width >= 3000 ORDER BY width DESC" --dir ~/assets` — filter for images that meet minimum print DPI requirements.
+`mm sql "SELECT name, width, height FROM files WHERE kind='image' AND width >= 3000 ORDER BY width DESC" --dir ~/assets --pre-index` — filter for images that meet minimum print DPI requirements.
 </details>
 
 <details><summary>31. Caption images for fine-tuning datasets</summary>
@@ -1459,39 +1544,39 @@ mm computes perceptual hashes (pHash) via DCT in Rust. Two images with hamming d
 
 <details><summary>33. Audit image format adoption in a web project</summary>
 
-`mm sql "SELECT ext, COUNT(*) as n, ROUND(SUM(size)/1e6,1) as mb FROM files WHERE kind='image' GROUP BY ext ORDER BY mb DESC" --dir ~/site/public` — see how much bandwidth is wasted on PNG vs WebP vs AVIF.
+`mm sql "SELECT ext, COUNT(*) as n, ROUND(SUM(size)/1e6,1) as mb FROM files WHERE kind='image' GROUP BY ext ORDER BY mb DESC" --dir ~/site/public --pre-index` — see how much bandwidth is wasted on PNG vs WebP vs AVIF.
 </details>
 
 <details><summary>34. Estimate token cost for batch image processing</summary>
 
-Image token cost depends on resolution (tile-based). `mm find ~/products --kind image | mm cat --format json` gives per-image dimensions.
+Image token cost depends on resolution (tile-based). `mm find ~/products --kind image | mm peek --format json` gives per-image dimensions (width, height) directly from the metadata scan.
 </details>
 
 <details><summary>35. Separate photos from screenshots and synthetic images</summary>
 
-`mm find ~/photos --kind image | mm cat --format json` — images without camera/date/GPS EXIF fields are likely screenshots, downloads, or synthetic. Useful for separating real photos from non-photo images.
+`mm find ~/photos --kind image | mm peek --format json` — images without camera/date/GPS EXIF fields are likely screenshots, downloads, or synthetic. Useful for separating real photos from non-photo images.
 </details>
 
 <details><summary>36. Semantic search across images</summary>
 
-`mm grep "sunset over ocean" ~/photos -s` — vector similarity search over image embeddings. Returns images whose LLM-generated captions are semantically close to the query.
+`mm grep "sunset over ocean" ~/photos -s --pre-index` — vector similarity search over image embeddings. Returns images whose LLM-generated captions are semantically close to the query.
 </details>
 
 <hr />
 <h2 id="audio-5">Audio (5)<a class="headerlink" href="#audio-5" title="Permanent link">&para;</a></h2>
 <details><summary>37. Catalog a podcast archive by duration</summary>
 
-`mm find ~/podcasts --kind audio | mm cat --format json` extracts duration, codec, and sample rate per file. Sort by duration to find the longest episodes or estimate total listening time.
+`mm sql "SELECT name,duration_s,audio_codec FROM files WHERE kind='audio' ORDER BY duration_s DESC" --dir ~/podcasts --pre-index` extracts duration and codec per file. Sort by duration to find the longest episodes or estimate total listening time.
 </details>
 
 <details><summary>38. Estimate transcription cost</summary>
 
-`mm find ~/audio --kind audio | mm cat --format json` gives per-file duration. Sum durations and multiply by $/minute for Whisper, Rev, or Deepgram pricing.
+`mm sql "SELECT name, ROUND(duration_s/60.0, 1) as minutes FROM files WHERE kind='audio' ORDER BY duration_s DESC" --dir ~/audio --pre-index` gives per-file duration. Sum durations and multiply by $/minute for Whisper, Rev, or Deepgram pricing.
 </details>
 
 <details><summary>39. Find long recordings that need chunking</summary>
 
-Audio files over 80 seconds exceed Gemini's single-part embedding limit. `mm find ~/recordings --kind audio | mm cat --format json` identifies files that need `audio_parts()` chunking before embedding.
+Audio files over 80 seconds exceed Gemini's single-part embedding limit. `mm sql "SELECT name, duration_s FROM files WHERE kind='audio' AND duration_s > 80 ORDER BY duration_s DESC" --dir ~/recordings --pre-index` identifies files that need `audio_parts()` chunking before embedding.
 </details>
 
 <details><summary>40. Summarize a meeting recording</summary>
@@ -1501,7 +1586,7 @@ Audio files over 80 seconds exceed Gemini's single-part embedding limit. `mm fin
 
 <details><summary>41. Assess a field recording SD card</summary>
 
-`mm find /Volumes/RECORDER --tree --depth 1` shows the directory structure. `mm wc /Volumes/RECORDER --kind audio` gives total duration and storage. Decide what to import before copying gigabytes.
+`mm find /Volumes/RECORDER --tree --depth 1` shows the directory structure. `mm wc /Volumes/RECORDER --kind audio` gives file count and total storage. For total recorded time: `mm sql "SELECT ROUND(SUM(duration_s)/3600.0, 1) as hours FROM files WHERE kind='audio'" --dir /Volumes/RECORDER --pre-index`.
 </details>
 
 <hr />
@@ -1518,12 +1603,12 @@ Audio files over 80 seconds exceed Gemini's single-part embedding limit. `mm fin
 
 <details><summary>44. Audit technical debt</summary>
 
-`mm grep "TODO\|FIXME\|HACK" ~/project --kind code --count` — per-file counts of debt markers. Pipe to an LLM for triage: `mm grep "TODO" --kind code | llm -s "Prioritize these by severity"`.
+`mm grep "TODO|FIXME|HACK" ~/project --kind code --count` — per-file counts of debt markers. Pipe to an LLM for triage: `mm grep "TODO" --kind code | llm -s "Prioritize these by severity"`.
 </details>
 
 <details><summary>45. Compare code volume across languages</summary>
 
-`mm sql "SELECT ext, COUNT(*) as files, ROUND(SUM(size)/1e3,1) as kb FROM files WHERE kind='code' GROUP BY ext ORDER BY files DESC" --dir ~/project` — understand the language mix in a polyglot repo.
+`mm sql "SELECT ext, COUNT(*) as files, ROUND(SUM(size)/1e3,1) as kb FROM files WHERE kind='code' GROUP BY ext ORDER BY files DESC" --dir ~/project --pre-index` — understand the language mix in a polyglot repo.
 </details>
 
 <details><summary>46. Generate a project overview for onboarding</summary>
@@ -1540,12 +1625,12 @@ Audio files over 80 seconds exceed Gemini's single-part embedding limit. `mm fin
 
 <details><summary>48. Semantic search across all media types simultaneously</summary>
 
-`mm grep "quarterly revenue" ~/shared -s` searches PDFs (extracted text), images (via LLM captions), and video (via keyframe descriptions) in a single query using vector similarity.
+`mm grep "quarterly revenue" ~/shared -s --pre-index` searches PDFs (extracted text), images (via LLM captions), and video (via keyframe descriptions) in a single query using vector similarity.
 </details>
 
 <details><summary>49. Build a multimodal evidence package</summary>
 
-For a construction project with permits (PDF), site photos (JPEG), and walkthrough video (MP4): `mm find ~/project --tree` shows everything, `mm wc --by-kind` quantifies it, and `mm cat` on each file gives structured metadata. One directory becomes a queryable index across all media types.
+For a construction project with permits (PDF), site photos (JPEG), and walkthrough video (MP4): `mm find ~/project --tree` shows everything, `mm wc --by-kind` quantifies it, and `mm peek` on each file gives structured metadata. One directory becomes a queryable index across all media types.
 </details>
 
 <details><summary>50. Create an invoice summary from mixed document formats</summary>
@@ -1560,7 +1645,7 @@ For a construction project with permits (PDF), site photos (JPEG), and walkthrou
 
 <details><summary>52. Find all files modified today</summary>
 
-`mm sql "SELECT name, kind, size, modified FROM files WHERE modified >= date('now', 'start of day') ORDER BY modified DESC" --dir ~/project` — see what changed today across all media types without relying on git or filesystem watches.
+`mm sql "SELECT name, kind, size, datetime(modified/1000000,'unixepoch') as modified FROM files WHERE datetime(modified/1000000,'unixepoch') >= date('now','start of day') ORDER BY modified DESC" --dir ~/project --pre-index` — see what changed today across all media types without relying on git or filesystem watches.
 </details>
 
 <details><summary>53. Batch-extract metadata for a digital asset manager</summary>

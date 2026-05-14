@@ -16,7 +16,7 @@
         <link rel="prev" href="../USER_GUIDE/">
       
       
-        <link rel="next" href="../USE_CASES/">
+        <link rel="next" href="../mm_context/">
       
       
         
@@ -27,7 +27,7 @@
     
     
       
-        <title>Python API - mm</title>
+        <title>Index - mm</title>
       
     
     
@@ -52,6 +52,8 @@
         <style>:root{--md-text-font:"Geist";--md-code-font:"Geist Mono"}</style>
       
     
+    
+      <link rel="stylesheet" href="../assets/_mkdocstrings.css">
     
       <link rel="stylesheet" href="../stylesheets/extra.css">
     
@@ -116,7 +118,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Python API
+              Index
             
           </span>
         </div>
@@ -317,6 +319,55 @@
   
   
   
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Python API
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Python API
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+    
+  
+  
+  
     <li class="md-nav__item md-nav__item--active">
       
       <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
@@ -332,7 +383,7 @@
   <span class="md-ellipsis">
     
   
-    Python API
+    Index
   
 
     
@@ -350,7 +401,7 @@
   <span class="md-ellipsis">
     
   
-    Python API
+    Index
   
 
     
@@ -683,6 +734,42 @@
     </ul>
   
 </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../mm_context/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    mm.Context
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
       
     </li>
   
@@ -1618,7 +1705,7 @@
 <p><code>mm.Context</code> is the main entry point for building a multimodal prompt
 incrementally, then handing the whole thing to a VLM. This doc covers
 the public Python surface; under the hood everything runs through the
-Rust <a href="../crates/mm-python/src/refs.rs"><code>_mm.PyContext</code></a> core so memory
+Rust <code>_mm.PyContext</code> core so memory
 is compact and insert/lookup/render is sub-millisecond at 10K items.</p>
 <blockquote>
 <p>Looking for the directory-scan surface (<code>Context("~/data")</code> +

@@ -51,6 +51,8 @@
       
     
     
+      <link rel="stylesheet" href="assets/_mkdocstrings.css">
+    
       <link rel="stylesheet" href="stylesheets/extra.css">
     
     <script>__md_scope=new URL(".",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
@@ -594,6 +596,56 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#bench-benchmarks-with-statistical-analysis" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        bench — benchmarks with statistical analysis
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="bench — benchmarks with statistical analysis">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#filters-combined-via-and" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Filters (combined via AND)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#custom-benchfiles-bench-file" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Custom benchfiles (--bench-file)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#stdout-snapshot-mode-format-stdout" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Stdout snapshot mode (--format stdout)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#output-modes" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -794,9 +846,20 @@
   
   
   
-    <li class="md-nav__item">
-      <a href="api/" class="md-nav__link">
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
         
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
   
   
   <span class="md-ellipsis">
@@ -810,7 +873,79 @@
   
   
 
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Python API
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Index
+  
+
+    
+  </span>
+  
+  
+
       </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="mm_context/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    mm.Context
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
     </li>
   
 
@@ -1696,6 +1831,56 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#bench-benchmarks-with-statistical-analysis" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        bench — benchmarks with statistical analysis
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="bench — benchmarks with statistical analysis">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#filters-combined-via-and" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Filters (combined via AND)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#custom-benchfiles-bench-file" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Custom benchfiles (--bench-file)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#stdout-snapshot-mode-format-stdout" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Stdout snapshot mode (--format stdout)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#output-modes" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2371,6 +2556,40 @@ Indexing is implicit — every command auto-builds a metadata index on first use
 <a id="__codelineno-32-8" name="__codelineno-32-8" href="#__codelineno-32-8"></a>mm<span class="w"> </span>sql<span class="w"> </span><span class="s2">&quot;SELECT * FROM files WHERE kind=&#39;image&#39;&quot;</span><span class="w"> </span>--dir<span class="w"> </span>~/data<span class="w"> </span>--pre-index<span class="w">  </span><span class="c1"># index before query</span>
 <a id="__codelineno-32-9" name="__codelineno-32-9" href="#__codelineno-32-9"></a>mm<span class="w"> </span>sql<span class="w"> </span>--list-tables<span class="w">                              </span><span class="c1"># show available tables</span>
 </code></pre></div>
+<h3 id="bench-benchmarks-with-statistical-analysis">bench — benchmarks with statistical analysis<a class="headerlink" href="#bench-benchmarks-with-statistical-analysis" title="Permanent link">&para;</a></h3>
+<p><code>overhead + metadata</code> always run; <code>--mode</code> adds an extraction tier on top.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-33-1" name="__codelineno-33-1" href="#__codelineno-33-1"></a>mm<span class="w"> </span>bench<span class="w"> </span>mm-samples/<span class="w">                                  </span><span class="c1"># overhead + metadata (default)</span>
+<a id="__codelineno-33-2" name="__codelineno-33-2" href="#__codelineno-33-2"></a>mm<span class="w"> </span>bench<span class="w"> </span>mm-samples/<span class="w"> </span>--mode<span class="w"> </span>fast<span class="w">                      </span><span class="c1"># + fast-mode extractions</span>
+<a id="__codelineno-33-3" name="__codelineno-33-3" href="#__codelineno-33-3"></a>mm<span class="w"> </span>bench<span class="w"> </span>mm-samples/<span class="w"> </span>--mode<span class="w"> </span>accurate<span class="w">                  </span><span class="c1"># + accurate-mode extractions</span>
+<a id="__codelineno-33-4" name="__codelineno-33-4" href="#__codelineno-33-4"></a>mm<span class="w"> </span>bench<span class="w"> </span>mm-samples/<span class="w"> </span>--mode<span class="w"> </span>all<span class="w">                       </span><span class="c1"># full suite (fast + accurate)</span>
+<a id="__codelineno-33-5" name="__codelineno-33-5" href="#__codelineno-33-5"></a>mm<span class="w"> </span>bench<span class="w"> </span>mm-samples/<span class="w"> </span>--rounds<span class="w"> </span><span class="m">5</span><span class="w">                       </span><span class="c1"># more rounds for stability</span>
+<a id="__codelineno-33-6" name="__codelineno-33-6" href="#__codelineno-33-6"></a>mm<span class="w"> </span>bench<span class="w"> </span>mm-samples/<span class="w"> </span>--warmup<span class="w"> </span><span class="m">2</span><span class="w">                       </span><span class="c1"># extra warmup rounds</span>
+<a id="__codelineno-33-7" name="__codelineno-33-7" href="#__codelineno-33-7"></a>mm<span class="w"> </span>bench<span class="w"> </span>mm-samples/<span class="w"> </span>--format<span class="w"> </span>json<span class="w">                    </span><span class="c1"># JSON output for archival</span>
+<a id="__codelineno-33-8" name="__codelineno-33-8" href="#__codelineno-33-8"></a>mm<span class="w"> </span>bench<span class="w"> </span>mm-samples/<span class="w"> </span>--dry-run<span class="w">                        </span><span class="c1"># resolve plan, no execution</span>
+<a id="__codelineno-33-9" name="__codelineno-33-9" href="#__codelineno-33-9"></a>mm<span class="w"> </span>bench<span class="w"> </span>--host-info<span class="w">                                  </span><span class="c1"># print host spec and exit</span>
+<a id="__codelineno-33-10" name="__codelineno-33-10" href="#__codelineno-33-10"></a>mm<span class="w"> </span>bench<span class="w"> </span>--host-info<span class="w"> </span>--format<span class="w"> </span>json<span class="w">                    </span><span class="c1"># host spec as JSON</span>
+</code></pre></div>
+<h4 id="filters-combined-via-and">Filters (combined via AND)<a class="headerlink" href="#filters-combined-via-and" title="Permanent link">&para;</a></h4>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-34-1" name="__codelineno-34-1" href="#__codelineno-34-1"></a>mm<span class="w"> </span>bench<span class="w"> </span>~/data<span class="w"> </span>--command<span class="w"> </span>cat<span class="w">                         </span><span class="c1"># only rows whose name contains &quot;cat&quot;</span>
+<a id="__codelineno-34-2" name="__codelineno-34-2" href="#__codelineno-34-2"></a>mm<span class="w"> </span>bench<span class="w"> </span>~/data<span class="w"> </span>--group<span class="w"> </span>fast<span class="w">                          </span><span class="c1"># only the fast group</span>
+<a id="__codelineno-34-3" name="__codelineno-34-3" href="#__codelineno-34-3"></a>mm<span class="w"> </span>bench<span class="w"> </span>~/data<span class="w"> </span>--mode<span class="w"> </span>all<span class="w"> </span>--command<span class="w"> </span>cat<span class="w"> </span>--format<span class="w"> </span>stdout<span class="w"> </span>&gt;<span class="w"> </span>tests/stdout/cat.md
+</code></pre></div>
+<h4 id="custom-benchfiles-bench-file">Custom benchfiles (<code>--bench-file</code>)<a class="headerlink" href="#custom-benchfiles-bench-file" title="Permanent link">&para;</a></h4>
+<p>Point <code>mm bench</code> at a <code>.py</code> file that exposes <code>COMMANDS: list[BenchCommand]</code> or <code>def commands(files) -&gt; list[BenchCommand]</code>. The built-in matrix is fully replaced; <code>--mode</code> is ignored; <code>--group</code> / <code>--model</code> / <code>--task</code> / <code>--command</code> filters still apply on top.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-35-1" name="__codelineno-35-1" href="#__codelineno-35-1"></a>mm<span class="w"> </span>bench<span class="w"> </span>~/data<span class="w"> </span>-b<span class="w"> </span>benchmarks/vlmgw_bench_commands.py<span class="w">            </span><span class="c1"># run custom suite</span>
+<a id="__codelineno-35-2" name="__codelineno-35-2" href="#__codelineno-35-2"></a>mm<span class="w"> </span>bench<span class="w"> </span>~/data<span class="w"> </span>-b<span class="w"> </span>benchmarks/vlmgw_bench_commands.py<span class="w"> </span>-r<span class="w"> </span><span class="m">1</span><span class="w"> </span>-w<span class="w"> </span><span class="m">0</span><span class="w"> </span><span class="c1"># 1 round, no warmup</span>
+<a id="__codelineno-35-3" name="__codelineno-35-3" href="#__codelineno-35-3"></a>mm<span class="w"> </span>bench<span class="w"> </span>~/data<span class="w"> </span>-b<span class="w"> </span>benchmarks/vlmgw_bench_commands.py<span class="w"> </span>--dry-run<span class="w">  </span><span class="c1"># preview without running</span>
+<a id="__codelineno-35-4" name="__codelineno-35-4" href="#__codelineno-35-4"></a>mm<span class="w"> </span>bench<span class="w"> </span>~/data<span class="w"> </span>-b<span class="w"> </span>benchmarks/vlmgw_bench_commands.py<span class="w"> </span>--group<span class="w"> </span>cache
+<a id="__codelineno-35-5" name="__codelineno-35-5" href="#__codelineno-35-5"></a>mm<span class="w"> </span>bench<span class="w"> </span>~/data<span class="w"> </span>-b<span class="w"> </span>benchmarks/vlmgw_bench_commands.py<span class="w"> </span>--model<span class="w"> </span>qwen/qwen3.5-0.8b
+<a id="__codelineno-35-6" name="__codelineno-35-6" href="#__codelineno-35-6"></a>mm<span class="w"> </span>bench<span class="w"> </span>~/data<span class="w"> </span>-b<span class="w"> </span>benchmarks/vlmgw_bench_commands.py<span class="w"> </span>--task<span class="w"> </span>ocr
+<a id="__codelineno-35-7" name="__codelineno-35-7" href="#__codelineno-35-7"></a>mm<span class="w"> </span>bench<span class="w"> </span>~/data<span class="w"> </span>-b<span class="w"> </span>benchmarks/vlmgw_bench_commands.py<span class="w"> </span>--task<span class="w"> </span>cap<span class="w"> </span>--model<span class="w"> </span>qwen/qwen3.5-0.8b
+</code></pre></div>
+<h4 id="stdout-snapshot-mode-format-stdout">Stdout snapshot mode (<code>--format stdout</code>)<a class="headerlink" href="#stdout-snapshot-mode-format-stdout" title="Permanent link">&para;</a></h4>
+<p>Runs each <code>mm cat</code> encoder variant once and emits raw stdout between <code>---</code> separators — useful for refreshing golden-file snapshots.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-36-1" name="__codelineno-36-1" href="#__codelineno-36-1"></a>mm<span class="w"> </span>bench<span class="w"> </span>mm-samples/<span class="w"> </span>--command<span class="w"> </span>cat<span class="w"> </span>--format<span class="w"> </span>stdout<span class="w"> </span>&gt;<span class="w"> </span>tests/stdout/cat.md
+<a id="__codelineno-36-2" name="__codelineno-36-2" href="#__codelineno-36-2"></a>mm<span class="w"> </span>bench<span class="w"> </span>mm-samples/<span class="w"> </span>--command<span class="w"> </span>cat<span class="w"> </span>--format<span class="w"> </span>stdout<span class="w"> </span>--mode<span class="w"> </span>accurate<span class="w"> </span>--with-generate
+</code></pre></div>
+<p>Every non-dry-run <code>mm bench</code> run auto-writes a per-row markdown recording to <code>benchmarks/results/&lt;YYMMDD&gt;-mm-bench-&lt;profile&gt;-&lt;HHMM&gt;.md</code>.</p>
 <h3 id="output-modes">Output modes<a class="headerlink" href="#output-modes" title="Permanent link">&para;</a></h3>
 <ul>
 <li><strong>TTY</strong>: Rich-formatted tables/panels.</li>
@@ -2384,9 +2603,9 @@ Indexing is implicit — every command auto-builds a metadata index on first use
 </ul>
 <h3 id="verbose-mode-verbose-v">Verbose mode (<code>--verbose</code> / <code>-v</code>)<a class="headerlink" href="#verbose-mode-verbose-v" title="Permanent link">&para;</a></h3>
 <p><code>mm cat &lt;file&gt; [OPTIONS] --verbose</code> shows the pipeline execution tree after content:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-33-1" name="__codelineno-33-1" href="#__codelineno-33-1"></a>pipeline
-<a id="__codelineno-33-2" name="__codelineno-33-2" href="#__codelineno-33-2"></a>  ├─ encode: resize · 0.0s → 1 parts (1 image)
-<a id="__codelineno-33-3" name="__codelineno-33-3" href="#__codelineno-33-3"></a>  └─ generate: ollama · 2.3s · 354→195 tokens
+<div class="highlight"><pre><span></span><code><a id="__codelineno-37-1" name="__codelineno-37-1" href="#__codelineno-37-1"></a>pipeline
+<a id="__codelineno-37-2" name="__codelineno-37-2" href="#__codelineno-37-2"></a>  ├─ encode: resize · 0.0s → 1 parts (1 image)
+<a id="__codelineno-37-3" name="__codelineno-37-3" href="#__codelineno-37-3"></a>  └─ generate: ollama · 2.3s · 354→195 tokens
 </code></pre></div>
 <h2 id="processing-tiers">Processing tiers<a class="headerlink" href="#processing-tiers" title="Permanent link">&para;</a></h2>
 <p><code>mm</code> separates <strong>what</strong> by command and <strong>how much LLM</strong> by mode. <code>mm peek</code> surfaces local file metadata; <code>mm cat</code> extracts content and accepts <code>--mode fast|accurate</code> (default <code>fast</code>).</p>
@@ -2519,84 +2738,84 @@ input for fast/accurate pipelines) is Rust-native (~60ms / 700 files).</p>
 <h3 id="pipelines-encode-generate">Pipelines — encode + generate<a class="headerlink" href="#pipelines-encode-generate" title="Permanent link">&para;</a></h3>
 <p>Pipelines are YAML configs under <code>pipelines/{kind}/{mode}.yaml</code> that pair an <strong>encoder</strong> with optional LLM <strong>generation</strong> parameters. When <code>generate</code> is <code>null</code>, the pipeline is encode-only (no LLM call). Encoders are Python classes under <code>encoders/</code> that convert media files into VLM-ready Messages. See <code>[docs/PIPELINES.md](PIPELINES.md)</code> and <code>[docs/ENCODERS.md](ENCODERS.md)</code> for the full pipeline and encoder reference.</p>
 <p>Pipeline fields can be overridden from the CLI:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-34-1" name="__codelineno-34-1" href="#__codelineno-34-1"></a>mm<span class="w"> </span>cat<span class="w"> </span>photo.jpg<span class="w"> </span>-m<span class="w"> </span>accurate<span class="w"> </span>--encode.strategy<span class="w"> </span>tile<span class="w"> </span>--generate.max-tokens<span class="w"> </span><span class="m">1024</span>
-<a id="__codelineno-34-2" name="__codelineno-34-2" href="#__codelineno-34-2"></a>mm<span class="w"> </span>cat<span class="w"> </span>photo.jpg<span class="w"> </span>-m<span class="w"> </span>accurate<span class="w"> </span>--generate.temperature<span class="w"> </span><span class="m">0</span>.5
-<a id="__codelineno-34-3" name="__codelineno-34-3" href="#__codelineno-34-3"></a>
-<a id="__codelineno-34-4" name="__codelineno-34-4" href="#__codelineno-34-4"></a><span class="c1"># Override individual strategy_opts entries (repeatable KEY=VALUE form;</span>
-<a id="__codelineno-34-5" name="__codelineno-34-5" href="#__codelineno-34-5"></a><span class="c1"># values are coerced to int/float/bool when possible).</span>
-<a id="__codelineno-34-6" name="__codelineno-34-6" href="#__codelineno-34-6"></a>mm<span class="w"> </span>cat<span class="w"> </span>photo.jpg<span class="w"> </span>-m<span class="w"> </span>accurate<span class="w"> </span>--encode.strategy_opts<span class="w"> </span><span class="nv">max_width</span><span class="o">=</span><span class="m">768</span>
-<a id="__codelineno-34-7" name="__codelineno-34-7" href="#__codelineno-34-7"></a>mm<span class="w"> </span>cat<span class="w"> </span>video.mp4<span class="w"> </span>-m<span class="w"> </span>accurate<span class="w"> </span>--encode.strategy_opts<span class="w"> </span><span class="nv">max_width</span><span class="o">=</span><span class="m">768</span><span class="w"> </span>--encode.strategy_opts<span class="w"> </span><span class="nv">fps</span><span class="o">=</span><span class="m">5</span>
-<a id="__codelineno-34-8" name="__codelineno-34-8" href="#__codelineno-34-8"></a>
-<a id="__codelineno-34-9" name="__codelineno-34-9" href="#__codelineno-34-9"></a><span class="c1"># Print a built-in pipeline&#39;s YAML as a starting point for your own.</span>
-<a id="__codelineno-34-10" name="__codelineno-34-10" href="#__codelineno-34-10"></a>mm<span class="w"> </span>cat<span class="w"> </span>--print-pipeline<span class="w"> </span>image/accurate
+<div class="highlight"><pre><span></span><code><a id="__codelineno-38-1" name="__codelineno-38-1" href="#__codelineno-38-1"></a>mm<span class="w"> </span>cat<span class="w"> </span>photo.jpg<span class="w"> </span>-m<span class="w"> </span>accurate<span class="w"> </span>--encode.strategy<span class="w"> </span>tile<span class="w"> </span>--generate.max-tokens<span class="w"> </span><span class="m">1024</span>
+<a id="__codelineno-38-2" name="__codelineno-38-2" href="#__codelineno-38-2"></a>mm<span class="w"> </span>cat<span class="w"> </span>photo.jpg<span class="w"> </span>-m<span class="w"> </span>accurate<span class="w"> </span>--generate.temperature<span class="w"> </span><span class="m">0</span>.5
+<a id="__codelineno-38-3" name="__codelineno-38-3" href="#__codelineno-38-3"></a>
+<a id="__codelineno-38-4" name="__codelineno-38-4" href="#__codelineno-38-4"></a><span class="c1"># Override individual strategy_opts entries (repeatable KEY=VALUE form;</span>
+<a id="__codelineno-38-5" name="__codelineno-38-5" href="#__codelineno-38-5"></a><span class="c1"># values are coerced to int/float/bool when possible).</span>
+<a id="__codelineno-38-6" name="__codelineno-38-6" href="#__codelineno-38-6"></a>mm<span class="w"> </span>cat<span class="w"> </span>photo.jpg<span class="w"> </span>-m<span class="w"> </span>accurate<span class="w"> </span>--encode.strategy_opts<span class="w"> </span><span class="nv">max_width</span><span class="o">=</span><span class="m">768</span>
+<a id="__codelineno-38-7" name="__codelineno-38-7" href="#__codelineno-38-7"></a>mm<span class="w"> </span>cat<span class="w"> </span>video.mp4<span class="w"> </span>-m<span class="w"> </span>accurate<span class="w"> </span>--encode.strategy_opts<span class="w"> </span><span class="nv">max_width</span><span class="o">=</span><span class="m">768</span><span class="w"> </span>--encode.strategy_opts<span class="w"> </span><span class="nv">fps</span><span class="o">=</span><span class="m">5</span>
+<a id="__codelineno-38-8" name="__codelineno-38-8" href="#__codelineno-38-8"></a>
+<a id="__codelineno-38-9" name="__codelineno-38-9" href="#__codelineno-38-9"></a><span class="c1"># Print a built-in pipeline&#39;s YAML as a starting point for your own.</span>
+<a id="__codelineno-38-10" name="__codelineno-38-10" href="#__codelineno-38-10"></a>mm<span class="w"> </span>cat<span class="w"> </span>--print-pipeline<span class="w"> </span>image/accurate
 </code></pre></div>
 <p>Load explicit pipeline YAML(s) with <code>-p</code> (repeatable, dispatched by <code>kind</code> field):</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-35-1" name="__codelineno-35-1" href="#__codelineno-35-1"></a>mm<span class="w"> </span>cat<span class="w"> </span>photo.jpg<span class="w"> </span>-p<span class="w"> </span>my-image-pipeline.yaml
-<a id="__codelineno-35-2" name="__codelineno-35-2" href="#__codelineno-35-2"></a>mm<span class="w"> </span>cat<span class="w"> </span>*.jpg<span class="w"> </span>*.mp4<span class="w"> </span>-p<span class="w"> </span>image-pipeline.yaml<span class="w"> </span>-p<span class="w"> </span>video-pipeline.yaml
-<a id="__codelineno-35-3" name="__codelineno-35-3" href="#__codelineno-35-3"></a>mm<span class="w"> </span>cat<span class="w"> </span>photo.jpg<span class="w"> </span>-p<span class="w"> </span>~/custom.yaml<span class="w"> </span>--generate.max-tokens<span class="w"> </span><span class="m">512</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-39-1" name="__codelineno-39-1" href="#__codelineno-39-1"></a>mm<span class="w"> </span>cat<span class="w"> </span>photo.jpg<span class="w"> </span>-p<span class="w"> </span>my-image-pipeline.yaml
+<a id="__codelineno-39-2" name="__codelineno-39-2" href="#__codelineno-39-2"></a>mm<span class="w"> </span>cat<span class="w"> </span>*.jpg<span class="w"> </span>*.mp4<span class="w"> </span>-p<span class="w"> </span>image-pipeline.yaml<span class="w"> </span>-p<span class="w"> </span>video-pipeline.yaml
+<a id="__codelineno-39-3" name="__codelineno-39-3" href="#__codelineno-39-3"></a>mm<span class="w"> </span>cat<span class="w"> </span>photo.jpg<span class="w"> </span>-p<span class="w"> </span>~/custom.yaml<span class="w"> </span>--generate.max-tokens<span class="w"> </span><span class="m">512</span>
 </code></pre></div>
 <p>Custom pipeline paths can also be set in <code>~/.config/mm/mm.toml</code>:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-36-1" name="__codelineno-36-1" href="#__codelineno-36-1"></a><span class="k">[pipelines]</span>
-<a id="__codelineno-36-2" name="__codelineno-36-2" href="#__codelineno-36-2"></a><span class="n">image</span><span class="p">.</span><span class="n">fast</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;/path/to/my-image-fast.yaml&quot;</span>
-<a id="__codelineno-36-3" name="__codelineno-36-3" href="#__codelineno-36-3"></a><span class="n">video</span><span class="p">.</span><span class="n">accurate</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;/path/to/my-video-accurate.yaml&quot;</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-40-1" name="__codelineno-40-1" href="#__codelineno-40-1"></a><span class="k">[pipelines]</span>
+<a id="__codelineno-40-2" name="__codelineno-40-2" href="#__codelineno-40-2"></a><span class="n">image</span><span class="p">.</span><span class="n">fast</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;/path/to/my-image-fast.yaml&quot;</span>
+<a id="__codelineno-40-3" name="__codelineno-40-3" href="#__codelineno-40-3"></a><span class="n">video</span><span class="p">.</span><span class="n">accurate</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;/path/to/my-video-accurate.yaml&quot;</span>
 </code></pre></div>
 <h2 id="llm-configuration-using-profiles">LLM Configuration using Profiles<a class="headerlink" href="#llm-configuration-using-profiles" title="Permanent link">&para;</a></h2>
 <p>For accurate mode, <code>mm</code> uses the <code>openai</code> Python SDK to call any OpenAI-compatible API. Provider settings are managed through <strong>profiles</strong> — named configurations stored in <code>~/.config/mm/mm.toml</code>.</p>
 <h3 id="quick-setup">Quick setup<a class="headerlink" href="#quick-setup" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-37-1" name="__codelineno-37-1" href="#__codelineno-37-1"></a>mm<span class="w"> </span>config<span class="w"> </span>init<span class="w">                </span><span class="c1"># create config with default profile (local Ollama)</span>
-<a id="__codelineno-37-2" name="__codelineno-37-2" href="#__codelineno-37-2"></a>mm<span class="w"> </span>config<span class="w"> </span>show<span class="w">                </span><span class="c1"># show resolved config with sources</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-41-1" name="__codelineno-41-1" href="#__codelineno-41-1"></a>mm<span class="w"> </span>config<span class="w"> </span>init<span class="w">                </span><span class="c1"># create config with default profile (local Ollama)</span>
+<a id="__codelineno-41-2" name="__codelineno-41-2" href="#__codelineno-41-2"></a>mm<span class="w"> </span>config<span class="w"> </span>show<span class="w">                </span><span class="c1"># show resolved config with sources</span>
 </code></pre></div>
 <h3 id="managing-profiles">Managing profiles<a class="headerlink" href="#managing-profiles" title="Permanent link">&para;</a></h3>
 <p>Each profile stores <code>base_url</code>, <code>api_key</code>, and <code>model</code>. You can have as many as you need — one per provider, one per use-case, etc.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-38-1" name="__codelineno-38-1" href="#__codelineno-38-1"></a><span class="c1"># Add custom profiles</span>
-<a id="__codelineno-38-2" name="__codelineno-38-2" href="#__codelineno-38-2"></a>mm<span class="w"> </span>profile<span class="w"> </span>add<span class="w"> </span>openai<span class="w"> </span>--base-url<span class="w"> </span>https://api.openai.com/v1<span class="w"> </span>--api-key<span class="w"> </span>sk-...<span class="w"> </span>--model<span class="w"> </span>gpt-4o
-<a id="__codelineno-38-3" name="__codelineno-38-3" href="#__codelineno-38-3"></a>mm<span class="w"> </span>profile<span class="w"> </span>add<span class="w"> </span>openrouter<span class="w"> </span>--base-url<span class="w"> </span>https://openrouter.ai/api/v1<span class="w"> </span>--model<span class="w"> </span>qwen/qwen3.5-27b
-<a id="__codelineno-38-4" name="__codelineno-38-4" href="#__codelineno-38-4"></a>
-<a id="__codelineno-38-5" name="__codelineno-38-5" href="#__codelineno-38-5"></a><span class="c1"># Update reserved profiles (ollama, gemini, vlmrun)</span>
-<a id="__codelineno-38-6" name="__codelineno-38-6" href="#__codelineno-38-6"></a>mm<span class="w"> </span>profile<span class="w"> </span>update<span class="w"> </span>ollama<span class="w"> </span>--base-url<span class="w"> </span>http://localhost:11434<span class="w"> </span>--model<span class="w"> </span>qwen3.5:9B
-<a id="__codelineno-38-7" name="__codelineno-38-7" href="#__codelineno-38-7"></a>
-<a id="__codelineno-38-8" name="__codelineno-38-8" href="#__codelineno-38-8"></a><span class="c1"># List all profiles (● = active)</span>
-<a id="__codelineno-38-9" name="__codelineno-38-9" href="#__codelineno-38-9"></a>mm<span class="w"> </span>profile<span class="w"> </span>list
-<a id="__codelineno-38-10" name="__codelineno-38-10" href="#__codelineno-38-10"></a>
-<a id="__codelineno-38-11" name="__codelineno-38-11" href="#__codelineno-38-11"></a><span class="c1"># Switch the active profile</span>
-<a id="__codelineno-38-12" name="__codelineno-38-12" href="#__codelineno-38-12"></a>mm<span class="w"> </span>profile<span class="w"> </span>use<span class="w"> </span>openai
-<a id="__codelineno-38-13" name="__codelineno-38-13" href="#__codelineno-38-13"></a>
-<a id="__codelineno-38-14" name="__codelineno-38-14" href="#__codelineno-38-14"></a><span class="c1"># Update a field on an existing profile</span>
-<a id="__codelineno-38-15" name="__codelineno-38-15" href="#__codelineno-38-15"></a>mm<span class="w"> </span>profile<span class="w"> </span>update<span class="w"> </span>openai<span class="w"> </span>--model<span class="w"> </span>gpt-4o-mini<span class="w"> </span>--api-key<span class="w"> </span>sk-new-key
-<a id="__codelineno-38-16" name="__codelineno-38-16" href="#__codelineno-38-16"></a>
-<a id="__codelineno-38-17" name="__codelineno-38-17" href="#__codelineno-38-17"></a><span class="c1"># Remove a profile (cannot remove the active one)</span>
-<a id="__codelineno-38-18" name="__codelineno-38-18" href="#__codelineno-38-18"></a>mm<span class="w"> </span>profile<span class="w"> </span>remove<span class="w"> </span>openai
+<div class="highlight"><pre><span></span><code><a id="__codelineno-42-1" name="__codelineno-42-1" href="#__codelineno-42-1"></a><span class="c1"># Add custom profiles</span>
+<a id="__codelineno-42-2" name="__codelineno-42-2" href="#__codelineno-42-2"></a>mm<span class="w"> </span>profile<span class="w"> </span>add<span class="w"> </span>openai<span class="w"> </span>--base-url<span class="w"> </span>https://api.openai.com/v1<span class="w"> </span>--api-key<span class="w"> </span>sk-...<span class="w"> </span>--model<span class="w"> </span>gpt-4o
+<a id="__codelineno-42-3" name="__codelineno-42-3" href="#__codelineno-42-3"></a>mm<span class="w"> </span>profile<span class="w"> </span>add<span class="w"> </span>openrouter<span class="w"> </span>--base-url<span class="w"> </span>https://openrouter.ai/api/v1<span class="w"> </span>--model<span class="w"> </span>qwen/qwen3.5-27b
+<a id="__codelineno-42-4" name="__codelineno-42-4" href="#__codelineno-42-4"></a>
+<a id="__codelineno-42-5" name="__codelineno-42-5" href="#__codelineno-42-5"></a><span class="c1"># Update reserved profiles (ollama, gemini, vlmrun)</span>
+<a id="__codelineno-42-6" name="__codelineno-42-6" href="#__codelineno-42-6"></a>mm<span class="w"> </span>profile<span class="w"> </span>update<span class="w"> </span>ollama<span class="w"> </span>--base-url<span class="w"> </span>http://localhost:11434<span class="w"> </span>--model<span class="w"> </span>qwen3.5:9B
+<a id="__codelineno-42-7" name="__codelineno-42-7" href="#__codelineno-42-7"></a>
+<a id="__codelineno-42-8" name="__codelineno-42-8" href="#__codelineno-42-8"></a><span class="c1"># List all profiles (● = active)</span>
+<a id="__codelineno-42-9" name="__codelineno-42-9" href="#__codelineno-42-9"></a>mm<span class="w"> </span>profile<span class="w"> </span>list
+<a id="__codelineno-42-10" name="__codelineno-42-10" href="#__codelineno-42-10"></a>
+<a id="__codelineno-42-11" name="__codelineno-42-11" href="#__codelineno-42-11"></a><span class="c1"># Switch the active profile</span>
+<a id="__codelineno-42-12" name="__codelineno-42-12" href="#__codelineno-42-12"></a>mm<span class="w"> </span>profile<span class="w"> </span>use<span class="w"> </span>openai
+<a id="__codelineno-42-13" name="__codelineno-42-13" href="#__codelineno-42-13"></a>
+<a id="__codelineno-42-14" name="__codelineno-42-14" href="#__codelineno-42-14"></a><span class="c1"># Update a field on an existing profile</span>
+<a id="__codelineno-42-15" name="__codelineno-42-15" href="#__codelineno-42-15"></a>mm<span class="w"> </span>profile<span class="w"> </span>update<span class="w"> </span>openai<span class="w"> </span>--model<span class="w"> </span>gpt-4o-mini<span class="w"> </span>--api-key<span class="w"> </span>sk-new-key
+<a id="__codelineno-42-16" name="__codelineno-42-16" href="#__codelineno-42-16"></a>
+<a id="__codelineno-42-17" name="__codelineno-42-17" href="#__codelineno-42-17"></a><span class="c1"># Remove a profile (cannot remove the active one)</span>
+<a id="__codelineno-42-18" name="__codelineno-42-18" href="#__codelineno-42-18"></a>mm<span class="w"> </span>profile<span class="w"> </span>remove<span class="w"> </span>openai
 </code></pre></div>
 <h3 id="selecting-a-profile-per-command">Selecting a profile per-command<a class="headerlink" href="#selecting-a-profile-per-command" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-39-1" name="__codelineno-39-1" href="#__codelineno-39-1"></a><span class="c1"># --profile flag (one-off override, does not change active profile)</span>
-<a id="__codelineno-39-2" name="__codelineno-39-2" href="#__codelineno-39-2"></a>mm<span class="w"> </span>--profile<span class="w"> </span>openai<span class="w"> </span>cat<span class="w"> </span>photo.png<span class="w"> </span>-m<span class="w"> </span>accurate
-<a id="__codelineno-39-3" name="__codelineno-39-3" href="#__codelineno-39-3"></a>
-<a id="__codelineno-39-4" name="__codelineno-39-4" href="#__codelineno-39-4"></a><span class="c1"># Environment variable</span>
-<a id="__codelineno-39-5" name="__codelineno-39-5" href="#__codelineno-39-5"></a><span class="nv">MM_PROFILE</span><span class="o">=</span>openai<span class="w"> </span>mm<span class="w"> </span>cat<span class="w"> </span>photo.png<span class="w"> </span>-m<span class="w"> </span>accurate
+<div class="highlight"><pre><span></span><code><a id="__codelineno-43-1" name="__codelineno-43-1" href="#__codelineno-43-1"></a><span class="c1"># --profile flag (one-off override, does not change active profile)</span>
+<a id="__codelineno-43-2" name="__codelineno-43-2" href="#__codelineno-43-2"></a>mm<span class="w"> </span>--profile<span class="w"> </span>openai<span class="w"> </span>cat<span class="w"> </span>photo.png<span class="w"> </span>-m<span class="w"> </span>accurate
+<a id="__codelineno-43-3" name="__codelineno-43-3" href="#__codelineno-43-3"></a>
+<a id="__codelineno-43-4" name="__codelineno-43-4" href="#__codelineno-43-4"></a><span class="c1"># Environment variable</span>
+<a id="__codelineno-43-5" name="__codelineno-43-5" href="#__codelineno-43-5"></a><span class="nv">MM_PROFILE</span><span class="o">=</span>openai<span class="w"> </span>mm<span class="w"> </span>cat<span class="w"> </span>photo.png<span class="w"> </span>-m<span class="w"> </span>accurate
 </code></pre></div>
 <h3 id="resolution-order">Resolution order<a class="headerlink" href="#resolution-order" title="Permanent link">&para;</a></h3>
 <p>Provider settings (base_url, api_key, model) come from the active profile, falling back to built-in defaults.</p>
 <p>The active profile is resolved as:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-40-1" name="__codelineno-40-1" href="#__codelineno-40-1"></a>--profile flag  &gt;  MM_PROFILE env  &gt;  active_profile in config file  &gt;  &quot;ollama&quot;
+<div class="highlight"><pre><span></span><code><a id="__codelineno-44-1" name="__codelineno-44-1" href="#__codelineno-44-1"></a>--profile flag  &gt;  MM_PROFILE env  &gt;  active_profile in config file  &gt;  &quot;ollama&quot;
 </code></pre></div>
 <h3 id="config-file-format">Config file format<a class="headerlink" href="#config-file-format" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-41-1" name="__codelineno-41-1" href="#__codelineno-41-1"></a><span class="c1"># ~/.config/mm/mm.toml</span>
-<a id="__codelineno-41-2" name="__codelineno-41-2" href="#__codelineno-41-2"></a><span class="n">active_profile</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;ollama&quot;</span>
-<a id="__codelineno-41-3" name="__codelineno-41-3" href="#__codelineno-41-3"></a>
-<a id="__codelineno-41-4" name="__codelineno-41-4" href="#__codelineno-41-4"></a><span class="k">[profile.ollama]</span>
-<a id="__codelineno-41-5" name="__codelineno-41-5" href="#__codelineno-41-5"></a><span class="n">base_url</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;http://localhost:11434&quot;</span>
-<a id="__codelineno-41-6" name="__codelineno-41-6" href="#__codelineno-41-6"></a><span class="n">api_key</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;&quot;</span>
-<a id="__codelineno-41-7" name="__codelineno-41-7" href="#__codelineno-41-7"></a><span class="n">model</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;qwen3.5:0.8&quot;</span>
-<a id="__codelineno-41-8" name="__codelineno-41-8" href="#__codelineno-41-8"></a>
-<a id="__codelineno-41-9" name="__codelineno-41-9" href="#__codelineno-41-9"></a><span class="k">[profile.gemini]</span>
-<a id="__codelineno-41-10" name="__codelineno-41-10" href="#__codelineno-41-10"></a><span class="n">base_url</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;https://openrouter.ai/api/v1&quot;</span>
-<a id="__codelineno-41-11" name="__codelineno-41-11" href="#__codelineno-41-11"></a><span class="n">api_key</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;&lt;OPENROUTER_API_KEY&gt;&quot;</span>
-<a id="__codelineno-41-12" name="__codelineno-41-12" href="#__codelineno-41-12"></a><span class="n">model</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;google/gemini-2.5-flash-lite&quot;</span>
-<a id="__codelineno-41-13" name="__codelineno-41-13" href="#__codelineno-41-13"></a>
-<a id="__codelineno-41-14" name="__codelineno-41-14" href="#__codelineno-41-14"></a><span class="k">[profile.vlmrun]</span>
-<a id="__codelineno-41-15" name="__codelineno-41-15" href="#__codelineno-41-15"></a><span class="n">base_url</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;https://api.vlm.run/v1/openai&quot;</span>
-<a id="__codelineno-41-16" name="__codelineno-41-16" href="#__codelineno-41-16"></a><span class="n">api_key</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;&lt;VLMRUN_API_KEY&gt;&quot;</span>
-<a id="__codelineno-41-17" name="__codelineno-41-17" href="#__codelineno-41-17"></a><span class="n">model</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;Qwen/Qwen3.5-0.8B&quot;</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-45-1" name="__codelineno-45-1" href="#__codelineno-45-1"></a><span class="c1"># ~/.config/mm/mm.toml</span>
+<a id="__codelineno-45-2" name="__codelineno-45-2" href="#__codelineno-45-2"></a><span class="n">active_profile</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;ollama&quot;</span>
+<a id="__codelineno-45-3" name="__codelineno-45-3" href="#__codelineno-45-3"></a>
+<a id="__codelineno-45-4" name="__codelineno-45-4" href="#__codelineno-45-4"></a><span class="k">[profile.ollama]</span>
+<a id="__codelineno-45-5" name="__codelineno-45-5" href="#__codelineno-45-5"></a><span class="n">base_url</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;http://localhost:11434&quot;</span>
+<a id="__codelineno-45-6" name="__codelineno-45-6" href="#__codelineno-45-6"></a><span class="n">api_key</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;&quot;</span>
+<a id="__codelineno-45-7" name="__codelineno-45-7" href="#__codelineno-45-7"></a><span class="n">model</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;qwen3.5:0.8&quot;</span>
+<a id="__codelineno-45-8" name="__codelineno-45-8" href="#__codelineno-45-8"></a>
+<a id="__codelineno-45-9" name="__codelineno-45-9" href="#__codelineno-45-9"></a><span class="k">[profile.gemini]</span>
+<a id="__codelineno-45-10" name="__codelineno-45-10" href="#__codelineno-45-10"></a><span class="n">base_url</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;https://openrouter.ai/api/v1&quot;</span>
+<a id="__codelineno-45-11" name="__codelineno-45-11" href="#__codelineno-45-11"></a><span class="n">api_key</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;&lt;OPENROUTER_API_KEY&gt;&quot;</span>
+<a id="__codelineno-45-12" name="__codelineno-45-12" href="#__codelineno-45-12"></a><span class="n">model</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;google/gemini-2.5-flash-lite&quot;</span>
+<a id="__codelineno-45-13" name="__codelineno-45-13" href="#__codelineno-45-13"></a>
+<a id="__codelineno-45-14" name="__codelineno-45-14" href="#__codelineno-45-14"></a><span class="k">[profile.vlmrun]</span>
+<a id="__codelineno-45-15" name="__codelineno-45-15" href="#__codelineno-45-15"></a><span class="n">base_url</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;https://api.vlm.run/v1/openai&quot;</span>
+<a id="__codelineno-45-16" name="__codelineno-45-16" href="#__codelineno-45-16"></a><span class="n">api_key</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;&lt;VLMRUN_API_KEY&gt;&quot;</span>
+<a id="__codelineno-45-17" name="__codelineno-45-17" href="#__codelineno-45-17"></a><span class="n">model</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;Qwen/Qwen3.5-0.8B&quot;</span>
 </code></pre></div>
 <h2 id="license">License<a class="headerlink" href="#license" title="Permanent link">&para;</a></h2>
 <p>MIT</p>
