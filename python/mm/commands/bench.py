@@ -185,10 +185,6 @@ class BenchResult:
                 "skip_reason": self.skip_reason,
             }
             if self.disabled:
-                # Distinct from "no <kind> files" -- disabled rows are
-                # an intentional opt-out (e.g. broken upstream model)
-                # rather than a missing-input skip. External consumers
-                # use this to filter out vs. surface failure paths.
                 payload["disabled"] = True
             return self._annotate(payload)
         if self.is_dry_run:
@@ -251,6 +247,12 @@ def _time_cmd(
     in the per-row snapshot. Warmup runs continue to discard their
     output; only the last timed round's stdout/stderr are kept.
     """
+
+    def _inject_no_cache():
+        return "cat" in argv and "--no-cache" not in argv
+
+    argv = [*argv, "--no-cache"] if _inject_no_cache() else argv
+
     for _ in range(warmup):
         subprocess.run(argv, capture_output=True, stdin=subprocess.DEVNULL)
 
@@ -319,9 +321,7 @@ def _run_benchmarks(
         if cmd.disabled:
             # Render-only row: keep the matrix coverage visible (with
             # ``skipped: disabled`` in the metrics column and full-row
-            # dim styling) but never invoke the argv. Short-circuits
-            # before ``resolve_command`` so missing-input errors on
-            # disabled rows can't accidentally mask the disable intent.
+            # dim styling) but never invoke the argv.
             return BenchResult(
                 cmd.name,
                 cmd.group,
@@ -624,13 +624,22 @@ def _shell_join(argv: list[str]) -> str:
     return _PLACEHOLDER_QUOTE_RE.sub(r"\1", shlex.join(argv))
 
 
+def _compact_placeholders(s: str) -> str:
+    def _repl(m: re.Match) -> str:
+        placeholder = m.group(1)
+        count = m.group(0).count(placeholder)
+        return f"{placeholder} x{count}"
+
+    return re.compile(r"(<[^>]+>)(?: \1)+").sub(_repl, s)
+
+
 def _build_command_cells(r: BenchResult) -> tuple[str, str]:
     """Render the ``(Base Command, Extra Args)`` cell pair for a row.
 
     Drops ``--profile`` and ``--model`` (constant-per-benchfile or
     surfaced in the ``Model`` column respectively), then partitions
     the remaining argv into *base* (the stable shell skeleton:
-    ``mm cat <img> --mode accurate --no-cache --format json``) and
+    ``mm cat <img> --mode accurate --format json``) and
     *extra* (variant-specific knobs: ``--prompt``, ``--generate.*``,
     ``--encode.*``). File paths in *base* are substituted with
     kind-based placeholders (``<img>`` / ``<vid>`` / ``<doc>`` /
@@ -655,7 +664,7 @@ def _build_command_cells(r: BenchResult) -> tuple[str, str]:
     # the row's media kind.
     data_paths: set[str] | None = set(r.data_file_paths) if r.data_file_paths else None
     base_argv = _replace_paths(base_argv, _kind_placeholder(r.requires_kind), data_paths=data_paths)
-    base_str = _shell_join(base_argv)
+    base_str = _compact_placeholders(_shell_join(base_argv))
     extra_str = _shell_join(extra_argv) if extra_argv else ""
     return base_str, extra_str
 
@@ -682,7 +691,7 @@ def _build_table(
     get the fully split layout.
 
     The ``Base Command`` cell holds the stable shell skeleton
-    (``mm cat <img> --mode fast --no-cache --format json``) with
+    (``mm cat <img> --mode fast``) with
     ``--profile`` / ``--model`` stripped (the profile is constant per
     benchfile run; the model lives in its own column) and file paths
     substituted with kind-based placeholders (``<img>`` / ``<vid>`` /
@@ -768,23 +777,6 @@ def _build_table(
             prefix.append(r.tags.get("task", ""))
 
         if r.skipped:
-            # Show the (possibly empty) base + extra cells, then a dim
-            # ``[skipped: <reason>]`` trailer in the metrics column;
-            # remaining metric cells stay blank. Disabled rows ride
-            # the same skipped path but get full-row dim styling so
-            # the eye can quickly distinguish "intentionally muted"
-            # from "no files of this kind in the bench dir".
-            command_cells: list[Any] = [base_str or r.name]
-            if has_extra:
-                command_cells.append(extra_str)
-            row_style = "dim" if r.disabled else None
-            table.add_row(
-                *prefix,
-                *command_cells,
-                Text(f"skipped: {r.skip_reason}", style="dim italic"),
-                *([""] * 6),
-                style=row_style,
-            )
             continue
 
         if r.is_dry_run:
