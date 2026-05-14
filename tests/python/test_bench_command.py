@@ -121,7 +121,7 @@ class TestBenchCommand:
         assert not any(res["group"] == "accurate" for res in data["results"])
 
     def test_skips_missing_file_types(self, tmp_path: Path):
-        """Fast-group benchmarks for missing types are skipped gracefully."""
+        """Fast-group benchmarks for missing types are skipped (and omitted) gracefully."""
         # Directory with only code files — no images, videos, or PDFs
         (tmp_path / "main.py").write_text("print('hello')\n")
         (tmp_path / "lib.py").write_text("def add(a, b): return a + b\n")
@@ -144,12 +144,16 @@ class TestBenchCommand:
         assert r.exit_code == 0
         data = json.loads(r.stdout)
 
+        runs = {
+            (result["name"], result["group"])
+            for result in data["results"]
+            if not result.get("skipped")
+        }
         skipped = {
             (result["name"], result["group"]) for result in data["results"] if result.get("skipped")
         }
-        assert ("mm cat <image>", "fast") in skipped
-        assert ("mm cat <video>", "fast") in skipped
-        assert ("mm cat <pdf>", "fast") in skipped
+        assert ("mm cat <code> (x20)", "fast") in runs
+        assert len(skipped) == 0
 
     def test_empty_directory(self, tmp_path: Path):
         """Bench handles empty directory gracefully."""
