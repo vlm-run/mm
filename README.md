@@ -491,6 +491,56 @@ mm sql "SELECT * FROM files WHERE kind='image'" --dir ~/data --pre-index  # inde
 mm sql --list-tables                              # show available tables
 ```
 
+### bench — benchmarks with statistical analysis
+
+`overhead + metadata` always run; `--mode` adds an extraction tier on top.
+
+```bash
+mm bench mm-samples/                                  # overhead + metadata (default)
+mm bench mm-samples/ --mode fast                      # + fast-mode extractions
+mm bench mm-samples/ --mode accurate                  # + accurate-mode extractions
+mm bench mm-samples/ --mode all                       # full suite (fast + accurate)
+mm bench mm-samples/ --rounds 5                       # more rounds for stability
+mm bench mm-samples/ --warmup 2                       # extra warmup rounds
+mm bench mm-samples/ --format json                    # JSON output for archival
+mm bench mm-samples/ --dry-run                        # resolve plan, no execution
+mm bench --host-info                                  # print host spec and exit
+mm bench --host-info --format json                    # host spec as JSON
+```
+
+#### Filters (combined via AND)
+
+```bash
+mm bench ~/data --command cat                         # only rows whose name contains "cat"
+mm bench ~/data --group fast                          # only the fast group
+mm bench ~/data --mode all --command cat --format stdout > tests/stdout/cat.md
+```
+
+#### Custom benchfiles (`--bench-file`)
+
+Point `mm bench` at a `.py` file that exposes `COMMANDS: list[BenchCommand]` or `def commands(files) -> list[BenchCommand]`. The built-in matrix is fully replaced; `--mode` is ignored; `--group` / `--model` / `--task` / `--command` filters still apply on top.
+
+```bash
+mm bench ~/data -b benchmarks/vlmgw_bench_commands.py            # run custom suite
+mm bench ~/data -b benchmarks/vlmgw_bench_commands.py -r 1 -w 0 # 1 round, no warmup
+mm bench ~/data -b benchmarks/vlmgw_bench_commands.py --dry-run  # preview without running
+mm bench ~/data -b benchmarks/vlmgw_bench_commands.py --group cache
+mm bench ~/data -b benchmarks/vlmgw_bench_commands.py --model qwen/qwen3.5-0.8b
+mm bench ~/data -b benchmarks/vlmgw_bench_commands.py --task ocr
+mm bench ~/data -b benchmarks/vlmgw_bench_commands.py --task cap --model qwen/qwen3.5-0.8b
+```
+
+#### Stdout snapshot mode (`--format stdout`)
+
+Runs each `mm cat` encoder variant once and emits raw stdout between `---` separators — useful for refreshing golden-file snapshots.
+
+```bash
+mm bench mm-samples/ --command cat --format stdout > tests/stdout/cat.md
+mm bench mm-samples/ --command cat --format stdout --mode accurate --with-generate
+```
+
+Every non-dry-run `mm bench` run auto-writes a per-row markdown recording to `benchmarks/results/<YYMMDD>-mm-bench-<profile>-<HHMM>.md`.
+
 ### Output modes
 
 - **TTY**: Rich-formatted tables/panels.

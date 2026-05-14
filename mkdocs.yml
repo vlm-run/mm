@@ -60,6 +60,7 @@ hooks:
 
 plugins:
   - search
+  - mkdocstrings
   - mkdocs-jupyter:
       execute: false
       allow_errors: false
@@ -69,7 +70,9 @@ plugins:
 nav:
   - Home: index.md
   - User guide: USER_GUIDE.md
-  - Python API: api.md
+  - Python API:
+      - Index: api.md
+      - mm.Context: mm_context.md
   - Use cases: USE_CASES.md
   - Encoders: ENCODERS.md
   - Pipelines: PIPELINES.md

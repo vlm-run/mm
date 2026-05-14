@@ -4,7 +4,7 @@ build-backend = "maturin"
 
 [project]
 name = "mm-ctx"
-version = "0.12.5"
+version = "0.12.6"
 description = "Fast, multimodal context for agents."
 readme = "README.md"
 requires-python = ">=3.11,<3.14"
@@ -107,6 +107,7 @@ docs = [
     "mkdocs>=1.6",
     "mkdocs-material>=9.5",
     "mkdocs-jupyter>=0.25",
+    "mkdocstrings-python"
 ]
 all = [
     "mm-ctx[experimental]",
