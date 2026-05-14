@@ -183,7 +183,7 @@ Use this when you have a ref from a persisted context and no live
 `Context` instance. Replaces the (still-supported) legacy
 `Context.resolve()`.
 
-### `ctx.to_messages(format="openai", *, encoders=None) -> list[dict]`
+### `ctx.to_messages(format="openai", *, encoders=None, encoder_kwargs=None) -> list[dict]`
 
 Encode every item into a role-aware message list, ready to drop
 into the respective SDK call. The returned shape is a plain Python
@@ -202,17 +202,18 @@ messages_gemini: list[genai_types.ContentDict]    = ctx.to_messages(format="gemi
 - `format="gemini"` → `[{"role": "user", "parts": [{"inline_data": …}, {"text": …}]}]`
   — non-user roles are folded into labelled text parts because Gemini role semantics differ.
 
-Per-kind encoder overrides:
+Per-kind encoder overrides and per-kind encoder kwargs:
 
 ```python
 messages: list[ChatCompletionMessageParam] = ctx.to_messages(
     format="openai",
     encoders={"image": "tile", "video": "mosaic"},
+    encoder_kwargs={"document": {"pages_per_message": 8}},
 )
 ```
 
 Unspecified kinds use sensible defaults (`image-resize`,
-`video-frames`, `document-rasterize`). Encoder names come from
+`video-mosaic`, `document-rasterize`, `audio-base64`). Encoder names come from
 the `mm.encoders` registry — see `--list-encoders`.
 
 User metadata is emitted as a leading text part per item
@@ -287,6 +288,34 @@ Not implemented for role-aware contexts. Planned behaviour:
 
 Directory-scan `Context(root)` retains its existing `save()` (writes
 the Arrow table to the global DB).
+
+### `ctx.render_html(...) -> str`
+
+Render the context as self-contained HTML — suitable for `IPython.display.HTML()` or direct embedding. Each item is rendered with its native media view (image, video player, audio player, document pages), metadata dict, and a collapsible section showing the encoded VLM representation.
+
+```python
+from IPython.display import HTML
+HTML(ctx.render_html())
+
+# With overrides
+html = ctx.render_html(
+    max_image_width=480,
+    title="My prompt",
+    encoders={"image": "tile"},
+    encoder_kwargs={"document": {"pages_per_message": 4}},
+)
+```
+
+Raises `RuntimeError` if called on a directory-scan Context.
+
+### `mm.render_context` / `mm.render_messages` (notebook helpers)
+
+Two lazy exports from `mm.notebook`:
+
+- `mm.render_context(ctx, ...)` — same as `ctx.render_html(...)`, callable without a live instance.
+- `mm.render_messages(messages, ...)` — renders a pre-built message list as HTML.
+
+Both are thin wrappers around the same Jinja template; prefer `ctx.render_html()` when you have a Context.
 
 ## Performance architecture
 

@@ -257,12 +257,12 @@ messages: list[ChatCompletionMessageParam] = ctx.to_messages(
 )
 ```
 
-Unspecified kinds fall back to sensible defaults (`image-resize`, `video-frames`, `document-rasterize`).
+Unspecified kinds fall back to sensible defaults (`image-resize`, `video-mosaic`, `document-rasterize`, `audio-base64`).
 
 ### Round-trip and resolve
 
 ```python
-obj: Path | Image.Image | bytes | str = ctx.get(img)   # instance: returns the stored object
+obj: str | Path | Image.Image = ctx.get(img)            # instance: returns the stored object
 row: dict | None = mm.Context.get(f"{ctx.session_id}/{img}")  # classmethod: cross-session DB lookup
 ```
 
