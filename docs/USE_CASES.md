@@ -12,17 +12,17 @@
 
 <details><summary>1. Inventory NVR exports by camera and timestamp</summary>
 
-`mm find ~/nvr-export --kind video --sort modified` lists recordings chronologically. `mm cat` on each extracts resolution, duration, codec, and frame rate — all from native MP4/MKV parsing in Rust, no ffmpeg, <100ms per file.
+`mm find ~/nvr-export --kind video --sort modified` lists recordings chronologically. `mm peek` on each extracts resolution, duration, codec, and frame rate — all from native MP4/MKV parsing in Rust, no ffmpeg, <100ms per file.
 </details>
 
 <details><summary>2. Verify footage integrity after evidence transfer</summary>
 
-`mm cat evidence.mp4` returns the xxh3 content hash. Hash both sides of a transfer to confirm bit-for-bit integrity without re-watching hours of footage.
+`mm peek evidence.mp4` returns the xxh3 content hash. Hash both sides of a transfer to confirm bit-for-bit integrity without re-watching hours of footage.
 </details>
 
 <details><summary>3. Identify which recordings are HD vs SD</summary>
 
-`mm find ~/footage --kind video | mm cat --format json` extracts resolution per file. Filter in jq or SQL: `mm sql "SELECT name, width, height FROM files WHERE kind='video'" --dir ~/footage`.
+`mm find ~/footage --kind video | mm peek --format json` extracts dimensions per file. Filter with jq or use SQL: `mm sql "SELECT name, dimensions FROM files WHERE kind='video'" --dir ~/footage`.
 </details>
 
 <details><summary>4. Estimate storage cost before archiving to S3</summary>
@@ -34,7 +34,7 @@
 
 <details><summary>5. Catalog a YouTube download folder without playback</summary>
 
-`mm find ~/youtube --kind video | mm cat` extracts resolution, duration, codec, and audio track info for every file. No ffprobe installation needed — mm's Rust core parses MP4 and MKV natively.
+`mm find ~/youtube --kind video | mm peek --format json` extracts dimensions, duration_s, video_codec, and audio_codec info for every file. No ffprobe installation needed — mm's Rust core parses MP4 and MKV natively.
 </details>
 
 <details><summary>6. Generate keyframe mosaic thumbnails</summary>
@@ -49,19 +49,19 @@
 
 <details><summary>8. Compare codec and container usage across a library</summary>
 
-`mm find ~/videos --kind video | mm cat --format json` gives per-file codec info. Aggregate to see h264 vs h265 vs av1 distribution — useful before batch analysis and transcoding decisions, i.e., Iterate: `for f in ~/videos/*.mp4; do mm cat "$f"; done`.
+`mm find ~/videos --kind video | mm peek --format json` gives per-file codec info. Aggregate to see h264 vs h265 vs av1 distribution — useful before batch transcoding decisions.
 </details>
 
 ### Education
 
 <details><summary>9. Build a lecture schedule from recording durations</summary>
 
-`mm find ~/lectures --kind video | mm cat --format json` returns duration in seconds per file. Sum by folder to estimate total course hours, plan viewing schedules, or allocate transcription budgets.
+`mm sql "SELECT name, duration_s FROM files WHERE kind='video' ORDER BY name" --dir ~/lectures` returns duration per file from the local metadata index. Sum by folder to estimate total course hours or plan viewing schedules.
 </details>
 
 <details><summary>10. Estimate transcription cost for a video library</summary>
 
-`mm find ~/training --kind video | mm cat --format json` gives total duration. At known $/minute rates (Whisper, Rev, etc.), calculate the total transcription budget in one pipeline.
+`mm sql "SELECT ROUND(SUM(duration_s)/3600.0, 1) as total_hours FROM files WHERE kind='video'" --dir ~/training` gives total duration in one query. At known $/minute rates (Whisper, Rev, etc.), calculate the total transcription budget instantly.
 </details>
 
 <details><summary>11. Generate accessibility descriptions for course videos</summary>
@@ -73,7 +73,7 @@
 
 <details><summary>12. Detect duplicate videos across volumes</summary>
 
-Run `mm find /Volumes/Drive1 --kind video | mm cat --format json` on each volume. Compare xxh3 hashes to find exact duplicates without byte-by-byte comparison. Hash computation uses mmap — fast even on large files.
+Run `mm find /Volumes/Drive1 --kind video | mm peek --format json` on each volume. Compare xxh3 hashes to find exact duplicates without byte-by-byte comparison. Hash computation uses mmap — fast even on large files.
 </details>
 
 <details><summary>13. Assess a GoPro/drone SD card before import</summary>
@@ -83,7 +83,7 @@ Run `mm find /Volumes/Drive1 --kind video | mm cat --format json` on each volume
 
 <details><summary>14. Find the longest and shortest recordings</summary>
 
-`mm find ~/recordings --kind video | mm cat --format json` gives actual duration per file. Sort client-side or via SQL.
+`mm sql "SELECT name, duration_s FROM files WHERE kind='video' ORDER BY duration_s DESC" --dir ~/recordings` — sort by duration directly from the metadata index.
 </details>
 
 ### Compliance
@@ -95,14 +95,14 @@ Run `mm find /Volumes/Drive1 --kind video | mm cat --format json` on each volume
 
 <details><summary>16. Estimate LLM token cost before processing video evidence</summary>
 
-`mm cat bodycam.mp4 --format json` gives duration and resolution.
+`mm peek bodycam.mp4` gives duration and resolution. Use duration to estimate transcription tokens and resolution to estimate per-frame vision tokens.
 </details>
 
 ### Pipelines
 
 <details><summary>17. Build a video metadata table for a media asset manager</summary>
 
-`mm find ~/dam --kind video | mm cat --format json > video_metadata.json` — structured metadata (resolution, duration, codec, fps, hash) for every video, ready for database import.
+`mm find ~/dam --kind video | mm peek --format json > video_metadata.json` — structured metadata (resolution, duration, codec, fps, hash) for every video, ready for database import.
 </details>
 
 <details><summary>18. Pre-screen videos by size before expensive accurate-mode processing</summary>
@@ -117,7 +117,7 @@ Run `mm find /Volumes/Drive1 --kind video | mm cat --format json` on each volume
 
 <details><summary>20. Audit a video archive for codec migration planning</summary>
 
-`mm find ~/archive --kind video | mm cat --format json` reveals which files use legacy codecs (h264 baseline) vs modern (h265, av1). Prioritize transcoding by file size × codec age.
+`mm sql "SELECT name,video_codec from files where kind='video' ORDER BY video_codec" --dir ~archive --pre-index` reveals which files use legacy codecs (h264 baseline) vs modern (h265, av1). Prioritize transcoding by file size × codec age.
 </details>
 
 ---
@@ -170,7 +170,7 @@ Run `mm find /Volumes/Drive1 --kind video | mm cat --format json` on each volume
 
 <details><summary>29. Extract EXIF metadata for photo organization</summary>
 
-`mm find ~/photos --kind image | mm cat --format json` returns dimensions, MIME, hash, and EXIF fields (camera, date, GPS) per file. Use for sorting into date/location folders.
+`mm find ~/photos --kind image | mm peek --format json` returns dimensions, MIME, hash, phash (perceptual hash), and EXIF fields (camera, date, GPS) per file. Use for sorting into date/location folders.
 </details>
 
 <details><summary>30. Find print-quality images by resolution</summary>
@@ -195,12 +195,12 @@ mm computes perceptual hashes (pHash) via DCT in Rust. Two images with hamming d
 
 <details><summary>34. Estimate token cost for batch image processing</summary>
 
-Image token cost depends on resolution (tile-based). `mm find ~/products --kind image | mm cat --format json` gives per-image dimensions.
+Image token cost depends on resolution (tile-based). `mm find ~/products --kind image | mm peek --format json` gives per-image dimensions (width, height) directly from the metadata scan.
 </details>
 
 <details><summary>35. Separate photos from screenshots and synthetic images</summary>
 
-`mm find ~/photos --kind image | mm cat --format json` — images without camera/date/GPS EXIF fields are likely screenshots, downloads, or synthetic. Useful for separating real photos from non-photo images.
+`mm find ~/photos --kind image | mm peek --format json` — images without camera/date/GPS EXIF fields are likely screenshots, downloads, or synthetic. Useful for separating real photos from non-photo images.
 </details>
 
 <details><summary>36. Semantic search across images</summary>
@@ -214,17 +214,17 @@ Image token cost depends on resolution (tile-based). `mm find ~/products --kind 
 
 <details><summary>37. Catalog a podcast archive by duration</summary>
 
-`mm find ~/podcasts --kind audio | mm cat --format json` extracts duration, codec, and sample rate per file. Sort by duration to find the longest episodes or estimate total listening time.
+`mm sql "SELECT name,duration_s,audio_codec FROM files WHERE kind='audio' ORDER BY duration_s DESC" --dir ~/podcasts` extracts duration, codec, and sample rate per file. Sort by duration to find the longest episodes or estimate total listening time.
 </details>
 
 <details><summary>38. Estimate transcription cost</summary>
 
-`mm find ~/audio --kind audio | mm cat --format json` gives per-file duration. Sum durations and multiply by $/minute for Whisper, Rev, or Deepgram pricing.
+`mm sql "SELECT name, ROUND(duration_s/60.0, 1) as minutes FROM files WHERE kind='audio' ORDER BY duration_s DESC" --dir ~/audio` gives per-file duration. Sum durations and multiply by $/minute for Whisper, Rev, or Deepgram pricing.
 </details>
 
 <details><summary>39. Find long recordings that need chunking</summary>
 
-Audio files over 80 seconds exceed Gemini's single-part embedding limit. `mm find ~/recordings --kind audio | mm cat --format json` identifies files that need `audio_parts()` chunking before embedding.
+Audio files over 80 seconds exceed Gemini's single-part embedding limit. `mm sql "SELECT name, duration_s FROM files WHERE kind='audio' AND duration_s > 80 ORDER BY duration_s DESC" --dir ~/recordings` identifies files that need `audio_parts()` chunking before embedding.
 </details>
 
 <details><summary>40. Summarize a meeting recording</summary>
@@ -234,7 +234,7 @@ Audio files over 80 seconds exceed Gemini's single-part embedding limit. `mm fin
 
 <details><summary>41. Assess a field recording SD card</summary>
 
-`mm find /Volumes/RECORDER --tree --depth 1` shows the directory structure. `mm wc /Volumes/RECORDER --kind audio` gives total duration and storage. Decide what to import before copying gigabytes.
+`mm find /Volumes/RECORDER --tree --depth 1` shows the directory structure. `mm wc /Volumes/RECORDER --kind audio` gives file count and total storage. For total recorded time: `mm sql "SELECT ROUND(SUM(duration_s)/3600.0, 1) as hours FROM files WHERE kind='audio'" --dir /Volumes/RECORDER`.
 </details>
 
 ---
@@ -282,7 +282,7 @@ Audio files over 80 seconds exceed Gemini's single-part embedding limit. `mm fin
 
 <details><summary>49. Build a multimodal evidence package</summary>
 
-For a construction project with permits (PDF), site photos (JPEG), and walkthrough video (MP4): `mm find ~/project --tree` shows everything, `mm wc --by-kind` quantifies it, and `mm cat` on each file gives structured metadata. One directory becomes a queryable index across all media types.
+For a construction project with permits (PDF), site photos (JPEG), and walkthrough video (MP4): `mm find ~/project --tree` shows everything, `mm wc --by-kind` quantifies it, and `mm peek` on each file gives structured metadata. One directory becomes a queryable index across all media types.
 </details>
 
 <details><summary>50. Create an invoice summary from mixed document formats</summary>
