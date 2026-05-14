@@ -107,6 +107,7 @@ docs = [
     "mkdocs>=1.6",
     "mkdocs-material>=9.5",
     "mkdocs-jupyter>=0.25",
+    "mkdocstrings-python"
 ]
 all = [
     "mm-ctx[experimental]",
