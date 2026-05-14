@@ -416,13 +416,36 @@ mm bench [DIR] [-r N] [-w N] [-m MODE] [-c TERM] [-g GROUP] [--model M] [--task 
 `--format stdout` snapshots each variant's stdout between `---` separators (handy for `tests/stdout/cat.md`).
 
 ```bash
-mm bench ~/data                                          # default suite
-mm bench ~/data --mode all --rounds 5
-mm bench ~/data --command cat --format stdout > tests/stdout/cat.md
+mm bench ~/data                                                   # overhead + metadata (default)
+mm bench ~/data --mode fast                                       # + fast-mode extractions
+mm bench ~/data --mode accurate                                   # + accurate-mode extractions
+mm bench ~/data --mode all                                        # full suite (fast + accurate)
+mm bench ~/data --mode all --rounds 5                             # more rounds for stability
+mm bench ~/data --format json                                     # JSON output for archival
+mm bench ~/data --dry-run                                         # resolve plan, no execution
+mm bench --host-info                                              # print host spec and exit
+mm bench --host-info --format json                                # host spec as JSON
+
+# Filters (combine via AND)
+mm bench ~/data --command cat                                     # rows whose name contains "cat"
+mm bench ~/data --group fast                                      # only the fast group
+mm bench ~/data --mode all --command cat --format stdout > tests/stdout/cat.md
+
+# Custom benchfiles
+mm bench ~/data -b benchmarks/vlmgw_bench_commands.py            # run custom suite
+mm bench ~/data -b benchmarks/vlmgw_bench_commands.py -r 1 -w 0 # 1 round, no warmup
+mm bench ~/data -b benchmarks/vlmgw_bench_commands.py --dry-run  # preview without running
+mm bench ~/data -b benchmarks/vlmgw_bench_commands.py --group cache
+mm bench ~/data -b benchmarks/vlmgw_bench_commands.py --model qwen/qwen3.5-0.8b
 mm bench ~/data -b benchmarks/vlmgw_bench_commands.py --task ocr
-mm bench ~/data -b ... --dry-run                         # inspect plan
-mm bench --host-info                                     # host spec
+mm bench ~/data -b benchmarks/vlmgw_bench_commands.py --task cap --model qwen/qwen3.5-0.8b
+
+# Stdout snapshot mode
+mm bench ~/data --command cat --format stdout > tests/stdout/cat.md
+mm bench ~/data --command cat --format stdout --mode accurate --with-generate
 ```
+
+Every non-dry-run run auto-writes a per-row markdown recording to `benchmarks/results/<YYMMDD>-mm-bench-<profile>-<HHMM>.md`.
 
 ## config — extraction settings & DB reset
 

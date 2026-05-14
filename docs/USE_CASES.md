@@ -22,7 +22,7 @@
 
 <details><summary>3. Identify which recordings are HD vs SD</summary>
 
-`mm find ~/footage --kind video | mm peek --format json` extracts dimensions per file. Filter with jq or use SQL: `mm sql "SELECT name, dimensions FROM files WHERE kind='video'" --dir ~/footage`.
+`mm find ~/footage --kind video | mm peek --format json` extracts dimensions per file. Filter with jq or use SQL: `mm sql "SELECT name, dimensions FROM files WHERE kind='video'" --dir ~/footage --pre-index`.
 </details>
 
 <details><summary>4. Estimate storage cost before archiving to S3</summary>
@@ -56,12 +56,12 @@
 
 <details><summary>9. Build a lecture schedule from recording durations</summary>
 
-`mm sql "SELECT name, duration_s FROM files WHERE kind='video' ORDER BY name" --dir ~/lectures` returns duration per file from the local metadata index. Sum by folder to estimate total course hours or plan viewing schedules.
+`mm sql "SELECT name, duration_s FROM files WHERE kind='video' ORDER BY name" --dir ~/lectures --pre-index` returns duration per file from the local metadata index. Sum by folder to estimate total course hours or plan viewing schedules.
 </details>
 
 <details><summary>10. Estimate transcription cost for a video library</summary>
 
-`mm sql "SELECT ROUND(SUM(duration_s)/3600.0, 1) as total_hours FROM files WHERE kind='video'" --dir ~/training` gives total duration in one query. At known $/minute rates (Whisper, Rev, etc.), calculate the total transcription budget instantly.
+`mm sql "SELECT ROUND(SUM(duration_s)/3600.0, 1) as total_hours FROM files WHERE kind='video'" --dir ~/training --pre-index` gives total duration in one query. At known $/minute rates (Whisper, Rev, etc.), calculate the total transcription budget instantly.
 </details>
 
 <details><summary>11. Generate accessibility descriptions for course videos</summary>
@@ -83,7 +83,7 @@ Run `mm find /Volumes/Drive1 --kind video | mm peek --format json` on each volum
 
 <details><summary>14. Find the longest and shortest recordings</summary>
 
-`mm sql "SELECT name, duration_s FROM files WHERE kind='video' ORDER BY duration_s DESC" --dir ~/recordings` — sort by duration directly from the metadata index.
+`mm sql "SELECT name, duration_s FROM files WHERE kind='video' ORDER BY duration_s DESC" --dir ~/recordings --pre-index` — sort by duration directly from the metadata index.
 </details>
 
 ### Compliance
@@ -117,7 +117,7 @@ Run `mm find /Volumes/Drive1 --kind video | mm peek --format json` on each volum
 
 <details><summary>20. Audit a video archive for codec migration planning</summary>
 
-`mm sql "SELECT name,video_codec from files where kind='video' ORDER BY video_codec" --dir ~archive --pre-index` reveals which files use legacy codecs (h264 baseline) vs modern (h265, av1). Prioritize transcoding by file size × codec age.
+`mm sql "SELECT name,video_codec from files where kind='video' ORDER BY video_codec" --dir ~/archive --pre-index` reveals which files use legacy codecs (h264 baseline) vs modern (h265, av1). Prioritize transcoding by file size × codec age.
 </details>
 
 ---
@@ -146,7 +146,7 @@ Run `mm find /Volumes/Drive1 --kind video | mm peek --format json` on each volum
 
 <details><summary>25. Compare document volume across directory groups</summary>
 
-`mm sql "SELECT parent, COUNT(*) as docs, ROUND(SUM(size)/1e6,1) as mb FROM files WHERE kind='document' GROUP BY parent ORDER BY mb DESC" --dir ~/shared` — shows which teams or projects have the most document mass.
+`mm sql "SELECT parent, COUNT(*) as docs, ROUND(SUM(size)/1e6,1) as mb FROM files WHERE kind='document' GROUP BY parent ORDER BY mb DESC" --dir ~/shared --pre-index` — shows which teams or projects have the most document mass.
 </details>
 
 <details><summary>26. Search for specific clauses across contract PDFs</summary>
@@ -156,12 +156,12 @@ Run `mm find /Volumes/Drive1 --kind video | mm peek --format json` on each volum
 
 <details><summary>27. Semantic search across documents</summary>
 
-`mm grep "revenue forecast" ~/reports -s --kind document` — vector similarity search across embedded document chunks. Finds conceptually related content, not just keyword matches.
+`mm grep "revenue forecast" ~/reports -s --kind document --pre-index` — vector similarity search across embedded document chunks. Finds conceptually related content, not just keyword matches.
 </details>
 
 <details><summary>28. Audit file formats in a document archive</summary>
 
-`mm sql "SELECT ext, COUNT(*) as n, ROUND(SUM(size)/1e6,1) as mb FROM files WHERE kind='document' GROUP BY ext ORDER BY n DESC" --dir ~/archive` — see PDF vs DOCX vs PPTX distribution.
+`mm sql "SELECT ext, COUNT(*) as n, ROUND(SUM(size)/1e6,1) as mb FROM files WHERE kind='document' GROUP BY ext ORDER BY n DESC" --dir ~/archive --pre-index` — see PDF vs DOCX vs PPTX distribution.
 </details>
 
 ---
@@ -175,7 +175,7 @@ Run `mm find /Volumes/Drive1 --kind video | mm peek --format json` on each volum
 
 <details><summary>30. Find print-quality images by resolution</summary>
 
-`mm sql "SELECT name, width, height FROM files WHERE kind='image' AND width >= 3000 ORDER BY width DESC" --dir ~/assets` — filter for images that meet minimum print DPI requirements.
+`mm sql "SELECT name, width, height FROM files WHERE kind='image' AND width >= 3000 ORDER BY width DESC" --dir ~/assets --pre-index` — filter for images that meet minimum print DPI requirements.
 </details>
 
 <details><summary>31. Caption images for fine-tuning datasets</summary>
@@ -190,7 +190,7 @@ mm computes perceptual hashes (pHash) via DCT in Rust. Two images with hamming d
 
 <details><summary>33. Audit image format adoption in a web project</summary>
 
-`mm sql "SELECT ext, COUNT(*) as n, ROUND(SUM(size)/1e6,1) as mb FROM files WHERE kind='image' GROUP BY ext ORDER BY mb DESC" --dir ~/site/public` — see how much bandwidth is wasted on PNG vs WebP vs AVIF.
+`mm sql "SELECT ext, COUNT(*) as n, ROUND(SUM(size)/1e6,1) as mb FROM files WHERE kind='image' GROUP BY ext ORDER BY mb DESC" --dir ~/site/public --pre-index` — see how much bandwidth is wasted on PNG vs WebP vs AVIF.
 </details>
 
 <details><summary>34. Estimate token cost for batch image processing</summary>
@@ -205,7 +205,7 @@ Image token cost depends on resolution (tile-based). `mm find ~/products --kind 
 
 <details><summary>36. Semantic search across images</summary>
 
-`mm grep "sunset over ocean" ~/photos -s` — vector similarity search over image embeddings. Returns images whose LLM-generated captions are semantically close to the query.
+`mm grep "sunset over ocean" ~/photos -s --pre-index` — vector similarity search over image embeddings. Returns images whose LLM-generated captions are semantically close to the query.
 </details>
 
 ---
@@ -214,17 +214,17 @@ Image token cost depends on resolution (tile-based). `mm find ~/products --kind 
 
 <details><summary>37. Catalog a podcast archive by duration</summary>
 
-`mm sql "SELECT name,duration_s,audio_codec FROM files WHERE kind='audio' ORDER BY duration_s DESC" --dir ~/podcasts` extracts duration, codec, and sample rate per file. Sort by duration to find the longest episodes or estimate total listening time.
+`mm sql "SELECT name,duration_s,audio_codec FROM files WHERE kind='audio' ORDER BY duration_s DESC" --dir ~/podcasts --pre-index` extracts duration and codec per file. Sort by duration to find the longest episodes or estimate total listening time.
 </details>
 
 <details><summary>38. Estimate transcription cost</summary>
 
-`mm sql "SELECT name, ROUND(duration_s/60.0, 1) as minutes FROM files WHERE kind='audio' ORDER BY duration_s DESC" --dir ~/audio` gives per-file duration. Sum durations and multiply by $/minute for Whisper, Rev, or Deepgram pricing.
+`mm sql "SELECT name, ROUND(duration_s/60.0, 1) as minutes FROM files WHERE kind='audio' ORDER BY duration_s DESC" --dir ~/audio --pre-index` gives per-file duration. Sum durations and multiply by $/minute for Whisper, Rev, or Deepgram pricing.
 </details>
 
 <details><summary>39. Find long recordings that need chunking</summary>
 
-Audio files over 80 seconds exceed Gemini's single-part embedding limit. `mm sql "SELECT name, duration_s FROM files WHERE kind='audio' AND duration_s > 80 ORDER BY duration_s DESC" --dir ~/recordings` identifies files that need `audio_parts()` chunking before embedding.
+Audio files over 80 seconds exceed Gemini's single-part embedding limit. `mm sql "SELECT name, duration_s FROM files WHERE kind='audio' AND duration_s > 80 ORDER BY duration_s DESC" --dir ~/recordings --pre-index` identifies files that need `audio_parts()` chunking before embedding.
 </details>
 
 <details><summary>40. Summarize a meeting recording</summary>
@@ -234,7 +234,7 @@ Audio files over 80 seconds exceed Gemini's single-part embedding limit. `mm sql
 
 <details><summary>41. Assess a field recording SD card</summary>
 
-`mm find /Volumes/RECORDER --tree --depth 1` shows the directory structure. `mm wc /Volumes/RECORDER --kind audio` gives file count and total storage. For total recorded time: `mm sql "SELECT ROUND(SUM(duration_s)/3600.0, 1) as hours FROM files WHERE kind='audio'" --dir /Volumes/RECORDER`.
+`mm find /Volumes/RECORDER --tree --depth 1` shows the directory structure. `mm wc /Volumes/RECORDER --kind audio` gives file count and total storage. For total recorded time: `mm sql "SELECT ROUND(SUM(duration_s)/3600.0, 1) as hours FROM files WHERE kind='audio'" --dir /Volumes/RECORDER --pre-index`.
 </details>
 
 ---
@@ -253,12 +253,12 @@ Audio files over 80 seconds exceed Gemini's single-part embedding limit. `mm sql
 
 <details><summary>44. Audit technical debt</summary>
 
-`mm grep "TODO\|FIXME\|HACK" ~/project --kind code --count` — per-file counts of debt markers. Pipe to an LLM for triage: `mm grep "TODO" --kind code | llm -s "Prioritize these by severity"`.
+`mm grep "TODO|FIXME|HACK" ~/project --kind code --count` — per-file counts of debt markers. Pipe to an LLM for triage: `mm grep "TODO" --kind code | llm -s "Prioritize these by severity"`.
 </details>
 
 <details><summary>45. Compare code volume across languages</summary>
 
-`mm sql "SELECT ext, COUNT(*) as files, ROUND(SUM(size)/1e3,1) as kb FROM files WHERE kind='code' GROUP BY ext ORDER BY files DESC" --dir ~/project` — understand the language mix in a polyglot repo.
+`mm sql "SELECT ext, COUNT(*) as files, ROUND(SUM(size)/1e3,1) as kb FROM files WHERE kind='code' GROUP BY ext ORDER BY files DESC" --dir ~/project --pre-index` — understand the language mix in a polyglot repo.
 </details>
 
 <details><summary>46. Generate a project overview for onboarding</summary>
@@ -277,7 +277,7 @@ Audio files over 80 seconds exceed Gemini's single-part embedding limit. `mm sql
 
 <details><summary>48. Semantic search across all media types simultaneously</summary>
 
-`mm grep "quarterly revenue" ~/shared -s` searches PDFs (extracted text), images (via LLM captions), and video (via keyframe descriptions) in a single query using vector similarity.
+`mm grep "quarterly revenue" ~/shared -s --pre-index` searches PDFs (extracted text), images (via LLM captions), and video (via keyframe descriptions) in a single query using vector similarity.
 </details>
 
 <details><summary>49. Build a multimodal evidence package</summary>
@@ -297,7 +297,7 @@ For a construction project with permits (PDF), site photos (JPEG), and walkthrou
 
 <details><summary>52. Find all files modified today</summary>
 
-`mm sql "SELECT name, kind, size, modified FROM files WHERE modified >= date('now', 'start of day') ORDER BY modified DESC" --dir ~/project` — see what changed today across all media types without relying on git or filesystem watches.
+`mm sql "SELECT name, kind, size, datetime(modified/1000000,'unixepoch') as modified FROM files WHERE datetime(modified/1000000,'unixepoch') >= date('now','start of day') ORDER BY modified DESC" --dir ~/project --pre-index` — see what changed today across all media types without relying on git or filesystem watches.
 </details>
 
 <details><summary>53. Batch-extract metadata for a digital asset manager</summary>
