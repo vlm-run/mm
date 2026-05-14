@@ -53,16 +53,23 @@ irm https://vlm-run.github.io/mm/install/install.ps1 | iex
 ```
 </details>
 
-### Optional extras and audio transcription
+### Optional extras for audio transcription
 
 | Install | Best for | Audio transcription path |
 |---------|----------|--------------------------|
-| `mm-ctx[mlx]` | Apple Silicon / macOS with MLX | `lightning-whisper-mlx` first, then `ctranslate2/faster-whisper`, then OpenAI `/audio/transcriptions` |
-| `mm-ctx` on a CUDA GPU runtime | Linux/Windows GPU hosts | `ctranslate2/faster-whisper` first, then OpenAI `/audio/transcriptions` |
-| `mm-ctx` default / CPU | Portable local installs | `ctranslate2/faster-whisper` on CPU, then OpenAI `/audio/transcriptions` |
+| `mm-ctx[mlx]` | Apple Silicon / macOS with MLX | `lightning-whisper-mlx` first, then OpenAI compatible transcription endpoints (`/audio/transcriptions`) |
+| `mm-ctx[gpu]` | Linux/Windows GPU hosts | `ctranslate2/faster-whisper` first, then OpenAI compatible transcription endpoints (`/audio/transcriptions`) |
+| `mm-ctx` default / CPU | Local installs | OpenAI compatible transcription endpoints (`/audio/transcriptions`) |
 
-For audio transcription, `mm` prefers the fastest local backend available in this order:
-MLX on Apple Silicon, ctranslate2/faster-whisper, then OpenAI transcription endpoint.
+`mm` defaults to OpenAI compatible endpoints for audio transcription. You can override this by specifying a local backend.
+
+```bash
+# mlx on Apple Silicon
+$ mm cat audio.mp3 --encode.backend mlx
+
+# ctranslate2
+$ mm cat audio.mp3 --encode.backend ctranslate2
+```
 
 ## CLI
 
@@ -492,6 +499,10 @@ mm sql --list-tables                              # show available tables
 ```
 
 ### bench — benchmarks with statistical analysis
+
+<p align="center">
+  <img src="docs/assets/mm-benchmarks-14052026.png" alt="mm bench output" width="880" style="border-radius: 12px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);">
+</p>
 
 `overhead + metadata` always run; `--mode` adds an extraction tier on top.
 
