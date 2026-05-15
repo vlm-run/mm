@@ -18,35 +18,39 @@ file → encoder → [{"role": "user", "content": [...]}] → LLM (if pipeline h
 #### `image-resize`
 
 ```mermaid
+%%{init: {'look': 'neo'} }%%
 graph LR
-  img["🖼️ image"]
+  img("🖼️ image")
 
   subgraph encode ["Encode"]
-    exif["EXIF orient"]
-    resize["Resize"]
+    exif("EXIF orient")
+    resize("Resize")
   end
 
   subgraph message ["Message"]
-    msg["image_url"]
+    msg("image_url")
   end
 
   img --> exif --> resize --> msg
+  style encode rx:10px,ry:10px
+  style message rx:10px,ry:10px
 ```
 
 #### `image-tile`
 
 ```mermaid
+%%{init: {'look': 'neo'} }%%
 graph LR
-  img["🖼️ image"]
+  img("🖼️ image")
 
   subgraph encode ["Encode"]
-    exif["EXIF orient"]
-    overview["Resize overview image\n(global context)"]
-    tiles["Crop NxM tile images\n(fine detail)"]
+    exif("EXIF orient")
+    overview("Resize overview image\n(global context)")
+    tiles("Crop NxM tile images\n(fine detail)")
   end
 
   subgraph message ["Message"]
-    msg["tile metadata\n+ overview image\n+ N tile images"]
+    msg("tile metadata\n+ overview image\n+ N tile images")
   end
 
   img --> exif
@@ -54,6 +58,8 @@ graph LR
   exif --> tiles
   overview --> msg
   tiles --> msg
+  style encode rx:10px,ry:10px
+  style message rx:10px,ry:10px
 ```
 
 
@@ -84,180 +90,204 @@ graph LR
 #### `video-mosaic`
 
 ```mermaid
+%%{init: {'look': 'neo'} }%%
 graph LR
-  video["🎬 video"]
+  video("🎬 video")
 
   subgraph encode ["Encode"]
-    detect["Scene detect\n(or uniform)"]
-    frames["Extract\nN frames"]
-    tile["Tile into\n4x4 mosaics"]
+    detect("Scene detect\n(or uniform)")
+    frames("Extract\nN frames")
+    tile("Tile into\n4x4 mosaics")
   end
 
   subgraph message ["Message"]
-    msg["text + mosaic images"]
+    msg("text + mosaic images")
   end
 
   video --> detect --> frames --> tile --> msg
+  style encode rx:10px,ry:10px
+  style message rx:10px,ry:10px
 ```
 
 #### `video-frames`
 
 ```mermaid
+%%{init: {'look': 'neo'} }%%
 graph LR
-  video["🎬 video"]
+  video("🎬 video")
 
   subgraph encode ["Encode"]
-    ts["Uniform timestamps\nat fps"]
-    ffmpeg["ffmpeg seek\n+ extract"]
-    batch["Batch ≤16\nframes/msg"]
+    ts("Uniform timestamps\nat fps")
+    ffmpeg("ffmpeg seek\n+ extract")
+    batch("Batch ≤16\nframes/msg")
   end
 
   subgraph message ["Message"]
-    msgs["N: text header\n+ frame images"]
+    msgs("N: text header\n+ frame images")
   end
 
   video --> ts --> ffmpeg --> batch --> msgs
+  style encode rx:10px,ry:10px
+  style message rx:10px,ry:10px
 ```
 
 #### `video-frames-w-transcript`
 
 ```mermaid
+%%{init: {'look': 'neo'} }%%
 graph LR
-  video["🎬 video"]
+  video("🎬 video")
 
   subgraph encode ["Encode"]
     direction TB
-    audio["ffmpeg\nextract audio"]
-    whisper["Whisper\ntranscribe"]
-    frames["Extract frames\nat fps"]
-    batch["Batch ≤16\nframes/msg"]
+    audio("ffmpeg\nextract audio")
+    whisper("Whisper\ntranscribe")
+    frames("Extract frames\nat fps")
+    batch("Batch ≤16\nframes/msg")
   end
 
   subgraph message ["Message"]
-    transcript["1: transcript"]
-    frame_msgs["2..N: frame batches"]
+    transcript("1: transcript")
+    frame_msgs("2..N: frame batches")
   end
 
   video --> audio --> whisper --> transcript
   video --> frames --> batch --> frame_msgs
+  style encode rx:10px,ry:10px
+  style message rx:10px,ry:10px
 ```
 
 #### `video-chunks`
 
 ```mermaid
+%%{init: {'look': 'neo'} }%%
 graph LR
-  video["🎬 video"]
+  video("🎬 video")
 
   subgraph encode ["Encode"]
-    split["Split by duration\n(overlap)"]
-    c1["Chunk 1\n16 frames"]
-    c2["Chunk 2\n16 frames"]
-    c3["Chunk N\n16 frames"]
+    split("Split by duration\n(overlap)")
+    c1("Chunk 1\n16 frames")
+    c2("Chunk 2\n16 frames")
+    c3("Chunk N\n16 frames")
   end
 
   subgraph message ["Message"]
-    m1["1"]
-    m2["2"]
-    m3["N"]
+    m1("1")
+    m2("2")
+    m3("N")
   end
 
   video --> split
   split --> c1 --> m1
   split --> c2 --> m2
   split --> c3 --> m3
+  style encode rx:10px,ry:10px
+  style message rx:10px,ry:10px
 ```
 
 #### `video-shots`
 
 ```mermaid
+%%{init: {'look': 'neo'} }%%
 graph LR
-  video["🎬 video"]
+  video("🎬 video")
 
   subgraph encode ["Encode"]
-    detect["PySceneDetect\nshot boundaries"]
-    s1["Shot 1\n≤8 frames"]
-    s2["Shot 2\n≤8 frames"]
-    s3["Shot N\n≤8 frames"]
+    detect("PySceneDetect\nshot boundaries")
+    s1("Shot 1\n≤8 frames")
+    s2("Shot 2\n≤8 frames")
+    s3("Shot N\n≤8 frames")
   end
 
   subgraph message ["Message"]
-    m1["1"]
-    m2["2"]
-    m3["N"]
+    m1("1")
+    m2("2")
+    m3("N")
   end
 
   video --> detect
   detect --> s1 --> m1
   detect --> s2 --> m2
   detect --> s3 --> m3
+  style encode rx:10px,ry:10px
+  style message rx:10px,ry:10px
 ```
 
 #### `video-shot-mosaic`
 
 ```mermaid
+%%{init: {'look': 'neo'} }%%
 graph LR
-  video["🎬 video"]
+  video("🎬 video")
 
   subgraph encode ["Encode"]
-    detect["PySceneDetect\nshot boundaries"]
-    s1["Shot 1 frames\n→ tile mosaic"]
-    s2["Shot 2 frames\n→ tile mosaic"]
-    s3["Shot N frames\n→ tile mosaic"]
+    detect("PySceneDetect\nshot boundaries")
+    s1("Shot 1 frames\n→ tile mosaic")
+    s2("Shot 2 frames\n→ tile mosaic")
+    s3("Shot N frames\n→ tile mosaic")
   end
 
   subgraph message ["Message"]
-    m1["1: mosaic grid"]
-    m2["2: mosaic grid"]
-    m3["N: mosaic grid"]
+    m1("1: mosaic grid")
+    m2("2: mosaic grid")
+    m3("N: mosaic grid")
   end
 
   video --> detect
   detect --> s1 --> m1
   detect --> s2 --> m2
   detect --> s3 --> m3
+  style encode rx:10px,ry:10px
+  style message rx:10px,ry:10px
 ```
 
 #### `video-gemini`
 
 ```mermaid
+%%{init: {'look': 'neo'} }%%
 graph LR
-  video["🎬 video"]
+  video("🎬 video")
 
   subgraph encode ["Encode"]
-    read["Read file bytes\n(Rust fast-path)"]
-    b64["Base64 encode\ninline_data"]
+    read("Read file bytes\n(Rust fast-path)")
+    b64("Base64 encode\ninline_data")
   end
 
   subgraph message ["Message"]
-    msg["Gemini Part"]
+    msg("Gemini Part")
   end
 
   video --> read --> b64 --> msg
+  style encode rx:10px,ry:10px
+  style message rx:10px,ry:10px
 ```
 
 #### `video-gemini-chunked`
 
 ```mermaid
+%%{init: {'look': 'neo'} }%%
 graph LR
-  video["🎬 video"]
+  video("🎬 video")
 
   subgraph encode ["Encode"]
-    probe["Probe duration"]
-    c1["ffmpeg segment\nChunk 1"]
-    c2["ffmpeg segment\nChunk 2"]
-    c3["ffmpeg segment\nChunk N"]
+    probe("Probe duration")
+    c1("ffmpeg segment\nChunk 1")
+    c2("ffmpeg segment\nChunk 2")
+    c3("ffmpeg segment\nChunk N")
   end
 
   subgraph message ["Message"]
-    m1["1: Gemini Part"]
-    m2["2: Gemini Part"]
-    m3["N: Gemini Part"]
+    m1("1: Gemini Part")
+    m2("2: Gemini Part")
+    m3("N: Gemini Part")
   end
 
   video --> probe
   probe --> c1 --> m1
   probe --> c2 --> m2
   probe --> c3 --> m3
+  style encode rx:10px,ry:10px
+  style message rx:10px,ry:10px
 ```
 
 ### Audio
@@ -271,48 +301,55 @@ graph LR
 #### `audio-transcribe`
 
 ```mermaid
+%%{init: {'look': 'neo'} }%%
 graph LR
-  audio["🎵 audio"]
+  audio("🎵 audio")
 
   subgraph encode ["Encode"]
-    extract["ffmpeg\nextract audio"]
-    whisper["Whisper\ntranscribe"]
-    fmt["Format timestamped\nsegments"]
+    extract("ffmpeg\nextract audio")
+    whisper("Whisper\ntranscribe")
+    fmt("Format timestamped\nsegments")
   end
 
   subgraph message ["Message"]
-    msg["text transcript"]
+    msg("text transcript")
   end
 
   audio --> extract --> whisper --> fmt --> msg
+  style encode rx:10px,ry:10px
+  style message rx:10px,ry:10px
 ```
 
 #### `audio-gemini`
 
 ```mermaid
+%%{init: {'look': 'neo'} }%%
 graph LR
-  audio["🎵 audio"]
+  audio("🎵 audio")
 
   subgraph encode ["Encode (short ≤120s)"]
-    read["Read file bytes"]
-    b64["Base64 encode\ninline_data"]
+    read("Read file bytes")
+    b64("Base64 encode\ninline_data")
   end
 
   subgraph encode2 ["Encode (long >120s)"]
-    probe["Probe duration"]
-    c1["ffmpeg segment\nChunk 1"]
-    c2["ffmpeg segment\nChunk N"]
+    probe("Probe duration")
+    c1("ffmpeg segment\nChunk 1")
+    c2("ffmpeg segment\nChunk N")
   end
 
   subgraph message ["Message"]
-    msg1["Gemini Part"]
-    msgN["N: Gemini Part"]
+    msg1("Gemini Part")
+    msgN("N: Gemini Part")
   end
 
   audio --> read --> b64 --> msg1
   audio --> probe
   probe --> c1 --> msgN
   probe --> c2 --> msgN
+  style encode rx:10px,ry:10px
+  style encode2 rx:10px,ry:10px
+  style message rx:10px,ry:10px
 ```
 
 ### Document
@@ -327,81 +364,93 @@ graph LR
 #### `document-page-text`
 
 ```mermaid
+%%{init: {'look': 'neo'} }%%
 graph LR
-  doc["📄 PDF/DOCX/PPTX"]
+  doc("📄 PDF/DOCX/PPTX")
 
   subgraph encode ["Encode"]
-    open["Open document\n(pypdfium2 / docx)"]
-    extract["Extract text\nper page"]
-    batch["Batch ≤4\npages/msg"]
+    open("Open document\n(pypdfium2 / docx)")
+    extract("Extract text\nper page")
+    batch("Batch ≤4\npages/msg")
   end
 
   subgraph message ["Message"]
-    msgs["N: text per page batch"]
+    msgs("N: text per page batch")
   end
 
   doc --> open --> extract --> batch --> msgs
+  style encode rx:10px,ry:10px
+  style message rx:10px,ry:10px
 ```
 
 #### `document-rasterize`
 
 ```mermaid
+%%{init: {'look': 'neo'} }%%
 graph LR
-  doc["📄 PDF"]
+  doc("📄 PDF")
 
   subgraph encode ["Encode"]
-    open["Open PDF\n(pypdfium2)"]
-    render["Render pages\nas JPEG"]
-    batch["Batch ≤4\npages/msg"]
+    open("Open PDF\n(pypdfium2)")
+    render("Render pages\nas JPEG")
+    batch("Batch ≤4\npages/msg")
   end
 
   subgraph message ["Message"]
-    msgs["N: text header\n+ page images"]
+    msgs("N: text header\n+ page images")
   end
 
   doc --> open --> render --> batch --> msgs
+  style encode rx:10px,ry:10px
+  style message rx:10px,ry:10px
 ```
 
 #### `document-rasterize-text`
 
 ```mermaid
+%%{init: {'look': 'neo'} }%%
 graph LR
-  doc["📄 PDF"]
+  doc("📄 PDF")
 
   subgraph encode ["Encode"]
-    open["Open PDF\n(pypdfium2)"]
-    render["Render pages\nas JPEG"]
-    text["Extract text\nper page"]
-    interleave["Interleave\nimage + text"]
-    batch["Batch ≤4\npages/msg"]
+    open("Open PDF\n(pypdfium2)")
+    render("Render pages\nas JPEG")
+    text("Extract text\nper page")
+    interleave("Interleave\nimage + text")
+    batch("Batch ≤4\npages/msg")
   end
 
   subgraph message ["Message"]
-    msgs["N: image + text per page"]
+    msgs("N: image + text per page")
   end
 
   doc --> open
   open --> render --> interleave
   open --> text --> interleave
   interleave --> batch --> msgs
+  style encode rx:10px,ry:10px
+  style message rx:10px,ry:10px
 ```
 
 #### `document-gemini`
 
 ```mermaid
+%%{init: {'look': 'neo'} }%%
 graph LR
-  doc["📄 document"]
+  doc("📄 document")
 
   subgraph encode ["Encode"]
-    read["Read file bytes\n(Rust fast-path)"]
-    b64["Base64 encode\ninline_data"]
+    read("Read file bytes\n(Rust fast-path)")
+    b64("Base64 encode\ninline_data")
   end
 
   subgraph message ["Message"]
-    msg["Gemini Part"]
+    msg("Gemini Part")
   end
 
   doc --> read --> b64 --> msg
+  style encode rx:10px,ry:10px
+  style message rx:10px,ry:10px
 ```
 
 ---
@@ -449,23 +498,24 @@ def my_custom(path: Path, **kw):
 Encoders that yield multiple Messages (e.g. one per video shot) are processed sequentially via `generate_chunked`. Each Message gets its own LLM call and results are concatenated. This avoids OOM from loading all chunks into memory simultaneously.
 
 ```mermaid
+%%{init: {'look': 'neo'} }%%
 graph LR
-  video["🎬 video"]
+  video("🎬 video")
 
   subgraph encode ["Encode"]
-    s1["Shot 1"]
-    s2["Shot 2"]
-    s3["Shot N"]
+    s1("Shot 1")
+    s2("Shot 2")
+    s3("Shot N")
   end
 
   subgraph generate ["Generate"]
-    g1["LLM"]
-    g2["LLM"]
-    g3["LLM"]
+    g1("LLM")
+    g2("LLM")
+    g3("LLM")
   end
 
-  concat["Concat"]
-  out["stdout"]
+  concat("Concat")
+  out("stdout")
 
   video --> s1
   video --> s2
@@ -477,6 +527,8 @@ graph LR
   g2 --> concat
   g3 --> concat
   concat --> out
+  style encode rx:10px,ry:10px
+  style generate rx:10px,ry:10px
 ```
 
 ### Encoder Protocol

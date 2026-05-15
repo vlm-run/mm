@@ -4,24 +4,28 @@ Pipelines configure a 2-stage flow for LLM-based media understanding:
 **encode** (via an encoder) then **generate** (LLM call) to produce text output.
 
 ```mermaid
+%%{init: {'look': 'neo'} }%%
 graph LR
-  file["Media File"]
+  file("Media File")
 
   subgraph encode ["Encode"]
-    encoder["Encoder"]
+    encoder("Encoder")
   end
 
   subgraph message ["Message"]
-    msg["Messages"]
+    msg("Messages")
   end
 
   subgraph generate ["Generate"]
-    llm["MLLM"]
+    llm("MLLM")
   end
 
-  out["stdout"]
+  out("stdout")
 
   file --> encoder --> msg --> llm --> out
+  style encode rx:10px,ry:10px
+  style message rx:10px,ry:10px
+  style generate rx:10px,ry:10px
 ```
 
 Each pipeline is a YAML file under `pipelines/{kind}/{mode}.yaml` that references
