@@ -312,7 +312,7 @@ Raises `RuntimeError` if called on a directory-scan Context.
 
 Two lazy exports from `mm.notebook`:
 
-- `mm.render_context(ctx, ...)` — same as `ctx.render_html(...)`, callable without a live instance.
+- `mm.render_context(ctx, ...)` — same as `ctx.render_html(...)`, callable as a standalone function.
 - `mm.render_messages(messages, ...)` — renders a pre-built message list as HTML.
 
 Both are thin wrappers around the same Jinja template; prefer `ctx.render_html()` when you have a Context.

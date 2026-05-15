@@ -150,14 +150,24 @@ def cat_cmd(
         Optional[BackendLabel],
         typer.Option(
             "--encode.backend",
-            help="Override encoder backend (mlx, ctranslate2, or openai)",
+            help=(
+                "Transcription backend for audio/video encoding. "
+                "openai (default) — calls any OpenAI-compatible /audio/transcriptions endpoint. "
+                "mlx — Apple Metal GPU (requires mm-ctx[mlx]). "
+                "ctranslate2 — CPU int8 / CUDA float16 (requires mm-ctx[gpu]). "
+                "Encoders that have no backend concept ignore this flag."
+            ),
         ),
     ] = None,
     encode_model: Annotated[
         Optional[str],
         typer.Option(
             "--encode.model",
-            help="Override encoder model (e.g. nvidia/parakeet-tdt-0.6b-v3, whisper-1)",
+            help=(
+                "Model used by the encoder (independent of the LLM generate model). "
+                "For audio/video transcription: e.g. nvidia/parakeet-tdt-0.6b-v3, whisper-1. "
+                "Encoders that have no model concept ignore this flag."
+            ),
         ),
     ] = None,
     encode_strategy_opts: Annotated[
@@ -260,6 +270,12 @@ def cat_cmd(
                                             # custom pipeline YAML
       mm cat photo.png -m accurate --encode.strategy_opts max_width=768
                                             # override a single strategy_opts entry
+      mm cat audio.mp3 -m accurate --encode.backend mlx
+                                            # MLX transcription (Apple Silicon)
+      mm cat audio.mp3 -m accurate --encode.backend ctranslate2
+                                            # ctranslate2 transcription (CPU/GPU)
+      mm cat audio.mp3 -m accurate --encode.model whisper-1
+                                            # override transcription model
       mm cat photo.png -m accurate --prompt "<new_prompt>"
                                             # override the default pipeline prompt
       mm cat --print-pipeline image/accurate

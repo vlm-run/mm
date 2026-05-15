@@ -59,7 +59,7 @@ irm https://vlm-run.github.io/mm/install/install.ps1 | iex
 |---------|----------|--------------------------|
 | `mm-ctx[mlx]` | Apple Silicon / macOS with MLX | `lightning-whisper-mlx` first, then OpenAI compatible transcription endpoints (`/audio/transcriptions`) |
 | `mm-ctx[gpu]` | Linux/Windows GPU hosts | `ctranslate2/faster-whisper` first, then OpenAI compatible transcription endpoints (`/audio/transcriptions`) |
-| `mm-ctx` default / CPU | Local installs | OpenAI compatible transcription endpoints (`/audio/transcriptions`) |
+| `mm-ctx` default / CPU | Standard installs | OpenAI compatible transcription endpoints (`/audio/transcriptions`) |
 
 `mm` defaults to OpenAI compatible endpoints for audio transcription. You can override this by specifying a local backend.
 
@@ -335,7 +335,7 @@ The skill exposes mm's capabilities to any tool that supports the skills protoco
 |---------|---------|-----------|
 | `find`  | Find/list files; tabular, tree, or schema view | `-n` / `--name`, `-i` / `--ignore-case`, `-k` / `--kind`, `-e` / `--ext`, `--min-size`, `--max-size`, `-s` / `--sort`, `-r` / `--reverse`, `-c` / `--columns`, `--tree`, `-d` / `--depth`, `--schema`, `--limit`, `--no-ignore`, `-f` / `--format` |
 | `peek`  | Local file metadata (dimensions / EXIF / codec / duration / mime / hash) | `--full` (adds `doc_author/title/subject/keywords/creator/producer/pages`), `-f` / `--format` (rich / json / pretty-json / tsv / csv / stdout) |
-| `cat`   | Content extraction (auto-detected by kind × mode); pipeline-driven | `-m` / `--mode fast`/`accurate`, `-p` / `--pipeline` (encoder name or YAML), `-n` (head/tail), `-o` / `--output-dir`, `--no-cache`, `--no-generate`, `-v` / `--verbose`, `-y` / `--yes`, `--encode.strategy`, `--encode.pyfunc`, `--encode.strategy_opts KEY=VALUE`, `--prompt` (= `--generate.prompt`), `--model` (= `--generate.model`), `--generate.max-tokens`, `--generate.temperature`, `--generate.json-mode`, `--generate.extra-body`, `--list-pipelines`, `--list-encoders`, `--print-pipeline <kind>/<mode>`, `-f` / `--format` |
+| `cat`   | Content extraction (auto-detected by kind × mode); pipeline-driven | `-m` / `--mode fast`/`accurate`, `-p` / `--pipeline` (encoder name or YAML), `-n` (head/tail), `-o` / `--output-dir`, `--no-cache`, `--no-generate`, `-v` / `--verbose`, `-y` / `--yes`, `--encode.strategy`, `--encode.backend` (mlx/ctranslate2/openai), `--encode.model`, `--encode.pyfunc`, `--encode.strategy_opts KEY=VALUE`, `--prompt` (= `--generate.prompt`), `--model` (= `--generate.model`), `--generate.max-tokens`, `--generate.temperature`, `--generate.json-mode`, `--generate.extra-body`, `--list-pipelines`, `--list-encoders`, `--print-pipeline <kind>/<mode>`, `-f` / `--format` |
 | `grep`  | Text + semantic content search | `-k` / `--kind`, `-e` / `--ext`, `-C` (context lines), `-c` / `--count`, `-i` / `--ignore-case`, `-s` / `--semantic`, `--pre-index`, `--no-ignore`, `-f` / `--format` |
 | `sql`   | SQL on `files` / `extractions` / `chunks` (auto-routed) | `-d` / `--dir`, `--pre-index`, `--list-tables`, `-f` / `--format` |
 | `wc`    | Count files, bytes, lines (est.), tokens (est.) | `-k` / `--kind`, `--by-kind`, `-f` / `--format` |
@@ -399,6 +399,10 @@ mm cat --list-pipelines                                         # list registere
 mm cat --list-encoders                                          # list registered encoders
 mm cat --print-pipeline image/accurate                          # print a built-in pipeline's YAML source
 mm cat bench.jpg -m accurate --encode.strategy_opts max_width=768  # override a single strategy_opts entry
+mm cat mp3_44100Hz_320kbps_stereo.mp3 -m accurate --encode.backend mlx          # force MLX transcription (Apple Silicon)
+mm cat mp3_44100Hz_320kbps_stereo.mp3 -m accurate --encode.backend ctranslate2  # force ctranslate2 transcription
+mm cat mp3_44100Hz_320kbps_stereo.mp3 -m accurate --encode.backend openai       # force OpenAI-compatible endpoint
+mm cat mp3_44100Hz_320kbps_stereo.mp3 -m accurate --encode.model whisper-1      # override transcription model
 ```
 
 #### Override surfaces
