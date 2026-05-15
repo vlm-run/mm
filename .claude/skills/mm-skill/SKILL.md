@@ -148,7 +148,8 @@ mm peek paper.pdf --full                     # author/title/subject/keywords/pag
 ```
 mm cat FILE... [-m fast|accurate] [-p PIPELINE]... [-n N] [-o DIR]
                [--no-cache] [--no-generate] [-v] [-y]
-               [--encode.strategy NAME] [--encode.pyfunc PATH|CODE]
+               [--encode.strategy NAME] [--encode.backend mlx|ctranslate2|openai]
+               [--encode.model MODEL] [--encode.pyfunc PATH|CODE]
                [--encode.strategy_opts KEY=VALUE]...
                [--prompt TEXT | --generate.prompt TEXT]
                [--model NAME  | --generate.model NAME]
@@ -180,6 +181,8 @@ mm cat FILE... [-m fast|accurate] [-p PIPELINE]... [-n N] [-o DIR]
 | `--verbose` / `-v` | Show pipeline tree (encode/generate timings). |
 | `--yes` / `-y` | Skip the batch-size confirmation (≥9 paths; env `MM_CAT_BATCH_CONFIRM_THRESHOLD`). |
 | `--encode.strategy` | Override encoder name. |
+| `--encode.backend mlx\|ctranslate2\|openai` | Transcription backend. `openai` (default) uses any OpenAI-compatible `/audio/transcriptions` endpoint. `mlx` requires `mm-ctx[mlx]`; `ctranslate2` requires `mm-ctx[gpu]`. Ignored by encoders with no backend concept. |
+| `--encode.model MODEL` | Encoder-level model override (e.g. `nvidia/parakeet-tdt-0.6b-v3`, `whisper-1`). Independent of `--model` / `--generate.model`. Ignored by encoders with no model concept. |
 | `--encode.pyfunc` | Custom Python transform (`.py` path or inline `def`). |
 | `--encode.strategy_opts KEY=VALUE` | Override encode opts (repeatable; values coerced to int/float/bool). |
 | `--prompt` (= `--generate.prompt`) | Override LLM prompt template. |
@@ -222,7 +225,11 @@ mm cat --print-pipeline image/accurate
 # Overrides
 mm cat photo.png -m accurate --encode.strategy_opts max_width=768
 mm cat photo.png -m accurate --prompt "List 3 objects." --generate.max-tokens 64
-mm cat photo.png -m accurate --no-cache --no-generate    # encoder snapshot
+mm cat photo.png -m accurate --no-cache --no-generate              # encoder snapshot
+mm cat audio.mp3 -m accurate --encode.backend mlx                 # force MLX transcription (Apple Silicon)
+mm cat audio.mp3 -m accurate --encode.backend ctranslate2         # force ctranslate2
+mm cat audio.mp3 -m accurate --encode.backend openai              # force OpenAI-compatible endpoint
+mm cat audio.mp3 -m accurate --encode.model whisper-1             # override transcription model
 ```
 
 ### Override surfaces (right-most wins)
