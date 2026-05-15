@@ -1214,29 +1214,20 @@
 <h1 id="pipelines">Pipelines<a class="headerlink" href="#pipelines" title="Permanent link">&para;</a></h1>
 <p>Pipelines configure a 2-stage flow for LLM-based media understanding:
 <strong>encode</strong> (via an encoder) then <strong>generate</strong> (LLM call) to produce text output.</p>
-<pre class="mermaid"><code>%%{init: {'theme': 'base', 'themeVariables': { 'fontSize': '14px', 'lineColor': '#666'}}}%%
-graph LR
-  file["Media File"]:::input
+<pre class="mermaid"><code>graph LR
+  file["Media File"]
 
   subgraph encode ["Encode"]
-    encoder["Encoder"]:::encode
+    encoder["Encoder"]
   end
 
   subgraph generate ["Generate"]
-    llm["MLLM"]:::generate
+    llm["MLLM"]
   end
 
-  out["stdout"]:::output
+  out["stdout"]
 
-  file --&gt; encoder --&gt; llm --&gt; out
-
-  classDef input fill:#e8f4fd,stroke:#4a90d9,stroke-width:1.5px,color:#1a3a5c,rx:8
-  classDef encode fill:#e8f5e9,stroke:#4caf50,stroke-width:1.5px,color:#1b5e20,rx:8
-  classDef generate fill:#fce4ec,stroke:#e57373,stroke-width:1.5px,color:#6a1b1b,rx:8
-  classDef output fill:#f5f5f5,stroke:#bdbdbd,stroke-width:1.5px,color:#424242,rx:8
-
-  style encode fill:#f1f8e9,stroke:#66bb6a,stroke-width:1px,rx:10
-  style generate fill:#fff0f0,stroke:#ef9a9a,stroke-width:1px,rx:10</code></pre>
+  file --&gt; encoder --&gt; llm --&gt; out</code></pre>
 <p>Each pipeline is a YAML file under <code>pipelines/{kind}/{mode}.yaml</code> that references
 an encoder from <code>mm/encoders/</code> and configures LLM generation parameters.</p>
 <blockquote>

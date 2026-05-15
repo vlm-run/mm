@@ -1839,48 +1839,34 @@
 </tbody>
 </table>
 <h4 id="image-resize"><code>image-resize</code><a class="headerlink" href="#image-resize" title="Permanent link">&para;</a></h4>
-<pre class="mermaid"><code>%%{init: {'theme': 'base', 'themeVariables': { 'fontSize': '14px', 'primaryColor': '#e8f4fd', 'primaryBorderColor': '#4a90d9', 'lineColor': '#666'}}}%%
-graph LR
-  img["🖼️ image"]:::input
+<pre class="mermaid"><code>graph LR
+  img["🖼️ image"]
 
   subgraph encode ["Encode"]
-    exif["EXIF orient"]:::encode
-    resize["Resize"]:::encode
+    exif["EXIF orient"]
+    resize["Resize"]
   end
 
-  msg["1 Message\n(1 image_url)"]:::output
+  msg["1 Message\n(1 image_url)"]
 
-  img --&gt; exif --&gt; resize --&gt; msg
-
-  classDef input fill:#e8f4fd,stroke:#4a90d9,stroke-width:1.5px,color:#1a3a5c,rx:8
-  classDef encode fill:#e8f5e9,stroke:#4caf50,stroke-width:1.5px,color:#1b5e20,rx:8
-  classDef output fill:#f5f5f5,stroke:#bdbdbd,stroke-width:1.5px,color:#424242,rx:8
-
-  style encode fill:#f1f8e9,stroke:#66bb6a,stroke-width:1px,rx:10</code></pre>
+  img --&gt; exif --&gt; resize --&gt; msg</code></pre>
 <h4 id="image-tile"><code>image-tile</code><a class="headerlink" href="#image-tile" title="Permanent link">&para;</a></h4>
-<pre class="mermaid"><code>%%{init: {'theme': 'base', 'themeVariables': { 'fontSize': '14px', 'primaryColor': '#e8f4fd', 'primaryBorderColor': '#4a90d9', 'lineColor': '#666'}}}%%
-graph LR
-  img["🖼️ image"]:::input
+<pre class="mermaid"><code>graph LR
+  img["🖼️ image"]
 
   subgraph encode ["Encode"]
-    exif["EXIF orient"]:::encode
-    overview["Resize overview image\n(global context)"]:::encode
-    tiles["Crop NxM tile images\n(fine detail)"]:::encode
+    exif["EXIF orient"]
+    overview["Resize overview image\n(global context)"]
+    tiles["Crop NxM tile images\n(fine detail)"]
   end
 
-  msg["1 Message\n(tile metadata + overview image\n+ N tile images)"]:::output
+  msg["1 Message\n(tile metadata + overview image\n+ N tile images)"]
 
   img --&gt; exif
   exif --&gt; overview
   exif --&gt; tiles
   overview --&gt; msg
-  tiles --&gt; msg
-
-  classDef input fill:#e8f4fd,stroke:#4a90d9,stroke-width:1.5px,color:#1a3a5c,rx:8
-  classDef encode fill:#e8f5e9,stroke:#4caf50,stroke-width:1.5px,color:#1b5e20,rx:8
-  classDef output fill:#f5f5f5,stroke:#bdbdbd,stroke-width:1.5px,color:#424242,rx:8
-
-  style encode fill:#f1f8e9,stroke:#66bb6a,stroke-width:1px,rx:10</code></pre>
+  tiles --&gt; msg</code></pre>
 <h3 id="video">Video<a class="headerlink" href="#video" title="Permanent link">&para;</a></h3>
 <table>
 <thead>
@@ -1989,192 +1975,136 @@ graph LR
 </tbody>
 </table>
 <h4 id="video-mosaic"><code>video-mosaic</code><a class="headerlink" href="#video-mosaic" title="Permanent link">&para;</a></h4>
-<pre class="mermaid"><code>%%{init: {'theme': 'base', 'themeVariables': { 'fontSize': '14px', 'primaryColor': '#e8f4fd', 'primaryBorderColor': '#4a90d9', 'lineColor': '#666'}}}%%
-graph LR
-  video["🎬 video"]:::input
+<pre class="mermaid"><code>graph LR
+  video["🎬 video"]
 
   subgraph encode ["Encode"]
-    detect["Scene detect\n(or uniform)"]:::encode
-    frames["Extract\nN frames"]:::encode
-    tile["Tile into\n4x4 mosaics"]:::encode
+    detect["Scene detect\n(or uniform)"]
+    frames["Extract\nN frames"]
+    tile["Tile into\n4x4 mosaics"]
   end
 
-  msg["1 Message\n(text + mosaic\nimages)"]:::output
+  msg["1 Message\n(text + mosaic\nimages)"]
 
-  video --&gt; detect --&gt; frames --&gt; tile --&gt; msg
-
-  classDef input fill:#e8f4fd,stroke:#4a90d9,stroke-width:1.5px,color:#1a3a5c,rx:8
-  classDef encode fill:#e8f5e9,stroke:#4caf50,stroke-width:1.5px,color:#1b5e20,rx:8
-  classDef output fill:#f5f5f5,stroke:#bdbdbd,stroke-width:1.5px,color:#424242,rx:8
-
-  style encode fill:#f1f8e9,stroke:#66bb6a,stroke-width:1px,rx:10</code></pre>
+  video --&gt; detect --&gt; frames --&gt; tile --&gt; msg</code></pre>
 <h4 id="video-frames"><code>video-frames</code><a class="headerlink" href="#video-frames" title="Permanent link">&para;</a></h4>
-<pre class="mermaid"><code>%%{init: {'theme': 'base', 'themeVariables': { 'fontSize': '14px', 'primaryColor': '#e8f4fd', 'primaryBorderColor': '#4a90d9', 'lineColor': '#666'}}}%%
-graph LR
-  video["🎬 video"]:::input
+<pre class="mermaid"><code>graph LR
+  video["🎬 video"]
 
   subgraph encode ["Encode"]
-    ts["Uniform timestamps\nat fps"]:::encode
-    ffmpeg["ffmpeg seek\n+ extract"]:::encode
-    batch["Batch ≤16\nframes/msg"]:::encode
+    ts["Uniform timestamps\nat fps"]
+    ffmpeg["ffmpeg seek\n+ extract"]
+    batch["Batch ≤16\nframes/msg"]
   end
 
-  msgs["N Messages\n(text header\n+ frame images)"]:::output
+  msgs["N Messages\n(text header\n+ frame images)"]
 
-  video --&gt; ts --&gt; ffmpeg --&gt; batch --&gt; msgs
-
-  classDef input fill:#e8f4fd,stroke:#4a90d9,stroke-width:1.5px,color:#1a3a5c,rx:8
-  classDef encode fill:#e8f5e9,stroke:#4caf50,stroke-width:1.5px,color:#1b5e20,rx:8
-  classDef output fill:#f5f5f5,stroke:#bdbdbd,stroke-width:1.5px,color:#424242,rx:8
-
-  style encode fill:#f1f8e9,stroke:#66bb6a,stroke-width:1px,rx:10</code></pre>
+  video --&gt; ts --&gt; ffmpeg --&gt; batch --&gt; msgs</code></pre>
 <h4 id="video-frames-w-transcript"><code>video-frames-w-transcript</code><a class="headerlink" href="#video-frames-w-transcript" title="Permanent link">&para;</a></h4>
-<pre class="mermaid"><code>%%{init: {'theme': 'base', 'themeVariables': { 'fontSize': '14px', 'primaryColor': '#e8f4fd', 'primaryBorderColor': '#4a90d9', 'lineColor': '#666'}}}%%
-graph LR
-  video["🎬 video"]:::input
+<pre class="mermaid"><code>graph LR
+  video["🎬 video"]
 
   subgraph encode ["Encode"]
     direction TB
-    audio["ffmpeg\nextract audio"]:::encode
-    whisper["Whisper\ntranscribe"]:::encode
-    frames["Extract frames\nat fps"]:::encode
-    batch["Batch ≤16\nframes/msg"]:::encode
+    audio["ffmpeg\nextract audio"]
+    whisper["Whisper\ntranscribe"]
+    frames["Extract frames\nat fps"]
+    batch["Batch ≤16\nframes/msg"]
   end
 
-  transcript["Msg 1:\ntranscript"]:::output
-  frame_msgs["Msgs 2..N:\nframe batches"]:::output
+  transcript["Msg 1:\ntranscript"]
+  frame_msgs["Msgs 2..N:\nframe batches"]
 
   video --&gt; audio --&gt; whisper --&gt; transcript
-  video --&gt; frames --&gt; batch --&gt; frame_msgs
-
-  classDef input fill:#e8f4fd,stroke:#4a90d9,stroke-width:1.5px,color:#1a3a5c,rx:8
-  classDef encode fill:#e8f5e9,stroke:#4caf50,stroke-width:1.5px,color:#1b5e20,rx:8
-  classDef output fill:#f5f5f5,stroke:#bdbdbd,stroke-width:1.5px,color:#424242,rx:8
-
-  style encode fill:#f1f8e9,stroke:#66bb6a,stroke-width:1px,rx:10</code></pre>
+  video --&gt; frames --&gt; batch --&gt; frame_msgs</code></pre>
 <h4 id="video-chunks"><code>video-chunks</code><a class="headerlink" href="#video-chunks" title="Permanent link">&para;</a></h4>
-<pre class="mermaid"><code>%%{init: {'theme': 'base', 'themeVariables': { 'fontSize': '14px', 'primaryColor': '#e8f4fd', 'primaryBorderColor': '#4a90d9', 'lineColor': '#666'}}}%%
-graph LR
-  video["🎬 video"]:::input
+<pre class="mermaid"><code>graph LR
+  video["🎬 video"]
 
   subgraph encode ["Encode"]
-    split["Split by duration\n(overlap)"]:::encode
-    c1["Chunk 1\n16 frames"]:::encode
-    c2["Chunk 2\n16 frames"]:::encode
-    c3["Chunk N\n16 frames"]:::encode
+    split["Split by duration\n(overlap)"]
+    c1["Chunk 1\n16 frames"]
+    c2["Chunk 2\n16 frames"]
+    c3["Chunk N\n16 frames"]
   end
 
-  m1["Message 1"]:::output
-  m2["Message 2"]:::output
-  m3["Message N"]:::output
+  m1["Message 1"]
+  m2["Message 2"]
+  m3["Message N"]
 
   video --&gt; split
   split --&gt; c1 --&gt; m1
   split --&gt; c2 --&gt; m2
-  split --&gt; c3 --&gt; m3
-
-  classDef input fill:#e8f4fd,stroke:#4a90d9,stroke-width:1.5px,color:#1a3a5c,rx:8
-  classDef encode fill:#e8f5e9,stroke:#4caf50,stroke-width:1.5px,color:#1b5e20,rx:8
-  classDef output fill:#f5f5f5,stroke:#bdbdbd,stroke-width:1.5px,color:#424242,rx:8
-
-  style encode fill:#f1f8e9,stroke:#66bb6a,stroke-width:1px,rx:10</code></pre>
+  split --&gt; c3 --&gt; m3</code></pre>
 <h4 id="video-shots"><code>video-shots</code><a class="headerlink" href="#video-shots" title="Permanent link">&para;</a></h4>
-<pre class="mermaid"><code>%%{init: {'theme': 'base', 'themeVariables': { 'fontSize': '14px', 'primaryColor': '#e8f4fd', 'primaryBorderColor': '#4a90d9', 'lineColor': '#666'}}}%%
-graph LR
-  video["🎬 video"]:::input
+<pre class="mermaid"><code>graph LR
+  video["🎬 video"]
 
   subgraph encode ["Encode"]
-    detect["PySceneDetect\nshot boundaries"]:::encode
-    s1["Shot 1\n≤8 frames"]:::encode
-    s2["Shot 2\n≤8 frames"]:::encode
-    s3["Shot N\n≤8 frames"]:::encode
+    detect["PySceneDetect\nshot boundaries"]
+    s1["Shot 1\n≤8 frames"]
+    s2["Shot 2\n≤8 frames"]
+    s3["Shot N\n≤8 frames"]
   end
 
-  m1["Message 1"]:::output
-  m2["Message 2"]:::output
-  m3["Message N"]:::output
+  m1["Message 1"]
+  m2["Message 2"]
+  m3["Message N"]
 
   video --&gt; detect
   detect --&gt; s1 --&gt; m1
   detect --&gt; s2 --&gt; m2
-  detect --&gt; s3 --&gt; m3
-
-  classDef input fill:#e8f4fd,stroke:#4a90d9,stroke-width:1.5px,color:#1a3a5c,rx:8
-  classDef encode fill:#e8f5e9,stroke:#4caf50,stroke-width:1.5px,color:#1b5e20,rx:8
-  classDef output fill:#f5f5f5,stroke:#bdbdbd,stroke-width:1.5px,color:#424242,rx:8
-
-  style encode fill:#f1f8e9,stroke:#66bb6a,stroke-width:1px,rx:10</code></pre>
+  detect --&gt; s3 --&gt; m3</code></pre>
 <h4 id="video-shot-mosaic"><code>video-shot-mosaic</code><a class="headerlink" href="#video-shot-mosaic" title="Permanent link">&para;</a></h4>
-<pre class="mermaid"><code>%%{init: {'theme': 'base', 'themeVariables': { 'fontSize': '14px', 'primaryColor': '#e8f4fd', 'primaryBorderColor': '#4a90d9', 'lineColor': '#666'}}}%%
-graph LR
-  video["🎬 video"]:::input
+<pre class="mermaid"><code>graph LR
+  video["🎬 video"]
 
   subgraph encode ["Encode"]
-    detect["PySceneDetect\nshot boundaries"]:::encode
-    s1["Shot 1 frames\n→ tile mosaic"]:::encode
-    s2["Shot 2 frames\n→ tile mosaic"]:::encode
-    s3["Shot N frames\n→ tile mosaic"]:::encode
+    detect["PySceneDetect\nshot boundaries"]
+    s1["Shot 1 frames\n→ tile mosaic"]
+    s2["Shot 2 frames\n→ tile mosaic"]
+    s3["Shot N frames\n→ tile mosaic"]
   end
 
-  m1["Message 1\n(mosaic grid)"]:::output
-  m2["Message 2\n(mosaic grid)"]:::output
-  m3["Message N\n(mosaic grid)"]:::output
+  m1["Message 1\n(mosaic grid)"]
+  m2["Message 2\n(mosaic grid)"]
+  m3["Message N\n(mosaic grid)"]
 
   video --&gt; detect
   detect --&gt; s1 --&gt; m1
   detect --&gt; s2 --&gt; m2
-  detect --&gt; s3 --&gt; m3
-
-  classDef input fill:#e8f4fd,stroke:#4a90d9,stroke-width:1.5px,color:#1a3a5c,rx:8
-  classDef encode fill:#e8f5e9,stroke:#4caf50,stroke-width:1.5px,color:#1b5e20,rx:8
-  classDef output fill:#f5f5f5,stroke:#bdbdbd,stroke-width:1.5px,color:#424242,rx:8
-
-  style encode fill:#f1f8e9,stroke:#66bb6a,stroke-width:1px,rx:10</code></pre>
+  detect --&gt; s3 --&gt; m3</code></pre>
 <h4 id="video-gemini"><code>video-gemini</code><a class="headerlink" href="#video-gemini" title="Permanent link">&para;</a></h4>
-<pre class="mermaid"><code>%%{init: {'theme': 'base', 'themeVariables': { 'fontSize': '14px', 'primaryColor': '#e8f4fd', 'primaryBorderColor': '#4a90d9', 'lineColor': '#666'}}}%%
-graph LR
-  video["🎬 video"]:::input
+<pre class="mermaid"><code>graph LR
+  video["🎬 video"]
 
   subgraph encode ["Encode"]
-    read["Read file bytes\n(Rust fast-path)"]:::encode
-    b64["Base64 encode\ninline_data"]:::encode
+    read["Read file bytes\n(Rust fast-path)"]
+    b64["Base64 encode\ninline_data"]
   end
 
-  msg["1 Message\n(Gemini Part)"]:::output
+  msg["1 Message\n(Gemini Part)"]
 
-  video --&gt; read --&gt; b64 --&gt; msg
-
-  classDef input fill:#e8f4fd,stroke:#4a90d9,stroke-width:1.5px,color:#1a3a5c,rx:8
-  classDef encode fill:#e8f5e9,stroke:#4caf50,stroke-width:1.5px,color:#1b5e20,rx:8
-  classDef output fill:#f5f5f5,stroke:#bdbdbd,stroke-width:1.5px,color:#424242,rx:8
-
-  style encode fill:#f1f8e9,stroke:#66bb6a,stroke-width:1px,rx:10</code></pre>
+  video --&gt; read --&gt; b64 --&gt; msg</code></pre>
 <h4 id="video-gemini-chunked"><code>video-gemini-chunked</code><a class="headerlink" href="#video-gemini-chunked" title="Permanent link">&para;</a></h4>
-<pre class="mermaid"><code>%%{init: {'theme': 'base', 'themeVariables': { 'fontSize': '14px', 'primaryColor': '#e8f4fd', 'primaryBorderColor': '#4a90d9', 'lineColor': '#666'}}}%%
-graph LR
-  video["🎬 video"]:::input
+<pre class="mermaid"><code>graph LR
+  video["🎬 video"]
 
   subgraph encode ["Encode"]
-    probe["Probe duration"]:::encode
-    c1["ffmpeg segment\nChunk 1"]:::encode
-    c2["ffmpeg segment\nChunk 2"]:::encode
-    c3["ffmpeg segment\nChunk N"]:::encode
+    probe["Probe duration"]
+    c1["ffmpeg segment\nChunk 1"]
+    c2["ffmpeg segment\nChunk 2"]
+    c3["ffmpeg segment\nChunk N"]
   end
 
-  m1["Message 1\n(Gemini Part)"]:::output
-  m2["Message 2\n(Gemini Part)"]:::output
-  m3["Message N\n(Gemini Part)"]:::output
+  m1["Message 1\n(Gemini Part)"]
+  m2["Message 2\n(Gemini Part)"]
+  m3["Message N\n(Gemini Part)"]
 
   video --&gt; probe
   probe --&gt; c1 --&gt; m1
   probe --&gt; c2 --&gt; m2
-  probe --&gt; c3 --&gt; m3
-
-  classDef input fill:#e8f4fd,stroke:#4a90d9,stroke-width:1.5px,color:#1a3a5c,rx:8
-  classDef encode fill:#e8f5e9,stroke:#4caf50,stroke-width:1.5px,color:#1b5e20,rx:8
-  classDef output fill:#f5f5f5,stroke:#bdbdbd,stroke-width:1.5px,color:#424242,rx:8
-
-  style encode fill:#f1f8e9,stroke:#66bb6a,stroke-width:1px,rx:10</code></pre>
+  probe --&gt; c3 --&gt; m3</code></pre>
 <h3 id="audio">Audio<a class="headerlink" href="#audio" title="Permanent link">&para;</a></h3>
 <table>
 <thead>
@@ -2203,55 +2133,40 @@ graph LR
 </tbody>
 </table>
 <h4 id="audio-transcribe"><code>audio-transcribe</code><a class="headerlink" href="#audio-transcribe" title="Permanent link">&para;</a></h4>
-<pre class="mermaid"><code>%%{init: {'theme': 'base', 'themeVariables': { 'fontSize': '14px', 'primaryColor': '#e8f4fd', 'primaryBorderColor': '#4a90d9', 'lineColor': '#666'}}}%%
-graph LR
-  audio["🎵 audio"]:::input
+<pre class="mermaid"><code>graph LR
+  audio["🎵 audio"]
 
   subgraph encode ["Encode"]
-    extract["ffmpeg\nextract audio"]:::encode
-    whisper["Whisper\ntranscribe"]:::encode
-    fmt["Format timestamped\nsegments"]:::encode
+    extract["ffmpeg\nextract audio"]
+    whisper["Whisper\ntranscribe"]
+    fmt["Format timestamped\nsegments"]
   end
 
-  msg["1 Message\n(text transcript)"]:::output
+  msg["1 Message\n(text transcript)"]
 
-  audio --&gt; extract --&gt; whisper --&gt; fmt --&gt; msg
-
-  classDef input fill:#e8f4fd,stroke:#4a90d9,stroke-width:1.5px,color:#1a3a5c,rx:8
-  classDef encode fill:#e8f5e9,stroke:#4caf50,stroke-width:1.5px,color:#1b5e20,rx:8
-  classDef output fill:#f5f5f5,stroke:#bdbdbd,stroke-width:1.5px,color:#424242,rx:8
-
-  style encode fill:#f1f8e9,stroke:#66bb6a,stroke-width:1px,rx:10</code></pre>
+  audio --&gt; extract --&gt; whisper --&gt; fmt --&gt; msg</code></pre>
 <h4 id="audio-gemini"><code>audio-gemini</code><a class="headerlink" href="#audio-gemini" title="Permanent link">&para;</a></h4>
-<pre class="mermaid"><code>%%{init: {'theme': 'base', 'themeVariables': { 'fontSize': '14px', 'primaryColor': '#e8f4fd', 'primaryBorderColor': '#4a90d9', 'lineColor': '#666'}}}%%
-graph LR
-  audio["🎵 audio"]:::input
+<pre class="mermaid"><code>graph LR
+  audio["🎵 audio"]
 
   subgraph encode ["Encode (short ≤120s)"]
-    read["Read file bytes"]:::encode
-    b64["Base64 encode\ninline_data"]:::encode
+    read["Read file bytes"]
+    b64["Base64 encode\ninline_data"]
   end
 
   subgraph encode2 ["Encode (long &gt;120s)"]
-    probe["Probe duration"]:::encode
-    c1["ffmpeg segment\nChunk 1"]:::encode
-    c2["ffmpeg segment\nChunk N"]:::encode
+    probe["Probe duration"]
+    c1["ffmpeg segment\nChunk 1"]
+    c2["ffmpeg segment\nChunk N"]
   end
 
-  msg1["1 Message\n(Gemini Part)"]:::output
-  msgN["N Messages\n(Gemini Parts)"]:::output
+  msg1["1 Message\n(Gemini Part)"]
+  msgN["N Messages\n(Gemini Parts)"]
 
   audio --&gt; read --&gt; b64 --&gt; msg1
   audio --&gt; probe
   probe --&gt; c1 --&gt; msgN
-  probe --&gt; c2 --&gt; msgN
-
-  classDef input fill:#e8f4fd,stroke:#4a90d9,stroke-width:1.5px,color:#1a3a5c,rx:8
-  classDef encode fill:#e8f5e9,stroke:#4caf50,stroke-width:1.5px,color:#1b5e20,rx:8
-  classDef output fill:#f5f5f5,stroke:#bdbdbd,stroke-width:1.5px,color:#424242,rx:8
-
-  style encode fill:#f1f8e9,stroke:#66bb6a,stroke-width:1px,rx:10
-  style encode2 fill:#f1f8e9,stroke:#66bb6a,stroke-width:1px,rx:10</code></pre>
+  probe --&gt; c2 --&gt; msgN</code></pre>
 <h3 id="document">Document<a class="headerlink" href="#document" title="Permanent link">&para;</a></h3>
 <table>
 <thead>
@@ -2285,89 +2200,61 @@ graph LR
 </tbody>
 </table>
 <h4 id="document-page-text"><code>document-page-text</code><a class="headerlink" href="#document-page-text" title="Permanent link">&para;</a></h4>
-<pre class="mermaid"><code>%%{init: {'theme': 'base', 'themeVariables': { 'fontSize': '14px', 'primaryColor': '#e8f4fd', 'primaryBorderColor': '#4a90d9', 'lineColor': '#666'}}}%%
-graph LR
-  doc["📄 PDF/DOCX/PPTX"]:::input
+<pre class="mermaid"><code>graph LR
+  doc["📄 PDF/DOCX/PPTX"]
 
   subgraph encode ["Encode"]
-    open["Open document\n(pypdfium2 / docx)"]:::encode
-    extract["Extract text\nper page"]:::encode
-    batch["Batch ≤4\npages/msg"]:::encode
+    open["Open document\n(pypdfium2 / docx)"]
+    extract["Extract text\nper page"]
+    batch["Batch ≤4\npages/msg"]
   end
 
-  msgs["N Messages\n(text per page\nbatch)"]:::output
+  msgs["N Messages\n(text per page\nbatch)"]
 
-  doc --&gt; open --&gt; extract --&gt; batch --&gt; msgs
-
-  classDef input fill:#e8f4fd,stroke:#4a90d9,stroke-width:1.5px,color:#1a3a5c,rx:8
-  classDef encode fill:#e8f5e9,stroke:#4caf50,stroke-width:1.5px,color:#1b5e20,rx:8
-  classDef output fill:#f5f5f5,stroke:#bdbdbd,stroke-width:1.5px,color:#424242,rx:8
-
-  style encode fill:#f1f8e9,stroke:#66bb6a,stroke-width:1px,rx:10</code></pre>
+  doc --&gt; open --&gt; extract --&gt; batch --&gt; msgs</code></pre>
 <h4 id="document-rasterize"><code>document-rasterize</code><a class="headerlink" href="#document-rasterize" title="Permanent link">&para;</a></h4>
-<pre class="mermaid"><code>%%{init: {'theme': 'base', 'themeVariables': { 'fontSize': '14px', 'primaryColor': '#e8f4fd', 'primaryBorderColor': '#4a90d9', 'lineColor': '#666'}}}%%
-graph LR
-  doc["📄 PDF"]:::input
+<pre class="mermaid"><code>graph LR
+  doc["📄 PDF"]
 
   subgraph encode ["Encode"]
-    open["Open PDF\n(pypdfium2)"]:::encode
-    render["Render pages\nas JPEG"]:::encode
-    batch["Batch ≤4\npages/msg"]:::encode
+    open["Open PDF\n(pypdfium2)"]
+    render["Render pages\nas JPEG"]
+    batch["Batch ≤4\npages/msg"]
   end
 
-  msgs["N Messages\n(text header\n+ page images)"]:::output
+  msgs["N Messages\n(text header\n+ page images)"]
 
-  doc --&gt; open --&gt; render --&gt; batch --&gt; msgs
-
-  classDef input fill:#e8f4fd,stroke:#4a90d9,stroke-width:1.5px,color:#1a3a5c,rx:8
-  classDef encode fill:#e8f5e9,stroke:#4caf50,stroke-width:1.5px,color:#1b5e20,rx:8
-  classDef output fill:#f5f5f5,stroke:#bdbdbd,stroke-width:1.5px,color:#424242,rx:8
-
-  style encode fill:#f1f8e9,stroke:#66bb6a,stroke-width:1px,rx:10</code></pre>
+  doc --&gt; open --&gt; render --&gt; batch --&gt; msgs</code></pre>
 <h4 id="document-rasterize-text"><code>document-rasterize-text</code><a class="headerlink" href="#document-rasterize-text" title="Permanent link">&para;</a></h4>
-<pre class="mermaid"><code>%%{init: {'theme': 'base', 'themeVariables': { 'fontSize': '14px', 'primaryColor': '#e8f4fd', 'primaryBorderColor': '#4a90d9', 'lineColor': '#666'}}}%%
-graph LR
-  doc["📄 PDF"]:::input
+<pre class="mermaid"><code>graph LR
+  doc["📄 PDF"]
 
   subgraph encode ["Encode"]
-    open["Open PDF\n(pypdfium2)"]:::encode
-    render["Render pages\nas JPEG"]:::encode
-    text["Extract text\nper page"]:::encode
-    interleave["Interleave\nimage + text"]:::encode
-    batch["Batch ≤4\npages/msg"]:::encode
+    open["Open PDF\n(pypdfium2)"]
+    render["Render pages\nas JPEG"]
+    text["Extract text\nper page"]
+    interleave["Interleave\nimage + text"]
+    batch["Batch ≤4\npages/msg"]
   end
 
-  msgs["N Messages\n(image + text\nper page)"]:::output
+  msgs["N Messages\n(image + text\nper page)"]
 
   doc --&gt; open
   open --&gt; render --&gt; interleave
   open --&gt; text --&gt; interleave
-  interleave --&gt; batch --&gt; msgs
-
-  classDef input fill:#e8f4fd,stroke:#4a90d9,stroke-width:1.5px,color:#1a3a5c,rx:8
-  classDef encode fill:#e8f5e9,stroke:#4caf50,stroke-width:1.5px,color:#1b5e20,rx:8
-  classDef output fill:#f5f5f5,stroke:#bdbdbd,stroke-width:1.5px,color:#424242,rx:8
-
-  style encode fill:#f1f8e9,stroke:#66bb6a,stroke-width:1px,rx:10</code></pre>
+  interleave --&gt; batch --&gt; msgs</code></pre>
 <h4 id="document-gemini"><code>document-gemini</code><a class="headerlink" href="#document-gemini" title="Permanent link">&para;</a></h4>
-<pre class="mermaid"><code>%%{init: {'theme': 'base', 'themeVariables': { 'fontSize': '14px', 'primaryColor': '#e8f4fd', 'primaryBorderColor': '#4a90d9', 'lineColor': '#666'}}}%%
-graph LR
-  doc["📄 document"]:::input
+<pre class="mermaid"><code>graph LR
+  doc["📄 document"]
 
   subgraph encode ["Encode"]
-    read["Read file bytes\n(Rust fast-path)"]:::encode
-    b64["Base64 encode\ninline_data"]:::encode
+    read["Read file bytes\n(Rust fast-path)"]
+    b64["Base64 encode\ninline_data"]
   end
 
-  msg["1 Message\n(Gemini Part)"]:::output
+  msg["1 Message\n(Gemini Part)"]
 
-  doc --&gt; read --&gt; b64 --&gt; msg
-
-  classDef input fill:#e8f4fd,stroke:#4a90d9,stroke-width:1.5px,color:#1a3a5c,rx:8
-  classDef encode fill:#e8f5e9,stroke:#4caf50,stroke-width:1.5px,color:#1b5e20,rx:8
-  classDef output fill:#f5f5f5,stroke:#bdbdbd,stroke-width:1.5px,color:#424242,rx:8
-
-  style encode fill:#f1f8e9,stroke:#66bb6a,stroke-width:1px,rx:10</code></pre>
+  doc --&gt; read --&gt; b64 --&gt; msg</code></pre>
 <hr />
 <h2 id="planned-encoders">Planned Encoders<a class="headerlink" href="#planned-encoders" title="Permanent link">&para;</a></h2>
 <h3 id="image_1">Image<a class="headerlink" href="#image_1" title="Permanent link">&para;</a></h3>
@@ -2440,24 +2327,23 @@ graph LR
 </code></pre></div>
 <h3 id="multi-chunk-encoders">Multi-chunk encoders<a class="headerlink" href="#multi-chunk-encoders" title="Permanent link">&para;</a></h3>
 <p>Encoders that yield multiple Messages (e.g. one per video shot) are processed sequentially via <code>generate_chunked</code>. Each Message gets its own LLM call and results are concatenated. This avoids OOM from loading all chunks into memory simultaneously.</p>
-<pre class="mermaid"><code>%%{init: {'theme': 'base', 'themeVariables': { 'fontSize': '14px', 'primaryColor': '#e8f4fd', 'primaryBorderColor': '#4a90d9', 'lineColor': '#666'}}}%%
-graph LR
-  video["🎬 video"]:::input
+<pre class="mermaid"><code>graph LR
+  video["🎬 video"]
 
   subgraph encode ["Encode"]
-    s1["Shot 1"]:::encode
-    s2["Shot 2"]:::encode
-    s3["Shot N"]:::encode
+    s1["Shot 1"]
+    s2["Shot 2"]
+    s3["Shot N"]
   end
 
   subgraph generate ["Generate"]
-    g1["LLM"]:::generate
-    g2["LLM"]:::generate
-    g3["LLM"]:::generate
+    g1["LLM"]
+    g2["LLM"]
+    g3["LLM"]
   end
 
-  concat["Concat"]:::output
-  out["stdout"]:::output
+  concat["Concat"]
+  out["stdout"]
 
   video --&gt; s1
   video --&gt; s2
@@ -2468,15 +2354,7 @@ graph LR
   g1 --&gt; concat
   g2 --&gt; concat
   g3 --&gt; concat
-  concat --&gt; out
-
-  classDef input fill:#e8f4fd,stroke:#4a90d9,stroke-width:1.5px,color:#1a3a5c,rx:8
-  classDef encode fill:#e8f5e9,stroke:#4caf50,stroke-width:1.5px,color:#1b5e20,rx:8
-  classDef generate fill:#fce4ec,stroke:#e57373,stroke-width:1.5px,color:#6a1b1b,rx:8
-  classDef output fill:#f5f5f5,stroke:#bdbdbd,stroke-width:1.5px,color:#424242,rx:8
-
-  style encode fill:#f1f8e9,stroke:#66bb6a,stroke-width:1px,rx:10
-  style generate fill:#fff0f0,stroke:#ef9a9a,stroke-width:1px,rx:10</code></pre>
+  concat --&gt; out</code></pre>
 <h3 id="encoder-protocol">Encoder Protocol<a class="headerlink" href="#encoder-protocol" title="Permanent link">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="k">class</span><span class="w"> </span><span class="nc">MessageStrategy</span><span class="p">(</span><span class="n">Protocol</span><span class="p">):</span>
 <a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>    <span class="n">name</span><span class="p">:</span> <span class="nb">str</span>
