@@ -1214,30 +1214,29 @@
 <h1 id="pipelines">Pipelines<a class="headerlink" href="#pipelines" title="Permanent link">&para;</a></h1>
 <p>Pipelines configure a 2-stage flow for LLM-based media understanding:
 <strong>encode</strong> (via an encoder) then <strong>generate</strong> (LLM call) to produce text output.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>%%{init: {&#39;theme&#39;: &#39;base&#39;, &#39;themeVariables&#39;: { &#39;fontSize&#39;: &#39;14px&#39;, &#39;lineColor&#39;: &#39;#666&#39;}}}%%
-<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>graph LR
-<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>  file[&quot;Media File&quot;]:::input
-<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>
-<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>  subgraph encode [&quot;Encode&quot;]
-<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>    encoder[&quot;Encoder&quot;]:::encode
-<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>  end
-<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>
-<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>  subgraph generate [&quot;Generate&quot;]
-<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>    llm[&quot;MLLM&quot;]:::generate
-<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>  end
-<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>
-<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>  out[&quot;stdout&quot;]:::output
-<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>
-<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>  file --&gt; encoder --&gt; llm --&gt; out
-<a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>
-<a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a>  classDef input fill:#e8f4fd,stroke:#4a90d9,stroke-width:1.5px,color:#1a3a5c,rx:8
-<a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a>  classDef encode fill:#e8f5e9,stroke:#4caf50,stroke-width:1.5px,color:#1b5e20,rx:8
-<a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a>  classDef generate fill:#fce4ec,stroke:#e57373,stroke-width:1.5px,color:#6a1b1b,rx:8
-<a id="__codelineno-0-20" name="__codelineno-0-20" href="#__codelineno-0-20"></a>  classDef output fill:#f5f5f5,stroke:#bdbdbd,stroke-width:1.5px,color:#424242,rx:8
-<a id="__codelineno-0-21" name="__codelineno-0-21" href="#__codelineno-0-21"></a>
-<a id="__codelineno-0-22" name="__codelineno-0-22" href="#__codelineno-0-22"></a>  style encode fill:#f1f8e9,stroke:#66bb6a,stroke-width:1px,rx:10
-<a id="__codelineno-0-23" name="__codelineno-0-23" href="#__codelineno-0-23"></a>  style generate fill:#fff0f0,stroke:#ef9a9a,stroke-width:1px,rx:10
-</code></pre></div>
+<pre class="mermaid"><code>%%{init: {'theme': 'base', 'themeVariables': { 'fontSize': '14px', 'lineColor': '#666'}}}%%
+graph LR
+  file["Media File"]:::input
+
+  subgraph encode ["Encode"]
+    encoder["Encoder"]:::encode
+  end
+
+  subgraph generate ["Generate"]
+    llm["MLLM"]:::generate
+  end
+
+  out["stdout"]:::output
+
+  file --&gt; encoder --&gt; llm --&gt; out
+
+  classDef input fill:#e8f4fd,stroke:#4a90d9,stroke-width:1.5px,color:#1a3a5c,rx:8
+  classDef encode fill:#e8f5e9,stroke:#4caf50,stroke-width:1.5px,color:#1b5e20,rx:8
+  classDef generate fill:#fce4ec,stroke:#e57373,stroke-width:1.5px,color:#6a1b1b,rx:8
+  classDef output fill:#f5f5f5,stroke:#bdbdbd,stroke-width:1.5px,color:#424242,rx:8
+
+  style encode fill:#f1f8e9,stroke:#66bb6a,stroke-width:1px,rx:10
+  style generate fill:#fff0f0,stroke:#ef9a9a,stroke-width:1px,rx:10</code></pre>
 <p>Each pipeline is a YAML file under <code>pipelines/{kind}/{mode}.yaml</code> that references
 an encoder from <code>mm/encoders/</code> and configures LLM generation parameters.</p>
 <blockquote>
@@ -1247,33 +1246,33 @@ the binary media kinds. <code>--mode fast</code> (default) runs the fast pipelin
 documents (<code>.docx</code> / <code>.pptx</code>) follow a passthrough flow regardless of
 mode, so <code>-p</code>, <code>--encode.*</code>, and <code>--generate.*</code> are no-ops for those.</p>
 </blockquote>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>mm<span class="w"> </span>cat<span class="w"> </span>photo.jpg<span class="w"> </span>-m<span class="w"> </span>fast<span class="w"> </span>-p<span class="w"> </span>resize<span class="w">          </span><span class="c1"># named encoder (fast pipeline)</span>
-<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>mm<span class="w"> </span>cat<span class="w"> </span>video.mp4<span class="w"> </span>-m<span class="w"> </span>fast<span class="w"> </span>-p<span class="w"> </span>shot-mosaic<span class="w">     </span><span class="c1"># scene-aware video encoder</span>
-<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>
-<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="c1"># Override pipeline config from CLI</span>
-<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>mm<span class="w"> </span>cat<span class="w"> </span>photo.jpg<span class="w"> </span>-m<span class="w"> </span>accurate<span class="w"> </span>--encode.strategy<span class="w"> </span>tile
-<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>mm<span class="w"> </span>cat<span class="w"> </span>photo.jpg<span class="w"> </span>-m<span class="w"> </span>accurate<span class="w"> </span>--generate.max-tokens<span class="w"> </span><span class="m">1024</span><span class="w"> </span>--generate.temperature<span class="w"> </span><span class="m">0</span>.5
-<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>mm<span class="w"> </span>cat<span class="w"> </span>photo.jpg<span class="w"> </span>-m<span class="w"> </span>accurate<span class="w"> </span>--prompt<span class="w"> </span><span class="s2">&quot;Describe in one sentence.&quot;</span><span class="w"> </span>--model<span class="w"> </span>moondream2
-<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>
-<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a><span class="c1"># Override individual strategy_opts entries (repeatable, KEY=VALUE form)</span>
-<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>mm<span class="w"> </span>cat<span class="w"> </span>photo.jpg<span class="w"> </span>-m<span class="w"> </span>accurate<span class="w"> </span>--encode.strategy_opts<span class="w"> </span><span class="nv">max_width</span><span class="o">=</span><span class="m">768</span>
-<a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a>mm<span class="w"> </span>cat<span class="w"> </span>video.mp4<span class="w"> </span>-m<span class="w"> </span>accurate<span class="w"> </span>--encode.strategy_opts<span class="w"> </span><span class="nv">max_width</span><span class="o">=</span><span class="m">768</span><span class="w"> </span>--encode.strategy_opts<span class="w"> </span><span class="nv">fps</span><span class="o">=</span><span class="m">5</span>
-<a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a>
-<a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a><span class="c1"># Inspect the YAML source of a built-in pipeline (use as a template for your own)</span>
-<a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a>mm<span class="w"> </span>cat<span class="w"> </span>--print-pipeline<span class="w"> </span>image/accurate
-<a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a>
-<a id="__codelineno-1-16" name="__codelineno-1-16" href="#__codelineno-1-16"></a><span class="c1"># Load explicit pipeline YAML (repeatable, dispatched by kind)</span>
-<a id="__codelineno-1-17" name="__codelineno-1-17" href="#__codelineno-1-17"></a>mm<span class="w"> </span>cat<span class="w"> </span>photo.jpg<span class="w"> </span>-m<span class="w"> </span>accurate<span class="w"> </span>-p<span class="w"> </span>~/my-image-pipeline.yaml
-<a id="__codelineno-1-18" name="__codelineno-1-18" href="#__codelineno-1-18"></a>mm<span class="w"> </span>cat<span class="w"> </span>*.jpg<span class="w"> </span>*.mp4<span class="w"> </span>-m<span class="w"> </span>accurate<span class="w"> </span>-p<span class="w"> </span>image.yaml<span class="w"> </span>-p<span class="w"> </span>video.yaml
-<a id="__codelineno-1-19" name="__codelineno-1-19" href="#__codelineno-1-19"></a>
-<a id="__codelineno-1-20" name="__codelineno-1-20" href="#__codelineno-1-20"></a><span class="c1"># Custom Python transform via pyfunc</span>
-<a id="__codelineno-1-21" name="__codelineno-1-21" href="#__codelineno-1-21"></a>mm<span class="w"> </span>cat<span class="w"> </span>photo.jpg<span class="w"> </span>-m<span class="w"> </span>accurate<span class="w"> </span>--encode.pyfunc<span class="w"> </span>~/my_filter.py
-<a id="__codelineno-1-22" name="__codelineno-1-22" href="#__codelineno-1-22"></a>
-<a id="__codelineno-1-23" name="__codelineno-1-23" href="#__codelineno-1-23"></a><span class="c1"># Per-call model + extra_body for provider-specific knobs</span>
-<a id="__codelineno-1-24" name="__codelineno-1-24" href="#__codelineno-1-24"></a><span class="c1"># (e.g. vlmrt&#39;s method/method_params/video_fps/image_resolution).</span>
-<a id="__codelineno-1-25" name="__codelineno-1-25" href="#__codelineno-1-25"></a>mm<span class="w"> </span>--profile<span class="w"> </span>vlmrt<span class="w"> </span>cat<span class="w"> </span>photo.jpg<span class="w"> </span>-m<span class="w"> </span>accurate<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-1-26" name="__codelineno-1-26" href="#__codelineno-1-26"></a><span class="w">  </span>--model<span class="w"> </span>moondream2<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-1-27" name="__codelineno-1-27" href="#__codelineno-1-27"></a><span class="w">  </span>--generate.extra-body<span class="w"> </span><span class="s1">&#39;{&quot;method&quot;:&quot;detect&quot;,&quot;method_params&quot;:{&quot;object&quot;:&quot;fish&quot;}}&#39;</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>mm<span class="w"> </span>cat<span class="w"> </span>photo.jpg<span class="w"> </span>-m<span class="w"> </span>fast<span class="w"> </span>-p<span class="w"> </span>resize<span class="w">          </span><span class="c1"># named encoder (fast pipeline)</span>
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>mm<span class="w"> </span>cat<span class="w"> </span>video.mp4<span class="w"> </span>-m<span class="w"> </span>fast<span class="w"> </span>-p<span class="w"> </span>shot-mosaic<span class="w">     </span><span class="c1"># scene-aware video encoder</span>
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="c1"># Override pipeline config from CLI</span>
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>mm<span class="w"> </span>cat<span class="w"> </span>photo.jpg<span class="w"> </span>-m<span class="w"> </span>accurate<span class="w"> </span>--encode.strategy<span class="w"> </span>tile
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>mm<span class="w"> </span>cat<span class="w"> </span>photo.jpg<span class="w"> </span>-m<span class="w"> </span>accurate<span class="w"> </span>--generate.max-tokens<span class="w"> </span><span class="m">1024</span><span class="w"> </span>--generate.temperature<span class="w"> </span><span class="m">0</span>.5
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>mm<span class="w"> </span>cat<span class="w"> </span>photo.jpg<span class="w"> </span>-m<span class="w"> </span>accurate<span class="w"> </span>--prompt<span class="w"> </span><span class="s2">&quot;Describe in one sentence.&quot;</span><span class="w"> </span>--model<span class="w"> </span>moondream2
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a><span class="c1"># Override individual strategy_opts entries (repeatable, KEY=VALUE form)</span>
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>mm<span class="w"> </span>cat<span class="w"> </span>photo.jpg<span class="w"> </span>-m<span class="w"> </span>accurate<span class="w"> </span>--encode.strategy_opts<span class="w"> </span><span class="nv">max_width</span><span class="o">=</span><span class="m">768</span>
+<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>mm<span class="w"> </span>cat<span class="w"> </span>video.mp4<span class="w"> </span>-m<span class="w"> </span>accurate<span class="w"> </span>--encode.strategy_opts<span class="w"> </span><span class="nv">max_width</span><span class="o">=</span><span class="m">768</span><span class="w"> </span>--encode.strategy_opts<span class="w"> </span><span class="nv">fps</span><span class="o">=</span><span class="m">5</span>
+<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>
+<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a><span class="c1"># Inspect the YAML source of a built-in pipeline (use as a template for your own)</span>
+<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>mm<span class="w"> </span>cat<span class="w"> </span>--print-pipeline<span class="w"> </span>image/accurate
+<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>
+<a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a><span class="c1"># Load explicit pipeline YAML (repeatable, dispatched by kind)</span>
+<a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a>mm<span class="w"> </span>cat<span class="w"> </span>photo.jpg<span class="w"> </span>-m<span class="w"> </span>accurate<span class="w"> </span>-p<span class="w"> </span>~/my-image-pipeline.yaml
+<a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a>mm<span class="w"> </span>cat<span class="w"> </span>*.jpg<span class="w"> </span>*.mp4<span class="w"> </span>-m<span class="w"> </span>accurate<span class="w"> </span>-p<span class="w"> </span>image.yaml<span class="w"> </span>-p<span class="w"> </span>video.yaml
+<a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a>
+<a id="__codelineno-0-20" name="__codelineno-0-20" href="#__codelineno-0-20"></a><span class="c1"># Custom Python transform via pyfunc</span>
+<a id="__codelineno-0-21" name="__codelineno-0-21" href="#__codelineno-0-21"></a>mm<span class="w"> </span>cat<span class="w"> </span>photo.jpg<span class="w"> </span>-m<span class="w"> </span>accurate<span class="w"> </span>--encode.pyfunc<span class="w"> </span>~/my_filter.py
+<a id="__codelineno-0-22" name="__codelineno-0-22" href="#__codelineno-0-22"></a>
+<a id="__codelineno-0-23" name="__codelineno-0-23" href="#__codelineno-0-23"></a><span class="c1"># Per-call model + extra_body for provider-specific knobs</span>
+<a id="__codelineno-0-24" name="__codelineno-0-24" href="#__codelineno-0-24"></a><span class="c1"># (e.g. vlmrt&#39;s method/method_params/video_fps/image_resolution).</span>
+<a id="__codelineno-0-25" name="__codelineno-0-25" href="#__codelineno-0-25"></a>mm<span class="w"> </span>--profile<span class="w"> </span>vlmrt<span class="w"> </span>cat<span class="w"> </span>photo.jpg<span class="w"> </span>-m<span class="w"> </span>accurate<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-0-26" name="__codelineno-0-26" href="#__codelineno-0-26"></a><span class="w">  </span>--model<span class="w"> </span>moondream2<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-0-27" name="__codelineno-0-27" href="#__codelineno-0-27"></a><span class="w">  </span>--generate.extra-body<span class="w"> </span><span class="s1">&#39;{&quot;method&quot;:&quot;detect&quot;,&quot;method_params&quot;:{&quot;object&quot;:&quot;fish&quot;}}&#39;</span>
 </code></pre></div>
 <h2 id="generatemodel-pinning-a-model-per-pipeline"><code>generate.model</code> — pinning a model per pipeline<a class="headerlink" href="#generatemodel-pinning-a-model-per-pipeline" title="Permanent link">&para;</a></h2>
 <p>The <code>generate</code> block accepts an optional <code>model:</code> string that overrides
@@ -1281,14 +1280,14 @@ the active profile's default model whenever this pipeline is used.
 Leaving it unset (or <code>null</code>) means "use the profile model". Useful for
 shipping a pipeline that always targets a specific deployment-side model
 (e.g. an OCR pipeline that always wants <code>paddleocr-v5</code>).</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="c1"># ~/.config/mm/pipelines/image/accurate.yaml</span>
-<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">image</span>
-<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="nt">mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">accurate</span>
-<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="nt">generate</span><span class="p">:</span>
-<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="w">  </span><span class="nt">prompt</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Read every line of text on this image.</span>
-<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="w">  </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">paddleocr-v5</span>
-<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="w">  </span><span class="nt">extra_body</span><span class="p">:</span>
-<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a><span class="w">    </span><span class="nt">method</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ocr</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="c1"># ~/.config/mm/pipelines/image/accurate.yaml</span>
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">image</span>
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="nt">mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">accurate</span>
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="nt">generate</span><span class="p">:</span>
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="w">  </span><span class="nt">prompt</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Read every line of text on this image.</span>
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="w">  </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">paddleocr-v5</span>
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="w">  </span><span class="nt">extra_body</span><span class="p">:</span>
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a><span class="w">    </span><span class="nt">method</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ocr</span>
 </code></pre></div>
 <p>CLI <code>--model</code> / <code>--generate.model</code> always wins over a pipeline-pinned
 model.</p>
@@ -1297,20 +1296,20 @@ model.</p>
 forwarded verbatim to the OpenAI SDK's <code>extra_body=</code> argument. Use it when
 your endpoint needs request fields beyond the standard OpenAI surface
 (temperature/max_tokens/json_mode are still first-class fields).</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="c1"># ~/.config/mm/pipelines/image/accurate.yaml</span>
-<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">image</span>
-<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="nt">mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">accurate</span>
-<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="nt">encode</span><span class="p">:</span>
-<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="w">  </span><span class="nt">strategy</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">resize</span>
-<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a><span class="w">  </span><span class="nt">strategy_opts</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt"> max_width</span><span class="p">:</span><span class="w"> </span><span class="nv">1024</span><span class="w"> </span><span class="p p-Indicator">}</span>
-<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a><span class="nt">generate</span><span class="p">:</span>
-<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a><span class="w">  </span><span class="nt">prompt</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Describe this image.</span>
-<a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a><span class="w">  </span><span class="nt">max_tokens</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">512</span>
-<a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a><span class="w">  </span><span class="nt">extra_body</span><span class="p">:</span>
-<a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a><span class="w">    </span><span class="nt">method</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">caption</span>
-<a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a><span class="w">    </span><span class="nt">method_params</span><span class="p">:</span>
-<a id="__codelineno-3-13" name="__codelineno-3-13" href="#__codelineno-3-13"></a><span class="w">      </span><span class="nt">length</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">normal</span>
-<a id="__codelineno-3-14" name="__codelineno-3-14" href="#__codelineno-3-14"></a><span class="w">    </span><span class="nt">image_resolution</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;448x448&quot;</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="c1"># ~/.config/mm/pipelines/image/accurate.yaml</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">image</span>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="nt">mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">accurate</span>
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="nt">encode</span><span class="p">:</span>
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="w">  </span><span class="nt">strategy</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">resize</span>
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="w">  </span><span class="nt">strategy_opts</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt"> max_width</span><span class="p">:</span><span class="w"> </span><span class="nv">1024</span><span class="w"> </span><span class="p p-Indicator">}</span>
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="nt">generate</span><span class="p">:</span>
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a><span class="w">  </span><span class="nt">prompt</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Describe this image.</span>
+<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a><span class="w">  </span><span class="nt">max_tokens</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">512</span>
+<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a><span class="w">  </span><span class="nt">extra_body</span><span class="p">:</span>
+<a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a><span class="w">    </span><span class="nt">method</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">caption</span>
+<a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a><span class="w">    </span><span class="nt">method_params</span><span class="p">:</span>
+<a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a><span class="w">      </span><span class="nt">length</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">normal</span>
+<a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a><span class="w">    </span><span class="nt">image_resolution</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;448x448&quot;</span>
 </code></pre></div>
 <p>Anything passed via <code>mm cat --generate.extra-body '&lt;json&gt;'</code> <strong>deep-merges
 on top</strong> of the pipeline-level <code>extra_body</code>, so per-call CLI flags can
@@ -1320,14 +1319,14 @@ the L2 cache key so cached results are invalidated when knobs change.</p>
 <h2 id="override-surfaces-full-precedence-rules">Override surfaces — full precedence rules<a class="headerlink" href="#override-surfaces-full-precedence-rules" title="Permanent link">&para;</a></h2>
 <p>For every <code>cat</code> invocation the effective LLM call comes from three layers
 (right-most wins on conflict):</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>profile (mm.toml)  -&gt;  pipeline YAML (generate.*)  -&gt;  CLI flags on `cat`
-<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>  base_url              prompt                          --prompt / --generate.prompt
-<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>  api_key               model                           --model  / --generate.model
-<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>  model (default)       max_tokens                      --generate.max-tokens
-<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>                        temperature                     --generate.temperature
-<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>                        json_mode                       --generate.json-mode
-<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>                        extra_body                      --generate.extra-body
-<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a>                                                        (deep-merged onto YAML)
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>profile (mm.toml)  -&gt;  pipeline YAML (generate.*)  -&gt;  CLI flags on `cat`
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>  base_url              prompt                          --prompt / --generate.prompt
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>  api_key               model                           --model  / --generate.model
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>  model (default)       max_tokens                      --generate.max-tokens
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>                        temperature                     --generate.temperature
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>                        json_mode                       --generate.json-mode
+<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>                        extra_body                      --generate.extra-body
+<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>                                                        (deep-merged onto YAML)
 </code></pre></div>
 <p><code>base_url</code> and <code>api_key</code> are profile-only — they have no pipeline or CLI
 override.</p>
@@ -1336,18 +1335,18 @@ override.</p>
 <code>parts</code> is a list of OpenAI-compatible message content dicts (e.g.
 <code>{"type": "text", ...}</code> or <code>{"type": "image_url", ...}</code>); <code>context</code> is
 file metadata (name, kind, size, etc.).</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="c1"># ~/my_filter.py — keep only image parts and prepend a custom instruction</span>
-<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="k">def</span><span class="w"> </span><span class="nf">transform</span><span class="p">(</span><span class="n">parts</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">],</span> <span class="n">context</span><span class="p">:</span> <span class="nb">dict</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">]:</span>
-<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>    <span class="n">images</span> <span class="o">=</span> <span class="p">[</span><span class="n">p</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">parts</span> <span class="k">if</span> <span class="n">p</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;type&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="s2">&quot;image_url&quot;</span><span class="p">]</span>
-<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>    <span class="n">header</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;text&quot;</span><span class="p">,</span> <span class="s2">&quot;text&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;Analyze </span><span class="si">{</span><span class="n">context</span><span class="p">[</span><span class="s1">&#39;name&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2"> in detail.&quot;</span><span class="p">}</span>
-<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>    <span class="k">return</span> <span class="p">[</span><span class="n">header</span><span class="p">,</span> <span class="o">*</span><span class="n">images</span><span class="p">]</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="c1"># ~/my_filter.py — keep only image parts and prepend a custom instruction</span>
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="k">def</span><span class="w"> </span><span class="nf">transform</span><span class="p">(</span><span class="n">parts</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">],</span> <span class="n">context</span><span class="p">:</span> <span class="nb">dict</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">]:</span>
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>    <span class="n">images</span> <span class="o">=</span> <span class="p">[</span><span class="n">p</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">parts</span> <span class="k">if</span> <span class="n">p</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;type&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="s2">&quot;image_url&quot;</span><span class="p">]</span>
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>    <span class="n">header</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;text&quot;</span><span class="p">,</span> <span class="s2">&quot;text&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;Analyze </span><span class="si">{</span><span class="n">context</span><span class="p">[</span><span class="s1">&#39;name&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2"> in detail.&quot;</span><span class="p">}</span>
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>    <span class="k">return</span> <span class="p">[</span><span class="n">header</span><span class="p">,</span> <span class="o">*</span><span class="n">images</span><span class="p">]</span>
 </code></pre></div>
 <p>Inline variants also work inside a pipeline YAML:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="nt">encode</span><span class="p">:</span>
-<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="w">  </span><span class="nt">strategy</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">resize</span>
-<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="w">  </span><span class="nt">pyfunc</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">|</span>
-<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="w">    </span><span class="no">def transform(parts, context):</span>
-<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a><span class="w">        </span><span class="no">return [p for p in parts if p.get(&quot;type&quot;) == &quot;image_url&quot;]</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="nt">encode</span><span class="p">:</span>
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="w">  </span><span class="nt">strategy</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">resize</span>
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="w">  </span><span class="nt">pyfunc</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">|</span>
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="w">    </span><span class="no">def transform(parts, context):</span>
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a><span class="w">        </span><span class="no">return [p for p in parts if p.get(&quot;type&quot;) == &quot;image_url&quot;]</span>
 </code></pre></div>
 <h2 id="encoders">Encoders<a class="headerlink" href="#encoders" title="Permanent link">&para;</a></h2>
 <p>See <a href="../ENCODERS/">ENCODERS.md</a> for the full encoder reference — all built-in encoders, parameters, planned encoders, and how to write custom encoders.</p>

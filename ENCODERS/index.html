@@ -1839,50 +1839,48 @@
 </tbody>
 </table>
 <h4 id="image-resize"><code>image-resize</code><a class="headerlink" href="#image-resize" title="Permanent link">&para;</a></h4>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>%%{init: {&#39;theme&#39;: &#39;base&#39;, &#39;themeVariables&#39;: { &#39;fontSize&#39;: &#39;14px&#39;, &#39;primaryColor&#39;: &#39;#e8f4fd&#39;, &#39;primaryBorderColor&#39;: &#39;#4a90d9&#39;, &#39;lineColor&#39;: &#39;#666&#39;}}}%%
-<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>graph LR
-<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>  img[&quot;🖼️ image&quot;]:::input
-<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>
-<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>  subgraph encode [&quot;Encode&quot;]
-<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>    exif[&quot;EXIF orient&quot;]:::encode
-<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>    resize[&quot;Resize&quot;]:::encode
-<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>  end
-<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>
-<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>  msg[&quot;1 Message\n(1 image_url)&quot;]:::output
-<a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a>
-<a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a>  img --&gt; exif --&gt; resize --&gt; msg
-<a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a>
-<a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a>  classDef input fill:#e8f4fd,stroke:#4a90d9,stroke-width:1.5px,color:#1a3a5c,rx:8
-<a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a>  classDef encode fill:#e8f5e9,stroke:#4caf50,stroke-width:1.5px,color:#1b5e20,rx:8
-<a id="__codelineno-1-16" name="__codelineno-1-16" href="#__codelineno-1-16"></a>  classDef output fill:#f5f5f5,stroke:#bdbdbd,stroke-width:1.5px,color:#424242,rx:8
-<a id="__codelineno-1-17" name="__codelineno-1-17" href="#__codelineno-1-17"></a>
-<a id="__codelineno-1-18" name="__codelineno-1-18" href="#__codelineno-1-18"></a>  style encode fill:#f1f8e9,stroke:#66bb6a,stroke-width:1px,rx:10
-</code></pre></div>
+<pre class="mermaid"><code>%%{init: {'theme': 'base', 'themeVariables': { 'fontSize': '14px', 'primaryColor': '#e8f4fd', 'primaryBorderColor': '#4a90d9', 'lineColor': '#666'}}}%%
+graph LR
+  img["🖼️ image"]:::input
+
+  subgraph encode ["Encode"]
+    exif["EXIF orient"]:::encode
+    resize["Resize"]:::encode
+  end
+
+  msg["1 Message\n(1 image_url)"]:::output
+
+  img --&gt; exif --&gt; resize --&gt; msg
+
+  classDef input fill:#e8f4fd,stroke:#4a90d9,stroke-width:1.5px,color:#1a3a5c,rx:8
+  classDef encode fill:#e8f5e9,stroke:#4caf50,stroke-width:1.5px,color:#1b5e20,rx:8
+  classDef output fill:#f5f5f5,stroke:#bdbdbd,stroke-width:1.5px,color:#424242,rx:8
+
+  style encode fill:#f1f8e9,stroke:#66bb6a,stroke-width:1px,rx:10</code></pre>
 <h4 id="image-tile"><code>image-tile</code><a class="headerlink" href="#image-tile" title="Permanent link">&para;</a></h4>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>%%{init: {&#39;theme&#39;: &#39;base&#39;, &#39;themeVariables&#39;: { &#39;fontSize&#39;: &#39;14px&#39;, &#39;primaryColor&#39;: &#39;#e8f4fd&#39;, &#39;primaryBorderColor&#39;: &#39;#4a90d9&#39;, &#39;lineColor&#39;: &#39;#666&#39;}}}%%
-<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>graph LR
-<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>  img[&quot;🖼️ image&quot;]:::input
-<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>
-<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>  subgraph encode [&quot;Encode&quot;]
-<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>    exif[&quot;EXIF orient&quot;]:::encode
-<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>    overview[&quot;Resize overview image\n(global context)&quot;]:::encode
-<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>    tiles[&quot;Crop NxM tile images\n(fine detail)&quot;]:::encode
-<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>  end
-<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>
-<a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a>  msg[&quot;1 Message\n(tile metadata + overview image\n+ N tile images)&quot;]:::output
-<a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a>
-<a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a>  img --&gt; exif
-<a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a>  exif --&gt; overview
-<a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a>  exif --&gt; tiles
-<a id="__codelineno-2-16" name="__codelineno-2-16" href="#__codelineno-2-16"></a>  overview --&gt; msg
-<a id="__codelineno-2-17" name="__codelineno-2-17" href="#__codelineno-2-17"></a>  tiles --&gt; msg
-<a id="__codelineno-2-18" name="__codelineno-2-18" href="#__codelineno-2-18"></a>
-<a id="__codelineno-2-19" name="__codelineno-2-19" href="#__codelineno-2-19"></a>  classDef input fill:#e8f4fd,stroke:#4a90d9,stroke-width:1.5px,color:#1a3a5c,rx:8
-<a id="__codelineno-2-20" name="__codelineno-2-20" href="#__codelineno-2-20"></a>  classDef encode fill:#e8f5e9,stroke:#4caf50,stroke-width:1.5px,color:#1b5e20,rx:8
-<a id="__codelineno-2-21" name="__codelineno-2-21" href="#__codelineno-2-21"></a>  classDef output fill:#f5f5f5,stroke:#bdbdbd,stroke-width:1.5px,color:#424242,rx:8
-<a id="__codelineno-2-22" name="__codelineno-2-22" href="#__codelineno-2-22"></a>
-<a id="__codelineno-2-23" name="__codelineno-2-23" href="#__codelineno-2-23"></a>  style encode fill:#f1f8e9,stroke:#66bb6a,stroke-width:1px,rx:10
-</code></pre></div>
+<pre class="mermaid"><code>%%{init: {'theme': 'base', 'themeVariables': { 'fontSize': '14px', 'primaryColor': '#e8f4fd', 'primaryBorderColor': '#4a90d9', 'lineColor': '#666'}}}%%
+graph LR
+  img["🖼️ image"]:::input
+
+  subgraph encode ["Encode"]
+    exif["EXIF orient"]:::encode
+    overview["Resize overview image\n(global context)"]:::encode
+    tiles["Crop NxM tile images\n(fine detail)"]:::encode
+  end
+
+  msg["1 Message\n(tile metadata + overview image\n+ N tile images)"]:::output
+
+  img --&gt; exif
+  exif --&gt; overview
+  exif --&gt; tiles
+  overview --&gt; msg
+  tiles --&gt; msg
+
+  classDef input fill:#e8f4fd,stroke:#4a90d9,stroke-width:1.5px,color:#1a3a5c,rx:8
+  classDef encode fill:#e8f5e9,stroke:#4caf50,stroke-width:1.5px,color:#1b5e20,rx:8
+  classDef output fill:#f5f5f5,stroke:#bdbdbd,stroke-width:1.5px,color:#424242,rx:8
+
+  style encode fill:#f1f8e9,stroke:#66bb6a,stroke-width:1px,rx:10</code></pre>
 <h3 id="video">Video<a class="headerlink" href="#video" title="Permanent link">&para;</a></h3>
 <table>
 <thead>
@@ -1991,200 +1989,192 @@
 </tbody>
 </table>
 <h4 id="video-mosaic"><code>video-mosaic</code><a class="headerlink" href="#video-mosaic" title="Permanent link">&para;</a></h4>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>%%{init: {&#39;theme&#39;: &#39;base&#39;, &#39;themeVariables&#39;: { &#39;fontSize&#39;: &#39;14px&#39;, &#39;primaryColor&#39;: &#39;#e8f4fd&#39;, &#39;primaryBorderColor&#39;: &#39;#4a90d9&#39;, &#39;lineColor&#39;: &#39;#666&#39;}}}%%
-<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>graph LR
-<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>  video[&quot;🎬 video&quot;]:::input
-<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>
-<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>  subgraph encode [&quot;Encode&quot;]
-<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>    detect[&quot;Scene detect\n(or uniform)&quot;]:::encode
-<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>    frames[&quot;Extract\nN frames&quot;]:::encode
-<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>    tile[&quot;Tile into\n4x4 mosaics&quot;]:::encode
-<a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a>  end
-<a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a>
-<a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a>  msg[&quot;1 Message\n(text + mosaic\nimages)&quot;]:::output
-<a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a>
-<a id="__codelineno-3-13" name="__codelineno-3-13" href="#__codelineno-3-13"></a>  video --&gt; detect --&gt; frames --&gt; tile --&gt; msg
-<a id="__codelineno-3-14" name="__codelineno-3-14" href="#__codelineno-3-14"></a>
-<a id="__codelineno-3-15" name="__codelineno-3-15" href="#__codelineno-3-15"></a>  classDef input fill:#e8f4fd,stroke:#4a90d9,stroke-width:1.5px,color:#1a3a5c,rx:8
-<a id="__codelineno-3-16" name="__codelineno-3-16" href="#__codelineno-3-16"></a>  classDef encode fill:#e8f5e9,stroke:#4caf50,stroke-width:1.5px,color:#1b5e20,rx:8
-<a id="__codelineno-3-17" name="__codelineno-3-17" href="#__codelineno-3-17"></a>  classDef output fill:#f5f5f5,stroke:#bdbdbd,stroke-width:1.5px,color:#424242,rx:8
-<a id="__codelineno-3-18" name="__codelineno-3-18" href="#__codelineno-3-18"></a>
-<a id="__codelineno-3-19" name="__codelineno-3-19" href="#__codelineno-3-19"></a>  style encode fill:#f1f8e9,stroke:#66bb6a,stroke-width:1px,rx:10
-</code></pre></div>
+<pre class="mermaid"><code>%%{init: {'theme': 'base', 'themeVariables': { 'fontSize': '14px', 'primaryColor': '#e8f4fd', 'primaryBorderColor': '#4a90d9', 'lineColor': '#666'}}}%%
+graph LR
+  video["🎬 video"]:::input
+
+  subgraph encode ["Encode"]
+    detect["Scene detect\n(or uniform)"]:::encode
+    frames["Extract\nN frames"]:::encode
+    tile["Tile into\n4x4 mosaics"]:::encode
+  end
+
+  msg["1 Message\n(text + mosaic\nimages)"]:::output
+
+  video --&gt; detect --&gt; frames --&gt; tile --&gt; msg
+
+  classDef input fill:#e8f4fd,stroke:#4a90d9,stroke-width:1.5px,color:#1a3a5c,rx:8
+  classDef encode fill:#e8f5e9,stroke:#4caf50,stroke-width:1.5px,color:#1b5e20,rx:8
+  classDef output fill:#f5f5f5,stroke:#bdbdbd,stroke-width:1.5px,color:#424242,rx:8
+
+  style encode fill:#f1f8e9,stroke:#66bb6a,stroke-width:1px,rx:10</code></pre>
 <h4 id="video-frames"><code>video-frames</code><a class="headerlink" href="#video-frames" title="Permanent link">&para;</a></h4>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>%%{init: {&#39;theme&#39;: &#39;base&#39;, &#39;themeVariables&#39;: { &#39;fontSize&#39;: &#39;14px&#39;, &#39;primaryColor&#39;: &#39;#e8f4fd&#39;, &#39;primaryBorderColor&#39;: &#39;#4a90d9&#39;, &#39;lineColor&#39;: &#39;#666&#39;}}}%%
-<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>graph LR
-<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>  video[&quot;🎬 video&quot;]:::input
-<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>
-<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>  subgraph encode [&quot;Encode&quot;]
-<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>    ts[&quot;Uniform timestamps\nat fps&quot;]:::encode
-<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>    ffmpeg[&quot;ffmpeg seek\n+ extract&quot;]:::encode
-<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a>    batch[&quot;Batch ≤16\nframes/msg&quot;]:::encode
-<a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a>  end
-<a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a>
-<a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a>  msgs[&quot;N Messages\n(text header\n+ frame images)&quot;]:::output
-<a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a>
-<a id="__codelineno-4-13" name="__codelineno-4-13" href="#__codelineno-4-13"></a>  video --&gt; ts --&gt; ffmpeg --&gt; batch --&gt; msgs
-<a id="__codelineno-4-14" name="__codelineno-4-14" href="#__codelineno-4-14"></a>
-<a id="__codelineno-4-15" name="__codelineno-4-15" href="#__codelineno-4-15"></a>  classDef input fill:#e8f4fd,stroke:#4a90d9,stroke-width:1.5px,color:#1a3a5c,rx:8
-<a id="__codelineno-4-16" name="__codelineno-4-16" href="#__codelineno-4-16"></a>  classDef encode fill:#e8f5e9,stroke:#4caf50,stroke-width:1.5px,color:#1b5e20,rx:8
-<a id="__codelineno-4-17" name="__codelineno-4-17" href="#__codelineno-4-17"></a>  classDef output fill:#f5f5f5,stroke:#bdbdbd,stroke-width:1.5px,color:#424242,rx:8
-<a id="__codelineno-4-18" name="__codelineno-4-18" href="#__codelineno-4-18"></a>
-<a id="__codelineno-4-19" name="__codelineno-4-19" href="#__codelineno-4-19"></a>  style encode fill:#f1f8e9,stroke:#66bb6a,stroke-width:1px,rx:10
-</code></pre></div>
+<pre class="mermaid"><code>%%{init: {'theme': 'base', 'themeVariables': { 'fontSize': '14px', 'primaryColor': '#e8f4fd', 'primaryBorderColor': '#4a90d9', 'lineColor': '#666'}}}%%
+graph LR
+  video["🎬 video"]:::input
+
+  subgraph encode ["Encode"]
+    ts["Uniform timestamps\nat fps"]:::encode
+    ffmpeg["ffmpeg seek\n+ extract"]:::encode
+    batch["Batch ≤16\nframes/msg"]:::encode
+  end
+
+  msgs["N Messages\n(text header\n+ frame images)"]:::output
+
+  video --&gt; ts --&gt; ffmpeg --&gt; batch --&gt; msgs
+
+  classDef input fill:#e8f4fd,stroke:#4a90d9,stroke-width:1.5px,color:#1a3a5c,rx:8
+  classDef encode fill:#e8f5e9,stroke:#4caf50,stroke-width:1.5px,color:#1b5e20,rx:8
+  classDef output fill:#f5f5f5,stroke:#bdbdbd,stroke-width:1.5px,color:#424242,rx:8
+
+  style encode fill:#f1f8e9,stroke:#66bb6a,stroke-width:1px,rx:10</code></pre>
 <h4 id="video-frames-w-transcript"><code>video-frames-w-transcript</code><a class="headerlink" href="#video-frames-w-transcript" title="Permanent link">&para;</a></h4>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>%%{init: {&#39;theme&#39;: &#39;base&#39;, &#39;themeVariables&#39;: { &#39;fontSize&#39;: &#39;14px&#39;, &#39;primaryColor&#39;: &#39;#e8f4fd&#39;, &#39;primaryBorderColor&#39;: &#39;#4a90d9&#39;, &#39;lineColor&#39;: &#39;#666&#39;}}}%%
-<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>graph LR
-<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>  video[&quot;🎬 video&quot;]:::input
-<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>
-<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>  subgraph encode [&quot;Encode&quot;]
-<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>    direction TB
-<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>    audio[&quot;ffmpeg\nextract audio&quot;]:::encode
-<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>    whisper[&quot;Whisper\ntranscribe&quot;]:::encode
-<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a>    frames[&quot;Extract frames\nat fps&quot;]:::encode
-<a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a>    batch[&quot;Batch ≤16\nframes/msg&quot;]:::encode
-<a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a>  end
-<a id="__codelineno-5-12" name="__codelineno-5-12" href="#__codelineno-5-12"></a>
-<a id="__codelineno-5-13" name="__codelineno-5-13" href="#__codelineno-5-13"></a>  transcript[&quot;Msg 1:\ntranscript&quot;]:::output
-<a id="__codelineno-5-14" name="__codelineno-5-14" href="#__codelineno-5-14"></a>  frame_msgs[&quot;Msgs 2..N:\nframe batches&quot;]:::output
-<a id="__codelineno-5-15" name="__codelineno-5-15" href="#__codelineno-5-15"></a>
-<a id="__codelineno-5-16" name="__codelineno-5-16" href="#__codelineno-5-16"></a>  video --&gt; audio --&gt; whisper --&gt; transcript
-<a id="__codelineno-5-17" name="__codelineno-5-17" href="#__codelineno-5-17"></a>  video --&gt; frames --&gt; batch --&gt; frame_msgs
-<a id="__codelineno-5-18" name="__codelineno-5-18" href="#__codelineno-5-18"></a>
-<a id="__codelineno-5-19" name="__codelineno-5-19" href="#__codelineno-5-19"></a>  classDef input fill:#e8f4fd,stroke:#4a90d9,stroke-width:1.5px,color:#1a3a5c,rx:8
-<a id="__codelineno-5-20" name="__codelineno-5-20" href="#__codelineno-5-20"></a>  classDef encode fill:#e8f5e9,stroke:#4caf50,stroke-width:1.5px,color:#1b5e20,rx:8
-<a id="__codelineno-5-21" name="__codelineno-5-21" href="#__codelineno-5-21"></a>  classDef output fill:#f5f5f5,stroke:#bdbdbd,stroke-width:1.5px,color:#424242,rx:8
-<a id="__codelineno-5-22" name="__codelineno-5-22" href="#__codelineno-5-22"></a>
-<a id="__codelineno-5-23" name="__codelineno-5-23" href="#__codelineno-5-23"></a>  style encode fill:#f1f8e9,stroke:#66bb6a,stroke-width:1px,rx:10
-</code></pre></div>
+<pre class="mermaid"><code>%%{init: {'theme': 'base', 'themeVariables': { 'fontSize': '14px', 'primaryColor': '#e8f4fd', 'primaryBorderColor': '#4a90d9', 'lineColor': '#666'}}}%%
+graph LR
+  video["🎬 video"]:::input
+
+  subgraph encode ["Encode"]
+    direction TB
+    audio["ffmpeg\nextract audio"]:::encode
+    whisper["Whisper\ntranscribe"]:::encode
+    frames["Extract frames\nat fps"]:::encode
+    batch["Batch ≤16\nframes/msg"]:::encode
+  end
+
+  transcript["Msg 1:\ntranscript"]:::output
+  frame_msgs["Msgs 2..N:\nframe batches"]:::output
+
+  video --&gt; audio --&gt; whisper --&gt; transcript
+  video --&gt; frames --&gt; batch --&gt; frame_msgs
+
+  classDef input fill:#e8f4fd,stroke:#4a90d9,stroke-width:1.5px,color:#1a3a5c,rx:8
+  classDef encode fill:#e8f5e9,stroke:#4caf50,stroke-width:1.5px,color:#1b5e20,rx:8
+  classDef output fill:#f5f5f5,stroke:#bdbdbd,stroke-width:1.5px,color:#424242,rx:8
+
+  style encode fill:#f1f8e9,stroke:#66bb6a,stroke-width:1px,rx:10</code></pre>
 <h4 id="video-chunks"><code>video-chunks</code><a class="headerlink" href="#video-chunks" title="Permanent link">&para;</a></h4>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>%%{init: {&#39;theme&#39;: &#39;base&#39;, &#39;themeVariables&#39;: { &#39;fontSize&#39;: &#39;14px&#39;, &#39;primaryColor&#39;: &#39;#e8f4fd&#39;, &#39;primaryBorderColor&#39;: &#39;#4a90d9&#39;, &#39;lineColor&#39;: &#39;#666&#39;}}}%%
-<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>graph LR
-<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>  video[&quot;🎬 video&quot;]:::input
-<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>
-<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>  subgraph encode [&quot;Encode&quot;]
-<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>    split[&quot;Split by duration\n(overlap)&quot;]:::encode
-<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a>    c1[&quot;Chunk 1\n16 frames&quot;]:::encode
-<a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a>    c2[&quot;Chunk 2\n16 frames&quot;]:::encode
-<a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a>    c3[&quot;Chunk N\n16 frames&quot;]:::encode
-<a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a>  end
-<a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a>
-<a id="__codelineno-6-12" name="__codelineno-6-12" href="#__codelineno-6-12"></a>  m1[&quot;Message 1&quot;]:::output
-<a id="__codelineno-6-13" name="__codelineno-6-13" href="#__codelineno-6-13"></a>  m2[&quot;Message 2&quot;]:::output
-<a id="__codelineno-6-14" name="__codelineno-6-14" href="#__codelineno-6-14"></a>  m3[&quot;Message N&quot;]:::output
-<a id="__codelineno-6-15" name="__codelineno-6-15" href="#__codelineno-6-15"></a>
-<a id="__codelineno-6-16" name="__codelineno-6-16" href="#__codelineno-6-16"></a>  video --&gt; split
-<a id="__codelineno-6-17" name="__codelineno-6-17" href="#__codelineno-6-17"></a>  split --&gt; c1 --&gt; m1
-<a id="__codelineno-6-18" name="__codelineno-6-18" href="#__codelineno-6-18"></a>  split --&gt; c2 --&gt; m2
-<a id="__codelineno-6-19" name="__codelineno-6-19" href="#__codelineno-6-19"></a>  split --&gt; c3 --&gt; m3
-<a id="__codelineno-6-20" name="__codelineno-6-20" href="#__codelineno-6-20"></a>
-<a id="__codelineno-6-21" name="__codelineno-6-21" href="#__codelineno-6-21"></a>  classDef input fill:#e8f4fd,stroke:#4a90d9,stroke-width:1.5px,color:#1a3a5c,rx:8
-<a id="__codelineno-6-22" name="__codelineno-6-22" href="#__codelineno-6-22"></a>  classDef encode fill:#e8f5e9,stroke:#4caf50,stroke-width:1.5px,color:#1b5e20,rx:8
-<a id="__codelineno-6-23" name="__codelineno-6-23" href="#__codelineno-6-23"></a>  classDef output fill:#f5f5f5,stroke:#bdbdbd,stroke-width:1.5px,color:#424242,rx:8
-<a id="__codelineno-6-24" name="__codelineno-6-24" href="#__codelineno-6-24"></a>
-<a id="__codelineno-6-25" name="__codelineno-6-25" href="#__codelineno-6-25"></a>  style encode fill:#f1f8e9,stroke:#66bb6a,stroke-width:1px,rx:10
-</code></pre></div>
+<pre class="mermaid"><code>%%{init: {'theme': 'base', 'themeVariables': { 'fontSize': '14px', 'primaryColor': '#e8f4fd', 'primaryBorderColor': '#4a90d9', 'lineColor': '#666'}}}%%
+graph LR
+  video["🎬 video"]:::input
+
+  subgraph encode ["Encode"]
+    split["Split by duration\n(overlap)"]:::encode
+    c1["Chunk 1\n16 frames"]:::encode
+    c2["Chunk 2\n16 frames"]:::encode
+    c3["Chunk N\n16 frames"]:::encode
+  end
+
+  m1["Message 1"]:::output
+  m2["Message 2"]:::output
+  m3["Message N"]:::output
+
+  video --&gt; split
+  split --&gt; c1 --&gt; m1
+  split --&gt; c2 --&gt; m2
+  split --&gt; c3 --&gt; m3
+
+  classDef input fill:#e8f4fd,stroke:#4a90d9,stroke-width:1.5px,color:#1a3a5c,rx:8
+  classDef encode fill:#e8f5e9,stroke:#4caf50,stroke-width:1.5px,color:#1b5e20,rx:8
+  classDef output fill:#f5f5f5,stroke:#bdbdbd,stroke-width:1.5px,color:#424242,rx:8
+
+  style encode fill:#f1f8e9,stroke:#66bb6a,stroke-width:1px,rx:10</code></pre>
 <h4 id="video-shots"><code>video-shots</code><a class="headerlink" href="#video-shots" title="Permanent link">&para;</a></h4>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>%%{init: {&#39;theme&#39;: &#39;base&#39;, &#39;themeVariables&#39;: { &#39;fontSize&#39;: &#39;14px&#39;, &#39;primaryColor&#39;: &#39;#e8f4fd&#39;, &#39;primaryBorderColor&#39;: &#39;#4a90d9&#39;, &#39;lineColor&#39;: &#39;#666&#39;}}}%%
-<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>graph LR
-<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>  video[&quot;🎬 video&quot;]:::input
-<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>
-<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>  subgraph encode [&quot;Encode&quot;]
-<a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a>    detect[&quot;PySceneDetect\nshot boundaries&quot;]:::encode
-<a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a>    s1[&quot;Shot 1\n≤8 frames&quot;]:::encode
-<a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a>    s2[&quot;Shot 2\n≤8 frames&quot;]:::encode
-<a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a>    s3[&quot;Shot N\n≤8 frames&quot;]:::encode
-<a id="__codelineno-7-10" name="__codelineno-7-10" href="#__codelineno-7-10"></a>  end
-<a id="__codelineno-7-11" name="__codelineno-7-11" href="#__codelineno-7-11"></a>
-<a id="__codelineno-7-12" name="__codelineno-7-12" href="#__codelineno-7-12"></a>  m1[&quot;Message 1&quot;]:::output
-<a id="__codelineno-7-13" name="__codelineno-7-13" href="#__codelineno-7-13"></a>  m2[&quot;Message 2&quot;]:::output
-<a id="__codelineno-7-14" name="__codelineno-7-14" href="#__codelineno-7-14"></a>  m3[&quot;Message N&quot;]:::output
-<a id="__codelineno-7-15" name="__codelineno-7-15" href="#__codelineno-7-15"></a>
-<a id="__codelineno-7-16" name="__codelineno-7-16" href="#__codelineno-7-16"></a>  video --&gt; detect
-<a id="__codelineno-7-17" name="__codelineno-7-17" href="#__codelineno-7-17"></a>  detect --&gt; s1 --&gt; m1
-<a id="__codelineno-7-18" name="__codelineno-7-18" href="#__codelineno-7-18"></a>  detect --&gt; s2 --&gt; m2
-<a id="__codelineno-7-19" name="__codelineno-7-19" href="#__codelineno-7-19"></a>  detect --&gt; s3 --&gt; m3
-<a id="__codelineno-7-20" name="__codelineno-7-20" href="#__codelineno-7-20"></a>
-<a id="__codelineno-7-21" name="__codelineno-7-21" href="#__codelineno-7-21"></a>  classDef input fill:#e8f4fd,stroke:#4a90d9,stroke-width:1.5px,color:#1a3a5c,rx:8
-<a id="__codelineno-7-22" name="__codelineno-7-22" href="#__codelineno-7-22"></a>  classDef encode fill:#e8f5e9,stroke:#4caf50,stroke-width:1.5px,color:#1b5e20,rx:8
-<a id="__codelineno-7-23" name="__codelineno-7-23" href="#__codelineno-7-23"></a>  classDef output fill:#f5f5f5,stroke:#bdbdbd,stroke-width:1.5px,color:#424242,rx:8
-<a id="__codelineno-7-24" name="__codelineno-7-24" href="#__codelineno-7-24"></a>
-<a id="__codelineno-7-25" name="__codelineno-7-25" href="#__codelineno-7-25"></a>  style encode fill:#f1f8e9,stroke:#66bb6a,stroke-width:1px,rx:10
-</code></pre></div>
+<pre class="mermaid"><code>%%{init: {'theme': 'base', 'themeVariables': { 'fontSize': '14px', 'primaryColor': '#e8f4fd', 'primaryBorderColor': '#4a90d9', 'lineColor': '#666'}}}%%
+graph LR
+  video["🎬 video"]:::input
+
+  subgraph encode ["Encode"]
+    detect["PySceneDetect\nshot boundaries"]:::encode
+    s1["Shot 1\n≤8 frames"]:::encode
+    s2["Shot 2\n≤8 frames"]:::encode
+    s3["Shot N\n≤8 frames"]:::encode
+  end
+
+  m1["Message 1"]:::output
+  m2["Message 2"]:::output
+  m3["Message N"]:::output
+
+  video --&gt; detect
+  detect --&gt; s1 --&gt; m1
+  detect --&gt; s2 --&gt; m2
+  detect --&gt; s3 --&gt; m3
+
+  classDef input fill:#e8f4fd,stroke:#4a90d9,stroke-width:1.5px,color:#1a3a5c,rx:8
+  classDef encode fill:#e8f5e9,stroke:#4caf50,stroke-width:1.5px,color:#1b5e20,rx:8
+  classDef output fill:#f5f5f5,stroke:#bdbdbd,stroke-width:1.5px,color:#424242,rx:8
+
+  style encode fill:#f1f8e9,stroke:#66bb6a,stroke-width:1px,rx:10</code></pre>
 <h4 id="video-shot-mosaic"><code>video-shot-mosaic</code><a class="headerlink" href="#video-shot-mosaic" title="Permanent link">&para;</a></h4>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>%%{init: {&#39;theme&#39;: &#39;base&#39;, &#39;themeVariables&#39;: { &#39;fontSize&#39;: &#39;14px&#39;, &#39;primaryColor&#39;: &#39;#e8f4fd&#39;, &#39;primaryBorderColor&#39;: &#39;#4a90d9&#39;, &#39;lineColor&#39;: &#39;#666&#39;}}}%%
-<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>graph LR
-<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>  video[&quot;🎬 video&quot;]:::input
-<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>
-<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>  subgraph encode [&quot;Encode&quot;]
-<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a>    detect[&quot;PySceneDetect\nshot boundaries&quot;]:::encode
-<a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a>    s1[&quot;Shot 1 frames\n→ tile mosaic&quot;]:::encode
-<a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a>    s2[&quot;Shot 2 frames\n→ tile mosaic&quot;]:::encode
-<a id="__codelineno-8-9" name="__codelineno-8-9" href="#__codelineno-8-9"></a>    s3[&quot;Shot N frames\n→ tile mosaic&quot;]:::encode
-<a id="__codelineno-8-10" name="__codelineno-8-10" href="#__codelineno-8-10"></a>  end
-<a id="__codelineno-8-11" name="__codelineno-8-11" href="#__codelineno-8-11"></a>
-<a id="__codelineno-8-12" name="__codelineno-8-12" href="#__codelineno-8-12"></a>  m1[&quot;Message 1\n(mosaic grid)&quot;]:::output
-<a id="__codelineno-8-13" name="__codelineno-8-13" href="#__codelineno-8-13"></a>  m2[&quot;Message 2\n(mosaic grid)&quot;]:::output
-<a id="__codelineno-8-14" name="__codelineno-8-14" href="#__codelineno-8-14"></a>  m3[&quot;Message N\n(mosaic grid)&quot;]:::output
-<a id="__codelineno-8-15" name="__codelineno-8-15" href="#__codelineno-8-15"></a>
-<a id="__codelineno-8-16" name="__codelineno-8-16" href="#__codelineno-8-16"></a>  video --&gt; detect
-<a id="__codelineno-8-17" name="__codelineno-8-17" href="#__codelineno-8-17"></a>  detect --&gt; s1 --&gt; m1
-<a id="__codelineno-8-18" name="__codelineno-8-18" href="#__codelineno-8-18"></a>  detect --&gt; s2 --&gt; m2
-<a id="__codelineno-8-19" name="__codelineno-8-19" href="#__codelineno-8-19"></a>  detect --&gt; s3 --&gt; m3
-<a id="__codelineno-8-20" name="__codelineno-8-20" href="#__codelineno-8-20"></a>
-<a id="__codelineno-8-21" name="__codelineno-8-21" href="#__codelineno-8-21"></a>  classDef input fill:#e8f4fd,stroke:#4a90d9,stroke-width:1.5px,color:#1a3a5c,rx:8
-<a id="__codelineno-8-22" name="__codelineno-8-22" href="#__codelineno-8-22"></a>  classDef encode fill:#e8f5e9,stroke:#4caf50,stroke-width:1.5px,color:#1b5e20,rx:8
-<a id="__codelineno-8-23" name="__codelineno-8-23" href="#__codelineno-8-23"></a>  classDef output fill:#f5f5f5,stroke:#bdbdbd,stroke-width:1.5px,color:#424242,rx:8
-<a id="__codelineno-8-24" name="__codelineno-8-24" href="#__codelineno-8-24"></a>
-<a id="__codelineno-8-25" name="__codelineno-8-25" href="#__codelineno-8-25"></a>  style encode fill:#f1f8e9,stroke:#66bb6a,stroke-width:1px,rx:10
-</code></pre></div>
+<pre class="mermaid"><code>%%{init: {'theme': 'base', 'themeVariables': { 'fontSize': '14px', 'primaryColor': '#e8f4fd', 'primaryBorderColor': '#4a90d9', 'lineColor': '#666'}}}%%
+graph LR
+  video["🎬 video"]:::input
+
+  subgraph encode ["Encode"]
+    detect["PySceneDetect\nshot boundaries"]:::encode
+    s1["Shot 1 frames\n→ tile mosaic"]:::encode
+    s2["Shot 2 frames\n→ tile mosaic"]:::encode
+    s3["Shot N frames\n→ tile mosaic"]:::encode
+  end
+
+  m1["Message 1\n(mosaic grid)"]:::output
+  m2["Message 2\n(mosaic grid)"]:::output
+  m3["Message N\n(mosaic grid)"]:::output
+
+  video --&gt; detect
+  detect --&gt; s1 --&gt; m1
+  detect --&gt; s2 --&gt; m2
+  detect --&gt; s3 --&gt; m3
+
+  classDef input fill:#e8f4fd,stroke:#4a90d9,stroke-width:1.5px,color:#1a3a5c,rx:8
+  classDef encode fill:#e8f5e9,stroke:#4caf50,stroke-width:1.5px,color:#1b5e20,rx:8
+  classDef output fill:#f5f5f5,stroke:#bdbdbd,stroke-width:1.5px,color:#424242,rx:8
+
+  style encode fill:#f1f8e9,stroke:#66bb6a,stroke-width:1px,rx:10</code></pre>
 <h4 id="video-gemini"><code>video-gemini</code><a class="headerlink" href="#video-gemini" title="Permanent link">&para;</a></h4>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>%%{init: {&#39;theme&#39;: &#39;base&#39;, &#39;themeVariables&#39;: { &#39;fontSize&#39;: &#39;14px&#39;, &#39;primaryColor&#39;: &#39;#e8f4fd&#39;, &#39;primaryBorderColor&#39;: &#39;#4a90d9&#39;, &#39;lineColor&#39;: &#39;#666&#39;}}}%%
-<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>graph LR
-<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>  video[&quot;🎬 video&quot;]:::input
-<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>
-<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>  subgraph encode [&quot;Encode&quot;]
-<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a>    read[&quot;Read file bytes\n(Rust fast-path)&quot;]:::encode
-<a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a>    b64[&quot;Base64 encode\ninline_data&quot;]:::encode
-<a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a>  end
-<a id="__codelineno-9-9" name="__codelineno-9-9" href="#__codelineno-9-9"></a>
-<a id="__codelineno-9-10" name="__codelineno-9-10" href="#__codelineno-9-10"></a>  msg[&quot;1 Message\n(Gemini Part)&quot;]:::output
-<a id="__codelineno-9-11" name="__codelineno-9-11" href="#__codelineno-9-11"></a>
-<a id="__codelineno-9-12" name="__codelineno-9-12" href="#__codelineno-9-12"></a>  video --&gt; read --&gt; b64 --&gt; msg
-<a id="__codelineno-9-13" name="__codelineno-9-13" href="#__codelineno-9-13"></a>
-<a id="__codelineno-9-14" name="__codelineno-9-14" href="#__codelineno-9-14"></a>  classDef input fill:#e8f4fd,stroke:#4a90d9,stroke-width:1.5px,color:#1a3a5c,rx:8
-<a id="__codelineno-9-15" name="__codelineno-9-15" href="#__codelineno-9-15"></a>  classDef encode fill:#e8f5e9,stroke:#4caf50,stroke-width:1.5px,color:#1b5e20,rx:8
-<a id="__codelineno-9-16" name="__codelineno-9-16" href="#__codelineno-9-16"></a>  classDef output fill:#f5f5f5,stroke:#bdbdbd,stroke-width:1.5px,color:#424242,rx:8
-<a id="__codelineno-9-17" name="__codelineno-9-17" href="#__codelineno-9-17"></a>
-<a id="__codelineno-9-18" name="__codelineno-9-18" href="#__codelineno-9-18"></a>  style encode fill:#f1f8e9,stroke:#66bb6a,stroke-width:1px,rx:10
-</code></pre></div>
+<pre class="mermaid"><code>%%{init: {'theme': 'base', 'themeVariables': { 'fontSize': '14px', 'primaryColor': '#e8f4fd', 'primaryBorderColor': '#4a90d9', 'lineColor': '#666'}}}%%
+graph LR
+  video["🎬 video"]:::input
+
+  subgraph encode ["Encode"]
+    read["Read file bytes\n(Rust fast-path)"]:::encode
+    b64["Base64 encode\ninline_data"]:::encode
+  end
+
+  msg["1 Message\n(Gemini Part)"]:::output
+
+  video --&gt; read --&gt; b64 --&gt; msg
+
+  classDef input fill:#e8f4fd,stroke:#4a90d9,stroke-width:1.5px,color:#1a3a5c,rx:8
+  classDef encode fill:#e8f5e9,stroke:#4caf50,stroke-width:1.5px,color:#1b5e20,rx:8
+  classDef output fill:#f5f5f5,stroke:#bdbdbd,stroke-width:1.5px,color:#424242,rx:8
+
+  style encode fill:#f1f8e9,stroke:#66bb6a,stroke-width:1px,rx:10</code></pre>
 <h4 id="video-gemini-chunked"><code>video-gemini-chunked</code><a class="headerlink" href="#video-gemini-chunked" title="Permanent link">&para;</a></h4>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>%%{init: {&#39;theme&#39;: &#39;base&#39;, &#39;themeVariables&#39;: { &#39;fontSize&#39;: &#39;14px&#39;, &#39;primaryColor&#39;: &#39;#e8f4fd&#39;, &#39;primaryBorderColor&#39;: &#39;#4a90d9&#39;, &#39;lineColor&#39;: &#39;#666&#39;}}}%%
-<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>graph LR
-<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>  video[&quot;🎬 video&quot;]:::input
-<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>
-<a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a>  subgraph encode [&quot;Encode&quot;]
-<a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a>    probe[&quot;Probe duration&quot;]:::encode
-<a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a>    c1[&quot;ffmpeg segment\nChunk 1&quot;]:::encode
-<a id="__codelineno-10-8" name="__codelineno-10-8" href="#__codelineno-10-8"></a>    c2[&quot;ffmpeg segment\nChunk 2&quot;]:::encode
-<a id="__codelineno-10-9" name="__codelineno-10-9" href="#__codelineno-10-9"></a>    c3[&quot;ffmpeg segment\nChunk N&quot;]:::encode
-<a id="__codelineno-10-10" name="__codelineno-10-10" href="#__codelineno-10-10"></a>  end
-<a id="__codelineno-10-11" name="__codelineno-10-11" href="#__codelineno-10-11"></a>
-<a id="__codelineno-10-12" name="__codelineno-10-12" href="#__codelineno-10-12"></a>  m1[&quot;Message 1\n(Gemini Part)&quot;]:::output
-<a id="__codelineno-10-13" name="__codelineno-10-13" href="#__codelineno-10-13"></a>  m2[&quot;Message 2\n(Gemini Part)&quot;]:::output
-<a id="__codelineno-10-14" name="__codelineno-10-14" href="#__codelineno-10-14"></a>  m3[&quot;Message N\n(Gemini Part)&quot;]:::output
-<a id="__codelineno-10-15" name="__codelineno-10-15" href="#__codelineno-10-15"></a>
-<a id="__codelineno-10-16" name="__codelineno-10-16" href="#__codelineno-10-16"></a>  video --&gt; probe
-<a id="__codelineno-10-17" name="__codelineno-10-17" href="#__codelineno-10-17"></a>  probe --&gt; c1 --&gt; m1
-<a id="__codelineno-10-18" name="__codelineno-10-18" href="#__codelineno-10-18"></a>  probe --&gt; c2 --&gt; m2
-<a id="__codelineno-10-19" name="__codelineno-10-19" href="#__codelineno-10-19"></a>  probe --&gt; c3 --&gt; m3
-<a id="__codelineno-10-20" name="__codelineno-10-20" href="#__codelineno-10-20"></a>
-<a id="__codelineno-10-21" name="__codelineno-10-21" href="#__codelineno-10-21"></a>  classDef input fill:#e8f4fd,stroke:#4a90d9,stroke-width:1.5px,color:#1a3a5c,rx:8
-<a id="__codelineno-10-22" name="__codelineno-10-22" href="#__codelineno-10-22"></a>  classDef encode fill:#e8f5e9,stroke:#4caf50,stroke-width:1.5px,color:#1b5e20,rx:8
-<a id="__codelineno-10-23" name="__codelineno-10-23" href="#__codelineno-10-23"></a>  classDef output fill:#f5f5f5,stroke:#bdbdbd,stroke-width:1.5px,color:#424242,rx:8
-<a id="__codelineno-10-24" name="__codelineno-10-24" href="#__codelineno-10-24"></a>
-<a id="__codelineno-10-25" name="__codelineno-10-25" href="#__codelineno-10-25"></a>  style encode fill:#f1f8e9,stroke:#66bb6a,stroke-width:1px,rx:10
-</code></pre></div>
+<pre class="mermaid"><code>%%{init: {'theme': 'base', 'themeVariables': { 'fontSize': '14px', 'primaryColor': '#e8f4fd', 'primaryBorderColor': '#4a90d9', 'lineColor': '#666'}}}%%
+graph LR
+  video["🎬 video"]:::input
+
+  subgraph encode ["Encode"]
+    probe["Probe duration"]:::encode
+    c1["ffmpeg segment\nChunk 1"]:::encode
+    c2["ffmpeg segment\nChunk 2"]:::encode
+    c3["ffmpeg segment\nChunk N"]:::encode
+  end
+
+  m1["Message 1\n(Gemini Part)"]:::output
+  m2["Message 2\n(Gemini Part)"]:::output
+  m3["Message N\n(Gemini Part)"]:::output
+
+  video --&gt; probe
+  probe --&gt; c1 --&gt; m1
+  probe --&gt; c2 --&gt; m2
+  probe --&gt; c3 --&gt; m3
+
+  classDef input fill:#e8f4fd,stroke:#4a90d9,stroke-width:1.5px,color:#1a3a5c,rx:8
+  classDef encode fill:#e8f5e9,stroke:#4caf50,stroke-width:1.5px,color:#1b5e20,rx:8
+  classDef output fill:#f5f5f5,stroke:#bdbdbd,stroke-width:1.5px,color:#424242,rx:8
+
+  style encode fill:#f1f8e9,stroke:#66bb6a,stroke-width:1px,rx:10</code></pre>
 <h3 id="audio">Audio<a class="headerlink" href="#audio" title="Permanent link">&para;</a></h3>
 <table>
 <thead>
@@ -2213,57 +2203,55 @@
 </tbody>
 </table>
 <h4 id="audio-transcribe"><code>audio-transcribe</code><a class="headerlink" href="#audio-transcribe" title="Permanent link">&para;</a></h4>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>%%{init: {&#39;theme&#39;: &#39;base&#39;, &#39;themeVariables&#39;: { &#39;fontSize&#39;: &#39;14px&#39;, &#39;primaryColor&#39;: &#39;#e8f4fd&#39;, &#39;primaryBorderColor&#39;: &#39;#4a90d9&#39;, &#39;lineColor&#39;: &#39;#666&#39;}}}%%
-<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>graph LR
-<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a>  audio[&quot;🎵 audio&quot;]:::input
-<a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a>
-<a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a>  subgraph encode [&quot;Encode&quot;]
-<a id="__codelineno-11-6" name="__codelineno-11-6" href="#__codelineno-11-6"></a>    extract[&quot;ffmpeg\nextract audio&quot;]:::encode
-<a id="__codelineno-11-7" name="__codelineno-11-7" href="#__codelineno-11-7"></a>    whisper[&quot;Whisper\ntranscribe&quot;]:::encode
-<a id="__codelineno-11-8" name="__codelineno-11-8" href="#__codelineno-11-8"></a>    fmt[&quot;Format timestamped\nsegments&quot;]:::encode
-<a id="__codelineno-11-9" name="__codelineno-11-9" href="#__codelineno-11-9"></a>  end
-<a id="__codelineno-11-10" name="__codelineno-11-10" href="#__codelineno-11-10"></a>
-<a id="__codelineno-11-11" name="__codelineno-11-11" href="#__codelineno-11-11"></a>  msg[&quot;1 Message\n(text transcript)&quot;]:::output
-<a id="__codelineno-11-12" name="__codelineno-11-12" href="#__codelineno-11-12"></a>
-<a id="__codelineno-11-13" name="__codelineno-11-13" href="#__codelineno-11-13"></a>  audio --&gt; extract --&gt; whisper --&gt; fmt --&gt; msg
-<a id="__codelineno-11-14" name="__codelineno-11-14" href="#__codelineno-11-14"></a>
-<a id="__codelineno-11-15" name="__codelineno-11-15" href="#__codelineno-11-15"></a>  classDef input fill:#e8f4fd,stroke:#4a90d9,stroke-width:1.5px,color:#1a3a5c,rx:8
-<a id="__codelineno-11-16" name="__codelineno-11-16" href="#__codelineno-11-16"></a>  classDef encode fill:#e8f5e9,stroke:#4caf50,stroke-width:1.5px,color:#1b5e20,rx:8
-<a id="__codelineno-11-17" name="__codelineno-11-17" href="#__codelineno-11-17"></a>  classDef output fill:#f5f5f5,stroke:#bdbdbd,stroke-width:1.5px,color:#424242,rx:8
-<a id="__codelineno-11-18" name="__codelineno-11-18" href="#__codelineno-11-18"></a>
-<a id="__codelineno-11-19" name="__codelineno-11-19" href="#__codelineno-11-19"></a>  style encode fill:#f1f8e9,stroke:#66bb6a,stroke-width:1px,rx:10
-</code></pre></div>
+<pre class="mermaid"><code>%%{init: {'theme': 'base', 'themeVariables': { 'fontSize': '14px', 'primaryColor': '#e8f4fd', 'primaryBorderColor': '#4a90d9', 'lineColor': '#666'}}}%%
+graph LR
+  audio["🎵 audio"]:::input
+
+  subgraph encode ["Encode"]
+    extract["ffmpeg\nextract audio"]:::encode
+    whisper["Whisper\ntranscribe"]:::encode
+    fmt["Format timestamped\nsegments"]:::encode
+  end
+
+  msg["1 Message\n(text transcript)"]:::output
+
+  audio --&gt; extract --&gt; whisper --&gt; fmt --&gt; msg
+
+  classDef input fill:#e8f4fd,stroke:#4a90d9,stroke-width:1.5px,color:#1a3a5c,rx:8
+  classDef encode fill:#e8f5e9,stroke:#4caf50,stroke-width:1.5px,color:#1b5e20,rx:8
+  classDef output fill:#f5f5f5,stroke:#bdbdbd,stroke-width:1.5px,color:#424242,rx:8
+
+  style encode fill:#f1f8e9,stroke:#66bb6a,stroke-width:1px,rx:10</code></pre>
 <h4 id="audio-gemini"><code>audio-gemini</code><a class="headerlink" href="#audio-gemini" title="Permanent link">&para;</a></h4>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>%%{init: {&#39;theme&#39;: &#39;base&#39;, &#39;themeVariables&#39;: { &#39;fontSize&#39;: &#39;14px&#39;, &#39;primaryColor&#39;: &#39;#e8f4fd&#39;, &#39;primaryBorderColor&#39;: &#39;#4a90d9&#39;, &#39;lineColor&#39;: &#39;#666&#39;}}}%%
-<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>graph LR
-<a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a>  audio[&quot;🎵 audio&quot;]:::input
-<a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a>
-<a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a>  subgraph encode [&quot;Encode (short ≤120s)&quot;]
-<a id="__codelineno-12-6" name="__codelineno-12-6" href="#__codelineno-12-6"></a>    read[&quot;Read file bytes&quot;]:::encode
-<a id="__codelineno-12-7" name="__codelineno-12-7" href="#__codelineno-12-7"></a>    b64[&quot;Base64 encode\ninline_data&quot;]:::encode
-<a id="__codelineno-12-8" name="__codelineno-12-8" href="#__codelineno-12-8"></a>  end
-<a id="__codelineno-12-9" name="__codelineno-12-9" href="#__codelineno-12-9"></a>
-<a id="__codelineno-12-10" name="__codelineno-12-10" href="#__codelineno-12-10"></a>  subgraph encode2 [&quot;Encode (long &gt;120s)&quot;]
-<a id="__codelineno-12-11" name="__codelineno-12-11" href="#__codelineno-12-11"></a>    probe[&quot;Probe duration&quot;]:::encode
-<a id="__codelineno-12-12" name="__codelineno-12-12" href="#__codelineno-12-12"></a>    c1[&quot;ffmpeg segment\nChunk 1&quot;]:::encode
-<a id="__codelineno-12-13" name="__codelineno-12-13" href="#__codelineno-12-13"></a>    c2[&quot;ffmpeg segment\nChunk N&quot;]:::encode
-<a id="__codelineno-12-14" name="__codelineno-12-14" href="#__codelineno-12-14"></a>  end
-<a id="__codelineno-12-15" name="__codelineno-12-15" href="#__codelineno-12-15"></a>
-<a id="__codelineno-12-16" name="__codelineno-12-16" href="#__codelineno-12-16"></a>  msg1[&quot;1 Message\n(Gemini Part)&quot;]:::output
-<a id="__codelineno-12-17" name="__codelineno-12-17" href="#__codelineno-12-17"></a>  msgN[&quot;N Messages\n(Gemini Parts)&quot;]:::output
-<a id="__codelineno-12-18" name="__codelineno-12-18" href="#__codelineno-12-18"></a>
-<a id="__codelineno-12-19" name="__codelineno-12-19" href="#__codelineno-12-19"></a>  audio --&gt; read --&gt; b64 --&gt; msg1
-<a id="__codelineno-12-20" name="__codelineno-12-20" href="#__codelineno-12-20"></a>  audio --&gt; probe
-<a id="__codelineno-12-21" name="__codelineno-12-21" href="#__codelineno-12-21"></a>  probe --&gt; c1 --&gt; msgN
-<a id="__codelineno-12-22" name="__codelineno-12-22" href="#__codelineno-12-22"></a>  probe --&gt; c2 --&gt; msgN
-<a id="__codelineno-12-23" name="__codelineno-12-23" href="#__codelineno-12-23"></a>
-<a id="__codelineno-12-24" name="__codelineno-12-24" href="#__codelineno-12-24"></a>  classDef input fill:#e8f4fd,stroke:#4a90d9,stroke-width:1.5px,color:#1a3a5c,rx:8
-<a id="__codelineno-12-25" name="__codelineno-12-25" href="#__codelineno-12-25"></a>  classDef encode fill:#e8f5e9,stroke:#4caf50,stroke-width:1.5px,color:#1b5e20,rx:8
-<a id="__codelineno-12-26" name="__codelineno-12-26" href="#__codelineno-12-26"></a>  classDef output fill:#f5f5f5,stroke:#bdbdbd,stroke-width:1.5px,color:#424242,rx:8
-<a id="__codelineno-12-27" name="__codelineno-12-27" href="#__codelineno-12-27"></a>
-<a id="__codelineno-12-28" name="__codelineno-12-28" href="#__codelineno-12-28"></a>  style encode fill:#f1f8e9,stroke:#66bb6a,stroke-width:1px,rx:10
-<a id="__codelineno-12-29" name="__codelineno-12-29" href="#__codelineno-12-29"></a>  style encode2 fill:#f1f8e9,stroke:#66bb6a,stroke-width:1px,rx:10
-</code></pre></div>
+<pre class="mermaid"><code>%%{init: {'theme': 'base', 'themeVariables': { 'fontSize': '14px', 'primaryColor': '#e8f4fd', 'primaryBorderColor': '#4a90d9', 'lineColor': '#666'}}}%%
+graph LR
+  audio["🎵 audio"]:::input
+
+  subgraph encode ["Encode (short ≤120s)"]
+    read["Read file bytes"]:::encode
+    b64["Base64 encode\ninline_data"]:::encode
+  end
+
+  subgraph encode2 ["Encode (long &gt;120s)"]
+    probe["Probe duration"]:::encode
+    c1["ffmpeg segment\nChunk 1"]:::encode
+    c2["ffmpeg segment\nChunk N"]:::encode
+  end
+
+  msg1["1 Message\n(Gemini Part)"]:::output
+  msgN["N Messages\n(Gemini Parts)"]:::output
+
+  audio --&gt; read --&gt; b64 --&gt; msg1
+  audio --&gt; probe
+  probe --&gt; c1 --&gt; msgN
+  probe --&gt; c2 --&gt; msgN
+
+  classDef input fill:#e8f4fd,stroke:#4a90d9,stroke-width:1.5px,color:#1a3a5c,rx:8
+  classDef encode fill:#e8f5e9,stroke:#4caf50,stroke-width:1.5px,color:#1b5e20,rx:8
+  classDef output fill:#f5f5f5,stroke:#bdbdbd,stroke-width:1.5px,color:#424242,rx:8
+
+  style encode fill:#f1f8e9,stroke:#66bb6a,stroke-width:1px,rx:10
+  style encode2 fill:#f1f8e9,stroke:#66bb6a,stroke-width:1px,rx:10</code></pre>
 <h3 id="document">Document<a class="headerlink" href="#document" title="Permanent link">&para;</a></h3>
 <table>
 <thead>
@@ -2297,93 +2285,89 @@
 </tbody>
 </table>
 <h4 id="document-page-text"><code>document-page-text</code><a class="headerlink" href="#document-page-text" title="Permanent link">&para;</a></h4>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>%%{init: {&#39;theme&#39;: &#39;base&#39;, &#39;themeVariables&#39;: { &#39;fontSize&#39;: &#39;14px&#39;, &#39;primaryColor&#39;: &#39;#e8f4fd&#39;, &#39;primaryBorderColor&#39;: &#39;#4a90d9&#39;, &#39;lineColor&#39;: &#39;#666&#39;}}}%%
-<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a>graph LR
-<a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a>  doc[&quot;📄 PDF/DOCX/PPTX&quot;]:::input
-<a id="__codelineno-13-4" name="__codelineno-13-4" href="#__codelineno-13-4"></a>
-<a id="__codelineno-13-5" name="__codelineno-13-5" href="#__codelineno-13-5"></a>  subgraph encode [&quot;Encode&quot;]
-<a id="__codelineno-13-6" name="__codelineno-13-6" href="#__codelineno-13-6"></a>    open[&quot;Open document\n(pypdfium2 / docx)&quot;]:::encode
-<a id="__codelineno-13-7" name="__codelineno-13-7" href="#__codelineno-13-7"></a>    extract[&quot;Extract text\nper page&quot;]:::encode
-<a id="__codelineno-13-8" name="__codelineno-13-8" href="#__codelineno-13-8"></a>    batch[&quot;Batch ≤4\npages/msg&quot;]:::encode
-<a id="__codelineno-13-9" name="__codelineno-13-9" href="#__codelineno-13-9"></a>  end
-<a id="__codelineno-13-10" name="__codelineno-13-10" href="#__codelineno-13-10"></a>
-<a id="__codelineno-13-11" name="__codelineno-13-11" href="#__codelineno-13-11"></a>  msgs[&quot;N Messages\n(text per page\nbatch)&quot;]:::output
-<a id="__codelineno-13-12" name="__codelineno-13-12" href="#__codelineno-13-12"></a>
-<a id="__codelineno-13-13" name="__codelineno-13-13" href="#__codelineno-13-13"></a>  doc --&gt; open --&gt; extract --&gt; batch --&gt; msgs
-<a id="__codelineno-13-14" name="__codelineno-13-14" href="#__codelineno-13-14"></a>
-<a id="__codelineno-13-15" name="__codelineno-13-15" href="#__codelineno-13-15"></a>  classDef input fill:#e8f4fd,stroke:#4a90d9,stroke-width:1.5px,color:#1a3a5c,rx:8
-<a id="__codelineno-13-16" name="__codelineno-13-16" href="#__codelineno-13-16"></a>  classDef encode fill:#e8f5e9,stroke:#4caf50,stroke-width:1.5px,color:#1b5e20,rx:8
-<a id="__codelineno-13-17" name="__codelineno-13-17" href="#__codelineno-13-17"></a>  classDef output fill:#f5f5f5,stroke:#bdbdbd,stroke-width:1.5px,color:#424242,rx:8
-<a id="__codelineno-13-18" name="__codelineno-13-18" href="#__codelineno-13-18"></a>
-<a id="__codelineno-13-19" name="__codelineno-13-19" href="#__codelineno-13-19"></a>  style encode fill:#f1f8e9,stroke:#66bb6a,stroke-width:1px,rx:10
-</code></pre></div>
+<pre class="mermaid"><code>%%{init: {'theme': 'base', 'themeVariables': { 'fontSize': '14px', 'primaryColor': '#e8f4fd', 'primaryBorderColor': '#4a90d9', 'lineColor': '#666'}}}%%
+graph LR
+  doc["📄 PDF/DOCX/PPTX"]:::input
+
+  subgraph encode ["Encode"]
+    open["Open document\n(pypdfium2 / docx)"]:::encode
+    extract["Extract text\nper page"]:::encode
+    batch["Batch ≤4\npages/msg"]:::encode
+  end
+
+  msgs["N Messages\n(text per page\nbatch)"]:::output
+
+  doc --&gt; open --&gt; extract --&gt; batch --&gt; msgs
+
+  classDef input fill:#e8f4fd,stroke:#4a90d9,stroke-width:1.5px,color:#1a3a5c,rx:8
+  classDef encode fill:#e8f5e9,stroke:#4caf50,stroke-width:1.5px,color:#1b5e20,rx:8
+  classDef output fill:#f5f5f5,stroke:#bdbdbd,stroke-width:1.5px,color:#424242,rx:8
+
+  style encode fill:#f1f8e9,stroke:#66bb6a,stroke-width:1px,rx:10</code></pre>
 <h4 id="document-rasterize"><code>document-rasterize</code><a class="headerlink" href="#document-rasterize" title="Permanent link">&para;</a></h4>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a>%%{init: {&#39;theme&#39;: &#39;base&#39;, &#39;themeVariables&#39;: { &#39;fontSize&#39;: &#39;14px&#39;, &#39;primaryColor&#39;: &#39;#e8f4fd&#39;, &#39;primaryBorderColor&#39;: &#39;#4a90d9&#39;, &#39;lineColor&#39;: &#39;#666&#39;}}}%%
-<a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a>graph LR
-<a id="__codelineno-14-3" name="__codelineno-14-3" href="#__codelineno-14-3"></a>  doc[&quot;📄 PDF&quot;]:::input
-<a id="__codelineno-14-4" name="__codelineno-14-4" href="#__codelineno-14-4"></a>
-<a id="__codelineno-14-5" name="__codelineno-14-5" href="#__codelineno-14-5"></a>  subgraph encode [&quot;Encode&quot;]
-<a id="__codelineno-14-6" name="__codelineno-14-6" href="#__codelineno-14-6"></a>    open[&quot;Open PDF\n(pypdfium2)&quot;]:::encode
-<a id="__codelineno-14-7" name="__codelineno-14-7" href="#__codelineno-14-7"></a>    render[&quot;Render pages\nas JPEG&quot;]:::encode
-<a id="__codelineno-14-8" name="__codelineno-14-8" href="#__codelineno-14-8"></a>    batch[&quot;Batch ≤4\npages/msg&quot;]:::encode
-<a id="__codelineno-14-9" name="__codelineno-14-9" href="#__codelineno-14-9"></a>  end
-<a id="__codelineno-14-10" name="__codelineno-14-10" href="#__codelineno-14-10"></a>
-<a id="__codelineno-14-11" name="__codelineno-14-11" href="#__codelineno-14-11"></a>  msgs[&quot;N Messages\n(text header\n+ page images)&quot;]:::output
-<a id="__codelineno-14-12" name="__codelineno-14-12" href="#__codelineno-14-12"></a>
-<a id="__codelineno-14-13" name="__codelineno-14-13" href="#__codelineno-14-13"></a>  doc --&gt; open --&gt; render --&gt; batch --&gt; msgs
-<a id="__codelineno-14-14" name="__codelineno-14-14" href="#__codelineno-14-14"></a>
-<a id="__codelineno-14-15" name="__codelineno-14-15" href="#__codelineno-14-15"></a>  classDef input fill:#e8f4fd,stroke:#4a90d9,stroke-width:1.5px,color:#1a3a5c,rx:8
-<a id="__codelineno-14-16" name="__codelineno-14-16" href="#__codelineno-14-16"></a>  classDef encode fill:#e8f5e9,stroke:#4caf50,stroke-width:1.5px,color:#1b5e20,rx:8
-<a id="__codelineno-14-17" name="__codelineno-14-17" href="#__codelineno-14-17"></a>  classDef output fill:#f5f5f5,stroke:#bdbdbd,stroke-width:1.5px,color:#424242,rx:8
-<a id="__codelineno-14-18" name="__codelineno-14-18" href="#__codelineno-14-18"></a>
-<a id="__codelineno-14-19" name="__codelineno-14-19" href="#__codelineno-14-19"></a>  style encode fill:#f1f8e9,stroke:#66bb6a,stroke-width:1px,rx:10
-</code></pre></div>
+<pre class="mermaid"><code>%%{init: {'theme': 'base', 'themeVariables': { 'fontSize': '14px', 'primaryColor': '#e8f4fd', 'primaryBorderColor': '#4a90d9', 'lineColor': '#666'}}}%%
+graph LR
+  doc["📄 PDF"]:::input
+
+  subgraph encode ["Encode"]
+    open["Open PDF\n(pypdfium2)"]:::encode
+    render["Render pages\nas JPEG"]:::encode
+    batch["Batch ≤4\npages/msg"]:::encode
+  end
+
+  msgs["N Messages\n(text header\n+ page images)"]:::output
+
+  doc --&gt; open --&gt; render --&gt; batch --&gt; msgs
+
+  classDef input fill:#e8f4fd,stroke:#4a90d9,stroke-width:1.5px,color:#1a3a5c,rx:8
+  classDef encode fill:#e8f5e9,stroke:#4caf50,stroke-width:1.5px,color:#1b5e20,rx:8
+  classDef output fill:#f5f5f5,stroke:#bdbdbd,stroke-width:1.5px,color:#424242,rx:8
+
+  style encode fill:#f1f8e9,stroke:#66bb6a,stroke-width:1px,rx:10</code></pre>
 <h4 id="document-rasterize-text"><code>document-rasterize-text</code><a class="headerlink" href="#document-rasterize-text" title="Permanent link">&para;</a></h4>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a>%%{init: {&#39;theme&#39;: &#39;base&#39;, &#39;themeVariables&#39;: { &#39;fontSize&#39;: &#39;14px&#39;, &#39;primaryColor&#39;: &#39;#e8f4fd&#39;, &#39;primaryBorderColor&#39;: &#39;#4a90d9&#39;, &#39;lineColor&#39;: &#39;#666&#39;}}}%%
-<a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a>graph LR
-<a id="__codelineno-15-3" name="__codelineno-15-3" href="#__codelineno-15-3"></a>  doc[&quot;📄 PDF&quot;]:::input
-<a id="__codelineno-15-4" name="__codelineno-15-4" href="#__codelineno-15-4"></a>
-<a id="__codelineno-15-5" name="__codelineno-15-5" href="#__codelineno-15-5"></a>  subgraph encode [&quot;Encode&quot;]
-<a id="__codelineno-15-6" name="__codelineno-15-6" href="#__codelineno-15-6"></a>    open[&quot;Open PDF\n(pypdfium2)&quot;]:::encode
-<a id="__codelineno-15-7" name="__codelineno-15-7" href="#__codelineno-15-7"></a>    render[&quot;Render pages\nas JPEG&quot;]:::encode
-<a id="__codelineno-15-8" name="__codelineno-15-8" href="#__codelineno-15-8"></a>    text[&quot;Extract text\nper page&quot;]:::encode
-<a id="__codelineno-15-9" name="__codelineno-15-9" href="#__codelineno-15-9"></a>    interleave[&quot;Interleave\nimage + text&quot;]:::encode
-<a id="__codelineno-15-10" name="__codelineno-15-10" href="#__codelineno-15-10"></a>    batch[&quot;Batch ≤4\npages/msg&quot;]:::encode
-<a id="__codelineno-15-11" name="__codelineno-15-11" href="#__codelineno-15-11"></a>  end
-<a id="__codelineno-15-12" name="__codelineno-15-12" href="#__codelineno-15-12"></a>
-<a id="__codelineno-15-13" name="__codelineno-15-13" href="#__codelineno-15-13"></a>  msgs[&quot;N Messages\n(image + text\nper page)&quot;]:::output
-<a id="__codelineno-15-14" name="__codelineno-15-14" href="#__codelineno-15-14"></a>
-<a id="__codelineno-15-15" name="__codelineno-15-15" href="#__codelineno-15-15"></a>  doc --&gt; open
-<a id="__codelineno-15-16" name="__codelineno-15-16" href="#__codelineno-15-16"></a>  open --&gt; render --&gt; interleave
-<a id="__codelineno-15-17" name="__codelineno-15-17" href="#__codelineno-15-17"></a>  open --&gt; text --&gt; interleave
-<a id="__codelineno-15-18" name="__codelineno-15-18" href="#__codelineno-15-18"></a>  interleave --&gt; batch --&gt; msgs
-<a id="__codelineno-15-19" name="__codelineno-15-19" href="#__codelineno-15-19"></a>
-<a id="__codelineno-15-20" name="__codelineno-15-20" href="#__codelineno-15-20"></a>  classDef input fill:#e8f4fd,stroke:#4a90d9,stroke-width:1.5px,color:#1a3a5c,rx:8
-<a id="__codelineno-15-21" name="__codelineno-15-21" href="#__codelineno-15-21"></a>  classDef encode fill:#e8f5e9,stroke:#4caf50,stroke-width:1.5px,color:#1b5e20,rx:8
-<a id="__codelineno-15-22" name="__codelineno-15-22" href="#__codelineno-15-22"></a>  classDef output fill:#f5f5f5,stroke:#bdbdbd,stroke-width:1.5px,color:#424242,rx:8
-<a id="__codelineno-15-23" name="__codelineno-15-23" href="#__codelineno-15-23"></a>
-<a id="__codelineno-15-24" name="__codelineno-15-24" href="#__codelineno-15-24"></a>  style encode fill:#f1f8e9,stroke:#66bb6a,stroke-width:1px,rx:10
-</code></pre></div>
+<pre class="mermaid"><code>%%{init: {'theme': 'base', 'themeVariables': { 'fontSize': '14px', 'primaryColor': '#e8f4fd', 'primaryBorderColor': '#4a90d9', 'lineColor': '#666'}}}%%
+graph LR
+  doc["📄 PDF"]:::input
+
+  subgraph encode ["Encode"]
+    open["Open PDF\n(pypdfium2)"]:::encode
+    render["Render pages\nas JPEG"]:::encode
+    text["Extract text\nper page"]:::encode
+    interleave["Interleave\nimage + text"]:::encode
+    batch["Batch ≤4\npages/msg"]:::encode
+  end
+
+  msgs["N Messages\n(image + text\nper page)"]:::output
+
+  doc --&gt; open
+  open --&gt; render --&gt; interleave
+  open --&gt; text --&gt; interleave
+  interleave --&gt; batch --&gt; msgs
+
+  classDef input fill:#e8f4fd,stroke:#4a90d9,stroke-width:1.5px,color:#1a3a5c,rx:8
+  classDef encode fill:#e8f5e9,stroke:#4caf50,stroke-width:1.5px,color:#1b5e20,rx:8
+  classDef output fill:#f5f5f5,stroke:#bdbdbd,stroke-width:1.5px,color:#424242,rx:8
+
+  style encode fill:#f1f8e9,stroke:#66bb6a,stroke-width:1px,rx:10</code></pre>
 <h4 id="document-gemini"><code>document-gemini</code><a class="headerlink" href="#document-gemini" title="Permanent link">&para;</a></h4>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a>%%{init: {&#39;theme&#39;: &#39;base&#39;, &#39;themeVariables&#39;: { &#39;fontSize&#39;: &#39;14px&#39;, &#39;primaryColor&#39;: &#39;#e8f4fd&#39;, &#39;primaryBorderColor&#39;: &#39;#4a90d9&#39;, &#39;lineColor&#39;: &#39;#666&#39;}}}%%
-<a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a>graph LR
-<a id="__codelineno-16-3" name="__codelineno-16-3" href="#__codelineno-16-3"></a>  doc[&quot;📄 document&quot;]:::input
-<a id="__codelineno-16-4" name="__codelineno-16-4" href="#__codelineno-16-4"></a>
-<a id="__codelineno-16-5" name="__codelineno-16-5" href="#__codelineno-16-5"></a>  subgraph encode [&quot;Encode&quot;]
-<a id="__codelineno-16-6" name="__codelineno-16-6" href="#__codelineno-16-6"></a>    read[&quot;Read file bytes\n(Rust fast-path)&quot;]:::encode
-<a id="__codelineno-16-7" name="__codelineno-16-7" href="#__codelineno-16-7"></a>    b64[&quot;Base64 encode\ninline_data&quot;]:::encode
-<a id="__codelineno-16-8" name="__codelineno-16-8" href="#__codelineno-16-8"></a>  end
-<a id="__codelineno-16-9" name="__codelineno-16-9" href="#__codelineno-16-9"></a>
-<a id="__codelineno-16-10" name="__codelineno-16-10" href="#__codelineno-16-10"></a>  msg[&quot;1 Message\n(Gemini Part)&quot;]:::output
-<a id="__codelineno-16-11" name="__codelineno-16-11" href="#__codelineno-16-11"></a>
-<a id="__codelineno-16-12" name="__codelineno-16-12" href="#__codelineno-16-12"></a>  doc --&gt; read --&gt; b64 --&gt; msg
-<a id="__codelineno-16-13" name="__codelineno-16-13" href="#__codelineno-16-13"></a>
-<a id="__codelineno-16-14" name="__codelineno-16-14" href="#__codelineno-16-14"></a>  classDef input fill:#e8f4fd,stroke:#4a90d9,stroke-width:1.5px,color:#1a3a5c,rx:8
-<a id="__codelineno-16-15" name="__codelineno-16-15" href="#__codelineno-16-15"></a>  classDef encode fill:#e8f5e9,stroke:#4caf50,stroke-width:1.5px,color:#1b5e20,rx:8
-<a id="__codelineno-16-16" name="__codelineno-16-16" href="#__codelineno-16-16"></a>  classDef output fill:#f5f5f5,stroke:#bdbdbd,stroke-width:1.5px,color:#424242,rx:8
-<a id="__codelineno-16-17" name="__codelineno-16-17" href="#__codelineno-16-17"></a>
-<a id="__codelineno-16-18" name="__codelineno-16-18" href="#__codelineno-16-18"></a>  style encode fill:#f1f8e9,stroke:#66bb6a,stroke-width:1px,rx:10
-</code></pre></div>
+<pre class="mermaid"><code>%%{init: {'theme': 'base', 'themeVariables': { 'fontSize': '14px', 'primaryColor': '#e8f4fd', 'primaryBorderColor': '#4a90d9', 'lineColor': '#666'}}}%%
+graph LR
+  doc["📄 document"]:::input
+
+  subgraph encode ["Encode"]
+    read["Read file bytes\n(Rust fast-path)"]:::encode
+    b64["Base64 encode\ninline_data"]:::encode
+  end
+
+  msg["1 Message\n(Gemini Part)"]:::output
+
+  doc --&gt; read --&gt; b64 --&gt; msg
+
+  classDef input fill:#e8f4fd,stroke:#4a90d9,stroke-width:1.5px,color:#1a3a5c,rx:8
+  classDef encode fill:#e8f5e9,stroke:#4caf50,stroke-width:1.5px,color:#1b5e20,rx:8
+  classDef output fill:#f5f5f5,stroke:#bdbdbd,stroke-width:1.5px,color:#424242,rx:8
+
+  style encode fill:#f1f8e9,stroke:#66bb6a,stroke-width:1px,rx:10</code></pre>
 <hr />
 <h2 id="planned-encoders">Planned Encoders<a class="headerlink" href="#planned-encoders" title="Permanent link">&para;</a></h2>
 <h3 id="image_1">Image<a class="headerlink" href="#image_1" title="Permanent link">&para;</a></h3>
@@ -2445,62 +2429,61 @@
 <hr />
 <h2 id="writing-custom-encoders">Writing Custom Encoders<a class="headerlink" href="#writing-custom-encoders" title="Permanent link">&para;</a></h2>
 <p>Drop a <code>.py</code> file in <code>encoders/image/</code>, <code>encoders/video/</code>, or <code>~/.config/mm/encoders/</code>. Use the <code>@register_encoder</code> decorator:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
-<a id="__codelineno-17-2" name="__codelineno-17-2" href="#__codelineno-17-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">mm.encoders</span><span class="w"> </span><span class="kn">import</span> <span class="n">register_encoder</span>
-<a id="__codelineno-17-3" name="__codelineno-17-3" href="#__codelineno-17-3"></a>
-<a id="__codelineno-17-4" name="__codelineno-17-4" href="#__codelineno-17-4"></a><span class="nd">@register_encoder</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;my-custom&quot;</span><span class="p">,</span> <span class="n">media_types</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;video&quot;</span><span class="p">,))</span>
-<a id="__codelineno-17-5" name="__codelineno-17-5" href="#__codelineno-17-5"></a><span class="k">def</span><span class="w"> </span><span class="nf">my_custom</span><span class="p">(</span><span class="n">path</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span> <span class="o">**</span><span class="n">kw</span><span class="p">):</span>
-<a id="__codelineno-17-6" name="__codelineno-17-6" href="#__codelineno-17-6"></a>    <span class="k">yield</span> <span class="p">{</span><span class="s2">&quot;role&quot;</span><span class="p">:</span> <span class="s2">&quot;user&quot;</span><span class="p">,</span> <span class="s2">&quot;content&quot;</span><span class="p">:</span> <span class="p">[</span>
-<a id="__codelineno-17-7" name="__codelineno-17-7" href="#__codelineno-17-7"></a>        <span class="p">{</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;text&quot;</span><span class="p">,</span> <span class="s2">&quot;text&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;Processing </span><span class="si">{</span><span class="n">path</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">}</span>
-<a id="__codelineno-17-8" name="__codelineno-17-8" href="#__codelineno-17-8"></a>    <span class="p">]}</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">mm.encoders</span><span class="w"> </span><span class="kn">import</span> <span class="n">register_encoder</span>
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="nd">@register_encoder</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;my-custom&quot;</span><span class="p">,</span> <span class="n">media_types</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;video&quot;</span><span class="p">,))</span>
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="k">def</span><span class="w"> </span><span class="nf">my_custom</span><span class="p">(</span><span class="n">path</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span> <span class="o">**</span><span class="n">kw</span><span class="p">):</span>
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>    <span class="k">yield</span> <span class="p">{</span><span class="s2">&quot;role&quot;</span><span class="p">:</span> <span class="s2">&quot;user&quot;</span><span class="p">,</span> <span class="s2">&quot;content&quot;</span><span class="p">:</span> <span class="p">[</span>
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>        <span class="p">{</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;text&quot;</span><span class="p">,</span> <span class="s2">&quot;text&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;Processing </span><span class="si">{</span><span class="n">path</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">}</span>
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>    <span class="p">]}</span>
 </code></pre></div>
 <h3 id="multi-chunk-encoders">Multi-chunk encoders<a class="headerlink" href="#multi-chunk-encoders" title="Permanent link">&para;</a></h3>
 <p>Encoders that yield multiple Messages (e.g. one per video shot) are processed sequentially via <code>generate_chunked</code>. Each Message gets its own LLM call and results are concatenated. This avoids OOM from loading all chunks into memory simultaneously.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a>%%{init: {&#39;theme&#39;: &#39;base&#39;, &#39;themeVariables&#39;: { &#39;fontSize&#39;: &#39;14px&#39;, &#39;primaryColor&#39;: &#39;#e8f4fd&#39;, &#39;primaryBorderColor&#39;: &#39;#4a90d9&#39;, &#39;lineColor&#39;: &#39;#666&#39;}}}%%
-<a id="__codelineno-18-2" name="__codelineno-18-2" href="#__codelineno-18-2"></a>graph LR
-<a id="__codelineno-18-3" name="__codelineno-18-3" href="#__codelineno-18-3"></a>  video[&quot;🎬 video&quot;]:::input
-<a id="__codelineno-18-4" name="__codelineno-18-4" href="#__codelineno-18-4"></a>
-<a id="__codelineno-18-5" name="__codelineno-18-5" href="#__codelineno-18-5"></a>  subgraph encode [&quot;Encode&quot;]
-<a id="__codelineno-18-6" name="__codelineno-18-6" href="#__codelineno-18-6"></a>    s1[&quot;Shot 1&quot;]:::encode
-<a id="__codelineno-18-7" name="__codelineno-18-7" href="#__codelineno-18-7"></a>    s2[&quot;Shot 2&quot;]:::encode
-<a id="__codelineno-18-8" name="__codelineno-18-8" href="#__codelineno-18-8"></a>    s3[&quot;Shot N&quot;]:::encode
-<a id="__codelineno-18-9" name="__codelineno-18-9" href="#__codelineno-18-9"></a>  end
-<a id="__codelineno-18-10" name="__codelineno-18-10" href="#__codelineno-18-10"></a>
-<a id="__codelineno-18-11" name="__codelineno-18-11" href="#__codelineno-18-11"></a>  subgraph generate [&quot;Generate&quot;]
-<a id="__codelineno-18-12" name="__codelineno-18-12" href="#__codelineno-18-12"></a>    g1[&quot;LLM&quot;]:::generate
-<a id="__codelineno-18-13" name="__codelineno-18-13" href="#__codelineno-18-13"></a>    g2[&quot;LLM&quot;]:::generate
-<a id="__codelineno-18-14" name="__codelineno-18-14" href="#__codelineno-18-14"></a>    g3[&quot;LLM&quot;]:::generate
-<a id="__codelineno-18-15" name="__codelineno-18-15" href="#__codelineno-18-15"></a>  end
-<a id="__codelineno-18-16" name="__codelineno-18-16" href="#__codelineno-18-16"></a>
-<a id="__codelineno-18-17" name="__codelineno-18-17" href="#__codelineno-18-17"></a>  concat[&quot;Concat&quot;]:::output
-<a id="__codelineno-18-18" name="__codelineno-18-18" href="#__codelineno-18-18"></a>  out[&quot;stdout&quot;]:::output
-<a id="__codelineno-18-19" name="__codelineno-18-19" href="#__codelineno-18-19"></a>
-<a id="__codelineno-18-20" name="__codelineno-18-20" href="#__codelineno-18-20"></a>  video --&gt; s1
-<a id="__codelineno-18-21" name="__codelineno-18-21" href="#__codelineno-18-21"></a>  video --&gt; s2
-<a id="__codelineno-18-22" name="__codelineno-18-22" href="#__codelineno-18-22"></a>  video --&gt; s3
-<a id="__codelineno-18-23" name="__codelineno-18-23" href="#__codelineno-18-23"></a>  s1 --&gt; g1
-<a id="__codelineno-18-24" name="__codelineno-18-24" href="#__codelineno-18-24"></a>  s2 --&gt; g2
-<a id="__codelineno-18-25" name="__codelineno-18-25" href="#__codelineno-18-25"></a>  s3 --&gt; g3
-<a id="__codelineno-18-26" name="__codelineno-18-26" href="#__codelineno-18-26"></a>  g1 --&gt; concat
-<a id="__codelineno-18-27" name="__codelineno-18-27" href="#__codelineno-18-27"></a>  g2 --&gt; concat
-<a id="__codelineno-18-28" name="__codelineno-18-28" href="#__codelineno-18-28"></a>  g3 --&gt; concat
-<a id="__codelineno-18-29" name="__codelineno-18-29" href="#__codelineno-18-29"></a>  concat --&gt; out
-<a id="__codelineno-18-30" name="__codelineno-18-30" href="#__codelineno-18-30"></a>
-<a id="__codelineno-18-31" name="__codelineno-18-31" href="#__codelineno-18-31"></a>  classDef input fill:#e8f4fd,stroke:#4a90d9,stroke-width:1.5px,color:#1a3a5c,rx:8
-<a id="__codelineno-18-32" name="__codelineno-18-32" href="#__codelineno-18-32"></a>  classDef encode fill:#e8f5e9,stroke:#4caf50,stroke-width:1.5px,color:#1b5e20,rx:8
-<a id="__codelineno-18-33" name="__codelineno-18-33" href="#__codelineno-18-33"></a>  classDef generate fill:#fce4ec,stroke:#e57373,stroke-width:1.5px,color:#6a1b1b,rx:8
-<a id="__codelineno-18-34" name="__codelineno-18-34" href="#__codelineno-18-34"></a>  classDef output fill:#f5f5f5,stroke:#bdbdbd,stroke-width:1.5px,color:#424242,rx:8
-<a id="__codelineno-18-35" name="__codelineno-18-35" href="#__codelineno-18-35"></a>
-<a id="__codelineno-18-36" name="__codelineno-18-36" href="#__codelineno-18-36"></a>  style encode fill:#f1f8e9,stroke:#66bb6a,stroke-width:1px,rx:10
-<a id="__codelineno-18-37" name="__codelineno-18-37" href="#__codelineno-18-37"></a>  style generate fill:#fff0f0,stroke:#ef9a9a,stroke-width:1px,rx:10
-</code></pre></div>
+<pre class="mermaid"><code>%%{init: {'theme': 'base', 'themeVariables': { 'fontSize': '14px', 'primaryColor': '#e8f4fd', 'primaryBorderColor': '#4a90d9', 'lineColor': '#666'}}}%%
+graph LR
+  video["🎬 video"]:::input
+
+  subgraph encode ["Encode"]
+    s1["Shot 1"]:::encode
+    s2["Shot 2"]:::encode
+    s3["Shot N"]:::encode
+  end
+
+  subgraph generate ["Generate"]
+    g1["LLM"]:::generate
+    g2["LLM"]:::generate
+    g3["LLM"]:::generate
+  end
+
+  concat["Concat"]:::output
+  out["stdout"]:::output
+
+  video --&gt; s1
+  video --&gt; s2
+  video --&gt; s3
+  s1 --&gt; g1
+  s2 --&gt; g2
+  s3 --&gt; g3
+  g1 --&gt; concat
+  g2 --&gt; concat
+  g3 --&gt; concat
+  concat --&gt; out
+
+  classDef input fill:#e8f4fd,stroke:#4a90d9,stroke-width:1.5px,color:#1a3a5c,rx:8
+  classDef encode fill:#e8f5e9,stroke:#4caf50,stroke-width:1.5px,color:#1b5e20,rx:8
+  classDef generate fill:#fce4ec,stroke:#e57373,stroke-width:1.5px,color:#6a1b1b,rx:8
+  classDef output fill:#f5f5f5,stroke:#bdbdbd,stroke-width:1.5px,color:#424242,rx:8
+
+  style encode fill:#f1f8e9,stroke:#66bb6a,stroke-width:1px,rx:10
+  style generate fill:#fff0f0,stroke:#ef9a9a,stroke-width:1px,rx:10</code></pre>
 <h3 id="encoder-protocol">Encoder Protocol<a class="headerlink" href="#encoder-protocol" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-19-1" name="__codelineno-19-1" href="#__codelineno-19-1"></a><span class="k">class</span><span class="w"> </span><span class="nc">MessageStrategy</span><span class="p">(</span><span class="n">Protocol</span><span class="p">):</span>
-<a id="__codelineno-19-2" name="__codelineno-19-2" href="#__codelineno-19-2"></a>    <span class="n">name</span><span class="p">:</span> <span class="nb">str</span>
-<a id="__codelineno-19-3" name="__codelineno-19-3" href="#__codelineno-19-3"></a>    <span class="n">media_types</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span>
-<a id="__codelineno-19-4" name="__codelineno-19-4" href="#__codelineno-19-4"></a>
-<a id="__codelineno-19-5" name="__codelineno-19-5" href="#__codelineno-19-5"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">encode</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Iterable</span><span class="p">[</span><span class="n">Message</span><span class="p">]:</span>
-<a id="__codelineno-19-6" name="__codelineno-19-6" href="#__codelineno-19-6"></a>        <span class="o">...</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="k">class</span><span class="w"> </span><span class="nc">MessageStrategy</span><span class="p">(</span><span class="n">Protocol</span><span class="p">):</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>    <span class="n">name</span><span class="p">:</span> <span class="nb">str</span>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>    <span class="n">media_types</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span>
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">encode</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Iterable</span><span class="p">[</span><span class="n">Message</span><span class="p">]:</span>
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>        <span class="o">...</span>
 </code></pre></div>
 <p>Where <code>Message = dict[str, Any]</code> is an OpenAI-compatible message dict: <code>{"role": "user", "content": [...]}</code>.</p>
 <hr />

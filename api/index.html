@@ -561,10 +561,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#ctxto_messagesformatopenai-encodersnone-listdict" class="md-nav__link">
+  <a href="#ctxto_messagesformatopenai-encodersnone-encoder_kwargsnone-listdict" class="md-nav__link">
     <span class="md-ellipsis">
       
-        ctx.to_messages(format="openai", *, encoders=None) -&gt; list[dict]
+        ctx.to_messages(format="openai", *, encoders=None, encoder_kwargs=None) -&gt; list[dict]
       
     </span>
   </a>
@@ -609,6 +609,28 @@
     <span class="md-ellipsis">
       
         ctx.save() (deferred)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ctxrender_html-str" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ctx.render_html(...) -&gt; str
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#mmrender_context-mmrender_messages-notebook-helpers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        mm.render_context / mm.render_messages (notebook helpers)
       
     </span>
   </a>
@@ -1514,10 +1536,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#ctxto_messagesformatopenai-encodersnone-listdict" class="md-nav__link">
+  <a href="#ctxto_messagesformatopenai-encodersnone-encoder_kwargsnone-listdict" class="md-nav__link">
     <span class="md-ellipsis">
       
-        ctx.to_messages(format="openai", *, encoders=None) -&gt; list[dict]
+        ctx.to_messages(format="openai", *, encoders=None, encoder_kwargs=None) -&gt; list[dict]
       
     </span>
   </a>
@@ -1562,6 +1584,28 @@
     <span class="md-ellipsis">
       
         ctx.save() (deferred)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ctxrender_html-str" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ctx.render_html(...) -&gt; str
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#mmrender_context-mmrender_messages-notebook-helpers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        mm.render_context / mm.render_messages (notebook helpers)
       
     </span>
   </a>
@@ -1871,7 +1915,7 @@ from the global <code>~/.local/share/mm/mm.db</code>, or <code>None</code> on mi
 <p>Use this when you have a ref from a persisted context and no live
 <code>Context</code> instance. Replaces the (still-supported) legacy
 <code>Context.resolve()</code>.</p>
-<h3 id="ctxto_messagesformatopenai-encodersnone-listdict"><code>ctx.to_messages(format="openai", *, encoders=None) -&gt; list[dict]</code><a class="headerlink" href="#ctxto_messagesformatopenai-encodersnone-listdict" title="Permanent link">&para;</a></h3>
+<h3 id="ctxto_messagesformatopenai-encodersnone-encoder_kwargsnone-listdict"><code>ctx.to_messages(format="openai", *, encoders=None, encoder_kwargs=None) -&gt; list[dict]</code><a class="headerlink" href="#ctxto_messagesformatopenai-encodersnone-encoder_kwargsnone-listdict" title="Permanent link">&para;</a></h3>
 <p>Encode every item into a role-aware message list, ready to drop
 into the respective SDK call. The returned shape is a plain Python
 list of dicts, typed to match the target SDK:</p>
@@ -1887,14 +1931,15 @@ list of dicts, typed to match the target SDK:</p>
 <li><code>format="gemini"</code> → <code>[{"role": "user", "parts": [{"inline_data": …}, {"text": …}]}]</code>
   — non-user roles are folded into labelled text parts because Gemini role semantics differ.</li>
 </ul>
-<p>Per-kind encoder overrides:</p>
+<p>Per-kind encoder overrides and per-kind encoder kwargs:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="n">messages</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">ChatCompletionMessageParam</span><span class="p">]</span> <span class="o">=</span> <span class="n">ctx</span><span class="o">.</span><span class="n">to_messages</span><span class="p">(</span>
 <a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>    <span class="nb">format</span><span class="o">=</span><span class="s2">&quot;openai&quot;</span><span class="p">,</span>
 <a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>    <span class="n">encoders</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;image&quot;</span><span class="p">:</span> <span class="s2">&quot;tile&quot;</span><span class="p">,</span> <span class="s2">&quot;video&quot;</span><span class="p">:</span> <span class="s2">&quot;mosaic&quot;</span><span class="p">},</span>
-<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a><span class="p">)</span>
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>    <span class="n">encoder_kwargs</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;document&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;pages_per_message&quot;</span><span class="p">:</span> <span class="mi">8</span><span class="p">}},</span>
+<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a><span class="p">)</span>
 </code></pre></div>
 <p>Unspecified kinds use sensible defaults (<code>image-resize</code>,
-<code>video-frames</code>, <code>document-rasterize</code>). Encoder names come from
+<code>video-mosaic</code>, <code>document-rasterize</code>, <code>audio-base64</code>). Encoder names come from
 the <code>mm.encoders</code> registry — see <code>--list-encoders</code>.</p>
 <p>User metadata is emitted as a leading text part per item
 (<code>[ref=&lt;id&gt;] note: &lt;text&gt;</code>), so VLMs see your context inline.</p>
@@ -1955,6 +2000,27 @@ and doubles as the body of <code>RefNotFoundError</code>.</p>
 </ul>
 <p>Directory-scan <code>Context(root)</code> retains its existing <code>save()</code> (writes
 the Arrow table to the global DB).</p>
+<h3 id="ctxrender_html-str"><code>ctx.render_html(...) -&gt; str</code><a class="headerlink" href="#ctxrender_html-str" title="Permanent link">&para;</a></h3>
+<p>Render the context as self-contained HTML — suitable for <code>IPython.display.HTML()</code> or direct embedding. Each item is rendered with its native media view (image, video player, audio player, document pages), metadata dict, and a collapsible section showing the encoded VLM representation.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">IPython.display</span><span class="w"> </span><span class="kn">import</span> <span class="n">HTML</span>
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a><span class="n">HTML</span><span class="p">(</span><span class="n">ctx</span><span class="o">.</span><span class="n">render_html</span><span class="p">())</span>
+<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>
+<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a><span class="c1"># With overrides</span>
+<a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a><span class="n">html</span> <span class="o">=</span> <span class="n">ctx</span><span class="o">.</span><span class="n">render_html</span><span class="p">(</span>
+<a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a>    <span class="n">max_image_width</span><span class="o">=</span><span class="mi">480</span><span class="p">,</span>
+<a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a>    <span class="n">title</span><span class="o">=</span><span class="s2">&quot;My prompt&quot;</span><span class="p">,</span>
+<a id="__codelineno-10-8" name="__codelineno-10-8" href="#__codelineno-10-8"></a>    <span class="n">encoders</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;image&quot;</span><span class="p">:</span> <span class="s2">&quot;tile&quot;</span><span class="p">},</span>
+<a id="__codelineno-10-9" name="__codelineno-10-9" href="#__codelineno-10-9"></a>    <span class="n">encoder_kwargs</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;document&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;pages_per_message&quot;</span><span class="p">:</span> <span class="mi">4</span><span class="p">}},</span>
+<a id="__codelineno-10-10" name="__codelineno-10-10" href="#__codelineno-10-10"></a><span class="p">)</span>
+</code></pre></div>
+<p>Raises <code>RuntimeError</code> if called on a directory-scan Context.</p>
+<h3 id="mmrender_context-mmrender_messages-notebook-helpers"><code>mm.render_context</code> / <code>mm.render_messages</code> (notebook helpers)<a class="headerlink" href="#mmrender_context-mmrender_messages-notebook-helpers" title="Permanent link">&para;</a></h3>
+<p>Two lazy exports from <code>mm.notebook</code>:</p>
+<ul>
+<li><code>mm.render_context(ctx, ...)</code> — same as <code>ctx.render_html(...)</code>, callable as a standalone function.</li>
+<li><code>mm.render_messages(messages, ...)</code> — renders a pre-built message list as HTML.</li>
+</ul>
+<p>Both are thin wrappers around the same Jinja template; prefer <code>ctx.render_html()</code> when you have a Context.</p>
 <h2 id="performance-architecture">Performance architecture<a class="headerlink" href="#performance-architecture" title="Permanent link">&para;</a></h2>
 <p>The hot path is Rust. Python is a thin façade.</p>
 <ul>
@@ -1988,13 +2054,13 @@ the Arrow table to the global DB).</p>
 <h3 id="rust-criterion-cratesmm-corebenchesrefsrs">Rust / Criterion — <code>crates/mm-core/benches/refs.rs</code><a class="headerlink" href="#rust-criterion-cratesmm-corebenchesrefsrs" title="Permanent link">&para;</a></h3>
 <p>Pure-Rust, no PyO3 boundary. Targets the <code>mm_core::refs::Context</code>
 primitives.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>cargo<span class="w"> </span>bench<span class="w"> </span>-p<span class="w"> </span>mm-core<span class="w"> </span>--bench<span class="w"> </span>refs
-<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a><span class="c1"># Or target a group:</span>
-<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>cargo<span class="w"> </span>bench<span class="w"> </span>-p<span class="w"> </span>mm-core<span class="w"> </span>--bench<span class="w"> </span>refs<span class="w"> </span>--<span class="w"> </span>refs/add_path
-<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>cargo<span class="w"> </span>bench<span class="w"> </span>-p<span class="w"> </span>mm-core<span class="w"> </span>--bench<span class="w"> </span>refs<span class="w"> </span>--<span class="w"> </span>refs/get
-<a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a>cargo<span class="w"> </span>bench<span class="w"> </span>-p<span class="w"> </span>mm-core<span class="w"> </span>--bench<span class="w"> </span>refs<span class="w"> </span>--<span class="w"> </span>refs/render
-<a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a>cargo<span class="w"> </span>bench<span class="w"> </span>-p<span class="w"> </span>mm-core<span class="w"> </span>--bench<span class="w"> </span>refs<span class="w"> </span>--<span class="w"> </span>refs/ref_not_found
-<a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a>cargo<span class="w"> </span>bench<span class="w"> </span>-p<span class="w"> </span>mm-core<span class="w"> </span>--bench<span class="w"> </span>refs<span class="w"> </span>--<span class="w"> </span>refs/mixed
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>cargo<span class="w"> </span>bench<span class="w"> </span>-p<span class="w"> </span>mm-core<span class="w"> </span>--bench<span class="w"> </span>refs
+<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a><span class="c1"># Or target a group:</span>
+<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a>cargo<span class="w"> </span>bench<span class="w"> </span>-p<span class="w"> </span>mm-core<span class="w"> </span>--bench<span class="w"> </span>refs<span class="w"> </span>--<span class="w"> </span>refs/add_path
+<a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a>cargo<span class="w"> </span>bench<span class="w"> </span>-p<span class="w"> </span>mm-core<span class="w"> </span>--bench<span class="w"> </span>refs<span class="w"> </span>--<span class="w"> </span>refs/get
+<a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a>cargo<span class="w"> </span>bench<span class="w"> </span>-p<span class="w"> </span>mm-core<span class="w"> </span>--bench<span class="w"> </span>refs<span class="w"> </span>--<span class="w"> </span>refs/render
+<a id="__codelineno-11-6" name="__codelineno-11-6" href="#__codelineno-11-6"></a>cargo<span class="w"> </span>bench<span class="w"> </span>-p<span class="w"> </span>mm-core<span class="w"> </span>--bench<span class="w"> </span>refs<span class="w"> </span>--<span class="w"> </span>refs/ref_not_found
+<a id="__codelineno-11-7" name="__codelineno-11-7" href="#__codelineno-11-7"></a>cargo<span class="w"> </span>bench<span class="w"> </span>-p<span class="w"> </span>mm-core<span class="w"> </span>--bench<span class="w"> </span>refs<span class="w"> </span>--<span class="w"> </span>refs/mixed
 </code></pre></div>
 <p>Coverage:</p>
 <table>
@@ -2082,9 +2148,9 @@ primitives.</p>
 <p>Full PyO3 round-trip (Python → Rust → Python). Marked
 <code>pytest.mark.slow</code> so the default <code>make test-python</code> stays fast; run
 via <code>make test-python-full</code> or:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>pytest<span class="w"> </span>tests/python/test_refs_api_perf.py<span class="w"> </span>-m<span class="w"> </span>slow
-<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>pytest<span class="w"> </span>tests/python/test_refs_api_perf.py<span class="w"> </span>-m<span class="w"> </span>slow<span class="w"> </span>--benchmark-only
-<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a>pytest<span class="w"> </span>tests/python/test_refs_api_perf.py<span class="w"> </span>-m<span class="w"> </span>slow<span class="w"> </span>--benchmark-disable<span class="w">  </span><span class="c1"># budgets only</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>pytest<span class="w"> </span>tests/python/test_refs_api_perf.py<span class="w"> </span>-m<span class="w"> </span>slow
+<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>pytest<span class="w"> </span>tests/python/test_refs_api_perf.py<span class="w"> </span>-m<span class="w"> </span>slow<span class="w"> </span>--benchmark-only
+<a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a>pytest<span class="w"> </span>tests/python/test_refs_api_perf.py<span class="w"> </span>-m<span class="w"> </span>slow<span class="w"> </span>--benchmark-disable<span class="w">  </span><span class="c1"># budgets only</span>
 </code></pre></div>
 <p>Two classes of tests live here:</p>
 <ol>
@@ -2170,42 +2236,42 @@ JSON metadata roundtrip.</p>
   <code>to_md(mode="accurate")</code>, or <code>save()</code> on an incremental context.</li>
 </ul>
 <h2 id="recipe-openai-chat-completion">Recipe: OpenAI chat completion<a class="headerlink" href="#recipe-openai-chat-completion" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">mm</span>
-<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">openai</span><span class="w"> </span><span class="kn">import</span> <span class="n">OpenAI</span>
-<a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a><span class="kn">from</span><span class="w"> </span><span class="nn">openai.types.chat</span><span class="w"> </span><span class="kn">import</span> <span class="n">ChatCompletionMessageParam</span>
-<a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
-<a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a>
-<a id="__codelineno-12-6" name="__codelineno-12-6" href="#__codelineno-12-6"></a><span class="n">ctx</span> <span class="o">=</span> <span class="n">mm</span><span class="o">.</span><span class="n">Context</span><span class="p">()</span>
-<a id="__codelineno-12-7" name="__codelineno-12-7" href="#__codelineno-12-7"></a><span class="n">ctx</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="s2">&quot;Summarise the attached context.&quot;</span><span class="p">,</span> <span class="n">role</span><span class="o">=</span><span class="s2">&quot;system&quot;</span><span class="p">)</span>
-<a id="__codelineno-12-8" name="__codelineno-12-8" href="#__codelineno-12-8"></a><span class="n">ctx</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="s2">&quot;whiteboard.jpg&quot;</span><span class="p">),</span> <span class="n">role</span><span class="o">=</span><span class="s2">&quot;user&quot;</span><span class="p">,</span> <span class="n">metadata</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;note&quot;</span><span class="p">:</span> <span class="s2">&quot;meeting notes&quot;</span><span class="p">})</span>
-<a id="__codelineno-12-9" name="__codelineno-12-9" href="#__codelineno-12-9"></a><span class="n">ctx</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="s2">&quot;slides.pdf&quot;</span><span class="p">),</span> <span class="n">role</span><span class="o">=</span><span class="s2">&quot;user&quot;</span><span class="p">,</span> <span class="n">metadata</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;summary&quot;</span><span class="p">:</span> <span class="s2">&quot;Q3 plan&quot;</span><span class="p">})</span>
-<a id="__codelineno-12-10" name="__codelineno-12-10" href="#__codelineno-12-10"></a>
-<a id="__codelineno-12-11" name="__codelineno-12-11" href="#__codelineno-12-11"></a><span class="n">ctx_messages</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">ChatCompletionMessageParam</span><span class="p">]</span> <span class="o">=</span> <span class="n">ctx</span><span class="o">.</span><span class="n">to_messages</span><span class="p">(</span><span class="nb">format</span><span class="o">=</span><span class="s2">&quot;openai&quot;</span><span class="p">)</span>
-<a id="__codelineno-12-12" name="__codelineno-12-12" href="#__codelineno-12-12"></a>
-<a id="__codelineno-12-13" name="__codelineno-12-13" href="#__codelineno-12-13"></a><span class="n">client</span> <span class="o">=</span> <span class="n">OpenAI</span><span class="p">()</span>
-<a id="__codelineno-12-14" name="__codelineno-12-14" href="#__codelineno-12-14"></a><span class="n">resp</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">chat</span><span class="o">.</span><span class="n">completions</span><span class="o">.</span><span class="n">create</span><span class="p">(</span>
-<a id="__codelineno-12-15" name="__codelineno-12-15" href="#__codelineno-12-15"></a>    <span class="n">model</span><span class="o">=</span><span class="s2">&quot;gpt-4o&quot;</span><span class="p">,</span>
-<a id="__codelineno-12-16" name="__codelineno-12-16" href="#__codelineno-12-16"></a>    <span class="n">messages</span><span class="o">=</span><span class="p">[</span>
-<a id="__codelineno-12-17" name="__codelineno-12-17" href="#__codelineno-12-17"></a>        <span class="o">*</span><span class="n">ctx_messages</span><span class="p">,</span>
-<a id="__codelineno-12-18" name="__codelineno-12-18" href="#__codelineno-12-18"></a>    <span class="p">],</span>
-<a id="__codelineno-12-19" name="__codelineno-12-19" href="#__codelineno-12-19"></a><span class="p">)</span>
-<a id="__codelineno-12-20" name="__codelineno-12-20" href="#__codelineno-12-20"></a><span class="nb">print</span><span class="p">(</span><span class="n">resp</span><span class="o">.</span><span class="n">choices</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">message</span><span class="o">.</span><span class="n">content</span><span class="p">)</span>
-</code></pre></div>
-<h2 id="recipe-gemini-generate_content">Recipe: Gemini generate_content<a class="headerlink" href="#recipe-gemini-generate_content" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">mm</span>
-<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a><span class="kn">import</span><span class="w"> </span><span class="nn">google.generativeai</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">genai</span>
-<a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a><span class="kn">from</span><span class="w"> </span><span class="nn">google.genai</span><span class="w"> </span><span class="kn">import</span> <span class="n">types</span> <span class="k">as</span> <span class="n">genai_types</span>
+<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">openai</span><span class="w"> </span><span class="kn">import</span> <span class="n">OpenAI</span>
+<a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a><span class="kn">from</span><span class="w"> </span><span class="nn">openai.types.chat</span><span class="w"> </span><span class="kn">import</span> <span class="n">ChatCompletionMessageParam</span>
 <a id="__codelineno-13-4" name="__codelineno-13-4" href="#__codelineno-13-4"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
 <a id="__codelineno-13-5" name="__codelineno-13-5" href="#__codelineno-13-5"></a>
 <a id="__codelineno-13-6" name="__codelineno-13-6" href="#__codelineno-13-6"></a><span class="n">ctx</span> <span class="o">=</span> <span class="n">mm</span><span class="o">.</span><span class="n">Context</span><span class="p">()</span>
-<a id="__codelineno-13-7" name="__codelineno-13-7" href="#__codelineno-13-7"></a><span class="n">ctx</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="s2">&quot;Summarise this lecture.&quot;</span><span class="p">,</span> <span class="n">role</span><span class="o">=</span><span class="s2">&quot;user&quot;</span><span class="p">)</span>
-<a id="__codelineno-13-8" name="__codelineno-13-8" href="#__codelineno-13-8"></a><span class="n">ctx</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="s2">&quot;clip.mp4&quot;</span><span class="p">),</span> <span class="n">role</span><span class="o">=</span><span class="s2">&quot;user&quot;</span><span class="p">,</span> <span class="n">metadata</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;summary&quot;</span><span class="p">:</span> <span class="s2">&quot;lecture on attention&quot;</span><span class="p">})</span>
-<a id="__codelineno-13-9" name="__codelineno-13-9" href="#__codelineno-13-9"></a>
-<a id="__codelineno-13-10" name="__codelineno-13-10" href="#__codelineno-13-10"></a><span class="n">contents</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">genai_types</span><span class="o">.</span><span class="n">ContentDict</span><span class="p">]</span> <span class="o">=</span> <span class="n">ctx</span><span class="o">.</span><span class="n">to_messages</span><span class="p">(</span><span class="nb">format</span><span class="o">=</span><span class="s2">&quot;gemini&quot;</span><span class="p">)</span>
-<a id="__codelineno-13-11" name="__codelineno-13-11" href="#__codelineno-13-11"></a>
-<a id="__codelineno-13-12" name="__codelineno-13-12" href="#__codelineno-13-12"></a><span class="n">model</span> <span class="o">=</span> <span class="n">genai</span><span class="o">.</span><span class="n">GenerativeModel</span><span class="p">(</span><span class="s2">&quot;gemini-2.0-pro&quot;</span><span class="p">)</span>
-<a id="__codelineno-13-13" name="__codelineno-13-13" href="#__codelineno-13-13"></a><span class="n">resp</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">generate_content</span><span class="p">(</span><span class="n">contents</span><span class="o">=</span><span class="n">contents</span><span class="p">)</span>
-<a id="__codelineno-13-14" name="__codelineno-13-14" href="#__codelineno-13-14"></a><span class="nb">print</span><span class="p">(</span><span class="n">resp</span><span class="o">.</span><span class="n">text</span><span class="p">)</span>
+<a id="__codelineno-13-7" name="__codelineno-13-7" href="#__codelineno-13-7"></a><span class="n">ctx</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="s2">&quot;Summarise the attached context.&quot;</span><span class="p">,</span> <span class="n">role</span><span class="o">=</span><span class="s2">&quot;system&quot;</span><span class="p">)</span>
+<a id="__codelineno-13-8" name="__codelineno-13-8" href="#__codelineno-13-8"></a><span class="n">ctx</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="s2">&quot;whiteboard.jpg&quot;</span><span class="p">),</span> <span class="n">role</span><span class="o">=</span><span class="s2">&quot;user&quot;</span><span class="p">,</span> <span class="n">metadata</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;note&quot;</span><span class="p">:</span> <span class="s2">&quot;meeting notes&quot;</span><span class="p">})</span>
+<a id="__codelineno-13-9" name="__codelineno-13-9" href="#__codelineno-13-9"></a><span class="n">ctx</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="s2">&quot;slides.pdf&quot;</span><span class="p">),</span> <span class="n">role</span><span class="o">=</span><span class="s2">&quot;user&quot;</span><span class="p">,</span> <span class="n">metadata</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;summary&quot;</span><span class="p">:</span> <span class="s2">&quot;Q3 plan&quot;</span><span class="p">})</span>
+<a id="__codelineno-13-10" name="__codelineno-13-10" href="#__codelineno-13-10"></a>
+<a id="__codelineno-13-11" name="__codelineno-13-11" href="#__codelineno-13-11"></a><span class="n">ctx_messages</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">ChatCompletionMessageParam</span><span class="p">]</span> <span class="o">=</span> <span class="n">ctx</span><span class="o">.</span><span class="n">to_messages</span><span class="p">(</span><span class="nb">format</span><span class="o">=</span><span class="s2">&quot;openai&quot;</span><span class="p">)</span>
+<a id="__codelineno-13-12" name="__codelineno-13-12" href="#__codelineno-13-12"></a>
+<a id="__codelineno-13-13" name="__codelineno-13-13" href="#__codelineno-13-13"></a><span class="n">client</span> <span class="o">=</span> <span class="n">OpenAI</span><span class="p">()</span>
+<a id="__codelineno-13-14" name="__codelineno-13-14" href="#__codelineno-13-14"></a><span class="n">resp</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">chat</span><span class="o">.</span><span class="n">completions</span><span class="o">.</span><span class="n">create</span><span class="p">(</span>
+<a id="__codelineno-13-15" name="__codelineno-13-15" href="#__codelineno-13-15"></a>    <span class="n">model</span><span class="o">=</span><span class="s2">&quot;gpt-4o&quot;</span><span class="p">,</span>
+<a id="__codelineno-13-16" name="__codelineno-13-16" href="#__codelineno-13-16"></a>    <span class="n">messages</span><span class="o">=</span><span class="p">[</span>
+<a id="__codelineno-13-17" name="__codelineno-13-17" href="#__codelineno-13-17"></a>        <span class="o">*</span><span class="n">ctx_messages</span><span class="p">,</span>
+<a id="__codelineno-13-18" name="__codelineno-13-18" href="#__codelineno-13-18"></a>    <span class="p">],</span>
+<a id="__codelineno-13-19" name="__codelineno-13-19" href="#__codelineno-13-19"></a><span class="p">)</span>
+<a id="__codelineno-13-20" name="__codelineno-13-20" href="#__codelineno-13-20"></a><span class="nb">print</span><span class="p">(</span><span class="n">resp</span><span class="o">.</span><span class="n">choices</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">message</span><span class="o">.</span><span class="n">content</span><span class="p">)</span>
+</code></pre></div>
+<h2 id="recipe-gemini-generate_content">Recipe: Gemini generate_content<a class="headerlink" href="#recipe-gemini-generate_content" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">mm</span>
+<a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a><span class="kn">import</span><span class="w"> </span><span class="nn">google.generativeai</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">genai</span>
+<a id="__codelineno-14-3" name="__codelineno-14-3" href="#__codelineno-14-3"></a><span class="kn">from</span><span class="w"> </span><span class="nn">google.genai</span><span class="w"> </span><span class="kn">import</span> <span class="n">types</span> <span class="k">as</span> <span class="n">genai_types</span>
+<a id="__codelineno-14-4" name="__codelineno-14-4" href="#__codelineno-14-4"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<a id="__codelineno-14-5" name="__codelineno-14-5" href="#__codelineno-14-5"></a>
+<a id="__codelineno-14-6" name="__codelineno-14-6" href="#__codelineno-14-6"></a><span class="n">ctx</span> <span class="o">=</span> <span class="n">mm</span><span class="o">.</span><span class="n">Context</span><span class="p">()</span>
+<a id="__codelineno-14-7" name="__codelineno-14-7" href="#__codelineno-14-7"></a><span class="n">ctx</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="s2">&quot;Summarise this lecture.&quot;</span><span class="p">,</span> <span class="n">role</span><span class="o">=</span><span class="s2">&quot;user&quot;</span><span class="p">)</span>
+<a id="__codelineno-14-8" name="__codelineno-14-8" href="#__codelineno-14-8"></a><span class="n">ctx</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="s2">&quot;clip.mp4&quot;</span><span class="p">),</span> <span class="n">role</span><span class="o">=</span><span class="s2">&quot;user&quot;</span><span class="p">,</span> <span class="n">metadata</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;summary&quot;</span><span class="p">:</span> <span class="s2">&quot;lecture on attention&quot;</span><span class="p">})</span>
+<a id="__codelineno-14-9" name="__codelineno-14-9" href="#__codelineno-14-9"></a>
+<a id="__codelineno-14-10" name="__codelineno-14-10" href="#__codelineno-14-10"></a><span class="n">contents</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">genai_types</span><span class="o">.</span><span class="n">ContentDict</span><span class="p">]</span> <span class="o">=</span> <span class="n">ctx</span><span class="o">.</span><span class="n">to_messages</span><span class="p">(</span><span class="nb">format</span><span class="o">=</span><span class="s2">&quot;gemini&quot;</span><span class="p">)</span>
+<a id="__codelineno-14-11" name="__codelineno-14-11" href="#__codelineno-14-11"></a>
+<a id="__codelineno-14-12" name="__codelineno-14-12" href="#__codelineno-14-12"></a><span class="n">model</span> <span class="o">=</span> <span class="n">genai</span><span class="o">.</span><span class="n">GenerativeModel</span><span class="p">(</span><span class="s2">&quot;gemini-2.0-pro&quot;</span><span class="p">)</span>
+<a id="__codelineno-14-13" name="__codelineno-14-13" href="#__codelineno-14-13"></a><span class="n">resp</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">generate_content</span><span class="p">(</span><span class="n">contents</span><span class="o">=</span><span class="n">contents</span><span class="p">)</span>
+<a id="__codelineno-14-14" name="__codelineno-14-14" href="#__codelineno-14-14"></a><span class="nb">print</span><span class="p">(</span><span class="n">resp</span><span class="o">.</span><span class="n">text</span><span class="p">)</span>
 </code></pre></div>
 
 
