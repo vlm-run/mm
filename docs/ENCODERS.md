@@ -26,7 +26,9 @@ graph LR
     resize["Resize"]
   end
 
-  msg["1 Message\n(1 image_url)"]
+  subgraph message ["Message"]
+    msg["image_url"]
+  end
 
   img --> exif --> resize --> msg
 ```
@@ -43,7 +45,9 @@ graph LR
     tiles["Crop NxM tile images\n(fine detail)"]
   end
 
-  msg["1 Message\n(tile metadata + overview image\n+ N tile images)"]
+  subgraph message ["Message"]
+    msg["tile metadata\n+ overview image\n+ N tile images"]
+  end
 
   img --> exif
   exif --> overview
@@ -89,7 +93,9 @@ graph LR
     tile["Tile into\n4x4 mosaics"]
   end
 
-  msg["1 Message\n(text + mosaic\nimages)"]
+  subgraph message ["Message"]
+    msg["text + mosaic images"]
+  end
 
   video --> detect --> frames --> tile --> msg
 ```
@@ -106,7 +112,9 @@ graph LR
     batch["Batch ≤16\nframes/msg"]
   end
 
-  msgs["N Messages\n(text header\n+ frame images)"]
+  subgraph message ["Message"]
+    msgs["N: text header\n+ frame images"]
+  end
 
   video --> ts --> ffmpeg --> batch --> msgs
 ```
@@ -125,8 +133,10 @@ graph LR
     batch["Batch ≤16\nframes/msg"]
   end
 
-  transcript["Msg 1:\ntranscript"]
-  frame_msgs["Msgs 2..N:\nframe batches"]
+  subgraph message ["Message"]
+    transcript["1: transcript"]
+    frame_msgs["2..N: frame batches"]
+  end
 
   video --> audio --> whisper --> transcript
   video --> frames --> batch --> frame_msgs
@@ -145,9 +155,11 @@ graph LR
     c3["Chunk N\n16 frames"]
   end
 
-  m1["Message 1"]
-  m2["Message 2"]
-  m3["Message N"]
+  subgraph message ["Message"]
+    m1["1"]
+    m2["2"]
+    m3["N"]
+  end
 
   video --> split
   split --> c1 --> m1
@@ -168,9 +180,11 @@ graph LR
     s3["Shot N\n≤8 frames"]
   end
 
-  m1["Message 1"]
-  m2["Message 2"]
-  m3["Message N"]
+  subgraph message ["Message"]
+    m1["1"]
+    m2["2"]
+    m3["N"]
+  end
 
   video --> detect
   detect --> s1 --> m1
@@ -191,9 +205,11 @@ graph LR
     s3["Shot N frames\n→ tile mosaic"]
   end
 
-  m1["Message 1\n(mosaic grid)"]
-  m2["Message 2\n(mosaic grid)"]
-  m3["Message N\n(mosaic grid)"]
+  subgraph message ["Message"]
+    m1["1: mosaic grid"]
+    m2["2: mosaic grid"]
+    m3["N: mosaic grid"]
+  end
 
   video --> detect
   detect --> s1 --> m1
@@ -212,7 +228,9 @@ graph LR
     b64["Base64 encode\ninline_data"]
   end
 
-  msg["1 Message\n(Gemini Part)"]
+  subgraph message ["Message"]
+    msg["Gemini Part"]
+  end
 
   video --> read --> b64 --> msg
 ```
@@ -230,9 +248,11 @@ graph LR
     c3["ffmpeg segment\nChunk N"]
   end
 
-  m1["Message 1\n(Gemini Part)"]
-  m2["Message 2\n(Gemini Part)"]
-  m3["Message N\n(Gemini Part)"]
+  subgraph message ["Message"]
+    m1["1: Gemini Part"]
+    m2["2: Gemini Part"]
+    m3["N: Gemini Part"]
+  end
 
   video --> probe
   probe --> c1 --> m1
@@ -260,7 +280,9 @@ graph LR
     fmt["Format timestamped\nsegments"]
   end
 
-  msg["1 Message\n(text transcript)"]
+  subgraph message ["Message"]
+    msg["text transcript"]
+  end
 
   audio --> extract --> whisper --> fmt --> msg
 ```
@@ -282,8 +304,10 @@ graph LR
     c2["ffmpeg segment\nChunk N"]
   end
 
-  msg1["1 Message\n(Gemini Part)"]
-  msgN["N Messages\n(Gemini Parts)"]
+  subgraph message ["Message"]
+    msg1["Gemini Part"]
+    msgN["N: Gemini Part"]
+  end
 
   audio --> read --> b64 --> msg1
   audio --> probe
@@ -312,7 +336,9 @@ graph LR
     batch["Batch ≤4\npages/msg"]
   end
 
-  msgs["N Messages\n(text per page\nbatch)"]
+  subgraph message ["Message"]
+    msgs["N: text per page batch"]
+  end
 
   doc --> open --> extract --> batch --> msgs
 ```
@@ -329,7 +355,9 @@ graph LR
     batch["Batch ≤4\npages/msg"]
   end
 
-  msgs["N Messages\n(text header\n+ page images)"]
+  subgraph message ["Message"]
+    msgs["N: text header\n+ page images"]
+  end
 
   doc --> open --> render --> batch --> msgs
 ```
@@ -348,7 +376,9 @@ graph LR
     batch["Batch ≤4\npages/msg"]
   end
 
-  msgs["N Messages\n(image + text\nper page)"]
+  subgraph message ["Message"]
+    msgs["N: image + text per page"]
+  end
 
   doc --> open
   open --> render --> interleave
@@ -367,7 +397,9 @@ graph LR
     b64["Base64 encode\ninline_data"]
   end
 
-  msg["1 Message\n(Gemini Part)"]
+  subgraph message ["Message"]
+    msg["Gemini Part"]
+  end
 
   doc --> read --> b64 --> msg
 ```

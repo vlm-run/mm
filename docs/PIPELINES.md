@@ -11,13 +11,17 @@ graph LR
     encoder["Encoder"]
   end
 
+  subgraph message ["Message"]
+    msg["Messages"]
+  end
+
   subgraph generate ["Generate"]
     llm["MLLM"]
   end
 
   out["stdout"]
 
-  file --> encoder --> llm --> out
+  file --> encoder --> msg --> llm --> out
 ```
 
 Each pipeline is a YAML file under `pipelines/{kind}/{mode}.yaml` that references
