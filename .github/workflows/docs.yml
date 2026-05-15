@@ -18,6 +18,9 @@ concurrency:
   group: gh-pages
   cancel-in-progress: false
 
+env:
+  CI: true
+
 jobs:
   build-deploy:
     runs-on: ubuntu-latest

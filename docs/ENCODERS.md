@@ -18,52 +18,38 @@ file → encoder → [{"role": "user", "content": [...]}] → LLM (if pipeline h
 #### `image-resize`
 
 ```mermaid
-%%{init: {'theme': 'base', 'themeVariables': { 'fontSize': '14px', 'primaryColor': '#e8f4fd', 'primaryBorderColor': '#4a90d9', 'lineColor': '#666'}}}%%
 graph LR
-  img["🖼️ image"]:::input
+  img["🖼️ image"]
 
   subgraph encode ["Encode"]
-    exif["EXIF orient"]:::encode
-    resize["Resize"]:::encode
+    exif["EXIF orient"]
+    resize["Resize"]
   end
 
-  msg["1 Message\n(1 image_url)"]:::output
+  msg["1 Message\n(1 image_url)"]
 
   img --> exif --> resize --> msg
-
-  classDef input fill:#e8f4fd,stroke:#4a90d9,stroke-width:1.5px,color:#1a3a5c,rx:8
-  classDef encode fill:#e8f5e9,stroke:#4caf50,stroke-width:1.5px,color:#1b5e20,rx:8
-  classDef output fill:#f5f5f5,stroke:#bdbdbd,stroke-width:1.5px,color:#424242,rx:8
-
-  style encode fill:#f1f8e9,stroke:#66bb6a,stroke-width:1px,rx:10
 ```
 
 #### `image-tile`
 
 ```mermaid
-%%{init: {'theme': 'base', 'themeVariables': { 'fontSize': '14px', 'primaryColor': '#e8f4fd', 'primaryBorderColor': '#4a90d9', 'lineColor': '#666'}}}%%
 graph LR
-  img["🖼️ image"]:::input
+  img["🖼️ image"]
 
   subgraph encode ["Encode"]
-    exif["EXIF orient"]:::encode
-    overview["Resize overview image\n(global context)"]:::encode
-    tiles["Crop NxM tile images\n(fine detail)"]:::encode
+    exif["EXIF orient"]
+    overview["Resize overview image\n(global context)"]
+    tiles["Crop NxM tile images\n(fine detail)"]
   end
 
-  msg["1 Message\n(tile metadata + overview image\n+ N tile images)"]:::output
+  msg["1 Message\n(tile metadata + overview image\n+ N tile images)"]
 
   img --> exif
   exif --> overview
   exif --> tiles
   overview --> msg
   tiles --> msg
-
-  classDef input fill:#e8f4fd,stroke:#4a90d9,stroke-width:1.5px,color:#1a3a5c,rx:8
-  classDef encode fill:#e8f5e9,stroke:#4caf50,stroke-width:1.5px,color:#1b5e20,rx:8
-  classDef output fill:#f5f5f5,stroke:#bdbdbd,stroke-width:1.5px,color:#424242,rx:8
-
-  style encode fill:#f1f8e9,stroke:#66bb6a,stroke-width:1px,rx:10
 ```
 
 
@@ -94,220 +80,164 @@ graph LR
 #### `video-mosaic`
 
 ```mermaid
-%%{init: {'theme': 'base', 'themeVariables': { 'fontSize': '14px', 'primaryColor': '#e8f4fd', 'primaryBorderColor': '#4a90d9', 'lineColor': '#666'}}}%%
 graph LR
-  video["🎬 video"]:::input
+  video["🎬 video"]
 
   subgraph encode ["Encode"]
-    detect["Scene detect\n(or uniform)"]:::encode
-    frames["Extract\nN frames"]:::encode
-    tile["Tile into\n4x4 mosaics"]:::encode
+    detect["Scene detect\n(or uniform)"]
+    frames["Extract\nN frames"]
+    tile["Tile into\n4x4 mosaics"]
   end
 
-  msg["1 Message\n(text + mosaic\nimages)"]:::output
+  msg["1 Message\n(text + mosaic\nimages)"]
 
   video --> detect --> frames --> tile --> msg
-
-  classDef input fill:#e8f4fd,stroke:#4a90d9,stroke-width:1.5px,color:#1a3a5c,rx:8
-  classDef encode fill:#e8f5e9,stroke:#4caf50,stroke-width:1.5px,color:#1b5e20,rx:8
-  classDef output fill:#f5f5f5,stroke:#bdbdbd,stroke-width:1.5px,color:#424242,rx:8
-
-  style encode fill:#f1f8e9,stroke:#66bb6a,stroke-width:1px,rx:10
 ```
 
 #### `video-frames`
 
 ```mermaid
-%%{init: {'theme': 'base', 'themeVariables': { 'fontSize': '14px', 'primaryColor': '#e8f4fd', 'primaryBorderColor': '#4a90d9', 'lineColor': '#666'}}}%%
 graph LR
-  video["🎬 video"]:::input
+  video["🎬 video"]
 
   subgraph encode ["Encode"]
-    ts["Uniform timestamps\nat fps"]:::encode
-    ffmpeg["ffmpeg seek\n+ extract"]:::encode
-    batch["Batch ≤16\nframes/msg"]:::encode
+    ts["Uniform timestamps\nat fps"]
+    ffmpeg["ffmpeg seek\n+ extract"]
+    batch["Batch ≤16\nframes/msg"]
   end
 
-  msgs["N Messages\n(text header\n+ frame images)"]:::output
+  msgs["N Messages\n(text header\n+ frame images)"]
 
   video --> ts --> ffmpeg --> batch --> msgs
-
-  classDef input fill:#e8f4fd,stroke:#4a90d9,stroke-width:1.5px,color:#1a3a5c,rx:8
-  classDef encode fill:#e8f5e9,stroke:#4caf50,stroke-width:1.5px,color:#1b5e20,rx:8
-  classDef output fill:#f5f5f5,stroke:#bdbdbd,stroke-width:1.5px,color:#424242,rx:8
-
-  style encode fill:#f1f8e9,stroke:#66bb6a,stroke-width:1px,rx:10
 ```
 
 #### `video-frames-w-transcript`
 
 ```mermaid
-%%{init: {'theme': 'base', 'themeVariables': { 'fontSize': '14px', 'primaryColor': '#e8f4fd', 'primaryBorderColor': '#4a90d9', 'lineColor': '#666'}}}%%
 graph LR
-  video["🎬 video"]:::input
+  video["🎬 video"]
 
   subgraph encode ["Encode"]
     direction TB
-    audio["ffmpeg\nextract audio"]:::encode
-    whisper["Whisper\ntranscribe"]:::encode
-    frames["Extract frames\nat fps"]:::encode
-    batch["Batch ≤16\nframes/msg"]:::encode
+    audio["ffmpeg\nextract audio"]
+    whisper["Whisper\ntranscribe"]
+    frames["Extract frames\nat fps"]
+    batch["Batch ≤16\nframes/msg"]
   end
 
-  transcript["Msg 1:\ntranscript"]:::output
-  frame_msgs["Msgs 2..N:\nframe batches"]:::output
+  transcript["Msg 1:\ntranscript"]
+  frame_msgs["Msgs 2..N:\nframe batches"]
 
   video --> audio --> whisper --> transcript
   video --> frames --> batch --> frame_msgs
-
-  classDef input fill:#e8f4fd,stroke:#4a90d9,stroke-width:1.5px,color:#1a3a5c,rx:8
-  classDef encode fill:#e8f5e9,stroke:#4caf50,stroke-width:1.5px,color:#1b5e20,rx:8
-  classDef output fill:#f5f5f5,stroke:#bdbdbd,stroke-width:1.5px,color:#424242,rx:8
-
-  style encode fill:#f1f8e9,stroke:#66bb6a,stroke-width:1px,rx:10
 ```
 
 #### `video-chunks`
 
 ```mermaid
-%%{init: {'theme': 'base', 'themeVariables': { 'fontSize': '14px', 'primaryColor': '#e8f4fd', 'primaryBorderColor': '#4a90d9', 'lineColor': '#666'}}}%%
 graph LR
-  video["🎬 video"]:::input
+  video["🎬 video"]
 
   subgraph encode ["Encode"]
-    split["Split by duration\n(overlap)"]:::encode
-    c1["Chunk 1\n16 frames"]:::encode
-    c2["Chunk 2\n16 frames"]:::encode
-    c3["Chunk N\n16 frames"]:::encode
+    split["Split by duration\n(overlap)"]
+    c1["Chunk 1\n16 frames"]
+    c2["Chunk 2\n16 frames"]
+    c3["Chunk N\n16 frames"]
   end
 
-  m1["Message 1"]:::output
-  m2["Message 2"]:::output
-  m3["Message N"]:::output
+  m1["Message 1"]
+  m2["Message 2"]
+  m3["Message N"]
 
   video --> split
   split --> c1 --> m1
   split --> c2 --> m2
   split --> c3 --> m3
-
-  classDef input fill:#e8f4fd,stroke:#4a90d9,stroke-width:1.5px,color:#1a3a5c,rx:8
-  classDef encode fill:#e8f5e9,stroke:#4caf50,stroke-width:1.5px,color:#1b5e20,rx:8
-  classDef output fill:#f5f5f5,stroke:#bdbdbd,stroke-width:1.5px,color:#424242,rx:8
-
-  style encode fill:#f1f8e9,stroke:#66bb6a,stroke-width:1px,rx:10
 ```
 
 #### `video-shots`
 
 ```mermaid
-%%{init: {'theme': 'base', 'themeVariables': { 'fontSize': '14px', 'primaryColor': '#e8f4fd', 'primaryBorderColor': '#4a90d9', 'lineColor': '#666'}}}%%
 graph LR
-  video["🎬 video"]:::input
+  video["🎬 video"]
 
   subgraph encode ["Encode"]
-    detect["PySceneDetect\nshot boundaries"]:::encode
-    s1["Shot 1\n≤8 frames"]:::encode
-    s2["Shot 2\n≤8 frames"]:::encode
-    s3["Shot N\n≤8 frames"]:::encode
+    detect["PySceneDetect\nshot boundaries"]
+    s1["Shot 1\n≤8 frames"]
+    s2["Shot 2\n≤8 frames"]
+    s3["Shot N\n≤8 frames"]
   end
 
-  m1["Message 1"]:::output
-  m2["Message 2"]:::output
-  m3["Message N"]:::output
+  m1["Message 1"]
+  m2["Message 2"]
+  m3["Message N"]
 
   video --> detect
   detect --> s1 --> m1
   detect --> s2 --> m2
   detect --> s3 --> m3
-
-  classDef input fill:#e8f4fd,stroke:#4a90d9,stroke-width:1.5px,color:#1a3a5c,rx:8
-  classDef encode fill:#e8f5e9,stroke:#4caf50,stroke-width:1.5px,color:#1b5e20,rx:8
-  classDef output fill:#f5f5f5,stroke:#bdbdbd,stroke-width:1.5px,color:#424242,rx:8
-
-  style encode fill:#f1f8e9,stroke:#66bb6a,stroke-width:1px,rx:10
 ```
 
 #### `video-shot-mosaic`
 
 ```mermaid
-%%{init: {'theme': 'base', 'themeVariables': { 'fontSize': '14px', 'primaryColor': '#e8f4fd', 'primaryBorderColor': '#4a90d9', 'lineColor': '#666'}}}%%
 graph LR
-  video["🎬 video"]:::input
+  video["🎬 video"]
 
   subgraph encode ["Encode"]
-    detect["PySceneDetect\nshot boundaries"]:::encode
-    s1["Shot 1 frames\n→ tile mosaic"]:::encode
-    s2["Shot 2 frames\n→ tile mosaic"]:::encode
-    s3["Shot N frames\n→ tile mosaic"]:::encode
+    detect["PySceneDetect\nshot boundaries"]
+    s1["Shot 1 frames\n→ tile mosaic"]
+    s2["Shot 2 frames\n→ tile mosaic"]
+    s3["Shot N frames\n→ tile mosaic"]
   end
 
-  m1["Message 1\n(mosaic grid)"]:::output
-  m2["Message 2\n(mosaic grid)"]:::output
-  m3["Message N\n(mosaic grid)"]:::output
+  m1["Message 1\n(mosaic grid)"]
+  m2["Message 2\n(mosaic grid)"]
+  m3["Message N\n(mosaic grid)"]
 
   video --> detect
   detect --> s1 --> m1
   detect --> s2 --> m2
   detect --> s3 --> m3
-
-  classDef input fill:#e8f4fd,stroke:#4a90d9,stroke-width:1.5px,color:#1a3a5c,rx:8
-  classDef encode fill:#e8f5e9,stroke:#4caf50,stroke-width:1.5px,color:#1b5e20,rx:8
-  classDef output fill:#f5f5f5,stroke:#bdbdbd,stroke-width:1.5px,color:#424242,rx:8
-
-  style encode fill:#f1f8e9,stroke:#66bb6a,stroke-width:1px,rx:10
 ```
 
 #### `video-gemini`
 
 ```mermaid
-%%{init: {'theme': 'base', 'themeVariables': { 'fontSize': '14px', 'primaryColor': '#e8f4fd', 'primaryBorderColor': '#4a90d9', 'lineColor': '#666'}}}%%
 graph LR
-  video["🎬 video"]:::input
+  video["🎬 video"]
 
   subgraph encode ["Encode"]
-    read["Read file bytes\n(Rust fast-path)"]:::encode
-    b64["Base64 encode\ninline_data"]:::encode
+    read["Read file bytes\n(Rust fast-path)"]
+    b64["Base64 encode\ninline_data"]
   end
 
-  msg["1 Message\n(Gemini Part)"]:::output
+  msg["1 Message\n(Gemini Part)"]
 
   video --> read --> b64 --> msg
-
-  classDef input fill:#e8f4fd,stroke:#4a90d9,stroke-width:1.5px,color:#1a3a5c,rx:8
-  classDef encode fill:#e8f5e9,stroke:#4caf50,stroke-width:1.5px,color:#1b5e20,rx:8
-  classDef output fill:#f5f5f5,stroke:#bdbdbd,stroke-width:1.5px,color:#424242,rx:8
-
-  style encode fill:#f1f8e9,stroke:#66bb6a,stroke-width:1px,rx:10
 ```
 
 #### `video-gemini-chunked`
 
 ```mermaid
-%%{init: {'theme': 'base', 'themeVariables': { 'fontSize': '14px', 'primaryColor': '#e8f4fd', 'primaryBorderColor': '#4a90d9', 'lineColor': '#666'}}}%%
 graph LR
-  video["🎬 video"]:::input
+  video["🎬 video"]
 
   subgraph encode ["Encode"]
-    probe["Probe duration"]:::encode
-    c1["ffmpeg segment\nChunk 1"]:::encode
-    c2["ffmpeg segment\nChunk 2"]:::encode
-    c3["ffmpeg segment\nChunk N"]:::encode
+    probe["Probe duration"]
+    c1["ffmpeg segment\nChunk 1"]
+    c2["ffmpeg segment\nChunk 2"]
+    c3["ffmpeg segment\nChunk N"]
   end
 
-  m1["Message 1\n(Gemini Part)"]:::output
-  m2["Message 2\n(Gemini Part)"]:::output
-  m3["Message N\n(Gemini Part)"]:::output
+  m1["Message 1\n(Gemini Part)"]
+  m2["Message 2\n(Gemini Part)"]
+  m3["Message N\n(Gemini Part)"]
 
   video --> probe
   probe --> c1 --> m1
   probe --> c2 --> m2
   probe --> c3 --> m3
-
-  classDef input fill:#e8f4fd,stroke:#4a90d9,stroke-width:1.5px,color:#1a3a5c,rx:8
-  classDef encode fill:#e8f5e9,stroke:#4caf50,stroke-width:1.5px,color:#1b5e20,rx:8
-  classDef output fill:#f5f5f5,stroke:#bdbdbd,stroke-width:1.5px,color:#424242,rx:8
-
-  style encode fill:#f1f8e9,stroke:#66bb6a,stroke-width:1px,rx:10
 ```
 
 ### Audio
@@ -321,59 +251,44 @@ graph LR
 #### `audio-transcribe`
 
 ```mermaid
-%%{init: {'theme': 'base', 'themeVariables': { 'fontSize': '14px', 'primaryColor': '#e8f4fd', 'primaryBorderColor': '#4a90d9', 'lineColor': '#666'}}}%%
 graph LR
-  audio["🎵 audio"]:::input
+  audio["🎵 audio"]
 
   subgraph encode ["Encode"]
-    extract["ffmpeg\nextract audio"]:::encode
-    whisper["Whisper\ntranscribe"]:::encode
-    fmt["Format timestamped\nsegments"]:::encode
+    extract["ffmpeg\nextract audio"]
+    whisper["Whisper\ntranscribe"]
+    fmt["Format timestamped\nsegments"]
   end
 
-  msg["1 Message\n(text transcript)"]:::output
+  msg["1 Message\n(text transcript)"]
 
   audio --> extract --> whisper --> fmt --> msg
-
-  classDef input fill:#e8f4fd,stroke:#4a90d9,stroke-width:1.5px,color:#1a3a5c,rx:8
-  classDef encode fill:#e8f5e9,stroke:#4caf50,stroke-width:1.5px,color:#1b5e20,rx:8
-  classDef output fill:#f5f5f5,stroke:#bdbdbd,stroke-width:1.5px,color:#424242,rx:8
-
-  style encode fill:#f1f8e9,stroke:#66bb6a,stroke-width:1px,rx:10
 ```
 
 #### `audio-gemini`
 
 ```mermaid
-%%{init: {'theme': 'base', 'themeVariables': { 'fontSize': '14px', 'primaryColor': '#e8f4fd', 'primaryBorderColor': '#4a90d9', 'lineColor': '#666'}}}%%
 graph LR
-  audio["🎵 audio"]:::input
+  audio["🎵 audio"]
 
   subgraph encode ["Encode (short ≤120s)"]
-    read["Read file bytes"]:::encode
-    b64["Base64 encode\ninline_data"]:::encode
+    read["Read file bytes"]
+    b64["Base64 encode\ninline_data"]
   end
 
   subgraph encode2 ["Encode (long >120s)"]
-    probe["Probe duration"]:::encode
-    c1["ffmpeg segment\nChunk 1"]:::encode
-    c2["ffmpeg segment\nChunk N"]:::encode
+    probe["Probe duration"]
+    c1["ffmpeg segment\nChunk 1"]
+    c2["ffmpeg segment\nChunk N"]
   end
 
-  msg1["1 Message\n(Gemini Part)"]:::output
-  msgN["N Messages\n(Gemini Parts)"]:::output
+  msg1["1 Message\n(Gemini Part)"]
+  msgN["N Messages\n(Gemini Parts)"]
 
   audio --> read --> b64 --> msg1
   audio --> probe
   probe --> c1 --> msgN
   probe --> c2 --> msgN
-
-  classDef input fill:#e8f4fd,stroke:#4a90d9,stroke-width:1.5px,color:#1a3a5c,rx:8
-  classDef encode fill:#e8f5e9,stroke:#4caf50,stroke-width:1.5px,color:#1b5e20,rx:8
-  classDef output fill:#f5f5f5,stroke:#bdbdbd,stroke-width:1.5px,color:#424242,rx:8
-
-  style encode fill:#f1f8e9,stroke:#66bb6a,stroke-width:1px,rx:10
-  style encode2 fill:#f1f8e9,stroke:#66bb6a,stroke-width:1px,rx:10
 ```
 
 ### Document
@@ -388,101 +303,73 @@ graph LR
 #### `document-page-text`
 
 ```mermaid
-%%{init: {'theme': 'base', 'themeVariables': { 'fontSize': '14px', 'primaryColor': '#e8f4fd', 'primaryBorderColor': '#4a90d9', 'lineColor': '#666'}}}%%
 graph LR
-  doc["📄 PDF/DOCX/PPTX"]:::input
+  doc["📄 PDF/DOCX/PPTX"]
 
   subgraph encode ["Encode"]
-    open["Open document\n(pypdfium2 / docx)"]:::encode
-    extract["Extract text\nper page"]:::encode
-    batch["Batch ≤4\npages/msg"]:::encode
+    open["Open document\n(pypdfium2 / docx)"]
+    extract["Extract text\nper page"]
+    batch["Batch ≤4\npages/msg"]
   end
 
-  msgs["N Messages\n(text per page\nbatch)"]:::output
+  msgs["N Messages\n(text per page\nbatch)"]
 
   doc --> open --> extract --> batch --> msgs
-
-  classDef input fill:#e8f4fd,stroke:#4a90d9,stroke-width:1.5px,color:#1a3a5c,rx:8
-  classDef encode fill:#e8f5e9,stroke:#4caf50,stroke-width:1.5px,color:#1b5e20,rx:8
-  classDef output fill:#f5f5f5,stroke:#bdbdbd,stroke-width:1.5px,color:#424242,rx:8
-
-  style encode fill:#f1f8e9,stroke:#66bb6a,stroke-width:1px,rx:10
 ```
 
 #### `document-rasterize`
 
 ```mermaid
-%%{init: {'theme': 'base', 'themeVariables': { 'fontSize': '14px', 'primaryColor': '#e8f4fd', 'primaryBorderColor': '#4a90d9', 'lineColor': '#666'}}}%%
 graph LR
-  doc["📄 PDF"]:::input
+  doc["📄 PDF"]
 
   subgraph encode ["Encode"]
-    open["Open PDF\n(pypdfium2)"]:::encode
-    render["Render pages\nas JPEG"]:::encode
-    batch["Batch ≤4\npages/msg"]:::encode
+    open["Open PDF\n(pypdfium2)"]
+    render["Render pages\nas JPEG"]
+    batch["Batch ≤4\npages/msg"]
   end
 
-  msgs["N Messages\n(text header\n+ page images)"]:::output
+  msgs["N Messages\n(text header\n+ page images)"]
 
   doc --> open --> render --> batch --> msgs
-
-  classDef input fill:#e8f4fd,stroke:#4a90d9,stroke-width:1.5px,color:#1a3a5c,rx:8
-  classDef encode fill:#e8f5e9,stroke:#4caf50,stroke-width:1.5px,color:#1b5e20,rx:8
-  classDef output fill:#f5f5f5,stroke:#bdbdbd,stroke-width:1.5px,color:#424242,rx:8
-
-  style encode fill:#f1f8e9,stroke:#66bb6a,stroke-width:1px,rx:10
 ```
 
 #### `document-rasterize-text`
 
 ```mermaid
-%%{init: {'theme': 'base', 'themeVariables': { 'fontSize': '14px', 'primaryColor': '#e8f4fd', 'primaryBorderColor': '#4a90d9', 'lineColor': '#666'}}}%%
 graph LR
-  doc["📄 PDF"]:::input
+  doc["📄 PDF"]
 
   subgraph encode ["Encode"]
-    open["Open PDF\n(pypdfium2)"]:::encode
-    render["Render pages\nas JPEG"]:::encode
-    text["Extract text\nper page"]:::encode
-    interleave["Interleave\nimage + text"]:::encode
-    batch["Batch ≤4\npages/msg"]:::encode
+    open["Open PDF\n(pypdfium2)"]
+    render["Render pages\nas JPEG"]
+    text["Extract text\nper page"]
+    interleave["Interleave\nimage + text"]
+    batch["Batch ≤4\npages/msg"]
   end
 
-  msgs["N Messages\n(image + text\nper page)"]:::output
+  msgs["N Messages\n(image + text\nper page)"]
 
   doc --> open
   open --> render --> interleave
   open --> text --> interleave
   interleave --> batch --> msgs
-
-  classDef input fill:#e8f4fd,stroke:#4a90d9,stroke-width:1.5px,color:#1a3a5c,rx:8
-  classDef encode fill:#e8f5e9,stroke:#4caf50,stroke-width:1.5px,color:#1b5e20,rx:8
-  classDef output fill:#f5f5f5,stroke:#bdbdbd,stroke-width:1.5px,color:#424242,rx:8
-
-  style encode fill:#f1f8e9,stroke:#66bb6a,stroke-width:1px,rx:10
 ```
 
 #### `document-gemini`
 
 ```mermaid
-%%{init: {'theme': 'base', 'themeVariables': { 'fontSize': '14px', 'primaryColor': '#e8f4fd', 'primaryBorderColor': '#4a90d9', 'lineColor': '#666'}}}%%
 graph LR
-  doc["📄 document"]:::input
+  doc["📄 document"]
 
   subgraph encode ["Encode"]
-    read["Read file bytes\n(Rust fast-path)"]:::encode
-    b64["Base64 encode\ninline_data"]:::encode
+    read["Read file bytes\n(Rust fast-path)"]
+    b64["Base64 encode\ninline_data"]
   end
 
-  msg["1 Message\n(Gemini Part)"]:::output
+  msg["1 Message\n(Gemini Part)"]
 
   doc --> read --> b64 --> msg
-
-  classDef input fill:#e8f4fd,stroke:#4a90d9,stroke-width:1.5px,color:#1a3a5c,rx:8
-  classDef encode fill:#e8f5e9,stroke:#4caf50,stroke-width:1.5px,color:#1b5e20,rx:8
-  classDef output fill:#f5f5f5,stroke:#bdbdbd,stroke-width:1.5px,color:#424242,rx:8
-
-  style encode fill:#f1f8e9,stroke:#66bb6a,stroke-width:1px,rx:10
 ```
 
 ---
@@ -530,24 +417,23 @@ def my_custom(path: Path, **kw):
 Encoders that yield multiple Messages (e.g. one per video shot) are processed sequentially via `generate_chunked`. Each Message gets its own LLM call and results are concatenated. This avoids OOM from loading all chunks into memory simultaneously.
 
 ```mermaid
-%%{init: {'theme': 'base', 'themeVariables': { 'fontSize': '14px', 'primaryColor': '#e8f4fd', 'primaryBorderColor': '#4a90d9', 'lineColor': '#666'}}}%%
 graph LR
-  video["🎬 video"]:::input
+  video["🎬 video"]
 
   subgraph encode ["Encode"]
-    s1["Shot 1"]:::encode
-    s2["Shot 2"]:::encode
-    s3["Shot N"]:::encode
+    s1["Shot 1"]
+    s2["Shot 2"]
+    s3["Shot N"]
   end
 
   subgraph generate ["Generate"]
-    g1["LLM"]:::generate
-    g2["LLM"]:::generate
-    g3["LLM"]:::generate
+    g1["LLM"]
+    g2["LLM"]
+    g3["LLM"]
   end
 
-  concat["Concat"]:::output
-  out["stdout"]:::output
+  concat["Concat"]
+  out["stdout"]
 
   video --> s1
   video --> s2
@@ -559,14 +445,6 @@ graph LR
   g2 --> concat
   g3 --> concat
   concat --> out
-
-  classDef input fill:#e8f4fd,stroke:#4a90d9,stroke-width:1.5px,color:#1a3a5c,rx:8
-  classDef encode fill:#e8f5e9,stroke:#4caf50,stroke-width:1.5px,color:#1b5e20,rx:8
-  classDef generate fill:#fce4ec,stroke:#e57373,stroke-width:1.5px,color:#6a1b1b,rx:8
-  classDef output fill:#f5f5f5,stroke:#bdbdbd,stroke-width:1.5px,color:#424242,rx:8
-
-  style encode fill:#f1f8e9,stroke:#66bb6a,stroke-width:1px,rx:10
-  style generate fill:#fff0f0,stroke:#ef9a9a,stroke-width:1px,rx:10
 ```
 
 ### Encoder Protocol
