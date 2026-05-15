@@ -66,7 +66,7 @@ plugins:
   - search
   - mkdocstrings
   - mkdocs-jupyter:
-      execute: !ENV [CI, false]
+      execute: false #!ENV [CI, false]
       allow_errors: true
       include_source: true
       ignore_h1_titles: true
