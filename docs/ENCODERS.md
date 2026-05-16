@@ -613,12 +613,6 @@ graph LR
 | `image-crop-grid` | Fixed NxM grid crop (e.g. 3x3). Unlike `tile` which uses fixed pixel size, this always produces exactly N\*M tiles regardless of image dimensions. | `rows=3, cols=3, max_width=1024` |
 | `image-metadata` | EXIF metadata, dimensions, and histogram stats as a structured text message. Analysis without sending pixel data. | `include_exif=true, include_histogram=false` |
 
-### Video
-
-| Name | Description | Parameters |
-|------|-------------|------------|
-| `video-transcript` | Extract audio → Whisper transcription only, no visual frames. For podcasts, talks, interviews. | `model=None, audio_speed=1.0` |
-
 ### Document
 
 | Name | Description | Parameters |
