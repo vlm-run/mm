@@ -2138,7 +2138,7 @@ span.linenos.special { color: #000000; background-color: #ffffc0; padding-left: 
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea">
-<div class="jp-InputPrompt jp-InputArea-prompt">In [1]:</div><div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div><div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
 <div class="CodeMirror cm-s-jupyter">
 <div class="zeroclipboard-container">
 <clipboard-copy ,="" aria-label="Copy to Clipboard" for="cell-1">
@@ -2173,13 +2173,13 @@ DATA = Path.home() / "data/mmbench-tiny"</div>
 </div>
 </div>
 </div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=3">
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=3">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea">
-<div class="jp-InputPrompt jp-InputArea-prompt">In [2]:</div><div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div><div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
 <div class="CodeMirror cm-s-jupyter">
 <div class="zeroclipboard-container">
 <clipboard-copy ,="" aria-label="Copy to Clipboard" for="cell-2">
@@ -2195,19 +2195,6 @@ DATA = Path.home() / "data/mmbench-tiny"</div>
 <div class="highlight-ipynb hl-python"><pre><span></span><span class="err">!</span><span class="n">ls</span> <span class="o">-</span><span class="n">lha</span> <span class="o">~/</span><span class="n">data</span><span class="o">/</span><span class="n">mmbench</span><span class="o">-</span><span class="n">tiny</span><span class="o">/</span>
 </pre></div>
 <div class="clipboard-copy-txt" id="cell-2">!ls -lha ~/data/mmbench-tiny/</div>
-</div>
-</div>
-</div>
-</div>
-<div class="jp-Cell-outputWrapper">
-<div class="jp-Collapser jp-OutputCollapser jp-Cell-outputCollapser">
-</div>
-<div class="jp-OutputArea jp-Cell-outputArea">
-<div class="jp-OutputArea-child">
-<div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
-<div class="jp-RenderedText jp-OutputArea-output" data-mime-type="text/plain" tabindex="0">
-<pre>ls: cannot access '/home/runner/data/mmbench-tiny/': No such file or directory
-</pre>
 </div>
 </div>
 </div>
@@ -2232,13 +2219,13 @@ DATA = Path.home() / "data/mmbench-tiny"</div>
 </div>
 </div>
 </div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=5">
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=5">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea">
-<div class="jp-InputPrompt jp-InputArea-prompt">In [3]:</div><div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div><div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
 <div class="CodeMirror cm-s-jupyter">
 <div class="zeroclipboard-container">
 <clipboard-copy ,="" aria-label="Copy to Clipboard" for="cell-3">
@@ -2308,48 +2295,6 @@ ctx</div>
 </div>
 </div>
 </div>
-<div class="jp-Cell-outputWrapper">
-<div class="jp-Collapser jp-OutputCollapser jp-Cell-outputCollapser">
-</div>
-<div class="jp-OutputArea jp-Cell-outputArea">
-<div class="jp-OutputArea-child">
-<div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
-<div class="jp-RenderedText jp-OutputArea-output" data-mime-type="application/vnd.jupyter.stderr" tabindex="0">
-<pre>
-<span class="ansi-red-fg">---------------------------------------------------------------------------</span>
-<span class="ansi-red-fg">FileNotFoundError</span>                         Traceback (most recent call last)
-<span class="ansi-cyan-fg">Cell</span><span class="ansi-cyan-fg"> </span><span class="ansi-green-fg">In[3]</span><span class="ansi-green-fg">, line 15</span>
-<span class="ansi-green-fg">     11</span> prompt_ref: mm.Ref = ctx.add(
-<span class="ansi-green-fg">     12</span>     <span class="ansi-yellow-fg">"Compare the car photo and invoice. What facts can you extract?"</span>,
-<span class="ansi-green-fg">     13</span>     role=<span class="ansi-yellow-fg">"user"</span>,
-<span class="ansi-green-fg">     14</span> )
-<span class="ansi-green-fg">---&gt; </span><span class="ansi-green-fg">15</span> image_ref: mm.Ref = ctx.add(
-<span class="ansi-green-fg">     16</span>     DATA / <span class="ansi-yellow-fg">"car.jpg"</span>,
-<span class="ansi-green-fg">     17</span>     role=<span class="ansi-yellow-fg">"user"</span>,
-<span class="ansi-green-fg">     18</span>     metadata={<span class="ansi-yellow-fg">"note"</span>: <span class="ansi-yellow-fg">"VW beetle"</span>, <span class="ansi-yellow-fg">"source"</span>: <span class="ansi-yellow-fg">"sample dataset"</span>},
-
-<span class="ansi-cyan-fg">File </span><span class="ansi-green-fg">/opt/hostedtoolcache/Python/3.12.13/x64/lib/python3.12/site-packages/mm/context.py:305</span>, in <span class="ansi-cyan-fg">Context.add</span><span class="ansi-blue-fg">(self, obj, role, metadata)</span>
-<span class="ansi-green-fg">    303</span> <span style="color: rgb(0,135,0)">self</span>._require_pyctx(<span class="ansi-yellow-fg">"</span><span class="ansi-yellow-fg">add</span><span class="ansi-yellow-fg">"</span>)
-<span class="ansi-green-fg">    304</span> role = _validate_role(role)
-<span class="ansi-green-fg">--&gt; </span><span class="ansi-green-fg">305</span> kind, source_kind, source_value, byte_len, desc, py_obj = <span class="ansi-black-fg ansi-yellow-bg">_classify_add_obj</span><span class="ansi-black-fg ansi-yellow-bg">(</span><span class="ansi-black-fg ansi-yellow-bg">obj</span><span class="ansi-black-fg ansi-yellow-bg">)</span>
-<span class="ansi-green-fg">    306</span> <span class="ansi-bold" style="color: rgb(0,135,0)">if</span> role != <span class="ansi-yellow-fg">"</span><span class="ansi-yellow-fg">user</span><span class="ansi-yellow-fg">"</span> <span class="ansi-bold" style="color: rgb(175,0,255)">and</span> kind != <span class="ansi-yellow-fg">"</span><span class="ansi-yellow-fg">text</span><span class="ansi-yellow-fg">"</span>:
-<span class="ansi-green-fg">    307</span>     <span class="ansi-bold" style="color: rgb(0,135,0)">raise</span> <span class="ansi-bold" style="color: rgb(215,95,95)">ValueError</span>(<span class="ansi-yellow-fg">"</span><span class="ansi-yellow-fg">Only free-form string text can use role=</span><span class="ansi-yellow-fg">'</span><span class="ansi-yellow-fg">system</span><span class="ansi-yellow-fg">'</span><span class="ansi-yellow-fg"> or role=</span><span class="ansi-yellow-fg">'</span><span class="ansi-yellow-fg">developer</span><span class="ansi-yellow-fg">'</span><span class="ansi-yellow-fg">"</span>)
-
-<span class="ansi-cyan-fg">File </span><span class="ansi-green-fg">/opt/hostedtoolcache/Python/3.12.13/x64/lib/python3.12/site-packages/mm/context.py:1025</span>, in <span class="ansi-cyan-fg">_classify_add_obj</span><span class="ansi-blue-fg">(obj)</span>
-<span class="ansi-green-fg">   1023</span> <span class="ansi-bold" style="color: rgb(0,135,0)">if</span> <span style="color: rgb(0,135,0)">isinstance</span>(obj, Path):
-<span class="ansi-green-fg">   1024</span>     <span class="ansi-bold" style="color: rgb(0,135,0)">if</span> <span class="ansi-bold" style="color: rgb(175,0,255)">not</span> obj.exists():
-<span class="ansi-green-fg">-&gt; </span><span class="ansi-green-fg">1025</span>         <span class="ansi-bold" style="color: rgb(0,135,0)">raise</span> <span class="ansi-bold" style="color: rgb(215,95,95)">FileNotFoundError</span>(<span class="ansi-yellow-fg">f</span><span class="ansi-yellow-fg">"</span><span class="ansi-yellow-fg">add(</span><span class="ansi-bold" style="color: rgb(175,95,135)">{</span>obj<span class="ansi-bold" style="color: rgb(175,95,135)">!r}</span><span class="ansi-yellow-fg">): file does not exist</span><span class="ansi-yellow-fg">"</span>)
-<span class="ansi-green-fg">   1026</span>     <span class="ansi-bold" style="color: rgb(0,135,0)">return</span> _classify_path(obj)
-<span class="ansi-green-fg">   1028</span> <span class="ansi-bold" style="color: rgb(0,135,0)">raise</span> <span class="ansi-bold" style="color: rgb(215,95,95)">TypeError</span>(
-<span class="ansi-green-fg">   1029</span>     <span class="ansi-yellow-fg">f</span><span class="ansi-yellow-fg">"</span><span class="ansi-yellow-fg">add() does not accept </span><span class="ansi-bold" style="color: rgb(175,95,135)">{</span><span style="color: rgb(0,135,0)">type</span>(obj).<span class="ansi-blue-fg">__name__</span><span class="ansi-bold" style="color: rgb(175,95,135)">}</span><span class="ansi-yellow-fg">. Supported types: </span><span class="ansi-yellow-fg">"</span>
-<span class="ansi-green-fg">   1030</span>     <span class="ansi-yellow-fg">"</span><span class="ansi-yellow-fg">str, pathlib.Path, PIL.Image.Image.</span><span class="ansi-yellow-fg">"</span>
-<span class="ansi-green-fg">   1031</span> )
-
-<span class="ansi-red-fg">FileNotFoundError</span>: add(PosixPath('/home/runner/data/mmbench-tiny/car.jpg')): file does not exist</pre>
-</div>
-</div>
-</div>
-</div>
 </div>
 </div>
 <div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=6">
@@ -2408,13 +2353,13 @@ ctx</div>
 </div>
 </div>
 </div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=8">
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=8">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea">
-<div class="jp-InputPrompt jp-InputArea-prompt">In [4]:</div><div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div><div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
 <div class="CodeMirror cm-s-jupyter">
 <div class="zeroclipboard-container">
 <clipboard-copy ,="" aria-label="Copy to Clipboard" for="cell-4">
@@ -2434,24 +2379,6 @@ ctx</div>
 </div>
 </div>
 </div>
-<div class="jp-Cell-outputWrapper">
-<div class="jp-Collapser jp-OutputCollapser jp-Cell-outputCollapser">
-</div>
-<div class="jp-OutputArea jp-Cell-outputArea">
-<div class="jp-OutputArea-child jp-OutputArea-executeResult">
-<div class="jp-OutputPrompt jp-OutputArea-prompt">Out[4]:</div>
-<div class="jp-RenderedText jp-OutputArea-output jp-OutputArea-executeResult" data-mime-type="text/plain" tabindex="0">
-<pre>Context(session=019e2cfd-56f9-7897-85f4-5adbef3833e8, items=3)
-
-| ref | role | kind | source |
-|-----|------|------|--------|
-| txt_912dfa | system | text | You are a concise multimodal analyst. |
-| txt_f29aef | developer | text | Return concrete observations first; mention uncertainty last. |
-| txt_fb06b8 | user | text | Compare the car photo and invoice. What facts can you extract? |</pre>
-</div>
-</div>
-</div>
-</div>
 </div>
 </div>
 <div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=9">
@@ -2464,13 +2391,13 @@ ctx</div>
 </div>
 </div>
 </div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=10">
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=10">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea">
-<div class="jp-InputPrompt jp-InputArea-prompt">In [5]:</div><div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div><div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
 <div class="CodeMirror cm-s-jupyter">
 <div class="zeroclipboard-container">
 <clipboard-copy ,="" aria-label="Copy to Clipboard" for="cell-5">
@@ -2490,26 +2417,6 @@ ctx</div>
 </div>
 </div>
 </div>
-<div class="jp-Cell-outputWrapper">
-<div class="jp-Collapser jp-OutputCollapser jp-Cell-outputCollapser">
-</div>
-<div class="jp-OutputArea jp-Cell-outputArea">
-<div class="jp-OutputArea-child">
-<div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
-<div class="jp-RenderedText jp-OutputArea-output" data-mime-type="text/plain" tabindex="0">
-<pre>Context(session=019e2cfd-56f9-7897-85f4-5adbef3833e8, items=3)
-
-| ref | role | kind | source |
-|-----|------|------|--------|
-| txt_912dfa | system | text | You are a concise multimodal analyst. |
-| txt_f29aef | developer | text | Return concrete observations first; mention uncertainty last. |
-| txt_fb06b8 | user | text | Compare the car photo and invoice. What facts can you extract? |
-
-</pre>
-</div>
-</div>
-</div>
-</div>
 </div>
 </div>
 <div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=11">
@@ -2522,13 +2429,13 @@ ctx</div>
 </div>
 </div>
 </div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=12">
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=12">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea">
-<div class="jp-InputPrompt jp-InputArea-prompt">In [6]:</div><div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div><div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
 <div class="CodeMirror cm-s-jupyter">
 <div class="zeroclipboard-container">
 <clipboard-copy ,="" aria-label="Copy to Clipboard" for="cell-6">
@@ -2548,23 +2455,6 @@ ctx</div>
 </div>
 </div>
 </div>
-<div class="jp-Cell-outputWrapper">
-<div class="jp-Collapser jp-OutputCollapser jp-Cell-outputCollapser">
-</div>
-<div class="jp-OutputArea jp-Cell-outputArea">
-<div class="jp-OutputArea-child">
-<div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
-<div class="jp-RenderedHTMLCommon jp-RenderedHTML jp-OutputArea-output" data-mime-type="text/html" tabindex="0">
-<pre style="white-space:pre;overflow-x:auto;line-height:normal;font-family:Menlo,'DejaVu Sans Mono',consolas,'Courier New',monospace"><span style="color: #800080; text-decoration-color: #800080; font-weight: bold">Context</span><span style="font-weight: bold">(</span><span style="color: #808000; text-decoration-color: #808000">session</span>=<span style="color: #ffff00; text-decoration-color: #ffff00">019e2cfd</span><span style="color: #ffff00; text-decoration-color: #ffff00">-56f9-7897-85f4-5adbef3833e8</span>, <span style="color: #808000; text-decoration-color: #808000">items</span>=<span style="color: #008080; text-decoration-color: #008080; font-weight: bold">3</span><span style="font-weight: bold">)</span>
-├── <span style="font-weight: bold">[</span><span style="color: #008080; text-decoration-color: #008080; font-weight: bold">1</span><span style="font-weight: bold">]</span> txt_912dfa  system  text  You are a concise multimodal analyst.
-├── <span style="font-weight: bold">[</span><span style="color: #008080; text-decoration-color: #008080; font-weight: bold">2</span><span style="font-weight: bold">]</span> txt_f29aef  developer  text  Return concrete observations first; mention uncertainty last.
-└── <span style="font-weight: bold">[</span><span style="color: #008080; text-decoration-color: #008080; font-weight: bold">3</span><span style="font-weight: bold">]</span> txt_fb06b8  user  text  Compare the car photo and invoice. What facts can you extract?
-
-</pre>
-</div>
-</div>
-</div>
-</div>
 </div>
 </div>
 <div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=13">
@@ -2577,13 +2467,13 @@ ctx</div>
 </div>
 </div>
 </div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=14">
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=14">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea">
-<div class="jp-InputPrompt jp-InputArea-prompt">In [7]:</div><div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div><div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
 <div class="CodeMirror cm-s-jupyter">
 <div class="zeroclipboard-container">
 <clipboard-copy ,="" aria-label="Copy to Clipboard" for="cell-7">
@@ -2603,51 +2493,6 @@ ctx</div>
 </div>
 </div>
 </div>
-<div class="jp-Cell-outputWrapper">
-<div class="jp-Collapser jp-OutputCollapser jp-Cell-outputCollapser">
-</div>
-<div class="jp-OutputArea jp-Cell-outputArea">
-<div class="jp-OutputArea-child jp-OutputArea-executeResult">
-<div class="jp-OutputPrompt jp-OutputArea-prompt">Out[7]:</div>
-<div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-OutputArea-output jp-OutputArea-executeResult" data-mime-type="text/markdown" tabindex="0">
-<table>
-<thead>
-<tr>
-<th>ref</th>
-<th>role</th>
-<th>kind</th>
-<th>source</th>
-<th>content</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>txt_912dfa</td>
-<td>system</td>
-<td>text</td>
-<td>You are a concise multimodal analyst.</td>
-<td>You are a concise multimodal analyst.</td>
-</tr>
-<tr>
-<td>txt_f29aef</td>
-<td>developer</td>
-<td>text</td>
-<td>Return concrete observations first; mention uncertainty last.</td>
-<td>Return concrete observations first; mention uncertainty last.</td>
-</tr>
-<tr>
-<td>txt_fb06b8</td>
-<td>user</td>
-<td>text</td>
-<td>Compare the car photo and invoice. What facts can you extract?</td>
-<td>Compare the car photo and invoice. What facts can you extract?</td>
-</tr>
-</tbody>
-</table>
-</div>
-</div>
-</div>
-</div>
 </div>
 </div>
 <div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=15">
@@ -2660,13 +2505,13 @@ ctx</div>
 </div>
 </div>
 </div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=16">
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=16">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea">
-<div class="jp-InputPrompt jp-InputArea-prompt">In [8]:</div><div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div><div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
 <div class="CodeMirror cm-s-jupyter">
 <div class="zeroclipboard-container">
 <clipboard-copy ,="" aria-label="Copy to Clipboard" for="cell-8">
@@ -2700,51 +2545,6 @@ pprint(ctx.items())</div>
 </div>
 </div>
 </div>
-<div class="jp-Cell-outputWrapper">
-<div class="jp-Collapser jp-OutputCollapser jp-Cell-outputCollapser">
-</div>
-<div class="jp-OutputArea jp-Cell-outputArea">
-<div class="jp-OutputArea-child">
-<div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
-<div class="jp-RenderedText jp-OutputArea-output" data-mime-type="text/plain" tabindex="0">
-<pre>ref_ids:
-['txt_912dfa', 'txt_f29aef', 'txt_fb06b8']
-
-refs:
-{'txt_912dfa': '019e2cfd-56f9-7897-85f4-5adbef3833e8/txt_912dfa',
- 'txt_f29aef': '019e2cfd-56f9-7897-85f4-5adbef3833e8/txt_f29aef',
- 'txt_fb06b8': '019e2cfd-56f9-7897-85f4-5adbef3833e8/txt_fb06b8'}
-
-items:
-[{'byte_len': 37,
-  'desc': 'You are a concise multimodal analyst.',
-  'kind': 'text',
-  'metadata': {},
-  'ref_id': 'txt_912dfa',
-  'role': 'system',
-  'source_kind': 'in_memory',
-  'source_value': 'text/plain'},
- {'byte_len': 61,
-  'desc': 'Return concrete observations first; mention uncertainty last.',
-  'kind': 'text',
-  'metadata': {},
-  'ref_id': 'txt_f29aef',
-  'role': 'developer',
-  'source_kind': 'in_memory',
-  'source_value': 'text/plain'},
- {'byte_len': 62,
-  'desc': 'Compare the car photo and invoice. What facts can you extract?',
-  'kind': 'text',
-  'metadata': {},
-  'ref_id': 'txt_fb06b8',
-  'role': 'user',
-  'source_kind': 'in_memory',
-  'source_value': 'text/plain'}]
-</pre>
-</div>
-</div>
-</div>
-</div>
 </div>
 </div>
 <div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=17">
@@ -2769,13 +2569,13 @@ items:
 </div>
 </div>
 </div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=19">
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=19">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea">
-<div class="jp-InputPrompt jp-InputArea-prompt">In [9]:</div><div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div><div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
 <div class="CodeMirror cm-s-jupyter">
 <div class="zeroclipboard-container">
 <clipboard-copy ,="" aria-label="Copy to Clipboard" for="cell-9">
@@ -2801,396 +2601,6 @@ HTML(render_messages(openai_messages, title="OpenAI message payload"))</div>
 </div>
 </div>
 </div>
-<div class="jp-Cell-outputWrapper">
-<div class="jp-Collapser jp-OutputCollapser jp-Cell-outputCollapser">
-</div>
-<div class="jp-OutputArea jp-Cell-outputArea">
-<div class="jp-OutputArea-child">
-<div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
-<div class="jp-RenderedText jp-OutputArea-output" data-mime-type="text/plain" tabindex="0">
-<pre>[{'content': [{'text': '[ref=txt_912dfa]', 'type': 'text'},
-              {'text': 'You are a concise multimodal analyst.',
-               'type': 'text'}],
-  'role': 'system'},
- {'content': [{'text': '[ref=txt_f29aef]', 'type': 'text'},
-              {'text': 'Return concrete observations first; mention '
-                       'uncertainty last.',
-               'type': 'text'}],
-  'role': 'developer'},
- {'content': [{'text': '[ref=txt_fb06b8]', 'type': 'text'},
-              {'text': 'Compare the car photo and invoice. What facts can you '
-                       'extract?',
-               'type': 'text'}],
-  'role': 'user'}]
-</pre>
-</div>
-</div>
-<div class="jp-OutputArea-child jp-OutputArea-executeResult">
-<div class="jp-OutputPrompt jp-OutputArea-prompt">Out[9]:</div>
-<div class="jp-RenderedHTMLCommon jp-RenderedHTML jp-OutputArea-output jp-OutputArea-executeResult" data-mime-type="text/html" tabindex="0">
-<div class="mm-fe045a33-root">
-<style>
-    .mm-fe045a33-root {
-        --mm-bg: #ffffff;
-        --mm-bg-pre: #f6f8fa;
-        --mm-bg-soft: #fafbfc;
-        --mm-text: #1a1a2e;
-        --mm-text-dim: #656d76;
-        --mm-border: #d1d9e0;
-        --mm-border-soft: #e6e9ec;
-        --mm-accent: #4361ee;
-        --mm-ref-bg: #ddf4ff;
-        --mm-ref-text: #0969da;
-        --mm-role-user: #4361ee;
-        --mm-role-assistant: #1a7f37;
-        --mm-role-system: #656d76;
-        --mm-shadow: rgba(0, 0, 0, 0.04);
-        --mm-kind-image: #8250df;
-        --mm-kind-video: #bf3989;
-        --mm-kind-audio: #cf222e;
-        --mm-kind-document: #0969da;
-        --mm-kind-default: #656d76;
-
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-        font-size: 12px;
-        color: var(--mm-text);
-        background: var(--mm-bg-soft);
-        border: 1px solid var(--mm-border);
-        border-radius: 8px;
-        overflow: hidden;
-        max-width: 720px;
-        line-height: 1.4;
-    }
-    .mm-fe045a33-title {
-        padding: 6px 10px;
-        font-weight: 600;
-        font-size: 12px;
-        background: var(--mm-bg-soft);
-        border-bottom: 1px solid var(--mm-border-soft);
-        letter-spacing: -0.01em;
-    }
-
-    /* ── item / message cards ── */
-    .mm-fe045a33-item, .mm-fe045a33-msg {
-        padding: 8px 10px;
-        margin: 6px 8px;
-        background: var(--mm-bg);
-        border: 1px solid var(--mm-border-soft);
-        border-radius: 6px;
-    }
-    .mm-fe045a33-item-header {
-        display: flex;
-        align-items: center;
-        gap: 5px;
-        margin-bottom: 5px;
-        flex-wrap: wrap;
-    }
-    .mm-fe045a33-kind {
-        display: inline-block;
-        font-size: 8px;
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-        padding: 1px 5px;
-        border-radius: 2px;
-        color: white;
-        background: var(--mm-kind-default);
-    }
-    .mm-fe045a33-kind-image { background: var(--mm-kind-image); }
-    .mm-fe045a33-kind-video { background: var(--mm-kind-video); }
-    .mm-fe045a33-kind-audio { background: var(--mm-kind-audio); }
-    .mm-fe045a33-kind-document { background: var(--mm-kind-document); }
-    .mm-fe045a33-ref {
-        display: inline-block;
-        background: var(--mm-ref-bg);
-        color: var(--mm-ref-text);
-        padding: 0 4px;
-        border-radius: 2px;
-        font-weight: 600;
-        font-size: 10px;
-        font-family: "SF Mono", Menlo, Consolas, monospace;
-    }
-    .mm-fe045a33-filename {
-        font-size: 11px;
-        color: var(--mm-text-dim);
-    }
-
-    /* ── metadata dict ── */
-    .mm-fe045a33-meta {
-        margin: 0 0 5px 0;
-        border-collapse: collapse;
-        font-size: 10px;
-    }
-    .mm-fe045a33-meta td {
-        padding: 1px 8px 1px 0;
-        vertical-align: top;
-    }
-    .mm-fe045a33-meta-key {
-        color: var(--mm-text-dim);
-        font-weight: 600;
-        white-space: nowrap;
-    }
-    .mm-fe045a33-meta-val {
-        color: var(--mm-text);
-    }
-
-    /* ── native media views ── */
-    .mm-fe045a33-native { margin-bottom: 5px; }
-    .mm-fe045a33-zoom {
-        display: inline-block;
-        line-height: 0;
-    }
-    .mm-fe045a33-zoom-toggle {
-        position: absolute;
-        opacity: 0;
-        pointer-events: none;
-    }
-    .mm-fe045a33-img-link {
-        display: inline-block;
-        line-height: 0;
-        cursor: zoom-in;
-    }
-    .mm-fe045a33-img {
-        border: 1px solid var(--mm-border-soft);
-        border-radius: 3px;
-        box-shadow: 0 1px 2px var(--mm-shadow);
-        display: block;
-        height: auto;
-        transition: border-color 0.15s;
-    }
-    .mm-fe045a33-img-link:hover .mm-fe045a33-img {
-        border-color: var(--mm-accent);
-    }
-
-    /* ── lightbox modal (CSS-only, checkbox-toggle pattern) ── */
-    .mm-fe045a33-modal {
-        display: none;
-        position: fixed;
-        inset: 0;
-        background: rgba(0, 0, 0, 0.92);
-        z-index: 99999;
-        cursor: zoom-out;
-        align-items: center;
-        justify-content: center;
-        padding: 24px;
-        box-sizing: border-box;
-        animation: mm-fe045a33-fade 0.12s ease-out;
-    }
-    .mm-fe045a33-zoom-toggle:checked ~ .mm-fe045a33-modal {
-        display: flex;
-    }
-    .mm-fe045a33-modal-img {
-        max-width: 95vw;
-        max-height: 95vh;
-        width: auto;
-        height: auto;
-        border-radius: 4px;
-        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
-    }
-    @keyframes mm-fe045a33-fade {
-        from { opacity: 0; }
-        to { opacity: 1; }
-    }
-    .mm-fe045a33-video {
-        border: 1px solid var(--mm-border-soft);
-        border-radius: 3px;
-        display: block;
-        background: #000;
-    }
-    .mm-fe045a33-audio {
-        display: block;
-        width: 100%;
-        max-width: 320px;
-        height: 28px;
-    }
-    .mm-fe045a33-audio-part {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        padding: 4px 8px;
-        background: var(--mm-bg-alt);
-        border-radius: 4px;
-        margin: 2px 0;
-    }
-    .mm-fe045a33-audio-badge {
-        font-weight: 600;
-        font-size: 12px;
-        color: var(--mm-kind-audio);
-    }
-    .mm-fe045a33-placeholder {
-        padding: 6px 10px;
-        background: var(--mm-bg-soft);
-        border: 1px dashed var(--mm-border);
-        border-radius: 3px;
-        color: var(--mm-text-dim);
-        font-size: 11px;
-    }
-    .mm-fe045a33-cap {
-        font-size: 9px;
-        color: var(--mm-text-dim);
-        margin-top: 2px;
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    }
-
-    /* ── collapsible "Show more" pattern ── */
-    .mm-fe045a33-collapse {
-        margin-top: 4px;
-    }
-    .mm-fe045a33-collapse > summary {
-        list-style: none;
-        cursor: pointer;
-        user-select: none;
-        display: inline-flex;
-        align-items: center;
-        gap: 4px;
-    }
-    .mm-fe045a33-collapse > summary::-webkit-details-marker { display: none; }
-    .mm-fe045a33-more {
-        font-size: 10px;
-        color: var(--mm-text-dim);
-        padding: 2px 7px;
-        border-radius: 999px;
-        background: var(--mm-bg-soft);
-        border: 1px solid var(--mm-border-soft);
-        transition: all 0.15s;
-    }
-    .mm-fe045a33-more:hover {
-        color: var(--mm-accent);
-        border-color: var(--mm-accent);
-        background: white;
-    }
-    .mm-fe045a33-collapse[open] > summary > .mm-fe045a33-more::before {
-        content: "− ";
-    }
-    .mm-fe045a33-collapse:not([open]) > summary > .mm-fe045a33-more::before {
-        content: "+ ";
-    }
-    .mm-fe045a33-collapse-extras {
-        margin: 0 8px 6px 8px;
-        text-align: center;
-    }
-    .mm-fe045a33-extras-body {
-        margin-top: 0;
-        text-align: left;
-    }
-    .mm-fe045a33-extras-body > .mm-fe045a33-item,
-    .mm-fe045a33-extras-body > .mm-fe045a33-msg {
-        margin-left: 0;
-        margin-right: 0;
-    }
-
-    /* ── encoded VLM view (inline, kind-aware) ── */
-    .mm-fe045a33-encoded {
-        margin-top: 6px;
-        padding-top: 6px;
-        border-top: 1px dashed var(--mm-border-soft);
-        display: flex;
-        flex-direction: column;
-        gap: 5px;
-    }
-    .mm-fe045a33-encoded-label {
-        font-size: 9px;
-        color: var(--mm-text-dim);
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-        letter-spacing: 0.02em;
-    }
-
-    /* ── mosaic grid ── */
-    .mm-fe045a33-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-        gap: 4px;
-    }
-    .mm-fe045a33-grid .mm-fe045a33-fig { margin: 0; }
-    .mm-fe045a33-grid .mm-fe045a33-img {
-        width: 100%;
-        max-width: none;
-        border-radius: 2px;
-    }
-    .mm-fe045a33-grid .mm-fe045a33-cap { font-size: 9px; }
-    .mm-fe045a33-gallery {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 5px;
-        align-items: flex-start;
-    }
-    .mm-fe045a33-fig {
-        margin: 0;
-        padding: 0;
-        display: inline-flex;
-        flex-direction: column;
-        align-items: flex-start;
-    }
-
-    /* ── text parts ── */
-    .mm-fe045a33-pre {
-        margin: 0;
-        padding: 5px 8px;
-        background: var(--mm-bg);
-        border: 1px solid var(--mm-border-soft);
-        border-radius: 3px;
-        font-family: "SF Mono", "Fira Code", "JetBrains Mono", Menlo, Consolas, monospace;
-        font-size: 11px;
-        line-height: 1.45;
-        white-space: pre-wrap;
-        word-break: break-word;
-        overflow-x: auto;
-        max-height: 140px;
-        overflow-y: auto;
-        color: var(--mm-text);
-    }
-
-    /* ── role badges (render_messages) ── */
-    .mm-fe045a33-role {
-        display: inline-block;
-        font-size: 9px;
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-        padding: 1px 5px;
-        border-radius: 2px;
-        margin-bottom: 5px;
-    }
-    .mm-fe045a33-role-user {
-        color: var(--mm-role-user);
-        background: color-mix(in srgb, var(--mm-role-user) 12%, transparent);
-    }
-    .mm-fe045a33-role-assistant {
-        color: var(--mm-role-assistant);
-        background: color-mix(in srgb, var(--mm-role-assistant) 12%, transparent);
-    }
-    .mm-fe045a33-role-system {
-        color: var(--mm-role-system);
-        background: color-mix(in srgb, var(--mm-role-system) 12%, transparent);
-    }
-    .mm-fe045a33-content {
-        display: flex;
-        flex-direction: column;
-        gap: 5px;
-    }
-
-    /* ── stats footer ── */
-    .mm-fe045a33-stats {
-        padding: 5px 10px;
-        font-size: 10px;
-        color: var(--mm-text-dim);
-        background: var(--mm-bg-soft);
-        border-top: 1px solid var(--mm-border-soft);
-    }
-    </style>
-<div class="mm-fe045a33-title">OpenAI message payload</div>
-<div class="mm-fe045a33-msg"><div class="mm-fe045a33-role mm-fe045a33-role-system">System</div><div class="mm-fe045a33-content"><div class="mm-fe045a33-text"><pre class="mm-fe045a33-pre"><span class="mm-fe045a33-ref">[ref=txt_912dfa]</span></pre><div class="mm-fe045a33-cap">text · 16 chars</div></div>
-<div class="mm-fe045a33-text"><pre class="mm-fe045a33-pre">You are a concise multimodal analyst.</pre><div class="mm-fe045a33-cap">text · 37 chars</div></div></div></div>
-<div class="mm-fe045a33-msg"><div class="mm-fe045a33-role mm-fe045a33-role-developer">Developer</div><div class="mm-fe045a33-content"><div class="mm-fe045a33-text"><pre class="mm-fe045a33-pre"><span class="mm-fe045a33-ref">[ref=txt_f29aef]</span></pre><div class="mm-fe045a33-cap">text · 16 chars</div></div>
-<div class="mm-fe045a33-text"><pre class="mm-fe045a33-pre">Return concrete observations first; mention uncertainty last.</pre><div class="mm-fe045a33-cap">text · 61 chars</div></div></div></div>
-<div class="mm-fe045a33-msg"><div class="mm-fe045a33-role mm-fe045a33-role-user">User</div><div class="mm-fe045a33-content"><div class="mm-fe045a33-text"><pre class="mm-fe045a33-pre"><span class="mm-fe045a33-ref">[ref=txt_fb06b8]</span></pre><div class="mm-fe045a33-cap">text · 16 chars</div></div>
-<div class="mm-fe045a33-text"><pre class="mm-fe045a33-pre">Compare the car photo and invoice. What facts can you extract?</pre><div class="mm-fe045a33-cap">text · 62 chars</div></div></div></div>
-<div class="mm-fe045a33-stats">~52 est. tokens</div>
-</div>
-</div>
-</div>
-</div>
-</div>
 </div>
 </div>
 <div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=20">
@@ -3203,13 +2613,13 @@ HTML(render_messages(openai_messages, title="OpenAI message payload"))</div>
 </div>
 </div>
 </div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=21">
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=21">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea">
-<div class="jp-InputPrompt jp-InputArea-prompt">In [10]:</div><div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div><div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
 <div class="CodeMirror cm-s-jupyter">
 <div class="zeroclipboard-container">
 <clipboard-copy ,="" aria-label="Copy to Clipboard" for="cell-10">
@@ -3235,394 +2645,6 @@ HTML(render_messages(gemini_messages, title="Gemini-adapted payload"))</div>
 </div>
 </div>
 </div>
-<div class="jp-Cell-outputWrapper">
-<div class="jp-Collapser jp-OutputCollapser jp-Cell-outputCollapser">
-</div>
-<div class="jp-OutputArea jp-Cell-outputArea">
-<div class="jp-OutputArea-child">
-<div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
-<div class="jp-RenderedText jp-OutputArea-output" data-mime-type="text/plain" tabindex="0">
-<pre>[{'parts': [{'text': '[role=system]'},
-            {'text': '[ref=txt_912dfa]'},
-            {'text': 'You are a concise multimodal analyst.'},
-            {'text': '[role=developer]'},
-            {'text': '[ref=txt_f29aef]'},
-            {'text': 'Return concrete observations first; mention uncertainty '
-                     'last.'},
-            {'text': '[ref=txt_fb06b8]'},
-            {'text': 'Compare the car photo and invoice. What facts can you '
-                     'extract?'}],
-  'role': 'user'}]
-</pre>
-</div>
-</div>
-<div class="jp-OutputArea-child jp-OutputArea-executeResult">
-<div class="jp-OutputPrompt jp-OutputArea-prompt">Out[10]:</div>
-<div class="jp-RenderedHTMLCommon jp-RenderedHTML jp-OutputArea-output jp-OutputArea-executeResult" data-mime-type="text/html" tabindex="0">
-<div class="mm-8b038cb5-root">
-<style>
-    .mm-8b038cb5-root {
-        --mm-bg: #ffffff;
-        --mm-bg-pre: #f6f8fa;
-        --mm-bg-soft: #fafbfc;
-        --mm-text: #1a1a2e;
-        --mm-text-dim: #656d76;
-        --mm-border: #d1d9e0;
-        --mm-border-soft: #e6e9ec;
-        --mm-accent: #4361ee;
-        --mm-ref-bg: #ddf4ff;
-        --mm-ref-text: #0969da;
-        --mm-role-user: #4361ee;
-        --mm-role-assistant: #1a7f37;
-        --mm-role-system: #656d76;
-        --mm-shadow: rgba(0, 0, 0, 0.04);
-        --mm-kind-image: #8250df;
-        --mm-kind-video: #bf3989;
-        --mm-kind-audio: #cf222e;
-        --mm-kind-document: #0969da;
-        --mm-kind-default: #656d76;
-
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-        font-size: 12px;
-        color: var(--mm-text);
-        background: var(--mm-bg-soft);
-        border: 1px solid var(--mm-border);
-        border-radius: 8px;
-        overflow: hidden;
-        max-width: 720px;
-        line-height: 1.4;
-    }
-    .mm-8b038cb5-title {
-        padding: 6px 10px;
-        font-weight: 600;
-        font-size: 12px;
-        background: var(--mm-bg-soft);
-        border-bottom: 1px solid var(--mm-border-soft);
-        letter-spacing: -0.01em;
-    }
-
-    /* ── item / message cards ── */
-    .mm-8b038cb5-item, .mm-8b038cb5-msg {
-        padding: 8px 10px;
-        margin: 6px 8px;
-        background: var(--mm-bg);
-        border: 1px solid var(--mm-border-soft);
-        border-radius: 6px;
-    }
-    .mm-8b038cb5-item-header {
-        display: flex;
-        align-items: center;
-        gap: 5px;
-        margin-bottom: 5px;
-        flex-wrap: wrap;
-    }
-    .mm-8b038cb5-kind {
-        display: inline-block;
-        font-size: 8px;
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-        padding: 1px 5px;
-        border-radius: 2px;
-        color: white;
-        background: var(--mm-kind-default);
-    }
-    .mm-8b038cb5-kind-image { background: var(--mm-kind-image); }
-    .mm-8b038cb5-kind-video { background: var(--mm-kind-video); }
-    .mm-8b038cb5-kind-audio { background: var(--mm-kind-audio); }
-    .mm-8b038cb5-kind-document { background: var(--mm-kind-document); }
-    .mm-8b038cb5-ref {
-        display: inline-block;
-        background: var(--mm-ref-bg);
-        color: var(--mm-ref-text);
-        padding: 0 4px;
-        border-radius: 2px;
-        font-weight: 600;
-        font-size: 10px;
-        font-family: "SF Mono", Menlo, Consolas, monospace;
-    }
-    .mm-8b038cb5-filename {
-        font-size: 11px;
-        color: var(--mm-text-dim);
-    }
-
-    /* ── metadata dict ── */
-    .mm-8b038cb5-meta {
-        margin: 0 0 5px 0;
-        border-collapse: collapse;
-        font-size: 10px;
-    }
-    .mm-8b038cb5-meta td {
-        padding: 1px 8px 1px 0;
-        vertical-align: top;
-    }
-    .mm-8b038cb5-meta-key {
-        color: var(--mm-text-dim);
-        font-weight: 600;
-        white-space: nowrap;
-    }
-    .mm-8b038cb5-meta-val {
-        color: var(--mm-text);
-    }
-
-    /* ── native media views ── */
-    .mm-8b038cb5-native { margin-bottom: 5px; }
-    .mm-8b038cb5-zoom {
-        display: inline-block;
-        line-height: 0;
-    }
-    .mm-8b038cb5-zoom-toggle {
-        position: absolute;
-        opacity: 0;
-        pointer-events: none;
-    }
-    .mm-8b038cb5-img-link {
-        display: inline-block;
-        line-height: 0;
-        cursor: zoom-in;
-    }
-    .mm-8b038cb5-img {
-        border: 1px solid var(--mm-border-soft);
-        border-radius: 3px;
-        box-shadow: 0 1px 2px var(--mm-shadow);
-        display: block;
-        height: auto;
-        transition: border-color 0.15s;
-    }
-    .mm-8b038cb5-img-link:hover .mm-8b038cb5-img {
-        border-color: var(--mm-accent);
-    }
-
-    /* ── lightbox modal (CSS-only, checkbox-toggle pattern) ── */
-    .mm-8b038cb5-modal {
-        display: none;
-        position: fixed;
-        inset: 0;
-        background: rgba(0, 0, 0, 0.92);
-        z-index: 99999;
-        cursor: zoom-out;
-        align-items: center;
-        justify-content: center;
-        padding: 24px;
-        box-sizing: border-box;
-        animation: mm-8b038cb5-fade 0.12s ease-out;
-    }
-    .mm-8b038cb5-zoom-toggle:checked ~ .mm-8b038cb5-modal {
-        display: flex;
-    }
-    .mm-8b038cb5-modal-img {
-        max-width: 95vw;
-        max-height: 95vh;
-        width: auto;
-        height: auto;
-        border-radius: 4px;
-        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
-    }
-    @keyframes mm-8b038cb5-fade {
-        from { opacity: 0; }
-        to { opacity: 1; }
-    }
-    .mm-8b038cb5-video {
-        border: 1px solid var(--mm-border-soft);
-        border-radius: 3px;
-        display: block;
-        background: #000;
-    }
-    .mm-8b038cb5-audio {
-        display: block;
-        width: 100%;
-        max-width: 320px;
-        height: 28px;
-    }
-    .mm-8b038cb5-audio-part {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        padding: 4px 8px;
-        background: var(--mm-bg-alt);
-        border-radius: 4px;
-        margin: 2px 0;
-    }
-    .mm-8b038cb5-audio-badge {
-        font-weight: 600;
-        font-size: 12px;
-        color: var(--mm-kind-audio);
-    }
-    .mm-8b038cb5-placeholder {
-        padding: 6px 10px;
-        background: var(--mm-bg-soft);
-        border: 1px dashed var(--mm-border);
-        border-radius: 3px;
-        color: var(--mm-text-dim);
-        font-size: 11px;
-    }
-    .mm-8b038cb5-cap {
-        font-size: 9px;
-        color: var(--mm-text-dim);
-        margin-top: 2px;
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    }
-
-    /* ── collapsible "Show more" pattern ── */
-    .mm-8b038cb5-collapse {
-        margin-top: 4px;
-    }
-    .mm-8b038cb5-collapse > summary {
-        list-style: none;
-        cursor: pointer;
-        user-select: none;
-        display: inline-flex;
-        align-items: center;
-        gap: 4px;
-    }
-    .mm-8b038cb5-collapse > summary::-webkit-details-marker { display: none; }
-    .mm-8b038cb5-more {
-        font-size: 10px;
-        color: var(--mm-text-dim);
-        padding: 2px 7px;
-        border-radius: 999px;
-        background: var(--mm-bg-soft);
-        border: 1px solid var(--mm-border-soft);
-        transition: all 0.15s;
-    }
-    .mm-8b038cb5-more:hover {
-        color: var(--mm-accent);
-        border-color: var(--mm-accent);
-        background: white;
-    }
-    .mm-8b038cb5-collapse[open] > summary > .mm-8b038cb5-more::before {
-        content: "− ";
-    }
-    .mm-8b038cb5-collapse:not([open]) > summary > .mm-8b038cb5-more::before {
-        content: "+ ";
-    }
-    .mm-8b038cb5-collapse-extras {
-        margin: 0 8px 6px 8px;
-        text-align: center;
-    }
-    .mm-8b038cb5-extras-body {
-        margin-top: 0;
-        text-align: left;
-    }
-    .mm-8b038cb5-extras-body > .mm-8b038cb5-item,
-    .mm-8b038cb5-extras-body > .mm-8b038cb5-msg {
-        margin-left: 0;
-        margin-right: 0;
-    }
-
-    /* ── encoded VLM view (inline, kind-aware) ── */
-    .mm-8b038cb5-encoded {
-        margin-top: 6px;
-        padding-top: 6px;
-        border-top: 1px dashed var(--mm-border-soft);
-        display: flex;
-        flex-direction: column;
-        gap: 5px;
-    }
-    .mm-8b038cb5-encoded-label {
-        font-size: 9px;
-        color: var(--mm-text-dim);
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-        letter-spacing: 0.02em;
-    }
-
-    /* ── mosaic grid ── */
-    .mm-8b038cb5-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-        gap: 4px;
-    }
-    .mm-8b038cb5-grid .mm-8b038cb5-fig { margin: 0; }
-    .mm-8b038cb5-grid .mm-8b038cb5-img {
-        width: 100%;
-        max-width: none;
-        border-radius: 2px;
-    }
-    .mm-8b038cb5-grid .mm-8b038cb5-cap { font-size: 9px; }
-    .mm-8b038cb5-gallery {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 5px;
-        align-items: flex-start;
-    }
-    .mm-8b038cb5-fig {
-        margin: 0;
-        padding: 0;
-        display: inline-flex;
-        flex-direction: column;
-        align-items: flex-start;
-    }
-
-    /* ── text parts ── */
-    .mm-8b038cb5-pre {
-        margin: 0;
-        padding: 5px 8px;
-        background: var(--mm-bg);
-        border: 1px solid var(--mm-border-soft);
-        border-radius: 3px;
-        font-family: "SF Mono", "Fira Code", "JetBrains Mono", Menlo, Consolas, monospace;
-        font-size: 11px;
-        line-height: 1.45;
-        white-space: pre-wrap;
-        word-break: break-word;
-        overflow-x: auto;
-        max-height: 140px;
-        overflow-y: auto;
-        color: var(--mm-text);
-    }
-
-    /* ── role badges (render_messages) ── */
-    .mm-8b038cb5-role {
-        display: inline-block;
-        font-size: 9px;
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-        padding: 1px 5px;
-        border-radius: 2px;
-        margin-bottom: 5px;
-    }
-    .mm-8b038cb5-role-user {
-        color: var(--mm-role-user);
-        background: color-mix(in srgb, var(--mm-role-user) 12%, transparent);
-    }
-    .mm-8b038cb5-role-assistant {
-        color: var(--mm-role-assistant);
-        background: color-mix(in srgb, var(--mm-role-assistant) 12%, transparent);
-    }
-    .mm-8b038cb5-role-system {
-        color: var(--mm-role-system);
-        background: color-mix(in srgb, var(--mm-role-system) 12%, transparent);
-    }
-    .mm-8b038cb5-content {
-        display: flex;
-        flex-direction: column;
-        gap: 5px;
-    }
-
-    /* ── stats footer ── */
-    .mm-8b038cb5-stats {
-        padding: 5px 10px;
-        font-size: 10px;
-        color: var(--mm-text-dim);
-        background: var(--mm-bg-soft);
-        border-top: 1px solid var(--mm-border-soft);
-    }
-    </style>
-<div class="mm-8b038cb5-title">Gemini-adapted payload</div>
-<div class="mm-8b038cb5-msg"><div class="mm-8b038cb5-role mm-8b038cb5-role-user">User</div><div class="mm-8b038cb5-content"><div class="mm-8b038cb5-text"><pre class="mm-8b038cb5-pre">[role=system]</pre><div class="mm-8b038cb5-cap">text · 13 chars</div></div>
-<div class="mm-8b038cb5-text"><pre class="mm-8b038cb5-pre"><span class="mm-8b038cb5-ref">[ref=txt_912dfa]</span></pre><div class="mm-8b038cb5-cap">text · 16 chars</div></div>
-<div class="mm-8b038cb5-text"><pre class="mm-8b038cb5-pre">You are a concise multimodal analyst.</pre><div class="mm-8b038cb5-cap">text · 37 chars</div></div>
-<div class="mm-8b038cb5-text"><pre class="mm-8b038cb5-pre">[role=developer]</pre><div class="mm-8b038cb5-cap">text · 16 chars</div></div>
-<div class="mm-8b038cb5-text"><pre class="mm-8b038cb5-pre"><span class="mm-8b038cb5-ref">[ref=txt_f29aef]</span></pre><div class="mm-8b038cb5-cap">text · 16 chars</div></div>
-<div class="mm-8b038cb5-text"><pre class="mm-8b038cb5-pre">Return concrete observations first; mention uncertainty last.</pre><div class="mm-8b038cb5-cap">text · 61 chars</div></div>
-<div class="mm-8b038cb5-text"><pre class="mm-8b038cb5-pre"><span class="mm-8b038cb5-ref">[ref=txt_fb06b8]</span></pre><div class="mm-8b038cb5-cap">text · 16 chars</div></div>
-<div class="mm-8b038cb5-text"><pre class="mm-8b038cb5-pre">Compare the car photo and invoice. What facts can you extract?</pre><div class="mm-8b038cb5-cap">text · 62 chars</div></div></div></div>
-</div>
-</div>
-</div>
-</div>
-</div>
 </div>
 </div>
 <div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=22">
@@ -3636,13 +2658,13 @@ HTML(render_messages(gemini_messages, title="Gemini-adapted payload"))</div>
 </div>
 </div>
 </div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=23">
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=23">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea">
-<div class="jp-InputPrompt jp-InputArea-prompt">In [11]:</div><div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div><div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
 <div class="CodeMirror cm-s-jupyter">
 <div class="zeroclipboard-container">
 <clipboard-copy ,="" aria-label="Copy to Clipboard" for="cell-11">
@@ -3670,44 +2692,14 @@ print("image path:", ctx.get(image_ref))</div>
 </div>
 </div>
 </div>
-<div class="jp-Cell-outputWrapper">
-<div class="jp-Collapser jp-OutputCollapser jp-Cell-outputCollapser">
 </div>
-<div class="jp-OutputArea jp-Cell-outputArea">
-<div class="jp-OutputArea-child">
-<div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
-<div class="jp-RenderedText jp-OutputArea-output" data-mime-type="text/plain" tabindex="0">
-<pre>prompt_ref: txt_fb06b8
-prompt text: Compare the car photo and invoice. What facts can you extract?
-</pre>
-</div>
-</div>
-<div class="jp-OutputArea-child">
-<div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
-<div class="jp-RenderedText jp-OutputArea-output" data-mime-type="application/vnd.jupyter.stderr" tabindex="0">
-<pre>
-<span class="ansi-red-fg">---------------------------------------------------------------------------</span>
-<span class="ansi-red-fg">NameError</span>                                 Traceback (most recent call last)
-<span class="ansi-cyan-fg">Cell</span><span class="ansi-cyan-fg"> </span><span class="ansi-green-fg">In[11]</span><span class="ansi-green-fg">, line 4</span>
-<span class="ansi-green-fg">      1</span> print(<span class="ansi-yellow-fg">"prompt_ref:"</span>, prompt_ref)
-<span class="ansi-green-fg">      2</span> print(<span class="ansi-yellow-fg">"prompt text:"</span>, ctx.get(prompt_ref))
-<span class="ansi-green-fg">      3</span> 
-<span class="ansi-green-fg">----&gt; </span><span class="ansi-green-fg">4</span> print(<span class="ansi-yellow-fg">"image_ref:"</span>, image_ref)
-<span class="ansi-green-fg">      5</span> print(<span class="ansi-yellow-fg">"image path:"</span>, ctx.get(image_ref))
-
-<span class="ansi-red-fg">NameError</span>: name 'image_ref' is not defined</pre>
-</div>
-</div>
-</div>
-</div>
-</div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=24">
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=24">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea">
-<div class="jp-InputPrompt jp-InputArea-prompt">In [12]:</div><div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div><div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
 <div class="CodeMirror cm-s-jupyter">
 <div class="zeroclipboard-container">
 <clipboard-copy ,="" aria-label="Copy to Clipboard" for="cell-12">
@@ -3743,33 +2735,6 @@ scratch.remove(remove_me)
 
 print("After remove:")
 print(scratch)</div>
-</div>
-</div>
-</div>
-</div>
-<div class="jp-Cell-outputWrapper">
-<div class="jp-Collapser jp-OutputCollapser jp-Cell-outputCollapser">
-</div>
-<div class="jp-OutputArea jp-Cell-outputArea">
-<div class="jp-OutputArea-child">
-<div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
-<div class="jp-RenderedText jp-OutputArea-output" data-mime-type="text/plain" tabindex="0">
-<pre>Before remove:
-Context(session=019e2cfd-57ff-70a6-897e-aa4c9dbbde90, items=2)
-
-| ref | role | kind | source |
-|-----|------|------|--------|
-| txt_55e79e | user | text | Keep this item |
-| txt_d2f4be | user | text | Remove this item |
-
-After remove:
-Context(session=019e2cfd-57ff-70a6-897e-aa4c9dbbde90, items=1)
-
-| ref | role | kind | source |
-|-----|------|------|--------|
-| txt_55e79e | user | text | Keep this item |
-
-</pre>
 </div>
 </div>
 </div>

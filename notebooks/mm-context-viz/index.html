@@ -2182,7 +2182,7 @@ span.linenos.special { color: #000000; background-color: #ffffc0; padding-left: 
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea">
-<div class="jp-InputPrompt jp-InputArea-prompt">In [1]:</div><div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div><div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
 <div class="CodeMirror cm-s-jupyter">
 <div class="zeroclipboard-container">
 <clipboard-copy ,="" aria-label="Copy to Clipboard" for="cell-1">
@@ -2238,13 +2238,13 @@ DATA = Path.home() / "data/mmbench-tiny"</div>
 </div>
 </div>
 </div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=4">
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=4">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea">
-<div class="jp-InputPrompt jp-InputArea-prompt">In [2]:</div><div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div><div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
 <div class="CodeMirror cm-s-jupyter">
 <div class="zeroclipboard-container">
 <clipboard-copy ,="" aria-label="Copy to Clipboard" for="cell-2">
@@ -2264,27 +2264,14 @@ DATA = Path.home() / "data/mmbench-tiny"</div>
 </div>
 </div>
 </div>
-<div class="jp-Cell-outputWrapper">
-<div class="jp-Collapser jp-OutputCollapser jp-Cell-outputCollapser">
 </div>
-<div class="jp-OutputArea jp-Cell-outputArea">
-<div class="jp-OutputArea-child">
-<div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
-<div class="jp-RenderedText jp-OutputArea-output" data-mime-type="text/plain" tabindex="0">
-<pre>ls: cannot access '/home/runner/data/mmbench-tiny/': No such file or directory
-</pre>
-</div>
-</div>
-</div>
-</div>
-</div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=5">
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=5">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea">
-<div class="jp-InputPrompt jp-InputArea-prompt">In [3]:</div><div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div><div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
 <div class="CodeMirror cm-s-jupyter">
 <div class="zeroclipboard-container">
 <clipboard-copy ,="" aria-label="Copy to Clipboard" for="cell-3">
@@ -2312,45 +2299,6 @@ HTML(render_messages(msgs, title="image (default)"))</div>
 </div>
 </div>
 </div>
-<div class="jp-Cell-outputWrapper">
-<div class="jp-Collapser jp-OutputCollapser jp-Cell-outputCollapser">
-</div>
-<div class="jp-OutputArea jp-Cell-outputArea">
-<div class="jp-OutputArea-child">
-<div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
-<div class="jp-RenderedText jp-OutputArea-output" data-mime-type="application/vnd.jupyter.stderr" tabindex="0">
-<pre>
-<span class="ansi-red-fg">---------------------------------------------------------------------------</span>
-<span class="ansi-red-fg">FileNotFoundError</span>                         Traceback (most recent call last)
-<span class="ansi-cyan-fg">Cell</span><span class="ansi-cyan-fg"> </span><span class="ansi-green-fg">In[3]</span><span class="ansi-green-fg">, line 2</span>
-<span class="ansi-green-fg">      1</span> <span class="ansi-bold" style="color: rgb(0,135,0)">with</span> mm.Context() <span class="ansi-bold" style="color: rgb(0,135,0)">as</span> ctx:
-<span class="ansi-green-fg">----&gt; </span><span class="ansi-green-fg">2</span>     ctx.add(DATA / <span class="ansi-yellow-fg">"car.jpg"</span>, role=<span class="ansi-yellow-fg">"user"</span>, metadata={<span class="ansi-yellow-fg">"note"</span>: <span class="ansi-yellow-fg">"VW beetle"</span>})
-<span class="ansi-green-fg">      3</span>     msgs = ctx.to_messages()
-<span class="ansi-green-fg">      4</span> 
-<span class="ansi-green-fg">      5</span> HTML(render_messages(msgs, title=<span class="ansi-yellow-fg">"image (default)"</span>))
-
-<span class="ansi-cyan-fg">File </span><span class="ansi-green-fg">/opt/hostedtoolcache/Python/3.12.13/x64/lib/python3.12/site-packages/mm/context.py:305</span>, in <span class="ansi-cyan-fg">Context.add</span><span class="ansi-blue-fg">(self, obj, role, metadata)</span>
-<span class="ansi-green-fg">    303</span> <span style="color: rgb(0,135,0)">self</span>._require_pyctx(<span class="ansi-yellow-fg">"</span><span class="ansi-yellow-fg">add</span><span class="ansi-yellow-fg">"</span>)
-<span class="ansi-green-fg">    304</span> role = _validate_role(role)
-<span class="ansi-green-fg">--&gt; </span><span class="ansi-green-fg">305</span> kind, source_kind, source_value, byte_len, desc, py_obj = <span class="ansi-black-fg ansi-yellow-bg">_classify_add_obj</span><span class="ansi-black-fg ansi-yellow-bg">(</span><span class="ansi-black-fg ansi-yellow-bg">obj</span><span class="ansi-black-fg ansi-yellow-bg">)</span>
-<span class="ansi-green-fg">    306</span> <span class="ansi-bold" style="color: rgb(0,135,0)">if</span> role != <span class="ansi-yellow-fg">"</span><span class="ansi-yellow-fg">user</span><span class="ansi-yellow-fg">"</span> <span class="ansi-bold" style="color: rgb(175,0,255)">and</span> kind != <span class="ansi-yellow-fg">"</span><span class="ansi-yellow-fg">text</span><span class="ansi-yellow-fg">"</span>:
-<span class="ansi-green-fg">    307</span>     <span class="ansi-bold" style="color: rgb(0,135,0)">raise</span> <span class="ansi-bold" style="color: rgb(215,95,95)">ValueError</span>(<span class="ansi-yellow-fg">"</span><span class="ansi-yellow-fg">Only free-form string text can use role=</span><span class="ansi-yellow-fg">'</span><span class="ansi-yellow-fg">system</span><span class="ansi-yellow-fg">'</span><span class="ansi-yellow-fg"> or role=</span><span class="ansi-yellow-fg">'</span><span class="ansi-yellow-fg">developer</span><span class="ansi-yellow-fg">'</span><span class="ansi-yellow-fg">"</span>)
-
-<span class="ansi-cyan-fg">File </span><span class="ansi-green-fg">/opt/hostedtoolcache/Python/3.12.13/x64/lib/python3.12/site-packages/mm/context.py:1025</span>, in <span class="ansi-cyan-fg">_classify_add_obj</span><span class="ansi-blue-fg">(obj)</span>
-<span class="ansi-green-fg">   1023</span> <span class="ansi-bold" style="color: rgb(0,135,0)">if</span> <span style="color: rgb(0,135,0)">isinstance</span>(obj, Path):
-<span class="ansi-green-fg">   1024</span>     <span class="ansi-bold" style="color: rgb(0,135,0)">if</span> <span class="ansi-bold" style="color: rgb(175,0,255)">not</span> obj.exists():
-<span class="ansi-green-fg">-&gt; </span><span class="ansi-green-fg">1025</span>         <span class="ansi-bold" style="color: rgb(0,135,0)">raise</span> <span class="ansi-bold" style="color: rgb(215,95,95)">FileNotFoundError</span>(<span class="ansi-yellow-fg">f</span><span class="ansi-yellow-fg">"</span><span class="ansi-yellow-fg">add(</span><span class="ansi-bold" style="color: rgb(175,95,135)">{</span>obj<span class="ansi-bold" style="color: rgb(175,95,135)">!r}</span><span class="ansi-yellow-fg">): file does not exist</span><span class="ansi-yellow-fg">"</span>)
-<span class="ansi-green-fg">   1026</span>     <span class="ansi-bold" style="color: rgb(0,135,0)">return</span> _classify_path(obj)
-<span class="ansi-green-fg">   1028</span> <span class="ansi-bold" style="color: rgb(0,135,0)">raise</span> <span class="ansi-bold" style="color: rgb(215,95,95)">TypeError</span>(
-<span class="ansi-green-fg">   1029</span>     <span class="ansi-yellow-fg">f</span><span class="ansi-yellow-fg">"</span><span class="ansi-yellow-fg">add() does not accept </span><span class="ansi-bold" style="color: rgb(175,95,135)">{</span><span style="color: rgb(0,135,0)">type</span>(obj).<span class="ansi-blue-fg">__name__</span><span class="ansi-bold" style="color: rgb(175,95,135)">}</span><span class="ansi-yellow-fg">. Supported types: </span><span class="ansi-yellow-fg">"</span>
-<span class="ansi-green-fg">   1030</span>     <span class="ansi-yellow-fg">"</span><span class="ansi-yellow-fg">str, pathlib.Path, PIL.Image.Image.</span><span class="ansi-yellow-fg">"</span>
-<span class="ansi-green-fg">   1031</span> )
-
-<span class="ansi-red-fg">FileNotFoundError</span>: add(PosixPath('/home/runner/data/mmbench-tiny/car.jpg')): file does not exist</pre>
-</div>
-</div>
-</div>
-</div>
 </div>
 </div>
 <div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=6">
@@ -2363,13 +2311,13 @@ HTML(render_messages(msgs, title="image (default)"))</div>
 </div>
 </div>
 </div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=7">
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=7">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea">
-<div class="jp-InputPrompt jp-InputArea-prompt">In [4]:</div><div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div><div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
 <div class="CodeMirror cm-s-jupyter">
 <div class="zeroclipboard-container">
 <clipboard-copy ,="" aria-label="Copy to Clipboard" for="cell-4">
@@ -2393,45 +2341,6 @@ HTML(render_messages(msgs, title="image (default)"))</div>
     msgs = ctx.to_messages()
 
 HTML(render_messages(msgs, title="image-resize (default)"))</div>
-</div>
-</div>
-</div>
-</div>
-<div class="jp-Cell-outputWrapper">
-<div class="jp-Collapser jp-OutputCollapser jp-Cell-outputCollapser">
-</div>
-<div class="jp-OutputArea jp-Cell-outputArea">
-<div class="jp-OutputArea-child">
-<div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
-<div class="jp-RenderedText jp-OutputArea-output" data-mime-type="application/vnd.jupyter.stderr" tabindex="0">
-<pre>
-<span class="ansi-red-fg">---------------------------------------------------------------------------</span>
-<span class="ansi-red-fg">FileNotFoundError</span>                         Traceback (most recent call last)
-<span class="ansi-cyan-fg">Cell</span><span class="ansi-cyan-fg"> </span><span class="ansi-green-fg">In[4]</span><span class="ansi-green-fg">, line 2</span>
-<span class="ansi-green-fg">      1</span> <span class="ansi-bold" style="color: rgb(0,135,0)">with</span> mm.Context() <span class="ansi-bold" style="color: rgb(0,135,0)">as</span> ctx:
-<span class="ansi-green-fg">----&gt; </span><span class="ansi-green-fg">2</span>     ctx.add(DATA / <span class="ansi-yellow-fg">"car.jpg"</span>)
-<span class="ansi-green-fg">      3</span>     msgs = ctx.to_messages()
-<span class="ansi-green-fg">      4</span> 
-<span class="ansi-green-fg">      5</span> HTML(render_messages(msgs, title=<span class="ansi-yellow-fg">"image-resize (default)"</span>))
-
-<span class="ansi-cyan-fg">File </span><span class="ansi-green-fg">/opt/hostedtoolcache/Python/3.12.13/x64/lib/python3.12/site-packages/mm/context.py:305</span>, in <span class="ansi-cyan-fg">Context.add</span><span class="ansi-blue-fg">(self, obj, role, metadata)</span>
-<span class="ansi-green-fg">    303</span> <span style="color: rgb(0,135,0)">self</span>._require_pyctx(<span class="ansi-yellow-fg">"</span><span class="ansi-yellow-fg">add</span><span class="ansi-yellow-fg">"</span>)
-<span class="ansi-green-fg">    304</span> role = _validate_role(role)
-<span class="ansi-green-fg">--&gt; </span><span class="ansi-green-fg">305</span> kind, source_kind, source_value, byte_len, desc, py_obj = <span class="ansi-black-fg ansi-yellow-bg">_classify_add_obj</span><span class="ansi-black-fg ansi-yellow-bg">(</span><span class="ansi-black-fg ansi-yellow-bg">obj</span><span class="ansi-black-fg ansi-yellow-bg">)</span>
-<span class="ansi-green-fg">    306</span> <span class="ansi-bold" style="color: rgb(0,135,0)">if</span> role != <span class="ansi-yellow-fg">"</span><span class="ansi-yellow-fg">user</span><span class="ansi-yellow-fg">"</span> <span class="ansi-bold" style="color: rgb(175,0,255)">and</span> kind != <span class="ansi-yellow-fg">"</span><span class="ansi-yellow-fg">text</span><span class="ansi-yellow-fg">"</span>:
-<span class="ansi-green-fg">    307</span>     <span class="ansi-bold" style="color: rgb(0,135,0)">raise</span> <span class="ansi-bold" style="color: rgb(215,95,95)">ValueError</span>(<span class="ansi-yellow-fg">"</span><span class="ansi-yellow-fg">Only free-form string text can use role=</span><span class="ansi-yellow-fg">'</span><span class="ansi-yellow-fg">system</span><span class="ansi-yellow-fg">'</span><span class="ansi-yellow-fg"> or role=</span><span class="ansi-yellow-fg">'</span><span class="ansi-yellow-fg">developer</span><span class="ansi-yellow-fg">'</span><span class="ansi-yellow-fg">"</span>)
-
-<span class="ansi-cyan-fg">File </span><span class="ansi-green-fg">/opt/hostedtoolcache/Python/3.12.13/x64/lib/python3.12/site-packages/mm/context.py:1025</span>, in <span class="ansi-cyan-fg">_classify_add_obj</span><span class="ansi-blue-fg">(obj)</span>
-<span class="ansi-green-fg">   1023</span> <span class="ansi-bold" style="color: rgb(0,135,0)">if</span> <span style="color: rgb(0,135,0)">isinstance</span>(obj, Path):
-<span class="ansi-green-fg">   1024</span>     <span class="ansi-bold" style="color: rgb(0,135,0)">if</span> <span class="ansi-bold" style="color: rgb(175,0,255)">not</span> obj.exists():
-<span class="ansi-green-fg">-&gt; </span><span class="ansi-green-fg">1025</span>         <span class="ansi-bold" style="color: rgb(0,135,0)">raise</span> <span class="ansi-bold" style="color: rgb(215,95,95)">FileNotFoundError</span>(<span class="ansi-yellow-fg">f</span><span class="ansi-yellow-fg">"</span><span class="ansi-yellow-fg">add(</span><span class="ansi-bold" style="color: rgb(175,95,135)">{</span>obj<span class="ansi-bold" style="color: rgb(175,95,135)">!r}</span><span class="ansi-yellow-fg">): file does not exist</span><span class="ansi-yellow-fg">"</span>)
-<span class="ansi-green-fg">   1026</span>     <span class="ansi-bold" style="color: rgb(0,135,0)">return</span> _classify_path(obj)
-<span class="ansi-green-fg">   1028</span> <span class="ansi-bold" style="color: rgb(0,135,0)">raise</span> <span class="ansi-bold" style="color: rgb(215,95,95)">TypeError</span>(
-<span class="ansi-green-fg">   1029</span>     <span class="ansi-yellow-fg">f</span><span class="ansi-yellow-fg">"</span><span class="ansi-yellow-fg">add() does not accept </span><span class="ansi-bold" style="color: rgb(175,95,135)">{</span><span style="color: rgb(0,135,0)">type</span>(obj).<span class="ansi-blue-fg">__name__</span><span class="ansi-bold" style="color: rgb(175,95,135)">}</span><span class="ansi-yellow-fg">. Supported types: </span><span class="ansi-yellow-fg">"</span>
-<span class="ansi-green-fg">   1030</span>     <span class="ansi-yellow-fg">"</span><span class="ansi-yellow-fg">str, pathlib.Path, PIL.Image.Image.</span><span class="ansi-yellow-fg">"</span>
-<span class="ansi-green-fg">   1031</span> )
-
-<span class="ansi-red-fg">FileNotFoundError</span>: add(PosixPath('/home/runner/data/mmbench-tiny/car.jpg')): file does not exist</pre>
 </div>
 </div>
 </div>
@@ -2464,13 +2373,13 @@ HTML(render_messages(msgs, title="image-resize (default)"))</div>
 </div>
 </div>
 </div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=10">
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=10">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea">
-<div class="jp-InputPrompt jp-InputArea-prompt">In [5]:</div><div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div><div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
 <div class="CodeMirror cm-s-jupyter">
 <div class="zeroclipboard-container">
 <clipboard-copy ,="" aria-label="Copy to Clipboard" for="cell-5">
@@ -2498,45 +2407,6 @@ HTML(render_messages(msgs, title="document (default)"))</div>
 </div>
 </div>
 </div>
-<div class="jp-Cell-outputWrapper">
-<div class="jp-Collapser jp-OutputCollapser jp-Cell-outputCollapser">
-</div>
-<div class="jp-OutputArea jp-Cell-outputArea">
-<div class="jp-OutputArea-child">
-<div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
-<div class="jp-RenderedText jp-OutputArea-output" data-mime-type="application/vnd.jupyter.stderr" tabindex="0">
-<pre>
-<span class="ansi-red-fg">---------------------------------------------------------------------------</span>
-<span class="ansi-red-fg">FileNotFoundError</span>                         Traceback (most recent call last)
-<span class="ansi-cyan-fg">Cell</span><span class="ansi-cyan-fg"> </span><span class="ansi-green-fg">In[5]</span><span class="ansi-green-fg">, line 2</span>
-<span class="ansi-green-fg">      1</span> <span class="ansi-bold" style="color: rgb(0,135,0)">with</span> mm.Context() <span class="ansi-bold" style="color: rgb(0,135,0)">as</span> ctx:
-<span class="ansi-green-fg">----&gt; </span><span class="ansi-green-fg">2</span>     ctx.add(DATA / <span class="ansi-yellow-fg">"invoice.pdf"</span>, metadata={<span class="ansi-yellow-fg">"type"</span>: <span class="ansi-yellow-fg">"invoice"</span>, <span class="ansi-yellow-fg">"vendor"</span>: <span class="ansi-yellow-fg">"ACME Corp"</span>})
-<span class="ansi-green-fg">      3</span>     msgs = ctx.to_messages()
-<span class="ansi-green-fg">      4</span> 
-<span class="ansi-green-fg">      5</span> HTML(render_messages(msgs, title=<span class="ansi-yellow-fg">"document (default)"</span>))
-
-<span class="ansi-cyan-fg">File </span><span class="ansi-green-fg">/opt/hostedtoolcache/Python/3.12.13/x64/lib/python3.12/site-packages/mm/context.py:305</span>, in <span class="ansi-cyan-fg">Context.add</span><span class="ansi-blue-fg">(self, obj, role, metadata)</span>
-<span class="ansi-green-fg">    303</span> <span style="color: rgb(0,135,0)">self</span>._require_pyctx(<span class="ansi-yellow-fg">"</span><span class="ansi-yellow-fg">add</span><span class="ansi-yellow-fg">"</span>)
-<span class="ansi-green-fg">    304</span> role = _validate_role(role)
-<span class="ansi-green-fg">--&gt; </span><span class="ansi-green-fg">305</span> kind, source_kind, source_value, byte_len, desc, py_obj = <span class="ansi-black-fg ansi-yellow-bg">_classify_add_obj</span><span class="ansi-black-fg ansi-yellow-bg">(</span><span class="ansi-black-fg ansi-yellow-bg">obj</span><span class="ansi-black-fg ansi-yellow-bg">)</span>
-<span class="ansi-green-fg">    306</span> <span class="ansi-bold" style="color: rgb(0,135,0)">if</span> role != <span class="ansi-yellow-fg">"</span><span class="ansi-yellow-fg">user</span><span class="ansi-yellow-fg">"</span> <span class="ansi-bold" style="color: rgb(175,0,255)">and</span> kind != <span class="ansi-yellow-fg">"</span><span class="ansi-yellow-fg">text</span><span class="ansi-yellow-fg">"</span>:
-<span class="ansi-green-fg">    307</span>     <span class="ansi-bold" style="color: rgb(0,135,0)">raise</span> <span class="ansi-bold" style="color: rgb(215,95,95)">ValueError</span>(<span class="ansi-yellow-fg">"</span><span class="ansi-yellow-fg">Only free-form string text can use role=</span><span class="ansi-yellow-fg">'</span><span class="ansi-yellow-fg">system</span><span class="ansi-yellow-fg">'</span><span class="ansi-yellow-fg"> or role=</span><span class="ansi-yellow-fg">'</span><span class="ansi-yellow-fg">developer</span><span class="ansi-yellow-fg">'</span><span class="ansi-yellow-fg">"</span>)
-
-<span class="ansi-cyan-fg">File </span><span class="ansi-green-fg">/opt/hostedtoolcache/Python/3.12.13/x64/lib/python3.12/site-packages/mm/context.py:1025</span>, in <span class="ansi-cyan-fg">_classify_add_obj</span><span class="ansi-blue-fg">(obj)</span>
-<span class="ansi-green-fg">   1023</span> <span class="ansi-bold" style="color: rgb(0,135,0)">if</span> <span style="color: rgb(0,135,0)">isinstance</span>(obj, Path):
-<span class="ansi-green-fg">   1024</span>     <span class="ansi-bold" style="color: rgb(0,135,0)">if</span> <span class="ansi-bold" style="color: rgb(175,0,255)">not</span> obj.exists():
-<span class="ansi-green-fg">-&gt; </span><span class="ansi-green-fg">1025</span>         <span class="ansi-bold" style="color: rgb(0,135,0)">raise</span> <span class="ansi-bold" style="color: rgb(215,95,95)">FileNotFoundError</span>(<span class="ansi-yellow-fg">f</span><span class="ansi-yellow-fg">"</span><span class="ansi-yellow-fg">add(</span><span class="ansi-bold" style="color: rgb(175,95,135)">{</span>obj<span class="ansi-bold" style="color: rgb(175,95,135)">!r}</span><span class="ansi-yellow-fg">): file does not exist</span><span class="ansi-yellow-fg">"</span>)
-<span class="ansi-green-fg">   1026</span>     <span class="ansi-bold" style="color: rgb(0,135,0)">return</span> _classify_path(obj)
-<span class="ansi-green-fg">   1028</span> <span class="ansi-bold" style="color: rgb(0,135,0)">raise</span> <span class="ansi-bold" style="color: rgb(215,95,95)">TypeError</span>(
-<span class="ansi-green-fg">   1029</span>     <span class="ansi-yellow-fg">f</span><span class="ansi-yellow-fg">"</span><span class="ansi-yellow-fg">add() does not accept </span><span class="ansi-bold" style="color: rgb(175,95,135)">{</span><span style="color: rgb(0,135,0)">type</span>(obj).<span class="ansi-blue-fg">__name__</span><span class="ansi-bold" style="color: rgb(175,95,135)">}</span><span class="ansi-yellow-fg">. Supported types: </span><span class="ansi-yellow-fg">"</span>
-<span class="ansi-green-fg">   1030</span>     <span class="ansi-yellow-fg">"</span><span class="ansi-yellow-fg">str, pathlib.Path, PIL.Image.Image.</span><span class="ansi-yellow-fg">"</span>
-<span class="ansi-green-fg">   1031</span> )
-
-<span class="ansi-red-fg">FileNotFoundError</span>: add(PosixPath('/home/runner/data/mmbench-tiny/invoice.pdf')): file does not exist</pre>
-</div>
-</div>
-</div>
-</div>
 </div>
 </div>
 <div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=11">
@@ -2549,13 +2419,13 @@ HTML(render_messages(msgs, title="document (default)"))</div>
 </div>
 </div>
 </div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=12">
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=12">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea">
-<div class="jp-InputPrompt jp-InputArea-prompt">In [6]:</div><div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div><div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
 <div class="CodeMirror cm-s-jupyter">
 <div class="zeroclipboard-container">
 <clipboard-copy ,="" aria-label="Copy to Clipboard" for="cell-6">
@@ -2591,45 +2461,6 @@ HTML(render_messages(msgs, title="rasterize (pages_per_message=8)"))</div>
 </div>
 </div>
 </div>
-<div class="jp-Cell-outputWrapper">
-<div class="jp-Collapser jp-OutputCollapser jp-Cell-outputCollapser">
-</div>
-<div class="jp-OutputArea jp-Cell-outputArea">
-<div class="jp-OutputArea-child">
-<div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
-<div class="jp-RenderedText jp-OutputArea-output" data-mime-type="application/vnd.jupyter.stderr" tabindex="0">
-<pre>
-<span class="ansi-red-fg">---------------------------------------------------------------------------</span>
-<span class="ansi-red-fg">FileNotFoundError</span>                         Traceback (most recent call last)
-<span class="ansi-cyan-fg">Cell</span><span class="ansi-cyan-fg"> </span><span class="ansi-green-fg">In[6]</span><span class="ansi-green-fg">, line 2</span>
-<span class="ansi-green-fg">      1</span> <span class="ansi-bold" style="color: rgb(0,135,0)">with</span> mm.Context() <span class="ansi-bold" style="color: rgb(0,135,0)">as</span> ctx:
-<span class="ansi-green-fg">----&gt; </span><span class="ansi-green-fg">2</span>     ctx.add(DATA / <span class="ansi-yellow-fg">"invoice.pdf"</span>)
-<span class="ansi-green-fg">      3</span>     ctx.add(DATA / <span class="ansi-yellow-fg">"attention-is-all-you-need.pdf"</span>)
-<span class="ansi-green-fg">      4</span>     msgs = ctx.to_messages(
-<span class="ansi-green-fg">      5</span>         encoders={<span class="ansi-yellow-fg">"document"</span>: <span class="ansi-yellow-fg">"rasterize"</span>},
-
-<span class="ansi-cyan-fg">File </span><span class="ansi-green-fg">/opt/hostedtoolcache/Python/3.12.13/x64/lib/python3.12/site-packages/mm/context.py:305</span>, in <span class="ansi-cyan-fg">Context.add</span><span class="ansi-blue-fg">(self, obj, role, metadata)</span>
-<span class="ansi-green-fg">    303</span> <span style="color: rgb(0,135,0)">self</span>._require_pyctx(<span class="ansi-yellow-fg">"</span><span class="ansi-yellow-fg">add</span><span class="ansi-yellow-fg">"</span>)
-<span class="ansi-green-fg">    304</span> role = _validate_role(role)
-<span class="ansi-green-fg">--&gt; </span><span class="ansi-green-fg">305</span> kind, source_kind, source_value, byte_len, desc, py_obj = <span class="ansi-black-fg ansi-yellow-bg">_classify_add_obj</span><span class="ansi-black-fg ansi-yellow-bg">(</span><span class="ansi-black-fg ansi-yellow-bg">obj</span><span class="ansi-black-fg ansi-yellow-bg">)</span>
-<span class="ansi-green-fg">    306</span> <span class="ansi-bold" style="color: rgb(0,135,0)">if</span> role != <span class="ansi-yellow-fg">"</span><span class="ansi-yellow-fg">user</span><span class="ansi-yellow-fg">"</span> <span class="ansi-bold" style="color: rgb(175,0,255)">and</span> kind != <span class="ansi-yellow-fg">"</span><span class="ansi-yellow-fg">text</span><span class="ansi-yellow-fg">"</span>:
-<span class="ansi-green-fg">    307</span>     <span class="ansi-bold" style="color: rgb(0,135,0)">raise</span> <span class="ansi-bold" style="color: rgb(215,95,95)">ValueError</span>(<span class="ansi-yellow-fg">"</span><span class="ansi-yellow-fg">Only free-form string text can use role=</span><span class="ansi-yellow-fg">'</span><span class="ansi-yellow-fg">system</span><span class="ansi-yellow-fg">'</span><span class="ansi-yellow-fg"> or role=</span><span class="ansi-yellow-fg">'</span><span class="ansi-yellow-fg">developer</span><span class="ansi-yellow-fg">'</span><span class="ansi-yellow-fg">"</span>)
-
-<span class="ansi-cyan-fg">File </span><span class="ansi-green-fg">/opt/hostedtoolcache/Python/3.12.13/x64/lib/python3.12/site-packages/mm/context.py:1025</span>, in <span class="ansi-cyan-fg">_classify_add_obj</span><span class="ansi-blue-fg">(obj)</span>
-<span class="ansi-green-fg">   1023</span> <span class="ansi-bold" style="color: rgb(0,135,0)">if</span> <span style="color: rgb(0,135,0)">isinstance</span>(obj, Path):
-<span class="ansi-green-fg">   1024</span>     <span class="ansi-bold" style="color: rgb(0,135,0)">if</span> <span class="ansi-bold" style="color: rgb(175,0,255)">not</span> obj.exists():
-<span class="ansi-green-fg">-&gt; </span><span class="ansi-green-fg">1025</span>         <span class="ansi-bold" style="color: rgb(0,135,0)">raise</span> <span class="ansi-bold" style="color: rgb(215,95,95)">FileNotFoundError</span>(<span class="ansi-yellow-fg">f</span><span class="ansi-yellow-fg">"</span><span class="ansi-yellow-fg">add(</span><span class="ansi-bold" style="color: rgb(175,95,135)">{</span>obj<span class="ansi-bold" style="color: rgb(175,95,135)">!r}</span><span class="ansi-yellow-fg">): file does not exist</span><span class="ansi-yellow-fg">"</span>)
-<span class="ansi-green-fg">   1026</span>     <span class="ansi-bold" style="color: rgb(0,135,0)">return</span> _classify_path(obj)
-<span class="ansi-green-fg">   1028</span> <span class="ansi-bold" style="color: rgb(0,135,0)">raise</span> <span class="ansi-bold" style="color: rgb(215,95,95)">TypeError</span>(
-<span class="ansi-green-fg">   1029</span>     <span class="ansi-yellow-fg">f</span><span class="ansi-yellow-fg">"</span><span class="ansi-yellow-fg">add() does not accept </span><span class="ansi-bold" style="color: rgb(175,95,135)">{</span><span style="color: rgb(0,135,0)">type</span>(obj).<span class="ansi-blue-fg">__name__</span><span class="ansi-bold" style="color: rgb(175,95,135)">}</span><span class="ansi-yellow-fg">. Supported types: </span><span class="ansi-yellow-fg">"</span>
-<span class="ansi-green-fg">   1030</span>     <span class="ansi-yellow-fg">"</span><span class="ansi-yellow-fg">str, pathlib.Path, PIL.Image.Image.</span><span class="ansi-yellow-fg">"</span>
-<span class="ansi-green-fg">   1031</span> )
-
-<span class="ansi-red-fg">FileNotFoundError</span>: add(PosixPath('/home/runner/data/mmbench-tiny/invoice.pdf')): file does not exist</pre>
-</div>
-</div>
-</div>
-</div>
 </div>
 </div>
 <div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=13">
@@ -2643,13 +2474,13 @@ HTML(render_messages(msgs, title="rasterize (pages_per_message=8)"))</div>
 </div>
 </div>
 </div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=14">
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=14">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea">
-<div class="jp-InputPrompt jp-InputArea-prompt">In [7]:</div><div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div><div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
 <div class="CodeMirror cm-s-jupyter">
 <div class="zeroclipboard-container">
 <clipboard-copy ,="" aria-label="Copy to Clipboard" for="cell-7">
@@ -2685,45 +2516,6 @@ HTML(render_messages(msgs, title="page-text (pages_per_message=32)"))</div>
 </div>
 </div>
 </div>
-<div class="jp-Cell-outputWrapper">
-<div class="jp-Collapser jp-OutputCollapser jp-Cell-outputCollapser">
-</div>
-<div class="jp-OutputArea jp-Cell-outputArea">
-<div class="jp-OutputArea-child">
-<div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
-<div class="jp-RenderedText jp-OutputArea-output" data-mime-type="application/vnd.jupyter.stderr" tabindex="0">
-<pre>
-<span class="ansi-red-fg">---------------------------------------------------------------------------</span>
-<span class="ansi-red-fg">FileNotFoundError</span>                         Traceback (most recent call last)
-<span class="ansi-cyan-fg">Cell</span><span class="ansi-cyan-fg"> </span><span class="ansi-green-fg">In[7]</span><span class="ansi-green-fg">, line 2</span>
-<span class="ansi-green-fg">      1</span> <span class="ansi-bold" style="color: rgb(0,135,0)">with</span> mm.Context() <span class="ansi-bold" style="color: rgb(0,135,0)">as</span> ctx:
-<span class="ansi-green-fg">----&gt; </span><span class="ansi-green-fg">2</span>     ctx.add(DATA / <span class="ansi-yellow-fg">"invoice.pdf"</span>)
-<span class="ansi-green-fg">      3</span>     ctx.add(DATA / <span class="ansi-yellow-fg">"attention-is-all-you-need.pdf"</span>)
-<span class="ansi-green-fg">      4</span>     msgs = ctx.to_messages(
-<span class="ansi-green-fg">      5</span>         encoders={<span class="ansi-yellow-fg">"document"</span>: <span class="ansi-yellow-fg">"page-text"</span>},
-
-<span class="ansi-cyan-fg">File </span><span class="ansi-green-fg">/opt/hostedtoolcache/Python/3.12.13/x64/lib/python3.12/site-packages/mm/context.py:305</span>, in <span class="ansi-cyan-fg">Context.add</span><span class="ansi-blue-fg">(self, obj, role, metadata)</span>
-<span class="ansi-green-fg">    303</span> <span style="color: rgb(0,135,0)">self</span>._require_pyctx(<span class="ansi-yellow-fg">"</span><span class="ansi-yellow-fg">add</span><span class="ansi-yellow-fg">"</span>)
-<span class="ansi-green-fg">    304</span> role = _validate_role(role)
-<span class="ansi-green-fg">--&gt; </span><span class="ansi-green-fg">305</span> kind, source_kind, source_value, byte_len, desc, py_obj = <span class="ansi-black-fg ansi-yellow-bg">_classify_add_obj</span><span class="ansi-black-fg ansi-yellow-bg">(</span><span class="ansi-black-fg ansi-yellow-bg">obj</span><span class="ansi-black-fg ansi-yellow-bg">)</span>
-<span class="ansi-green-fg">    306</span> <span class="ansi-bold" style="color: rgb(0,135,0)">if</span> role != <span class="ansi-yellow-fg">"</span><span class="ansi-yellow-fg">user</span><span class="ansi-yellow-fg">"</span> <span class="ansi-bold" style="color: rgb(175,0,255)">and</span> kind != <span class="ansi-yellow-fg">"</span><span class="ansi-yellow-fg">text</span><span class="ansi-yellow-fg">"</span>:
-<span class="ansi-green-fg">    307</span>     <span class="ansi-bold" style="color: rgb(0,135,0)">raise</span> <span class="ansi-bold" style="color: rgb(215,95,95)">ValueError</span>(<span class="ansi-yellow-fg">"</span><span class="ansi-yellow-fg">Only free-form string text can use role=</span><span class="ansi-yellow-fg">'</span><span class="ansi-yellow-fg">system</span><span class="ansi-yellow-fg">'</span><span class="ansi-yellow-fg"> or role=</span><span class="ansi-yellow-fg">'</span><span class="ansi-yellow-fg">developer</span><span class="ansi-yellow-fg">'</span><span class="ansi-yellow-fg">"</span>)
-
-<span class="ansi-cyan-fg">File </span><span class="ansi-green-fg">/opt/hostedtoolcache/Python/3.12.13/x64/lib/python3.12/site-packages/mm/context.py:1025</span>, in <span class="ansi-cyan-fg">_classify_add_obj</span><span class="ansi-blue-fg">(obj)</span>
-<span class="ansi-green-fg">   1023</span> <span class="ansi-bold" style="color: rgb(0,135,0)">if</span> <span style="color: rgb(0,135,0)">isinstance</span>(obj, Path):
-<span class="ansi-green-fg">   1024</span>     <span class="ansi-bold" style="color: rgb(0,135,0)">if</span> <span class="ansi-bold" style="color: rgb(175,0,255)">not</span> obj.exists():
-<span class="ansi-green-fg">-&gt; </span><span class="ansi-green-fg">1025</span>         <span class="ansi-bold" style="color: rgb(0,135,0)">raise</span> <span class="ansi-bold" style="color: rgb(215,95,95)">FileNotFoundError</span>(<span class="ansi-yellow-fg">f</span><span class="ansi-yellow-fg">"</span><span class="ansi-yellow-fg">add(</span><span class="ansi-bold" style="color: rgb(175,95,135)">{</span>obj<span class="ansi-bold" style="color: rgb(175,95,135)">!r}</span><span class="ansi-yellow-fg">): file does not exist</span><span class="ansi-yellow-fg">"</span>)
-<span class="ansi-green-fg">   1026</span>     <span class="ansi-bold" style="color: rgb(0,135,0)">return</span> _classify_path(obj)
-<span class="ansi-green-fg">   1028</span> <span class="ansi-bold" style="color: rgb(0,135,0)">raise</span> <span class="ansi-bold" style="color: rgb(215,95,95)">TypeError</span>(
-<span class="ansi-green-fg">   1029</span>     <span class="ansi-yellow-fg">f</span><span class="ansi-yellow-fg">"</span><span class="ansi-yellow-fg">add() does not accept </span><span class="ansi-bold" style="color: rgb(175,95,135)">{</span><span style="color: rgb(0,135,0)">type</span>(obj).<span class="ansi-blue-fg">__name__</span><span class="ansi-bold" style="color: rgb(175,95,135)">}</span><span class="ansi-yellow-fg">. Supported types: </span><span class="ansi-yellow-fg">"</span>
-<span class="ansi-green-fg">   1030</span>     <span class="ansi-yellow-fg">"</span><span class="ansi-yellow-fg">str, pathlib.Path, PIL.Image.Image.</span><span class="ansi-yellow-fg">"</span>
-<span class="ansi-green-fg">   1031</span> )
-
-<span class="ansi-red-fg">FileNotFoundError</span>: add(PosixPath('/home/runner/data/mmbench-tiny/invoice.pdf')): file does not exist</pre>
-</div>
-</div>
-</div>
-</div>
 </div>
 </div>
 <div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=15">
@@ -2753,13 +2545,13 @@ HTML(render_messages(msgs, title="page-text (pages_per_message=32)"))</div>
 </div>
 </div>
 </div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=17">
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=17">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea">
-<div class="jp-InputPrompt jp-InputArea-prompt">In [8]:</div><div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div><div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
 <div class="CodeMirror cm-s-jupyter">
 <div class="zeroclipboard-container">
 <clipboard-copy ,="" aria-label="Copy to Clipboard" for="cell-8">
@@ -2787,45 +2579,6 @@ HTML(render_messages(msgs, title="video (default)"))</div>
 </div>
 </div>
 </div>
-<div class="jp-Cell-outputWrapper">
-<div class="jp-Collapser jp-OutputCollapser jp-Cell-outputCollapser">
-</div>
-<div class="jp-OutputArea jp-Cell-outputArea">
-<div class="jp-OutputArea-child">
-<div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
-<div class="jp-RenderedText jp-OutputArea-output" data-mime-type="application/vnd.jupyter.stderr" tabindex="0">
-<pre>
-<span class="ansi-red-fg">---------------------------------------------------------------------------</span>
-<span class="ansi-red-fg">FileNotFoundError</span>                         Traceback (most recent call last)
-<span class="ansi-cyan-fg">Cell</span><span class="ansi-cyan-fg"> </span><span class="ansi-green-fg">In[8]</span><span class="ansi-green-fg">, line 2</span>
-<span class="ansi-green-fg">      1</span> <span class="ansi-bold" style="color: rgb(0,135,0)">with</span> mm.Context() <span class="ansi-bold" style="color: rgb(0,135,0)">as</span> ctx:
-<span class="ansi-green-fg">----&gt; </span><span class="ansi-green-fg">2</span>     ctx.add(DATA / <span class="ansi-yellow-fg">"bakery.mp4"</span>)
-<span class="ansi-green-fg">      3</span>     msgs = ctx.to_messages()
-<span class="ansi-green-fg">      4</span> 
-<span class="ansi-green-fg">      5</span> HTML(render_messages(msgs, title=<span class="ansi-yellow-fg">"video (default)"</span>))
-
-<span class="ansi-cyan-fg">File </span><span class="ansi-green-fg">/opt/hostedtoolcache/Python/3.12.13/x64/lib/python3.12/site-packages/mm/context.py:305</span>, in <span class="ansi-cyan-fg">Context.add</span><span class="ansi-blue-fg">(self, obj, role, metadata)</span>
-<span class="ansi-green-fg">    303</span> <span style="color: rgb(0,135,0)">self</span>._require_pyctx(<span class="ansi-yellow-fg">"</span><span class="ansi-yellow-fg">add</span><span class="ansi-yellow-fg">"</span>)
-<span class="ansi-green-fg">    304</span> role = _validate_role(role)
-<span class="ansi-green-fg">--&gt; </span><span class="ansi-green-fg">305</span> kind, source_kind, source_value, byte_len, desc, py_obj = <span class="ansi-black-fg ansi-yellow-bg">_classify_add_obj</span><span class="ansi-black-fg ansi-yellow-bg">(</span><span class="ansi-black-fg ansi-yellow-bg">obj</span><span class="ansi-black-fg ansi-yellow-bg">)</span>
-<span class="ansi-green-fg">    306</span> <span class="ansi-bold" style="color: rgb(0,135,0)">if</span> role != <span class="ansi-yellow-fg">"</span><span class="ansi-yellow-fg">user</span><span class="ansi-yellow-fg">"</span> <span class="ansi-bold" style="color: rgb(175,0,255)">and</span> kind != <span class="ansi-yellow-fg">"</span><span class="ansi-yellow-fg">text</span><span class="ansi-yellow-fg">"</span>:
-<span class="ansi-green-fg">    307</span>     <span class="ansi-bold" style="color: rgb(0,135,0)">raise</span> <span class="ansi-bold" style="color: rgb(215,95,95)">ValueError</span>(<span class="ansi-yellow-fg">"</span><span class="ansi-yellow-fg">Only free-form string text can use role=</span><span class="ansi-yellow-fg">'</span><span class="ansi-yellow-fg">system</span><span class="ansi-yellow-fg">'</span><span class="ansi-yellow-fg"> or role=</span><span class="ansi-yellow-fg">'</span><span class="ansi-yellow-fg">developer</span><span class="ansi-yellow-fg">'</span><span class="ansi-yellow-fg">"</span>)
-
-<span class="ansi-cyan-fg">File </span><span class="ansi-green-fg">/opt/hostedtoolcache/Python/3.12.13/x64/lib/python3.12/site-packages/mm/context.py:1025</span>, in <span class="ansi-cyan-fg">_classify_add_obj</span><span class="ansi-blue-fg">(obj)</span>
-<span class="ansi-green-fg">   1023</span> <span class="ansi-bold" style="color: rgb(0,135,0)">if</span> <span style="color: rgb(0,135,0)">isinstance</span>(obj, Path):
-<span class="ansi-green-fg">   1024</span>     <span class="ansi-bold" style="color: rgb(0,135,0)">if</span> <span class="ansi-bold" style="color: rgb(175,0,255)">not</span> obj.exists():
-<span class="ansi-green-fg">-&gt; </span><span class="ansi-green-fg">1025</span>         <span class="ansi-bold" style="color: rgb(0,135,0)">raise</span> <span class="ansi-bold" style="color: rgb(215,95,95)">FileNotFoundError</span>(<span class="ansi-yellow-fg">f</span><span class="ansi-yellow-fg">"</span><span class="ansi-yellow-fg">add(</span><span class="ansi-bold" style="color: rgb(175,95,135)">{</span>obj<span class="ansi-bold" style="color: rgb(175,95,135)">!r}</span><span class="ansi-yellow-fg">): file does not exist</span><span class="ansi-yellow-fg">"</span>)
-<span class="ansi-green-fg">   1026</span>     <span class="ansi-bold" style="color: rgb(0,135,0)">return</span> _classify_path(obj)
-<span class="ansi-green-fg">   1028</span> <span class="ansi-bold" style="color: rgb(0,135,0)">raise</span> <span class="ansi-bold" style="color: rgb(215,95,95)">TypeError</span>(
-<span class="ansi-green-fg">   1029</span>     <span class="ansi-yellow-fg">f</span><span class="ansi-yellow-fg">"</span><span class="ansi-yellow-fg">add() does not accept </span><span class="ansi-bold" style="color: rgb(175,95,135)">{</span><span style="color: rgb(0,135,0)">type</span>(obj).<span class="ansi-blue-fg">__name__</span><span class="ansi-bold" style="color: rgb(175,95,135)">}</span><span class="ansi-yellow-fg">. Supported types: </span><span class="ansi-yellow-fg">"</span>
-<span class="ansi-green-fg">   1030</span>     <span class="ansi-yellow-fg">"</span><span class="ansi-yellow-fg">str, pathlib.Path, PIL.Image.Image.</span><span class="ansi-yellow-fg">"</span>
-<span class="ansi-green-fg">   1031</span> )
-
-<span class="ansi-red-fg">FileNotFoundError</span>: add(PosixPath('/home/runner/data/mmbench-tiny/bakery.mp4')): file does not exist</pre>
-</div>
-</div>
-</div>
-</div>
 </div>
 </div>
 <div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=18">
@@ -2838,13 +2591,13 @@ HTML(render_messages(msgs, title="video (default)"))</div>
 </div>
 </div>
 </div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=19">
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=19">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea">
-<div class="jp-InputPrompt jp-InputArea-prompt">In [9]:</div><div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div><div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
 <div class="CodeMirror cm-s-jupyter">
 <div class="zeroclipboard-container">
 <clipboard-copy ,="" aria-label="Copy to Clipboard" for="cell-9">
@@ -2882,45 +2635,6 @@ HTML(render_messages(msgs, title="video-mosaic (3x3 grid, 4 mosaics)"))</div>
 </div>
 </div>
 </div>
-<div class="jp-Cell-outputWrapper">
-<div class="jp-Collapser jp-OutputCollapser jp-Cell-outputCollapser">
-</div>
-<div class="jp-OutputArea jp-Cell-outputArea">
-<div class="jp-OutputArea-child">
-<div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
-<div class="jp-RenderedText jp-OutputArea-output" data-mime-type="application/vnd.jupyter.stderr" tabindex="0">
-<pre>
-<span class="ansi-red-fg">---------------------------------------------------------------------------</span>
-<span class="ansi-red-fg">FileNotFoundError</span>                         Traceback (most recent call last)
-<span class="ansi-cyan-fg">Cell</span><span class="ansi-cyan-fg"> </span><span class="ansi-green-fg">In[9]</span><span class="ansi-green-fg">, line 2</span>
-<span class="ansi-green-fg">      1</span> <span class="ansi-bold" style="color: rgb(0,135,0)">with</span> mm.Context() <span class="ansi-bold" style="color: rgb(0,135,0)">as</span> ctx:
-<span class="ansi-green-fg">----&gt; </span><span class="ansi-green-fg">2</span>     ctx.add(DATA / <span class="ansi-yellow-fg">"bakery.mp4"</span>)
-<span class="ansi-green-fg">      3</span>     msgs = ctx.to_messages(
-<span class="ansi-green-fg">      4</span>         encoders={<span class="ansi-yellow-fg">"video"</span>: <span class="ansi-yellow-fg">"video-mosaic"</span>},
-<span class="ansi-green-fg">      5</span>         encoder_kwargs={
-
-<span class="ansi-cyan-fg">File </span><span class="ansi-green-fg">/opt/hostedtoolcache/Python/3.12.13/x64/lib/python3.12/site-packages/mm/context.py:305</span>, in <span class="ansi-cyan-fg">Context.add</span><span class="ansi-blue-fg">(self, obj, role, metadata)</span>
-<span class="ansi-green-fg">    303</span> <span style="color: rgb(0,135,0)">self</span>._require_pyctx(<span class="ansi-yellow-fg">"</span><span class="ansi-yellow-fg">add</span><span class="ansi-yellow-fg">"</span>)
-<span class="ansi-green-fg">    304</span> role = _validate_role(role)
-<span class="ansi-green-fg">--&gt; </span><span class="ansi-green-fg">305</span> kind, source_kind, source_value, byte_len, desc, py_obj = <span class="ansi-black-fg ansi-yellow-bg">_classify_add_obj</span><span class="ansi-black-fg ansi-yellow-bg">(</span><span class="ansi-black-fg ansi-yellow-bg">obj</span><span class="ansi-black-fg ansi-yellow-bg">)</span>
-<span class="ansi-green-fg">    306</span> <span class="ansi-bold" style="color: rgb(0,135,0)">if</span> role != <span class="ansi-yellow-fg">"</span><span class="ansi-yellow-fg">user</span><span class="ansi-yellow-fg">"</span> <span class="ansi-bold" style="color: rgb(175,0,255)">and</span> kind != <span class="ansi-yellow-fg">"</span><span class="ansi-yellow-fg">text</span><span class="ansi-yellow-fg">"</span>:
-<span class="ansi-green-fg">    307</span>     <span class="ansi-bold" style="color: rgb(0,135,0)">raise</span> <span class="ansi-bold" style="color: rgb(215,95,95)">ValueError</span>(<span class="ansi-yellow-fg">"</span><span class="ansi-yellow-fg">Only free-form string text can use role=</span><span class="ansi-yellow-fg">'</span><span class="ansi-yellow-fg">system</span><span class="ansi-yellow-fg">'</span><span class="ansi-yellow-fg"> or role=</span><span class="ansi-yellow-fg">'</span><span class="ansi-yellow-fg">developer</span><span class="ansi-yellow-fg">'</span><span class="ansi-yellow-fg">"</span>)
-
-<span class="ansi-cyan-fg">File </span><span class="ansi-green-fg">/opt/hostedtoolcache/Python/3.12.13/x64/lib/python3.12/site-packages/mm/context.py:1025</span>, in <span class="ansi-cyan-fg">_classify_add_obj</span><span class="ansi-blue-fg">(obj)</span>
-<span class="ansi-green-fg">   1023</span> <span class="ansi-bold" style="color: rgb(0,135,0)">if</span> <span style="color: rgb(0,135,0)">isinstance</span>(obj, Path):
-<span class="ansi-green-fg">   1024</span>     <span class="ansi-bold" style="color: rgb(0,135,0)">if</span> <span class="ansi-bold" style="color: rgb(175,0,255)">not</span> obj.exists():
-<span class="ansi-green-fg">-&gt; </span><span class="ansi-green-fg">1025</span>         <span class="ansi-bold" style="color: rgb(0,135,0)">raise</span> <span class="ansi-bold" style="color: rgb(215,95,95)">FileNotFoundError</span>(<span class="ansi-yellow-fg">f</span><span class="ansi-yellow-fg">"</span><span class="ansi-yellow-fg">add(</span><span class="ansi-bold" style="color: rgb(175,95,135)">{</span>obj<span class="ansi-bold" style="color: rgb(175,95,135)">!r}</span><span class="ansi-yellow-fg">): file does not exist</span><span class="ansi-yellow-fg">"</span>)
-<span class="ansi-green-fg">   1026</span>     <span class="ansi-bold" style="color: rgb(0,135,0)">return</span> _classify_path(obj)
-<span class="ansi-green-fg">   1028</span> <span class="ansi-bold" style="color: rgb(0,135,0)">raise</span> <span class="ansi-bold" style="color: rgb(215,95,95)">TypeError</span>(
-<span class="ansi-green-fg">   1029</span>     <span class="ansi-yellow-fg">f</span><span class="ansi-yellow-fg">"</span><span class="ansi-yellow-fg">add() does not accept </span><span class="ansi-bold" style="color: rgb(175,95,135)">{</span><span style="color: rgb(0,135,0)">type</span>(obj).<span class="ansi-blue-fg">__name__</span><span class="ansi-bold" style="color: rgb(175,95,135)">}</span><span class="ansi-yellow-fg">. Supported types: </span><span class="ansi-yellow-fg">"</span>
-<span class="ansi-green-fg">   1030</span>     <span class="ansi-yellow-fg">"</span><span class="ansi-yellow-fg">str, pathlib.Path, PIL.Image.Image.</span><span class="ansi-yellow-fg">"</span>
-<span class="ansi-green-fg">   1031</span> )
-
-<span class="ansi-red-fg">FileNotFoundError</span>: add(PosixPath('/home/runner/data/mmbench-tiny/bakery.mp4')): file does not exist</pre>
-</div>
-</div>
-</div>
-</div>
 </div>
 </div>
 <div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=20">
@@ -2933,13 +2647,13 @@ HTML(render_messages(msgs, title="video-mosaic (3x3 grid, 4 mosaics)"))</div>
 </div>
 </div>
 </div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=21">
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=21">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea">
-<div class="jp-InputPrompt jp-InputArea-prompt">In [10]:</div><div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div><div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
 <div class="CodeMirror cm-s-jupyter">
 <div class="zeroclipboard-container">
 <clipboard-copy ,="" aria-label="Copy to Clipboard" for="cell-10">
@@ -2977,45 +2691,6 @@ HTML(render_messages(msgs, title="video-keyframes (max_keyframes=32, 512px)"))</
 </div>
 </div>
 </div>
-<div class="jp-Cell-outputWrapper">
-<div class="jp-Collapser jp-OutputCollapser jp-Cell-outputCollapser">
-</div>
-<div class="jp-OutputArea jp-Cell-outputArea">
-<div class="jp-OutputArea-child">
-<div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
-<div class="jp-RenderedText jp-OutputArea-output" data-mime-type="application/vnd.jupyter.stderr" tabindex="0">
-<pre>
-<span class="ansi-red-fg">---------------------------------------------------------------------------</span>
-<span class="ansi-red-fg">FileNotFoundError</span>                         Traceback (most recent call last)
-<span class="ansi-cyan-fg">Cell</span><span class="ansi-cyan-fg"> </span><span class="ansi-green-fg">In[10]</span><span class="ansi-green-fg">, line 2</span>
-<span class="ansi-green-fg">      1</span> <span class="ansi-bold" style="color: rgb(0,135,0)">with</span> mm.Context() <span class="ansi-bold" style="color: rgb(0,135,0)">as</span> ctx:
-<span class="ansi-green-fg">----&gt; </span><span class="ansi-green-fg">2</span>     ctx.add(DATA / <span class="ansi-yellow-fg">"bakery.mp4"</span>)
-<span class="ansi-green-fg">      3</span>     msgs = ctx.to_messages(
-<span class="ansi-green-fg">      4</span>         encoders={<span class="ansi-yellow-fg">"video"</span>: <span class="ansi-yellow-fg">"video-keyframes"</span>},
-<span class="ansi-green-fg">      5</span>         encoder_kwargs={
-
-<span class="ansi-cyan-fg">File </span><span class="ansi-green-fg">/opt/hostedtoolcache/Python/3.12.13/x64/lib/python3.12/site-packages/mm/context.py:305</span>, in <span class="ansi-cyan-fg">Context.add</span><span class="ansi-blue-fg">(self, obj, role, metadata)</span>
-<span class="ansi-green-fg">    303</span> <span style="color: rgb(0,135,0)">self</span>._require_pyctx(<span class="ansi-yellow-fg">"</span><span class="ansi-yellow-fg">add</span><span class="ansi-yellow-fg">"</span>)
-<span class="ansi-green-fg">    304</span> role = _validate_role(role)
-<span class="ansi-green-fg">--&gt; </span><span class="ansi-green-fg">305</span> kind, source_kind, source_value, byte_len, desc, py_obj = <span class="ansi-black-fg ansi-yellow-bg">_classify_add_obj</span><span class="ansi-black-fg ansi-yellow-bg">(</span><span class="ansi-black-fg ansi-yellow-bg">obj</span><span class="ansi-black-fg ansi-yellow-bg">)</span>
-<span class="ansi-green-fg">    306</span> <span class="ansi-bold" style="color: rgb(0,135,0)">if</span> role != <span class="ansi-yellow-fg">"</span><span class="ansi-yellow-fg">user</span><span class="ansi-yellow-fg">"</span> <span class="ansi-bold" style="color: rgb(175,0,255)">and</span> kind != <span class="ansi-yellow-fg">"</span><span class="ansi-yellow-fg">text</span><span class="ansi-yellow-fg">"</span>:
-<span class="ansi-green-fg">    307</span>     <span class="ansi-bold" style="color: rgb(0,135,0)">raise</span> <span class="ansi-bold" style="color: rgb(215,95,95)">ValueError</span>(<span class="ansi-yellow-fg">"</span><span class="ansi-yellow-fg">Only free-form string text can use role=</span><span class="ansi-yellow-fg">'</span><span class="ansi-yellow-fg">system</span><span class="ansi-yellow-fg">'</span><span class="ansi-yellow-fg"> or role=</span><span class="ansi-yellow-fg">'</span><span class="ansi-yellow-fg">developer</span><span class="ansi-yellow-fg">'</span><span class="ansi-yellow-fg">"</span>)
-
-<span class="ansi-cyan-fg">File </span><span class="ansi-green-fg">/opt/hostedtoolcache/Python/3.12.13/x64/lib/python3.12/site-packages/mm/context.py:1025</span>, in <span class="ansi-cyan-fg">_classify_add_obj</span><span class="ansi-blue-fg">(obj)</span>
-<span class="ansi-green-fg">   1023</span> <span class="ansi-bold" style="color: rgb(0,135,0)">if</span> <span style="color: rgb(0,135,0)">isinstance</span>(obj, Path):
-<span class="ansi-green-fg">   1024</span>     <span class="ansi-bold" style="color: rgb(0,135,0)">if</span> <span class="ansi-bold" style="color: rgb(175,0,255)">not</span> obj.exists():
-<span class="ansi-green-fg">-&gt; </span><span class="ansi-green-fg">1025</span>         <span class="ansi-bold" style="color: rgb(0,135,0)">raise</span> <span class="ansi-bold" style="color: rgb(215,95,95)">FileNotFoundError</span>(<span class="ansi-yellow-fg">f</span><span class="ansi-yellow-fg">"</span><span class="ansi-yellow-fg">add(</span><span class="ansi-bold" style="color: rgb(175,95,135)">{</span>obj<span class="ansi-bold" style="color: rgb(175,95,135)">!r}</span><span class="ansi-yellow-fg">): file does not exist</span><span class="ansi-yellow-fg">"</span>)
-<span class="ansi-green-fg">   1026</span>     <span class="ansi-bold" style="color: rgb(0,135,0)">return</span> _classify_path(obj)
-<span class="ansi-green-fg">   1028</span> <span class="ansi-bold" style="color: rgb(0,135,0)">raise</span> <span class="ansi-bold" style="color: rgb(215,95,95)">TypeError</span>(
-<span class="ansi-green-fg">   1029</span>     <span class="ansi-yellow-fg">f</span><span class="ansi-yellow-fg">"</span><span class="ansi-yellow-fg">add() does not accept </span><span class="ansi-bold" style="color: rgb(175,95,135)">{</span><span style="color: rgb(0,135,0)">type</span>(obj).<span class="ansi-blue-fg">__name__</span><span class="ansi-bold" style="color: rgb(175,95,135)">}</span><span class="ansi-yellow-fg">. Supported types: </span><span class="ansi-yellow-fg">"</span>
-<span class="ansi-green-fg">   1030</span>     <span class="ansi-yellow-fg">"</span><span class="ansi-yellow-fg">str, pathlib.Path, PIL.Image.Image.</span><span class="ansi-yellow-fg">"</span>
-<span class="ansi-green-fg">   1031</span> )
-
-<span class="ansi-red-fg">FileNotFoundError</span>: add(PosixPath('/home/runner/data/mmbench-tiny/bakery.mp4')): file does not exist</pre>
-</div>
-</div>
-</div>
-</div>
 </div>
 </div>
 <div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=22">
@@ -3028,13 +2703,13 @@ HTML(render_messages(msgs, title="video-keyframes (max_keyframes=32, 512px)"))</
 </div>
 </div>
 </div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=23">
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=23">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea">
-<div class="jp-InputPrompt jp-InputArea-prompt">In [11]:</div><div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div><div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
 <div class="CodeMirror cm-s-jupyter">
 <div class="zeroclipboard-container">
 <clipboard-copy ,="" aria-label="Copy to Clipboard" for="cell-11">
@@ -3064,45 +2739,6 @@ HTML(render_messages(msgs, title="video-keyframes (max_keyframes=32, 512px)"))</
     )
 
 HTML(render_messages(msgs, title="video-summary (num_frames=16, 512px)"))</div>
-</div>
-</div>
-</div>
-</div>
-<div class="jp-Cell-outputWrapper">
-<div class="jp-Collapser jp-OutputCollapser jp-Cell-outputCollapser">
-</div>
-<div class="jp-OutputArea jp-Cell-outputArea">
-<div class="jp-OutputArea-child">
-<div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
-<div class="jp-RenderedText jp-OutputArea-output" data-mime-type="application/vnd.jupyter.stderr" tabindex="0">
-<pre>
-<span class="ansi-red-fg">---------------------------------------------------------------------------</span>
-<span class="ansi-red-fg">FileNotFoundError</span>                         Traceback (most recent call last)
-<span class="ansi-cyan-fg">Cell</span><span class="ansi-cyan-fg"> </span><span class="ansi-green-fg">In[11]</span><span class="ansi-green-fg">, line 2</span>
-<span class="ansi-green-fg">      1</span> <span class="ansi-bold" style="color: rgb(0,135,0)">with</span> mm.Context() <span class="ansi-bold" style="color: rgb(0,135,0)">as</span> ctx:
-<span class="ansi-green-fg">----&gt; </span><span class="ansi-green-fg">2</span>     ctx.add(DATA / <span class="ansi-yellow-fg">"bakery.mp4"</span>)
-<span class="ansi-green-fg">      3</span>     msgs = ctx.to_messages(
-<span class="ansi-green-fg">      4</span>         encoders={<span class="ansi-yellow-fg">"video"</span>: <span class="ansi-yellow-fg">"video-summary"</span>},
-<span class="ansi-green-fg">      5</span>         encoder_kwargs={<span class="ansi-yellow-fg">"video"</span>: {<span class="ansi-yellow-fg">"num_frames"</span>: <span class="ansi-green-fg">16</span>, <span class="ansi-yellow-fg">"max_width"</span>: <span class="ansi-green-fg">512</span>}},
-
-<span class="ansi-cyan-fg">File </span><span class="ansi-green-fg">/opt/hostedtoolcache/Python/3.12.13/x64/lib/python3.12/site-packages/mm/context.py:305</span>, in <span class="ansi-cyan-fg">Context.add</span><span class="ansi-blue-fg">(self, obj, role, metadata)</span>
-<span class="ansi-green-fg">    303</span> <span style="color: rgb(0,135,0)">self</span>._require_pyctx(<span class="ansi-yellow-fg">"</span><span class="ansi-yellow-fg">add</span><span class="ansi-yellow-fg">"</span>)
-<span class="ansi-green-fg">    304</span> role = _validate_role(role)
-<span class="ansi-green-fg">--&gt; </span><span class="ansi-green-fg">305</span> kind, source_kind, source_value, byte_len, desc, py_obj = <span class="ansi-black-fg ansi-yellow-bg">_classify_add_obj</span><span class="ansi-black-fg ansi-yellow-bg">(</span><span class="ansi-black-fg ansi-yellow-bg">obj</span><span class="ansi-black-fg ansi-yellow-bg">)</span>
-<span class="ansi-green-fg">    306</span> <span class="ansi-bold" style="color: rgb(0,135,0)">if</span> role != <span class="ansi-yellow-fg">"</span><span class="ansi-yellow-fg">user</span><span class="ansi-yellow-fg">"</span> <span class="ansi-bold" style="color: rgb(175,0,255)">and</span> kind != <span class="ansi-yellow-fg">"</span><span class="ansi-yellow-fg">text</span><span class="ansi-yellow-fg">"</span>:
-<span class="ansi-green-fg">    307</span>     <span class="ansi-bold" style="color: rgb(0,135,0)">raise</span> <span class="ansi-bold" style="color: rgb(215,95,95)">ValueError</span>(<span class="ansi-yellow-fg">"</span><span class="ansi-yellow-fg">Only free-form string text can use role=</span><span class="ansi-yellow-fg">'</span><span class="ansi-yellow-fg">system</span><span class="ansi-yellow-fg">'</span><span class="ansi-yellow-fg"> or role=</span><span class="ansi-yellow-fg">'</span><span class="ansi-yellow-fg">developer</span><span class="ansi-yellow-fg">'</span><span class="ansi-yellow-fg">"</span>)
-
-<span class="ansi-cyan-fg">File </span><span class="ansi-green-fg">/opt/hostedtoolcache/Python/3.12.13/x64/lib/python3.12/site-packages/mm/context.py:1025</span>, in <span class="ansi-cyan-fg">_classify_add_obj</span><span class="ansi-blue-fg">(obj)</span>
-<span class="ansi-green-fg">   1023</span> <span class="ansi-bold" style="color: rgb(0,135,0)">if</span> <span style="color: rgb(0,135,0)">isinstance</span>(obj, Path):
-<span class="ansi-green-fg">   1024</span>     <span class="ansi-bold" style="color: rgb(0,135,0)">if</span> <span class="ansi-bold" style="color: rgb(175,0,255)">not</span> obj.exists():
-<span class="ansi-green-fg">-&gt; </span><span class="ansi-green-fg">1025</span>         <span class="ansi-bold" style="color: rgb(0,135,0)">raise</span> <span class="ansi-bold" style="color: rgb(215,95,95)">FileNotFoundError</span>(<span class="ansi-yellow-fg">f</span><span class="ansi-yellow-fg">"</span><span class="ansi-yellow-fg">add(</span><span class="ansi-bold" style="color: rgb(175,95,135)">{</span>obj<span class="ansi-bold" style="color: rgb(175,95,135)">!r}</span><span class="ansi-yellow-fg">): file does not exist</span><span class="ansi-yellow-fg">"</span>)
-<span class="ansi-green-fg">   1026</span>     <span class="ansi-bold" style="color: rgb(0,135,0)">return</span> _classify_path(obj)
-<span class="ansi-green-fg">   1028</span> <span class="ansi-bold" style="color: rgb(0,135,0)">raise</span> <span class="ansi-bold" style="color: rgb(215,95,95)">TypeError</span>(
-<span class="ansi-green-fg">   1029</span>     <span class="ansi-yellow-fg">f</span><span class="ansi-yellow-fg">"</span><span class="ansi-yellow-fg">add() does not accept </span><span class="ansi-bold" style="color: rgb(175,95,135)">{</span><span style="color: rgb(0,135,0)">type</span>(obj).<span class="ansi-blue-fg">__name__</span><span class="ansi-bold" style="color: rgb(175,95,135)">}</span><span class="ansi-yellow-fg">. Supported types: </span><span class="ansi-yellow-fg">"</span>
-<span class="ansi-green-fg">   1030</span>     <span class="ansi-yellow-fg">"</span><span class="ansi-yellow-fg">str, pathlib.Path, PIL.Image.Image.</span><span class="ansi-yellow-fg">"</span>
-<span class="ansi-green-fg">   1031</span> )
-
-<span class="ansi-red-fg">FileNotFoundError</span>: add(PosixPath('/home/runner/data/mmbench-tiny/bakery.mp4')): file does not exist</pre>
 </div>
 </div>
 </div>
@@ -3152,13 +2788,13 @@ HTML(render_messages(msgs, title="video-summary (num_frames=16, 512px)"))</div>
 </div>
 </div>
 </div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=25">
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=25">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea">
-<div class="jp-InputPrompt jp-InputArea-prompt">In [12]:</div><div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div><div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
 <div class="CodeMirror cm-s-jupyter">
 <div class="zeroclipboard-container">
 <clipboard-copy ,="" aria-label="Copy to Clipboard" for="cell-12">
@@ -3186,53 +2822,14 @@ HTML(render_messages(msgs, title="audio-base64 (default)"))</div>
 </div>
 </div>
 </div>
-<div class="jp-Cell-outputWrapper">
-<div class="jp-Collapser jp-OutputCollapser jp-Cell-outputCollapser">
 </div>
-<div class="jp-OutputArea jp-Cell-outputArea">
-<div class="jp-OutputArea-child">
-<div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
-<div class="jp-RenderedText jp-OutputArea-output" data-mime-type="application/vnd.jupyter.stderr" tabindex="0">
-<pre>
-<span class="ansi-red-fg">---------------------------------------------------------------------------</span>
-<span class="ansi-red-fg">FileNotFoundError</span>                         Traceback (most recent call last)
-<span class="ansi-cyan-fg">Cell</span><span class="ansi-cyan-fg"> </span><span class="ansi-green-fg">In[12]</span><span class="ansi-green-fg">, line 2</span>
-<span class="ansi-green-fg">      1</span> <span class="ansi-bold" style="color: rgb(0,135,0)">with</span> mm.Context() <span class="ansi-bold" style="color: rgb(0,135,0)">as</span> ctx:
-<span class="ansi-green-fg">----&gt; </span><span class="ansi-green-fg">2</span>     ctx.add(DATA / <span class="ansi-yellow-fg">"how_to_build_an_mvp.mp3"</span>)
-<span class="ansi-green-fg">      3</span>     msgs = ctx.to_messages()
-<span class="ansi-green-fg">      4</span> 
-<span class="ansi-green-fg">      5</span> HTML(render_messages(msgs, title=<span class="ansi-yellow-fg">"audio-base64 (default)"</span>))
-
-<span class="ansi-cyan-fg">File </span><span class="ansi-green-fg">/opt/hostedtoolcache/Python/3.12.13/x64/lib/python3.12/site-packages/mm/context.py:305</span>, in <span class="ansi-cyan-fg">Context.add</span><span class="ansi-blue-fg">(self, obj, role, metadata)</span>
-<span class="ansi-green-fg">    303</span> <span style="color: rgb(0,135,0)">self</span>._require_pyctx(<span class="ansi-yellow-fg">"</span><span class="ansi-yellow-fg">add</span><span class="ansi-yellow-fg">"</span>)
-<span class="ansi-green-fg">    304</span> role = _validate_role(role)
-<span class="ansi-green-fg">--&gt; </span><span class="ansi-green-fg">305</span> kind, source_kind, source_value, byte_len, desc, py_obj = <span class="ansi-black-fg ansi-yellow-bg">_classify_add_obj</span><span class="ansi-black-fg ansi-yellow-bg">(</span><span class="ansi-black-fg ansi-yellow-bg">obj</span><span class="ansi-black-fg ansi-yellow-bg">)</span>
-<span class="ansi-green-fg">    306</span> <span class="ansi-bold" style="color: rgb(0,135,0)">if</span> role != <span class="ansi-yellow-fg">"</span><span class="ansi-yellow-fg">user</span><span class="ansi-yellow-fg">"</span> <span class="ansi-bold" style="color: rgb(175,0,255)">and</span> kind != <span class="ansi-yellow-fg">"</span><span class="ansi-yellow-fg">text</span><span class="ansi-yellow-fg">"</span>:
-<span class="ansi-green-fg">    307</span>     <span class="ansi-bold" style="color: rgb(0,135,0)">raise</span> <span class="ansi-bold" style="color: rgb(215,95,95)">ValueError</span>(<span class="ansi-yellow-fg">"</span><span class="ansi-yellow-fg">Only free-form string text can use role=</span><span class="ansi-yellow-fg">'</span><span class="ansi-yellow-fg">system</span><span class="ansi-yellow-fg">'</span><span class="ansi-yellow-fg"> or role=</span><span class="ansi-yellow-fg">'</span><span class="ansi-yellow-fg">developer</span><span class="ansi-yellow-fg">'</span><span class="ansi-yellow-fg">"</span>)
-
-<span class="ansi-cyan-fg">File </span><span class="ansi-green-fg">/opt/hostedtoolcache/Python/3.12.13/x64/lib/python3.12/site-packages/mm/context.py:1025</span>, in <span class="ansi-cyan-fg">_classify_add_obj</span><span class="ansi-blue-fg">(obj)</span>
-<span class="ansi-green-fg">   1023</span> <span class="ansi-bold" style="color: rgb(0,135,0)">if</span> <span style="color: rgb(0,135,0)">isinstance</span>(obj, Path):
-<span class="ansi-green-fg">   1024</span>     <span class="ansi-bold" style="color: rgb(0,135,0)">if</span> <span class="ansi-bold" style="color: rgb(175,0,255)">not</span> obj.exists():
-<span class="ansi-green-fg">-&gt; </span><span class="ansi-green-fg">1025</span>         <span class="ansi-bold" style="color: rgb(0,135,0)">raise</span> <span class="ansi-bold" style="color: rgb(215,95,95)">FileNotFoundError</span>(<span class="ansi-yellow-fg">f</span><span class="ansi-yellow-fg">"</span><span class="ansi-yellow-fg">add(</span><span class="ansi-bold" style="color: rgb(175,95,135)">{</span>obj<span class="ansi-bold" style="color: rgb(175,95,135)">!r}</span><span class="ansi-yellow-fg">): file does not exist</span><span class="ansi-yellow-fg">"</span>)
-<span class="ansi-green-fg">   1026</span>     <span class="ansi-bold" style="color: rgb(0,135,0)">return</span> _classify_path(obj)
-<span class="ansi-green-fg">   1028</span> <span class="ansi-bold" style="color: rgb(0,135,0)">raise</span> <span class="ansi-bold" style="color: rgb(215,95,95)">TypeError</span>(
-<span class="ansi-green-fg">   1029</span>     <span class="ansi-yellow-fg">f</span><span class="ansi-yellow-fg">"</span><span class="ansi-yellow-fg">add() does not accept </span><span class="ansi-bold" style="color: rgb(175,95,135)">{</span><span style="color: rgb(0,135,0)">type</span>(obj).<span class="ansi-blue-fg">__name__</span><span class="ansi-bold" style="color: rgb(175,95,135)">}</span><span class="ansi-yellow-fg">. Supported types: </span><span class="ansi-yellow-fg">"</span>
-<span class="ansi-green-fg">   1030</span>     <span class="ansi-yellow-fg">"</span><span class="ansi-yellow-fg">str, pathlib.Path, PIL.Image.Image.</span><span class="ansi-yellow-fg">"</span>
-<span class="ansi-green-fg">   1031</span> )
-
-<span class="ansi-red-fg">FileNotFoundError</span>: add(PosixPath('/home/runner/data/mmbench-tiny/how_to_build_an_mvp.mp3')): file does not exist</pre>
-</div>
-</div>
-</div>
-</div>
-</div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=26">
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=26">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea">
-<div class="jp-InputPrompt jp-InputArea-prompt">In [13]:</div><div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div><div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
 <div class="CodeMirror cm-s-jupyter">
 <div class="zeroclipboard-container">
 <clipboard-copy ,="" aria-label="Copy to Clipboard" for="cell-13">
@@ -3266,45 +2863,6 @@ HTML(render_messages(msgs, title="audio-transcribe (whisper tiny, mlx backend)")
 </div>
 </div>
 </div>
-<div class="jp-Cell-outputWrapper">
-<div class="jp-Collapser jp-OutputCollapser jp-Cell-outputCollapser">
-</div>
-<div class="jp-OutputArea jp-Cell-outputArea">
-<div class="jp-OutputArea-child">
-<div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
-<div class="jp-RenderedText jp-OutputArea-output" data-mime-type="application/vnd.jupyter.stderr" tabindex="0">
-<pre>
-<span class="ansi-red-fg">---------------------------------------------------------------------------</span>
-<span class="ansi-red-fg">FileNotFoundError</span>                         Traceback (most recent call last)
-<span class="ansi-cyan-fg">Cell</span><span class="ansi-cyan-fg"> </span><span class="ansi-green-fg">In[13]</span><span class="ansi-green-fg">, line 2</span>
-<span class="ansi-green-fg">      1</span> <span class="ansi-bold" style="color: rgb(0,135,0)">with</span> mm.Context() <span class="ansi-bold" style="color: rgb(0,135,0)">as</span> ctx:
-<span class="ansi-green-fg">----&gt; </span><span class="ansi-green-fg">2</span>     ctx.add(DATA / <span class="ansi-yellow-fg">"how_to_build_an_mvp.mp3"</span>)
-<span class="ansi-green-fg">      3</span>     msgs = ctx.to_messages(
-<span class="ansi-green-fg">      4</span>         encoders={<span class="ansi-yellow-fg">"audio"</span>: <span class="ansi-yellow-fg">"audio-transcribe"</span>},
-<span class="ansi-green-fg">      5</span>         encoder_kwargs={<span class="ansi-yellow-fg">"audio"</span>: {<span class="ansi-yellow-fg">"whisper_model"</span>: <span class="ansi-yellow-fg">"tiny"</span>}},
-
-<span class="ansi-cyan-fg">File </span><span class="ansi-green-fg">/opt/hostedtoolcache/Python/3.12.13/x64/lib/python3.12/site-packages/mm/context.py:305</span>, in <span class="ansi-cyan-fg">Context.add</span><span class="ansi-blue-fg">(self, obj, role, metadata)</span>
-<span class="ansi-green-fg">    303</span> <span style="color: rgb(0,135,0)">self</span>._require_pyctx(<span class="ansi-yellow-fg">"</span><span class="ansi-yellow-fg">add</span><span class="ansi-yellow-fg">"</span>)
-<span class="ansi-green-fg">    304</span> role = _validate_role(role)
-<span class="ansi-green-fg">--&gt; </span><span class="ansi-green-fg">305</span> kind, source_kind, source_value, byte_len, desc, py_obj = <span class="ansi-black-fg ansi-yellow-bg">_classify_add_obj</span><span class="ansi-black-fg ansi-yellow-bg">(</span><span class="ansi-black-fg ansi-yellow-bg">obj</span><span class="ansi-black-fg ansi-yellow-bg">)</span>
-<span class="ansi-green-fg">    306</span> <span class="ansi-bold" style="color: rgb(0,135,0)">if</span> role != <span class="ansi-yellow-fg">"</span><span class="ansi-yellow-fg">user</span><span class="ansi-yellow-fg">"</span> <span class="ansi-bold" style="color: rgb(175,0,255)">and</span> kind != <span class="ansi-yellow-fg">"</span><span class="ansi-yellow-fg">text</span><span class="ansi-yellow-fg">"</span>:
-<span class="ansi-green-fg">    307</span>     <span class="ansi-bold" style="color: rgb(0,135,0)">raise</span> <span class="ansi-bold" style="color: rgb(215,95,95)">ValueError</span>(<span class="ansi-yellow-fg">"</span><span class="ansi-yellow-fg">Only free-form string text can use role=</span><span class="ansi-yellow-fg">'</span><span class="ansi-yellow-fg">system</span><span class="ansi-yellow-fg">'</span><span class="ansi-yellow-fg"> or role=</span><span class="ansi-yellow-fg">'</span><span class="ansi-yellow-fg">developer</span><span class="ansi-yellow-fg">'</span><span class="ansi-yellow-fg">"</span>)
-
-<span class="ansi-cyan-fg">File </span><span class="ansi-green-fg">/opt/hostedtoolcache/Python/3.12.13/x64/lib/python3.12/site-packages/mm/context.py:1025</span>, in <span class="ansi-cyan-fg">_classify_add_obj</span><span class="ansi-blue-fg">(obj)</span>
-<span class="ansi-green-fg">   1023</span> <span class="ansi-bold" style="color: rgb(0,135,0)">if</span> <span style="color: rgb(0,135,0)">isinstance</span>(obj, Path):
-<span class="ansi-green-fg">   1024</span>     <span class="ansi-bold" style="color: rgb(0,135,0)">if</span> <span class="ansi-bold" style="color: rgb(175,0,255)">not</span> obj.exists():
-<span class="ansi-green-fg">-&gt; </span><span class="ansi-green-fg">1025</span>         <span class="ansi-bold" style="color: rgb(0,135,0)">raise</span> <span class="ansi-bold" style="color: rgb(215,95,95)">FileNotFoundError</span>(<span class="ansi-yellow-fg">f</span><span class="ansi-yellow-fg">"</span><span class="ansi-yellow-fg">add(</span><span class="ansi-bold" style="color: rgb(175,95,135)">{</span>obj<span class="ansi-bold" style="color: rgb(175,95,135)">!r}</span><span class="ansi-yellow-fg">): file does not exist</span><span class="ansi-yellow-fg">"</span>)
-<span class="ansi-green-fg">   1026</span>     <span class="ansi-bold" style="color: rgb(0,135,0)">return</span> _classify_path(obj)
-<span class="ansi-green-fg">   1028</span> <span class="ansi-bold" style="color: rgb(0,135,0)">raise</span> <span class="ansi-bold" style="color: rgb(215,95,95)">TypeError</span>(
-<span class="ansi-green-fg">   1029</span>     <span class="ansi-yellow-fg">f</span><span class="ansi-yellow-fg">"</span><span class="ansi-yellow-fg">add() does not accept </span><span class="ansi-bold" style="color: rgb(175,95,135)">{</span><span style="color: rgb(0,135,0)">type</span>(obj).<span class="ansi-blue-fg">__name__</span><span class="ansi-bold" style="color: rgb(175,95,135)">}</span><span class="ansi-yellow-fg">. Supported types: </span><span class="ansi-yellow-fg">"</span>
-<span class="ansi-green-fg">   1030</span>     <span class="ansi-yellow-fg">"</span><span class="ansi-yellow-fg">str, pathlib.Path, PIL.Image.Image.</span><span class="ansi-yellow-fg">"</span>
-<span class="ansi-green-fg">   1031</span> )
-
-<span class="ansi-red-fg">FileNotFoundError</span>: add(PosixPath('/home/runner/data/mmbench-tiny/how_to_build_an_mvp.mp3')): file does not exist</pre>
-</div>
-</div>
-</div>
-</div>
 </div>
 </div>
 <div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=27">
@@ -3319,13 +2877,13 @@ Use <code>to_messages()</code> with custom encoders and <code>render_messages()<
 </div>
 </div>
 </div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell">
-<div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=28">
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs">
+<div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=28">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea">
-<div class="jp-InputPrompt jp-InputArea-prompt">In [14]:</div><div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [ ]:</div><div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
 <div class="CodeMirror cm-s-jupyter">
 <div class="zeroclipboard-container">
 <clipboard-copy ,="" aria-label="Copy to Clipboard" for="cell-14">
@@ -3365,45 +2923,6 @@ Use <code>to_messages()</code> with custom encoders and <code>render_messages()<
     )
 
 HTML(render_messages(msgs, title="mixed context (image + pdf + video + audio)"))</div>
-</div>
-</div>
-</div>
-</div>
-<div class="jp-Cell-outputWrapper">
-<div class="jp-Collapser jp-OutputCollapser jp-Cell-outputCollapser">
-</div>
-<div class="jp-OutputArea jp-Cell-outputArea">
-<div class="jp-OutputArea-child">
-<div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
-<div class="jp-RenderedText jp-OutputArea-output" data-mime-type="application/vnd.jupyter.stderr" tabindex="0">
-<pre>
-<span class="ansi-red-fg">---------------------------------------------------------------------------</span>
-<span class="ansi-red-fg">FileNotFoundError</span>                         Traceback (most recent call last)
-<span class="ansi-cyan-fg">Cell</span><span class="ansi-cyan-fg"> </span><span class="ansi-green-fg">In[14]</span><span class="ansi-green-fg">, line 2</span>
-<span class="ansi-green-fg">      1</span> <span class="ansi-bold" style="color: rgb(0,135,0)">with</span> mm.Context() <span class="ansi-bold" style="color: rgb(0,135,0)">as</span> ctx:
-<span class="ansi-green-fg">----&gt; </span><span class="ansi-green-fg">2</span>     ctx.add(DATA / <span class="ansi-yellow-fg">"car.jpg"</span>)
-<span class="ansi-green-fg">      3</span>     ctx.add(DATA / <span class="ansi-yellow-fg">"invoice.pdf"</span>)
-<span class="ansi-green-fg">      4</span>     ctx.add(DATA / <span class="ansi-yellow-fg">"bakery.mp4"</span>)
-<span class="ansi-green-fg">      5</span>     ctx.add(DATA / <span class="ansi-yellow-fg">"how_to_build_an_mvp.mp3"</span>)
-
-<span class="ansi-cyan-fg">File </span><span class="ansi-green-fg">/opt/hostedtoolcache/Python/3.12.13/x64/lib/python3.12/site-packages/mm/context.py:305</span>, in <span class="ansi-cyan-fg">Context.add</span><span class="ansi-blue-fg">(self, obj, role, metadata)</span>
-<span class="ansi-green-fg">    303</span> <span style="color: rgb(0,135,0)">self</span>._require_pyctx(<span class="ansi-yellow-fg">"</span><span class="ansi-yellow-fg">add</span><span class="ansi-yellow-fg">"</span>)
-<span class="ansi-green-fg">    304</span> role = _validate_role(role)
-<span class="ansi-green-fg">--&gt; </span><span class="ansi-green-fg">305</span> kind, source_kind, source_value, byte_len, desc, py_obj = <span class="ansi-black-fg ansi-yellow-bg">_classify_add_obj</span><span class="ansi-black-fg ansi-yellow-bg">(</span><span class="ansi-black-fg ansi-yellow-bg">obj</span><span class="ansi-black-fg ansi-yellow-bg">)</span>
-<span class="ansi-green-fg">    306</span> <span class="ansi-bold" style="color: rgb(0,135,0)">if</span> role != <span class="ansi-yellow-fg">"</span><span class="ansi-yellow-fg">user</span><span class="ansi-yellow-fg">"</span> <span class="ansi-bold" style="color: rgb(175,0,255)">and</span> kind != <span class="ansi-yellow-fg">"</span><span class="ansi-yellow-fg">text</span><span class="ansi-yellow-fg">"</span>:
-<span class="ansi-green-fg">    307</span>     <span class="ansi-bold" style="color: rgb(0,135,0)">raise</span> <span class="ansi-bold" style="color: rgb(215,95,95)">ValueError</span>(<span class="ansi-yellow-fg">"</span><span class="ansi-yellow-fg">Only free-form string text can use role=</span><span class="ansi-yellow-fg">'</span><span class="ansi-yellow-fg">system</span><span class="ansi-yellow-fg">'</span><span class="ansi-yellow-fg"> or role=</span><span class="ansi-yellow-fg">'</span><span class="ansi-yellow-fg">developer</span><span class="ansi-yellow-fg">'</span><span class="ansi-yellow-fg">"</span>)
-
-<span class="ansi-cyan-fg">File </span><span class="ansi-green-fg">/opt/hostedtoolcache/Python/3.12.13/x64/lib/python3.12/site-packages/mm/context.py:1025</span>, in <span class="ansi-cyan-fg">_classify_add_obj</span><span class="ansi-blue-fg">(obj)</span>
-<span class="ansi-green-fg">   1023</span> <span class="ansi-bold" style="color: rgb(0,135,0)">if</span> <span style="color: rgb(0,135,0)">isinstance</span>(obj, Path):
-<span class="ansi-green-fg">   1024</span>     <span class="ansi-bold" style="color: rgb(0,135,0)">if</span> <span class="ansi-bold" style="color: rgb(175,0,255)">not</span> obj.exists():
-<span class="ansi-green-fg">-&gt; </span><span class="ansi-green-fg">1025</span>         <span class="ansi-bold" style="color: rgb(0,135,0)">raise</span> <span class="ansi-bold" style="color: rgb(215,95,95)">FileNotFoundError</span>(<span class="ansi-yellow-fg">f</span><span class="ansi-yellow-fg">"</span><span class="ansi-yellow-fg">add(</span><span class="ansi-bold" style="color: rgb(175,95,135)">{</span>obj<span class="ansi-bold" style="color: rgb(175,95,135)">!r}</span><span class="ansi-yellow-fg">): file does not exist</span><span class="ansi-yellow-fg">"</span>)
-<span class="ansi-green-fg">   1026</span>     <span class="ansi-bold" style="color: rgb(0,135,0)">return</span> _classify_path(obj)
-<span class="ansi-green-fg">   1028</span> <span class="ansi-bold" style="color: rgb(0,135,0)">raise</span> <span class="ansi-bold" style="color: rgb(215,95,95)">TypeError</span>(
-<span class="ansi-green-fg">   1029</span>     <span class="ansi-yellow-fg">f</span><span class="ansi-yellow-fg">"</span><span class="ansi-yellow-fg">add() does not accept </span><span class="ansi-bold" style="color: rgb(175,95,135)">{</span><span style="color: rgb(0,135,0)">type</span>(obj).<span class="ansi-blue-fg">__name__</span><span class="ansi-bold" style="color: rgb(175,95,135)">}</span><span class="ansi-yellow-fg">. Supported types: </span><span class="ansi-yellow-fg">"</span>
-<span class="ansi-green-fg">   1030</span>     <span class="ansi-yellow-fg">"</span><span class="ansi-yellow-fg">str, pathlib.Path, PIL.Image.Image.</span><span class="ansi-yellow-fg">"</span>
-<span class="ansi-green-fg">   1031</span> )
-
-<span class="ansi-red-fg">FileNotFoundError</span>: add(PosixPath('/home/runner/data/mmbench-tiny/car.jpg')): file does not exist</pre>
 </div>
 </div>
 </div>
