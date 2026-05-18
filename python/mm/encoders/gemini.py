@@ -10,6 +10,8 @@ from __future__ import annotations
 import base64
 import json
 import logging
+import math
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Any, Iterable
 
@@ -109,19 +111,22 @@ class GeminiVideoChunked:
 
         import tempfile
 
+        mime = guess_mime(path.name)
         step: int = max(max_seconds - overlap, 1)
-        start: float = 0.0
-        chunk_idx: int = 0
+        segments: list[tuple[int, float]] = []
+        for _start in range(0, math.ceil(info.duration), step):
+            end = min(_start + max_seconds, info.duration)
+            segments.append((_start, end))
 
         logger.debug(
-            "gemini_video_chunked [path=%s, duration=%.1fs, chunk=%ds]",
+            "gemini_video_chunked [path=%s, duration=%.1fs, chunk=%ds, segment_len=%ds]",
             path.name,
             info.duration,
             max_seconds,
+            len(segments),
         )
 
-        while start < info.duration:
-            end: float = min(start + max_seconds, info.duration)
+        def _process(start: int, end: float):
             with tempfile.NamedTemporaryFile(suffix=path.suffix, delete=False) as tmp:
                 seg_path = Path(tmp.name)
             try:
@@ -129,16 +134,17 @@ class GeminiVideoChunked:
                 data = seg_path.read_bytes()
             finally:
                 seg_path.unlink(missing_ok=True)
-            mime = guess_mime(path.name)
-            yield _to_gemini_message([_gemini_inline_data_part(data, mime)])
-            start += step
-            chunk_idx += 1
+            return _to_gemini_message([_gemini_inline_data_part(data, mime)])
+
+        with ThreadPoolExecutor(max_workers=min(4, len(segments))) as pool:
+            for fut in [pool.submit(_process, start, end) for (start, end) in segments]:
+                yield fut.result()
 
 
 class GeminiDocument:
     """Pass a document file directly as a Gemini ``inline_data`` Part.
 
-    Uses the Rust fast-path when available.  Yields a single Message.
+    Uses the Rust fast-path when available. Yields a single Message.
     """
 
     name: str = "document-gemini"
