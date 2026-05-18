@@ -96,6 +96,7 @@ def run_encoder(path: Path, kind: BinaryFileKind, spec: PipelineSpec, opts: CatO
     t_encode = time.monotonic()
     strat = get_encoder(spec.encode.strategy)
     encode_kwargs: dict[str, Any] = dict(spec.encode.strategy_opts)
+
     if spec.encode.backend is not None:
         encode_kwargs.setdefault("backend", spec.encode.backend)
     if spec.encode.model is not None:
@@ -127,8 +128,7 @@ def run_encoder(path: Path, kind: BinaryFileKind, spec: PipelineSpec, opts: CatO
     llm = make_llm_from_spec(spec)
     chunks: list[list[dict]] = []
     for msg in messages:
-        parts = _extract_llm_parts(msg)
-        if parts:
+        if parts := _extract_llm_parts(msg):
             chunks.append(parts)
 
     if not chunks:

@@ -150,15 +150,15 @@ class GeminiDocument:
     name: str = "document-gemini"
     media_types: tuple[str, ...] = ("document",)
 
-    def encode(self, path: Path, **kwargs: Any) -> Iterable[Message]:
+    def encode(self, path: Path, **kwargs) -> Iterable[Message]:
         try:
             from mm._mm import gemini_document_part
 
             json_str: str = gemini_document_part(str(path))
             part: dict[str, Any] = json.loads(json_str)
         except (ImportError, RuntimeError):
-            data: bytes = path.read_bytes()
-            mime: str = guess_mime(path.name)
+            data = path.read_bytes()
+            mime = guess_mime(path.name)
             part = _gemini_inline_data_part(data, mime)
 
         logger.debug("gemini_doc [path=%s]", path.name)
