@@ -2,7 +2,7 @@
 
 Surface locally-extracted file metadata — dimensions, EXIF, codec, duration, content hash — directly from the file, without any LLM calls or cache reads.
 
-Use `peek` for **"what is this file?"**. Use [`cat`](CAT_COMMAND.md) for **"what does this file say?"**.
+Use `peek` for **"what is this file?"**. Use [`cat`](cat.md) for **"what does this file say?"**.
 
 ## Synopsis
 

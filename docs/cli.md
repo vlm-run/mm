@@ -1,4 +1,4 @@
-# CLI Surface
+# Overview
 
 `mm` is a Unix-style CLI for multimodal file understanding. It scans, inspects, extracts, searches, and benchmarks files of any kind — images, video, audio, PDFs, code, and plain text — through a consistent nine-command surface.
 
@@ -6,15 +6,15 @@
 
 | Command | Purpose |
 |---------|---------|
-| [`find`](FIND_COMMAND.md) | List and filter files with metadata — like `fd` or `find` |
-| [`wc`](WC_COMMAND.md) | Count files, bytes, estimated lines and tokens — like `wc` for LLM context |
-| [`peek`](PEEK_COMMAND.md) | Directly extracted file metadata: dimensions, EXIF, codec, hash |
-| [`grep`](GREP_COMMAND.md) | Search file contents with regex, FTS, or semantic vector search |
-| [`cat`](CAT_COMMAND.md) | Extract and describe file content — pipeline-driven, LLM-capable |
-| [`sql`](SQL_COMMAND.md) | SQL queries over file metadata, extractions, and chunks |
-| [`bench`](BENCH_COMMAND.md) | Benchmark all subcommands with statistical analysis |
-| [`profile`](PROFILE_MANAGEMENT.md) | Manage LLM provider profiles (base_url, api_key, model) |
-| [`config`](MM_CONFIG.md) | View and set extraction mode configuration |
+| [`find`](find.md) | List and filter files with metadata — like `fd` or `find` |
+| [`wc`](wc.md) | Count files, bytes, estimated lines and tokens — like `wc` for LLM context |
+| [`peek`](peek.md) | Directly extracted file metadata: dimensions, EXIF, codec, hash |
+| [`grep`](grep.md) | Search file contents with regex, FTS, or semantic vector search |
+| [`cat`](cat.md) | Extract and describe file content — pipeline-driven, LLM-capable |
+| [`sql`](sql.md) | SQL queries over file metadata, extractions, and chunks |
+| [`bench`](bench.md) | Benchmark all subcommands with statistical analysis |
+| [`profile`](profile.md) | Manage LLM provider profiles (base_url, api_key, model) |
+| [`config`](config.md) | View and set extraction mode configuration |
 
 ## Global flags
 
