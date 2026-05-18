@@ -73,6 +73,7 @@ nav:
       - Find: FIND_COMMAND.md
       - WC: WC_COMMAND.md
       - Peek: PEEK_COMMAND.md
+      - SQL: SQL_COMMAND.md
       - Grep: GREP_COMMAND.md
       - Cat: CAT_COMMAND.md
       - Bench: BENCH_COMMAND.md
