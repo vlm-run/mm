@@ -13,7 +13,7 @@
         <link rel="canonical" href="https://vlm-run.github.io/mm/GREP_COMMAND/">
       
       
-        <link rel="prev" href="../PEEK_COMMAND/">
+        <link rel="prev" href="../SQL_COMMAND/">
       
       
         <link rel="next" href="../CAT_COMMAND/">
@@ -27,7 +27,7 @@
     
     
       
-        <title>Grep Comnand - mm</title>
+        <title>Grep - mm</title>
       
     
     
@@ -116,7 +116,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Grep Comnand
+              Grep
             
           </span>
         </div>
@@ -372,7 +372,7 @@
   <span class="md-ellipsis">
     
   
-    CLI Surface
+    Surface
   
 
     
@@ -400,7 +400,7 @@
   <span class="md-ellipsis">
     
   
-    Find Command
+    Find
   
 
     
@@ -428,7 +428,7 @@
   <span class="md-ellipsis">
     
   
-    WC Command
+    WC
   
 
     
@@ -456,7 +456,35 @@
   <span class="md-ellipsis">
     
   
-    Peek Command
+    Peek
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../SQL_COMMAND/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    SQL
   
 
     
@@ -493,7 +521,7 @@
   <span class="md-ellipsis">
     
   
-    Grep Comnand
+    Grep
   
 
     
@@ -511,7 +539,7 @@
   <span class="md-ellipsis">
     
   
-    Grep Comnand
+    Grep
   
 
     
@@ -697,7 +725,7 @@
   <span class="md-ellipsis">
     
   
-    Cat Command
+    Cat
   
 
     
@@ -725,7 +753,7 @@
   <span class="md-ellipsis">
     
   
-    Bench Command
+    Bench
   
 
     
@@ -1733,7 +1761,7 @@
 <p>When <code>--semantic</code> is active:</p>
 <ol>
 <li>Vector embeddings are looked up in the <code>chunks_vec</code> SQLite-vec table.</li>
-<li>Files must have been indexed (<code>mm cat --pre-index</code> or <code>mm grep -s --pre-index</code>) for semantic results to appear.</li>
+<li>Files must be indexed (<code>mm grep -s --pre-index</code>) for semantic results to appear.</li>
 <li>Binary files (images, video, audio, PDFs) are searchable semantically even though regex cannot match them.</li>
 <li>Up to 5 semantic results are returned per search.</li>
 </ol>
