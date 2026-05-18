@@ -11,7 +11,7 @@
 | [`peek`](PEEK_COMMAND.md) | Directly extracted file metadata: dimensions, EXIF, codec, hash |
 | [`grep`](GREP_COMMAND.md) | Search file contents with regex, FTS, or semantic vector search |
 | [`cat`](CAT_COMMAND.md) | Extract and describe file content — pipeline-driven, LLM-capable |
-| [`sql`](MM_CLI.md#sql) | SQL queries over the file metadata table |
+| [`sql`](SQL_COMMAND.md) | SQL queries over file metadata, extractions, and chunks |
 | [`bench`](BENCH_COMMAND.md) | Benchmark all subcommands with statistical analysis |
 | [`profile`](PROFILE_MANAGEMENT.md) | Manage LLM provider profiles (base_url, api_key, model) |
 | [`config`](MM_CONFIG.md) | View and set extraction mode configuration |
@@ -48,7 +48,7 @@ Every command that produces tabular output accepts `--format / -f`:
 | `dataset-jsonl` | Newline-delimited JSON records | |
 | `dataset-hf` | HuggingFace Dataset export | |
 
-`mm cat` additionally supports `stdout` as a format (bench snapshot mode).
+`mm bench` additionally supports `stdout` as a format (bench snapshot mode).
 
 ## File kinds
 

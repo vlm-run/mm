@@ -139,7 +139,7 @@ Format: `path:line_number:line_content`.
 When `--semantic` is active:
 
 1. Vector embeddings are looked up in the `chunks_vec` SQLite-vec table.
-2. Files must have been indexed (`mm cat --pre-index` or `mm grep -s --pre-index`) for semantic results to appear.
+2. Files must be indexed (`mm grep -s --pre-index`) for semantic results to appear.
 3. Binary files (images, video, audio, PDFs) are searchable semantically even though regex cannot match them.
 4. Up to 5 semantic results are returned per search.
 
