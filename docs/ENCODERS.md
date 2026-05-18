@@ -12,9 +12,7 @@ file → encoder → [{"role": "user", "content": [...]}] → LLM (if pipeline h
 
 #### `image-resize`
 
-| Description | Parameters |
-|-------------|------------|
-| Resize to bounding box, base64 encode. Uses Rust fast-path when available, Pillow fallback. EXIF orientation applied. | `max_width=1024` |
+Resize to bounding box, base64 encode. Uses Rust fast-path when available, Pillow fallback. EXIF orientation applied. **Parameters:** `max_width=1024`
 
 ```mermaid
 %%{init: {'look': 'neo'} }%%
@@ -39,9 +37,7 @@ graph LR
 
 #### `image-tile`
 
-| Description | Parameters |
-|-------------|------------|
-| Resized overview + tile crops in a single message. Gives VLMs both global context and fine detail. Falls back to overview-only when image fits in one tile. | `max_width=1024` |
+Resized overview + tile crops in a single message. Gives VLMs both global context and fine detail. Falls back to overview-only when image fits in one tile. **Parameters:** `max_width=1024`
 
 ```mermaid
 %%{init: {'look': 'neo'} }%%
@@ -73,9 +69,7 @@ graph LR
 
 #### `video-mosaic`
 
-| Description | Parameters |
-|-------------|------------|
-| Scene-aware frame extraction + tiled mosaic grids. Default for fast mode. Uses PySceneDetect when available, falls back to uniform sampling. | `tile_cols=4, tile_rows=4, thumb_width=160, num_mosaics=8, num_frames=128` |
+Scene-aware frame extraction + tiled mosaic grids. Default for fast mode. Uses PySceneDetect when available, falls back to uniform sampling. **Parameters:** `tile_cols=4, tile_rows=4, thumb_width=160, num_mosaics=8, num_frames=128`
 
 ```mermaid
 %%{init: {'look': 'neo'} }%%
@@ -101,17 +95,13 @@ graph LR
 
 #### `video-mosaic-w-transcript`
 
-| Description | Parameters |
-|-------------|------------|
-| `video-mosaic` + Whisper transcript prepended as the first message. | `tile_cols=4, tile_rows=4, thumb_width=160, num_mosaics=8, num_frames=128, model=None, language=auto, audio_speed=1.0` |
+`video-mosaic` + Whisper transcript prepended as the first message. **Parameters:** `tile_cols=4, tile_rows=4, thumb_width=160, num_mosaics=8, num_frames=128, model=None, language=auto, audio_speed=1.0`
 
 ---
 
 #### `video-frames`
 
-| Description | Parameters |
-|-------------|------------|
-| Extract frames at N fps via parallel ffmpeg seeking, batch into messages (max 16 frames each). Text header with time range per batch. | `fps=1.0, max_width=1024, max_frames_per_message=16` |
+Extract frames at N fps via parallel ffmpeg seeking, batch into messages (max 16 frames each). Text header with time range per batch. **Parameters:** `fps=1.0, max_width=1024, max_frames_per_message=16`
 
 ```mermaid
 %%{init: {'look': 'neo'} }%%
@@ -137,9 +127,7 @@ graph LR
 
 #### `video-frames-w-transcript`
 
-| Description | Parameters |
-|-------------|------------|
-| Frame sampling + Whisper audio transcription. Transcript yielded first as context, then batched frames. Default for accurate mode. Falls back to frame-only when Whisper is unavailable. | `fps=1.0, max_width=1024, max_frames_per_message=16, model=None, language=auto, audio_speed=1.0` |
+Frame sampling + Whisper audio transcription. Transcript yielded first as context, then batched frames. Default for accurate mode. Falls back to frame-only when Whisper is unavailable. **Parameters:** `fps=1.0, max_width=1024, max_frames_per_message=16, model=None, language=auto, audio_speed=1.0`
 
 ```mermaid
 %%{init: {'look': 'neo'} }%%
@@ -169,25 +157,19 @@ graph LR
 
 #### `video-keyframes`
 
-| Description | Parameters |
-|-------------|------------|
-| Extract I-frames (keyframes) directly from the video bitstream. | `max_keyframes=None, max_width=1024, max_keyframes_per_message=16` |
+Extract I-frames (keyframes) directly from the video bitstream. **Parameters:** `max_keyframes=None, max_width=1024, max_keyframes_per_message=16`
 
 ---
 
 #### `video-keyframes-w-transcript`
 
-| Description | Parameters |
-|-------------|------------|
-| `video-keyframes` + Whisper transcript prepended as the first message. | `max_keyframes=None, max_width=1024, max_keyframes_per_message=16, model=None, language=auto, audio_speed=1.0` |
+`video-keyframes` + Whisper transcript prepended as the first message. **Parameters:** `max_keyframes=None, max_width=1024, max_keyframes_per_message=16, model=None, language=auto, audio_speed=1.0`
 
 ---
 
 #### `video-shots`
 
-| Description | Parameters |
-|-------------|------------|
-| PySceneDetect shot detection, extract representative frames per shot. One message per shot. | `threshold=27.0, max_frames_per_shot=8, max_width=1024` |
+PySceneDetect shot detection, extract representative frames per shot. One message per shot. **Parameters:** `threshold=27.0, max_frames_per_shot=8, max_width=1024`
 
 ```mermaid
 %%{init: {'look': 'neo'} }%%
@@ -219,17 +201,13 @@ graph LR
 
 #### `video-shots-w-transcript`
 
-| Description | Parameters |
-|-------------|------------|
-| `video-shots` + Whisper transcript prepended as the first message. | `threshold=27.0, max_frames_per_shot=8, max_width=1024, model=None, language=auto, audio_speed=1.0` |
+`video-shots` + Whisper transcript prepended as the first message. **Parameters:** `threshold=27.0, max_frames_per_shot=8, max_width=1024, model=None, language=auto, audio_speed=1.0`
 
 ---
 
 #### `video-shot-mosaic`
 
-| Description | Parameters |
-|-------------|------------|
-| PySceneDetect shot detection, build a mosaic grid per shot. One message per shot. | `threshold=27.0, tile_cols=4, tile_rows=4, thumb_width=160` |
+PySceneDetect shot detection, build a mosaic grid per shot. One message per shot. **Parameters:** `threshold=27.0, tile_cols=4, tile_rows=4, thumb_width=160`
 
 ```mermaid
 %%{init: {'look': 'neo'} }%%
@@ -261,17 +239,13 @@ graph LR
 
 #### `video-shot-mosaic-w-transcript`
 
-| Description | Parameters |
-|-------------|------------|
-| `video-shot-mosaic` + Whisper transcript prepended as the first message. | `threshold=27.0, tile_cols=4, tile_rows=4, thumb_width=160, model=None, language=auto, audio_speed=1.0` |
+`video-shot-mosaic` + Whisper transcript prepended as the first message. **Parameters:** `threshold=27.0, tile_cols=4, tile_rows=4, thumb_width=160, model=None, language=auto, audio_speed=1.0`
 
 ---
 
 #### `video-chunks`
 
-| Description | Parameters |
-|-------------|------------|
-| Split into overlapping time-based chunks, extract frames per chunk. One message per chunk with time range header. | `chunk_duration=60, overlap=20, max_width=1024, frames_per_chunk=16` |
+Split into overlapping time-based chunks, extract frames per chunk. One message per chunk with time range header. **Parameters:** `chunk_duration=60, overlap=20, max_width=1024, frames_per_chunk=16`
 
 ```mermaid
 %%{init: {'look': 'neo'} }%%
@@ -303,57 +277,43 @@ graph LR
 
 #### `video-clips`
 
-| Description | Parameters |
-|-------------|------------|
-| Base64-encode video clips of uniform duration (no frame extraction). | `duration=0, max_size_mb=None` |
+Base64-encode video clips of uniform duration (no frame extraction). **Parameters:** `duration=0, max_size_mb=None`
 
 ---
 
 #### `video-clips-w-transcript`
 
-| Description | Parameters |
-|-------------|------------|
-| `video-clips` + Whisper transcript prepended as the first message. | `duration=0, max_size_mb=None, model=None, language=auto, audio_speed=1.0` |
+`video-clips` + Whisper transcript prepended as the first message. **Parameters:** `duration=0, max_size_mb=None, model=None, language=auto, audio_speed=1.0`
 
 ---
 
 #### `video-summary`
 
-| Description | Parameters |
-|-------------|------------|
-| Adaptive N-frame visual summary of a video. | `num_frames=12, use_scene_detection=True, max_width=1024` |
+Adaptive N-frame visual summary of a video. **Parameters:** `num_frames=12, use_scene_detection=True, max_width=1024`
 
 ---
 
 #### `video-summary-w-transcript`
 
-| Description | Parameters |
-|-------------|------------|
-| `video-summary` + Whisper transcript prepended as the first message. | `num_frames=12, use_scene_detection=True, max_width=1024, model=None, language=auto, audio_speed=1.0` |
+`video-summary` + Whisper transcript prepended as the first message. **Parameters:** `num_frames=12, use_scene_detection=True, max_width=1024, model=None, language=auto, audio_speed=1.0`
 
 ---
 
 #### `video-transcript`
 
-| Description | Parameters |
-|-------------|------------|
-| Whisper transcript only — no frames, no images. | `model=None, language=auto, audio_speed=1.0` |
+Extract audio → Whisper transcription only, no visual frames. For podcasts, talks, interviews.  **Parameters:** `model=None, language=auto, audio_speed=1.0`
 
 ---
 
 #### `video-captions`
 
-| Description | Parameters |
-|-------------|------------|
-| Extract embedded subtitle stream from video; falls back to Whisper transcription if no subtitle track is found. | `subtitle_stream=0, fallback_to_whisper=True, model=None, language=auto, audio_speed=1.0, backend=None, base_url=None, api_key=None` |
+Extract embedded subtitle stream from video; falls back to Whisper transcription if no subtitle track is found. **Parameters:** `subtitle_stream=0, fallback_to_whisper=True, model=None, language=auto, audio_speed=1.0, backend=None, base_url=None, api_key=None`
 
 ---
 
 #### `video-gemini`
 
-| Description | Parameters |
-|-------------|------------|
-| Gemini native `inline_data` passthrough. Sends the entire video file. Rust fast-path with Python fallback. | — |
+Gemini native `inline_data` passthrough. Sends the entire video file. Rust fast-path with Python fallback.
 
 ```mermaid
 %%{init: {'look': 'neo'} }%%
@@ -378,9 +338,7 @@ graph LR
 
 #### `video-gemini-chunked`
 
-| Description | Parameters |
-|-------------|------------|
-| Gemini passthrough with duration-based chunking via ffmpeg. Each chunk as a separate Gemini Part. | `max_seconds=120, overlap=10` |
+Gemini passthrough with duration-based chunking via ffmpeg. Each chunk as a separate Gemini Part. **Parameters:** `max_seconds=120, overlap=10`
 
 ```mermaid
 %%{init: {'look': 'neo'} }%%
@@ -414,17 +372,13 @@ graph LR
 
 #### `audio-base64`
 
-| Description | Parameters |
-|-------------|------------|
-| Send the raw audio file as a base64-encoded `input_audio` part. Default for Python `Context.to_messages()`. | `format=auto` |
+Send the raw audio file as a base64-encoded `input_audio` part. Default for Python `Context.to_messages()`. **Parameters:** `format=auto`
 
 ---
 
 #### `audio-transcribe`
 
-| Description | Parameters |
-|-------------|------------|
-| Extract audio via ffmpeg, transcribe with Whisper (lightning-whisper-mlx / faster-whisper). Returns timestamped transcript as a text message. | `model=None, language=auto, audio_speed=1.0, backend=None, base_url=None, api_key=None` |
+Extract audio via ffmpeg, transcribe with Whisper (lightning-whisper-mlx / faster-whisper). Returns timestamped transcript as a text message. **Parameters:** `model=None, language=auto, audio_speed=1.0, backend=None, base_url=None, api_key=None`
 
 ```mermaid
 %%{init: {'look': 'neo'} }%%
@@ -450,9 +404,7 @@ graph LR
 
 #### `audio-gemini`
 
-| Description | Parameters |
-|-------------|------------|
-| Gemini native `inline_data` passthrough for audio files. Splits into overlapping chunks for files longer than `max_seconds`. | `max_seconds=120, overlap=10` |
+Gemini native `inline_data` passthrough for audio files. Splits into overlapping chunks for files longer than `max_seconds`. **Parameters:** `max_seconds=120, overlap=10`
 
 ```mermaid
 %%{init: {'look': 'neo'} }%%
@@ -490,9 +442,7 @@ graph LR
 
 #### `document-page-text`
 
-| Description | Parameters |
-|-------------|------------|
-| Text-per-page extraction from PDF/DOCX/PPTX as structured text messages (no rasterization). Default for fast mode. Much lighter than `document-rasterize`. | `pages_per_message=4, max_pages=None` |
+Text-per-page extraction from PDF/DOCX/PPTX as structured text messages (no rasterization). Default for fast mode. Much lighter than `document-rasterize`. **Parameters:** `pages_per_message=4, max_pages=None`
 
 ```mermaid
 %%{init: {'look': 'neo'} }%%
@@ -518,9 +468,7 @@ graph LR
 
 #### `document-rasterize`
 
-| Description | Parameters |
-|-------------|------------|
-| Render PDF pages as JPEG images via pypdfium2, batch into messages. Text header with page range per batch. | `max_width=1024, pages_per_message=4, max_pages=None` |
+Render PDF pages as JPEG images via pypdfium2, batch into messages. Text header with page range per batch. **Parameters:** `max_width=1024, pages_per_message=4, max_pages=None`
 
 ```mermaid
 %%{init: {'look': 'neo'} }%%
@@ -546,9 +494,7 @@ graph LR
 
 #### `document-rasterize-text`
 
-| Description | Parameters |
-|-------------|------------|
-| Rasterize pages + interleave extracted text after each image. Useful when the VLM benefits from an OCR fallback alongside the rendered page. | `max_width=1024, pages_per_message=4, max_pages=None` |
+Rasterize pages + interleave extracted text after each image. Useful when the VLM benefits from an OCR fallback alongside the rendered page. **Parameters:** `max_width=1024, pages_per_message=4, max_pages=None`
 
 ```mermaid
 %%{init: {'look': 'neo'} }%%
@@ -579,9 +525,7 @@ graph LR
 
 #### `document-gemini`
 
-| Description | Parameters |
-|-------------|------------|
-| Gemini native `inline_data` passthrough. Sends the entire document file. Rust fast-path with Python fallback. | — |
+Gemini native `inline_data` passthrough. Sends the entire document file. Rust fast-path with Python fallback.
 
 ```mermaid
 %%{init: {'look': 'neo'} }%%

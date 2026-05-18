@@ -25,14 +25,8 @@ theme:
       toggle:
         icon: material/brightness-4
         name: Switch to light mode
-  font:
-    text: Geist
-    code: Geist Mono
   icon:
     repo: fontawesome/brands/python
-
-extra_css:
-  - stylesheets/extra.css
 
 markdown_extensions:
   - admonition
