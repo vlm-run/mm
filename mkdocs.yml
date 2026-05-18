@@ -68,6 +68,17 @@ plugins:
 nav:
   - Home: index.md
   - User guide: USER_GUIDE.md
+  - CLI:
+      - Surface: MM_CLI.md
+      - Find: FIND_COMMAND.md
+      - WC: WC_COMMAND.md
+      - Peek: PEEK_COMMAND.md
+      - SQL: SQL_COMMAND.md
+      - Grep: GREP_COMMAND.md
+      - Cat: CAT_COMMAND.md
+      - Bench: BENCH_COMMAND.md
+      - Profile: PROFILE_MANAGEMENT.md
+      - Config: MM_CONFIG.md
   - Python API:
       - Index: api.md
       - mm.Context: mm_context.md
@@ -80,11 +91,6 @@ nav:
       - Cookbook (local vlm): notebooks/mm_cookbook.ipynb
       - Context API: notebooks/mm-context-api.ipynb
       - Context visualization: notebooks/mm-context-viz.ipynb
-  # - Roadmap: ROADMAP.md
-  - Spec:
-      - Overview: spec/SPEC.md
-      - cat: spec/cat.md
-      - CLI use: spec/cli-use.md
   - Pipeline templates:
       - Image: spec-templates/image.md
       - Video: spec-templates/video.md
