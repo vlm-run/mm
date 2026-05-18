@@ -10,13 +10,13 @@
       
       
       
-        <link rel="canonical" href="https://vlm-run.github.io/mm/PIPELINES/">
+        <link rel="canonical" href="https://vlm-run.github.io/mm/BENCH_COMMAND/">
       
       
-        <link rel="prev" href="../ENCODERS/">
+        <link rel="prev" href="../CAT_COMMAND/">
       
       
-        <link rel="next" href="../FIXTURES/">
+        <link rel="next" href="../PROFILE_MANAGEMENT/">
       
       
         
@@ -27,7 +27,7 @@
     
     
       
-        <title>Pipelines - mm</title>
+        <title>Bench Command - mm</title>
       
     
     
@@ -80,7 +80,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#pipelines" class="md-skip">
+        <a href="#mm-bench" class="md-skip">
           Skip to content
         </a>
       
@@ -116,7 +116,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Pipelines
+              Bench Command
             
           </span>
         </div>
@@ -313,18 +313,20 @@
       
   
   
+    
   
   
+  
     
     
     
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
         
           
           <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
@@ -345,7 +347,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_3">
             <span class="md-nav__icon md-icon"></span>
             
@@ -528,10 +530,37 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../BENCH_COMMAND/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Bench Command
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -547,6 +576,147 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#synopsis" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Synopsis
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#options" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Options
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#benchmark-modes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Benchmark modes
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#output-metrics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Output metrics
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#filtering" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Filtering
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#examples" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Examples
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#saving-results" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Saving results
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#external-benchfiles" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        External benchfiles
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#stdout-snapshot-mode" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Stdout snapshot mode
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#host-information" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Host information
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#notes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Notes
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -783,37 +953,10 @@
       
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Pipelines
-  
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../PIPELINES/" class="md-nav__link">
         
   
   
@@ -829,87 +972,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#generatemodel-pinning-a-model-per-pipeline" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        generate.model — pinning a model per pipeline
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#generateextra_body-provider-specific-knobs" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        generate.extra_body — provider-specific knobs
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#override-surfaces-full-precedence-rules" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Override surfaces — full precedence rules
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Override surfaces — full precedence rules">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#example-my_filterpy" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Example my_filter.py
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#encoders" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Encoders
-      
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -1300,10 +1362,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#generatemodel-pinning-a-model-per-pipeline" class="md-nav__link">
+  <a href="#synopsis" class="md-nav__link">
     <span class="md-ellipsis">
       
-        generate.model — pinning a model per pipeline
+        Synopsis
       
     </span>
   </a>
@@ -1311,10 +1373,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#generateextra_body-provider-specific-knobs" class="md-nav__link">
+  <a href="#options" class="md-nav__link">
     <span class="md-ellipsis">
       
-        generate.extra_body — provider-specific knobs
+        Options
       
     </span>
   </a>
@@ -1322,38 +1384,98 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#override-surfaces-full-precedence-rules" class="md-nav__link">
+  <a href="#benchmark-modes" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Override surfaces — full precedence rules
+        Benchmark modes
       
     </span>
   </a>
-  
-    <nav class="md-nav" aria-label="Override surfaces — full precedence rules">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#example-my_filterpy" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Example my_filter.py
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#encoders" class="md-nav__link">
+  <a href="#output-metrics" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Encoders
+        Output metrics
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#filtering" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Filtering
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#examples" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Examples
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#saving-results" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Saving results
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#external-benchfiles" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        External benchfiles
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#stdout-snapshot-mode" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Stdout snapshot mode
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#host-information" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Host information
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#notes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Notes
       
     </span>
   </a>
@@ -1377,144 +1499,340 @@
 
 
 
-<h1 id="pipelines">Pipelines<a class="headerlink" href="#pipelines" title="Permanent link">&para;</a></h1>
-<p>Pipelines configure a 2-stage flow for LLM-based media understanding:
-<strong>encode</strong> (via an encoder) then <strong>generate</strong> (LLM call) to produce text output.</p>
-<pre class="mermaid"><code>%%{init: {'look': 'neo'} }%%
-graph LR
-  file("Media File")
-
-  subgraph encode ["Encode"]
-    encoder("Encoder")
-  end
-
-  subgraph message ["Message"]
-    msg("Messages")
-  end
-
-  subgraph generate ["Generate"]
-    llm("MLLM")
-  end
-
-  out("stdout")
-
-  file --&gt; encoder --&gt; msg --&gt; llm --&gt; out
-  style encode rx:10px,ry:10px
-  style message rx:10px,ry:10px
-  style generate rx:10px,ry:10px</code></pre>
-<p>Each pipeline is a YAML file under <code>pipelines/{kind}/{mode}.yaml</code> that references
-an encoder from <code>mm/encoders/</code> and configures LLM generation parameters.</p>
-<blockquote>
-<p><strong>Pipeline scope.</strong> Pipelines apply to image / video / audio / PDF —
-the binary media kinds. <code>--mode fast</code> (default) runs the fast pipeline;
-<code>--mode accurate</code> runs the LLM-heavy one. <code>kind=text</code> and non-PDF
-documents (<code>.docx</code> / <code>.pptx</code>) follow a passthrough flow regardless of
-mode, so <code>-p</code>, <code>--encode.*</code>, and <code>--generate.*</code> are no-ops for those.</p>
-</blockquote>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>mm<span class="w"> </span>cat<span class="w"> </span>photo.jpg<span class="w"> </span>-m<span class="w"> </span>fast<span class="w"> </span>-p<span class="w"> </span>resize<span class="w">          </span><span class="c1"># named encoder (fast pipeline)</span>
-<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>mm<span class="w"> </span>cat<span class="w"> </span>video.mp4<span class="w"> </span>-m<span class="w"> </span>fast<span class="w"> </span>-p<span class="w"> </span>shot-mosaic<span class="w">     </span><span class="c1"># scene-aware video encoder</span>
-<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>
-<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="c1"># Override pipeline config from CLI</span>
-<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>mm<span class="w"> </span>cat<span class="w"> </span>photo.jpg<span class="w"> </span>-m<span class="w"> </span>accurate<span class="w"> </span>--encode.strategy<span class="w"> </span>tile
-<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>mm<span class="w"> </span>cat<span class="w"> </span>photo.jpg<span class="w"> </span>-m<span class="w"> </span>accurate<span class="w"> </span>--generate.max-tokens<span class="w"> </span><span class="m">1024</span><span class="w"> </span>--generate.temperature<span class="w"> </span><span class="m">0</span>.5
-<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>mm<span class="w"> </span>cat<span class="w"> </span>photo.jpg<span class="w"> </span>-m<span class="w"> </span>accurate<span class="w"> </span>--prompt<span class="w"> </span><span class="s2">&quot;Describe in one sentence.&quot;</span><span class="w"> </span>--model<span class="w"> </span>moondream2
-<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>
-<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a><span class="c1"># Override individual strategy_opts entries (repeatable, KEY=VALUE form)</span>
-<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>mm<span class="w"> </span>cat<span class="w"> </span>photo.jpg<span class="w"> </span>-m<span class="w"> </span>accurate<span class="w"> </span>--encode.strategy_opts<span class="w"> </span><span class="nv">max_width</span><span class="o">=</span><span class="m">768</span>
-<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>mm<span class="w"> </span>cat<span class="w"> </span>video.mp4<span class="w"> </span>-m<span class="w"> </span>accurate<span class="w"> </span>--encode.strategy_opts<span class="w"> </span><span class="nv">max_width</span><span class="o">=</span><span class="m">768</span><span class="w"> </span>--encode.strategy_opts<span class="w"> </span><span class="nv">fps</span><span class="o">=</span><span class="m">5</span>
-<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>
-<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a><span class="c1"># Inspect the YAML source of a built-in pipeline (use as a template for your own)</span>
-<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>mm<span class="w"> </span>cat<span class="w"> </span>--print-pipeline<span class="w"> </span>image/accurate
-<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>
-<a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a><span class="c1"># Load explicit pipeline YAML (repeatable, dispatched by kind)</span>
-<a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a>mm<span class="w"> </span>cat<span class="w"> </span>photo.jpg<span class="w"> </span>-m<span class="w"> </span>accurate<span class="w"> </span>-p<span class="w"> </span>~/my-image-pipeline.yaml
-<a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a>mm<span class="w"> </span>cat<span class="w"> </span>*.jpg<span class="w"> </span>*.mp4<span class="w"> </span>-m<span class="w"> </span>accurate<span class="w"> </span>-p<span class="w"> </span>image.yaml<span class="w"> </span>-p<span class="w"> </span>video.yaml
-<a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a>
-<a id="__codelineno-0-20" name="__codelineno-0-20" href="#__codelineno-0-20"></a><span class="c1"># Custom Python transform via pyfunc</span>
-<a id="__codelineno-0-21" name="__codelineno-0-21" href="#__codelineno-0-21"></a>mm<span class="w"> </span>cat<span class="w"> </span>photo.jpg<span class="w"> </span>-m<span class="w"> </span>accurate<span class="w"> </span>--encode.pyfunc<span class="w"> </span>~/my_filter.py
-<a id="__codelineno-0-22" name="__codelineno-0-22" href="#__codelineno-0-22"></a>
-<a id="__codelineno-0-23" name="__codelineno-0-23" href="#__codelineno-0-23"></a><span class="c1"># Per-call model + extra_body for provider-specific knobs</span>
-<a id="__codelineno-0-24" name="__codelineno-0-24" href="#__codelineno-0-24"></a><span class="c1"># (e.g. vlmrt&#39;s method/method_params/video_fps/image_resolution).</span>
-<a id="__codelineno-0-25" name="__codelineno-0-25" href="#__codelineno-0-25"></a>mm<span class="w"> </span>--profile<span class="w"> </span>vlmrt<span class="w"> </span>cat<span class="w"> </span>photo.jpg<span class="w"> </span>-m<span class="w"> </span>accurate<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-0-26" name="__codelineno-0-26" href="#__codelineno-0-26"></a><span class="w">  </span>--model<span class="w"> </span>moondream2<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-0-27" name="__codelineno-0-27" href="#__codelineno-0-27"></a><span class="w">  </span>--generate.extra-body<span class="w"> </span><span class="s1">&#39;{&quot;method&quot;:&quot;detect&quot;,&quot;method_params&quot;:{&quot;object&quot;:&quot;fish&quot;}}&#39;</span>
+<h1 id="mm-bench">mm bench<a class="headerlink" href="#mm-bench" title="Permanent link">&para;</a></h1>
+<p>Benchmark all subcommands with statistical analysis — measure latency, throughput, and LLM token usage across the full command matrix.</p>
+<h2 id="synopsis">Synopsis<a class="headerlink" href="#synopsis" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>mm<span class="w"> </span>bench<span class="w"> </span><span class="o">[</span>DIRECTORY<span class="o">]</span><span class="w"> </span><span class="o">[</span>OPTIONS<span class="o">]</span>
 </code></pre></div>
-<h2 id="generatemodel-pinning-a-model-per-pipeline"><code>generate.model</code> — pinning a model per pipeline<a class="headerlink" href="#generatemodel-pinning-a-model-per-pipeline" title="Permanent link">&para;</a></h2>
-<p>The <code>generate</code> block accepts an optional <code>model:</code> string that overrides
-the active profile's default model whenever this pipeline is used.
-Leaving it unset (or <code>null</code>) means "use the profile model". Useful for
-shipping a pipeline that always targets a specific deployment-side model
-(e.g. an OCR pipeline that always wants <code>paddleocr-v5</code>).</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="c1"># ~/.config/mm/pipelines/image/accurate.yaml</span>
-<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">image</span>
-<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="nt">mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">accurate</span>
-<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="nt">generate</span><span class="p">:</span>
-<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="w">  </span><span class="nt">prompt</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Read every line of text on this image.</span>
-<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="w">  </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">paddleocr-v5</span>
-<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="w">  </span><span class="nt">extra_body</span><span class="p">:</span>
-<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a><span class="w">    </span><span class="nt">method</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ocr</span>
+<p><code>DIRECTORY</code> defaults to <code>.</code> (current directory).</p>
+<h2 id="options">Options<a class="headerlink" href="#options" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Short</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--rounds N</code></td>
+<td><code>-r</code></td>
+<td>int</td>
+<td>Number of measurement rounds (default: 3)</td>
+</tr>
+<tr>
+<td><code>--warmup N</code></td>
+<td><code>-w</code></td>
+<td>int</td>
+<td>Number of warmup rounds before timing (default: 1)</td>
+</tr>
+<tr>
+<td><code>--mode MODE</code></td>
+<td><code>-m</code></td>
+<td>enum</td>
+<td>Groups to include: <code>metadata</code> (default), <code>fast</code>, <code>accurate</code>, <code>all</code></td>
+</tr>
+<tr>
+<td><code>--command SUBSTR</code></td>
+<td><code>-c</code></td>
+<td>string</td>
+<td>Substring filter on benchmark names (e.g. <code>cat</code>)</td>
+</tr>
+<tr>
+<td><code>--group NAME</code></td>
+<td><code>-g</code></td>
+<td>string</td>
+<td>Exact group name filter (case-insensitive)</td>
+</tr>
+<tr>
+<td><code>--model MODEL</code></td>
+<td></td>
+<td>string</td>
+<td>Filter to rows whose <code>model</code> tag matches this value</td>
+</tr>
+<tr>
+<td><code>--task TASK</code></td>
+<td></td>
+<td>string</td>
+<td>Filter to rows whose <code>task</code> tag matches this value</td>
+</tr>
+<tr>
+<td><code>--format FORMAT</code></td>
+<td><code>-f</code></td>
+<td>enum</td>
+<td>Output format: <code>rich</code> (default), <code>json</code>, <code>tsv</code>, <code>csv</code>, <code>stdout</code></td>
+</tr>
+<tr>
+<td><code>--bench-file PATH</code></td>
+<td><code>-b</code></td>
+<td>path</td>
+<td>External Python benchfile that replaces the built-in command set</td>
+</tr>
+<tr>
+<td><code>--dry-run</code></td>
+<td></td>
+<td>flag</td>
+<td>Resolve the benchmark plan without executing commands</td>
+</tr>
+<tr>
+<td><code>--host-info</code></td>
+<td></td>
+<td>flag</td>
+<td>Print host system info and exit</td>
+</tr>
+<tr>
+<td><code>--timeout SECONDS</code></td>
+<td></td>
+<td>float</td>
+<td>Per-command timeout for stdout snapshot mode (default: 600s)</td>
+</tr>
+<tr>
+<td><code>--with-generate</code></td>
+<td></td>
+<td>flag</td>
+<td>Stdout snapshot mode: include the LLM generate step</td>
+</tr>
+</tbody>
+</table>
+<h2 id="benchmark-modes">Benchmark modes<a class="headerlink" href="#benchmark-modes" title="Permanent link">&para;</a></h2>
+<p>The <code>--mode</code> flag selects which command groups to run:</p>
+<table>
+<thead>
+<tr>
+<th>Mode</th>
+<th>Groups included</th>
+<th>Use case</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>metadata</code> (default)</td>
+<td><code>overhead</code> + <code>metadata</code></td>
+<td>Fast, no LLM required — Unix-comparable baseline</td>
+</tr>
+<tr>
+<td><code>fast</code></td>
+<td><code>overhead</code> + <code>metadata</code> + fast pipelines</td>
+<td>Encoder performance including short LLM calls</td>
+</tr>
+<tr>
+<td><code>accurate</code></td>
+<td><code>overhead</code> + <code>metadata</code> + accurate pipelines</td>
+<td>Full LLM pipeline benchmarks</td>
+</tr>
+<tr>
+<td><code>all</code></td>
+<td>All groups</td>
+<td>Complete suite</td>
+</tr>
+</tbody>
+</table>
+<h2 id="output-metrics">Output metrics<a class="headerlink" href="#output-metrics" title="Permanent link">&para;</a></h2>
+<p>Each benchmark row reports:</p>
+<table>
+<thead>
+<tr>
+<th>Metric</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>mean_ms</code></td>
+<td>Mean latency in milliseconds</td>
+</tr>
+<tr>
+<td><code>std_ms</code></td>
+<td>Standard deviation across rounds</td>
+</tr>
+<tr>
+<td><code>min_ms</code></td>
+<td>Minimum observed latency</td>
+</tr>
+<tr>
+<td><code>max_ms</code></td>
+<td>Maximum observed latency</td>
+</tr>
+<tr>
+<td><code>median_ms</code></td>
+<td>Median latency</td>
+</tr>
+<tr>
+<td><code>speed</code></td>
+<td>Realtime multiplier (Nx). For audio/video: media duration ÷ processing time. For files: files/second.</td>
+</tr>
+<tr>
+<td><code>mb_per_sec</code></td>
+<td>Throughput in MB/s</td>
+</tr>
+<tr>
+<td><code>bits_per_sec</code></td>
+<td>Uncompressed throughput in bits/s. Images/video: width × height × 24 bits × fps × duration. Other: file size × 8.</td>
+</tr>
+<tr>
+<td><code>prompt_tokens</code></td>
+<td>LLM prompt tokens consumed (accurate mode only)</td>
+</tr>
+<tr>
+<td><code>completion_tokens</code></td>
+<td>LLM completion tokens (accurate mode only)</td>
+</tr>
+</tbody>
+</table>
+<p>Latency values are color-coded in rich output: <strong>green</strong> = fast, <strong>yellow</strong> = acceptable, <strong>red</strong> = slow. Thresholds differ by group (<code>overhead</code> &lt; <code>metadata</code> &lt; <code>fast</code> &lt; <code>accurate</code>).</p>
+<h2 id="filtering">Filtering<a class="headerlink" href="#filtering" title="Permanent link">&para;</a></h2>
+<p>Multiple filters combine with AND:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="c1"># only cat benchmarks</span>
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>mm<span class="w"> </span>bench<span class="w"> </span>~/data<span class="w"> </span>--command<span class="w"> </span>cat
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="c1"># only metadata group</span>
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>mm<span class="w"> </span>bench<span class="w"> </span>~/data<span class="w"> </span>--group<span class="w"> </span>metadata
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="c1"># only rows tagged with model=qwen3.5-0.8b</span>
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>mm<span class="w"> </span>bench<span class="w"> </span>~/data<span class="w"> </span>-b<span class="w"> </span>commands.py<span class="w"> </span>--model<span class="w"> </span>qwen3.5-0.8b
+<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>
+<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a><span class="c1"># only OCR task rows</span>
+<a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a>mm<span class="w"> </span>bench<span class="w"> </span>~/data<span class="w"> </span>-b<span class="w"> </span>commands.py<span class="w"> </span>--task<span class="w"> </span>ocr
+<a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a>
+<a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a><span class="c1"># model AND task together</span>
+<a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a>mm<span class="w"> </span>bench<span class="w"> </span>~/data<span class="w"> </span>-b<span class="w"> </span>commands.py<span class="w"> </span>--task<span class="w"> </span>cap<span class="w"> </span>--model<span class="w"> </span>facebook/sam3
 </code></pre></div>
-<p>CLI <code>--model</code> / <code>--generate.model</code> always wins over a pipeline-pinned
-model.</p>
-<h2 id="generateextra_body-provider-specific-knobs"><code>generate.extra_body</code> — provider-specific knobs<a class="headerlink" href="#generateextra_body-provider-specific-knobs" title="Permanent link">&para;</a></h2>
-<p>The <code>generate</code> block accepts an arbitrary <code>extra_body:</code> mapping that is
-forwarded verbatim to the OpenAI SDK's <code>extra_body=</code> argument. Use it when
-your endpoint needs request fields beyond the standard OpenAI surface
-(temperature/max_tokens/json_mode are still first-class fields).</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="c1"># ~/.config/mm/pipelines/image/accurate.yaml</span>
-<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">image</span>
-<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="nt">mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">accurate</span>
-<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="nt">encode</span><span class="p">:</span>
-<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="w">  </span><span class="nt">strategy</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">resize</span>
-<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="w">  </span><span class="nt">strategy_opts</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt"> max_width</span><span class="p">:</span><span class="w"> </span><span class="nv">1024</span><span class="w"> </span><span class="p p-Indicator">}</span>
-<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="nt">generate</span><span class="p">:</span>
-<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a><span class="w">  </span><span class="nt">prompt</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Describe this image.</span>
-<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a><span class="w">  </span><span class="nt">max_tokens</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">512</span>
-<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a><span class="w">  </span><span class="nt">extra_body</span><span class="p">:</span>
-<a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a><span class="w">    </span><span class="nt">method</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">caption</span>
-<a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a><span class="w">    </span><span class="nt">method_params</span><span class="p">:</span>
-<a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a><span class="w">      </span><span class="nt">length</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">normal</span>
-<a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a><span class="w">    </span><span class="nt">image_resolution</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;448x448&quot;</span>
+<p>Conventional <code>task</code> tag values: <code>cap</code>, <code>ocr</code>, <code>det</code>, <code>seg</code>, <code>llm</code>, <code>pose</code>, <code>track</code>, <code>noop</code>.</p>
+<h2 id="examples">Examples<a class="headerlink" href="#examples" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="c1"># overhead + metadata (no LLM)</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>mm<span class="w"> </span>bench<span class="w"> </span>~/data
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="c1"># only metadata group (Unix-comparable subset)</span>
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>mm<span class="w"> </span>bench<span class="w"> </span>~/data<span class="w"> </span>--mode<span class="w"> </span>metadata
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="c1"># overhead + metadata + accurate (LLM required)</span>
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>mm<span class="w"> </span>bench<span class="w"> </span>~/data<span class="w"> </span>--mode<span class="w"> </span>accurate
+<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>
+<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a><span class="c1"># full suite</span>
+<a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a>mm<span class="w"> </span>bench<span class="w"> </span>~/data<span class="w"> </span>--mode<span class="w"> </span>all
+<a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a>
+<a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a><span class="c1"># more rounds for statistical stability</span>
+<a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a>mm<span class="w"> </span>bench<span class="w"> </span>~/data<span class="w"> </span>--rounds<span class="w"> </span><span class="m">5</span>
+<a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a>
+<a id="__codelineno-2-16" name="__codelineno-2-16" href="#__codelineno-2-16"></a><span class="c1"># no warmup</span>
+<a id="__codelineno-2-17" name="__codelineno-2-17" href="#__codelineno-2-17"></a>mm<span class="w"> </span>bench<span class="w"> </span>~/data<span class="w"> </span>--warmup<span class="w"> </span><span class="m">0</span>
+<a id="__codelineno-2-18" name="__codelineno-2-18" href="#__codelineno-2-18"></a>
+<a id="__codelineno-2-19" name="__codelineno-2-19" href="#__codelineno-2-19"></a><span class="c1"># JSON output for archival</span>
+<a id="__codelineno-2-20" name="__codelineno-2-20" href="#__codelineno-2-20"></a>mm<span class="w"> </span>bench<span class="w"> </span>~/data<span class="w"> </span>--format<span class="w"> </span>json
+<a id="__codelineno-2-21" name="__codelineno-2-21" href="#__codelineno-2-21"></a>
+<a id="__codelineno-2-22" name="__codelineno-2-22" href="#__codelineno-2-22"></a><span class="c1"># TSV for spreadsheet import</span>
+<a id="__codelineno-2-23" name="__codelineno-2-23" href="#__codelineno-2-23"></a>mm<span class="w"> </span>bench<span class="w"> </span>~/data<span class="w"> </span>--format<span class="w"> </span>tsv
+<a id="__codelineno-2-24" name="__codelineno-2-24" href="#__codelineno-2-24"></a>
+<a id="__codelineno-2-25" name="__codelineno-2-25" href="#__codelineno-2-25"></a><span class="c1"># resolve the plan without running commands</span>
+<a id="__codelineno-2-26" name="__codelineno-2-26" href="#__codelineno-2-26"></a>mm<span class="w"> </span>bench<span class="w"> </span>~/data<span class="w"> </span>--dry-run
+<a id="__codelineno-2-27" name="__codelineno-2-27" href="#__codelineno-2-27"></a>
+<a id="__codelineno-2-28" name="__codelineno-2-28" href="#__codelineno-2-28"></a><span class="c1"># host system info only</span>
+<a id="__codelineno-2-29" name="__codelineno-2-29" href="#__codelineno-2-29"></a>mm<span class="w"> </span>bench<span class="w"> </span>--host-info
+<a id="__codelineno-2-30" name="__codelineno-2-30" href="#__codelineno-2-30"></a>mm<span class="w"> </span>bench<span class="w"> </span>--host-info<span class="w"> </span>--format<span class="w"> </span>json
 </code></pre></div>
-<p>Anything passed via <code>mm cat --generate.extra-body '&lt;json&gt;'</code> <strong>deep-merges
-on top</strong> of the pipeline-level <code>extra_body</code>, so per-call CLI flags can
-override individual keys without discarding the YAML defaults. The
-combined <code>extra_body</code> (along with the resolved <code>model</code>) is included in
-the L2 cache key so cached results are invalidated when knobs change.</p>
-<h2 id="override-surfaces-full-precedence-rules">Override surfaces — full precedence rules<a class="headerlink" href="#override-surfaces-full-precedence-rules" title="Permanent link">&para;</a></h2>
-<p>For every <code>cat</code> invocation the effective LLM call comes from three layers
-(right-most wins on conflict):</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>profile (mm.toml)  -&gt;  pipeline YAML (generate.*)  -&gt;  CLI flags on `cat`
-<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>  base_url              prompt                          --prompt / --generate.prompt
-<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>  api_key               model                           --model  / --generate.model
-<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>  model (default)       max_tokens                      --generate.max-tokens
-<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>                        temperature                     --generate.temperature
-<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>                        json_mode                       --generate.json-mode
-<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>                        extra_body                      --generate.extra-body
-<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>                                                        (deep-merged onto YAML)
+<h2 id="saving-results">Saving results<a class="headerlink" href="#saving-results" title="Permanent link">&para;</a></h2>
+<p>After each run, save results to the <code>benchmarks/</code> directory:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="c1"># full JSON output</span>
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>mm<span class="w"> </span>bench<span class="w"> </span>~/data/mmbench-mini<span class="w"> </span>--format<span class="w"> </span>json<span class="w"> </span>--rounds<span class="w"> </span><span class="m">3</span><span class="w"> </span>&gt;<span class="w"> </span>benchmarks/mm-bench-<span class="k">$(</span>date<span class="w"> </span>+%Y%m%d<span class="k">)</span>.json
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="c1"># TSV for spreadsheet import</span>
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>mm<span class="w"> </span>bench<span class="w"> </span>~/data/mmbench-mini<span class="w"> </span>--format<span class="w"> </span>tsv<span class="w"> </span>--rounds<span class="w"> </span><span class="m">3</span><span class="w"> </span>&gt;<span class="w"> </span>benchmarks/mm-bench-<span class="k">$(</span>date<span class="w"> </span>+%Y%m%d<span class="k">)</span>.tsv
 </code></pre></div>
-<p><code>base_url</code> and <code>api_key</code> are profile-only — they have no pipeline or CLI
-override.</p>
-<h3 id="example-my_filterpy">Example <code>my_filter.py</code><a class="headerlink" href="#example-my_filterpy" title="Permanent link">&para;</a></h3>
-<p>A pyfunc file must define <code>transform(parts, context) -&gt; list[dict]</code>.
-<code>parts</code> is a list of OpenAI-compatible message content dicts (e.g.
-<code>{"type": "text", ...}</code> or <code>{"type": "image_url", ...}</code>); <code>context</code> is
-file metadata (name, kind, size, etc.).</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="c1"># ~/my_filter.py — keep only image parts and prepend a custom instruction</span>
-<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="k">def</span><span class="w"> </span><span class="nf">transform</span><span class="p">(</span><span class="n">parts</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">],</span> <span class="n">context</span><span class="p">:</span> <span class="nb">dict</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">]:</span>
-<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>    <span class="n">images</span> <span class="o">=</span> <span class="p">[</span><span class="n">p</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">parts</span> <span class="k">if</span> <span class="n">p</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;type&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="s2">&quot;image_url&quot;</span><span class="p">]</span>
-<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>    <span class="n">header</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;text&quot;</span><span class="p">,</span> <span class="s2">&quot;text&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;Analyze </span><span class="si">{</span><span class="n">context</span><span class="p">[</span><span class="s1">&#39;name&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2"> in detail.&quot;</span><span class="p">}</span>
-<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>    <span class="k">return</span> <span class="p">[</span><span class="n">header</span><span class="p">,</span> <span class="o">*</span><span class="n">images</span><span class="p">]</span>
+<p>Naming convention: <code>mm-bench-YYYYMMDD</code> (e.g. <code>mm-bench-20260518</code>).</p>
+<h2 id="external-benchfiles">External benchfiles<a class="headerlink" href="#external-benchfiles" title="Permanent link">&para;</a></h2>
+<p><code>--bench-file</code> loads a <code>.py</code> module that fully replaces the built-in command matrix. The module must expose one of:</p>
+<ul>
+<li><code>COMMANDS: list[BenchCommand]</code> — static list of commands</li>
+<li><code>def commands(files) -&gt; list[BenchCommand]</code> — factory that receives the pre-scanned file list</li>
+</ul>
+<p><code>--mode</code> is ignored when a benchfile is provided; the <code>BenchCommand.group</code> field drives display grouping. Filters (<code>--group</code>, <code>--model</code>, <code>--task</code>, <code>--command</code>) still apply on top.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="c1"># load an external benchfile</span>
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>mm<span class="w"> </span>bench<span class="w"> </span>~/data<span class="w"> </span>-b<span class="w"> </span>benchmarks/vlmgw_bench_commands.py
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="c1"># dry-run to inspect before running</span>
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>mm<span class="w"> </span>bench<span class="w"> </span>~/data<span class="w"> </span>-b<span class="w"> </span>benchmarks/vlmgw_bench_commands.py<span class="w"> </span>--dry-run
+<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>
+<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a><span class="c1"># one round, no warmup (fast iteration)</span>
+<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a>mm<span class="w"> </span>bench<span class="w"> </span>~/data<span class="w"> </span>-b<span class="w"> </span>benchmarks/vlmgw_bench_commands.py<span class="w"> </span>-r<span class="w"> </span><span class="m">1</span><span class="w"> </span>-w<span class="w"> </span><span class="m">0</span>
+<a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a>
+<a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a><span class="c1"># filter by group from the benchfile</span>
+<a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a>mm<span class="w"> </span>bench<span class="w"> </span>~/data<span class="w"> </span>-b<span class="w"> </span>benchmarks/vlmgw_bench_commands.py<span class="w"> </span>--group<span class="w"> </span>cache
 </code></pre></div>
-<p>Inline variants also work inside a pipeline YAML:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="nt">encode</span><span class="p">:</span>
-<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="w">  </span><span class="nt">strategy</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">resize</span>
-<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="w">  </span><span class="nt">pyfunc</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">|</span>
-<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="w">    </span><span class="no">def transform(parts, context):</span>
-<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a><span class="w">        </span><span class="no">return [p for p in parts if p.get(&quot;type&quot;) == &quot;image_url&quot;]</span>
+<p><strong><code>BenchCommand</code> structure:</strong></p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">mm.commands.bench_commands</span><span class="w"> </span><span class="kn">import</span> <span class="n">BenchCommand</span>
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="n">COMMANDS</span> <span class="o">=</span> <span class="p">[</span>
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>    <span class="n">BenchCommand</span><span class="p">(</span>
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>        <span class="n">name</span><span class="o">=</span><span class="s2">&quot;my-test&quot;</span><span class="p">,</span>
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>        <span class="n">group</span><span class="o">=</span><span class="s2">&quot;fast&quot;</span><span class="p">,</span>
+<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>        <span class="n">cmd_template</span><span class="o">=</span><span class="s2">&quot;mm cat </span><span class="si">{file}</span><span class="s2"> -m fast&quot;</span><span class="p">,</span>
+<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>        <span class="n">requires_kind</span><span class="o">=</span><span class="s2">&quot;image&quot;</span><span class="p">,</span>
+<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a>        <span class="n">tags</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;model&quot;</span><span class="p">:</span> <span class="s2">&quot;qwen3-vl:8b&quot;</span><span class="p">,</span> <span class="s2">&quot;task&quot;</span><span class="p">:</span> <span class="s2">&quot;cap&quot;</span><span class="p">},</span>
+<a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a>    <span class="p">)</span>
+<a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a><span class="p">]</span>
 </code></pre></div>
-<h2 id="encoders">Encoders<a class="headerlink" href="#encoders" title="Permanent link">&para;</a></h2>
-<p>See <a href="../ENCODERS/">ENCODERS.md</a> for the full encoder reference — all built-in encoders, parameters, planned encoders, and how to write custom encoders.</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>name</code></td>
+<td>Display name shown in the bench table</td>
+</tr>
+<tr>
+<td><code>group</code></td>
+<td>Group bucket: <code>overhead</code>, <code>metadata</code>, <code>fast</code>, <code>accurate</code>, or custom</td>
+</tr>
+<tr>
+<td><code>cmd_template</code></td>
+<td>Shell command template. Placeholders: <code>{file}</code>, <code>{files}</code>, <code>{dir}</code></td>
+</tr>
+<tr>
+<td><code>requires_kind</code></td>
+<td>Kind of file to substitute: <code>image</code>, <code>video</code>, <code>audio</code>, <code>document</code>, <code>code</code></td>
+</tr>
+<tr>
+<td><code>tags</code></td>
+<td>Arbitrary key-value tags for filtering (<code>model</code>, <code>task</code>, etc.)</td>
+</tr>
+<tr>
+<td><code>skip_reason</code></td>
+<td>Message shown when the command is skipped (no matching files)</td>
+</tr>
+<tr>
+<td><code>disabled</code></td>
+<td>If true, row is rendered but never executed</td>
+</tr>
+</tbody>
+</table>
+<h2 id="stdout-snapshot-mode">Stdout snapshot mode<a class="headerlink" href="#stdout-snapshot-mode" title="Permanent link">&para;</a></h2>
+<p><code>--format stdout</code> runs each <code>mm cat</code> command and captures output to a markdown snapshot file. Used to record expected encoder output for regression testing.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>mm<span class="w"> </span>bench<span class="w"> </span>~/data<span class="w"> </span>--command<span class="w"> </span>cat<span class="w"> </span>--format<span class="w"> </span>stdout<span class="w"> </span>&gt;<span class="w"> </span>tests/stdout/cat.md
+</code></pre></div>
+<p>By default the LLM generate step is skipped (<code>--no-generate</code>) so snapshots are fast, deterministic, and offline-friendly. Pass <code>--with-generate</code> to include the LLM call:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>mm<span class="w"> </span>bench<span class="w"> </span>~/data<span class="w"> </span>--command<span class="w"> </span>cat<span class="w"> </span>--format<span class="w"> </span>stdout<span class="w"> </span>--with-generate
+</code></pre></div>
+<h2 id="host-information">Host information<a class="headerlink" href="#host-information" title="Permanent link">&para;</a></h2>
+<p><code>--host-info</code> prints the host system specification (CPU, RAM, OS, Python version, mm version) without running any benchmarks:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>mm<span class="w"> </span>bench<span class="w"> </span>--host-info
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>mm<span class="w"> </span>bench<span class="w"> </span>--host-info<span class="w"> </span>--format<span class="w"> </span>json
+</code></pre></div>
+<p>This is useful for attaching system context to archived benchmark results.</p>
+<h2 id="notes">Notes<a class="headerlink" href="#notes" title="Permanent link">&para;</a></h2>
+<ul>
+<li><code>mm cat</code> invocations within bench always run with <code>--no-cache</code> to ensure measurements reflect actual extraction time, not cache reads.</li>
+<li>Warmup rounds run first and are discarded; only <code>--rounds</code> timed iterations contribute to statistics.</li>
+<li>Skipped rows (no matching files for the required kind) appear in rich output but are omitted from TSV/CSV.</li>
+<li>Disabled rows (<code>BenchCommand.disabled = True</code>) are rendered dimmed in dry-run and live tables to keep matrix coverage visible, but are never executed.</li>
+<li><code>stdin</code> is closed for all subprocess invocations to prevent <code>mm cat</code>'s stdin pipe detection from deadlocking.</li>
+<li>Results saved to <code>benchmarks/</code> are tracked in <code>CHANGELOG.md</code> when they change performance numbers.</li>
+</ul>
 
 
 

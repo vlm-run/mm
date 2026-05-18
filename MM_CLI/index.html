@@ -10,27 +10,31 @@
       
       
       
-        <link rel="canonical" href="https://vlm-run.github.io/mm/spec/cli-use/">
+        <link rel="canonical" href="https://vlm-run.github.io/mm/MM_CLI/">
       
       
+        <link rel="prev" href="../USER_GUIDE/">
+      
+      
+        <link rel="next" href="../FIND_COMMAND/">
       
       
         
       
       
-      <link rel="icon" href="../../assets/images/favicon.png">
+      <link rel="icon" href="../assets/images/favicon.png">
       <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
     
     
       
-        <title>Cli use - mm</title>
+        <title>CLI Surface - mm</title>
       
     
     
-      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
       
         
-        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
       
       
 
@@ -49,9 +53,9 @@
       
     
     
-      <link rel="stylesheet" href="../../assets/_mkdocstrings.css">
+      <link rel="stylesheet" href="../assets/_mkdocstrings.css">
     
-    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
     
       
 
@@ -76,7 +80,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#benchmark-commands-mm-bench" class="md-skip">
+        <a href="#cli-surface" class="md-skip">
           Skip to content
         </a>
       
@@ -92,7 +96,7 @@
 
 <header class="md-header md-header--shadow" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href="../.." title="mm" class="md-header__button md-logo" aria-label="mm" data-md-component="logo">
+    <a href=".." title="mm" class="md-header__button md-logo" aria-label="mm" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
@@ -112,7 +116,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Cli use
+              CLI Surface
             
           </span>
         </div>
@@ -228,7 +232,7 @@
 
 <nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="../.." title="mm" class="md-nav__button md-logo" aria-label="mm" data-md-component="logo">
+    <a href=".." title="mm" class="md-nav__button md-logo" aria-label="mm" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
@@ -258,7 +262,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../.." class="md-nav__link">
+      <a href=".." class="md-nav__link">
         
   
   
@@ -285,7 +289,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../USER_GUIDE/" class="md-nav__link">
+      <a href="../USER_GUIDE/" class="md-nav__link">
         
   
   
@@ -309,18 +313,20 @@
       
   
   
+    
   
   
+  
     
     
     
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
         
           
           <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
@@ -341,7 +347,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_3">
             <span class="md-nav__icon md-icon"></span>
             
@@ -356,10 +362,37 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../../MM_CLI/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CLI Surface
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -375,6 +408,114 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#commands" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Commands
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#global-flags" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Global flags
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#output-formats" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Output formats
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#file-kinds" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        File kinds
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#unix-composability" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Unix composability
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#performance" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Performance
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#sql" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        SQL
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#configuration-files" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Configuration files
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -387,7 +528,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../FIND_COMMAND/" class="md-nav__link">
+      <a href="../FIND_COMMAND/" class="md-nav__link">
         
   
   
@@ -415,7 +556,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../WC_COMMAND/" class="md-nav__link">
+      <a href="../WC_COMMAND/" class="md-nav__link">
         
   
   
@@ -443,7 +584,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../PEEK_COMMAND/" class="md-nav__link">
+      <a href="../PEEK_COMMAND/" class="md-nav__link">
         
   
   
@@ -471,7 +612,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../GREP_COMMAND/" class="md-nav__link">
+      <a href="../GREP_COMMAND/" class="md-nav__link">
         
   
   
@@ -499,7 +640,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../CAT_COMMAND/" class="md-nav__link">
+      <a href="../CAT_COMMAND/" class="md-nav__link">
         
   
   
@@ -527,7 +668,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../BENCH_COMMAND/" class="md-nav__link">
+      <a href="../BENCH_COMMAND/" class="md-nav__link">
         
   
   
@@ -555,7 +696,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../PROFILE_MANAGEMENT/" class="md-nav__link">
+      <a href="../PROFILE_MANAGEMENT/" class="md-nav__link">
         
   
   
@@ -583,7 +724,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../MM_CONFIG/" class="md-nav__link">
+      <a href="../MM_CONFIG/" class="md-nav__link">
         
   
   
@@ -665,7 +806,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/" class="md-nav__link">
+      <a href="../api/" class="md-nav__link">
         
   
   
@@ -693,7 +834,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../mm_context/" class="md-nav__link">
+      <a href="../mm_context/" class="md-nav__link">
         
   
   
@@ -728,7 +869,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../USE_CASES/" class="md-nav__link">
+      <a href="../USE_CASES/" class="md-nav__link">
         
   
   
@@ -755,7 +896,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../ENCODERS/" class="md-nav__link">
+      <a href="../ENCODERS/" class="md-nav__link">
         
   
   
@@ -782,7 +923,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../PIPELINES/" class="md-nav__link">
+      <a href="../PIPELINES/" class="md-nav__link">
         
   
   
@@ -809,7 +950,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../FIXTURES/" class="md-nav__link">
+      <a href="../FIXTURES/" class="md-nav__link">
         
   
   
@@ -883,7 +1024,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../notebooks/mm_cookbook_gateway/" class="md-nav__link">
+      <a href="../notebooks/mm_cookbook_gateway/" class="md-nav__link">
         
   
   
@@ -911,7 +1052,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../notebooks/mm_cookbook/" class="md-nav__link">
+      <a href="../notebooks/mm_cookbook/" class="md-nav__link">
         
   
   
@@ -939,7 +1080,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../notebooks/mm-context-api/" class="md-nav__link">
+      <a href="../notebooks/mm-context-api/" class="md-nav__link">
         
   
   
@@ -967,7 +1108,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../notebooks/mm-context-viz/" class="md-nav__link">
+      <a href="../notebooks/mm-context-viz/" class="md-nav__link">
         
   
   
@@ -1049,7 +1190,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../spec-templates/image/" class="md-nav__link">
+      <a href="../spec-templates/image/" class="md-nav__link">
         
   
   
@@ -1077,7 +1218,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../spec-templates/video/" class="md-nav__link">
+      <a href="../spec-templates/video/" class="md-nav__link">
         
   
   
@@ -1105,7 +1246,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../spec-templates/audio/" class="md-nav__link">
+      <a href="../spec-templates/audio/" class="md-nav__link">
         
   
   
@@ -1133,7 +1274,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../spec-templates/document/" class="md-nav__link">
+      <a href="../spec-templates/document/" class="md-nav__link">
         
   
   
@@ -1178,6 +1319,8 @@
   
   
   
+    
+  
   
     <label class="md-nav__title" for="__toc">
       <span class="md-nav__icon md-icon"></span>
@@ -1186,63 +1329,90 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#benchmark-commands-mm-bench" class="md-nav__link">
+  <a href="#commands" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Benchmark commands (mm bench)
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Benchmark commands (mm bench)">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#metadata-scan-directory-level" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Metadata scan (directory-level)
+        Commands
       
     </span>
   </a>
   
 </li>
-        
-          <li class="md-nav__item">
-  <a href="#fast-mode-content-extraction-file-level" class="md-nav__link">
+      
+        <li class="md-nav__item">
+  <a href="#global-flags" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Fast mode — content extraction (file-level)
+        Global flags
       
     </span>
   </a>
   
 </li>
-        
-          <li class="md-nav__item">
-  <a href="#accurate-mode-llm-pipelines" class="md-nav__link">
+      
+        <li class="md-nav__item">
+  <a href="#output-formats" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Accurate mode (LLM pipelines)
+        Output formats
       
     </span>
   </a>
   
 </li>
-        
-          <li class="md-nav__item">
-  <a href="#placeholders" class="md-nav__link">
+      
+        <li class="md-nav__item">
+  <a href="#file-kinds" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Placeholders
+        File kinds
       
     </span>
   </a>
   
 </li>
-        
-      </ul>
-    </nav>
+      
+        <li class="md-nav__item">
+  <a href="#unix-composability" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Unix composability
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#performance" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Performance
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#sql" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        SQL
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#configuration-files" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Configuration files
+      
+    </span>
+  </a>
   
 </li>
       
@@ -1263,156 +1433,270 @@
 
 
 
-  <h1>Cli use</h1>
-
-<p>Documents
- - Find where in the document "a specific term" is mentioned</p>
-<h2 id="benchmark-commands-mm-bench">Benchmark commands (<code>mm bench</code>)<a class="headerlink" href="#benchmark-commands-mm-bench" title="Permanent link">&para;</a></h2>
-<p>Each benchmark is a real CLI invocation measured end-to-end via subprocess.</p>
-<h3 id="metadata-scan-directory-level">Metadata scan (directory-level)<a class="headerlink" href="#metadata-scan-directory-level" title="Permanent link">&para;</a></h3>
+<h1 id="cli-surface">CLI Surface<a class="headerlink" href="#cli-surface" title="Permanent link">&para;</a></h1>
+<p><code>mm</code> is a Unix-style CLI for multimodal file understanding. It scans, inspects, extracts, searches, and benchmarks files of any kind — images, video, audio, PDFs, code, and plain text — through a consistent nine-command surface.</p>
+<h2 id="commands">Commands<a class="headerlink" href="#commands" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
 <tr>
-<th>Name</th>
 <th>Command</th>
+<th>Purpose</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><code>mm find .</code></td>
-<td><code>mm find {dir} --format json</code></td>
+<td><a href="../FIND_COMMAND/"><code>find</code></a></td>
+<td>List and filter files with metadata — like <code>fd</code> or <code>find</code></td>
 </tr>
 <tr>
-<td><code>mm find . (table)</code></td>
-<td><code>mm find {dir} --format tsv</code></td>
+<td><a href="../WC_COMMAND/"><code>wc</code></a></td>
+<td>Count files, bytes, estimated lines and tokens — like <code>wc</code> for LLM context</td>
 </tr>
 <tr>
-<td><code>mm wc .</code></td>
-<td><code>mm wc {dir} --format json</code></td>
+<td><a href="../PEEK_COMMAND/"><code>peek</code></a></td>
+<td>Directly extracted file metadata: dimensions, EXIF, codec, hash</td>
 </tr>
 <tr>
-<td><code>mm sql 'GROUP BY kind'</code></td>
-<td><code>mm sql 'SELECT kind, COUNT(*) ...' --dir {dir} --format json</code></td>
+<td><a href="../GREP_COMMAND/"><code>grep</code></a></td>
+<td>Search file contents with regex, FTS, or semantic vector search</td>
 </tr>
 <tr>
-<td><code>mm sql 'SUM(size) BY kind'</code></td>
-<td><code>mm sql 'SELECT kind, COUNT(*), SUM(size), AVG(size) ...' --dir {dir} --format json</code></td>
+<td><a href="../CAT_COMMAND/"><code>cat</code></a></td>
+<td>Extract and describe file content — pipeline-driven, LLM-capable</td>
 </tr>
 <tr>
-<td><code>mm sql 'TOP 10 largest'</code></td>
-<td><code>mm sql 'SELECT name, kind, size ... LIMIT 10' --dir {dir} --format json</code></td>
+<td><a href="./#sql"><code>sql</code></a></td>
+<td>SQL queries over the file metadata table</td>
 </tr>
 <tr>
-<td><code>mm sql 'GROUP BY ext'</code></td>
-<td><code>mm sql 'SELECT ext, COUNT(*), SUM(size) ...' --dir {dir} --format json</code></td>
+<td><a href="../BENCH_COMMAND/"><code>bench</code></a></td>
+<td>Benchmark all subcommands with statistical analysis</td>
 </tr>
 <tr>
-<td><code>mm find --kind image</code></td>
-<td><code>mm find {dir} --kind image --format json</code></td>
+<td><a href="../PROFILE_MANAGEMENT/"><code>profile</code></a></td>
+<td>Manage LLM provider profiles (base_url, api_key, model)</td>
 </tr>
 <tr>
-<td><code>mm find --kind audio</code></td>
-<td><code>mm find {dir} --kind audio --format json</code> (skipped if no audio)</td>
-</tr>
-<tr>
-<td><code>mm find --kind document</code></td>
-<td><code>mm find {dir} --kind document --format json</code> (skipped if no documents)</td>
+<td><a href="../MM_CONFIG/"><code>config</code></a></td>
+<td>View and set extraction mode configuration</td>
 </tr>
 </tbody>
 </table>
-<h3 id="fast-mode-content-extraction-file-level">Fast mode — content extraction (file-level)<a class="headerlink" href="#fast-mode-content-extraction-file-level" title="Permanent link">&para;</a></h3>
-<p>Use <code>--no-cache</code> to bypass caching.</p>
+<h2 id="global-flags">Global flags<a class="headerlink" href="#global-flags" title="Permanent link">&para;</a></h2>
+<p>These flags are accepted before any subcommand.</p>
 <table>
 <thead>
 <tr>
-<th>Name</th>
-<th>Command</th>
-<th>Selection</th>
+<th>Flag</th>
+<th>Description</th>
+<th>Default</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><code>mm cat &lt;code&gt; (x20)</code></td>
-<td><code>mm cat {files} --mode fast --format json</code></td>
-<td>first 20 code files</td>
+<td><code>--profile / -p NAME</code></td>
+<td>Use a specific named profile for this invocation</td>
+<td>Active profile</td>
 </tr>
 <tr>
-<td><code>mm cat &lt;image&gt;</code></td>
-<td><code>mm cat {file} --mode fast --format json</code></td>
-<td>first image</td>
+<td><code>--color auto\|always\|never</code></td>
+<td>Control ANSI color output</td>
+<td><code>auto</code></td>
 </tr>
 <tr>
-<td><code>mm cat &lt;image&gt; (x20)</code></td>
-<td><code>mm cat {files} --mode fast --format json</code></td>
-<td>first 20 images</td>
-</tr>
-<tr>
-<td><code>mm cat &lt;audio&gt;</code></td>
-<td><code>mm cat {file} --mode fast --format json</code></td>
-<td>first audio</td>
-</tr>
-<tr>
-<td><code>mm cat &lt;video&gt;</code></td>
-<td><code>mm cat {file} --mode fast --format json</code></td>
-<td>first video</td>
-</tr>
-<tr>
-<td><code>mm cat &lt;pdf&gt;</code></td>
-<td><code>mm cat {file} --mode fast --format json</code></td>
-<td>first document</td>
-</tr>
-<tr>
-<td><code>mm cat &lt;pdf&gt; (x10)</code></td>
-<td><code>mm cat {files} --mode fast --format json</code></td>
-<td>first 10 documents</td>
-</tr>
-<tr>
-<td><code>mm grep /pattern/</code></td>
-<td><code>mm grep 'import\|include\|require' {dir} --format json</code></td>
-<td>all text files</td>
+<td><code>--version / -v</code></td>
+<td>Print version and exit</td>
+<td>—</td>
 </tr>
 </tbody>
 </table>
-<h3 id="accurate-mode-llm-pipelines">Accurate mode (LLM pipelines)<a class="headerlink" href="#accurate-mode-llm-pipelines" title="Permanent link">&para;</a></h3>
-<p>Use <code>--no-cache</code> to bypass caching.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>mm<span class="w"> </span>--version
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>mm<span class="w"> </span>--profile<span class="w"> </span>openai<span class="w"> </span>cat<span class="w"> </span>photo.png<span class="w"> </span>-m<span class="w"> </span>accurate
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>mm<span class="w"> </span>--color<span class="w"> </span>never<span class="w"> </span>find<span class="w"> </span>~/data<span class="w"> </span>--format<span class="w"> </span>tsv
+</code></pre></div>
+<p>Profile resolution order: <code>--profile</code> flag &gt; <code>MM_PROFILE</code> env var &gt; <code>active_profile</code> in config &gt; <code>"ollama"</code>.</p>
+<h2 id="output-formats">Output formats<a class="headerlink" href="#output-formats" title="Permanent link">&para;</a></h2>
+<p>Every command that produces tabular output accepts <code>--format / -f</code>:</p>
 <table>
 <thead>
 <tr>
-<th>Name</th>
-<th>Command</th>
-<th>Selection</th>
+<th>Format</th>
+<th>Description</th>
+<th>Default</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><code>mm cat &lt;image&gt; --mode fast</code></td>
-<td><code>mm cat {file} --mode fast --format json</code></td>
-<td>first image</td>
+<td><code>rich</code></td>
+<td>Rich-formatted tables and panels</td>
+<td>TTY default</td>
 </tr>
 <tr>
-<td><code>mm cat &lt;image&gt; --mode accurate</code></td>
-<td><code>mm cat {file} --mode accurate --format json</code></td>
-<td>first image</td>
+<td><code>tsv</code></td>
+<td>Tab-separated values, no ANSI</td>
+<td>Pipe default</td>
 </tr>
 <tr>
-<td><code>mm cat &lt;video&gt; --mode fast</code></td>
-<td><code>mm cat {file} --mode fast --format json</code></td>
-<td>first video</td>
+<td><code>csv</code></td>
+<td>Comma-separated values</td>
+<td></td>
 </tr>
 <tr>
-<td><code>mm cat &lt;audio&gt; --mode fast</code></td>
-<td><code>mm cat {file} --mode fast --format json</code></td>
-<td>smallest audio</td>
+<td><code>json</code></td>
+<td>Compact JSON when piped, indented in TTY</td>
+<td></td>
+</tr>
+<tr>
+<td><code>pretty-json</code></td>
+<td>Always-indented JSON</td>
+<td></td>
+</tr>
+<tr>
+<td><code>dataset-jsonl</code></td>
+<td>Newline-delimited JSON records</td>
+<td></td>
+</tr>
+<tr>
+<td><code>dataset-hf</code></td>
+<td>HuggingFace Dataset export</td>
+<td></td>
 </tr>
 </tbody>
 </table>
-<h3 id="placeholders">Placeholders<a class="headerlink" href="#placeholders" title="Permanent link">&para;</a></h3>
+<p><code>mm cat</code> additionally supports <code>stdout</code> as a format (bench snapshot mode).</p>
+<h2 id="file-kinds">File kinds<a class="headerlink" href="#file-kinds" title="Permanent link">&para;</a></h2>
+<p>Every file is assigned one of nine semantic kind labels:</p>
+<table>
+<thead>
+<tr>
+<th>Kind</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>image</code></td>
+<td>PNG, JPEG, GIF, WebP, TIFF, BMP, HEIC, etc.</td>
+</tr>
+<tr>
+<td><code>video</code></td>
+<td>MP4, MOV, MKV, WebM, AVI, etc.</td>
+</tr>
+<tr>
+<td><code>audio</code></td>
+<td>MP3, WAV, FLAC, OGG, M4A, AAC, Opus, etc.</td>
+</tr>
+<tr>
+<td><code>document</code></td>
+<td>PDF, DOCX, PPTX, XLSX, ODT, and other office formats</td>
+</tr>
+<tr>
+<td><code>code</code></td>
+<td>Source files: Python, Rust, JavaScript, Go, Java, etc.</td>
+</tr>
+<tr>
+<td><code>data</code></td>
+<td>CSV, JSON, Parquet, Arrow, and other structured data</td>
+</tr>
+<tr>
+<td><code>config</code></td>
+<td>TOML, YAML, INI, dotfiles, and environment configs</td>
+</tr>
+<tr>
+<td><code>text</code></td>
+<td>Plain text, Markdown, RST, logs</td>
+</tr>
+<tr>
+<td><code>other</code></td>
+<td>Everything else</td>
+</tr>
+</tbody>
+</table>
+<p>Use <code>--kind</code> on <code>find</code>, <code>wc</code>, and <code>grep</code> to filter by one or more kinds (comma-separated).</p>
+<h2 id="unix-composability">Unix composability<a class="headerlink" href="#unix-composability" title="Permanent link">&para;</a></h2>
+<p>Commands follow Unix conventions and compose naturally through pipes:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="c1"># pipe find output into wc</span>
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>mm<span class="w"> </span>find<span class="w"> </span>~/data<span class="w"> </span>--kind<span class="w"> </span>image<span class="w"> </span><span class="p">|</span><span class="w"> </span>mm<span class="w"> </span>wc
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="c1"># pipe find output into cat</span>
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>mm<span class="w"> </span>find<span class="w"> </span>~/data<span class="w"> </span>--kind<span class="w"> </span>document<span class="w"> </span>--ext<span class="w"> </span>.pdf<span class="w"> </span><span class="p">|</span><span class="w"> </span>mm<span class="w"> </span>cat<span class="w"> </span>-m<span class="w"> </span>accurate
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="c1"># pipe find output into grep</span>
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>mm<span class="w"> </span>find<span class="w"> </span>~/project<span class="w"> </span>--kind<span class="w"> </span>code<span class="w"> </span><span class="p">|</span><span class="w"> </span>mm<span class="w"> </span>grep<span class="w"> </span><span class="s2">&quot;TODO&quot;</span>
+<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>
+<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a><span class="c1"># chain with standard tools</span>
+<a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a>mm<span class="w"> </span>find<span class="w"> </span>~/data<span class="w"> </span>--format<span class="w"> </span>tsv<span class="w"> </span><span class="p">|</span><span class="w"> </span>awk<span class="w"> </span>-F<span class="s1">&#39;\t&#39;</span><span class="w"> </span><span class="s1">&#39;$2 == &quot;video&quot; {print $3}&#39;</span>
+<a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a>mm<span class="w"> </span>find<span class="w"> </span>~/data<span class="w"> </span>--format<span class="w"> </span>json<span class="w"> </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span><span class="s1">&#39;.[] | select(.size &gt; 1048576)&#39;</span>
+</code></pre></div>
+<p>When stdin is not a TTY, <code>mm</code> reads file paths from stdin automatically. Output format defaults to <code>tsv</code> when piped and <code>rich</code> in a terminal.</p>
+<h2 id="performance">Performance<a class="headerlink" href="#performance" title="Permanent link">&para;</a></h2>
+<p>The scanner is Rust-backed (via <code>mm-core</code> and PyO3), using:</p>
 <ul>
-<li><code>{dir}</code> — resolved absolute directory path</li>
-<li><code>{file}</code> — single file auto-picked by kind (first match, or smallest for accurate-mode audio)</li>
-<li><code>{files}</code> — space-separated list of files (batch commands, up to N)</li>
+<li><strong><code>ignore</code> crate</strong> for gitignore-aware parallel directory walking</li>
+<li><strong><code>rayon</code></strong> for parallel metadata extraction</li>
+<li><strong><code>xxhash-rust</code></strong> (xxh3) for fast content fingerprinting via mmap</li>
+<li><strong>Arrow IPC</strong> for zero-copy data transfer from Rust to Python</li>
 </ul>
-<p>Commands are skipped when the required file kind is absent from the target directory.</p>
+<p>Typical cold-start scan: ~5 ms for 250 files. Metadata operations bypass Python entirely in the fast path.</p>
+<h2 id="sql">SQL<a class="headerlink" href="#sql" title="Permanent link">&para;</a></h2>
+<p><code>mm sql</code> runs SQL queries against three tables populated from the scanned directory and the persistent store.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>mm<span class="w"> </span>sql<span class="w"> </span><span class="s2">&quot;SELECT kind, COUNT(*) as n FROM files GROUP BY kind ORDER BY n DESC&quot;</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>mm<span class="w"> </span>sql<span class="w"> </span><span class="s2">&quot;SELECT name, size FROM files WHERE kind = &#39;image&#39; ORDER BY size DESC LIMIT 10&quot;</span>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>mm<span class="w"> </span>sql<span class="w"> </span>--list-tables
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th>Table</th>
+<th>Source</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>files</code></td>
+<td>Directory scan + SQLite</td>
+<td>Ephemeral in-memory; re-scanned per query</td>
+</tr>
+<tr>
+<td><code>extractions</code></td>
+<td>SQLite</td>
+<td>LLM-generated summaries from <code>mm cat</code></td>
+</tr>
+<tr>
+<td><code>chunks</code></td>
+<td>SQLite</td>
+<td>Chunked content + embeddings; <code>mode</code> ∈ <code>metadata</code>, <code>fast</code>, <code>accurate</code></td>
+</tr>
+</tbody>
+</table>
+<h2 id="configuration-files">Configuration files<a class="headerlink" href="#configuration-files" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Path</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>~/.config/mm/mm.toml</code></td>
+<td>Extraction mode defaults, transcription backend</td>
+</tr>
+<tr>
+<td><code>~/.config/mm/profiles.toml</code></td>
+<td>LLM provider profiles</td>
+</tr>
+<tr>
+<td><code>~/.local/share/mm/mm.db</code></td>
+<td>SQLite database (metadata, extractions, embeddings)</td>
+</tr>
+<tr>
+<td><code>~/.config/mm/pipelines/</code></td>
+<td>User-overridden pipeline YAMLs</td>
+</tr>
+</tbody>
+</table>
 
 
 
@@ -1506,10 +1790,10 @@
     
       
       
-      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.instant", "navigation.tracking", "navigation.top", "toc.follow", "content.code.copy", "content.code.annotate"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.instant", "navigation.tracking", "navigation.top", "toc.follow", "content.code.copy", "content.code.annotate"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
       
     
   </body>

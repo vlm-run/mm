@@ -10,27 +10,31 @@
       
       
       
-        <link rel="canonical" href="https://vlm-run.github.io/mm/spec/cli-use/">
+        <link rel="canonical" href="https://vlm-run.github.io/mm/GREP_COMMAND/">
       
       
+        <link rel="prev" href="../PEEK_COMMAND/">
+      
+      
+        <link rel="next" href="../CAT_COMMAND/">
       
       
         
       
       
-      <link rel="icon" href="../../assets/images/favicon.png">
+      <link rel="icon" href="../assets/images/favicon.png">
       <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
     
     
       
-        <title>Cli use - mm</title>
+        <title>Grep Comnand - mm</title>
       
     
     
-      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
       
         
-        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
       
       
 
@@ -49,9 +53,9 @@
       
     
     
-      <link rel="stylesheet" href="../../assets/_mkdocstrings.css">
+      <link rel="stylesheet" href="../assets/_mkdocstrings.css">
     
-    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
     
       
 
@@ -76,7 +80,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#benchmark-commands-mm-bench" class="md-skip">
+        <a href="#mm-grep" class="md-skip">
           Skip to content
         </a>
       
@@ -92,7 +96,7 @@
 
 <header class="md-header md-header--shadow" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href="../.." title="mm" class="md-header__button md-logo" aria-label="mm" data-md-component="logo">
+    <a href=".." title="mm" class="md-header__button md-logo" aria-label="mm" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
@@ -112,7 +116,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Cli use
+              Grep Comnand
             
           </span>
         </div>
@@ -228,7 +232,7 @@
 
 <nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="../.." title="mm" class="md-nav__button md-logo" aria-label="mm" data-md-component="logo">
+    <a href=".." title="mm" class="md-nav__button md-logo" aria-label="mm" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
@@ -258,7 +262,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../.." class="md-nav__link">
+      <a href=".." class="md-nav__link">
         
   
   
@@ -285,7 +289,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../USER_GUIDE/" class="md-nav__link">
+      <a href="../USER_GUIDE/" class="md-nav__link">
         
   
   
@@ -309,18 +313,20 @@
       
   
   
+    
   
   
+  
     
     
     
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
         
           
           <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
@@ -341,7 +347,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_3">
             <span class="md-nav__icon md-icon"></span>
             
@@ -359,7 +365,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../MM_CLI/" class="md-nav__link">
+      <a href="../MM_CLI/" class="md-nav__link">
         
   
   
@@ -387,7 +393,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../FIND_COMMAND/" class="md-nav__link">
+      <a href="../FIND_COMMAND/" class="md-nav__link">
         
   
   
@@ -415,7 +421,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../WC_COMMAND/" class="md-nav__link">
+      <a href="../WC_COMMAND/" class="md-nav__link">
         
   
   
@@ -443,7 +449,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../PEEK_COMMAND/" class="md-nav__link">
+      <a href="../PEEK_COMMAND/" class="md-nav__link">
         
   
   
@@ -468,10 +474,37 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../../GREP_COMMAND/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Grep Comnand
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -487,6 +520,164 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#synopsis" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Synopsis
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#options" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Options
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#search-modes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Search modes
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#smart-case-matching" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Smart-case matching
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#file-type-handling" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        File type handling
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#exit-codes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Exit codes
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#examples" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Examples
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#output-format" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Output format
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Output format">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#rich-default-in-tty" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Rich (default in TTY)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#non-rich-tsvpipe-default" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Non-rich (TSV/pipe default)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#semantic-search" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Semantic search
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#notes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Notes
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -499,7 +690,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../CAT_COMMAND/" class="md-nav__link">
+      <a href="../CAT_COMMAND/" class="md-nav__link">
         
   
   
@@ -527,7 +718,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../BENCH_COMMAND/" class="md-nav__link">
+      <a href="../BENCH_COMMAND/" class="md-nav__link">
         
   
   
@@ -555,7 +746,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../PROFILE_MANAGEMENT/" class="md-nav__link">
+      <a href="../PROFILE_MANAGEMENT/" class="md-nav__link">
         
   
   
@@ -583,7 +774,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../MM_CONFIG/" class="md-nav__link">
+      <a href="../MM_CONFIG/" class="md-nav__link">
         
   
   
@@ -665,7 +856,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/" class="md-nav__link">
+      <a href="../api/" class="md-nav__link">
         
   
   
@@ -693,7 +884,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../mm_context/" class="md-nav__link">
+      <a href="../mm_context/" class="md-nav__link">
         
   
   
@@ -728,7 +919,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../USE_CASES/" class="md-nav__link">
+      <a href="../USE_CASES/" class="md-nav__link">
         
   
   
@@ -755,7 +946,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../ENCODERS/" class="md-nav__link">
+      <a href="../ENCODERS/" class="md-nav__link">
         
   
   
@@ -782,7 +973,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../PIPELINES/" class="md-nav__link">
+      <a href="../PIPELINES/" class="md-nav__link">
         
   
   
@@ -809,7 +1000,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../FIXTURES/" class="md-nav__link">
+      <a href="../FIXTURES/" class="md-nav__link">
         
   
   
@@ -883,7 +1074,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../notebooks/mm_cookbook_gateway/" class="md-nav__link">
+      <a href="../notebooks/mm_cookbook_gateway/" class="md-nav__link">
         
   
   
@@ -911,7 +1102,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../notebooks/mm_cookbook/" class="md-nav__link">
+      <a href="../notebooks/mm_cookbook/" class="md-nav__link">
         
   
   
@@ -939,7 +1130,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../notebooks/mm-context-api/" class="md-nav__link">
+      <a href="../notebooks/mm-context-api/" class="md-nav__link">
         
   
   
@@ -967,7 +1158,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../notebooks/mm-context-viz/" class="md-nav__link">
+      <a href="../notebooks/mm-context-viz/" class="md-nav__link">
         
   
   
@@ -1049,7 +1240,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../spec-templates/image/" class="md-nav__link">
+      <a href="../spec-templates/image/" class="md-nav__link">
         
   
   
@@ -1077,7 +1268,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../spec-templates/video/" class="md-nav__link">
+      <a href="../spec-templates/video/" class="md-nav__link">
         
   
   
@@ -1105,7 +1296,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../spec-templates/audio/" class="md-nav__link">
+      <a href="../spec-templates/audio/" class="md-nav__link">
         
   
   
@@ -1133,7 +1324,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../spec-templates/document/" class="md-nav__link">
+      <a href="../spec-templates/document/" class="md-nav__link">
         
   
   
@@ -1178,6 +1369,8 @@
   
   
   
+    
+  
   
     <label class="md-nav__title" for="__toc">
       <span class="md-nav__icon md-icon"></span>
@@ -1186,22 +1379,99 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#benchmark-commands-mm-bench" class="md-nav__link">
+  <a href="#synopsis" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Benchmark commands (mm bench)
+        Synopsis
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Benchmark commands (mm bench)">
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#options" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Options
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#search-modes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Search modes
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#smart-case-matching" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Smart-case matching
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#file-type-handling" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        File type handling
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#exit-codes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Exit codes
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#examples" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Examples
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#output-format" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Output format
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Output format">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#metadata-scan-directory-level" class="md-nav__link">
+  <a href="#rich-default-in-tty" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Metadata scan (directory-level)
+        Rich (default in TTY)
       
     </span>
   </a>
@@ -1209,32 +1479,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#fast-mode-content-extraction-file-level" class="md-nav__link">
+  <a href="#non-rich-tsvpipe-default" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Fast mode — content extraction (file-level)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#accurate-mode-llm-pipelines" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Accurate mode (LLM pipelines)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#placeholders" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Placeholders
+        Non-rich (TSV/pipe default)
       
     </span>
   </a>
@@ -1243,6 +1491,28 @@
         
       </ul>
     </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#semantic-search" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Semantic search
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#notes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Notes
+      
+    </span>
+  </a>
   
 </li>
       
@@ -1263,156 +1533,218 @@
 
 
 
-  <h1>Cli use</h1>
-
-<p>Documents
- - Find where in the document "a specific term" is mentioned</p>
-<h2 id="benchmark-commands-mm-bench">Benchmark commands (<code>mm bench</code>)<a class="headerlink" href="#benchmark-commands-mm-bench" title="Permanent link">&para;</a></h2>
-<p>Each benchmark is a real CLI invocation measured end-to-end via subprocess.</p>
-<h3 id="metadata-scan-directory-level">Metadata scan (directory-level)<a class="headerlink" href="#metadata-scan-directory-level" title="Permanent link">&para;</a></h3>
+<h1 id="mm-grep">mm grep<a class="headerlink" href="#mm-grep" title="Permanent link">&para;</a></h1>
+<p>Search file contents with regex, full-text search, and semantic vector search — like <code>rg</code> or <code>grep</code>, but kind-aware and media-capable.</p>
+<h2 id="synopsis">Synopsis<a class="headerlink" href="#synopsis" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>mm<span class="w"> </span>grep<span class="w"> </span>PATTERN<span class="w"> </span><span class="o">[</span>DIRECTORY<span class="o">]</span><span class="w"> </span><span class="o">[</span>OPTIONS<span class="o">]</span>
+</code></pre></div>
+<p><code>PATTERN</code> is a regular expression. <code>DIRECTORY</code> defaults to <code>.</code> (current directory).</p>
+<h2 id="options">Options<a class="headerlink" href="#options" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
 <tr>
-<th>Name</th>
-<th>Command</th>
+<th>Flag</th>
+<th>Short</th>
+<th>Type</th>
+<th>Description</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><code>mm find .</code></td>
-<td><code>mm find {dir} --format json</code></td>
+<td><code>--kind KINDS</code></td>
+<td><code>-k</code></td>
+<td>string</td>
+<td>Filter by file kind. Comma-separated. e.g. <code>code,document</code></td>
 </tr>
 <tr>
-<td><code>mm find . (table)</code></td>
-<td><code>mm find {dir} --format tsv</code></td>
+<td><code>--ext EXTS</code></td>
+<td><code>-e</code></td>
+<td>string</td>
+<td>Filter by extension. Comma-separated. e.g. <code>.py,.rs</code></td>
 </tr>
 <tr>
-<td><code>mm wc .</code></td>
-<td><code>mm wc {dir} --format json</code></td>
+<td><code>-C N</code></td>
+<td></td>
+<td>int</td>
+<td>Show N lines of context around each match</td>
 </tr>
 <tr>
-<td><code>mm sql 'GROUP BY kind'</code></td>
-<td><code>mm sql 'SELECT kind, COUNT(*) ...' --dir {dir} --format json</code></td>
+<td><code>--count</code></td>
+<td><code>-c</code></td>
+<td>flag</td>
+<td>Show only match counts per file, not the matching lines</td>
 </tr>
 <tr>
-<td><code>mm sql 'SUM(size) BY kind'</code></td>
-<td><code>mm sql 'SELECT kind, COUNT(*), SUM(size), AVG(size) ...' --dir {dir} --format json</code></td>
+<td><code>--semantic</code></td>
+<td><code>-s</code></td>
+<td>flag</td>
+<td>Run semantic (vector) search alongside text search</td>
 </tr>
 <tr>
-<td><code>mm sql 'TOP 10 largest'</code></td>
-<td><code>mm sql 'SELECT name, kind, size ... LIMIT 10' --dir {dir} --format json</code></td>
+<td><code>--pre-index</code></td>
+<td></td>
+<td>flag</td>
+<td>Index unindexed files before semantic search (max 50 per run)</td>
 </tr>
 <tr>
-<td><code>mm sql 'GROUP BY ext'</code></td>
-<td><code>mm sql 'SELECT ext, COUNT(*), SUM(size) ...' --dir {dir} --format json</code></td>
+<td><code>--ignore-case</code></td>
+<td><code>-i</code></td>
+<td>flag</td>
+<td>Force case-insensitive matching</td>
 </tr>
 <tr>
-<td><code>mm find --kind image</code></td>
-<td><code>mm find {dir} --kind image --format json</code></td>
+<td><code>--no-ignore</code></td>
+<td></td>
+<td>flag</td>
+<td>Include files excluded by <code>.gitignore</code></td>
 </tr>
 <tr>
-<td><code>mm find --kind audio</code></td>
-<td><code>mm find {dir} --kind audio --format json</code> (skipped if no audio)</td>
-</tr>
-<tr>
-<td><code>mm find --kind document</code></td>
-<td><code>mm find {dir} --kind document --format json</code> (skipped if no documents)</td>
+<td><code>--format FORMAT</code></td>
+<td><code>-f</code></td>
+<td>enum</td>
+<td>Output format: <code>rich</code>, <code>json</code>, <code>tsv</code>, <code>csv</code>, <code>dataset-jsonl</code>, <code>dataset-hf</code></td>
 </tr>
 </tbody>
 </table>
-<h3 id="fast-mode-content-extraction-file-level">Fast mode — content extraction (file-level)<a class="headerlink" href="#fast-mode-content-extraction-file-level" title="Permanent link">&para;</a></h3>
-<p>Use <code>--no-cache</code> to bypass caching.</p>
+<h2 id="search-modes">Search modes<a class="headerlink" href="#search-modes" title="Permanent link">&para;</a></h2>
+<p><code>grep</code> combines three search strategies in a single invocation:</p>
 <table>
 <thead>
 <tr>
-<th>Name</th>
-<th>Command</th>
-<th>Selection</th>
+<th>Mode</th>
+<th>Trigger</th>
+<th>Scope</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><code>mm cat &lt;code&gt; (x20)</code></td>
-<td><code>mm cat {files} --mode fast --format json</code></td>
-<td>first 20 code files</td>
+<td><strong>Regex</strong></td>
+<td>Always active</td>
+<td>Text files and extracted document text</td>
 </tr>
 <tr>
-<td><code>mm cat &lt;image&gt;</code></td>
-<td><code>mm cat {file} --mode fast --format json</code></td>
-<td>first image</td>
+<td><strong>FTS</strong></td>
+<td>Always active (silent on empty index)</td>
+<td>Indexed chunks in SQLite FTS5</td>
 </tr>
 <tr>
-<td><code>mm cat &lt;image&gt; (x20)</code></td>
-<td><code>mm cat {files} --mode fast --format json</code></td>
-<td>first 20 images</td>
-</tr>
-<tr>
-<td><code>mm cat &lt;audio&gt;</code></td>
-<td><code>mm cat {file} --mode fast --format json</code></td>
-<td>first audio</td>
-</tr>
-<tr>
-<td><code>mm cat &lt;video&gt;</code></td>
-<td><code>mm cat {file} --mode fast --format json</code></td>
-<td>first video</td>
-</tr>
-<tr>
-<td><code>mm cat &lt;pdf&gt;</code></td>
-<td><code>mm cat {file} --mode fast --format json</code></td>
-<td>first document</td>
-</tr>
-<tr>
-<td><code>mm cat &lt;pdf&gt; (x10)</code></td>
-<td><code>mm cat {files} --mode fast --format json</code></td>
-<td>first 10 documents</td>
-</tr>
-<tr>
-<td><code>mm grep /pattern/</code></td>
-<td><code>mm grep 'import\|include\|require' {dir} --format json</code></td>
-<td>all text files</td>
+<td><strong>Semantic</strong></td>
+<td><code>--semantic</code> / <code>-s</code></td>
+<td>Embedded vector chunks (images, video, audio, PDFs)</td>
 </tr>
 </tbody>
 </table>
-<h3 id="accurate-mode-llm-pipelines">Accurate mode (LLM pipelines)<a class="headerlink" href="#accurate-mode-llm-pipelines" title="Permanent link">&para;</a></h3>
-<p>Use <code>--no-cache</code> to bypass caching.</p>
-<table>
-<thead>
-<tr>
-<th>Name</th>
-<th>Command</th>
-<th>Selection</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>mm cat &lt;image&gt; --mode fast</code></td>
-<td><code>mm cat {file} --mode fast --format json</code></td>
-<td>first image</td>
-</tr>
-<tr>
-<td><code>mm cat &lt;image&gt; --mode accurate</code></td>
-<td><code>mm cat {file} --mode accurate --format json</code></td>
-<td>first image</td>
-</tr>
-<tr>
-<td><code>mm cat &lt;video&gt; --mode fast</code></td>
-<td><code>mm cat {file} --mode fast --format json</code></td>
-<td>first video</td>
-</tr>
-<tr>
-<td><code>mm cat &lt;audio&gt; --mode fast</code></td>
-<td><code>mm cat {file} --mode fast --format json</code></td>
-<td>smallest audio</td>
-</tr>
-</tbody>
-</table>
-<h3 id="placeholders">Placeholders<a class="headerlink" href="#placeholders" title="Permanent link">&para;</a></h3>
+<p>Results from all three are merged and deduplicated before output.</p>
+<h2 id="smart-case-matching">Smart-case matching<a class="headerlink" href="#smart-case-matching" title="Permanent link">&para;</a></h2>
+<p>When <code>-i</code> is not passed, <code>grep</code> applies smart-case logic:</p>
 <ul>
-<li><code>{dir}</code> — resolved absolute directory path</li>
-<li><code>{file}</code> — single file auto-picked by kind (first match, or smallest for accurate-mode audio)</li>
-<li><code>{files}</code> — space-separated list of files (batch commands, up to N)</li>
+<li>Pattern contains <strong>no uppercase letters</strong> → case-insensitive match</li>
+<li>Pattern contains <strong>any uppercase letter</strong> → case-sensitive match</li>
 </ul>
-<p>Commands are skipped when the required file kind is absent from the target directory.</p>
+<p>This matches the behavior of <code>ripgrep</code> and <code>vim</code>. Passing <code>-i</code> always forces case-insensitive matching regardless of pattern.</p>
+<h2 id="file-type-handling">File type handling<a class="headerlink" href="#file-type-handling" title="Permanent link">&para;</a></h2>
+<p><code>grep</code> reads content based on file kind:</p>
+<table>
+<thead>
+<tr>
+<th>Kind</th>
+<th>How content is read</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>code</code>, <code>text</code>, <code>config</code>, <code>data</code></td>
+<td>Raw UTF-8 text</td>
+</tr>
+<tr>
+<td><code>document</code> (PDF, DOCX, etc.)</td>
+<td>Extracted text via local document parser</td>
+</tr>
+<tr>
+<td><code>image</code>, <code>video</code>, <code>audio</code></td>
+<td>Binary — skipped for regex; searchable via FTS/semantic if indexed</td>
+</tr>
+</tbody>
+</table>
+<h2 id="exit-codes">Exit codes<a class="headerlink" href="#exit-codes" title="Permanent link">&para;</a></h2>
+<p><code>grep</code> follows standard Unix <code>grep</code> convention:</p>
+<ul>
+<li><code>0</code> — one or more matches found</li>
+<li><code>1</code> — no matches found</li>
+</ul>
+<p>This makes it safe to use in conditionals and pipes:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>mm<span class="w"> </span>grep<span class="w"> </span><span class="s2">&quot;TODO&quot;</span><span class="w"> </span>~/src<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;Found TODOs&quot;</span>
+</code></pre></div>
+<h2 id="examples">Examples<a class="headerlink" href="#examples" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="c1"># search all files in current directory</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>mm<span class="w"> </span>grep<span class="w"> </span><span class="s2">&quot;TODO&quot;</span>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="c1"># search a specific directory</span>
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>mm<span class="w"> </span>grep<span class="w"> </span><span class="s2">&quot;import.*torch&quot;</span><span class="w"> </span>~/project
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="c1"># code files only</span>
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>mm<span class="w"> </span>grep<span class="w"> </span><span class="s2">&quot;def main&quot;</span><span class="w"> </span>~/src<span class="w"> </span>--kind<span class="w"> </span>code
+<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>
+<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a><span class="c1"># search PDF text content</span>
+<a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a>mm<span class="w"> </span>grep<span class="w"> </span><span class="s2">&quot;attention&quot;</span><span class="w"> </span>~/papers<span class="w"> </span>--ext<span class="w"> </span>.pdf
+<a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a>
+<a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a><span class="c1"># context lines around each match</span>
+<a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a>mm<span class="w"> </span>grep<span class="w"> </span><span class="s2">&quot;error|warn&quot;</span><span class="w"> </span>~/logs<span class="w"> </span>-C<span class="w"> </span><span class="m">2</span>
+<a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a>
+<a id="__codelineno-2-16" name="__codelineno-2-16" href="#__codelineno-2-16"></a><span class="c1"># count matches per file</span>
+<a id="__codelineno-2-17" name="__codelineno-2-17" href="#__codelineno-2-17"></a>mm<span class="w"> </span>grep<span class="w"> </span><span class="s2">&quot;TODO&quot;</span><span class="w"> </span>~/src<span class="w"> </span>--count
+<a id="__codelineno-2-18" name="__codelineno-2-18" href="#__codelineno-2-18"></a>
+<a id="__codelineno-2-19" name="__codelineno-2-19" href="#__codelineno-2-19"></a><span class="c1"># case-insensitive (forced)</span>
+<a id="__codelineno-2-20" name="__codelineno-2-20" href="#__codelineno-2-20"></a>mm<span class="w"> </span>grep<span class="w"> </span><span class="s2">&quot;quantum&quot;</span><span class="w"> </span>~/docs<span class="w"> </span>-i
+<a id="__codelineno-2-21" name="__codelineno-2-21" href="#__codelineno-2-21"></a>
+<a id="__codelineno-2-22" name="__codelineno-2-22" href="#__codelineno-2-22"></a><span class="c1"># include gitignored files</span>
+<a id="__codelineno-2-23" name="__codelineno-2-23" href="#__codelineno-2-23"></a>mm<span class="w"> </span>grep<span class="w"> </span><span class="s2">&quot;secret&quot;</span><span class="w"> </span>~/repo<span class="w"> </span>--no-ignore
+<a id="__codelineno-2-24" name="__codelineno-2-24" href="#__codelineno-2-24"></a>
+<a id="__codelineno-2-25" name="__codelineno-2-25" href="#__codelineno-2-25"></a><span class="c1"># semantic search over indexed media</span>
+<a id="__codelineno-2-26" name="__codelineno-2-26" href="#__codelineno-2-26"></a>mm<span class="w"> </span>grep<span class="w"> </span><span class="s2">&quot;Quantum Phase Transition&quot;</span><span class="w"> </span>~/data<span class="w"> </span>-s
+<a id="__codelineno-2-27" name="__codelineno-2-27" href="#__codelineno-2-27"></a>
+<a id="__codelineno-2-28" name="__codelineno-2-28" href="#__codelineno-2-28"></a><span class="c1"># index unindexed files first, then semantic search</span>
+<a id="__codelineno-2-29" name="__codelineno-2-29" href="#__codelineno-2-29"></a>mm<span class="w"> </span>grep<span class="w"> </span><span class="s2">&quot;protein folding&quot;</span><span class="w"> </span>~/papers<span class="w"> </span>-s<span class="w"> </span>--pre-index
+<a id="__codelineno-2-30" name="__codelineno-2-30" href="#__codelineno-2-30"></a>
+<a id="__codelineno-2-31" name="__codelineno-2-31" href="#__codelineno-2-31"></a><span class="c1"># pipe from find</span>
+<a id="__codelineno-2-32" name="__codelineno-2-32" href="#__codelineno-2-32"></a>mm<span class="w"> </span>find<span class="w"> </span>~/project<span class="w"> </span>--kind<span class="w"> </span>code<span class="w"> </span><span class="p">|</span><span class="w"> </span>mm<span class="w"> </span>grep<span class="w"> </span><span class="s2">&quot;deprecated&quot;</span>
+<a id="__codelineno-2-33" name="__codelineno-2-33" href="#__codelineno-2-33"></a>
+<a id="__codelineno-2-34" name="__codelineno-2-34" href="#__codelineno-2-34"></a><span class="c1"># JSON output</span>
+<a id="__codelineno-2-35" name="__codelineno-2-35" href="#__codelineno-2-35"></a>mm<span class="w"> </span>grep<span class="w"> </span><span class="s2">&quot;TODO&quot;</span><span class="w"> </span>~/src<span class="w"> </span>--kind<span class="w"> </span>code<span class="w"> </span>--format<span class="w"> </span>json
+</code></pre></div>
+<h2 id="output-format">Output format<a class="headerlink" href="#output-format" title="Permanent link">&para;</a></h2>
+<h3 id="rich-default-in-tty">Rich (default in TTY)<a class="headerlink" href="#rich-default-in-tty" title="Permanent link">&para;</a></h3>
+<p>Grouped by file, with matched text highlighted in bold. A summary line follows all matches:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>main.py
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>    42  def main() -&gt; None:
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>    87  if __name__ == &quot;__main__&quot;:
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>utils.py
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>   113  # main entry point
+<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>
+<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>3 matches in 2 files
+</code></pre></div>
+<h3 id="non-rich-tsvpipe-default">Non-rich (TSV/pipe default)<a class="headerlink" href="#non-rich-tsvpipe-default" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>path/to/file.py:42:    def main() -&gt; None:
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>path/to/file.py:87:    if __name__ == &quot;__main__&quot;:
+</code></pre></div>
+<p>Format: <code>path:line_number:line_content</code>.</p>
+<h2 id="semantic-search">Semantic search<a class="headerlink" href="#semantic-search" title="Permanent link">&para;</a></h2>
+<p>When <code>--semantic</code> is active:</p>
+<ol>
+<li>Vector embeddings are looked up in the <code>chunks_vec</code> SQLite-vec table.</li>
+<li>Files must have been indexed (<code>mm cat --pre-index</code> or <code>mm grep -s --pre-index</code>) for semantic results to appear.</li>
+<li>Binary files (images, video, audio, PDFs) are searchable semantically even though regex cannot match them.</li>
+<li>Up to 5 semantic results are returned per search.</li>
+</ol>
+<p><code>--pre-index</code> runs the fast-mode pipeline on unindexed files before searching, indexing at most 50 files per invocation.</p>
+<h2 id="notes">Notes<a class="headerlink" href="#notes" title="Permanent link">&para;</a></h2>
+<ul>
+<li>Results from FTS and semantic search are deduplicated against regex matches using <code>(path, chunk_index)</code> as the key.</li>
+<li>The FTS search runs silently — no error is raised if the FTS5 index is empty or missing.</li>
+<li><code>--count</code> with <code>--format json</code> emits <code>{"path": ..., "count": ...}</code> records; with <code>rich</code> it shows a sorted table.</li>
+<li>Regex compilation errors print to stderr and exit with code 1.</li>
+</ul>
 
 
 
@@ -1506,10 +1838,10 @@
     
       
       
-      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.instant", "navigation.tracking", "navigation.top", "toc.follow", "content.code.copy", "content.code.annotate"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.instant", "navigation.tracking", "navigation.top", "toc.follow", "content.code.copy", "content.code.annotate"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
       
     
   </body>

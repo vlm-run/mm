@@ -10,27 +10,31 @@
       
       
       
-        <link rel="canonical" href="https://vlm-run.github.io/mm/spec/cli-use/">
+        <link rel="canonical" href="https://vlm-run.github.io/mm/WC_COMMAND/">
       
       
+        <link rel="prev" href="../FIND_COMMAND/">
+      
+      
+        <link rel="next" href="../PEEK_COMMAND/">
       
       
         
       
       
-      <link rel="icon" href="../../assets/images/favicon.png">
+      <link rel="icon" href="../assets/images/favicon.png">
       <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
     
     
       
-        <title>Cli use - mm</title>
+        <title>WC Command - mm</title>
       
     
     
-      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
       
         
-        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
       
       
 
@@ -49,9 +53,9 @@
       
     
     
-      <link rel="stylesheet" href="../../assets/_mkdocstrings.css">
+      <link rel="stylesheet" href="../assets/_mkdocstrings.css">
     
-    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
     
       
 
@@ -76,7 +80,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#benchmark-commands-mm-bench" class="md-skip">
+        <a href="#mm-wc" class="md-skip">
           Skip to content
         </a>
       
@@ -92,7 +96,7 @@
 
 <header class="md-header md-header--shadow" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href="../.." title="mm" class="md-header__button md-logo" aria-label="mm" data-md-component="logo">
+    <a href=".." title="mm" class="md-header__button md-logo" aria-label="mm" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
@@ -112,7 +116,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Cli use
+              WC Command
             
           </span>
         </div>
@@ -228,7 +232,7 @@
 
 <nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="../.." title="mm" class="md-nav__button md-logo" aria-label="mm" data-md-component="logo">
+    <a href=".." title="mm" class="md-nav__button md-logo" aria-label="mm" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
@@ -258,7 +262,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../.." class="md-nav__link">
+      <a href=".." class="md-nav__link">
         
   
   
@@ -285,7 +289,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../USER_GUIDE/" class="md-nav__link">
+      <a href="../USER_GUIDE/" class="md-nav__link">
         
   
   
@@ -309,18 +313,20 @@
       
   
   
+    
   
   
+  
     
     
     
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
         
           
           <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
@@ -341,7 +347,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_3">
             <span class="md-nav__icon md-icon"></span>
             
@@ -359,7 +365,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../MM_CLI/" class="md-nav__link">
+      <a href="../MM_CLI/" class="md-nav__link">
         
   
   
@@ -387,7 +393,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../FIND_COMMAND/" class="md-nav__link">
+      <a href="../FIND_COMMAND/" class="md-nav__link">
         
   
   
@@ -412,10 +418,37 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../../WC_COMMAND/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    WC Command
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -431,6 +464,114 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#synopsis" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Synopsis
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#options" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Options
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#output-metrics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Output metrics
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#token-estimation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Token estimation
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#examples" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Examples
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#pipe-support" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Pipe support
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#auto-breakdown" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Auto-breakdown
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#notes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Notes
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -443,7 +584,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../PEEK_COMMAND/" class="md-nav__link">
+      <a href="../PEEK_COMMAND/" class="md-nav__link">
         
   
   
@@ -471,7 +612,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../GREP_COMMAND/" class="md-nav__link">
+      <a href="../GREP_COMMAND/" class="md-nav__link">
         
   
   
@@ -499,7 +640,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../CAT_COMMAND/" class="md-nav__link">
+      <a href="../CAT_COMMAND/" class="md-nav__link">
         
   
   
@@ -527,7 +668,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../BENCH_COMMAND/" class="md-nav__link">
+      <a href="../BENCH_COMMAND/" class="md-nav__link">
         
   
   
@@ -555,7 +696,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../PROFILE_MANAGEMENT/" class="md-nav__link">
+      <a href="../PROFILE_MANAGEMENT/" class="md-nav__link">
         
   
   
@@ -583,7 +724,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../MM_CONFIG/" class="md-nav__link">
+      <a href="../MM_CONFIG/" class="md-nav__link">
         
   
   
@@ -665,7 +806,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/" class="md-nav__link">
+      <a href="../api/" class="md-nav__link">
         
   
   
@@ -693,7 +834,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../mm_context/" class="md-nav__link">
+      <a href="../mm_context/" class="md-nav__link">
         
   
   
@@ -728,7 +869,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../USE_CASES/" class="md-nav__link">
+      <a href="../USE_CASES/" class="md-nav__link">
         
   
   
@@ -755,7 +896,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../ENCODERS/" class="md-nav__link">
+      <a href="../ENCODERS/" class="md-nav__link">
         
   
   
@@ -782,7 +923,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../PIPELINES/" class="md-nav__link">
+      <a href="../PIPELINES/" class="md-nav__link">
         
   
   
@@ -809,7 +950,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../FIXTURES/" class="md-nav__link">
+      <a href="../FIXTURES/" class="md-nav__link">
         
   
   
@@ -883,7 +1024,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../notebooks/mm_cookbook_gateway/" class="md-nav__link">
+      <a href="../notebooks/mm_cookbook_gateway/" class="md-nav__link">
         
   
   
@@ -911,7 +1052,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../notebooks/mm_cookbook/" class="md-nav__link">
+      <a href="../notebooks/mm_cookbook/" class="md-nav__link">
         
   
   
@@ -939,7 +1080,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../notebooks/mm-context-api/" class="md-nav__link">
+      <a href="../notebooks/mm-context-api/" class="md-nav__link">
         
   
   
@@ -967,7 +1108,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../notebooks/mm-context-viz/" class="md-nav__link">
+      <a href="../notebooks/mm-context-viz/" class="md-nav__link">
         
   
   
@@ -1049,7 +1190,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../spec-templates/image/" class="md-nav__link">
+      <a href="../spec-templates/image/" class="md-nav__link">
         
   
   
@@ -1077,7 +1218,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../spec-templates/video/" class="md-nav__link">
+      <a href="../spec-templates/video/" class="md-nav__link">
         
   
   
@@ -1105,7 +1246,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../spec-templates/audio/" class="md-nav__link">
+      <a href="../spec-templates/audio/" class="md-nav__link">
         
   
   
@@ -1133,7 +1274,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../spec-templates/document/" class="md-nav__link">
+      <a href="../spec-templates/document/" class="md-nav__link">
         
   
   
@@ -1178,6 +1319,8 @@
   
   
   
+    
+  
   
     <label class="md-nav__title" for="__toc">
       <span class="md-nav__icon md-icon"></span>
@@ -1186,63 +1329,90 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#benchmark-commands-mm-bench" class="md-nav__link">
+  <a href="#synopsis" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Benchmark commands (mm bench)
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Benchmark commands (mm bench)">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#metadata-scan-directory-level" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Metadata scan (directory-level)
+        Synopsis
       
     </span>
   </a>
   
 </li>
-        
-          <li class="md-nav__item">
-  <a href="#fast-mode-content-extraction-file-level" class="md-nav__link">
+      
+        <li class="md-nav__item">
+  <a href="#options" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Fast mode — content extraction (file-level)
+        Options
       
     </span>
   </a>
   
 </li>
-        
-          <li class="md-nav__item">
-  <a href="#accurate-mode-llm-pipelines" class="md-nav__link">
+      
+        <li class="md-nav__item">
+  <a href="#output-metrics" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Accurate mode (LLM pipelines)
+        Output metrics
       
     </span>
   </a>
   
 </li>
-        
-          <li class="md-nav__item">
-  <a href="#placeholders" class="md-nav__link">
+      
+        <li class="md-nav__item">
+  <a href="#token-estimation" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Placeholders
+        Token estimation
       
     </span>
   </a>
   
 </li>
-        
-      </ul>
-    </nav>
+      
+        <li class="md-nav__item">
+  <a href="#examples" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Examples
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#pipe-support" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Pipe support
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#auto-breakdown" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Auto-breakdown
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#notes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Notes
+      
+    </span>
+  </a>
   
 </li>
       
@@ -1263,156 +1433,125 @@
 
 
 
-  <h1>Cli use</h1>
-
-<p>Documents
- - Find where in the document "a specific term" is mentioned</p>
-<h2 id="benchmark-commands-mm-bench">Benchmark commands (<code>mm bench</code>)<a class="headerlink" href="#benchmark-commands-mm-bench" title="Permanent link">&para;</a></h2>
-<p>Each benchmark is a real CLI invocation measured end-to-end via subprocess.</p>
-<h3 id="metadata-scan-directory-level">Metadata scan (directory-level)<a class="headerlink" href="#metadata-scan-directory-level" title="Permanent link">&para;</a></h3>
+<h1 id="mm-wc">mm wc<a class="headerlink" href="#mm-wc" title="Permanent link">&para;</a></h1>
+<p>Count files, bytes, estimated lines, and estimated tokens across a directory — like <code>wc</code> scaled up for LLM context budgeting.</p>
+<h2 id="synopsis">Synopsis<a class="headerlink" href="#synopsis" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>mm<span class="w"> </span>wc<span class="w"> </span><span class="o">[</span>DIRECTORY<span class="o">]</span><span class="w"> </span><span class="o">[</span>OPTIONS<span class="o">]</span>
+</code></pre></div>
+<p><code>DIRECTORY</code> defaults to <code>.</code> (current directory).</p>
+<h2 id="options">Options<a class="headerlink" href="#options" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
 <tr>
-<th>Name</th>
-<th>Command</th>
+<th>Flag</th>
+<th>Short</th>
+<th>Type</th>
+<th>Description</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><code>mm find .</code></td>
-<td><code>mm find {dir} --format json</code></td>
+<td><code>--kind KINDS</code></td>
+<td><code>-k</code></td>
+<td>string</td>
+<td>Filter by kind. Comma-separated. e.g. <code>code,text</code></td>
 </tr>
 <tr>
-<td><code>mm find . (table)</code></td>
-<td><code>mm find {dir} --format tsv</code></td>
+<td><code>--by-kind</code></td>
+<td></td>
+<td>flag</td>
+<td>Break down metrics by file kind</td>
 </tr>
 <tr>
-<td><code>mm wc .</code></td>
-<td><code>mm wc {dir} --format json</code></td>
-</tr>
-<tr>
-<td><code>mm sql 'GROUP BY kind'</code></td>
-<td><code>mm sql 'SELECT kind, COUNT(*) ...' --dir {dir} --format json</code></td>
-</tr>
-<tr>
-<td><code>mm sql 'SUM(size) BY kind'</code></td>
-<td><code>mm sql 'SELECT kind, COUNT(*), SUM(size), AVG(size) ...' --dir {dir} --format json</code></td>
-</tr>
-<tr>
-<td><code>mm sql 'TOP 10 largest'</code></td>
-<td><code>mm sql 'SELECT name, kind, size ... LIMIT 10' --dir {dir} --format json</code></td>
-</tr>
-<tr>
-<td><code>mm sql 'GROUP BY ext'</code></td>
-<td><code>mm sql 'SELECT ext, COUNT(*), SUM(size) ...' --dir {dir} --format json</code></td>
-</tr>
-<tr>
-<td><code>mm find --kind image</code></td>
-<td><code>mm find {dir} --kind image --format json</code></td>
-</tr>
-<tr>
-<td><code>mm find --kind audio</code></td>
-<td><code>mm find {dir} --kind audio --format json</code> (skipped if no audio)</td>
-</tr>
-<tr>
-<td><code>mm find --kind document</code></td>
-<td><code>mm find {dir} --kind document --format json</code> (skipped if no documents)</td>
+<td><code>--format FORMAT</code></td>
+<td><code>-f</code></td>
+<td>enum</td>
+<td>Output format: <code>rich</code>, <code>tsv</code>, <code>csv</code>, <code>json</code></td>
 </tr>
 </tbody>
 </table>
-<h3 id="fast-mode-content-extraction-file-level">Fast mode — content extraction (file-level)<a class="headerlink" href="#fast-mode-content-extraction-file-level" title="Permanent link">&para;</a></h3>
-<p>Use <code>--no-cache</code> to bypass caching.</p>
+<h2 id="output-metrics">Output metrics<a class="headerlink" href="#output-metrics" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
 <tr>
-<th>Name</th>
-<th>Command</th>
-<th>Selection</th>
+<th>Metric</th>
+<th>Description</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><code>mm cat &lt;code&gt; (x20)</code></td>
-<td><code>mm cat {files} --mode fast --format json</code></td>
-<td>first 20 code files</td>
+<td><code>files</code></td>
+<td>Total file count</td>
 </tr>
 <tr>
-<td><code>mm cat &lt;image&gt;</code></td>
-<td><code>mm cat {file} --mode fast --format json</code></td>
-<td>first image</td>
+<td><code>size</code></td>
+<td>Total disk usage (formatted: KB / MB / GB)</td>
 </tr>
 <tr>
-<td><code>mm cat &lt;image&gt; (x20)</code></td>
-<td><code>mm cat {files} --mode fast --format json</code></td>
-<td>first 20 images</td>
+<td><code>lines (est.)</code></td>
+<td>Estimated line count for text/code/document files</td>
 </tr>
 <tr>
-<td><code>mm cat &lt;audio&gt;</code></td>
-<td><code>mm cat {file} --mode fast --format json</code></td>
-<td>first audio</td>
+<td><code>tokens (est.)</code></td>
+<td>Estimated token count (characters ÷ 4)</td>
 </tr>
 <tr>
-<td><code>mm cat &lt;video&gt;</code></td>
-<td><code>mm cat {file} --mode fast --format json</code></td>
-<td>first video</td>
-</tr>
-<tr>
-<td><code>mm cat &lt;pdf&gt;</code></td>
-<td><code>mm cat {file} --mode fast --format json</code></td>
-<td>first document</td>
-</tr>
-<tr>
-<td><code>mm cat &lt;pdf&gt; (x10)</code></td>
-<td><code>mm cat {files} --mode fast --format json</code></td>
-<td>first 10 documents</td>
-</tr>
-<tr>
-<td><code>mm grep /pattern/</code></td>
-<td><code>mm grep 'import\|include\|require' {dir} --format json</code></td>
-<td>all text files</td>
+<td><code>tok_per_mb</code></td>
+<td>Token density: tokens per megabyte</td>
 </tr>
 </tbody>
 </table>
-<h3 id="accurate-mode-llm-pipelines">Accurate mode (LLM pipelines)<a class="headerlink" href="#accurate-mode-llm-pipelines" title="Permanent link">&para;</a></h3>
-<p>Use <code>--no-cache</code> to bypass caching.</p>
-<table>
-<thead>
-<tr>
-<th>Name</th>
-<th>Command</th>
-<th>Selection</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>mm cat &lt;image&gt; --mode fast</code></td>
-<td><code>mm cat {file} --mode fast --format json</code></td>
-<td>first image</td>
-</tr>
-<tr>
-<td><code>mm cat &lt;image&gt; --mode accurate</code></td>
-<td><code>mm cat {file} --mode accurate --format json</code></td>
-<td>first image</td>
-</tr>
-<tr>
-<td><code>mm cat &lt;video&gt; --mode fast</code></td>
-<td><code>mm cat {file} --mode fast --format json</code></td>
-<td>first video</td>
-</tr>
-<tr>
-<td><code>mm cat &lt;audio&gt; --mode fast</code></td>
-<td><code>mm cat {file} --mode fast --format json</code></td>
-<td>smallest audio</td>
-</tr>
-</tbody>
-</table>
-<h3 id="placeholders">Placeholders<a class="headerlink" href="#placeholders" title="Permanent link">&para;</a></h3>
+<p>When <code>--by-kind</code> is active (or automatically activated when multiple kinds are present), an additional per-kind breakdown table is shown with a totals row.</p>
+<p>For <code>image</code> files, <code>tok_per_img</code> (tokens per image) is also computed per-kind.</p>
+<h2 id="token-estimation">Token estimation<a class="headerlink" href="#token-estimation" title="Permanent link">&para;</a></h2>
+<p>Tokens are estimated using a character-to-token ratio of <strong>4 characters per token</strong> — a standard approximation for English text with typical tokenizers.</p>
 <ul>
-<li><code>{dir}</code> — resolved absolute directory path</li>
-<li><code>{file}</code> — single file auto-picked by kind (first match, or smallest for accurate-mode audio)</li>
-<li><code>{files}</code> — space-separated list of files (batch commands, up to N)</li>
+<li><strong>Text / code files</strong>: full content read, character count ÷ 4</li>
+<li><strong>PDF documents</strong>: text extracted via pypdfium2, then character count ÷ 4</li>
+<li><strong>Binary files (image, video, audio)</strong>: 0 lines, 0 tokens — binary content is not text</li>
 </ul>
-<p>Commands are skipped when the required file kind is absent from the target directory.</p>
+<h2 id="examples">Examples<a class="headerlink" href="#examples" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="c1"># summary panel for current directory</span>
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>mm<span class="w"> </span>wc
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="c1"># summary for a specific directory</span>
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>mm<span class="w"> </span>wc<span class="w"> </span>~/project
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="c1"># code files only</span>
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>mm<span class="w"> </span>wc<span class="w"> </span>~/project<span class="w"> </span>--kind<span class="w"> </span>code
+<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>
+<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a><span class="c1"># images and video breakdown</span>
+<a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a>mm<span class="w"> </span>wc<span class="w"> </span>~/media<span class="w"> </span>--kind<span class="w"> </span>image,video<span class="w"> </span>--by-kind
+<a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a>
+<a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a><span class="c1"># explicit breakdown by kind</span>
+<a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a>mm<span class="w"> </span>wc<span class="w"> </span>~/data<span class="w"> </span>--by-kind
+<a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a>
+<a id="__codelineno-1-16" name="__codelineno-1-16" href="#__codelineno-1-16"></a><span class="c1"># JSON output for scripting</span>
+<a id="__codelineno-1-17" name="__codelineno-1-17" href="#__codelineno-1-17"></a>mm<span class="w"> </span>wc<span class="w"> </span>~/data<span class="w"> </span>--format<span class="w"> </span>json
+<a id="__codelineno-1-18" name="__codelineno-1-18" href="#__codelineno-1-18"></a>
+<a id="__codelineno-1-19" name="__codelineno-1-19" href="#__codelineno-1-19"></a><span class="c1"># TSV for spreadsheet import</span>
+<a id="__codelineno-1-20" name="__codelineno-1-20" href="#__codelineno-1-20"></a>mm<span class="w"> </span>wc<span class="w"> </span>~/data<span class="w"> </span>--by-kind<span class="w"> </span>--format<span class="w"> </span>tsv
+</code></pre></div>
+<h2 id="pipe-support">Pipe support<a class="headerlink" href="#pipe-support" title="Permanent link">&para;</a></h2>
+<p><code>mm wc</code> reads file paths from stdin when piped, computing stats only for those files:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="c1"># count tokens in files found by find</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>mm<span class="w"> </span>find<span class="w"> </span>~/project<span class="w"> </span>--kind<span class="w"> </span>code<span class="w"> </span><span class="p">|</span><span class="w"> </span>mm<span class="w"> </span>wc
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="c1"># count tokens in specific PDF files</span>
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>mm<span class="w"> </span>find<span class="w"> </span>~/data<span class="w"> </span>--ext<span class="w"> </span>.pdf<span class="w"> </span><span class="p">|</span><span class="w"> </span>mm<span class="w"> </span>wc
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="c1"># compare token counts before and after filtering</span>
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>mm<span class="w"> </span>find<span class="w"> </span>~/data<span class="w"> </span><span class="p">|</span><span class="w"> </span>mm<span class="w"> </span>wc
+<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>mm<span class="w"> </span>find<span class="w"> </span>~/data<span class="w"> </span>--kind<span class="w"> </span>code<span class="w"> </span><span class="p">|</span><span class="w"> </span>mm<span class="w"> </span>wc
+</code></pre></div>
+<h2 id="auto-breakdown">Auto-breakdown<a class="headerlink" href="#auto-breakdown" title="Permanent link">&para;</a></h2>
+<p>When multiple file kinds are present in the scanned directory, <code>--by-kind</code> is enabled automatically — no flag needed. Pass <code>--kind</code> to filter to a single kind and suppress the per-kind table.</p>
+<h2 id="notes">Notes<a class="headerlink" href="#notes" title="Permanent link">&para;</a></h2>
+<ul>
+<li>Document line counts are extracted from pypdfium2 text output, not page count.</li>
+<li><code>tok_per_mb</code> is omitted (<code>—</code>) when a kind has zero bytes on disk.</li>
+<li>The Rust scanner handles all kinds except documents; PDF text extraction runs in Python via pypdfium2 and is overlaid onto the Rust results.</li>
+</ul>
 
 
 
@@ -1506,10 +1645,10 @@
     
       
       
-      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.instant", "navigation.tracking", "navigation.top", "toc.follow", "content.code.copy", "content.code.annotate"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.instant", "navigation.tracking", "navigation.top", "toc.follow", "content.code.copy", "content.code.annotate"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
       
     
   </body>

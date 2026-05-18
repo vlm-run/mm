@@ -10,27 +10,31 @@
       
       
       
-        <link rel="canonical" href="https://vlm-run.github.io/mm/spec/cli-use/">
+        <link rel="canonical" href="https://vlm-run.github.io/mm/PEEK_COMMAND/">
       
       
+        <link rel="prev" href="../WC_COMMAND/">
+      
+      
+        <link rel="next" href="../GREP_COMMAND/">
       
       
         
       
       
-      <link rel="icon" href="../../assets/images/favicon.png">
+      <link rel="icon" href="../assets/images/favicon.png">
       <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
     
     
       
-        <title>Cli use - mm</title>
+        <title>Peek Command - mm</title>
       
     
     
-      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
       
         
-        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
       
       
 
@@ -49,9 +53,9 @@
       
     
     
-      <link rel="stylesheet" href="../../assets/_mkdocstrings.css">
+      <link rel="stylesheet" href="../assets/_mkdocstrings.css">
     
-    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
     
       
 
@@ -76,7 +80,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#benchmark-commands-mm-bench" class="md-skip">
+        <a href="#mm-peek" class="md-skip">
           Skip to content
         </a>
       
@@ -92,7 +96,7 @@
 
 <header class="md-header md-header--shadow" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href="../.." title="mm" class="md-header__button md-logo" aria-label="mm" data-md-component="logo">
+    <a href=".." title="mm" class="md-header__button md-logo" aria-label="mm" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
@@ -112,7 +116,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Cli use
+              Peek Command
             
           </span>
         </div>
@@ -228,7 +232,7 @@
 
 <nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="../.." title="mm" class="md-nav__button md-logo" aria-label="mm" data-md-component="logo">
+    <a href=".." title="mm" class="md-nav__button md-logo" aria-label="mm" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
@@ -258,7 +262,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../.." class="md-nav__link">
+      <a href=".." class="md-nav__link">
         
   
   
@@ -285,7 +289,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../USER_GUIDE/" class="md-nav__link">
+      <a href="../USER_GUIDE/" class="md-nav__link">
         
   
   
@@ -309,18 +313,20 @@
       
   
   
+    
   
   
+  
     
     
     
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
         
           
           <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
@@ -341,7 +347,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_3">
             <span class="md-nav__icon md-icon"></span>
             
@@ -359,7 +365,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../MM_CLI/" class="md-nav__link">
+      <a href="../MM_CLI/" class="md-nav__link">
         
   
   
@@ -387,7 +393,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../FIND_COMMAND/" class="md-nav__link">
+      <a href="../FIND_COMMAND/" class="md-nav__link">
         
   
   
@@ -415,7 +421,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../WC_COMMAND/" class="md-nav__link">
+      <a href="../WC_COMMAND/" class="md-nav__link">
         
   
   
@@ -440,10 +446,37 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../../PEEK_COMMAND/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Peek Command
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -459,6 +492,175 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#synopsis" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Synopsis
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#options" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Options
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#metadata-fields" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Metadata fields
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Metadata fields">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#universal-fields" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Universal fields
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#image-fields" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Image fields
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#video-fields" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Video fields
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#audio-fields" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Audio fields
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#document-fields-always-shown" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Document fields (always shown)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#document-fields-full-only" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Document fields (--full only)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#examples" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Examples
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#rich-panel-output" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Rich panel output
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#performance" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Performance
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#notes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Notes
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -471,7 +673,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../GREP_COMMAND/" class="md-nav__link">
+      <a href="../GREP_COMMAND/" class="md-nav__link">
         
   
   
@@ -499,7 +701,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../CAT_COMMAND/" class="md-nav__link">
+      <a href="../CAT_COMMAND/" class="md-nav__link">
         
   
   
@@ -527,7 +729,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../BENCH_COMMAND/" class="md-nav__link">
+      <a href="../BENCH_COMMAND/" class="md-nav__link">
         
   
   
@@ -555,7 +757,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../PROFILE_MANAGEMENT/" class="md-nav__link">
+      <a href="../PROFILE_MANAGEMENT/" class="md-nav__link">
         
   
   
@@ -583,7 +785,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../MM_CONFIG/" class="md-nav__link">
+      <a href="../MM_CONFIG/" class="md-nav__link">
         
   
   
@@ -665,7 +867,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/" class="md-nav__link">
+      <a href="../api/" class="md-nav__link">
         
   
   
@@ -693,7 +895,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../mm_context/" class="md-nav__link">
+      <a href="../mm_context/" class="md-nav__link">
         
   
   
@@ -728,7 +930,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../USE_CASES/" class="md-nav__link">
+      <a href="../USE_CASES/" class="md-nav__link">
         
   
   
@@ -755,7 +957,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../ENCODERS/" class="md-nav__link">
+      <a href="../ENCODERS/" class="md-nav__link">
         
   
   
@@ -782,7 +984,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../PIPELINES/" class="md-nav__link">
+      <a href="../PIPELINES/" class="md-nav__link">
         
   
   
@@ -809,7 +1011,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../FIXTURES/" class="md-nav__link">
+      <a href="../FIXTURES/" class="md-nav__link">
         
   
   
@@ -883,7 +1085,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../notebooks/mm_cookbook_gateway/" class="md-nav__link">
+      <a href="../notebooks/mm_cookbook_gateway/" class="md-nav__link">
         
   
   
@@ -911,7 +1113,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../notebooks/mm_cookbook/" class="md-nav__link">
+      <a href="../notebooks/mm_cookbook/" class="md-nav__link">
         
   
   
@@ -939,7 +1141,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../notebooks/mm-context-api/" class="md-nav__link">
+      <a href="../notebooks/mm-context-api/" class="md-nav__link">
         
   
   
@@ -967,7 +1169,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../notebooks/mm-context-viz/" class="md-nav__link">
+      <a href="../notebooks/mm-context-viz/" class="md-nav__link">
         
   
   
@@ -1049,7 +1251,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../spec-templates/image/" class="md-nav__link">
+      <a href="../spec-templates/image/" class="md-nav__link">
         
   
   
@@ -1077,7 +1279,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../spec-templates/video/" class="md-nav__link">
+      <a href="../spec-templates/video/" class="md-nav__link">
         
   
   
@@ -1105,7 +1307,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../spec-templates/audio/" class="md-nav__link">
+      <a href="../spec-templates/audio/" class="md-nav__link">
         
   
   
@@ -1133,7 +1335,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../spec-templates/document/" class="md-nav__link">
+      <a href="../spec-templates/document/" class="md-nav__link">
         
   
   
@@ -1178,6 +1380,8 @@
   
   
   
+    
+  
   
     <label class="md-nav__title" for="__toc">
       <span class="md-nav__icon md-icon"></span>
@@ -1186,22 +1390,44 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#benchmark-commands-mm-bench" class="md-nav__link">
+  <a href="#synopsis" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Benchmark commands (mm bench)
+        Synopsis
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Benchmark commands (mm bench)">
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#options" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Options
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#metadata-fields" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Metadata fields
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Metadata fields">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#metadata-scan-directory-level" class="md-nav__link">
+  <a href="#universal-fields" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Metadata scan (directory-level)
+        Universal fields
       
     </span>
   </a>
@@ -1209,10 +1435,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#fast-mode-content-extraction-file-level" class="md-nav__link">
+  <a href="#image-fields" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Fast mode — content extraction (file-level)
+        Image fields
       
     </span>
   </a>
@@ -1220,10 +1446,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#accurate-mode-llm-pipelines" class="md-nav__link">
+  <a href="#video-fields" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Accurate mode (LLM pipelines)
+        Video fields
       
     </span>
   </a>
@@ -1231,10 +1457,32 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#placeholders" class="md-nav__link">
+  <a href="#audio-fields" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Placeholders
+        Audio fields
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#document-fields-always-shown" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Document fields (always shown)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#document-fields-full-only" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Document fields (--full only)
       
     </span>
   </a>
@@ -1243,6 +1491,50 @@
         
       </ul>
     </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#examples" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Examples
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#rich-panel-output" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Rich panel output
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#performance" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Performance
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#notes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Notes
+      
+    </span>
+  </a>
   
 </li>
       
@@ -1263,156 +1555,268 @@
 
 
 
-  <h1>Cli use</h1>
-
-<p>Documents
- - Find where in the document "a specific term" is mentioned</p>
-<h2 id="benchmark-commands-mm-bench">Benchmark commands (<code>mm bench</code>)<a class="headerlink" href="#benchmark-commands-mm-bench" title="Permanent link">&para;</a></h2>
-<p>Each benchmark is a real CLI invocation measured end-to-end via subprocess.</p>
-<h3 id="metadata-scan-directory-level">Metadata scan (directory-level)<a class="headerlink" href="#metadata-scan-directory-level" title="Permanent link">&para;</a></h3>
+<h1 id="mm-peek">mm peek<a class="headerlink" href="#mm-peek" title="Permanent link">&para;</a></h1>
+<p>Surface locally-extracted file metadata — dimensions, EXIF, codec, duration, content hash — directly from the file, without any LLM calls or cache reads.</p>
+<p>Use <code>peek</code> for <strong>"what is this file?"</strong>. Use <a href="../CAT_COMMAND/"><code>cat</code></a> for <strong>"what does this file say?"</strong>.</p>
+<h2 id="synopsis">Synopsis<a class="headerlink" href="#synopsis" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>mm<span class="w"> </span>peek<span class="w"> </span>FILE<span class="w"> </span><span class="o">[</span>FILE<span class="w"> </span>...<span class="o">]</span><span class="w"> </span><span class="o">[</span>OPTIONS<span class="o">]</span>
+</code></pre></div>
+<h2 id="options">Options<a class="headerlink" href="#options" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
 <tr>
-<th>Name</th>
-<th>Command</th>
+<th>Flag</th>
+<th>Short</th>
+<th>Type</th>
+<th>Description</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><code>mm find .</code></td>
-<td><code>mm find {dir} --format json</code></td>
+<td><code>--full</code></td>
+<td></td>
+<td>flag</td>
+<td>Include all document metadata fields (author, title, subject, keywords, creator, producer, pages). Off by default.</td>
 </tr>
 <tr>
-<td><code>mm find . (table)</code></td>
-<td><code>mm find {dir} --format tsv</code></td>
-</tr>
-<tr>
-<td><code>mm wc .</code></td>
-<td><code>mm wc {dir} --format json</code></td>
-</tr>
-<tr>
-<td><code>mm sql 'GROUP BY kind'</code></td>
-<td><code>mm sql 'SELECT kind, COUNT(*) ...' --dir {dir} --format json</code></td>
-</tr>
-<tr>
-<td><code>mm sql 'SUM(size) BY kind'</code></td>
-<td><code>mm sql 'SELECT kind, COUNT(*), SUM(size), AVG(size) ...' --dir {dir} --format json</code></td>
-</tr>
-<tr>
-<td><code>mm sql 'TOP 10 largest'</code></td>
-<td><code>mm sql 'SELECT name, kind, size ... LIMIT 10' --dir {dir} --format json</code></td>
-</tr>
-<tr>
-<td><code>mm sql 'GROUP BY ext'</code></td>
-<td><code>mm sql 'SELECT ext, COUNT(*), SUM(size) ...' --dir {dir} --format json</code></td>
-</tr>
-<tr>
-<td><code>mm find --kind image</code></td>
-<td><code>mm find {dir} --kind image --format json</code></td>
-</tr>
-<tr>
-<td><code>mm find --kind audio</code></td>
-<td><code>mm find {dir} --kind audio --format json</code> (skipped if no audio)</td>
-</tr>
-<tr>
-<td><code>mm find --kind document</code></td>
-<td><code>mm find {dir} --kind document --format json</code> (skipped if no documents)</td>
+<td><code>--format FORMAT</code></td>
+<td><code>-f</code></td>
+<td>enum</td>
+<td>Output format: <code>rich</code>, <code>json</code>, <code>pretty-json</code>, <code>tsv</code>, <code>csv</code></td>
 </tr>
 </tbody>
 </table>
-<h3 id="fast-mode-content-extraction-file-level">Fast mode — content extraction (file-level)<a class="headerlink" href="#fast-mode-content-extraction-file-level" title="Permanent link">&para;</a></h3>
-<p>Use <code>--no-cache</code> to bypass caching.</p>
+<h2 id="metadata-fields">Metadata fields<a class="headerlink" href="#metadata-fields" title="Permanent link">&para;</a></h2>
+<p>Fields populated depend on the file kind. All formats emit the same flat column set; fields not applicable to a given kind are <code>null</code>.</p>
+<h3 id="universal-fields">Universal fields<a class="headerlink" href="#universal-fields" title="Permanent link">&para;</a></h3>
 <table>
 <thead>
 <tr>
-<th>Name</th>
-<th>Command</th>
-<th>Selection</th>
+<th>Field</th>
+<th>Description</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><code>mm cat &lt;code&gt; (x20)</code></td>
-<td><code>mm cat {files} --mode fast --format json</code></td>
-<td>first 20 code files</td>
+<td><code>name</code></td>
+<td>Filename</td>
 </tr>
 <tr>
-<td><code>mm cat &lt;image&gt;</code></td>
-<td><code>mm cat {file} --mode fast --format json</code></td>
-<td>first image</td>
+<td><code>kind</code></td>
+<td>File kind: <code>image</code>, <code>video</code>, <code>audio</code>, <code>document</code>, <code>code</code>, <code>text</code>, <code>data</code>, <code>config</code>, <code>other</code></td>
 </tr>
 <tr>
-<td><code>mm cat &lt;image&gt; (x20)</code></td>
-<td><code>mm cat {files} --mode fast --format json</code></td>
-<td>first 20 images</td>
+<td><code>size</code></td>
+<td>File size in bytes</td>
 </tr>
 <tr>
-<td><code>mm cat &lt;audio&gt;</code></td>
-<td><code>mm cat {file} --mode fast --format json</code></td>
-<td>first audio</td>
+<td><code>mime</code></td>
+<td>MIME type inferred from extension</td>
 </tr>
 <tr>
-<td><code>mm cat &lt;video&gt;</code></td>
-<td><code>mm cat {file} --mode fast --format json</code></td>
-<td>first video</td>
+<td><code>magic_mime</code></td>
+<td>MIME type detected by content inspection (magika). Shown only when it differs from <code>mime</code>.</td>
 </tr>
 <tr>
-<td><code>mm cat &lt;pdf&gt;</code></td>
-<td><code>mm cat {file} --mode fast --format json</code></td>
-<td>first document</td>
-</tr>
-<tr>
-<td><code>mm cat &lt;pdf&gt; (x10)</code></td>
-<td><code>mm cat {files} --mode fast --format json</code></td>
-<td>first 10 documents</td>
-</tr>
-<tr>
-<td><code>mm grep /pattern/</code></td>
-<td><code>mm grep 'import\|include\|require' {dir} --format json</code></td>
-<td>all text files</td>
+<td><code>content_hash</code></td>
+<td>xxh3 content hash (hex)</td>
 </tr>
 </tbody>
 </table>
-<h3 id="accurate-mode-llm-pipelines">Accurate mode (LLM pipelines)<a class="headerlink" href="#accurate-mode-llm-pipelines" title="Permanent link">&para;</a></h3>
-<p>Use <code>--no-cache</code> to bypass caching.</p>
+<h3 id="image-fields">Image fields<a class="headerlink" href="#image-fields" title="Permanent link">&para;</a></h3>
 <table>
 <thead>
 <tr>
-<th>Name</th>
-<th>Command</th>
-<th>Selection</th>
+<th>Field</th>
+<th>Description</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><code>mm cat &lt;image&gt; --mode fast</code></td>
-<td><code>mm cat {file} --mode fast --format json</code></td>
-<td>first image</td>
+<td><code>dimensions</code></td>
+<td><code>WxH</code> pixel dimensions</td>
 </tr>
 <tr>
-<td><code>mm cat &lt;image&gt; --mode accurate</code></td>
-<td><code>mm cat {file} --mode accurate --format json</code></td>
-<td>first image</td>
+<td><code>phash</code></td>
+<td>Perceptual hash (16-digit hex) for similarity detection</td>
 </tr>
 <tr>
-<td><code>mm cat &lt;video&gt; --mode fast</code></td>
-<td><code>mm cat {file} --mode fast --format json</code></td>
-<td>first video</td>
+<td><code>exif_camera</code></td>
+<td>Camera make and model</td>
 </tr>
 <tr>
-<td><code>mm cat &lt;audio&gt; --mode fast</code></td>
-<td><code>mm cat {file} --mode fast --format json</code></td>
-<td>smallest audio</td>
+<td><code>exif_date</code></td>
+<td>Date/time original from EXIF</td>
+</tr>
+<tr>
+<td><code>exif_gps</code></td>
+<td>GPS coordinates (lat, lon)</td>
+</tr>
+<tr>
+<td><code>exif_orientation</code></td>
+<td>EXIF orientation tag</td>
 </tr>
 </tbody>
 </table>
-<h3 id="placeholders">Placeholders<a class="headerlink" href="#placeholders" title="Permanent link">&para;</a></h3>
+<h3 id="video-fields">Video fields<a class="headerlink" href="#video-fields" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>dimensions</code></td>
+<td><code>WxH</code> pixel resolution</td>
+</tr>
+<tr>
+<td><code>duration_s</code></td>
+<td>Duration in seconds</td>
+</tr>
+<tr>
+<td><code>fps</code></td>
+<td>Frames per second</td>
+</tr>
+<tr>
+<td><code>video_codec</code></td>
+<td>Video codec (e.g. <code>h264</code>, <code>av1</code>)</td>
+</tr>
+<tr>
+<td><code>audio_codec</code></td>
+<td>Audio codec (e.g. <code>aac</code>, <code>opus</code>)</td>
+</tr>
+<tr>
+<td><code>has_audio</code></td>
+<td>Whether an audio track is present</td>
+</tr>
+</tbody>
+</table>
+<h3 id="audio-fields">Audio fields<a class="headerlink" href="#audio-fields" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>duration_s</code></td>
+<td>Duration in seconds</td>
+</tr>
+<tr>
+<td><code>audio_codec</code></td>
+<td>Audio codec</td>
+</tr>
+</tbody>
+</table>
+<h3 id="document-fields-always-shown">Document fields (always shown)<a class="headerlink" href="#document-fields-always-shown" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>mime</code></td>
+<td>MIME type</td>
+</tr>
+<tr>
+<td><code>content_hash</code></td>
+<td>Content hash</td>
+</tr>
+</tbody>
+</table>
+<h3 id="document-fields-full-only">Document fields (<code>--full</code> only)<a class="headerlink" href="#document-fields-full-only" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>pages</code></td>
+<td>Page count</td>
+</tr>
+<tr>
+<td><code>doc_author</code></td>
+<td>Document author</td>
+</tr>
+<tr>
+<td><code>doc_title</code></td>
+<td>Document title</td>
+</tr>
+<tr>
+<td><code>doc_subject</code></td>
+<td>Document subject</td>
+</tr>
+<tr>
+<td><code>doc_keywords</code></td>
+<td>Document keywords</td>
+</tr>
+<tr>
+<td><code>doc_creator</code></td>
+<td>Creating application</td>
+</tr>
+<tr>
+<td><code>doc_producer</code></td>
+<td>PDF producer</td>
+</tr>
+</tbody>
+</table>
+<h2 id="examples">Examples<a class="headerlink" href="#examples" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="c1"># basic image metadata</span>
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>mm<span class="w"> </span>peek<span class="w"> </span>photo.png
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="c1"># video metadata</span>
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>mm<span class="w"> </span>peek<span class="w"> </span>clip.mp4
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="c1"># audio metadata</span>
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>mm<span class="w"> </span>peek<span class="w"> </span>recording.mp3
+<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>
+<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a><span class="c1"># PDF with full document metadata</span>
+<a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a>mm<span class="w"> </span>peek<span class="w"> </span>paper.pdf<span class="w"> </span>--full
+<a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a>
+<a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a><span class="c1"># multi-file inspection</span>
+<a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a>mm<span class="w"> </span>peek<span class="w"> </span>*.png<span class="w"> </span>--format<span class="w"> </span>tsv
+<a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a>
+<a id="__codelineno-1-16" name="__codelineno-1-16" href="#__codelineno-1-16"></a><span class="c1"># multi-file JSON output</span>
+<a id="__codelineno-1-17" name="__codelineno-1-17" href="#__codelineno-1-17"></a>mm<span class="w"> </span>peek<span class="w"> </span>photo.png<span class="w"> </span>clip.mp4<span class="w"> </span>paper.pdf<span class="w"> </span>--format<span class="w"> </span>json
+<a id="__codelineno-1-18" name="__codelineno-1-18" href="#__codelineno-1-18"></a>
+<a id="__codelineno-1-19" name="__codelineno-1-19" href="#__codelineno-1-19"></a><span class="c1"># pipe-friendly TSV</span>
+<a id="__codelineno-1-20" name="__codelineno-1-20" href="#__codelineno-1-20"></a>mm<span class="w"> </span>peek<span class="w"> </span>photo.png<span class="w"> </span>--format<span class="w"> </span>tsv
+</code></pre></div>
+<h2 id="rich-panel-output">Rich panel output<a class="headerlink" href="#rich-panel-output" title="Permanent link">&para;</a></h2>
+<p>In TTY mode the default output is a Rich panel per file, showing only populated fields. <code>None</code> fields are hidden to keep output dense and scannable.</p>
+<p>A typical image panel:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>╭─── photo.jpg ───╮
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>│ kind       image │
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>│ size       2.4 MB│
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>│ mime   image/jpeg│
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>│ hash   a3f2...   │
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>│ dimensions 4032x3024 │
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>│ camera  iPhone 15 Pro │
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>│ date  2024-03-15 14:22 │
+<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>│ gps  37.7749° N, 122.4194° W │
+<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>╰──────────────────╯
+</code></pre></div>
+<h2 id="performance">Performance<a class="headerlink" href="#performance" title="Permanent link">&para;</a></h2>
+<p><code>peek</code> is always a direct, fresh scan — no cache reads, no database. Every invocation re-reads the file.</p>
+<p>Video metadata uses native Rust parsers (<code>mp4parse</code> for MP4/MOV, <code>matroska</code> for MKV/WebM) — no <code>ffmpeg</code> dependency for <code>peek</code>. Duration, codec, and resolution are extracted in under 100 ms.</p>
+<h2 id="notes">Notes<a class="headerlink" href="#notes" title="Permanent link">&para;</a></h2>
 <ul>
-<li><code>{dir}</code> — resolved absolute directory path</li>
-<li><code>{file}</code> — single file auto-picked by kind (first match, or smallest for accurate-mode audio)</li>
-<li><code>{files}</code> — space-separated list of files (batch commands, up to N)</li>
+<li><code>peek</code> accepts paths from stdin when piped (one path per line).</li>
+<li><code>--full</code> only adds document-specific fields; it has no effect on images, video, or audio.</li>
+<li><code>magic_mime</code> is displayed only when it differs from the extension-inferred <code>mime</code> — a discrepancy indicates a misnamed or modified file.</li>
+<li><code>phash</code> is available for images only. Displayed as a 16-digit hex string.</li>
+<li>GPS coordinates are shown when present in EXIF; many photos from modern smartphones include them.</li>
 </ul>
-<p>Commands are skipped when the required file kind is absent from the target directory.</p>
 
 
 
@@ -1506,10 +1910,10 @@
     
       
       
-      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.instant", "navigation.tracking", "navigation.top", "toc.follow", "content.code.copy", "content.code.annotate"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.instant", "navigation.tracking", "navigation.top", "toc.follow", "content.code.copy", "content.code.annotate"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
       
     
   </body>

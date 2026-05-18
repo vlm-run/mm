@@ -5,7 +5,19 @@
          <lastmod>2026-05-18</lastmod>
     </url>
     <url>
+         <loc>https://vlm-run.github.io/mm/BENCH_COMMAND/</loc>
+         <lastmod>2026-05-18</lastmod>
+    </url>
+    <url>
+         <loc>https://vlm-run.github.io/mm/CAT_COMMAND/</loc>
+         <lastmod>2026-05-18</lastmod>
+    </url>
+    <url>
          <loc>https://vlm-run.github.io/mm/ENCODERS/</loc>
+         <lastmod>2026-05-18</lastmod>
+    </url>
+    <url>
+         <loc>https://vlm-run.github.io/mm/FIND_COMMAND/</loc>
          <lastmod>2026-05-18</lastmod>
     </url>
     <url>
@@ -13,7 +25,27 @@
          <lastmod>2026-05-18</lastmod>
     </url>
     <url>
+         <loc>https://vlm-run.github.io/mm/GREP_COMMAND/</loc>
+         <lastmod>2026-05-18</lastmod>
+    </url>
+    <url>
+         <loc>https://vlm-run.github.io/mm/MM_CLI/</loc>
+         <lastmod>2026-05-18</lastmod>
+    </url>
+    <url>
+         <loc>https://vlm-run.github.io/mm/MM_CONFIG/</loc>
+         <lastmod>2026-05-18</lastmod>
+    </url>
+    <url>
+         <loc>https://vlm-run.github.io/mm/PEEK_COMMAND/</loc>
+         <lastmod>2026-05-18</lastmod>
+    </url>
+    <url>
          <loc>https://vlm-run.github.io/mm/PIPELINES/</loc>
+         <lastmod>2026-05-18</lastmod>
+    </url>
+    <url>
+         <loc>https://vlm-run.github.io/mm/PROFILE_MANAGEMENT/</loc>
          <lastmod>2026-05-18</lastmod>
     </url>
     <url>
@@ -26,6 +58,10 @@
     </url>
     <url>
          <loc>https://vlm-run.github.io/mm/USE_CASES/</loc>
+         <lastmod>2026-05-18</lastmod>
+    </url>
+    <url>
+         <loc>https://vlm-run.github.io/mm/WC_COMMAND/</loc>
          <lastmod>2026-05-18</lastmod>
     </url>
     <url>
