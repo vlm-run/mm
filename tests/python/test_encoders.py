@@ -137,8 +137,8 @@ class TestImageEncoders:
         assert part["inline_data"]["data"] == "abc"
 
     def test_encode_pil_image_png_alpha(self, tmp_path):
-        from PIL import Image
         from mm.encoders.image import _encode_pil_image
+        from PIL import Image
 
         img = Image.new("RGBA", (10, 10), (255, 0, 0, 128))
         b64, mime = _encode_pil_image(img, tmp_path / "test.png")
@@ -147,8 +147,8 @@ class TestImageEncoders:
         assert decoded[:4] == b"\x89PNG"
 
     def test_encode_pil_image_jpeg_converts_grayscale(self, tmp_path):
-        from PIL import Image
         from mm.encoders.image import _encode_pil_image
+        from PIL import Image
 
         img = Image.new("L", (10, 10), 128)
         b64, mime = _encode_pil_image(img, tmp_path / "test.jpg")
@@ -387,10 +387,10 @@ class TestGeminiEncoders:
         video = tmp_path / "test.mp4"
         video.write_bytes(b"\x00" * 100)
         strat = get("video-gemini-chunked")
-        with patch("mm.video._pyav_available", return_value=False):
+        with patch("mm.video.pyav_runnable", return_value=False):
             messages = list(strat.encode(video))
             assert len(messages) == 1
-            assert "PyAV not available" in messages[0]["content"][0]["text"]
+            assert "PyAV not runnable" in messages[0]["content"][0]["text"]
 
 
 # NOTE: ``TestShotTimestamps``, ``TestShotFrames`` and ``TestShotMosaic`` were

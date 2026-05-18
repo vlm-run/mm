@@ -21,7 +21,7 @@ pub fn document_part_json(path: &Path) -> Result<String, String> {
 /// Serialize a video file as Gemini `inline_data` Part JSON strings.
 ///
 /// For videos longer than `max_seconds`, produces multiple overlapping chunks.
-/// Currently returns the full video as a single part; duration-based chunking
+/// CURRENTLY: it returns the full video as a single part; duration-based chunking
 /// requires ffmpeg and is handled on the Python side.
 pub fn video_parts_json(
     path: &Path,

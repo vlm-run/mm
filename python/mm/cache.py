@@ -69,7 +69,7 @@ import os
 import threading
 from collections.abc import Callable, Hashable, MutableMapping
 from pathlib import Path
-from typing import Any, cast
+from typing import Any, ParamSpec, Protocol, TypeVar, cast
 
 from cachetools import LRUCache
 from cachetools.keys import hashkey
@@ -141,11 +141,24 @@ def _resolve_path(spec: PathSpec) -> Path | None:
     return Path(spec()).expanduser()
 
 
+P = ParamSpec("P")
+T = TypeVar("T")
+
+
+class _CachedCallable(Protocol[P, T]):
+    """Typed wrapper returned by ``memoize_file``."""
+
+    __call__: Callable[P, T]
+    cache_clear: Callable[[], None]
+    cache_info: Callable[[], dict[str, int]]
+    cache: Callable[[], MutableMapping[Hashable, Any]]
+
+
 def memoize_file(
     *,
     maxsize: int = 64,
     path: PathSpec = None,
-) -> Callable[[Callable[..., Any]], Any]:
+) -> Callable[[Callable[P, T]], _CachedCallable[P, T]]:
     """Decorator: cache by ``(file fingerprint, *normalised args)``.
 
     The first positional argument MUST be a file path (``str`` or
@@ -238,22 +251,20 @@ def memoize_file(
             normalised.pop(first_param, None)
             key: Hashable = hashkey(fp, *sorted(normalised.items()))
             # FSLRUCache writes one pickle file per key, so the key must
-            # be filename-safe.  Hashing keeps in-memory and on-disk
+            # be filename-safe. Hashing keeps in-memory and on-disk
             # backends symmetric — both store under the same string.
             if path is not None:
                 return _key_to_str(key)
             return key
 
         @functools.wraps(fn)
-        def wrapper(*args: Any, **kwargs: Any) -> Any:
+        def wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
             nonlocal hits, misses
             if not args:
                 return fn(*args, **kwargs)
 
             fp = file_fingerprint(args[0])
             if fp is None:
-                # Missing file → run the function uncached so the caller
-                # sees the natural error (or the function's own fallback).
                 return fn(*args, **kwargs)
 
             key = _build_key(fp, args, kwargs)
@@ -288,7 +299,7 @@ def memoize_file(
                     "maxsize": getattr(cache, "maxsize", maxsize),
                 }
 
-        wrapped = cast(Any, wrapper)
+        wrapped = cast(_CachedCallable[P, T], wrapper)
         wrapped.cache_clear = cache_clear
         wrapped.cache_info = cache_info
         # Lazy backend accessor for tests / introspection.  Calling it

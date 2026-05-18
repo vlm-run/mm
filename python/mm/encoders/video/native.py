@@ -46,10 +46,14 @@ class VideoClips:
         duration: int = kwargs.get("duration", 0)
         max_size_mb: float | None = kwargs.get("max_size_mb", None)
 
-        from mm.video import _pyav_available, probe
+        from mm.video import probe, pyav_runnable
 
-        if not _pyav_available():
-            yield _to_message([{"type": "text", "text": f"[PyAV not available for {path.name}]"}])
+        if not pyav_runnable():
+            yield _to_message(
+                [
+                    {"type": "text", "text": f"[PyAV not runnable for {path.name}]"},
+                ]
+            )
             return
 
         info = probe(path)

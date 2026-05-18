@@ -464,9 +464,9 @@ def _render_native_video(path: Path, scope: str, max_width: int) -> str:
     info_parts = [mime, _fmt_bytes(file_size)]
 
     try:
-        from mm.video import VideoReader, _pyav_available
+        from mm.video import VideoReader, pyav_runnable
 
-        if _pyav_available():
+        if pyav_runnable():
             with VideoReader(path) as reader:
                 dur = reader.duration
                 w, h = reader.width, reader.height

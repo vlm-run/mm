@@ -157,13 +157,13 @@ class AudioResult:
     channels: int
 
 
-def _pyav_available() -> bool:
+def pyav_runnable() -> bool:
     """Check if PyAV is importable."""
     try:
         import av  # noqa: F401
 
         return True
-    except ImportError:
+    except (ImportError, OSError):
         return False
 
 

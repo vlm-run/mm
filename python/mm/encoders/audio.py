@@ -230,9 +230,9 @@ class GeminiAudio:
         max_seconds: int = kwargs.get("max_seconds", 120)
         overlap: int = kwargs.get("overlap", 10)
 
-        from mm.video import _pyav_available, extract_segment, probe
+        from mm.video import extract_segment, probe, pyav_runnable
 
-        if not _pyav_available():
+        if not pyav_runnable():
             data: bytes = path.read_bytes()
             mime: str = guess_mime(path.name)
             b64 = base64.b64encode(data).decode()

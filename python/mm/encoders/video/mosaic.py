@@ -9,8 +9,8 @@ Uses PyAV for in-process frame decoding — no subprocess or temp files.
 
 from __future__ import annotations
 
-import io
 import base64
+import io
 import logging
 from pathlib import Path
 from typing import Any, Iterable
@@ -47,10 +47,14 @@ class VideoMosaic:
         num_frames: int = kwargs.get("num_frames", 128)
         provider: str = _resolve_provider()
 
-        from mm.video import VideoReader, _pyav_available, tile_to_mosaic
+        from mm.video import VideoReader, pyav_runnable, tile_to_mosaic
 
-        if not _pyav_available():
-            yield _to_message([{"type": "text", "text": f"[PyAV not available for {path.name}]"}])
+        if not pyav_runnable():
+            yield _to_message(
+                [
+                    {"type": "text", "text": f"[PyAV not runnable for {path.name}]"},
+                ]
+            )
             return
 
         with VideoReader(path) as reader:

@@ -1,8 +1,8 @@
 """Gemini passthrough strategies for native multimodal input.
 
 Encodes video and document files as Gemini ``inline_data`` Part dicts,
-suitable for the Google Generative AI API.  Supports both single-shot
-passthrough and duration-based chunking for long videos.
+suitable for Gemini API. Supports both single-shot passthrough and
+duration-based chunking for long videos.
 """
 
 from __future__ import annotations
@@ -29,8 +29,12 @@ def _gemini_inline_data_part(data: bytes, mime: str) -> dict[str, Any]:
     Returns:
         Dict matching the ``google.genai.types.Part`` schema.
     """
-    b64: str = base64.b64encode(data).decode()
-    return {"inline_data": {"mime_type": mime, "data": b64}}
+    return {
+        "inline_data": {
+            "mime_type": mime,
+            "data": base64.b64encode(data).decode(),
+        }
+    }
 
 
 def _to_gemini_message(parts: list[dict[str, Any]]) -> Message:
@@ -50,15 +54,15 @@ class GeminiVideo:
     name: str = "video-gemini"
     media_types: tuple[str, ...] = ("video",)
 
-    def encode(self, path: Path, **kwargs: Any) -> Iterable[Message]:
+    def encode(self, path: Path, **kwargs) -> Iterable[Message]:
         try:
             from mm._mm import gemini_video_parts
 
-            json_strs: list[str] = gemini_video_parts(str(path))
+            json_strs = gemini_video_parts(str(path))
             parts: list[dict[str, Any]] = [json.loads(s) for s in json_strs]
         except (ImportError, RuntimeError):
-            data: bytes = path.read_bytes()
-            mime: str = guess_mime(path.name)
+            data = path.read_bytes()
+            mime = guess_mime(path.name)
             parts = [_gemini_inline_data_part(data, mime)]
 
         logger.debug("gemini_video [path=%s, parts=%d]", path.name, len(parts))
@@ -68,7 +72,7 @@ class GeminiVideo:
 class GeminiVideoChunked:
     """Chunk a video by duration and yield one Gemini Part per chunk.
 
-    Uses ``ffmpeg`` to extract time-based segments.  For videos shorter
+    Uses ``ffmpeg`` to extract time-based segments. For videos shorter
     than ``max_seconds`` the entire file is sent as a single Part.
 
     Kwargs:
@@ -79,28 +83,27 @@ class GeminiVideoChunked:
     name: str = "video-gemini-chunked"
     media_types: tuple[str, ...] = ("video",)
 
-    def encode(self, path: Path, **kwargs: Any) -> Iterable[Message]:
-        max_seconds: int = kwargs.get("max_seconds", 120)
-        overlap: int = kwargs.get("overlap", 10)
+    def encode(self, path: Path, **kwargs) -> Iterable[Message]:
+        max_seconds: int = int(kwargs.get("max_seconds", 120))
+        overlap: int = int(kwargs.get("overlap", 10))
 
-        from mm.video import _pyav_available, extract_segment, probe
+        from mm.video import extract_segment, probe, pyav_runnable
 
-        if not _pyav_available():
+        if not pyav_runnable():
             yield _to_gemini_message(
                 [
                     {
                         "type": "text",
-                        "text": f"[PyAV not available for {path.name}]",
+                        "text": f"[PyAV not runnable for {path.name}]",
                     }
                 ]
             )
             return
 
         info = probe(path)
-        duration: float = info.duration
-        if duration <= max_seconds:
-            data: bytes = path.read_bytes()
-            mime: str = guess_mime(path.name)
+        if info.duration <= max_seconds:
+            data = path.read_bytes()
+            mime = guess_mime(path.name)
             yield _to_gemini_message([_gemini_inline_data_part(data, mime)])
             return
 
@@ -113,12 +116,12 @@ class GeminiVideoChunked:
         logger.debug(
             "gemini_video_chunked [path=%s, duration=%.1fs, chunk=%ds]",
             path.name,
-            duration,
+            info.duration,
             max_seconds,
         )
 
-        while start < duration:
-            end: float = min(start + max_seconds, duration)
+        while start < info.duration:
+            end: float = min(start + max_seconds, info.duration)
             with tempfile.NamedTemporaryFile(suffix=path.suffix, delete=False) as tmp:
                 seg_path = Path(tmp.name)
             try:

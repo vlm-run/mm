@@ -43,10 +43,10 @@ class VideoFrames:
         max_frames_per_message: int = kwargs.get("max_frames_per_message", 16)
         provider: str = _resolve_provider()
 
-        from mm.video import VideoReader, _pyav_available
+        from mm.video import VideoReader, pyav_runnable
 
-        if not _pyav_available():
-            yield _to_message([{"type": "text", "text": f"[PyAV not available for {path.name}]"}])
+        if not pyav_runnable():
+            yield _to_message([{"type": "text", "text": f"[PyAV not runnable for {path.name}]"}])
             return
 
         with VideoReader(path) as reader:
