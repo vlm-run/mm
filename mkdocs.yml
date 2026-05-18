@@ -69,13 +69,13 @@ nav:
   - Home: index.md
   - User guide: USER_GUIDE.md
   - CLI:
-      - CLI Surface: MM_CLI.md
-      - Find Command: FIND_COMMAND.md
-      - WC Command: WC_COMMAND.md
-      - Peek Command: PEEK_COMMAND.md
-      - Grep Comnand: GREP_COMMAND.md
-      - Cat Command: CAT_COMMAND.md
-      - Bench Command: BENCH_COMMAND.md
+      - Surface: MM_CLI.md
+      - Find: FIND_COMMAND.md
+      - WC: WC_COMMAND.md
+      - Peek: PEEK_COMMAND.md
+      - Grep: GREP_COMMAND.md
+      - Cat: CAT_COMMAND.md
+      - Bench: BENCH_COMMAND.md
       - Profile: PROFILE_MANAGEMENT.md
       - Config: MM_CONFIG.md
   - Python API:
