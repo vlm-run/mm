@@ -284,7 +284,8 @@ class GeminiAudio(AudioGenerate):
 
         mime = guess_mime(path.name)
 
-        def _submit_fn(start: float, end: float, idx: int) -> Message:
+        def _submit_fn(varg: tuple[int, tuple[float, float]]) -> Message:
+            idx, (start, end) = varg
             with tempfile.NamedTemporaryFile(suffix=path.suffix, delete=False) as tmp:
                 seg_path = Path(tmp.name)
             try:
@@ -304,9 +305,7 @@ class GeminiAudio(AudioGenerate):
             )
 
         with ThreadPoolExecutor(max_workers=min(4, len(segments))) as pool:
-            futures = [pool.submit(_submit_fn, s, e, idx) for idx, (s, e) in enumerate(segments)]
-            for fut in futures:
-                yield fut.result()
+            yield from pool.map(_submit_fn, enumerate(segments))
 
 
 register(AudioBase64())

@@ -127,7 +127,8 @@ class GeminiVideoChunked:
             len(segments),
         )
 
-        def _process(start: float, end: float):
+        def _process(varg: tuple[float, float]):
+            start, end = varg
             with tempfile.NamedTemporaryFile(suffix=path.suffix, delete=False) as tmp:
                 seg_path = Path(tmp.name)
             try:
@@ -138,9 +139,7 @@ class GeminiVideoChunked:
             return _to_gemini_message([_gemini_inline_data_part(data, mime)])
 
         with ThreadPoolExecutor(max_workers=min(4, len(segments))) as pool:
-            futures = [pool.submit(_process, s, e) for (s, e) in segments]
-            for fut in futures:
-                yield fut.result()
+            yield from pool.map(_process, segments)
 
 
 class GeminiDocument:
