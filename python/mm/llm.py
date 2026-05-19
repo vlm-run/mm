@@ -117,8 +117,8 @@ class LlmBackend:
 
         if content_parts:
             message_content: list[dict[str, Any]] | str = [
-                {"type": "text", "text": prompt},
                 *content_parts,
+                {"type": "text", "text": prompt},
             ]
         else:
             message_content = prompt
@@ -276,6 +276,9 @@ class LlmBackend:
                 return _extract_answer_from_thinking(reasoning.strip())
             return ""
         except Exception as e:
+            from mm.display import console
+
+            console.print("LLM error %s", e)
             return f"[LLM error: {e}]"
 
 

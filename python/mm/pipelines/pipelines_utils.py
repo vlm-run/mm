@@ -35,11 +35,14 @@ def resolve_pipeline(opts: CatOpts, kind: str) -> PipelineSpec:
                     )
                 else:
                     base = load(kind, opts.mode)
+                    generate = base.generate
+                    if generate is None:
+                        generate = getattr(enc, opts.mode, None)
                     return PipelineSpec(
                         kind=base.kind,
                         mode=base.mode,
                         encode=encoder_spec.encode,
-                        generate=base.generate,
+                        generate=generate,
                     )
 
     return load(kind, opts.mode)

@@ -15,11 +15,13 @@ from __future__ import annotations
 
 import base64
 import logging
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Any, Iterable
 
 from mm.constants import guess_mime
 from mm.encoders import Message, register
+from mm.pipelines.schema import Generate
 
 logger = logging.getLogger(__name__)
 
@@ -39,11 +41,25 @@ def _to_message(parts: list[dict[str, Any]]) -> Message:
     return {"role": "user", "content": parts}
 
 
-class AudioBase64:
+class AudioGenerate:
+    fast = Generate(
+        prompt="Describe this audio in 10 words or less.",
+        max_tokens=128,
+    )
+    accurate = Generate(
+        prompt=(
+            "Describe the content of this audio in detail. Include what is spoken or heard, "
+            "key topics covered, the speaker's tone, and any notable sounds or context."
+        ),
+        max_tokens=1024,
+    )
+
+
+class AudioBase64(AudioGenerate):
     """Send the raw audio file as a base64-encoded ``input_audio`` part.
 
     This is the native way to pass audio to OpenAI-compatible models —
-    no transcription, no preprocessing, just the raw waveform.  The
+    no transcription, no preprocessing, just the raw waveform. The
     model receives the actual audio and can understand speech, music,
     ambient sound, etc.
 
@@ -212,7 +228,7 @@ class AudioTranscribe:
         yield _to_message(parts)
 
 
-class GeminiAudio:
+class GeminiAudio(AudioGenerate):
     """Pass an audio file directly as a Gemini ``inline_data`` Part.
 
     For files longer than ``max_seconds``, splits into overlapping
@@ -250,19 +266,25 @@ class GeminiAudio:
 
         import tempfile
 
-        step: int = max(max_seconds - overlap, 1)
+        step: float = max(max_seconds - overlap, 1)
+        segments: list[tuple[float, float]] = []
         start: float = 0.0
-        chunk_idx: int = 0
+        while start < duration:
+            end = min(start + max_seconds, duration)
+            segments.append((start, end))
+            start += step
 
         logger.debug(
-            "gemini_audio_chunked [path=%s, duration=%.1fs, chunk=%ds]",
+            "gemini_audio_chunked [path=%s, duration=%.1fs, chunk=%ds, n_segments=%d]",
             path.name,
             duration,
             max_seconds,
+            len(segments),
         )
 
-        while start < duration:
-            end: float = min(start + max_seconds, duration)
+        mime = guess_mime(path.name)
+
+        def _submit_fn(start: float, end: float, idx: int) -> Message:
             with tempfile.NamedTemporaryFile(suffix=path.suffix, delete=False) as tmp:
                 seg_path = Path(tmp.name)
             try:
@@ -270,19 +292,21 @@ class GeminiAudio:
                 seg_data = seg_path.read_bytes()
             finally:
                 seg_path.unlink(missing_ok=True)
-            mime = guess_mime(path.name)
             b64 = base64.b64encode(seg_data).decode()
-            yield _to_message(
+            return _to_message(
                 [
                     {
                         "type": "text",
-                        "text": f"Audio chunk {chunk_idx + 1} ({start:.0f}s-{end:.0f}s):",
+                        "text": f"Audio chunk {idx + 1} ({start:.0f}s-{end:.0f}s):",
                     },
                     {"inline_data": {"mime_type": mime, "data": b64}},
                 ]
             )
-            start += step
-            chunk_idx += 1
+
+        with ThreadPoolExecutor(max_workers=min(4, len(segments))) as pool:
+            futures = [pool.submit(_submit_fn, s, e, idx) for idx, (s, e) in enumerate(segments)]
+            for fut in futures:
+                yield fut.result()
 
 
 register(AudioBase64())
