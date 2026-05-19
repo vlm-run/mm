@@ -10,7 +10,6 @@ from __future__ import annotations
 import base64
 import json
 import logging
-import math
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Any, Iterable
@@ -112,11 +111,13 @@ class GeminiVideoChunked:
         import tempfile
 
         mime = guess_mime(path.name)
-        step: int = max(max_seconds - overlap, 1)
-        segments: list[tuple[int, float]] = []
-        for _start in range(0, math.ceil(info.duration), step):
-            end = min(_start + max_seconds, info.duration)
-            segments.append((_start, end))
+        step: float = max(max_seconds - overlap, 1)
+        segments: list[tuple[float, float]] = []
+        start: float = 0.0
+        while start < info.duration:
+            end = min(start + max_seconds, info.duration)
+            segments.append((start, end))
+            start += step
 
         logger.debug(
             "gemini_video_chunked [path=%s, duration=%.1fs, chunk=%ds, segment_len=%ds]",
@@ -126,7 +127,7 @@ class GeminiVideoChunked:
             len(segments),
         )
 
-        def _process(start: int, end: float):
+        def _process(start: float, end: float):
             with tempfile.NamedTemporaryFile(suffix=path.suffix, delete=False) as tmp:
                 seg_path = Path(tmp.name)
             try:
@@ -137,7 +138,8 @@ class GeminiVideoChunked:
             return _to_gemini_message([_gemini_inline_data_part(data, mime)])
 
         with ThreadPoolExecutor(max_workers=min(4, len(segments))) as pool:
-            for fut in [pool.submit(_process, start, end) for (start, end) in segments]:
+            futures = [pool.submit(_process, s, e) for (s, e) in segments]
+            for fut in futures:
                 yield fut.result()
 
 
