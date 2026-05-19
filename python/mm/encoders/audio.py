@@ -100,8 +100,8 @@ class AudioBase64(AudioGenerate):
 class AudioTranscribe:
     """Transcribe audio and return the transcript as a text message.
 
-    Uses the modular transcription backend system.  By default, calls
-    the VLM Run gateway's OpenAI-compatible endpoint.  Override
+    Uses the modular transcription backend system. By default, calls
+    the VLM Run gateway's OpenAI-compatible endpoint. Override
     ``base_url`` to point at localhost or OpenAI directly.
 
     Kwargs:
@@ -135,7 +135,7 @@ class AudioTranscribe:
             api_key = api_key or cfg.api_key
 
         from mm.common.audio import transcribe, transcribe_available
-        from mm.video import extract_audio, ffmpeg_available
+        from mm.ffmpeg import audio_transformer, ffmpeg_available
 
         if not ffmpeg_available() and backend != "openai":
             yield _to_message(
@@ -159,7 +159,7 @@ class AudioTranscribe:
             )
             return
 
-        audio_result = extract_audio(path, speed=audio_speed)
+        audio_result = audio_transformer(path, speed=audio_speed)
 
         lang_kwarg: dict[str, str | None] = {}
         if language != "auto":

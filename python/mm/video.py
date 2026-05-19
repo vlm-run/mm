@@ -25,7 +25,6 @@ import base64
 import io
 import logging
 import subprocess
-import tempfile
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from pathlib import Path
@@ -164,23 +163,6 @@ def pyav_runnable() -> bool:
 
         return True
     except (ImportError, OSError):
-        return False
-
-
-def ffmpeg_available() -> bool:
-    """Check if the ffmpeg CLI is on ``$PATH``.
-
-    Used to guard callers that still rely on ffmpeg subprocess
-    (audio extraction, segment stream-copy).
-    """
-    try:
-        subprocess.run(
-            ["ffmpeg", "-version"],
-            capture_output=True,
-            timeout=5,
-        )
-        return True
-    except (FileNotFoundError, subprocess.TimeoutExpired):
         return False
 
 
@@ -504,77 +486,6 @@ def _decode_keyframes(
                 count += 1
     finally:
         container.close()
-
-
-def extract_audio(
-    video_path: str | Path,
-    *,
-    out_path: str | Path | None = None,
-    speed: float = 2.0,
-    sample_rate: int = 16000,
-    mono: bool = True,
-    fmt: str = "wav",
-) -> AudioResult:
-    """Extract audio track via ffmpeg CLI (stream copy + resample).
-
-    Kept as subprocess because ffmpeg stream-copy is 1.4x faster than
-    PyAV re-encoding for audio extraction with speed filters.
-    """
-    import os
-
-    video_path = Path(video_path)
-    if out_path is None:
-        suffix = f".{fmt}"
-        fd, tmp = tempfile.mkstemp(prefix="mm_audio_", suffix=suffix)
-        os.close(fd)
-        out_path = Path(tmp)
-    else:
-        out_path = Path(out_path)
-        out_path.parent.mkdir(parents=True, exist_ok=True)
-
-    af_filters: list[str] = []
-    if speed != 1.0:
-        if speed <= 2.0:
-            af_filters.append(f"atempo={speed}")
-        else:
-            remaining = speed
-            while remaining > 2.0:
-                af_filters.append("atempo=2.0")
-                remaining /= 2.0
-            if remaining > 1.0:
-                af_filters.append(f"atempo={remaining:.4f}")
-
-    channels = "1" if mono else "2"
-    codec_map = {"wav": "pcm_s16le", "mp3": "libmp3lame", "flac": "flac"}
-    codec = codec_map.get(fmt, "pcm_s16le")
-
-    cmd = [
-        "ffmpeg",
-        "-y",
-        "-i",
-        str(video_path),
-        "-vn",
-        "-ac",
-        channels,
-        "-ar",
-        str(sample_rate),
-        "-c:a",
-        codec,
-    ]
-    if af_filters:
-        cmd += ["-af", ",".join(af_filters)]
-    cmd.append(str(out_path))
-
-    result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
-    duration = _parse_duration(result.stderr)
-
-    return AudioResult(
-        path=out_path,
-        duration_s=duration / speed if duration > 0 else 0,
-        speed=speed,
-        sample_rate=sample_rate,
-        channels=1 if mono else 2,
-    )
 
 
 def extract_segment(

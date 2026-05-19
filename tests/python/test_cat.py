@@ -373,7 +373,7 @@ class TestCatAudioOverrides:
 
     @pytest.fixture(autouse=True)
     def _mock_audio(self, monkeypatch):
-        """Mock extract_audio and transcribe to capture call args."""
+        """Mock audio_transformer and transcribe to capture call args."""
         from unittest.mock import MagicMock
 
         from mm.common.audio import TranscriptionResult
@@ -396,8 +396,8 @@ class TestCatAudioOverrides:
             )
         )
 
-        monkeypatch.setattr("mm.video.extract_audio", self.mock_extract)
-        monkeypatch.setattr("mm.video.ffmpeg_available", self.mock_ffmpeg_avail)
+        monkeypatch.setattr("mm.ffmpeg.audio_transformer", self.mock_extract)
+        monkeypatch.setattr("mm.ffmpeg.ffmpeg_available", self.mock_ffmpeg_avail)
         monkeypatch.setattr("mm.common.audio.transcribe", self.mock_transcribe)
         monkeypatch.setattr("mm.common.audio.transcribe_available", self.mock_transcribe_avail)
 

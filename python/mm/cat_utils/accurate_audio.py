@@ -17,7 +17,7 @@ from mm.pipelines.schema import PipelineSpec
 def accurate_audio(path: Path, spec: PipelineSpec, opts: CatOpts) -> RunResult:
     """Audio extraction with transcription."""
     from mm.common.audio import transcribe, transcribe_available
-    from mm.ffmpeg import extract_audio, ffmpeg_available
+    from mm.ffmpeg import audio_transformer, ffmpeg_available
 
     if not ffmpeg_available():
         return RunResult(content=f"[ffmpeg not found — cannot process {path.name}]")
@@ -54,7 +54,7 @@ def accurate_audio(path: Path, spec: PipelineSpec, opts: CatOpts) -> RunResult:
     api_key: str | None = akw.get("api_key")
 
     t0 = time.monotonic()
-    audio_result = extract_audio(path, speed=audio_speed)
+    audio_result = audio_transformer(path, speed=audio_speed)
     timing["audio_extraction_ms"] = (time.monotonic() - t0) * 1000
 
     whisper_result = transcribe(

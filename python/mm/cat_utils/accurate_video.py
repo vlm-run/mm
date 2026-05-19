@@ -53,7 +53,7 @@ def accurate_video(path: Path, spec: PipelineSpec, opts: CatOpts) -> RunResult:
     import shutil
 
     from mm.ffmpeg import (
-        extract_audio,
+        audio_transformer,
         extract_frames_at_timestamps,
         extract_uniform_mosaics,
         ffmpeg_available,
@@ -186,7 +186,7 @@ def accurate_video(path: Path, spec: PipelineSpec, opts: CatOpts) -> RunResult:
         api_key: str | None = ekw.get("audio_api_key") or ekw.get("api_key") or None
 
         t_audio = time.monotonic()
-        audio_result = extract_audio(path, speed=audio_speed)
+        audio_result = audio_transformer(path, speed=audio_speed)
         timing["audio_extraction_ms"] = (time.monotonic() - t_audio) * 1000
 
         from mm.common.audio import transcribe

@@ -54,14 +54,14 @@ def transcript_messages(
     """
     try:
         from mm.common.audio import transcribe, transcribe_available
-        from mm.video import extract_audio
+        from mm.ffmpeg import audio_transformer
     except ImportError:
         return []
 
     if not transcribe_available():
         return []
 
-    audio_result = extract_audio(path, speed=audio_speed)
+    audio_result = audio_transformer(path, speed=audio_speed)
 
     resolved_lang = None
     if language != "auto":
