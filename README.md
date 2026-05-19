@@ -391,6 +391,8 @@ mm cat bench.jpg                                                # short VLM capt
 mm cat bench.jpg -m accurate                                    # full LLM caption + tags + objects
 mm cat Timelapse.mp4 -m accurate                                # mosaic → LLM description
 mm cat bench.jpg -p image-tile                                  # use named encoder
+mm cat ./my-folder                                              # cat every file in the folder (gitignore-aware)
+mm cat ./my-folder --no-ignore                                  # include files normally excluded by .gitignore
 mm cat bench.jpg -m accurate -p my-pipeline.yaml                # custom pipeline YAML
 mm cat Timelapse.mp4 -m accurate --no-cache                     # force fresh LLM call
 mm cat bench.jpg -m accurate --no-generate                      # snapshot encoder output (no LLM)

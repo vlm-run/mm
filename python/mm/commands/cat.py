@@ -25,7 +25,7 @@ from mm.cat_utils.base_utils import (
 from mm.cat_utils.extract_meta import extract_meta
 from mm.common.audio._base import BackendLabel
 from mm.pipe import read_paths_from_stdin
-from mm.utils import Format, file_kind
+from mm.utils import Format, expand_path_arg, file_kind
 
 if TYPE_CHECKING:
     from mm.constants import BinaryFileKind
@@ -102,7 +102,16 @@ def cat_cmd(
         ),
     ] = None,
     # -- Positional argument --
-    files: Annotated[Optional[list[Path]], typer.Argument(help="Files to display")] = None,
+    files: Annotated[
+        Optional[list[Path]],
+        typer.Argument(
+            help=(
+                "Files and/or directories to display. Directories are "
+                "expanded recursively (gitignore-aware; pass --no-ignore "
+                "to bypass)."
+            ),
+        ),
+    ] = None,
     n: Annotated[
         Optional[int],
         typer.Option("-n", help="Line limit: +N = head, -N = tail"),
@@ -238,12 +247,24 @@ def cat_cmd(
             help="Confirm when path count ≥ threshold (default 9; env MM_CAT_BATCH_CONFIRM_THRESHOLD)",
         ),
     ] = False,
+    no_ignore: Annotated[
+        bool,
+        typer.Option(
+            "--no-ignore",
+            help="Include files excluded by .gitignore when expanding directory arguments",
+        ),
+    ] = False,
 ) -> None:
     """Extract and describe file content.
 
     \b
     Behavior auto-detects from file type. Default mode is 'fast'. For raw
     file metadata (dimensions / EXIF / codec / mime / hash), use ``mm peek``.
+
+    \b
+    Directory arguments are expanded recursively into all files inside,
+    respecting ``.gitignore`` by default. Pass ``--no-ignore`` to include
+    ignored entries.
 
     \b
                                 fast (default)                  accurate
@@ -265,6 +286,8 @@ def cat_cmd(
       mm cat photo.png                      # short VLM caption (fast pipeline)
       mm cat photo.png -m accurate          # full VLM description
       mm cat video.mp4 -m accurate          # mosaic → VLM
+      mm cat ./my-folder                    # cat every file in the folder (gitignore-aware)
+      mm cat ./my-folder --no-ignore        # include files normally excluded by .gitignore
       mm cat photo.png -p tile              # use named encoder
       mm cat photo.png -m accurate -p my-pipeline.yaml
                                             # custom pipeline YAML
@@ -330,13 +353,38 @@ def cat_cmd(
         do_print_pipeline(print_pipeline)
         return
 
-    paths: list[str] = []
+    raw_paths: list[str] = []
 
     stdin_paths = read_paths_from_stdin()
     if stdin_paths:
-        paths.extend(stdin_paths)
+        raw_paths.extend(stdin_paths)
     if files:
-        paths.extend(str(f) for f in files)
+        raw_paths.extend(str(f) for f in files)
+
+    if not raw_paths:
+        typer.echo("Error: No files specified.", err=True)
+        raise typer.Exit(1)
+
+    paths: list[str] = []
+    seen: set[str] = set()
+    for entry in raw_paths:
+        try:
+            expanded = expand_path_arg(entry, no_ignore=no_ignore)
+        except FileNotFoundError:
+            # Defer "not found" reporting to the downstream processing loop
+            # so the user sees the canonical "Error: <path> not found."
+            # message (and the prune-from-cache side-effect) instead of a
+            # bare traceback. Keep the original entry so the error message
+            # echoes the user's input form.
+            if entry not in seen:
+                seen.add(entry)
+                paths.append(entry)
+            continue
+        for f in expanded:
+            key = str(f)
+            if key not in seen:
+                seen.add(key)
+                paths.append(key)
 
     if not paths:
         typer.echo("Error: No files specified.", err=True)

@@ -369,6 +369,21 @@ METADATA_COMMANDS: list[BenchCommand] = [
 ]
 
 FAST_COMMANDS: list[BenchCommand] = [
+    # Folder-expansion path: ``mm cat <folder>`` walks the directory via the
+    # gitignore-aware Scanner and dispatches each file through fast mode.
+    # ``--no-generate`` keeps timings focused on the expansion + encoder
+    # dispatch cost (no per-file LLM calls during bench rounds); ``-y``
+    # bypasses the >=9-paths confirmation prompt for non-interactive runs.
+    BenchCommand(
+        "mm cat <folder>",
+        "fast",
+        "mm cat {dir} --mode fast --no-cache --no-generate --format json -y",
+    ),
+    BenchCommand(
+        "mm cat <folder> --no-ignore",
+        "fast",
+        "mm cat {dir} --mode fast --no-cache --no-generate --format json --no-ignore -y",
+    ),
     BenchCommand(
         "mm cat <code> (x20)",
         "fast",
