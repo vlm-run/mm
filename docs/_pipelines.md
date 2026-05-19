@@ -165,4 +165,4 @@ encode:
 
 ## Encoders
 
-See [ENCODERS.md](ENCODERS.md) for the full encoder reference — all built-in encoders, parameters, planned encoders, and how to write custom encoders.
+See [encoders.md](encoders.md) for the full encoder reference — all built-in encoders, parameters, planned encoders, and how to write custom encoders.

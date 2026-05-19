@@ -169,7 +169,8 @@ class Context:
             omitted *and* ``root`` is not provided. Stays ``None`` when
             ``root`` is provided without ``session_id`` (preserves the
             legacy default).
-        llm_base_url, llm_api_key: Optional LLM overrides.
+        llm_base_url: Optional LLM overrides for base_url.
+        llm_api_key: Optional LLM overrides for api_key.
 
     Examples:
         Incremental (role-aware)::

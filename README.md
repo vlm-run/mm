@@ -632,7 +632,7 @@ Use `mm config reset-db` to clear all databases and caches.
 
 ### Pipelines — encode + generate
 
-Pipelines are YAML configs under `pipelines/{kind}/{mode}.yaml` that pair an **encoder** with optional LLM **generation** parameters. When `generate` is `null`, the pipeline is encode-only (no LLM call). Encoders are Python classes under `encoders/` that convert media files into VLM-ready Messages. See `[docs/PIPELINES.md](docs/PIPELINES.md)` and `[docs/ENCODERS.md](docs/ENCODERS.md)` for the full pipeline and encoder reference.
+Pipelines are YAML configs under `pipelines/{kind}/{mode}.yaml` that pair an **encoder** with optional LLM **generation** parameters. When `generate` is `null`, the pipeline is encode-only (no LLM call). Encoders are Python classes under `encoders/` that convert media files into VLM-ready Messages. See `[docs/pipelines.md](docs/pipelines.md)` and `[docs/encoders.md](docs/encoders.md)` for the full pipeline and encoder reference.
 
 Pipeline fields can be overridden from the CLI:
 
