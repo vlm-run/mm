@@ -10,13 +10,13 @@
       
       
       
-        <link rel="canonical" href="https://vlm-run.github.io/mm/PIPELINES/">
+        <link rel="canonical" href="https://vlm-run.github.io/mm/peek/">
       
       
-        <link rel="prev" href="../ENCODERS/">
+        <link rel="prev" href="../wc/">
       
       
-        <link rel="next" href="../fixtures/">
+        <link rel="next" href="../sql/">
       
       
         
@@ -27,7 +27,7 @@
     
     
       
-        <title>Pipelines - mm</title>
+        <title>peek - mm</title>
       
     
     
@@ -80,7 +80,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#pipelines" class="md-skip">
+        <a href="#mm-peek" class="md-skip">
           Skip to content
         </a>
       
@@ -116,7 +116,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Pipelines
+              peek
             
           </span>
         </div>
@@ -313,18 +313,20 @@
       
   
   
+    
   
   
+  
     
     
     
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
         
           
           <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
@@ -345,7 +347,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_3">
             <span class="md-nav__icon md-icon"></span>
             
@@ -444,10 +446,37 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../peek/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    peek
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -463,6 +492,175 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#synopsis" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Synopsis
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#options" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Options
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#metadata-fields" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Metadata fields
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Metadata fields">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#universal-fields" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Universal fields
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#image-fields" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Image fields
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#video-fields" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Video fields
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#audio-fields" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Audio fields
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#document-fields-always-shown" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Document fields (always shown)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#document-fields-full-only" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Document fields (--full only)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#examples" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Examples
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#rich-panel-output" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Rich panel output
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#performance" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Performance
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#notes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Notes
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -811,37 +1009,10 @@
       
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Pipelines
-  
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../PIPELINES/" class="md-nav__link">
         
   
   
@@ -857,87 +1028,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#generatemodel-pinning-a-model-per-pipeline" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        generate.model — pinning a model per pipeline
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#generateextra_body-provider-specific-knobs" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        generate.extra_body — provider-specific knobs
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#override-surfaces-full-precedence-rules" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Override surfaces — full precedence rules
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Override surfaces — full precedence rules">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#example-my_filterpy" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Example my_filter.py
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#encoders" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Encoders
-      
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -1328,10 +1418,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#generatemodel-pinning-a-model-per-pipeline" class="md-nav__link">
+  <a href="#synopsis" class="md-nav__link">
     <span class="md-ellipsis">
       
-        generate.model — pinning a model per pipeline
+        Synopsis
       
     </span>
   </a>
@@ -1339,10 +1429,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#generateextra_body-provider-specific-knobs" class="md-nav__link">
+  <a href="#options" class="md-nav__link">
     <span class="md-ellipsis">
       
-        generate.extra_body — provider-specific knobs
+        Options
       
     </span>
   </a>
@@ -1350,22 +1440,77 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#override-surfaces-full-precedence-rules" class="md-nav__link">
+  <a href="#metadata-fields" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Override surfaces — full precedence rules
+        Metadata fields
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Override surfaces — full precedence rules">
+    <nav class="md-nav" aria-label="Metadata fields">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#example-my_filterpy" class="md-nav__link">
+  <a href="#universal-fields" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Example my_filter.py
+        Universal fields
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#image-fields" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Image fields
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#video-fields" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Video fields
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#audio-fields" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Audio fields
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#document-fields-always-shown" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Document fields (always shown)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#document-fields-full-only" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Document fields (--full only)
       
     </span>
   </a>
@@ -1378,10 +1523,43 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#encoders" class="md-nav__link">
+  <a href="#examples" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Encoders
+        Examples
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#rich-panel-output" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Rich panel output
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#performance" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Performance
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#notes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Notes
       
     </span>
   </a>
@@ -1405,144 +1583,268 @@
 
 
 
-<h1 id="pipelines">Pipelines<a class="headerlink" href="#pipelines" title="Permanent link">&para;</a></h1>
-<p>Pipelines configure a 2-stage flow for LLM-based media understanding:
-<strong>encode</strong> (via an encoder) then <strong>generate</strong> (LLM call) to produce text output.</p>
-<pre class="mermaid"><code>%%{init: {'look': 'neo'} }%%
-graph LR
-  file("Media File")
-
-  subgraph encode ["Encode"]
-    encoder("Encoder")
-  end
-
-  subgraph message ["Message"]
-    msg("Messages")
-  end
-
-  subgraph generate ["Generate"]
-    llm("MLLM")
-  end
-
-  out("stdout")
-
-  file --&gt; encoder --&gt; msg --&gt; llm --&gt; out
-  style encode rx:10px,ry:10px
-  style message rx:10px,ry:10px
-  style generate rx:10px,ry:10px</code></pre>
-<p>Each pipeline is a YAML file under <code>pipelines/{kind}/{mode}.yaml</code> that references
-an encoder from <code>mm/encoders/</code> and configures LLM generation parameters.</p>
-<blockquote>
-<p><strong>Pipeline scope.</strong> Pipelines apply to image / video / audio / PDF —
-the binary media kinds. <code>--mode fast</code> (default) runs the fast pipeline;
-<code>--mode accurate</code> runs the LLM-heavy one. <code>kind=text</code> and non-PDF
-documents (<code>.docx</code> / <code>.pptx</code>) follow a passthrough flow regardless of
-mode, so <code>-p</code>, <code>--encode.*</code>, and <code>--generate.*</code> are no-ops for those.</p>
-</blockquote>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>mm<span class="w"> </span>cat<span class="w"> </span>photo.jpg<span class="w"> </span>-m<span class="w"> </span>fast<span class="w"> </span>-p<span class="w"> </span>resize<span class="w">          </span><span class="c1"># named encoder (fast pipeline)</span>
-<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>mm<span class="w"> </span>cat<span class="w"> </span>video.mp4<span class="w"> </span>-m<span class="w"> </span>fast<span class="w"> </span>-p<span class="w"> </span>shot-mosaic<span class="w">     </span><span class="c1"># scene-aware video encoder</span>
-<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>
-<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="c1"># Override pipeline config from CLI</span>
-<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>mm<span class="w"> </span>cat<span class="w"> </span>photo.jpg<span class="w"> </span>-m<span class="w"> </span>accurate<span class="w"> </span>--encode.strategy<span class="w"> </span>tile
-<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>mm<span class="w"> </span>cat<span class="w"> </span>photo.jpg<span class="w"> </span>-m<span class="w"> </span>accurate<span class="w"> </span>--generate.max-tokens<span class="w"> </span><span class="m">1024</span><span class="w"> </span>--generate.temperature<span class="w"> </span><span class="m">0</span>.5
-<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>mm<span class="w"> </span>cat<span class="w"> </span>photo.jpg<span class="w"> </span>-m<span class="w"> </span>accurate<span class="w"> </span>--prompt<span class="w"> </span><span class="s2">&quot;Describe in one sentence.&quot;</span><span class="w"> </span>--model<span class="w"> </span>moondream2
-<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>
-<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a><span class="c1"># Override individual strategy_opts entries (repeatable, KEY=VALUE form)</span>
-<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>mm<span class="w"> </span>cat<span class="w"> </span>photo.jpg<span class="w"> </span>-m<span class="w"> </span>accurate<span class="w"> </span>--encode.strategy_opts<span class="w"> </span><span class="nv">max_width</span><span class="o">=</span><span class="m">768</span>
-<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>mm<span class="w"> </span>cat<span class="w"> </span>video.mp4<span class="w"> </span>-m<span class="w"> </span>accurate<span class="w"> </span>--encode.strategy_opts<span class="w"> </span><span class="nv">max_width</span><span class="o">=</span><span class="m">768</span><span class="w"> </span>--encode.strategy_opts<span class="w"> </span><span class="nv">fps</span><span class="o">=</span><span class="m">5</span>
-<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>
-<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a><span class="c1"># Inspect the YAML source of a built-in pipeline (use as a template for your own)</span>
-<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>mm<span class="w"> </span>cat<span class="w"> </span>--print-pipeline<span class="w"> </span>image/accurate
-<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>
-<a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a><span class="c1"># Load explicit pipeline YAML (repeatable, dispatched by kind)</span>
-<a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a>mm<span class="w"> </span>cat<span class="w"> </span>photo.jpg<span class="w"> </span>-m<span class="w"> </span>accurate<span class="w"> </span>-p<span class="w"> </span>~/my-image-pipeline.yaml
-<a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a>mm<span class="w"> </span>cat<span class="w"> </span>*.jpg<span class="w"> </span>*.mp4<span class="w"> </span>-m<span class="w"> </span>accurate<span class="w"> </span>-p<span class="w"> </span>image.yaml<span class="w"> </span>-p<span class="w"> </span>video.yaml
-<a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a>
-<a id="__codelineno-0-20" name="__codelineno-0-20" href="#__codelineno-0-20"></a><span class="c1"># Custom Python transform via pyfunc</span>
-<a id="__codelineno-0-21" name="__codelineno-0-21" href="#__codelineno-0-21"></a>mm<span class="w"> </span>cat<span class="w"> </span>photo.jpg<span class="w"> </span>-m<span class="w"> </span>accurate<span class="w"> </span>--encode.pyfunc<span class="w"> </span>~/my_filter.py
-<a id="__codelineno-0-22" name="__codelineno-0-22" href="#__codelineno-0-22"></a>
-<a id="__codelineno-0-23" name="__codelineno-0-23" href="#__codelineno-0-23"></a><span class="c1"># Per-call model + extra_body for provider-specific knobs</span>
-<a id="__codelineno-0-24" name="__codelineno-0-24" href="#__codelineno-0-24"></a><span class="c1"># (e.g. vlmrt&#39;s method/method_params/video_fps/image_resolution).</span>
-<a id="__codelineno-0-25" name="__codelineno-0-25" href="#__codelineno-0-25"></a>mm<span class="w"> </span>--profile<span class="w"> </span>vlmrt<span class="w"> </span>cat<span class="w"> </span>photo.jpg<span class="w"> </span>-m<span class="w"> </span>accurate<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-0-26" name="__codelineno-0-26" href="#__codelineno-0-26"></a><span class="w">  </span>--model<span class="w"> </span>moondream2<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-0-27" name="__codelineno-0-27" href="#__codelineno-0-27"></a><span class="w">  </span>--generate.extra-body<span class="w"> </span><span class="s1">&#39;{&quot;method&quot;:&quot;detect&quot;,&quot;method_params&quot;:{&quot;object&quot;:&quot;fish&quot;}}&#39;</span>
+<h1 id="mm-peek">mm peek<a class="headerlink" href="#mm-peek" title="Permanent link">&para;</a></h1>
+<p>Surface locally-extracted file metadata — dimensions, EXIF, codec, duration, content hash — directly from the file, without any LLM calls or cache reads.</p>
+<p>Use <code>peek</code> for <strong>"what is this file?"</strong>. Use <a href="../cat/"><code>cat</code></a> for <strong>"what does this file say?"</strong>.</p>
+<h2 id="synopsis">Synopsis<a class="headerlink" href="#synopsis" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>mm<span class="w"> </span>peek<span class="w"> </span>FILE<span class="w"> </span><span class="o">[</span>FILE<span class="w"> </span>...<span class="o">]</span><span class="w"> </span><span class="o">[</span>OPTIONS<span class="o">]</span>
 </code></pre></div>
-<h2 id="generatemodel-pinning-a-model-per-pipeline"><code>generate.model</code> — pinning a model per pipeline<a class="headerlink" href="#generatemodel-pinning-a-model-per-pipeline" title="Permanent link">&para;</a></h2>
-<p>The <code>generate</code> block accepts an optional <code>model:</code> string that overrides
-the active profile's default model whenever this pipeline is used.
-Leaving it unset (or <code>null</code>) means "use the profile model". Useful for
-shipping a pipeline that always targets a specific deployment-side model
-(e.g. an OCR pipeline that always wants <code>paddleocr-v5</code>).</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="c1"># ~/.config/mm/pipelines/image/accurate.yaml</span>
-<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">image</span>
-<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="nt">mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">accurate</span>
-<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="nt">generate</span><span class="p">:</span>
-<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="w">  </span><span class="nt">prompt</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Read every line of text on this image.</span>
-<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="w">  </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">paddleocr-v5</span>
-<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="w">  </span><span class="nt">extra_body</span><span class="p">:</span>
-<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a><span class="w">    </span><span class="nt">method</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ocr</span>
+<h2 id="options">Options<a class="headerlink" href="#options" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Short</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--full</code></td>
+<td></td>
+<td>flag</td>
+<td>Include all document metadata fields (author, title, subject, keywords, creator, producer, pages). Off by default.</td>
+</tr>
+<tr>
+<td><code>--format FORMAT</code></td>
+<td><code>-f</code></td>
+<td>enum</td>
+<td>Output format: <code>rich</code>, <code>json</code>, <code>pretty-json</code>, <code>tsv</code>, <code>csv</code></td>
+</tr>
+</tbody>
+</table>
+<h2 id="metadata-fields">Metadata fields<a class="headerlink" href="#metadata-fields" title="Permanent link">&para;</a></h2>
+<p>Fields populated depend on the file kind. All formats emit the same flat column set; fields not applicable to a given kind are <code>null</code>.</p>
+<h3 id="universal-fields">Universal fields<a class="headerlink" href="#universal-fields" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>name</code></td>
+<td>Filename</td>
+</tr>
+<tr>
+<td><code>kind</code></td>
+<td>File kind: <code>image</code>, <code>video</code>, <code>audio</code>, <code>document</code>, <code>code</code>, <code>text</code>, <code>data</code>, <code>config</code>, <code>other</code></td>
+</tr>
+<tr>
+<td><code>size</code></td>
+<td>File size in bytes</td>
+</tr>
+<tr>
+<td><code>mime</code></td>
+<td>MIME type inferred from extension</td>
+</tr>
+<tr>
+<td><code>magic_mime</code></td>
+<td>MIME type detected by content inspection (magika). Shown only when it differs from <code>mime</code>.</td>
+</tr>
+<tr>
+<td><code>content_hash</code></td>
+<td>xxh3 content hash (hex)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="image-fields">Image fields<a class="headerlink" href="#image-fields" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>dimensions</code></td>
+<td><code>WxH</code> pixel dimensions</td>
+</tr>
+<tr>
+<td><code>phash</code></td>
+<td>Perceptual hash (16-digit hex) for similarity detection</td>
+</tr>
+<tr>
+<td><code>exif_camera</code></td>
+<td>Camera make and model</td>
+</tr>
+<tr>
+<td><code>exif_date</code></td>
+<td>Date/time original from EXIF</td>
+</tr>
+<tr>
+<td><code>exif_gps</code></td>
+<td>GPS coordinates (lat, lon)</td>
+</tr>
+<tr>
+<td><code>exif_orientation</code></td>
+<td>EXIF orientation tag</td>
+</tr>
+</tbody>
+</table>
+<h3 id="video-fields">Video fields<a class="headerlink" href="#video-fields" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>dimensions</code></td>
+<td><code>WxH</code> pixel resolution</td>
+</tr>
+<tr>
+<td><code>duration_s</code></td>
+<td>Duration in seconds</td>
+</tr>
+<tr>
+<td><code>fps</code></td>
+<td>Frames per second</td>
+</tr>
+<tr>
+<td><code>video_codec</code></td>
+<td>Video codec (e.g. <code>h264</code>, <code>av1</code>)</td>
+</tr>
+<tr>
+<td><code>audio_codec</code></td>
+<td>Audio codec (e.g. <code>aac</code>, <code>opus</code>)</td>
+</tr>
+<tr>
+<td><code>has_audio</code></td>
+<td>Whether an audio track is present</td>
+</tr>
+</tbody>
+</table>
+<h3 id="audio-fields">Audio fields<a class="headerlink" href="#audio-fields" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>duration_s</code></td>
+<td>Duration in seconds</td>
+</tr>
+<tr>
+<td><code>audio_codec</code></td>
+<td>Audio codec</td>
+</tr>
+</tbody>
+</table>
+<h3 id="document-fields-always-shown">Document fields (always shown)<a class="headerlink" href="#document-fields-always-shown" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>mime</code></td>
+<td>MIME type</td>
+</tr>
+<tr>
+<td><code>content_hash</code></td>
+<td>Content hash</td>
+</tr>
+</tbody>
+</table>
+<h3 id="document-fields-full-only">Document fields (<code>--full</code> only)<a class="headerlink" href="#document-fields-full-only" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>pages</code></td>
+<td>Page count</td>
+</tr>
+<tr>
+<td><code>doc_author</code></td>
+<td>Document author</td>
+</tr>
+<tr>
+<td><code>doc_title</code></td>
+<td>Document title</td>
+</tr>
+<tr>
+<td><code>doc_subject</code></td>
+<td>Document subject</td>
+</tr>
+<tr>
+<td><code>doc_keywords</code></td>
+<td>Document keywords</td>
+</tr>
+<tr>
+<td><code>doc_creator</code></td>
+<td>Creating application</td>
+</tr>
+<tr>
+<td><code>doc_producer</code></td>
+<td>PDF producer</td>
+</tr>
+</tbody>
+</table>
+<h2 id="examples">Examples<a class="headerlink" href="#examples" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="c1"># basic image metadata</span>
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>mm<span class="w"> </span>peek<span class="w"> </span>photo.png
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="c1"># video metadata</span>
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>mm<span class="w"> </span>peek<span class="w"> </span>clip.mp4
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="c1"># audio metadata</span>
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>mm<span class="w"> </span>peek<span class="w"> </span>recording.mp3
+<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>
+<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a><span class="c1"># PDF with full document metadata</span>
+<a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a>mm<span class="w"> </span>peek<span class="w"> </span>paper.pdf<span class="w"> </span>--full
+<a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a>
+<a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a><span class="c1"># multi-file inspection</span>
+<a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a>mm<span class="w"> </span>peek<span class="w"> </span>*.png<span class="w"> </span>--format<span class="w"> </span>tsv
+<a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a>
+<a id="__codelineno-1-16" name="__codelineno-1-16" href="#__codelineno-1-16"></a><span class="c1"># multi-file JSON output</span>
+<a id="__codelineno-1-17" name="__codelineno-1-17" href="#__codelineno-1-17"></a>mm<span class="w"> </span>peek<span class="w"> </span>photo.png<span class="w"> </span>clip.mp4<span class="w"> </span>paper.pdf<span class="w"> </span>--format<span class="w"> </span>json
+<a id="__codelineno-1-18" name="__codelineno-1-18" href="#__codelineno-1-18"></a>
+<a id="__codelineno-1-19" name="__codelineno-1-19" href="#__codelineno-1-19"></a><span class="c1"># pipe-friendly TSV</span>
+<a id="__codelineno-1-20" name="__codelineno-1-20" href="#__codelineno-1-20"></a>mm<span class="w"> </span>peek<span class="w"> </span>photo.png<span class="w"> </span>--format<span class="w"> </span>tsv
 </code></pre></div>
-<p>CLI <code>--model</code> / <code>--generate.model</code> always wins over a pipeline-pinned
-model.</p>
-<h2 id="generateextra_body-provider-specific-knobs"><code>generate.extra_body</code> — provider-specific knobs<a class="headerlink" href="#generateextra_body-provider-specific-knobs" title="Permanent link">&para;</a></h2>
-<p>The <code>generate</code> block accepts an arbitrary <code>extra_body:</code> mapping that is
-forwarded verbatim to the OpenAI SDK's <code>extra_body=</code> argument. Use it when
-your endpoint needs request fields beyond the standard OpenAI surface
-(temperature/max_tokens/json_mode are still first-class fields).</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="c1"># ~/.config/mm/pipelines/image/accurate.yaml</span>
-<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">image</span>
-<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="nt">mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">accurate</span>
-<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="nt">encode</span><span class="p">:</span>
-<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="w">  </span><span class="nt">strategy</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">resize</span>
-<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="w">  </span><span class="nt">strategy_opts</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt"> max_width</span><span class="p">:</span><span class="w"> </span><span class="nv">1024</span><span class="w"> </span><span class="p p-Indicator">}</span>
-<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="nt">generate</span><span class="p">:</span>
-<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a><span class="w">  </span><span class="nt">prompt</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Describe this image.</span>
-<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a><span class="w">  </span><span class="nt">max_tokens</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">512</span>
-<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a><span class="w">  </span><span class="nt">extra_body</span><span class="p">:</span>
-<a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a><span class="w">    </span><span class="nt">method</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">caption</span>
-<a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a><span class="w">    </span><span class="nt">method_params</span><span class="p">:</span>
-<a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a><span class="w">      </span><span class="nt">length</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">normal</span>
-<a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a><span class="w">    </span><span class="nt">image_resolution</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;448x448&quot;</span>
+<h2 id="rich-panel-output">Rich panel output<a class="headerlink" href="#rich-panel-output" title="Permanent link">&para;</a></h2>
+<p>In TTY mode the default output is a Rich panel per file, showing only populated fields. <code>None</code> fields are hidden to keep output dense and scannable.</p>
+<p>A typical image panel:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>╭─── photo.jpg ───╮
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>│ kind       image │
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>│ size       2.4 MB│
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>│ mime   image/jpeg│
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>│ hash   a3f2...   │
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>│ dimensions 4032x3024 │
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>│ camera  iPhone 15 Pro │
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>│ date  2024-03-15 14:22 │
+<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>│ gps  37.7749° N, 122.4194° W │
+<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>╰──────────────────╯
 </code></pre></div>
-<p>Anything passed via <code>mm cat --generate.extra-body '&lt;json&gt;'</code> <strong>deep-merges
-on top</strong> of the pipeline-level <code>extra_body</code>, so per-call CLI flags can
-override individual keys without discarding the YAML defaults. The
-combined <code>extra_body</code> (along with the resolved <code>model</code>) is included in
-the L2 cache key so cached results are invalidated when knobs change.</p>
-<h2 id="override-surfaces-full-precedence-rules">Override surfaces — full precedence rules<a class="headerlink" href="#override-surfaces-full-precedence-rules" title="Permanent link">&para;</a></h2>
-<p>For every <code>cat</code> invocation the effective LLM call comes from three layers
-(right-most wins on conflict):</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>profile (mm.toml)  -&gt;  pipeline YAML (generate.*)  -&gt;  CLI flags on `cat`
-<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>  base_url              prompt                          --prompt / --generate.prompt
-<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>  api_key               model                           --model  / --generate.model
-<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>  model (default)       max_tokens                      --generate.max-tokens
-<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>                        temperature                     --generate.temperature
-<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>                        json_mode                       --generate.json-mode
-<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>                        extra_body                      --generate.extra-body
-<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>                                                        (deep-merged onto YAML)
-</code></pre></div>
-<p><code>base_url</code> and <code>api_key</code> are profile-only — they have no pipeline or CLI
-override.</p>
-<h3 id="example-my_filterpy">Example <code>my_filter.py</code><a class="headerlink" href="#example-my_filterpy" title="Permanent link">&para;</a></h3>
-<p>A pyfunc file must define <code>transform(parts, context) -&gt; list[dict]</code>.
-<code>parts</code> is a list of OpenAI-compatible message content dicts (e.g.
-<code>{"type": "text", ...}</code> or <code>{"type": "image_url", ...}</code>); <code>context</code> is
-file metadata (name, kind, size, etc.).</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="c1"># ~/my_filter.py — keep only image parts and prepend a custom instruction</span>
-<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="k">def</span><span class="w"> </span><span class="nf">transform</span><span class="p">(</span><span class="n">parts</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">],</span> <span class="n">context</span><span class="p">:</span> <span class="nb">dict</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">]:</span>
-<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>    <span class="n">images</span> <span class="o">=</span> <span class="p">[</span><span class="n">p</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">parts</span> <span class="k">if</span> <span class="n">p</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;type&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="s2">&quot;image_url&quot;</span><span class="p">]</span>
-<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>    <span class="n">header</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;text&quot;</span><span class="p">,</span> <span class="s2">&quot;text&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;Analyze </span><span class="si">{</span><span class="n">context</span><span class="p">[</span><span class="s1">&#39;name&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2"> in detail.&quot;</span><span class="p">}</span>
-<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>    <span class="k">return</span> <span class="p">[</span><span class="n">header</span><span class="p">,</span> <span class="o">*</span><span class="n">images</span><span class="p">]</span>
-</code></pre></div>
-<p>Inline variants also work inside a pipeline YAML:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="nt">encode</span><span class="p">:</span>
-<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="w">  </span><span class="nt">strategy</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">resize</span>
-<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="w">  </span><span class="nt">pyfunc</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">|</span>
-<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="w">    </span><span class="no">def transform(parts, context):</span>
-<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a><span class="w">        </span><span class="no">return [p for p in parts if p.get(&quot;type&quot;) == &quot;image_url&quot;]</span>
-</code></pre></div>
-<h2 id="encoders">Encoders<a class="headerlink" href="#encoders" title="Permanent link">&para;</a></h2>
-<p>See <a href="../ENCODERS/">ENCODERS.md</a> for the full encoder reference — all built-in encoders, parameters, planned encoders, and how to write custom encoders.</p>
+<h2 id="performance">Performance<a class="headerlink" href="#performance" title="Permanent link">&para;</a></h2>
+<p><code>peek</code> is always a direct, fresh scan — no cache reads, no database. Every invocation re-reads the file.</p>
+<p>Video metadata uses native Rust parsers (<code>mp4parse</code> for MP4/MOV, <code>matroska</code> for MKV/WebM) — no <code>ffmpeg</code> dependency for <code>peek</code>. Duration, codec, and resolution are extracted in under 100 ms.</p>
+<h2 id="notes">Notes<a class="headerlink" href="#notes" title="Permanent link">&para;</a></h2>
+<ul>
+<li><code>peek</code> accepts paths from stdin when piped (one path per line).</li>
+<li><code>--full</code> only adds document-specific fields; it has no effect on images, video, or audio.</li>
+<li><code>magic_mime</code> is displayed only when it differs from the extension-inferred <code>mime</code> — a discrepancy indicates a misnamed or modified file.</li>
+<li><code>phash</code> is available for images only. Displayed as a 16-digit hex string.</li>
+<li>GPS coordinates are shown when present in EXIF; many photos from modern smartphones include them.</li>
+</ul>
 
 
 
