@@ -168,16 +168,20 @@ class LlmBackend:
         Returns:
             Concatenated LLM responses (text mode) or JSON array (json_mode).
         """
+        import threading
+        from concurrent.futures import ThreadPoolExecutor
+
         from mm.pipelines import load
 
         tpl = pipeline_spec if pipeline_spec is not None else load(kind, mode)
         is_json = tpl.generate is not None and tpl.generate.json_mode
 
-        results: list[str] = []
         total = len(chunks)
+        results: list[str] = [""] * total
         cumulative_usage = LlmUsage()
+        lock = threading.Lock()
 
-        for i, parts in enumerate(chunks):
+        def _call(i: int, parts: list[dict[str, Any]]) -> None:
             result = self.generate(
                 kind,
                 mode,
@@ -186,14 +190,19 @@ class LlmBackend:
                 pipeline_spec=pipeline_spec,
                 extra_body=extra_body,
             )
-            results.append(result)
+            usage = self.last_usage
+            with lock:
+                results[i] = result
+                cumulative_usage.prompt_tokens += usage.prompt_tokens
+                cumulative_usage.completion_tokens += usage.completion_tokens
+                cumulative_usage.total_tokens += usage.total_tokens
+                if on_chunk is not None:
+                    on_chunk(i, total, result)
 
-            cumulative_usage.prompt_tokens += self.last_usage.prompt_tokens
-            cumulative_usage.completion_tokens += self.last_usage.completion_tokens
-            cumulative_usage.total_tokens += self.last_usage.total_tokens
-
-            if on_chunk is not None:
-                on_chunk(i, total, result)
+        with ThreadPoolExecutor(max_workers=min(8, total)) as pool:
+            futures = [pool.submit(_call, i, parts) for i, parts in enumerate(chunks)]
+            for fut in futures:
+                fut.result()
 
         self.last_usage = cumulative_usage
         good = [r for r in results if r and not r.startswith("[LLM error")]

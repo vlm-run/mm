@@ -114,12 +114,7 @@ def spec_extra_body(spec: PipelineSpec) -> dict[str, Any] | None:
 
 
 def make_llm_from_spec(spec: PipelineSpec) -> Any:
-    """Build an ``LlmBackend`` honouring any pipeline/CLI-merged model override.
-
-    Reads ``spec.generate.model`` (which already reflects CLI ``--model`` /
-    ``--generate.model`` overrides via ``apply_overrides``); falls back to
-    the active profile's default model when unset.
-    """
+    """Build an ``LlmBackend`` honouring any pipeline/CLI-merged model override."""
     from mm.llm import LlmBackend
 
     model = spec.generate.model if spec.generate is not None else None
