@@ -2,7 +2,7 @@
 
 Extract and describe file content — pipeline-driven, mode-aware, and LLM-capable.
 
-`cat` is the primary extraction command. It auto-detects what to do from the file type and the selected mode. For raw file metadata (dimensions, EXIF, codec, hash), use [`peek`](PEEK_COMMAND.md) instead.
+`cat` is the primary extraction command. It auto-detects what to do from the file type and the selected mode. For raw file metadata (dimensions, EXIF, codec, hash), use [`peek`](peek.md) instead.
 
 ## Synopsis
 

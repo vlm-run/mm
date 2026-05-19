@@ -69,23 +69,23 @@ nav:
   - Home: index.md
   - User guide: USER_GUIDE.md
   - CLI:
-      - Surface: MM_CLI.md
-      - Find: FIND_COMMAND.md
-      - WC: WC_COMMAND.md
-      - Peek: PEEK_COMMAND.md
-      - SQL: SQL_COMMAND.md
-      - Grep: GREP_COMMAND.md
-      - Cat: CAT_COMMAND.md
-      - Bench: BENCH_COMMAND.md
-      - Profile: PROFILE_MANAGEMENT.md
-      - Config: MM_CONFIG.md
+      - Overview: cli.md
+      - find: find.md
+      - wc: wc.md
+      - peek: peek.md
+      - sql: sql.md
+      - grep: grep.md
+      - cat: cat.md
+      - bench: bench.md
+      - profile: profile.md
+      - config: config.md
   - Python API:
       - Index: api.md
       - mm.Context: mm_context.md
-  - Use cases: USE_CASES.md
+  - Use cases: use-cases.md
   - Encoders: ENCODERS.md
   - Pipelines: PIPELINES.md
-  - Fixtures: FIXTURES.md
+  - Fixtures: fixtures.md
   - Notebooks:
       - Cookbook (gateway): notebooks/mm_cookbook_gateway.ipynb
       - Cookbook (local vlm): notebooks/mm_cookbook.ipynb
