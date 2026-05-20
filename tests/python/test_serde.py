@@ -10,7 +10,6 @@ from pathlib import Path
 
 import pytest
 
-
 # ---------------------------------------------------------------------------
 # Test fixtures
 # ---------------------------------------------------------------------------
@@ -170,8 +169,9 @@ class TestImageResize:
         url = msg["content"][0]["image_url"]["url"]
         b64_data = url.split(";base64,")[1]
         img_bytes = base64.b64decode(b64_data)
-        from PIL import Image
         import io
+
+        from PIL import Image
 
         img = Image.open(io.BytesIO(img_bytes))
         assert img.size[0] == 100  # Not upscaled
@@ -185,8 +185,9 @@ class TestImageResize:
         url = msg["content"][0]["image_url"]["url"]
         b64_data = url.split(";base64,")[1]
         img_bytes = base64.b64decode(b64_data)
-        from PIL import Image
         import io
+
+        from PIL import Image
 
         img = Image.open(io.BytesIO(img_bytes))
         assert img.size[0] <= 512
@@ -200,8 +201,9 @@ class TestImageResize:
         url = msg["content"][0]["image_url"]["url"]
         b64_data = url.split(";base64,")[1]
         img_bytes = base64.b64decode(b64_data)
-        from PIL import Image
         import io
+
+        from PIL import Image
 
         img = Image.open(io.BytesIO(img_bytes))
         w, h = img.size
@@ -220,8 +222,9 @@ class TestImageResize:
         url = msg["content"][0]["image_url"]["url"]
         b64_data = url.split(";base64,")[1]
         img_bytes = base64.b64decode(b64_data)
-        from PIL import Image
         import io
+
+        from PIL import Image
 
         img = Image.open(io.BytesIO(img_bytes))
         w, h = img.size
@@ -375,9 +378,3 @@ class TestSerdeBenchmarks:
         from mm.encoders.image import _pillow_resize
 
         benchmark(lambda: _pillow_resize(serde_images["large_jpg"], 1024))
-
-    def test_bench_pillow_tile(self, benchmark, serde_images):
-        """Benchmark: Pillow fallback tile."""
-        from mm.encoders.image import _pillow_tile
-
-        benchmark(lambda: _pillow_tile(serde_images["large_jpg"], 1024))

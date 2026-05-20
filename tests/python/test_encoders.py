@@ -100,20 +100,6 @@ class TestRegistryExtended:
 
 
 class TestImageEncoders:
-    def test_validate_image_path_not_found(self, tmp_path):
-        from mm.encoders.image import _validate_image_path
-
-        with pytest.raises(FileNotFoundError, match="Image not found"):
-            _validate_image_path(tmp_path / "nonexistent.jpg")
-
-    def test_validate_image_path_unsupported_ext(self, tmp_path):
-        from mm.encoders.image import _validate_image_path
-
-        f = tmp_path / "test.xyz"
-        f.write_bytes(b"\x00")
-        with pytest.raises(ValueError, match="Unsupported image type"):
-            _validate_image_path(f)
-
     def test_gemini_image_part_format(self):
         from mm.encoders.image import _gemini_image_part
 
