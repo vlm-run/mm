@@ -76,7 +76,10 @@ class AudioBase64(AudioGenerate):
             "format",
             _EXT_TO_OPENAI_FORMAT.get(path.suffix.lower(), "mp3"),
         )
-        data = path.read_bytes()
+        from mm.ffmpeg import audio_to_video_container
+
+        video_outpath = audio_to_video_container(path)
+        data = video_outpath.read_bytes()
         b64 = base64.b64encode(data).decode()
 
         size_kb = len(data) / 1024
@@ -90,8 +93,8 @@ class AudioBase64(AudioGenerate):
         yield _to_message(
             [
                 {
-                    "type": "input_audio",
-                    "input_audio": {"data": b64, "format": fmt},
+                    "type": "video_url",
+                    "inline_data": {"data": b64, "format": fmt},
                 }
             ]
         )
