@@ -15,7 +15,9 @@ Public API:
 from __future__ import annotations
 
 import base64
+import logging
 import re
+import threading
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -25,6 +27,8 @@ from openai.types.chat import ChatCompletion
 
 from mm.constants import BinaryFileKind
 from mm.pipelines.schema import PipelineSpec
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -68,6 +72,7 @@ class LlmBackend:
             default_headers=headers,
         )
         self.last_usage = LlmUsage()
+        self._local = threading.local()
 
     @property
     def is_configured(self) -> bool:
@@ -168,7 +173,6 @@ class LlmBackend:
         Returns:
             Concatenated LLM responses (text mode) or JSON array (json_mode).
         """
-        import threading
         from concurrent.futures import ThreadPoolExecutor
 
         from mm.pipelines import load
@@ -190,14 +194,14 @@ class LlmBackend:
                 pipeline_spec=pipeline_spec,
                 extra_body=extra_body,
             )
-            usage = self.last_usage
+            results[i] = result
+            usage = getattr(self._local, "last_usage", LlmUsage())
             with lock:
-                results[i] = result
                 cumulative_usage.prompt_tokens += usage.prompt_tokens
                 cumulative_usage.completion_tokens += usage.completion_tokens
                 cumulative_usage.total_tokens += usage.total_tokens
-                if on_chunk is not None:
-                    on_chunk(i, total, result)
+            if on_chunk is not None:
+                on_chunk(i, total, result)
 
         with ThreadPoolExecutor(max_workers=min(8, total)) as pool:
             futures = [pool.submit(_call, i, parts) for i, parts in enumerate(chunks)]
@@ -206,6 +210,11 @@ class LlmBackend:
 
         self.last_usage = cumulative_usage
         good = [r for r in results if r and not r.startswith("[LLM error")]
+
+        if errors := [r for r in results if r.startswith("[LLM error")]:
+            from mm.display import console
+
+            console.print(f"[dim]{'; '.join(errors)}[/dim]")
 
         if is_json and good:
             import json
@@ -266,11 +275,13 @@ class LlmBackend:
         try:
             response: ChatCompletion = self.client.chat.completions.create(**kwargs)
             if response.usage:
-                self.last_usage = LlmUsage(
+                usage = LlmUsage(
                     prompt_tokens=response.usage.prompt_tokens or 0,
                     completion_tokens=response.usage.completion_tokens or 0,
                     total_tokens=response.usage.total_tokens or 0,
                 )
+                self.last_usage = usage
+                self._local.last_usage = usage
 
             choice = response.choices[0].message
             content = (choice.content or "").strip()
@@ -285,9 +296,7 @@ class LlmBackend:
                 return _extract_answer_from_thinking(reasoning.strip())
             return ""
         except Exception as e:
-            from mm.display import console
-
-            console.print("LLM error %s", e)
+            logger.debug("LLM error %s", e)
             return f"[LLM error: {e}]"
 
 

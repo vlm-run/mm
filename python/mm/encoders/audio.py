@@ -130,7 +130,7 @@ class AudioBase64(AudioGenerate):
             start += step
 
         logger.debug(
-            "gemini_audio_chunked [path=%s, duration=%.1fs, chunk=%ds, n_segments=%d]",
+            "audio_base64_chunked [path=%s, duration=%.1fs, chunk=%ds, n_segments=%d]",
             path.name,
             duration,
             max_seconds,
@@ -334,13 +334,9 @@ class GeminiAudio(AudioGenerate):
             )
             return
 
-        from mm.display import console
-        from mm.utils import benchmark_func
-
         max_seconds: int = kwargs.get("max_seconds", 120)
         overlap: int = kwargs.get("overlap", 10)
-        duration = benchmark_func(probe_duration, path)
-        console.print("duration: %s", duration)
+        duration = probe_duration(path)
 
         if duration <= max_seconds:
             data = path.read_bytes()
