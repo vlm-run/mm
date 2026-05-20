@@ -24,7 +24,6 @@ from __future__ import annotations
 import base64
 import io
 import logging
-import subprocess
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from pathlib import Path
@@ -250,37 +249,6 @@ def _seek_and_decode_one(
         container.close()
 
 
-def _decode_timestamps_parallel(
-    path: str,
-    timestamps: list[float],
-    width: int | None,
-    max_workers: int,
-) -> Iterator[Frame]:
-    """Decode frames at timestamps using parallel seek.
-
-    Opens one container per worker thread for true parallelism.
-    Yields frames in timestamp order.
-    """
-    if not timestamps:
-        return
-
-    indexed = sorted(enumerate(timestamps), key=lambda x: x[1])
-
-    with ThreadPoolExecutor(max_workers=max_workers) as pool:
-        futures = [
-            (original_idx, pool.submit(_seek_and_decode_one, path, ts, width))
-            for original_idx, ts in indexed
-        ]
-
-    results: list[tuple[int, Frame]] = []
-    for original_idx, future in futures:
-        results.append((original_idx, future.result()))
-
-    results.sort(key=lambda x: x[0])
-    for _, frame in results:
-        yield frame
-
-
 def _decode_timestamps_batched(
     path: str,
     timestamps: list[float],
@@ -488,41 +456,6 @@ def _decode_keyframes(
         container.close()
 
 
-def extract_segment(
-    video_path: str | Path,
-    out_path: str | Path,
-    start_s: float,
-    end_s: float,
-) -> Path:
-    """Stream-copy a time segment via ffmpeg CLI.
-
-    Kept as subprocess because ffmpeg ``-c copy`` is ~23x faster than
-    PyAV re-encoding for segment extraction.
-    """
-    video_path = Path(video_path)
-    out_path = Path(out_path)
-    out_path.parent.mkdir(parents=True, exist_ok=True)
-
-    duration = end_s - start_s
-    cmd = [
-        "ffmpeg",
-        "-y",
-        "-ss",
-        f"{start_s:.3f}",
-        "-i",
-        str(video_path),
-        "-t",
-        f"{duration:.3f}",
-        "-c",
-        "copy",
-        "-avoid_negative_ts",
-        "make_zero",
-        str(out_path),
-    ]
-    subprocess.run(cmd, capture_output=True, check=True)
-    return out_path
-
-
 def tile_to_mosaic(
     images: list[Image.Image],
     *,
@@ -576,16 +509,3 @@ def probe_subtitle_streams(path: str | Path) -> list[dict[str, Any]]:
         return streams
     finally:
         container.close()
-
-
-def _parse_duration(stderr: str) -> float:
-    """Parse 'Duration: HH:MM:SS.ms' from ffmpeg stderr."""
-    for line in stderr.splitlines():
-        if "Duration:" in line:
-            parts = line.split("Duration:")[1].strip().split(",")[0].strip()
-            try:
-                h, m, s = parts.split(":")
-                return int(h) * 3600 + int(m) * 60 + float(s)
-            except (ValueError, IndexError):
-                pass
-    return 0.0

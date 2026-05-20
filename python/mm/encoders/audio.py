@@ -334,9 +334,13 @@ class GeminiAudio(AudioGenerate):
             )
             return
 
+        from mm.display import console
+        from mm.utils import benchmark_func
+
         max_seconds: int = kwargs.get("max_seconds", 120)
         overlap: int = kwargs.get("overlap", 10)
-        duration = probe_duration(path)
+        duration = benchmark_func(probe_duration, path)
+        console.print("duration: %s", duration)
 
         if duration <= max_seconds:
             data = path.read_bytes()

@@ -76,11 +76,12 @@ def _extract_llm_parts(msg: dict) -> list[dict]:
                 idata = part["inline_data"]
                 mime = idata.get("mime_type", "")
                 b64 = idata.get("data", "")
-                if mime.startswith("video/"):
-                    continue
-                parts.append(
-                    {"type": "image_url", "image_url": {"url": f"data:{mime};base64,{b64}"}}
-                )
+                if mime.startswith("image/"):
+                    parts.append(
+                        {"type": "image_url", "image_url": {"url": f"data:{mime};base64,{b64}"}}
+                    )
+                else:
+                    parts.append(part)
             else:
                 parts.append(part)
     elif isinstance(content, str):

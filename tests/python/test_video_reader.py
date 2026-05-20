@@ -18,8 +18,7 @@ import tempfile
 from pathlib import Path
 
 import pytest
-from PIL import Image
-
+from mm.ffmpeg import probe_duration
 from mm.video import (
     Frame,
     FrameStream,
@@ -28,6 +27,7 @@ from mm.video import (
     probe,
     tile_to_mosaic,
 )
+from PIL import Image
 
 BAKERY = Path.home() / "data" / "mmbench-tiny" / "bakery.mp4"
 requires_bakery = pytest.mark.skipif(
@@ -230,17 +230,6 @@ class TestVideoReader:
 # ---------------------------------------------------------------------------
 
 
-def _old_ffprobe_duration(path: str) -> float:
-    """Baseline: ffprobe subprocess for duration."""
-    result = subprocess.run(
-        ["ffprobe", "-v", "quiet", "-show_entries", "format=duration", "-of", "csv=p=0", path],
-        capture_output=True,
-        text=True,
-        timeout=10,
-    )
-    return float(result.stdout.strip())
-
-
 def _old_ffmpeg_extract_frame(path: str, ts: float, out_path: str, width: int = 1024):
     """Baseline: ffmpeg subprocess per-frame extraction."""
     subprocess.run(
@@ -274,7 +263,7 @@ class TestBenchProbe:
 
     def test_bench_ffprobe_subprocess(self, benchmark):
         """ffprobe subprocess: ~58ms."""
-        benchmark(_old_ffprobe_duration, str(BAKERY))
+        benchmark(probe_duration, str(BAKERY))
 
 
 @requires_bakery
