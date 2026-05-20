@@ -19,13 +19,12 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Any, Iterable
 
-from mm.constants import guess_mime
 from mm.encoders import Message, register
 from mm.pipelines.schema import Generate
 
 logger = logging.getLogger(__name__)
 
-_EXT_TO_OPENAI_FORMAT: dict[str, str] = {
+_EXT_TO_FORMAT: dict[str, str] = {
     ".mp3": "mp3",
     ".wav": "wav",
     ".flac": "flac",
@@ -71,33 +70,98 @@ class AudioBase64(AudioGenerate):
     name: str = "audio-base64"
     media_types: tuple[str, ...] = ("audio",)
 
-    def encode(self, path: Path, **kwargs: Any) -> Iterable[Message]:
+    def encode(self, path: Path, **kwargs) -> Iterable[Message]:
+        from mm.ffmpeg import probe_duration
+        from mm.video import extract_segment, pyav_runnable
+
         fmt: str = kwargs.get(
             "format",
-            _EXT_TO_OPENAI_FORMAT.get(path.suffix.lower(), "mp3"),
+            _EXT_TO_FORMAT.get(path.suffix.lower(), "mp3"),
         )
-        from mm.ffmpeg import audio_to_video_container
 
-        video_outpath = audio_to_video_container(path)
-        data = video_outpath.read_bytes()
-        b64 = base64.b64encode(data).decode()
+        if not pyav_runnable():
+            yield _to_message(
+                [
+                    {
+                        "type": "text",
+                        "text": "Audio content to analyze",
+                    },
+                    {
+                        "type": "input_audio",
+                        "input_audio": {
+                            "data": base64.b64encode(path.read_bytes()).decode(),
+                            "format": fmt,
+                        },
+                    },
+                ]
+            )
+            return
 
-        size_kb = len(data) / 1024
+        max_seconds: int = int(kwargs.get("max_seconds", 120))
+        overlap: int = int(kwargs.get("overlap", 10))
+        duration = probe_duration(path)
+        if duration <= max_seconds:
+            logger.debug("audio-base64 [path=%s, duration=%.1fs, single]", path.name, duration)
+            yield _to_message(
+                [
+                    {
+                        "type": "text",
+                        "text": "Audio content to analyze",
+                    },
+                    {
+                        "type": "input_audio",
+                        "input_audio": {
+                            "data": base64.b64encode(path.read_bytes()).decode(),
+                            "format": fmt,
+                        },
+                    },
+                ]
+            )
+            return
+
+        import tempfile
+
+        step: float = max(max_seconds - overlap, 1)
+        segments: list[tuple[float, float]] = []
+        start: float = 0.0
+        while start < duration:
+            end = min(start + max_seconds, duration)
+            segments.append((start, end))
+            start += step
+
         logger.debug(
-            "audio_base64 [path=%s, format=%s, size=%.1fKB]",
+            "gemini_audio_chunked [path=%s, duration=%.1fs, chunk=%ds, n_segments=%d]",
             path.name,
-            fmt,
-            size_kb,
+            duration,
+            max_seconds,
+            len(segments),
         )
 
-        yield _to_message(
-            [
-                {
-                    "type": "video_url",
-                    "inline_data": {"data": b64, "format": fmt},
-                }
-            ]
-        )
+        def _submit_fn(varg: tuple[int, tuple[float, float]]) -> Message:
+            idx, (start, end) = varg
+            with tempfile.NamedTemporaryFile(suffix=path.suffix, delete=False) as tmp:
+                seg_path = Path(tmp.name)
+            try:
+                extract_segment(path, seg_path, start, end)
+                seg_data = seg_path.read_bytes()
+            finally:
+                seg_path.unlink(missing_ok=True)
+
+            return _to_message(
+                [
+                    {
+                        "type": "text",
+                        "text": f"Audio chunk to analyze {idx + 1} ({start:.0f}s-{end:.0f}s):",
+                    },
+                    {
+                        "type": "input_audio",
+                        "input_audio": {"data": base64.b64encode(seg_data).decode(), "format": fmt},
+                    },
+                ]
+            )
+
+        with ThreadPoolExecutor(max_workers=min(4, len(segments))) as pool:
+            yield from pool.map(_submit_fn, enumerate(segments))
 
 
 class AudioTranscribe:
@@ -120,7 +184,7 @@ class AudioTranscribe:
     name: str = "audio-transcribe"
     media_types: tuple[str, ...] = ("audio",)
 
-    def encode(self, path: Path, **kwargs: Any) -> Iterable[Message]:
+    def encode(self, path: Path, **kwargs) -> Iterable[Message]:
         model: str | None = kwargs.get("model")
         language: str = kwargs.get("language", "auto")
         audio_speed: float = kwargs.get("audio_speed", 1.0)
@@ -232,7 +296,7 @@ class AudioTranscribe:
 
 
 class GeminiAudio(AudioGenerate):
-    """Pass an audio file directly as a Gemini ``inline_data`` Part.
+    """Pass an audio file directly as a Gemini ``input_audio`` Part.
 
     For files longer than ``max_seconds``, splits into overlapping
     chunks via ffmpeg and yields one Message per chunk.
@@ -245,26 +309,50 @@ class GeminiAudio(AudioGenerate):
     name: str = "audio-gemini"
     media_types: tuple[str, ...] = ("audio",)
 
-    def encode(self, path: Path, **kwargs: Any) -> Iterable[Message]:
-        max_seconds: int = kwargs.get("max_seconds", 120)
-        overlap: int = kwargs.get("overlap", 10)
+    def encode(self, path: Path, **kwargs) -> Iterable[Message]:
+        from mm.ffmpeg import probe_duration
+        from mm.video import extract_segment, pyav_runnable
 
-        from mm.video import extract_segment, probe, pyav_runnable
+        fmt: str = kwargs.get(
+            "format",
+            _EXT_TO_FORMAT.get(path.suffix.lower(), "mp3"),
+        )
 
         if not pyav_runnable():
-            data: bytes = path.read_bytes()
-            mime: str = guess_mime(path.name)
-            b64 = base64.b64encode(data).decode()
-            yield _to_message([{"inline_data": {"mime_type": mime, "data": b64}}])
+            data = path.read_bytes()
+            yield _to_message(
+                [
+                    {
+                        "type": "text",
+                        "text": "Audio content to analyze",
+                    },
+                    {
+                        "type": "input_audio",
+                        "input_audio": {"data": base64.b64encode(data).decode(), "format": fmt},
+                    },
+                ]
+            )
             return
 
-        duration: float = probe(path).duration
+        max_seconds: int = kwargs.get("max_seconds", 120)
+        overlap: int = kwargs.get("overlap", 10)
+        duration = probe_duration(path)
+
         if duration <= max_seconds:
             data = path.read_bytes()
-            mime = guess_mime(path.name)
-            b64 = base64.b64encode(data).decode()
             logger.debug("gemini_audio [path=%s, duration=%.1fs, single]", path.name, duration)
-            yield _to_message([{"inline_data": {"mime_type": mime, "data": b64}}])
+            yield _to_message(
+                [
+                    {
+                        "type": "text",
+                        "text": "Audio content to analyze",
+                    },
+                    {
+                        "type": "input_audio",
+                        "input_audio": {"data": base64.b64encode(data).decode(), "format": fmt},
+                    },
+                ]
+            )
             return
 
         import tempfile
@@ -285,8 +373,6 @@ class GeminiAudio(AudioGenerate):
             len(segments),
         )
 
-        mime = guess_mime(path.name)
-
         def _submit_fn(varg: tuple[int, tuple[float, float]]) -> Message:
             idx, (start, end) = varg
             with tempfile.NamedTemporaryFile(suffix=path.suffix, delete=False) as tmp:
@@ -296,14 +382,16 @@ class GeminiAudio(AudioGenerate):
                 seg_data = seg_path.read_bytes()
             finally:
                 seg_path.unlink(missing_ok=True)
-            b64 = base64.b64encode(seg_data).decode()
             return _to_message(
                 [
                     {
                         "type": "text",
-                        "text": f"Audio chunk {idx + 1} ({start:.0f}s-{end:.0f}s):",
+                        "text": f"Audio chunk to analyze {idx + 1} ({start:.0f}s-{end:.0f}s):",
                     },
-                    {"inline_data": {"mime_type": mime, "data": b64}},
+                    {
+                        "type": "input_audio",
+                        "input_audio": {"data": base64.b64encode(seg_data).decode(), "format": fmt},
+                    },
                 ]
             )
 
