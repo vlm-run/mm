@@ -207,7 +207,7 @@ Per-kind encoder overrides and per-kind encoder kwargs:
 ```python
 messages: list[ChatCompletionMessageParam] = ctx.to_messages(
     format="openai",
-    encoders={"image": "tile", "video": "mosaic"},
+    encoders={"image": "image-tile", "video": "mosaic"},
     encoder_kwargs={"document": {"pages_per_message": 8}},
 )
 ```
@@ -301,7 +301,7 @@ HTML(ctx.render_html())
 html = ctx.render_html(
     max_image_width=480,
     title="My prompt",
-    encoders={"image": "tile"},
+    encoders={"image": "image-tile"},
     encoder_kwargs={"document": {"pages_per_message": 4}},
 )
 ```

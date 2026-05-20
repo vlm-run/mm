@@ -172,7 +172,7 @@ class ImageResize:
         max_width: Maximum dimension in pixels (default 1024).
     """
 
-    name: str = "resize"
+    name: str = "image-resize"
     media_types: tuple[str, ...] = ("image",)
 
     def encode(self, path: Path, **kwargs: Any) -> Iterable[Message]:
@@ -206,7 +206,7 @@ class ImageTile:
             bounding box (default 1024).
     """
 
-    name: str = "tile"
+    name: str = "image-tile"
     media_types: tuple[str, ...] = ("image",)
 
     def encode(self, path: Path, **kwargs: Any) -> Iterable[Message]:

@@ -11,17 +11,17 @@ mode: fast        # fast | accurate
 
 encode:
 
-  # ── resize (default) ────────────────────────────────────────────
+  # ── image-resize (default) ────────────────────────────────────────────
   # Fits the image into a bounding box while preserving aspect ratio
   # and EXIF orientation.  Uses the Rust fast-path when available.
-  strategy: resize
+  strategy: image-resize
   strategy_opts:
     max_width: 1024           # max dimension in pixels (width or height)
 
-  # ── tile ────────────────────────────────────────────────────────
+  # ── image-tile ────────────────────────────────────────────────────────
   # Resized overview + grid of tile crops in a single Message.
   # Good for high-resolution images where fine detail matters.
-  # strategy: tile
+  # strategy: image-tile
   # strategy_opts:
   #   max_width: 1024         # tile dimension and overview bounding box
 

@@ -2,7 +2,7 @@ kind: image
 mode: accurate
 
 encode:
-  strategy: resize
+  strategy: image-resize
   strategy_opts:
     max_width: 1024
 

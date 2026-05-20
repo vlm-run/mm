@@ -69,8 +69,8 @@ class TestRegistry:
         from mm.encoders import list_strategies
 
         names = list_strategies()
-        assert "resize" in names
-        assert "tile" in names
+        assert "image-resize" in names
+        assert "image-tile" in names
         # ``video-frames`` and ``video-chunks`` are the current PyAV-based
         # equivalents of the retired ``frame-sample`` / ``video-chunk``.
         assert "video-frames" in names
@@ -86,8 +86,8 @@ class TestRegistry:
         from mm.encoders import list_strategies
 
         names = list_strategies(media_type="image")
-        assert "resize" in names
-        assert "tile" in names
+        assert "image-resize" in names
+        assert "image-tile" in names
         # No video-only encoders should leak into the image namespace.
         assert "video-frames" not in names
 
@@ -98,7 +98,7 @@ class TestRegistry:
         assert "video-frames" in names
         assert "video-chunks" in names
         assert "video-gemini" in names
-        assert "resize" not in names
+        assert "image-resize" not in names
 
     def test_list_strategies_by_document(self):
         from mm.encoders import list_strategies
@@ -107,7 +107,7 @@ class TestRegistry:
         assert "rasterize" in names
         assert "rasterize-text" in names
         assert "document-gemini" in names
-        assert "resize" not in names
+        assert "image-resize" not in names
 
     def test_get_unknown_strategy_raises(self):
         from mm.encoders import get
@@ -145,7 +145,7 @@ class TestImageResize:
     def test_output_format(self, serde_images):
         from mm.encoders import get
 
-        strat = get("resize")
+        strat = get("image-resize")
         messages = list(strat.encode(serde_images["small_jpg"]))
         assert len(messages) == 1
         msg = messages[0]
@@ -162,7 +162,7 @@ class TestImageResize:
         """Images smaller than max_width should not be upscaled."""
         from mm.encoders import get
 
-        strat = get("resize")
+        strat = get("image-resize")
         messages = list(strat.encode(serde_images["small_png"], max_width=1024))
         msg = messages[0]
         # Decode and check dimensions
@@ -179,7 +179,7 @@ class TestImageResize:
     def test_resize_large_respects_max_width(self, serde_images):
         from mm.encoders import get
 
-        strat = get("resize")
+        strat = get("image-resize")
         messages = list(strat.encode(serde_images["large_jpg"], max_width=512))
         msg = messages[0]
         url = msg["content"][0]["image_url"]["url"]
@@ -195,7 +195,7 @@ class TestImageResize:
     def test_resize_preserves_aspect_ratio(self, serde_images):
         from mm.encoders import get
 
-        strat = get("resize")
+        strat = get("image-resize")
         messages = list(strat.encode(serde_images["large_jpg"], max_width=1024))
         msg = messages[0]
         url = msg["content"][0]["image_url"]["url"]
@@ -216,7 +216,7 @@ class TestImageResize:
         tall = _make_jpeg(tmp_path / "tall.jpg", 500, 3000)
         from mm.encoders import get
 
-        strat = get("resize")
+        strat = get("image-resize")
         messages = list(strat.encode(tall, max_width=1024))
         msg = messages[0]
         url = msg["content"][0]["image_url"]["url"]
@@ -239,7 +239,7 @@ class TestImageTile:
         """Image smaller than max_width yields a single message with overview only."""
         from mm.encoders import get
 
-        strat = get("tile")
+        strat = get("image-tile")
         messages = list(strat.encode(serde_images["small_jpg"], max_width=1024))
         assert len(messages) == 1
         content = messages[0]["content"]
@@ -250,7 +250,7 @@ class TestImageTile:
         """Large image yields one message with overview + tiles."""
         from mm.encoders import get
 
-        strat = get("tile")
+        strat = get("image-tile")
         messages = list(strat.encode(serde_images["large_jpg"], max_width=1024))
         assert len(messages) == 1
         content = messages[0]["content"]
@@ -261,7 +261,7 @@ class TestImageTile:
     def test_tile_medium_image(self, serde_images):
         from mm.encoders import get
 
-        strat = get("tile")
+        strat = get("image-tile")
         messages = list(strat.encode(serde_images["medium_jpg"], max_width=512))
         assert len(messages) == 1
         content = messages[0]["content"]
@@ -331,28 +331,28 @@ class TestSerdeBenchmarks:
         """Benchmark: resize 100x80 JPEG."""
         from mm.encoders import get
 
-        strat = get("resize")
+        strat = get("image-resize")
         benchmark(lambda: list(strat.encode(serde_images["small_jpg"], max_width=1024)))
 
     def test_bench_image_resize_medium(self, benchmark, serde_images):
         """Benchmark: resize 1000x800 JPEG."""
         from mm.encoders import get
 
-        strat = get("resize")
+        strat = get("image-resize")
         benchmark(lambda: list(strat.encode(serde_images["medium_jpg"], max_width=1024)))
 
     def test_bench_image_resize_large(self, benchmark, serde_images):
         """Benchmark: resize 3000x2000 JPEG."""
         from mm.encoders import get
 
-        strat = get("resize")
+        strat = get("image-resize")
         benchmark(lambda: list(strat.encode(serde_images["large_jpg"], max_width=1024)))
 
     def test_bench_image_tile_large(self, benchmark, serde_images):
         """Benchmark: tile 3000x2000 JPEG into 1024x1024 tiles."""
         from mm.encoders import get
 
-        strat = get("tile")
+        strat = get("image-tile")
         benchmark(lambda: list(strat.encode(serde_images["large_jpg"], max_width=1024)))
 
     def test_bench_rust_resize(self, benchmark, serde_images):

@@ -364,7 +364,7 @@ class Context:
                 run. ``"gemini"`` adapts image parts to the
                 ``inline_data`` Part shape and folds non-user roles into
                 labelled text parts.
-            encoders: Per-kind encoder overrides, e.g. ``{"image": "tile",
+            encoders: Per-kind encoder overrides, e.g. ``{"image": "image-tile",
                 "video": "mosaic"}``. Unspecified kinds fall back to
                 sensible defaults (``image-resize``, ``video-mosaic``,
                 ``document-rasterize``, ``audio-base64``).

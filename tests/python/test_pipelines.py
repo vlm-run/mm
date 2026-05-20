@@ -7,7 +7,6 @@ from typing import Any
 
 import pytest
 import yaml
-
 from mm.pipelines import apply_overrides, deep_merge, load, render_prompt, run_pyfunc
 from mm.pipelines.schema import Encode, Generate, PipelineSpec, PipelineValidationError
 
@@ -335,7 +334,7 @@ class TestApplyOverrides:
                 "kind": "image",
                 "mode": "fast",
                 "encode": {
-                    "strategy": "resize",
+                    "strategy": "image-resize",
                     "strategy_opts": {"max_width": 1024},
                 },
                 "generate": {"prompt": "Describe this image.", "max_tokens": 256},
@@ -353,14 +352,14 @@ class TestApplyOverrides:
     def test_no_overrides_returns_same(self):
         spec = self._base_spec()
         result = apply_overrides(spec)
-        assert result.encode.strategy == "resize"
+        assert result.encode.strategy == "image-resize"
         assert result.generate is not None
         assert result.generate.max_tokens == 256
 
     def test_encode_strategy_override(self):
         spec = self._base_spec()
-        result = apply_overrides(spec, encode_overrides={"strategy": "tile"})
-        assert result.encode.strategy == "tile"
+        result = apply_overrides(spec, encode_overrides={"strategy": "image-tile"})
+        assert result.encode.strategy == "image-tile"
         assert result.encode.strategy_opts["max_width"] == 1024
 
     def test_encode_max_width_override(self):
@@ -396,10 +395,10 @@ class TestApplyOverrides:
         spec = self._base_spec()
         result = apply_overrides(
             spec,
-            encode_overrides={"strategy": "tile"},
+            encode_overrides={"strategy": "image-tile"},
             generate_overrides={"max_tokens": "512", "temperature": "0.8"},
         )
-        assert result.encode.strategy == "tile"
+        assert result.encode.strategy == "image-tile"
         assert result.generate is not None
         assert result.generate.max_tokens == 512
         assert result.generate.temperature == 0.8

@@ -47,7 +47,7 @@ class TestRegistryExtended:
         from mm.encoders import list_strategies
 
         names = list_strategies()
-        assert "tile" in names
+        assert "image-tile" in names
         # ``video-shots`` + ``video-shot-mosaic`` are the current shot-aware
         # encoders (formerly ``shot-frames`` / ``shot-mosaic``).
         assert "video-shots" in names
@@ -64,7 +64,7 @@ class TestRegistryExtended:
         from mm.encoders import list_strategies
 
         image_names = list_strategies(media_type="image")
-        assert "tile" in image_names
+        assert "image-tile" in image_names
 
     def test_resolve_provider_default_openai(self):
         from mm.encoders import _resolve_provider
@@ -152,7 +152,7 @@ class TestTileOverview:
         from mm.encoders import get
 
         img = _make_jpeg(tmp_path / "small.jpg", 100, 80)
-        strat = get("tile")
+        strat = get("image-tile")
         messages = list(strat.encode(img, max_width=1024))
         assert len(messages) == 1
         msg = messages[0]
@@ -166,7 +166,7 @@ class TestTileOverview:
         from mm.encoders import get
 
         img = _make_jpeg(tmp_path / "large.jpg", 2048, 2048)
-        strat = get("tile")
+        strat = get("image-tile")
         messages = list(strat.encode(img, max_width=1024))
         assert len(messages) == 1
         msg = messages[0]
@@ -175,7 +175,8 @@ class TestTileOverview:
         image_parts = [p for p in content if p.get("type") == "image_url" or "inline_data" in p]
         assert len(text_parts) >= 1
         assert (
-            "overview" in text_parts[0]["text"].lower() or "tile" in text_parts[0]["text"].lower()
+            "overview" in text_parts[0]["text"].lower()
+            or "image-tile" in text_parts[0]["text"].lower()
         )
         assert len(image_parts) >= 5
 
@@ -184,7 +185,7 @@ class TestTileOverview:
         from mm.encoders import get
 
         img = _make_jpeg(tmp_path / "huge.jpg", 4096, 4096)
-        strat = get("tile")
+        strat = get("image-tile")
         messages = list(strat.encode(img, max_width=1024))
         assert len(messages) == 1
         content = messages[0]["content"]

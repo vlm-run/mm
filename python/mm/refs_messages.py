@@ -255,7 +255,7 @@ def _spool_image(obj: Any) -> Path:
 def _resolve_strategy(kind: str, encoders: dict[str, str]) -> str | None:
     override = encoders.get(kind)
     if override:
-        # Accept both ``"tile"`` and ``"image-tile"``.
+        # Accept``"image-tile"``.
         if "-" in override:
             return override
         return f"{kind}-{override}"

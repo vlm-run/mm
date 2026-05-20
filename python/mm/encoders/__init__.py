@@ -85,13 +85,11 @@ _KIND_PREFIXES: tuple[str, ...] = ("image", "video", "audio", "document")
 def get(name: str) -> MessageStrategy:
     """Look up a registered encoder by name.
 
-    Accepts either the bare registry key (``"tile"``) or the
-    kind-prefixed display name shown by ``--list-encoders``
-    (``"image-tile"``). The prefix must match one of the encoder's
+    Accepts ``"image-tile"``). The prefix must match one of the encoder's
     declared media types.
 
     Args:
-        name: Encoder identifier (e.g. ``"resize"`` or ``"image-resize"``).
+        name: Encoder identifier (e.g. ``"image-resize"``).
 
     Raises:
         KeyError: If no encoder with that name is registered.

@@ -253,7 +253,7 @@ Drop `messages_openai` directly into `client.chat.completions.create(messages=..
 ```python
 messages: list[ChatCompletionMessageParam] = ctx.to_messages(
     format="openai",
-    encoders={"image": "tile", "video": "mosaic"},
+    encoders={"image": "image-tile", "video": "mosaic"},
 )
 ```
 
