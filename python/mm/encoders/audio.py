@@ -71,8 +71,8 @@ class AudioBase64(AudioGenerate):
     media_types: tuple[str, ...] = ("audio",)
 
     def encode(self, path: Path, **kwargs) -> Iterable[Message]:
-        from mm.ffmpeg import probe_duration
-        from mm.video import extract_segment, pyav_runnable
+        from mm.ffmpeg import extract_segment, probe_duration
+        from mm.video import pyav_runnable
 
         fmt: str = kwargs.get(
             "format",
@@ -310,8 +310,8 @@ class GeminiAudio(AudioGenerate):
     media_types: tuple[str, ...] = ("audio",)
 
     def encode(self, path: Path, **kwargs) -> Iterable[Message]:
-        from mm.ffmpeg import probe_duration
-        from mm.video import extract_segment, pyav_runnable
+        from mm.ffmpeg import extract_segment, probe_duration
+        from mm.video import pyav_runnable
 
         fmt: str = kwargs.get(
             "format",

@@ -85,7 +85,8 @@ class GeminiVideoChunked:
     media_types: tuple[str, ...] = ("video",)
 
     def encode(self, path: Path, **kwargs) -> Iterable[Message]:
-        from mm.video import extract_segment, probe, pyav_runnable
+        from mm.ffmpeg import extract_segment
+        from mm.video import probe, pyav_runnable
 
         max_seconds: int = int(kwargs.get("max_seconds", 120))
         overlap: int = int(kwargs.get("overlap", 10))

@@ -7,7 +7,7 @@ input natively.
 - ``video-clips``: Base64-encode video in uniform-duration chunks.
 - ``video-clips-w-transcript``: Same with Whisper transcript prepended.
 
-Uses PyAV for probing duration and ``mm.video.extract_segment`` for
+Uses PyAV for probing duration and ``mm.ffmpeg.extract_segment`` for
 stream-copy segment extraction (fastest available method).
 """
 
@@ -117,7 +117,7 @@ class VideoClips:
         mime: str,
         max_size_mb: float | None,
     ) -> Iterable[Message]:
-        from mm.video import extract_segment
+        from mm.ffmpeg import extract_segment
 
         start: float = 0.0
         chunk_idx: int = 0

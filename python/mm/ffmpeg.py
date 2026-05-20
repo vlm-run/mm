@@ -17,6 +17,8 @@ from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from mm.cache import memoize_file
+
 
 def ffmpeg_available() -> bool:
     try:
@@ -52,6 +54,7 @@ class AudioResult:
     channels: int
 
 
+@memoize_file(maxsize=64)
 def probe_duration(video_path: str | Path) -> float:
     """Get video duration in seconds via ffprobe. Fast container-level read."""
     result = subprocess.run(
