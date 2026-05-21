@@ -22,7 +22,6 @@ class SystemInfo:
     gpu_vram_mb: int = 0
     cuda_available: bool = False
     whisper_available: bool = False
-    scenedetect_available: bool = False
 
 
 def collect() -> SystemInfo:
@@ -45,13 +44,6 @@ def collect() -> SystemInfo:
         from mm.common.audio import transcribe_available
 
         info.whisper_available = transcribe_available()
-    except Exception:
-        pass
-
-    try:
-        from mm.common.video.shot_detection import scenedetect_available
-
-        info.scenedetect_available = scenedetect_available()
     except Exception:
         pass
 

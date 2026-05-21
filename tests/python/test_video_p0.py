@@ -22,15 +22,13 @@ import time
 from pathlib import Path
 
 import pytest
-from PIL import Image
-
 from mm.common.video.shot_detection import (
     SceneResult,
     detect_scenes,
-    scenedetect_available,
 )
 from mm.encoders.video._transcript import encode_with_transcript, transcript_messages
 from mm.video import Frame, VideoInfo, _resize_to_pil, probe
+from PIL import Image
 
 BAKERY = Path.home() / "data" / "mmbench-tiny" / "bakery.mp4"
 requires_bakery = pytest.mark.skipif(
@@ -242,11 +240,6 @@ def _write_minimal_mp4(av_module, dest: Path, frames: int = 8) -> None:
 @requires_bakery
 class TestSceneDetectCache:
     """P0 #4 — ``detect_scenes()`` is cached per (path, mtime, size, threshold, min_scene_len)."""
-
-    @pytest.fixture(autouse=True)
-    def _need_pyscenedetect(self):
-        if not scenedetect_available():
-            pytest.skip("PySceneDetect is not installed")
 
     def test_same_params_returns_equal_value(self):
         # ``detect_scenes`` is disk-backed, so the second call unpickles a
@@ -500,11 +493,6 @@ class TestBundledShots:
     Verifies one Message per shot with correctly-ordered frames inside each.
     """
 
-    @pytest.fixture(autouse=True)
-    def _need_pyscenedetect(self):
-        if not scenedetect_available():
-            pytest.skip("PySceneDetect is not installed")
-
     def test_one_message_per_shot(self):
         from mm.encoders import get
 
@@ -543,11 +531,6 @@ class TestBundledShots:
 class TestCacheCrossEncoderReuse:
     """End-to-end check that running multiple encoders against the same file
     populates and reuses the caches as expected (P0 #4 integration)."""
-
-    @pytest.fixture(autouse=True)
-    def _need_pyscenedetect(self):
-        if not scenedetect_available():
-            pytest.skip("PySceneDetect is not installed")
 
     def test_probe_and_scene_caches_shared_across_encoders(self):
         from mm.encoders import get

@@ -29,13 +29,7 @@ logger = logging.getLogger(__name__)
 
 def _detect_shots(video_path: Path, threshold: float) -> list[tuple[float, float]]:
     """Run PySceneDetect and return shot boundaries as (start_s, end_s) pairs."""
-    from mm.common.video.shot_detection import detect_scenes, scenedetect_available
-
-    if not scenedetect_available():
-        raise ImportError(
-            "scenedetect is required for shot-based encoders but is not available — "
-            "check your mm installation"
-        )
+    from mm.common.video.shot_detection import detect_scenes
 
     result = detect_scenes(video_path, threshold=threshold)
     logger.debug(

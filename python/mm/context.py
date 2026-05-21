@@ -999,12 +999,7 @@ def _classify_add_obj(
     Only ``str``, ``pathlib.Path``, and ``PIL.Image.Image`` are accepted.
     The tuple feeds directly into the Rust ``PyContext.add`` signature.
     """
-    try:
-        from PIL import Image as _PILImageMod  # noqa: PLC0415
-
-        _PILImage: Any = _PILImageMod
-    except ImportError:  # pragma: no cover - PIL is a hard dep in mm
-        _PILImage = None
+    from PIL import Image as _PILImage
 
     # PIL.Image
     if _PILImage is not None and isinstance(obj, _PILImage.Image):

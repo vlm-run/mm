@@ -131,14 +131,11 @@ def _get_timestamps(
             detect_scenes,
             sample_scene_timestamps,
             sample_uniform_timestamps,
-            scenedetect_available,
         )
 
-        if scenedetect_available():
-            result = detect_scenes(path)
-            if result.scenes:
-                return sample_scene_timestamps(result.scenes, num_frames)
-            return sample_uniform_timestamps(duration, num_frames)
+        result = detect_scenes(path)
+        if result.scenes:
+            return sample_scene_timestamps(result.scenes, num_frames)
         return sample_uniform_timestamps(duration, num_frames)
     except ImportError:
         step = duration / num_frames if num_frames > 0 else duration

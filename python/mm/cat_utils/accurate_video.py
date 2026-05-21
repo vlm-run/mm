@@ -102,17 +102,13 @@ def accurate_video(path: Path, spec: PipelineSpec, opts: CatOpts) -> RunResult:
                 detect_scenes,
                 sample_scene_timestamps,
                 sample_uniform_timestamps,
-                scenedetect_available,
             )
 
-            if scenedetect_available():
-                t_scene = time.monotonic()
-                scene_result = detect_scenes(path)
-                timing["scene_detection_ms"] = (time.monotonic() - t_scene) * 1000
-                if scene_result.scenes:
-                    timestamps = sample_scene_timestamps(scene_result.scenes, num_frames)
-                else:
-                    timestamps = sample_uniform_timestamps(duration, num_frames)
+            t_scene = time.monotonic()
+            scene_result = detect_scenes(path)
+            timing["scene_detection_ms"] = (time.monotonic() - t_scene) * 1000
+            if scene_result.scenes:
+                timestamps = sample_scene_timestamps(scene_result.scenes, num_frames)
             else:
                 timestamps = sample_uniform_timestamps(duration, num_frames)
 

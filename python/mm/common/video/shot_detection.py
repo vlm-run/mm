@@ -24,8 +24,8 @@ class SceneResult:
     num_scenes: int = 0
 
 
-def scenedetect_available() -> bool:
-    """Check if scenedetect is installed."""
+def scenedetect_runnable() -> bool:
+    """Check if scenedetect is runnable."""
     from mm._bootstrap import preload_media_libs
 
     preload_media_libs()
@@ -66,7 +66,7 @@ def detect_scenes(
     Returns:
         SceneResult with list of (start_s, end_s) tuples.
     """
-    if not scenedetect_available():
+    if not scenedetect_runnable():
         return SceneResult()
 
     t0 = time.monotonic()

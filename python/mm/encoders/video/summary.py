@@ -29,22 +29,15 @@ def _select_summary_timestamps(
 ) -> list[float]:
     """Pick N representative timestamps spread across the video."""
     if use_scene_detection:
-        try:
-            from mm.common.video.shot_detection import (
-                detect_scenes,
-                scenedetect_available,
-            )
+        from mm.common.video.shot_detection import detect_scenes
 
-            if scenedetect_available():
-                result = detect_scenes(path)
-                if result.scenes and len(result.scenes) > 1:
-                    midpoints = [(s + e) / 2 for s, e in result.scenes]
-                    if len(midpoints) <= num_frames:
-                        return midpoints
-                    step = len(midpoints) / num_frames
-                    return [midpoints[int(i * step)] for i in range(num_frames)]
-        except ImportError:
-            pass
+        result = detect_scenes(path)
+        if result.scenes and len(result.scenes) > 1:
+            midpoints = [(s + e) / 2 for s, e in result.scenes]
+            if len(midpoints) <= num_frames:
+                return midpoints
+            step = len(midpoints) / num_frames
+            return [midpoints[int(i * step)] for i in range(num_frames)]
 
     if num_frames <= 1:
         return [duration / 2]

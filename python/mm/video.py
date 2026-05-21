@@ -156,7 +156,7 @@ class AudioResult:
 
 
 def pyav_runnable() -> bool:
-    """Check if PyAV is importable."""
+    """Check if PyAV is runnable"""
     try:
         import av  # noqa: F401
 

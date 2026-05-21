@@ -10,8 +10,8 @@ from __future__ import annotations
 import base64
 import io
 import logging
-from pathlib import Path
 from itertools import islice
+from pathlib import Path
 from typing import Any, Iterable, Iterator, Optional
 
 from mm.encoders import Message, _resolve_provider, register
@@ -142,9 +142,9 @@ def _rasterize_pages(
 ) -> Iterator[tuple[str, str]]:
     """Yield PDF pages as ``(base64, mime)`` tuples one at a time.
 
-    Uses ``pypdfium2`` for rendering.  Each page is scaled so that its
+    Uses ``pypdfium2`` for rendering. Each page is scaled so that its
     width matches *max_width* while preserving aspect ratio, then JPEG-
-    encoded at quality 85.  Pages are yielded lazily so that only one
+    encoded at quality 85. Pages are yielded lazily so that only one
     rendered page is held in memory at a time.
 
     Args:
@@ -155,10 +155,7 @@ def _rasterize_pages(
     Yields:
         ``(base64_str, mime_str)`` pairs, one per page.
     """
-    try:
-        import pypdfium2 as pdfium
-    except ImportError:
-        return
+    import pypdfium2 as pdfium
 
     pdf = pdfium.PdfDocument(str(path))
     try:
