@@ -563,9 +563,6 @@ def _extract(path: Path, opts: CatOpts) -> str:
     spec = resolve_pipeline(opts, kind)
     spec = apply_overrides(spec, opts.encode_overrides or None, opts.generate_overrides or None)
     eff_model = effective_model(spec, profile.model)
-
-    content_hash = get_content_hash(path)
-
     extra = override_extra(
         opts.encode_overrides,
         opts.generate_overrides,
@@ -573,6 +570,7 @@ def _extract(path: Path, opts: CatOpts) -> str:
     )
 
     extraction_id: str | None = None
+    content_hash = get_content_hash(path)
     if content_hash:
         from mm.store.utils import get_extraction_id
 

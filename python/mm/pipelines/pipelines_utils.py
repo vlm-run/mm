@@ -100,7 +100,10 @@ def load_pipeline_args(pipeline_args: list[str]) -> dict[str, PipelineSpec]:
                     for spec in load_file(p):
                         specs[spec.kind] = spec
                 else:
-                    typer.echo(f"Warning: '{arg}' is not a known encoder or YAML file.", err=True)
+                    typer.echo(
+                        f"Warning: '{arg}' is not a known encoder or YAML file. Falling back to the default.",
+                        err=True,
+                    )
 
     return specs
 

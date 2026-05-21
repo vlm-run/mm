@@ -44,9 +44,6 @@ class DocumentPageText:
     accurate: Generate | None = None
 
     def encode(self, path: Path, **kwargs: Any) -> Iterable[Message]:
-        pages_per_message: int = kwargs.get("pages_per_message", 128)
-        max_pages: Optional[int] = kwargs.get("max_pages", None)
-
         if kwargs.get("generate_overrides", None):
             from mm.display import console
 
@@ -54,6 +51,8 @@ class DocumentPageText:
                 "[yellow]warning: --generate.* flags ignored (encoder is passthrough)[/yellow]"
             )
 
+        pages_per_message: int = kwargs.get("pages_per_message", 128)
+        max_pages: Optional[int] = kwargs.get("max_pages", None)
         ext = path.suffix.lower()
 
         if ext == ".pdf":

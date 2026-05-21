@@ -97,12 +97,13 @@ def run_encoder(path: Path, kind: BinaryFileKind, spec: PipelineSpec, opts: CatO
     t_encode = time.monotonic()
     strat = get_encoder(spec.encode.strategy)
     encode_kwargs: dict[str, Any] = dict(spec.encode.strategy_opts)
+    opts_kwargs = {"mode": opts.mode, "generate_override": opts.generate_overrides}
 
     if spec.encode.backend is not None:
         encode_kwargs.setdefault("backend", spec.encode.backend)
     if spec.encode.model is not None:
         encode_kwargs.setdefault("model", spec.encode.model)
-    messages = list(strat.encode(path, **encode_kwargs, **opts))
+    messages = list(strat.encode(path, **encode_kwargs, **opts_kwargs))
     encode_elapsed = (time.monotonic() - t_encode) * 1000
 
     if spec.generate is None:
