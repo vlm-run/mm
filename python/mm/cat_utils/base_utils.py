@@ -27,6 +27,7 @@ class CatOpts:
         "generate_overrides",
         "pipelines",
         "verbose",
+        "dry_run",
     )
 
     n: int | None
@@ -39,6 +40,7 @@ class CatOpts:
     generate_overrides: dict[str, str]
     pipelines: dict[str, PipelineSpec]
     verbose: bool
+    dry_run: bool
 
     def __init__(self, **kwargs) -> None:
         for k, v in kwargs.items():
