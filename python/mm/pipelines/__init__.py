@@ -275,11 +275,9 @@ def apply_overrides(
             elif k in _ENCODE_TOP_LEVEL:
                 encode_section[k] = v
         encode_section["strategy_opts"] = strategy_opts
+        data["encode"] = encode_section
 
-    if generate_overrides:
-        if data.get("generate") is None:
-            empty_gen: dict[str, Any] = {"prompt": ""}
-            data["generate"] = empty_gen
+    if generate_overrides and data.get("generate") is not None:
         gen: dict[str, Any] = data["generate"]
         known = {f.name for f in fields(Generate)}
         for k, v in generate_overrides.items():
@@ -293,5 +291,6 @@ def apply_overrides(
                 gen[k] = deep_merge(existing, overlay)
             else:
                 gen[k] = coerced
+        data["generate"] = gen
 
     return PipelineSpec.from_dict(data)

@@ -3,7 +3,7 @@ import os
 import sys
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any, Iterator, Literal
 
 import typer
 
@@ -40,9 +40,21 @@ class CatOpts:
     pipelines: dict[str, PipelineSpec]
     verbose: bool
 
-    def __init__(self, **kwargs: object) -> None:
+    def __init__(self, **kwargs) -> None:
         for k, v in kwargs.items():
             setattr(self, k, v)
+
+    def __iter__(self) -> Iterator[str]:
+        return iter(self.__slots__)
+
+    def __getitem__(self, key: str) -> Any:
+        return getattr(self, key)
+
+    def keys(self) -> tuple[str, ...]:
+        return self.__slots__
+
+    def items(self) -> Iterator[tuple[str, Any]]:
+        yield from ((k, getattr(self, k)) for k in self.__slots__)
 
 
 @dataclass(slots=True)

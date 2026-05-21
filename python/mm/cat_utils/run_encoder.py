@@ -102,7 +102,7 @@ def run_encoder(path: Path, kind: BinaryFileKind, spec: PipelineSpec, opts: CatO
         encode_kwargs.setdefault("backend", spec.encode.backend)
     if spec.encode.model is not None:
         encode_kwargs.setdefault("model", spec.encode.model)
-    messages = list(strat.encode(path, **encode_kwargs))
+    messages = list(strat.encode(path, **encode_kwargs, **opts))
     encode_elapsed = (time.monotonic() - t_encode) * 1000
 
     if spec.generate is None:

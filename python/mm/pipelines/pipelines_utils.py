@@ -23,6 +23,8 @@ def resolve_pipeline(opts: CatOpts, kind: str) -> PipelineSpec:
         encoder_spec = opts.pipelines.get("_encoder")
         if encoder_spec is not None and encoder_spec.encode.strategy:
             from mm.encoders import get
+            from mm.pipelines import deep_merge
+            from mm.pipelines.schema import Encode
 
             enc = get(encoder_spec.encode.strategy)
             if enc is not None:
@@ -35,13 +37,16 @@ def resolve_pipeline(opts: CatOpts, kind: str) -> PipelineSpec:
                     )
                 else:
                     base = load(kind, opts.mode)
+                    encode = Encode.from_dict(
+                        deep_merge(base.encode.to_dict(), encoder_spec.encode.to_dict())
+                    )
                     generate = base.generate
                     if generate is None:
                         generate = getattr(enc, opts.mode, None)
                     return PipelineSpec(
                         kind=base.kind,
                         mode=base.mode,
-                        encode=encoder_spec.encode,
+                        encode=encode,
                         generate=generate,
                     )
 

@@ -584,10 +584,6 @@ def _extract(path: Path, opts: CatOpts) -> str:
         else:
             db.evict_extraction(extraction_id)
 
-    # Each branch returns a RunResult carrying the rendered verbose tail
-    # (regardless of opts.verbose) so we can persist it for replay on a
-    # future cached + verbose run. The merged ``spec`` is threaded down so
-    # the LLM call sites read ``spec.generate.{model, extra_body}`` directly.
     if ext in OFFICE_EXTS and opts.mode == "accurate":
         with tempfile.TemporaryDirectory(prefix="mm-office-") as tmpdir:
             from mm._mm import office_to_pdf
