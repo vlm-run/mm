@@ -2,6 +2,6 @@ kind: document
 mode: fast
 
 encode:
-  strategy: page-text
+  strategy: document-page-text
   strategy_opts:
     pages_per_message: 1

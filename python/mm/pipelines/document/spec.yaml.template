@@ -12,10 +12,10 @@ mode: fast        # fast | accurate
 
 encode:
 
-  # ── page-text (default) ─────────────────────────────────────────
+  # ── document-page-text (default) ─────────────────────────────────────────
   # Extracts text per page from PDF/DOCX/PPTX.  No rasterization —
   # fast and lightweight.
-  strategy: page-text
+  strategy: document-page-text
   strategy_opts:
     pages_per_message: 128    # pages batched into each Message
     # max_pages: null         # total page cap (null = unlimited)

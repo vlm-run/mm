@@ -24,15 +24,15 @@ encode:
   # Encoder name (registered in mm's encoder registry). Accepts either
   # the bare name (`resize`) or the kind-prefixed display name
   # (`image-resize`). Examples:
-  #   image:    resize, tile
+  #   image:    image-resize, image-tile
   #   video:    video-frames, video-frames-w-transcript, video-mosaic,
   #             video-chunks, video-clips, video-keyframes, video-shots,
   #             video-shot-mosaic, video-summary, video-captions,
   #             video-transcript, video-gemini, video-gemini-chunked
   #   audio:    audio-transcribe, audio-gemini
-  #   document: page-text, rasterize, rasterize-text, document-gemini
+  #   document: document-page-text, rasterize, rasterize-text, document-gemini
   # null = use the kind-specific default.
-  strategy: resize
+  strategy: image-resize
 
   # Encoder model name — used by audio/video transcription encoders.
   # model: nvidia/parakeet-tdt-0.6b-v3

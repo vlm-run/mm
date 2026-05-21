@@ -310,7 +310,7 @@ Columns (`files`): `uri`, `name`, `stem`, `ext`, `size`, `modified`, `created`, 
   an LLM with a short prompt — images and videos do (short caption /
   short description). Audio fast = Whisper transcript only. PDFs
   (`kind=document` with `.pdf` ext) = pypdfium2 page-text via the
-  `page-text` encoder. Non-PDF documents (`.docx` / `.pptx`) and
+  `document-page-text` encoder. Non-PDF documents (`.docx` / `.pptx`) and
   `kind=text` = passthrough text.
   Pipeline-driven via `pipelines/{kind}/fast.yaml` for the binary
   kinds; passthrough handled directly by `cat_utils/extract_meta.py::extract_text`.

@@ -265,7 +265,7 @@ def cat_cmd(
       mm cat photo.png                      # short VLM caption (fast pipeline)
       mm cat photo.png -m accurate          # full VLM description
       mm cat video.mp4 -m accurate          # mosaic → VLM
-      mm cat photo.png -p tile              # use named encoder
+      mm cat photo.png -p image-tile        # use named encoder
       mm cat photo.png -m accurate -p my-pipeline.yaml
                                             # custom pipeline YAML
       mm cat photo.png -m accurate --encode.strategy_opts max_width=768

@@ -1,4 +1,4 @@
-"""Document page-text encoder: structured text extraction per page.
+"""document-page-text encoder: structured text extraction per page.
 
 Extracts text from PDF pages via pypdfium2, and from office documents
 (docx/odt/pptx/odp/xlsx/ods) via the libreoffice-pure-backed
@@ -38,7 +38,7 @@ class DocumentPageText:
         max_pages: Maximum pages to extract (default unlimited).
     """
 
-    name: str = "page-text"
+    name: str = "document-page-text"
     media_types: tuple[str, ...] = ("document",)
     fast: Generate | None = None
     accurate: Generate | None = None

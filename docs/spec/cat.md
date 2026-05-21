@@ -27,7 +27,7 @@ text and write FK-orphan chunks + concurrent embeddings on first sight, no `extr
 
 | | fast (default) | accurate |
 |---|---|---|
-| Encoder | `resize` (max 512px) | `resize` (max 1024px) |
+| Encoder | `image-resize` (max 512px) | `image-resize` (max 1024px) |
 | Output | 10-word description + 5 tags | ~200-word description + 10 tags + 10 objects |
 | Tokens | 256 max | 2048 max |
 
@@ -78,7 +78,7 @@ Multi-file: `mm cat a.mp4 b.mp4 -y` runs each video sequentially; the same **≥
 
 | | fast (default) | accurate |
 |---|---|---|
-| Encoder | `page-text` (pypdfium2, 1 page/message) | `page-text` (pypdfium2, 1 page/message) |
+| Encoder | `document-page-text` (pypdfium2, 1 page/message) | `document-page-text` (pypdfium2, 1 page/message) |
 | Output | concatenated page text | lossless markdown restructuring |
 | Tokens | — | 16384 max |
 
@@ -108,7 +108,7 @@ Pipeline execution tree shown after content:
 
 ```
 pipeline
-  ├─ encode: resize • 0.0s → 1 parts (1 image)
+  ├─ encode: image-resize • 0.0s → 1 parts (1 image)
   └─ generate: ollama • 2.3s • 354→195 tokens
 ```
 
@@ -131,7 +131,7 @@ pipelines/
 ### Override mechanisms (priority order)
 
 1. `-p pipeline.yaml` — explicit YAML file
-2. `-p encoder_name` — named encoder (e.g. `tile`, `mosaic`, `page-text`)
+2. `-p encoder_name` — named encoder (e.g. `image-tile`, `video-mosaic`, `document-page-text`)
 3. `~/.config/mm/pipelines/{kind}/{mode}.yaml` — user override directory
 4. Built-in `pipelines/{kind}/{mode}.yaml`
 
@@ -142,7 +142,7 @@ kind: image
 mode: fast
 
 encode:
-  strategy: resize          # registered encoder name
+  strategy: image-resize          # registered encoder name
   strategy_opts:
     max_width: 512          # encoder-specific options
 
@@ -157,7 +157,7 @@ generate:                   # optional — omit for encode-only
 
 Namespaced flags override individual pipeline fields:
 
-- `--encode.strategy resize` — swap encoder
+- `--encode.strategy image-resize` — swap encoder
 - `--encode.strategy_opts max_width=768` — override a single `strategy_opts` entry
   (repeatable; values are coerced to int/float/bool when possible, e.g.
   `--encode.strategy_opts max_width=768 --encode.strategy_opts fps=5`)

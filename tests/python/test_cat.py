@@ -194,16 +194,16 @@ class TestCatPdf:
     """CLI smoke: ``mm cat`` on a PDF runs the document fast/accurate pipeline.
 
     Default mode (``fast``) and explicit ``-m fast`` both go through the
-    same ``page-text`` encoder, so the rendered text matches.
+    same ``document-page-text`` encoder, so the rendered text matches.
     """
 
     def test_pdf_default_json_extracts_text(self, tmp_path: Path, isolated_db: Path):
-        """Default mode is now ``fast`` — runs the document fast pipeline (pypdfium2 page-text)."""
+        """Default mode is now ``fast`` — runs the document fast pipeline (pypdfium2 document-page-text)."""
         pdf = tmp_path / "hello.pdf"
         _minimal_single_page_pdf(pdf)
         r = runner.invoke(app, ["cat", str(pdf), "--format", "json"])
         assert r.exit_code == 0, r.output
-        data = json.loads(r.output)
+        data = json.loads(r.stdout)
         assert len(data) == 1
         assert data[0].get("mode") == "fast"
         assert "Hello" in data[0].get("content", "")
@@ -216,7 +216,7 @@ class TestCatPdf:
             ["cat", str(pdf), "-m", "fast", "--format", "json"],
         )
         assert r.exit_code == 0, r.output
-        data = json.loads(r.output)
+        data = json.loads(r.stdout)
         assert len(data) == 1
         assert data[0].get("mode") == "fast"
         assert "Hello" in data[0].get("content", "")

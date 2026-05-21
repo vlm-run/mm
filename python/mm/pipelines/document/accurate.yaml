@@ -2,7 +2,7 @@ kind: document
 mode: accurate
 
 encode:
-  strategy: page-text
+  strategy: document-page-text
   strategy_opts:
     pages_per_message: 1
 
