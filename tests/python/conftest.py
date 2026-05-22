@@ -60,6 +60,13 @@ def use_active_profile(active_profile: str, monkeypatch) -> None:
     precedence within that module.
     """
     monkeypatch.setenv("MM_PROFILE", active_profile)
+    _stub = {
+        "name": active_profile,
+        "model": "test_model",
+        "base_url": "test_base_url",
+        "api_key": "noop",
+    }
+    monkeypatch.setattr("mm.profile.get_profile_by_name", lambda _n: _stub)
 
 
 def _sqlite_vec_available() -> bool:
