@@ -27,7 +27,7 @@ text and write FK-orphan chunks + concurrent embeddings on first sight, no `extr
 
 | | fast (default) | accurate |
 |---|---|---|
-| Encoder | `image-resize` (max 512px) | `image-resize` (max 1024px) |
+| Encoder | `resize` (max 512px) | `resize` (max 1024px) |
 | Output | 10-word description + 5 tags | ~200-word description + 10 tags + 10 objects |
 | Tokens | 256 max | 2048 max |
 
@@ -37,7 +37,7 @@ Multi-file: `mm cat a.mp4 b.mp4 -y` runs each video sequentially; the same **≥
 
 | | fast (default) | accurate |
 |---|---|---|
-| Encoder | `mosaic` (4×4 grid, 128 frames, up to 8 mosaics) | `frames-transcript` (1fps, whisper medium, no speedup) |
+| Encoder | `mosaic` (4×4 grid, 128 frames, up to 8 mosaics) | `frames-w-transcript` (1fps, whisper medium, no speedup) |
 | Output | 50-word description + tags | ~200-word summary + tags + scene breakdown |
 | Tokens | 512 max | 1536 max |
 | Audio | none | whisper medium, 1.0× speed |
@@ -46,7 +46,7 @@ Multi-file: `mm cat a.mp4 b.mp4 -y` runs each video sequentially; the same **≥
 
 | | fast (default) | accurate |
 |---|---|---|
-| Encoder | `audio-transcribe` (whisper medium, 1.0×) | `audio-transcribe` (whisper medium, 1.0×) |
+| Encoder | `transcribe` (whisper medium, 1.0×) | `transcribe` (whisper medium, 1.0×) |
 | Output | raw timestamped transcript | ~80-word summary from transcript |
 | Tokens | — | 512 max |
 
@@ -70,15 +70,15 @@ Multi-file: `mm cat a.mp4 b.mp4 -y` runs each video sequentially; the same **≥
 
 | Name | Description |
 |---|---|
-| `audio-base64` | (default in `to_messages`) Raw base64-encoded audio for native VLM input |
-| `audio-transcribe` | Whisper transcript as text, supports `backend`/`base_url`/`api_key` kwargs |
-| `audio-gemini` | Pass audio file as a Gemini Part |
+| `base64` | (default in `to_messages`) Raw base64-encoded audio for native VLM input |
+| `transcribe` | Whisper transcript as text, supports `backend`/`base_url`/`api_key` kwargs |
+| `gemini` | Pass audio file as a Gemini Part |
 
 ### Document (PDF only)
 
 | | fast (default) | accurate |
 |---|---|---|
-| Encoder | `document-page-text` (pypdfium2, 1 page/message) | `document-page-text` (pypdfium2, 1 page/message) |
+| Encoder | `page-text` (pypdfium2, 1 page/message) | `page-text` (pypdfium2, 1 page/message) |
 | Output | concatenated page text | lossless markdown restructuring |
 | Tokens | — | 16384 max |
 
@@ -108,7 +108,7 @@ Pipeline execution tree shown after content:
 
 ```
 pipeline
-  ├─ encode: image-resize • 0.0s → 1 parts (1 image)
+  ├─ encode: resize • 0.0s → 1 parts (1 image)
   └─ generate: ollama • 2.3s • 354→195 tokens
 ```
 
@@ -131,7 +131,7 @@ pipelines/
 ### Override mechanisms (priority order)
 
 1. `-p pipeline.yaml` — explicit YAML file
-2. `-p encoder_name` — named encoder (e.g. `image-tile`, `video-mosaic`, `document-page-text`)
+2. `-p encoder_name` — named encoder (e.g. `tile`, `mosaic`, `page-text`)
 3. `~/.config/mm/pipelines/{kind}/{mode}.yaml` — user override directory
 4. Built-in `pipelines/{kind}/{mode}.yaml`
 
@@ -142,7 +142,7 @@ kind: image
 mode: fast
 
 encode:
-  strategy: image-resize          # registered encoder name
+  strategy: resize          # registered encoder name
   strategy_opts:
     max_width: 512          # encoder-specific options
 
@@ -157,7 +157,7 @@ generate:                   # optional — omit for encode-only
 
 Namespaced flags override individual pipeline fields:
 
-- `--encode.strategy image-resize` — swap encoder
+- `--encode.strategy resize` — swap encoder
 - `--encode.strategy_opts max_width=768` — override a single `strategy_opts` entry
   (repeatable; values are coerced to int/float/bool when possible, e.g.
   `--encode.strategy_opts max_width=768 --encode.strategy_opts fps=5`)

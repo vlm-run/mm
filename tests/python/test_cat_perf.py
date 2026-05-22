@@ -77,7 +77,7 @@ def test_cat_three_images_fast_cli_under_budget(tmp_path: Path) -> None:
 
 
 def test_cat_single_video_fast_cli_under_budget(tmp_path: Path) -> None:
-    """Fast video path: ``video-mosaic`` encoder + short LLM caption."""
+    """Fast video path: ``mosaic`` encoder + short LLM caption."""
     vid = tmp_path / "clip.mp4"
     write_minimal_mp4(vid)
     t0 = time.perf_counter()

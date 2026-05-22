@@ -27,7 +27,7 @@ class Encode:
     """Input encoding stage: how to convert a file into LLM-ready parts.
 
     ``strategy`` selects a registered encoder (e.g. ``resize``,
-    ``video-frames``, ``rasterize``). Encoder-specific parameters live
+    ``frames``, ``rasterize``). Encoder-specific parameters live
     nested under ``strategy_opts`` and are forwarded as kwargs to
     ``encoder.encode()``.
 
@@ -37,7 +37,7 @@ class Encode:
         def transform(parts: list[dict], context: dict) -> list[dict]
 
     ``backend`` is an optional encoder-specific backend selector (e.g.
-    ``"mlx"``|``"ctranslate2"``|``"openai"`` for ``audio-transcribe``).
+    ``"mlx"``|``"ctranslate2"``|``"openai"`` for ``transcribe``).
     Encoders that don't have a backend concept ignore it.
 
     ``model`` is an optional encoder-level model name (e.g.

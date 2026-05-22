@@ -38,12 +38,12 @@ def test_distinct_overrides_still_diverge():
 def test_top_level_and_nested_keys_both_canonical():
     """Top-level keys are sorted; nested dict values are sorted too."""
     a = override_extra(
-        {"strategy": "image-tile", "strategy_opts": {"b": 2, "a": 1}},
+        {"strategy": "tile", "strategy_opts": {"b": 2, "a": 1}},
         {"max_tokens": "512", "temperature": "0.5"},
         {},
     )
     b = override_extra(
-        {"strategy_opts": {"a": 1, "b": 2}, "strategy": "image-tile"},
+        {"strategy_opts": {"a": 1, "b": 2}, "strategy": "tile"},
         {"temperature": "0.5", "max_tokens": "512"},
         {},
     )

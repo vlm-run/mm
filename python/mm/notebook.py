@@ -81,7 +81,7 @@ def render_context(
         max_image_width: Maximum rendered width for images in pixels.
         title: Optional title bar text.
         encoders: Per-kind encoder overrides, e.g.
-            ``{"image": "image-tile", "video": "video-mosaic"}``.
+            ``{"image": "tile", "video": "mosaic"}``.
         encoder_kwargs: Per-kind kwargs forwarded to the encoder's
             ``encode()`` method.
 

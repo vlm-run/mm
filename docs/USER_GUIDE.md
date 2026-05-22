@@ -156,9 +156,9 @@ text.
 `-p`, `--encode.*`, `--generate.*`, `--prompt`, `--model` apply to image / video / audio / PDF (the kinds that run a pipeline); they are no-ops for `kind=text` and non-PDF documents.
 
 ```bash
-mm cat photo.png -m fast -p image-tile                       # named encoder
+mm cat photo.png -m fast -p tile                       # named encoder
 mm cat photo.png -m accurate -p my-pipeline.yaml             # custom pipeline YAML
-mm cat photo.png -m accurate --encode.strategy image-tile    # override encoder
+mm cat photo.png -m accurate --encode.strategy tile    # override encoder
 mm cat photo.png -m accurate --encode.strategy_opts max_width=768
 mm cat photo.png -m accurate --prompt "List 3 objects."      # = --generate.prompt
 mm cat photo.png -m accurate --model qwen3.5-0.8b            # = --generate.model
@@ -433,7 +433,7 @@ exactly the rows you want:
 - `--model MODEL` — exact match (case-insensitive) against
   `BenchCommand.tags["model"]`. Cuts across groups, e.g.
   `--model qwen/qwen3.5-0.8b` keeps every row pinned to qwen regardless
-  of which bucket it lives in (model / image-res / video-frames /
+  of which bucket it lives in (model / image-res / frames /
   cache, etc.).
 - `--task TASK` — exact match (case-insensitive) against
   `BenchCommand.tags["task"]`. Conventional taxonomy: `cap` (caption),

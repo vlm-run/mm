@@ -46,7 +46,7 @@ def transcript_messages(
     Cached on disk via :func:`mm.cache.memoize_file` — the second call
     with the same file + model + language + audio_speed is instant,
     even across CLI invocations (entries live under
-    ``$MM_CACHE_DIR/transcripts/``).  mtime-aware: re-encoding the
+    ``$MM_CACHE_DIR/transcripts/``). mtime-aware: re-encoding the
     source video invalidates automatically.
 
     Returns an empty list when the transcription backend or ffmpeg is
@@ -63,12 +63,9 @@ def transcript_messages(
 
     audio_result = audio_transformer(path, speed=audio_speed)
 
-    resolved_lang = None
-    if language != "auto":
-        resolved_lang = language
-
+    resolved_lang = None if language == "auto" else language
     whisper_result = transcribe(
-        audio_result.path,
+        path,
         model=model,
         language=resolved_lang,
         beam_size=5,
@@ -112,9 +109,8 @@ def encode_with_transcript(
     """Wrap a visual encoder to prepend a Whisper transcript.
 
     The Whisper run and the visual encoder execute concurrently — Whisper
-    runs on the GPU (MLX/Metal) while PyAV decode + Pillow run on the CPU,
-    so they share no hardware resources.  Total wall time is
-    ``max(whisper, visual)`` instead of ``whisper + visual``.
+    uses the default backend + profile while PyAV decode + Pillow run on the CPU.
+    Total wall time is ``max(whisper, visual)`` instead of ``whisper + visual``.
 
     Message ordering is preserved (transcript first, then visual frames)
     because most VLM prompts expect textual context ahead of images.

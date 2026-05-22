@@ -446,7 +446,7 @@ class TestEncodeWithTranscript:
 
 @requires_bakery
 class TestStreamingMosaic:
-    """P0 #3 — ``video-mosaic`` streams via ``.batched()`` instead of ``.collect()``.
+    """P0 #3 — ``mosaic`` streams via ``.batched()`` instead of ``.collect()``.
 
     Verifies output remains identical (one Message containing N image parts).
     """
@@ -454,7 +454,7 @@ class TestStreamingMosaic:
     def test_default_run_yields_one_message(self):
         from mm.encoders import get
 
-        msgs = list(get("video-mosaic").encode(BAKERY))
+        msgs = list(get("mosaic", "video").encode(BAKERY))
         assert len(msgs) == 1
         parts = msgs[0]["content"]
         # 1 leading text part + N image parts.
@@ -468,7 +468,7 @@ class TestStreamingMosaic:
     def test_num_mosaics_kwarg_caps_emission(self):
         from mm.encoders import get
 
-        msgs = list(get("video-mosaic").encode(BAKERY, num_mosaics=2))
+        msgs = list(get("mosaic", "video").encode(BAKERY, num_mosaics=2))
         parts = msgs[0]["content"]
         image_parts = [p for p in parts if p.get("type") == "image_url"]
         assert len(image_parts) == 2
@@ -476,7 +476,7 @@ class TestStreamingMosaic:
     def test_each_mosaic_image_is_decodable(self):
         from mm.encoders import get
 
-        msgs = list(get("video-mosaic").encode(BAKERY, num_mosaics=1))
+        msgs = list(get("mosaic", "video").encode(BAKERY, num_mosaics=1))
         parts = msgs[0]["content"]
         image_parts = [p for p in parts if p.get("type") == "image_url"]
         url = image_parts[0]["image_url"]["url"]
@@ -488,7 +488,7 @@ class TestStreamingMosaic:
 
 @requires_bakery
 class TestBundledShots:
-    """P0 #3 — ``video-shots`` bundles all per-shot timestamps into one decode pass.
+    """P0 #3 — ``shots`` bundles all per-shot timestamps into one decode pass.
 
     Verifies one Message per shot with correctly-ordered frames inside each.
     """
@@ -496,7 +496,7 @@ class TestBundledShots:
     def test_one_message_per_shot(self):
         from mm.encoders import get
 
-        msgs = list(get("video-shots").encode(BAKERY, max_frames_per_shot=2))
+        msgs = list(get("shots", "video").encode(BAKERY, max_frames_per_shot=2))
         scenes = detect_scenes(BAKERY, threshold=27.0, min_scene_len=15)
         # Some shots may be skipped if their range produces no decodable frames,
         # so we allow ≤ but flag if we drop more than ~5%.
@@ -507,7 +507,7 @@ class TestBundledShots:
     def test_each_shot_has_text_then_images(self):
         from mm.encoders import get
 
-        msgs = list(get("video-shots").encode(BAKERY, max_frames_per_shot=2))
+        msgs = list(get("shots", "video").encode(BAKERY, max_frames_per_shot=2))
         for m in msgs[:5]:
             parts = m["content"]
             assert parts[0]["type"] == "text"
@@ -518,7 +518,7 @@ class TestBundledShots:
     def test_shot_mosaic_produces_one_image_per_shot(self):
         from mm.encoders import get
 
-        msgs = list(get("video-shot-mosaic").encode(BAKERY))
+        msgs = list(get("shot-mosaic", "video").encode(BAKERY))
         for m in msgs[:5]:
             parts = m["content"]
             text_parts = [p for p in parts if p.get("type") == "text"]
@@ -535,14 +535,14 @@ class TestCacheCrossEncoderReuse:
     def test_probe_and_scene_caches_shared_across_encoders(self):
         from mm.encoders import get
 
-        list(get("video-mosaic").encode(BAKERY, num_mosaics=1))
+        list(get("mosaic", "video").encode(BAKERY, num_mosaics=1))
         probe_after_mosaic = probe.cache_info()["currsize"]
         scene_after_mosaic = detect_scenes.cache_info()["currsize"]
         scene_misses_before = detect_scenes.cache_info()["misses"]
 
         # A second encoder against the same file must NOT add new entries —
         # both probe and scene-detect should hit the cache.
-        list(get("video-shots").encode(BAKERY, max_frames_per_shot=1))
+        list(get("shots", "video").encode(BAKERY, max_frames_per_shot=1))
 
         assert probe.cache_info()["currsize"] == probe_after_mosaic
         assert detect_scenes.cache_info()["currsize"] == scene_after_mosaic

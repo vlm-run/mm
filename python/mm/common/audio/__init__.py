@@ -21,6 +21,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from mm.cache import cache_dir, memoize_file
 from mm.common.audio._base import (
     TranscriptionBackend,
     TranscriptionResult,
@@ -147,6 +148,60 @@ def transcribe(
     )
 
 
+@memoize_file(maxsize=16, path=lambda: cache_dir() / "transcripts")
+def transcribe_file(
+    path: str | Path,
+    *,
+    model: str | None = None,
+    language: str | None = None,
+    audio_speed: float = 1.0,
+    beam_size: int = 5,
+    backend: str | None = None,
+    base_url: str | None = None,
+    api_key: str | None = None,
+) -> TranscriptionResult:
+    """Transcribe a media file (audio or video) with disk-backed caching.
+
+    Args:
+        path: Path to the original media file (audio or video).
+        model: Model name; ``None`` picks the backend default.
+        language: ISO language code; ``None`` for auto-detection.
+        audio_speed: Speed multiplier applied during extraction.
+        beam_size: Beam size for local backends.
+        backend: Explicit backend name (``"openai"``, ``"mlx"``, etc.).
+        base_url: Custom base URL for the openai backend.
+        api_key: API key for the openai backend.
+
+    Returns:
+        :class:`TranscriptionResult`.
+    """
+    from mm.ffmpeg import audio_transformer
+
+    try:
+        audio_result = audio_transformer(
+            Path(path) if not isinstance(path, Path) else path,
+            speed=audio_speed,
+        )
+        return transcribe(
+            audio_result.path,
+            model=model,
+            language=language,
+            audio_speed=audio_speed,
+            beam_size=beam_size,
+            backend=backend,
+            base_url=base_url,
+            api_key=api_key,
+        )
+    except Exception:
+        return TranscriptionResult("", segments=[])
+    finally:
+        if audio_result:
+            try:
+                audio_result.path.unlink(missing_ok=True)
+            except Exception:
+                pass
+
+
 __all__ = [
     "ACTIVE_VARIANT",
     "GATEWAY_MODEL",
@@ -158,5 +213,6 @@ __all__ = [
     "register_backend",
     "transcribe",
     "transcribe_available",
+    "transcribe_file",
     "unregister_backend",
 ]

@@ -15,17 +15,18 @@ import logging
 from pathlib import Path
 from typing import Any, Iterable
 
-from mm.encoders import Message, _resolve_provider, register
+from mm.encoders import resolve_provider, register
+from mm.encoders.base import Encoder, Message
 from mm.encoders.image import _image_part, _to_message
 
 logger = logging.getLogger(__name__)
 
 
-class VideoMosaic:
+class VideoMosaic(Encoder):
     """Build mosaic grids from video frames, one Message per mosaic.
 
     Uses scene detection (PySceneDetect) when available, falling back
-    to uniform temporal sampling.  Frames are tiled into ``tile_cols x
+    to uniform temporal sampling. Frames are tiled into ``tile_cols x
     tile_rows`` grids at ``thumb_width`` px per thumbnail.
 
     Kwargs:
@@ -34,19 +35,14 @@ class VideoMosaic:
         thumb_width: Per-frame thumbnail width in pixels (default 160).
         num_mosaics: Maximum number of mosaics to produce (default 8).
         num_frames: Total frames to sample before tiling (default 128).
+        mode: fast | accurate.
+        generate_model: --generate.model CLI flag.
     """
 
-    name: str = "video-mosaic"
-    media_types: tuple[str, ...] = ("video",)
+    name = "mosaic"
+    kind = "video"
 
     def encode(self, path: Path, **kwargs: Any) -> Iterable[Message]:
-        tile_cols: int = kwargs.get("tile_cols", 4)
-        tile_rows: int = kwargs.get("tile_rows", 4)
-        thumb_width: int = kwargs.get("thumb_width", 160)
-        num_mosaics: int = kwargs.get("num_mosaics", 8)
-        num_frames: int = kwargs.get("num_frames", 128)
-        provider: str = _resolve_provider()
-
         from mm.video import VideoReader, pyav_runnable, tile_to_mosaic
 
         if not pyav_runnable():
@@ -56,6 +52,14 @@ class VideoMosaic:
                 ]
             )
             return
+
+        tile_cols: int = kwargs.get("tile_cols", 4)
+        tile_rows: int = kwargs.get("tile_rows", 4)
+        thumb_width: int = kwargs.get("thumb_width", 160)
+        num_mosaics: int = kwargs.get("num_mosaics", 8)
+        num_frames: int = kwargs.get("num_frames", 128)
+        generate_model = kwargs.get("generate_model", None)
+        provider: str = resolve_provider(generate_model)
 
         with VideoReader(path) as reader:
             duration = reader.duration
@@ -142,11 +146,11 @@ def _get_timestamps(
         return [i * step for i in range(num_frames)]
 
 
-class VideoMosaicWithTranscript:
+class VideoMosaicWithTranscript(Encoder):
     """Build mosaic grids from video frames with Whisper transcript.
 
     Yields a transcript Message first, then mosaic grids identical
-    to ``VideoMosaic``.  Falls back to mosaic-only output when Whisper
+    to ``VideoMosaic``. Falls back to mosaic-only output when Whisper
     is unavailable.
 
     Kwargs:
@@ -155,10 +159,11 @@ class VideoMosaicWithTranscript:
         model: Transcription model name (default chosen by backend).
         language: Language code or "auto" (default "auto").
         audio_speed: Playback speed multiplier (default 1.0).
+        mode: fast | accurate.
     """
 
-    name: str = "video-mosaic-w-transcript"
-    media_types: tuple[str, ...] = ("video",)
+    name = "mosaic-w-transcript"
+    kind = "video"
 
     _visual = VideoMosaic()
 

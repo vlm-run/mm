@@ -18,10 +18,10 @@ if TYPE_CHECKING:
 
 
 _OPENAI_DEFAULT_ENCODERS: dict[str, str] = {
-    "image": "image-resize",
-    "video": "video-mosaic",
-    "document": "document-rasterize",
-    "audio": "audio-base64",
+    "image": "resize",
+    "video": "mosaic",
+    "document": "rasterize",
+    "audio": "base64",
 }
 
 
@@ -175,7 +175,7 @@ def _encode_path(
     from mm.encoders import get as get_encoder
 
     try:
-        strategy = get_encoder(strategy_name)
+        strategy = get_encoder(strategy_name, kind)
     except KeyError:
         return
     for msg in strategy.encode(path, **(extra_kwargs or {})):
@@ -253,13 +253,7 @@ def _spool_image(obj: Any) -> Path:
 
 
 def _resolve_strategy(kind: str, encoders: dict[str, str]) -> str | None:
-    override = encoders.get(kind)
-    if override:
-        # Accept``"image-tile"``.
-        if "-" in override:
-            return override
-        return f"{kind}-{override}"
-    return _OPENAI_DEFAULT_ENCODERS.get(kind)
+    return encoders.get(kind) or _OPENAI_DEFAULT_ENCODERS.get(kind)
 
 
 def _adapt_part(part: dict[str, Any], *, format: str) -> dict[str, Any]:

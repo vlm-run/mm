@@ -80,6 +80,10 @@ def _extract_llm_parts(msg: dict) -> list[dict]:
                     parts.append(
                         {"type": "image_url", "image_url": {"url": f"data:{mime};base64,{b64}"}}
                     )
+                elif mime.startswith("video/"):
+                    parts.append(
+                        {"type": "video_url", "video_url": {"url": f"data:{mime};base64,{b64}"}}
+                    )
                 else:
                     parts.append(part)
             else:
@@ -95,9 +99,9 @@ def run_encoder(path: Path, kind: BinaryFileKind, spec: PipelineSpec, opts: CatO
 
     assert spec.encode.strategy is not None
     t_encode = time.monotonic()
-    strat = get_encoder(spec.encode.strategy)
+    strat = get_encoder(spec.encode.strategy, kind)
     encode_kwargs: dict[str, Any] = dict(spec.encode.strategy_opts)
-    opts_kwargs = {"mode": opts.mode, "generate_override": opts.generate_overrides}
+    opts_kwargs = {"mode": opts.mode, "generate_model": opts.generate_overrides.get("model")}
 
     if spec.encode.backend is not None:
         encode_kwargs.setdefault("backend", spec.encode.backend)

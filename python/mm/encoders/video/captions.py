@@ -17,7 +17,8 @@ import tempfile
 from pathlib import Path
 from typing import Any, Iterable
 
-from mm.encoders import Message, register
+from mm.encoders import register
+from mm.encoders.base import Encoder, Message
 from mm.encoders.image import _to_message
 
 logger = logging.getLogger(__name__)
@@ -76,8 +77,8 @@ def _parse_srt(srt_text: str) -> list[tuple[str, str]]:
     return results
 
 
-class VideoCaptions:
-    """Extract embedded subtitles from video files.
+class VideoCaptions(Encoder):
+    """Passthrough encoder — Extract embedded subtitles from video files.
 
     Probes the video for subtitle streams via PyAV (no ffprobe
     subprocess) and extracts the first (or specified) stream as
@@ -92,15 +93,15 @@ class VideoCaptions:
         audio_speed: Playback speed for fallback (default 1.0).
     """
 
-    name: str = "video-captions"
-    media_types: tuple[str, ...] = ("video",)
+    name = "captions"
+    kind = "video"
+    generate = {"fast": None, "accurate": None}
 
     def encode(self, path: Path, **kwargs: Any) -> Iterable[Message]:
-        subtitle_stream: int = kwargs.get("subtitle_stream", 0)
-        fallback_to_whisper: bool = kwargs.get("fallback_to_whisper", True)
-
         from mm.video import probe_subtitle_streams
 
+        subtitle_stream: int = kwargs.get("subtitle_stream", 0)
+        fallback_to_whisper: bool = kwargs.get("fallback_to_whisper", True)
         streams = probe_subtitle_streams(path)
 
         if streams:

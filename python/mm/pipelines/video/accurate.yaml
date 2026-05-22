@@ -2,7 +2,7 @@ kind: video
 mode: accurate
 
 encode:
-  strategy: video-frames-w-transcript
+  strategy: frames-w-transcript
   strategy_opts:
     fps: 1.0
     max_width: 1024

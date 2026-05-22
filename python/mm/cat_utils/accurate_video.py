@@ -53,7 +53,6 @@ def accurate_video(path: Path, spec: PipelineSpec, opts: CatOpts) -> RunResult:
     import shutil
 
     from mm.ffmpeg import (
-        audio_transformer,
         extract_frames_at_timestamps,
         extract_uniform_mosaics,
         ffmpeg_available,
@@ -68,22 +67,14 @@ def accurate_video(path: Path, spec: PipelineSpec, opts: CatOpts) -> RunResult:
     if spec.generate is None:
         return RunResult(content=extract_meta(path, "video"))
 
-    # The hard-coded mosaic+whisper fast path only implements a fixed
-    # set of strategies. Anything else (e.g. video-gemini, frame-sample)
-    # must be routed through the generic encoder runner so we only
-    # report stages that actually ran.
-    _VIDEO_NATIVE = {"frames-transcript", "video-frames-transcript", "mosaic", "video-mosaic"}
-    if spec.encode.strategy and spec.encode.strategy not in _VIDEO_NATIVE:
+    if spec.encode.strategy:
         return run_encoder(path, "video", spec, opts)
 
     timing: dict[str, float] = {}
     t_total = time.monotonic()
-
     duration = probe_duration(path)
     if duration <= 0:
         return RunResult(content=f"[Could not determine duration for {path.name}]")
-
-    from concurrent.futures import Future, ThreadPoolExecutor
 
     ekw = dict(spec.encode.strategy_opts)
     tile_spec = ekw.get("mosaic_tile") or "4x4"
@@ -92,7 +83,6 @@ def accurate_video(path: Path, spec: PipelineSpec, opts: CatOpts) -> RunResult:
     num_frames = _adaptive_num_frames(path, duration, ekw)
 
     thumb_width = ekw.get("mosaic_image_width") or (1500 // tile_cols)
-
     use_scenes = True
 
     def _extract_visual_and_vlm() -> tuple[list[Path], str]:
@@ -169,7 +159,7 @@ def accurate_video(path: Path, spec: PipelineSpec, opts: CatOpts) -> RunResult:
         if not ekw.get("transcribe"):
             return ""
 
-        from mm.common.audio import transcribe_available
+        from mm.common.audio import transcribe_available, transcribe_file
 
         if not transcribe_available():
             return ""
@@ -181,28 +171,19 @@ def accurate_video(path: Path, spec: PipelineSpec, opts: CatOpts) -> RunResult:
         base_url: str | None = ekw.get("audio_base_url") or ekw.get("base_url") or None
         api_key: str | None = ekw.get("audio_api_key") or ekw.get("api_key") or None
 
-        t_audio = time.monotonic()
-        audio_result = audio_transformer(path, speed=audio_speed)
-        timing["audio_extraction_ms"] = (time.monotonic() - t_audio) * 1000
-
-        from mm.common.audio import transcribe
-
-        whisper_result = transcribe(
-            audio_result.path,
+        whisper_result = transcribe_file(
+            path,
             model=model,
-            beam_size=beam_size,
             audio_speed=audio_speed,
+            beam_size=beam_size,
             backend=backend,
             base_url=base_url,
             api_key=api_key,
         )
         timing["audio_transcription_ms"] = whisper_result.elapsed_ms
-
-        try:
-            audio_result.path.unlink(missing_ok=True)
-        except Exception:
-            pass
         return whisper_result.text
+
+    from concurrent.futures import Future, ThreadPoolExecutor
 
     with ThreadPoolExecutor(max_workers=2) as pool:
         visual_future: Future[tuple[list[Path], str]] = pool.submit(_extract_visual_and_vlm)

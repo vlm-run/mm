@@ -15,7 +15,8 @@ from pathlib import Path
 from typing import Any, Iterable
 
 from mm.constants import guess_mime
-from mm.encoders import Message, register
+from mm.encoders import register
+from mm.encoders.base import Encoder, Message
 
 logger = logging.getLogger(__name__)
 
@@ -43,7 +44,7 @@ def _to_gemini_message(parts: list[dict[str, Any]]) -> Message:
     return {"role": "user", "content": parts}
 
 
-class GeminiVideo:
+class GeminiVideo(Encoder):
     """Pass a video file directly as a Gemini ``inline_data`` Part.
 
     Uses the Rust fast-path (``mm._mm.gemini_video_parts``) when
@@ -52,8 +53,8 @@ class GeminiVideo:
     Yields a single Message containing the entire video.
     """
 
-    name: str = "video-gemini"
-    media_types: tuple[str, ...] = ("video",)
+    name = "gemini"
+    kind = "video"
 
     def encode(self, path: Path, **kwargs) -> Iterable[Message]:
         try:
@@ -70,7 +71,7 @@ class GeminiVideo:
         yield _to_gemini_message(parts)
 
 
-class GeminiVideoChunked:
+class GeminiVideoChunked(Encoder):
     """Chunk a video by duration and yield one Gemini Part per chunk.
 
     Uses ``ffmpeg`` to extract time-based segments. For videos shorter
@@ -81,8 +82,8 @@ class GeminiVideoChunked:
         overlap: Overlap between chunks in seconds (default 10).
     """
 
-    name: str = "video-gemini-chunked"
-    media_types: tuple[str, ...] = ("video",)
+    name = "gemini-chunked"
+    kind = "video"
 
     def encode(self, path: Path, **kwargs) -> Iterable[Message]:
         from mm.ffmpeg import extract_segment
@@ -143,16 +144,22 @@ class GeminiVideoChunked:
             yield from pool.map(_process, segments)
 
 
-class GeminiDocument:
+class GeminiDocument(Encoder):
     """Pass a document file directly as a Gemini ``inline_data`` Part.
 
     Uses the Rust fast-path when available. Yields a single Message.
     """
 
-    name: str = "document-gemini"
-    media_types: tuple[str, ...] = ("document",)
+    name = "gemini"
+    kind = "document"
 
     def encode(self, path: Path, **kwargs) -> Iterable[Message]:
+        if kwargs.get("mode", "fast") == "fast":
+            from mm.encoders.document.page_text import DocumentPageText
+
+            yield from DocumentPageText().encode(path, **kwargs)
+            return
+
         try:
             from mm._mm import gemini_document_part
 

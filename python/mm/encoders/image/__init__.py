@@ -21,7 +21,8 @@ import logging
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Iterable, Union
 
-from mm.encoders import Message, _resolve_provider, register
+from mm.encoders import resolve_provider, register
+from mm.encoders.base import Encoder, Message
 
 if TYPE_CHECKING:
     from PIL import Image
@@ -161,7 +162,7 @@ def _pillow_resize(path: Path, max_width: int) -> dict[str, Any]:
     return {"base64": b64, "mime": mime, "width": w, "height": h}
 
 
-class ImageResize:
+class ImageResize(Encoder):
     """Resize an image to fit a bounding box, then base64 encode.
 
     The default strategy. Fits the image into a ``max_width x max_width``
@@ -170,14 +171,17 @@ class ImageResize:
 
     Kwargs:
         max_width: Maximum dimension in pixels (default 1024).
+        mode: fast | accurate.
+        generate_model: --generate.model CLI flag.
     """
 
-    name: str = "image-resize"
-    media_types: tuple[str, ...] = ("image",)
+    name = "resize"
+    kind = "image"
 
     def encode(self, path: Path, **kwargs: Any) -> Iterable[Message]:
         max_width: int = kwargs.get("max_width", 1024)
-        provider: str = _resolve_provider()
+        generate_model = kwargs.get("generate_model", None)
+        provider: str = resolve_provider(generate_model)
 
         try:
             from mm._mm import resize_image
@@ -190,7 +194,7 @@ class ImageResize:
         yield _to_message([part])
 
 
-class ImageTile:
+class ImageTile(Encoder):
     """Resize the full image + tile it, yielding overview and tiles in one Message.
 
     The Message contains:
@@ -202,16 +206,18 @@ class ImageTile:
     overview is returned (no redundant duplicate).
 
     Kwargs:
-        max_width: Pixel size for both tile dimension and overview
-            bounding box (default 1024).
+        max_width: Pixel size for both tile dimension and overview bounding box (default 1024).
+        mode: fast | accurate.
+        generate_model: --generate.model CLI flag.
     """
 
-    name: str = "image-tile"
-    media_types: tuple[str, ...] = ("image",)
+    name = "tile"
+    kind = "image"
 
     def encode(self, path: Path, **kwargs: Any) -> Iterable[Message]:
         max_width: int = kwargs.get("max_width", 1024)
-        provider: str = _resolve_provider()
+        generate_model = kwargs.get("generate_model", None)
+        provider: str = resolve_provider(generate_model)
 
         img = _open_image_with_exif(path)
         w, h = img.size

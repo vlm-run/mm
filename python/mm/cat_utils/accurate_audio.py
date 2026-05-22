@@ -16,8 +16,8 @@ from mm.pipelines.schema import PipelineSpec
 
 def accurate_audio(path: Path, spec: PipelineSpec, opts: CatOpts) -> RunResult:
     """Audio extraction with transcription."""
-    from mm.common.audio import transcribe, transcribe_available
-    from mm.ffmpeg import audio_transformer, ffmpeg_available
+    from mm.common.audio import transcribe_available, transcribe_file
+    from mm.ffmpeg import ffmpeg_available
 
     if not ffmpeg_available():
         return RunResult(content=f"[ffmpeg not found — cannot process {path.name}]")
@@ -32,7 +32,7 @@ def accurate_audio(path: Path, spec: PipelineSpec, opts: CatOpts) -> RunResult:
             )
         )
 
-    _AUDIO_NATIVE = {"transcribe", "audio-transcribe"}
+    _AUDIO_NATIVE = {"transcribe"}
 
     if spec.generate is None:
         if spec.encode.strategy:
@@ -53,26 +53,17 @@ def accurate_audio(path: Path, spec: PipelineSpec, opts: CatOpts) -> RunResult:
     base_url: str | None = akw.get("base_url")
     api_key: str | None = akw.get("api_key")
 
-    t0 = time.monotonic()
-    audio_result = audio_transformer(path, speed=audio_speed)
-    timing["audio_extraction_ms"] = (time.monotonic() - t0) * 1000
-
-    whisper_result = transcribe(
-        audio_result.path,
+    whisper_result = transcribe_file(
+        path,
         model=model,
+        audio_speed=audio_speed,
+        beam_size=beam_size,
         backend=backend,
         base_url=base_url,
         api_key=api_key,
-        beam_size=beam_size,
-        audio_speed=audio_speed,
     )
     timing["audio_transcription_ms"] = whisper_result.elapsed_ms
     transcript = whisper_result.text
-
-    try:
-        audio_result.path.unlink(missing_ok=True)
-    except Exception:
-        pass
 
     if not transcript or transcript.startswith("["):
         return RunResult(content=transcript or "[No speech detected]")

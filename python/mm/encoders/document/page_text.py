@@ -1,4 +1,4 @@
-"""document-page-text encoder: structured text extraction per page.
+"""page-text encoder: structured text extraction per page.
 
 Extracts text from PDF pages via pypdfium2, and from office documents
 (docx/odt/pptx/odp/xlsx/ods) via the libreoffice-pure-backed
@@ -15,8 +15,8 @@ from pathlib import Path
 from typing import Any, Iterable, Optional
 
 from mm.constants import OFFICE_EXTS
-from mm.encoders import Message, register
-from mm.pipelines.schema import Generate
+from mm.encoders import register
+from mm.encoders.base import Encoder, Message
 
 logger = logging.getLogger(__name__)
 
@@ -25,8 +25,8 @@ def _to_message(parts: list[dict[str, Any]]) -> Message:
     return {"role": "user", "content": parts}
 
 
-class DocumentPageText:
-    """Extract text from PDF / office docs, yield as text messages.
+class DocumentPageText(Encoder):
+    """Passthrough encoder — Extract text from PDF / office docs, yield as text messages.
 
     For PDFs, uses pypdfium2 to extract text page by page, batching
     ``pages_per_message`` pages into each Message. For office docs
@@ -36,21 +36,14 @@ class DocumentPageText:
     Kwargs:
         pages_per_message: Pages per Message for PDFs (default 4).
         max_pages: Maximum pages to extract (default unlimited).
+        mode: fast | accurate.
     """
 
-    name: str = "document-page-text"
-    media_types: tuple[str, ...] = ("document",)
-    fast: Generate | None = None
-    accurate: Generate | None = None
+    name = "page-text"
+    kind = "document"
+    generate = {"fast": None, "accurate": None}
 
     def encode(self, path: Path, **kwargs: Any) -> Iterable[Message]:
-        if kwargs.get("generate_overrides", None):
-            from mm.display import console
-
-            console.print(
-                "[yellow]warning: --generate.* flags ignored (encoder is passthrough)[/yellow]"
-            )
-
         pages_per_message: int = kwargs.get("pages_per_message", 128)
         max_pages: Optional[int] = kwargs.get("max_pages", None)
         ext = path.suffix.lower()

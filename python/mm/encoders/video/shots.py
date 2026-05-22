@@ -2,10 +2,10 @@
 
 Four encoders for processing videos shot-by-shot:
 
-- ``video-shots``: Detect shots, extract representative frames per shot.
-- ``video-shots-w-transcript``: Same with Whisper transcript prepended.
-- ``video-shot-mosaic``: Detect shots, build a mosaic grid per shot.
-- ``video-shot-mosaic-w-transcript``: Same with Whisper transcript prepended.
+- ``shots``: Detect shots, extract representative frames per shot.
+- ``shots-w-transcript``: Same plus Whisper transcript prepended.
+- ``shot-mosaic``: Detect shots, build a mosaic grid per shot.
+- ``shot-mosaic-w-transcript``: Same plus Whisper transcript prepended.
 
 All strategies yield Messages sequentially (one shot at a time) to
 avoid OOM. Uses PyAV for in-process frame decoding — no subprocess
@@ -20,7 +20,8 @@ import logging
 from pathlib import Path
 from typing import Any, Iterable
 
-from mm.encoders import Message, _resolve_provider, register
+from mm.encoders import register, resolve_provider
+from mm.encoders.base import Encoder, Message
 from mm.encoders.image import _image_part, _to_message
 from mm.encoders.video._transcript import encode_with_transcript
 
@@ -61,7 +62,7 @@ def _sample_timestamps_in_range(start: float, end: float, n: int) -> list[float]
     return [start + (i + 0.5) * step for i in range(n)]
 
 
-class VideoShots:
+class VideoShots(Encoder):
     """Detect shots via PySceneDetect, extract frames per shot.
 
     Each yielded Message contains base64-encoded representative frames
@@ -73,22 +74,25 @@ class VideoShots:
             Higher = fewer shots.
         max_frames_per_shot: Max frames to extract per shot (default 8).
         max_width: Frame resize width in pixels (default 1024).
+        generate_model: --generate.model CLI flag.
     """
 
-    name: str = "video-shots"
-    media_types: tuple[str, ...] = ("video",)
+    name = "shots"
+    kind = "video"
 
     def encode(self, path: Path, **kwargs: Any) -> Iterable[Message]:
-        threshold: float = kwargs.get("threshold", 27.0)
-        max_frames_per_shot: int = kwargs.get("max_frames_per_shot", 8)
-        max_width: int = kwargs.get("max_width", 1024)
-        provider: str = _resolve_provider()
-
         from mm.video import VideoReader, pyav_runnable
 
         if not pyav_runnable():
             yield _to_message([{"type": "text", "text": f"[PyAV not runnable for {path.name}]"}])
             return
+
+        threshold: float = kwargs.get("threshold", 27.0)
+        max_frames_per_shot: int = kwargs.get("max_frames_per_shot", 8)
+        max_width: int = kwargs.get("max_width", 1024)
+        generate_model = kwargs.get("generate_model", None)
+
+        provider: str = resolve_provider(generate_model)
 
         shots = _detect_shots(path, threshold)
         if not shots:
@@ -135,15 +139,15 @@ class VideoShots:
             yield _to_message(parts)
 
 
-class VideoShotsWithTranscript:
+class VideoShotsWithTranscript(Encoder):
     """Detect shots and extract frames, with Whisper transcript prepended.
 
     Kwargs: Same as ``VideoShots`` plus ``model``, ``language``,
     ``audio_speed``.
     """
 
-    name: str = "video-shots-w-transcript"
-    media_types: tuple[str, ...] = ("video",)
+    name = "shots-w-transcript"
+    kind = "video"
 
     _visual = VideoShots()
 
@@ -151,7 +155,7 @@ class VideoShotsWithTranscript:
         yield from encode_with_transcript(path, self._visual.encode, **kwargs)
 
 
-class VideoShotMosaic:
+class VideoShotMosaic(Encoder):
     """Detect shots via PySceneDetect, build a mosaic per shot.
 
     Tiles extracted frames into a single mosaic image per shot using
@@ -162,18 +166,13 @@ class VideoShotMosaic:
         tile_cols: Mosaic grid columns (default 4).
         tile_rows: Mosaic grid rows (default 4).
         thumb_width: Frame thumbnail width in pixels (default 160).
+        generate_model: --generate.model CLI flag.
     """
 
-    name: str = "video-shot-mosaic"
-    media_types: tuple[str, ...] = ("video",)
+    name = "shot-mosaic"
+    kind = "video"
 
     def encode(self, path: Path, **kwargs: Any) -> Iterable[Message]:
-        threshold: float = kwargs.get("threshold", 27.0)
-        tile_cols: int = kwargs.get("tile_cols", 4)
-        tile_rows: int = kwargs.get("tile_rows", 4)
-        thumb_width: int = kwargs.get("thumb_width", 160)
-        provider: str = _resolve_provider()
-
         from mm.video import VideoReader, pyav_runnable, tile_to_mosaic
 
         if not pyav_runnable():
@@ -186,6 +185,14 @@ class VideoShotMosaic:
                 ]
             )
             return
+
+        threshold: float = kwargs.get("threshold", 27.0)
+        tile_cols: int = kwargs.get("tile_cols", 4)
+        tile_rows: int = kwargs.get("tile_rows", 4)
+        thumb_width: int = kwargs.get("thumb_width", 160)
+        generate_model = kwargs.get("generate_model", None)
+
+        provider: str = resolve_provider(generate_model)
 
         shots = _detect_shots(path, threshold)
         if not shots:
@@ -242,15 +249,15 @@ class VideoShotMosaic:
             yield _to_message(parts)
 
 
-class VideoShotMosaicWithTranscript:
+class VideoShotMosaicWithTranscript(Encoder):
     """Detect shots and build mosaics, with Whisper transcript prepended.
 
     Kwargs: Same as ``VideoShotMosaic`` plus ``model``,
     ``language``, ``audio_speed``.
     """
 
-    name: str = "video-shot-mosaic-w-transcript"
-    media_types: tuple[str, ...] = ("video",)
+    name = "shot-mosaic-w-transcript"
+    kind = "video"
 
     _visual = VideoShotMosaic()
 

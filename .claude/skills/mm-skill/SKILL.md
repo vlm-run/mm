@@ -216,7 +216,7 @@ mm cat <file> -n 20                               # first 20 lines
 mm cat <file> -n -10                              # last 10 lines
 
 # Pipelines
-mm cat photo.png   -p image-tile
+mm cat photo.png   -p tile
 mm cat *.jpg *.mp4 -p image.yaml -p video.yaml    # multi-kind
 mm cat --list-pipelines
 mm cat --list-encoders
@@ -250,33 +250,33 @@ profile (mm.toml)  →  pipeline YAML (generate.*)  →  CLI flags
 
 | Name | Kind | Notes |
 |------|------|-------|
-| `image-resize` | image | **Default.** Fit to bbox (default 1024 px). |
-| `image-tile` | image | Resized overview + tile crops in one Message. |
-| `video-frames` | video | Frames at `fps` (ffmpeg). |
-| `video-frames-w-transcript` | video | Frames + Whisper transcript (accurate-mode default). |
-| `video-keyframes` | video | I-frames from bitstream. |
-| `video-keyframes-w-transcript` | video | + transcript. |
-| `video-mosaic` | video | Mosaic grids from sampled frames (fast-mode default). |
-| `video-mosaic-w-transcript` | video | + transcript. |
-| `video-shots` | video | PySceneDetect → frames per shot. |
-| `video-shots-w-transcript` | video | + transcript. |
-| `video-shot-mosaic` | video | PySceneDetect → mosaic per shot. |
-| `video-shot-mosaic-w-transcript` | video | + transcript. |
-| `video-chunks` | video | Overlapping time-based chunks. |
-| `video-clips` | video | Base64 video clips of uniform duration. |
-| `video-clips-w-transcript` | video | + transcript. |
-| `video-summary` | video | Adaptive N-frame summary. |
-| `video-summary-w-transcript` | video | + transcript. |
-| `video-captions` | video | Embedded subtitle stream (falls back to Whisper). |
-| `video-transcript` | video | Whisper transcript only. |
-| `video-gemini` / `video-gemini-chunked` | video | Gemini `inline_data` Part(s). |
-| `audio-base64` | audio | **Default (Python API).** Raw `input_audio` part. |
-| `audio-transcribe` | audio | Whisper transcript (`backend`/`base_url`/`api_key` kwargs). |
-| `audio-gemini` | audio | Gemini Part. |
-| `document-page-text` | document | Per-page text (PDF/DOCX/PPTX). |
-| `document-rasterize` | document | Render PDF pages as images. |
-| `document-rasterize-text` | document | Rasterize + extract text, interleaved. |
-| `document-gemini` | document | Gemini Part. |
+| `resize` | image | **Default.** Fit to bbox (default 1024 px). |
+| `tile` | image | Resized overview + tile crops in one Message. |
+| `frames` | video | Frames at `fps` (ffmpeg). |
+| `frames-w-transcript` | video | Frames + Whisper transcript (accurate-mode default). |
+| `keyframes` | video | I-frames from bitstream. |
+| `keyframes-w-transcript` | video | + transcript. |
+| `mosaic` | video | Mosaic grids from sampled frames (fast-mode default). |
+| `mosaic-w-transcript` | video | + transcript. |
+| `shots` | video | PySceneDetect → frames per shot. |
+| `shots-w-transcript` | video | + transcript. |
+| `shot-mosaic` | video | PySceneDetect → mosaic per shot. |
+| `shot-mosaic-w-transcript` | video | + transcript. |
+| `chunks` | video | Overlapping time-based chunks. |
+| `clips` | video | Base64 video clips of uniform duration. |
+| `clips-w-transcript` | video | + transcript. |
+| `summary` | video | Adaptive N-frame summary. |
+| `summary-w-transcript` | video | + transcript. |
+| `captions` | video | Embedded subtitle stream (falls back to Whisper). |
+| `transcript` | video | Whisper transcript only. |
+| `gemini` / `gemini-chunked` | video | Gemini `inline_data` Part(s). |
+| `base64` | audio | **Default (Python API).** Raw `input_audio` part. |
+| `transcribe` | audio | Whisper transcript (`backend`/`base_url`/`api_key` kwargs). |
+| `gemini` | audio | Gemini Part. |
+| `page-text` | document | Per-page text (PDF/DOCX/PPTX). |
+| `rasterize` | document | Render PDF pages as images. |
+| `rasterize-text` | document | Rasterize + extract text, interleaved. |
+| `gemini` | document | Gemini Part. |
 
 ### Custom pipeline YAML
 
@@ -285,7 +285,7 @@ profile (mm.toml)  →  pipeline YAML (generate.*)  →  CLI flags
 kind: image
 mode: accurate
 encode:
-  strategy: image-tile
+  strategy: tile
   strategy_opts:
     max_width: 2048
 generate:
@@ -295,7 +295,7 @@ generate:
 kind: video
 mode: accurate
 encode:
-  strategy: video-mosaic
+  strategy: mosaic
   strategy_opts:
     tile_cols: 8
     tile_rows: 6
@@ -521,7 +521,7 @@ mm find <dir> --kind image | mm cat -m accurate --format dataset-jsonl
 - `--mode` is a no-op for `kind=text` and non-PDF documents — they always passthrough.
 - `--no-cache` forces fresh LLM call; no-op for passthrough kinds.
 - `--no-generate` snapshots encoder output without calling the LLM.
-- For PDFs, `cat` returns empty in fast mode if scanned; use `-m accurate` or `-p document-rasterize`.
+- For PDFs, `cat` returns empty in fast mode if scanned; use `-m accurate` or `-p rasterize`.
 - Chunks are written on first `cat`. Embedding + vec storage happens on `mm grep -s --pre-index`.
 - `mm sql --list-tables` shows row counts across `files`, `extractions`, `chunks`.
 

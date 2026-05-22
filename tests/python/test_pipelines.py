@@ -184,12 +184,14 @@ class TestLoad:
     def test_load_audio_fast(self):
         spec = load("audio", "fast")
         assert spec.kind == "audio"
-        assert spec.generate is None
+        assert spec.generate is not None
+        assert spec.generate.max_tokens == 128
 
     def test_load_audio_accurate(self):
         spec = load("audio", "accurate")
         assert spec.kind == "audio"
-        assert spec.generate is None
+        assert spec.generate is not None
+        assert spec.generate.max_tokens == 1024
 
     def test_load_nonexistent_raises(self):
         with pytest.raises(FileNotFoundError, match="No pipeline"):
@@ -334,7 +336,7 @@ class TestApplyOverrides:
                 "kind": "image",
                 "mode": "fast",
                 "encode": {
-                    "strategy": "image-resize",
+                    "strategy": "resize",
                     "strategy_opts": {"max_width": 1024},
                 },
                 "generate": {"prompt": "Describe this image.", "max_tokens": 256},
@@ -352,14 +354,14 @@ class TestApplyOverrides:
     def test_no_overrides_returns_same(self):
         spec = self._base_spec()
         result = apply_overrides(spec)
-        assert result.encode.strategy == "image-resize"
+        assert result.encode.strategy == "resize"
         assert result.generate is not None
         assert result.generate.max_tokens == 256
 
     def test_encode_strategy_override(self):
         spec = self._base_spec()
-        result = apply_overrides(spec, encode_overrides={"strategy": "image-tile"})
-        assert result.encode.strategy == "image-tile"
+        result = apply_overrides(spec, encode_overrides={"strategy": "tile"})
+        assert result.encode.strategy == "tile"
         assert result.encode.strategy_opts["max_width"] == 1024
 
     def test_encode_max_width_override(self):
@@ -395,10 +397,10 @@ class TestApplyOverrides:
         spec = self._base_spec()
         result = apply_overrides(
             spec,
-            encode_overrides={"strategy": "image-tile"},
+            encode_overrides={"strategy": "tile"},
             generate_overrides={"max_tokens": "512", "temperature": "0.8"},
         )
-        assert result.encode.strategy == "image-tile"
+        assert result.encode.strategy == "tile"
         assert result.generate is not None
         assert result.generate.max_tokens == 512
         assert result.generate.temperature == 0.8
@@ -438,11 +440,10 @@ class TestApplyOverrides:
         assert result.encode.pyfunc == "my_filter.py"
 
     def test_generate_override_on_encode_only(self):
-        """Overriding generate on an encode-only spec creates the generate section."""
+        """Generate overrides are a no-op when the spec has no generate block."""
         spec = self._encode_only_spec()
         result = apply_overrides(spec, generate_overrides={"max_tokens": "512"})
-        assert result.generate is not None
-        assert result.generate.max_tokens == 512
+        assert result.generate is None
 
 
 class TestEncodeStrategyOpts:

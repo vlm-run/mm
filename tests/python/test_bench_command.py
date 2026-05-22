@@ -504,12 +504,12 @@ class TestFormatStdoutBlock:
         from mm.commands.bench import _format_stdout_block
 
         out = _format_stdout_block(
-            label="mm cat <video> -p video-frames",
-            cmd="mm cat bakery.mp4 --pipeline video-frames",
+            label="mm cat <video> -p frames",
+            cmd="mm cat bakery.mp4 --pipeline frames",
             stdout="hello world\n",
         )
-        assert out.startswith("$ mm cat bakery.mp4 --pipeline video-frames")
-        assert "# mm cat <video> -p video-frames" in out.splitlines()[0]
+        assert out.startswith("$ mm cat bakery.mp4 --pipeline frames")
+        assert "# mm cat <video> -p frames" in out.splitlines()[0]
         assert out.endswith("hello world")
 
     def test_strips_ansi_from_body(self):

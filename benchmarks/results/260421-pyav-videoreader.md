@@ -33,14 +33,14 @@ format and content quality as before.
 
 | Encoder | Before (ms) | After (ms) | Speedup | Notes |
 |---|---:|---:|---:|---|
-| `video-clips` | 1,556 | 88 | **17.7×** | Just reads file; probe replaced with PyAV |
-| `video-chunks` | 3,549 | 1,906 | **1.86×** | 7 chunks, 16 frames each (probe + frame extract) |
-| `video-keyframes` | 10,084 | 1,978 | **5.10×** | Single-pass codec-level skip replaces ffprobe+ffmpeg |
-| `video-summary` | 5,276 | 4,368 | **1.21×** | Scene detection + 12 frames |
-| `video-frames` | 7,186 | 3,963 | **1.81×** | 252 frames at 1fps |
-| `video-mosaic` | 7,988 | 4,512 | **1.77×** | 128 frames → Pillow tiling (was ffmpeg) |
-| `video-shots` | 19,607 | 16,112 | **1.22×** | 76 shots × 8 frames (scene detection dominates) |
-| `video-shot-mosaic` | 36,450 | 21,139 | **1.72×** | 76 shots × 16 frames + mosaic tiling |
+| `clips` | 1,556 | 88 | **17.7×** | Just reads file; probe replaced with PyAV |
+| `chunks` | 3,549 | 1,906 | **1.86×** | 7 chunks, 16 frames each (probe + frame extract) |
+| `keyframes` | 10,084 | 1,978 | **5.10×** | Single-pass codec-level skip replaces ffprobe+ffmpeg |
+| `summary` | 5,276 | 4,368 | **1.21×** | Scene detection + 12 frames |
+| `frames` | 7,186 | 3,963 | **1.81×** | 252 frames at 1fps |
+| `mosaic` | 7,988 | 4,512 | **1.77×** | 128 frames → Pillow tiling (was ffmpeg) |
+| `shots` | 19,607 | 16,112 | **1.22×** | 76 shots × 8 frames (scene detection dominates) |
+| `shot-mosaic` | 36,450 | 21,139 | **1.72×** | 76 shots × 16 frames + mosaic tiling |
 
 ### Transcript-augmented encoders
 
@@ -49,8 +49,8 @@ speedup from PyAV is masked by the fixed Whisper cost:
 
 | Encoder | Before (ms) | After (ms) | Visual savings |
 |---|---:|---:|---|
-| `video-captions` | 78,516 | 79,878 | ~same (Whisper fallback, probing negligible) |
-| `video-transcript` | 78,173 | — | No change (audio-only, no frame extraction) |
+| `captions` | 78,516 | 79,878 | ~same (Whisper fallback, probing negligible) |
+| `transcript` | 78,173 | — | No change (audio-only, no frame extraction) |
 | All `-w-transcript` | ~79–83K | ~80–84K | Visual portion 1.2–5× faster, masked by Whisper |
 
 ## Architecture changes

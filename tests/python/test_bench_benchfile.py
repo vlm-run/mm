@@ -635,7 +635,7 @@ class TestVlmgwBenchfileSmoke:
             "model": 29,
             "model+llm": 1,
             "image-res": 3,
-            "video-frames": 3,
+            "frames": 3,
             "cache": 2,
             "404": 3,
             "validation": 2,

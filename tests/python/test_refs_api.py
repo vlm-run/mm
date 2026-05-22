@@ -258,7 +258,7 @@ class TestToMessages:
         ctx = mm.Context()
         ctx.add(tiny_png)
         # Should not raise — 'tile' is a registered image encoder.
-        msgs = ctx.to_messages(format="openai", encoders={"image": "image-tile"})
+        msgs = ctx.to_messages(format="openai", encoders={"image": "tile"})
         assert len(msgs) == 1
 
     def test_encoder_kwargs_forwarded(self, tiny_png: Path):
@@ -267,7 +267,7 @@ class TestToMessages:
         ctx.add(tiny_png)
         msgs = ctx.to_messages(
             format="openai",
-            encoders={"image": "image-resize"},
+            encoders={"image": "resize"},
             encoder_kwargs={"image": {"max_width": 16}},
         )
         assert len(msgs) == 1

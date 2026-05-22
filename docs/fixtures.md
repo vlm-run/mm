@@ -31,9 +31,9 @@ uv run mm cat images/*.png
 # Extract images accurately (with VLMs)
 uv run mm cat input.png -m accurate
 # Custom image tiling (for extra-large resolution images)
-uv run mm cat input.png --encode.strategy image-tile
+uv run mm cat input.png --encode.strategy tile
 # Custom image resizing (for smaller resolution images)
-uv run mm cat input.png --encode.strategy image-resize -m accurate
+uv run mm cat input.png --encode.strategy resize -m accurate
 # With verbose output (shows pipeline steps and token usage)
 uv run mm cat input.png -v
 ```
@@ -50,9 +50,9 @@ uv run mm cat input.pdf -m accurate
 # Extract non-PDF documents accurately (single VLM inference, batch=1)
 uv run mm cat input.docx -m accurate
 # Extract per-page text only (no rasterization, no VLM)
-uv run mm cat input.pdf --encode.strategy document-page-text
+uv run mm cat input.pdf --encode.strategy page-text
 # Rasterize pages and interleave extracted text (hybrid, batch=auto)
-uv run mm cat input.pdf --encode.strategy document-rasterize-text -m accurate
+uv run mm cat input.pdf --encode.strategy rasterize-text -m accurate
 # With verbose output (shows pipeline steps and token usage)
 uv run mm cat input.pdf -v
 ```
@@ -65,7 +65,7 @@ uv run mm cat input.mp3
 # Extract audio accurately (Whisper transcript + LLM summary)
 uv run mm cat input.mp3 -m accurate
 # Extract audio accurately (pass audio directly to a Gemini-compatible VLM)
-uv run mm cat input.mp3 --encode.strategy audio-gemini -m accurate
+uv run mm cat input.mp3 --encode.strategy gemini -m accurate
 # With verbose output (shows pipeline steps and token usage)
 uv run mm cat input.mp3 -v
 ```
@@ -78,7 +78,7 @@ uv run mm cat input.mp4
 # Extract video accurately (mosaic + whisper + VLM)
 uv run mm cat input.mp4 -m accurate
 # Extract video accurately (frame-sample encoder at fps=1)
-uv run mm cat input.mp4 --encode.strategy video-frames -m accurate
+uv run mm cat input.mp4 --encode.strategy frames -m accurate
 ```
 
 ---

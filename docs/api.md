@@ -207,13 +207,13 @@ Per-kind encoder overrides and per-kind encoder kwargs:
 ```python
 messages: list[ChatCompletionMessageParam] = ctx.to_messages(
     format="openai",
-    encoders={"image": "image-tile", "video": "mosaic"},
+    encoders={"image": "tile", "video": "mosaic"},
     encoder_kwargs={"document": {"pages_per_message": 8}},
 )
 ```
 
-Unspecified kinds use sensible defaults (`image-resize`,
-`video-mosaic`, `document-rasterize`, `audio-base64`). Encoder names come from
+Unspecified kinds use sensible defaults (`resize`,
+`mosaic`, `rasterize`, `base64`). Encoder names come from
 the `mm.encoders` registry — see `--list-encoders`.
 
 User metadata is emitted as a leading text part per item
@@ -301,7 +301,7 @@ HTML(ctx.render_html())
 html = ctx.render_html(
     max_image_width=480,
     title="My prompt",
-    encoders={"image": "image-tile"},
+    encoders={"image": "tile"},
     encoder_kwargs={"document": {"pages_per_message": 4}},
 )
 ```

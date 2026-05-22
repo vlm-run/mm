@@ -28,7 +28,7 @@ def active_profile() -> str:
     """Name of the LLM profile to pin for the duration of a test.
 
     Defaults to ``"ollama"`` — the built-in OpenAI-compatible profile.
-    It has no ``"gemini"`` substring, so ``mm.encoders._resolve_provider``
+    It has no ``"gemini"`` substring, so ``mm.encoders.resolve_provider``
     resolves to ``"openai"`` and encoders emit OpenAI-shaped content
     parts, matching what ``LlmBackend`` (OpenAI SDK) and
     ``refs_messages._adapt_part`` assume.

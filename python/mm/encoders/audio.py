@@ -1,14 +1,15 @@
 """Audio encoding strategies: base64 passthrough, transcription, and Gemini.
 
-``AudioBase64`` reads the raw audio file, base64-encodes it, and yields
-an OpenAI ``input_audio`` content part — the native way to send audio
-to multimodal LLMs without any preprocessing.
+``AudioBase64`` base64-encodes the raw audio file as an OpenAI ``input_audio``
+part — the native way to send audio to multimodal LLMs. Generate prompts come
+from the pipeline YAML.
 
-``AudioTranscribe`` extracts audio (via ffmpeg) and runs Whisper
-transcription, returning the transcript as a text Message.
+``AudioTranscribe`` runs Whisper transcription and returns the transcript as
+text. Passthrough encoder — suppresses the LLM call via
+``generate = {"fast": None, "accurate": None}``.
 
-``GeminiAudio`` passes audio files directly as Gemini ``inline_data``
-Parts, with automatic chunking for long files.
+``GeminiAudio`` passes audio directly as Gemini ``inline_data`` Parts with
+automatic chunking for long files. Generate prompts come from the pipeline YAML.
 """
 
 from __future__ import annotations
@@ -19,8 +20,8 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Any, Iterable
 
-from mm.encoders import Message, register
-from mm.pipelines.schema import Generate
+from mm.encoders import register
+from mm.encoders.base import Encoder, Message
 
 logger = logging.getLogger(__name__)
 
@@ -40,21 +41,7 @@ def _to_message(parts: list[dict[str, Any]]) -> Message:
     return {"role": "user", "content": parts}
 
 
-class AudioGenerate:
-    fast = Generate(
-        prompt="Describe this audio in 10 words or less.",
-        max_tokens=128,
-    )
-    accurate = Generate(
-        prompt=(
-            "Describe the content of this audio in detail. Include what is spoken or heard, "
-            "key topics covered, the speaker's tone, and any notable sounds or context."
-        ),
-        max_tokens=1024,
-    )
-
-
-class AudioBase64(AudioGenerate):
+class AudioBase64(Encoder):
     """Send the raw audio file as a base64-encoded ``input_audio`` part.
 
     This is the native way to pass audio to OpenAI-compatible models —
@@ -65,12 +52,16 @@ class AudioBase64(AudioGenerate):
     Kwargs:
         format: Audio format hint (default: inferred from file extension).
             One of ``mp3``, ``wav``, ``flac``, ``ogg``, ``m4a``, ``aac``.
+        max_seconds: audio clip duration to encode
+        overlap: overlap between audio clips
+        mode: fast | accurate.
+        generate_model: --generate.model CLI flag.
     """
 
-    name: str = "audio-base64"
-    media_types: tuple[str, ...] = ("audio",)
+    name = "base64"
+    kind = "audio"
 
-    def encode(self, path: Path, **kwargs) -> Iterable[Message]:
+    def encode(self, path: Path, **kwargs: Any) -> Iterable[Message]:
         from mm.ffmpeg import extract_segment, probe_duration
         from mm.video import pyav_runnable
 
@@ -101,7 +92,7 @@ class AudioBase64(AudioGenerate):
         overlap: int = int(kwargs.get("overlap", 10))
         duration = probe_duration(path)
         if duration <= max_seconds:
-            logger.debug("audio-base64 [path=%s, duration=%.1fs, single]", path.name, duration)
+            logger.debug("base64 [path=%s, duration=%.1fs, single]", path.name, duration)
             yield _to_message(
                 [
                     {
@@ -164,8 +155,8 @@ class AudioBase64(AudioGenerate):
             yield from pool.map(_submit_fn, enumerate(segments))
 
 
-class AudioTranscribe:
-    """Transcribe audio and return the transcript as a text message.
+class AudioTranscribe(Encoder):
+    """Passthrough encoder — Transcribe audio and return the transcript as a text message.
 
     Uses the modular transcription backend system. By default, calls
     the VLM Run gateway's OpenAI-compatible endpoint. Override
@@ -181,10 +172,11 @@ class AudioTranscribe:
         api_key: API key for the ``openai`` backend.
     """
 
-    name: str = "audio-transcribe"
-    media_types: tuple[str, ...] = ("audio",)
+    name = "transcribe"
+    kind = "audio"
+    generate = {"fast": None, "accurate": None}
 
-    def encode(self, path: Path, **kwargs) -> Iterable[Message]:
+    def encode(self, path: Path, **kwargs: Any) -> Iterable[Message]:
         model: str | None = kwargs.get("model")
         language: str = kwargs.get("language", "auto")
         audio_speed: float = kwargs.get("audio_speed", 1.0)
@@ -201,8 +193,8 @@ class AudioTranscribe:
             base_url = base_url or cfg.base_url
             api_key = api_key or cfg.api_key
 
-        from mm.common.audio import transcribe, transcribe_available
-        from mm.ffmpeg import audio_transformer, ffmpeg_available
+        from mm.common.audio import transcribe_available, transcribe_file
+        from mm.ffmpeg import ffmpeg_available
 
         if not ffmpeg_available() and backend != "openai":
             yield _to_message(
@@ -226,27 +218,17 @@ class AudioTranscribe:
             )
             return
 
-        audio_result = audio_transformer(path, speed=audio_speed)
-
-        lang_kwarg: dict[str, str | None] = {}
-        if language != "auto":
-            lang_kwarg["language"] = language
-
-        whisper_result = transcribe(
-            audio_result.path,
+        resolved_lang = None if language == "auto" else language
+        whisper_result = transcribe_file(
+            path,
             model=model,
-            beam_size=5,
+            language=resolved_lang,
             audio_speed=audio_speed,
+            beam_size=5,
             backend=backend,
             base_url=base_url,
             api_key=api_key,
-            **lang_kwarg,
         )
-
-        try:
-            audio_result.path.unlink(missing_ok=True)
-        except Exception:
-            pass
 
         transcript = whisper_result.text
         if not transcript or transcript.startswith("["):
@@ -295,7 +277,7 @@ class AudioTranscribe:
         yield _to_message(parts)
 
 
-class GeminiAudio(AudioGenerate):
+class GeminiAudio(Encoder):
     """Pass an audio file directly as a Gemini ``input_audio`` Part.
 
     For files longer than ``max_seconds``, splits into overlapping
@@ -304,12 +286,13 @@ class GeminiAudio(AudioGenerate):
     Kwargs:
         max_seconds: Maximum chunk length in seconds (default 120).
         overlap: Overlap between chunks in seconds (default 10).
+        mode: fast | accurate.
     """
 
-    name: str = "audio-gemini"
-    media_types: tuple[str, ...] = ("audio",)
+    name = "gemini"
+    kind = "audio"
 
-    def encode(self, path: Path, **kwargs) -> Iterable[Message]:
+    def encode(self, path: Path, **kwargs: Any) -> Iterable[Message]:
         from mm.ffmpeg import extract_segment, probe_duration
         from mm.video import pyav_runnable
 

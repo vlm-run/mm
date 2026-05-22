@@ -14,7 +14,8 @@ from itertools import islice
 from pathlib import Path
 from typing import Any, Iterable, Iterator, Optional
 
-from mm.encoders import Message, _resolve_provider, register
+from mm.encoders import register, resolve_provider
+from mm.encoders.base import Encoder, Message
 from mm.encoders.image import _image_part, _to_message
 
 logger = logging.getLogger(__name__)
@@ -22,7 +23,7 @@ logger = logging.getLogger(__name__)
 _JPEG_QUALITY: int = 85
 
 
-class DocumentRasterize:
+class DocumentRasterize(Encoder):
     """Render PDF pages as images and batch them into Messages.
 
     Each Message contains up to ``pages_per_message`` page images
@@ -32,16 +33,25 @@ class DocumentRasterize:
         max_width: Render width in pixels (default 1024).
         pages_per_message: Pages per Message (default 4).
         max_pages: Total page cap (default unlimited).
+        mode: fast | accurate.
+        generate_model: --generate.model CLI flag.
     """
 
-    name: str = "rasterize"
-    media_types: tuple[str, ...] = ("document",)
+    name = "rasterize"
+    kind = "document"
 
     def encode(self, path: Path, **kwargs: Any) -> Iterable[Message]:
+        if kwargs.get("mode", "fast") == "fast":
+            from mm.encoders.document.page_text import DocumentPageText
+
+            yield from DocumentPageText().encode(path, **kwargs)
+            return
+
         max_width: int = kwargs.get("max_width", 1024)
         pages_per_message: int = kwargs.get("pages_per_message", 4)
         max_pages: Optional[int] = kwargs.get("max_pages", None)
-        provider: str = _resolve_provider()
+        generate_model = kwargs.get("generate_model", None)
+        provider: str = resolve_provider(generate_model)
 
         page_iter = _rasterize_pages(path, max_width, max_pages)
         page_idx = 0
@@ -74,7 +84,7 @@ class DocumentRasterize:
             )
 
 
-class DocumentRasterizeText:
+class DocumentRasterizeText(Encoder):
     """Render PDF pages as images *and* extract text, interleaved.
 
     Each Message contains page images with extracted text appended
@@ -84,16 +94,25 @@ class DocumentRasterizeText:
         max_width: Render width in pixels (default 1024).
         pages_per_message: Pages per Message (default 4).
         max_pages: Total page cap (default unlimited).
+        mode: fast | accurate.
+        generate_model: --generate.model CLI flag.
     """
 
-    name: str = "rasterize-text"
-    media_types: tuple[str, ...] = ("document",)
+    name = "rasterize-text"
+    kind = "document"
 
     def encode(self, path: Path, **kwargs: Any) -> Iterable[Message]:
+        if kwargs.get("mode", "fast") == "fast":
+            from mm.encoders.document.page_text import DocumentPageText
+
+            yield from DocumentPageText().encode(path, **kwargs)
+            return
+
         max_width: int = kwargs.get("max_width", 1024)
         pages_per_message: int = kwargs.get("pages_per_message", 4)
         max_pages: Optional[int] = kwargs.get("max_pages", None)
-        provider: str = _resolve_provider()
+        generate_model = kwargs.get("generate_model", None)
+        provider: str = resolve_provider(generate_model)
 
         page_texts: list[str] = _extract_page_texts(path, max_pages)
         page_iter = _rasterize_pages(path, max_width, max_pages)

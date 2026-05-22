@@ -86,7 +86,7 @@ mm bench ~/data/mmbench-tiny -b benchmarks/vlmgw_bench_commands.py \
 The benchfile (`benchmarks/vlmgw_bench_commands.py`) builds the
 `COMMANDS` list from a higher-level `BenchSpec` matrix that mirrors the
 upstream vlmgw model list, plus standalone `BenchCommand`s for the
-`image-res`, `video-frames`, `cache`, `404`, and `validation` groups.
+`image-res`, `frames`, `cache`, `404`, and `validation` groups.
 Each spec carries:
 
 - `model` — the gateway model id (`<org>/<model-name>`).
@@ -171,7 +171,7 @@ Client-side image-resolution sweep on `qwen/qwen3.5-0.8b` (512 / 1024 / 1536 px)
 | qwen/image-1024 | qwen/qwen3.5-0.8b | `mm cat <img> --mode fast --no-cache --format json` | `--prompt 'Describe the image in 1 sentence.' --encode.strategy_opts max_width=1024` | 3.27s | 96ms | 3.16s | 3.33s | 0.31x | — | 2.25 Mbps |
 | qwen/image-1536 | qwen/qwen3.5-0.8b | `mm cat <img> --mode fast --no-cache --format json` | `--prompt 'Describe the image in 1 sentence.' --encode.strategy_opts max_width=1536` | 3.28s | 113ms | 3.21s | 3.41s | 0.30x | — | 2.25 Mbps |
 
-## `video-frames` (3 rows)
+## `frames` (3 rows)
 
 `video_fps` × `video_max_frames` sweep on `qwen/qwen3.5-0.8b`.
 
@@ -217,7 +217,7 @@ CLI-side `--generate.extra-body` rejection paths (bad / non-object JSON).
 | `model` | 29 | 2.51s | 849ms | 6.73s |
 | `model+llm` | 1 | 4.75s | 4.75s | 4.75s |
 | `image-res` | 3 | 3.27s | 3.19s | 3.28s |
-| `video-frames` | 3 | 6.23s | 6.11s | 6.39s |
+| `frames` | 3 | 6.23s | 6.11s | 6.39s |
 | `cache` | 2 | 13.42s | 130ms | 13.42s |
 | `404` | 3 | 832ms | 826ms | 835ms |
 | `validation` | 2 | 80ms | 79ms | 80ms |

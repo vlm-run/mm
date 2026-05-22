@@ -2,7 +2,7 @@ kind: image
 mode: fast
 
 encode:
-  strategy: image-resize
+  strategy: resize
   strategy_opts:
     max_width: 512
 
