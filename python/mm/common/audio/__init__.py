@@ -21,7 +21,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from mm.cache import cache_dir, memoize_file
 from mm.common.audio._base import (
     TranscriptionBackend,
     TranscriptionResult,
@@ -148,7 +147,7 @@ def transcribe(
     )
 
 
-@memoize_file(maxsize=16, path=lambda: cache_dir() / "transcripts")
+# @memoize_file(maxsize=16, path=lambda: cache_dir() / "transcripts")
 def transcribe_file(
     path: str | Path,
     *,
@@ -177,6 +176,7 @@ def transcribe_file(
     """
     from mm.ffmpeg import audio_transformer
 
+    audio_result = None
     try:
         audio_result = audio_transformer(
             Path(path) if not isinstance(path, Path) else path,
@@ -195,7 +195,7 @@ def transcribe_file(
     except Exception:
         return TranscriptionResult("", segments=[])
     finally:
-        if audio_result:
+        if audio_result is not None:
             try:
                 audio_result.path.unlink(missing_ok=True)
             except Exception:

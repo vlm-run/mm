@@ -215,3 +215,34 @@ def _reset() -> None:
     global _ACTIVE, _DETECTED
     _ACTIVE = None
     _DETECTED = False
+
+
+# Standard faster-whisper / Whisper model size identifiers.
+_WHISPER_SIZES: frozenset[str] = frozenset(
+    {
+        "tiny",
+        "tiny.en",
+        "base",
+        "base.en",
+        "small",
+        "small.en",
+        "medium",
+        "medium.en",
+        "large",
+        "large-v1",
+        "large-v2",
+        "large-v3",
+        "large-v3-turbo",
+        "turbo",
+        "distil-large-v2",
+        "distil-large-v3",
+        "distil-small.en",
+        "distil-medium.en",
+    }
+)
+
+
+def resolve_whisper_model(model: str | None) -> str:
+    if model and model in _WHISPER_SIZES:
+        return model
+    return "tiny"

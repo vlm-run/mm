@@ -91,6 +91,7 @@ app = typer.Typer(
 
 _TIMED_COMMANDS = {"find", "cat", "grep", "peek", "sql", "wc"}
 _LLM_COMMANDS = {"cat", "bench"}
+_SPINNER_COMMANDS = {"cat", "sql", "grep"}
 
 
 @app.callback(
@@ -133,6 +134,11 @@ def _main(
         _check_exit, _display_elapsed = display_elapsed_wrapper(start_time, prefix)
         sys.exit = _check_exit
         atexit.register(_display_elapsed)
+
+    if cmd in _SPINNER_COMMANDS:
+        from mm.display import root_progress
+
+        root_progress()
 
     if cmd in _LLM_COMMANDS:
         from mm._logfire import cli_span
