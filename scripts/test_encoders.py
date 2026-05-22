@@ -152,10 +152,13 @@ def build_cmd(kind: str, encoder: str, mode: str, model: str, profile: str) -> l
         profile,
         "cat",
         str(SAMPLE_FILES[kind]),
-        f"--mode={mode}",
-        f"--pipeline={encoder}",
+        "--mode",
+        mode,
+        "--pipeline",
+        encoder,
         "--no-cache",
-        f"--generate.model={model}",
+        "--generate.model",
+        model,
     ]
 
 
