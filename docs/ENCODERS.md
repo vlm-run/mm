@@ -95,7 +95,7 @@ graph LR
 
 #### `mosaic-w-transcript`
 
-`mosaic` + Whisper transcript prepended as the first message. **Parameters:** `tile_cols=4, tile_rows=4, thumb_width=160, num_mosaics=8, num_frames=128, model=None, language=auto, audio_speed=1.0`
+`mosaic` + Whisper transcript prepended as the first message. **Parameters:** `tile_cols=4, tile_rows=4, thumb_width=160, num_mosaics=8, num_frames=128, model=None, language=auto, audio_speed=2.0`
 
 ---
 
@@ -127,7 +127,7 @@ graph LR
 
 #### `frames-w-transcript`
 
-Frame sampling + Whisper audio transcription. Transcript yielded first as context, then batched frames. Default for accurate mode. Falls back to frame-only when Whisper is unavailable. **Parameters:** `fps=1.0, max_width=1024, max_frames_per_message=16, model=None, language=auto, audio_speed=1.0`
+Frame sampling + Whisper audio transcription. Transcript yielded first as context, then batched frames. Default for accurate mode. Falls back to frame-only when Whisper is unavailable. **Parameters:** `fps=1.0, max_width=1024, max_frames_per_message=16, model=None, language=auto, audio_speed=2.0`
 
 ```mermaid
 %%{init: {'look': 'neo'} }%%
@@ -163,7 +163,7 @@ Extract I-frames (keyframes) directly from the video bitstream. **Parameters:** 
 
 #### `keyframes-w-transcript`
 
-`keyframes` + Whisper transcript prepended as the first message. **Parameters:** `max_keyframes=None, max_width=1024, max_keyframes_per_message=16, model=None, language=auto, audio_speed=1.0`
+`keyframes` + Whisper transcript prepended as the first message. **Parameters:** `max_keyframes=None, max_width=1024, max_keyframes_per_message=16, model=None, language=auto, audio_speed=2.0`
 
 ---
 
@@ -201,7 +201,7 @@ graph LR
 
 #### `shots-w-transcript`
 
-`shots` + Whisper transcript prepended as the first message. **Parameters:** `threshold=27.0, max_frames_per_shot=8, max_width=1024, model=None, language=auto, audio_speed=1.0`
+`shots` + Whisper transcript prepended as the first message. **Parameters:** `threshold=27.0, max_frames_per_shot=8, max_width=1024, model=None, language=auto, audio_speed=2.0`
 
 ---
 
@@ -239,7 +239,7 @@ graph LR
 
 #### `shot-mosaic-w-transcript`
 
-`shot-mosaic` + Whisper transcript prepended as the first message. **Parameters:** `threshold=27.0, tile_cols=4, tile_rows=4, thumb_width=160, model=None, language=auto, audio_speed=1.0`
+`shot-mosaic` + Whisper transcript prepended as the first message. **Parameters:** `threshold=27.0, tile_cols=4, tile_rows=4, thumb_width=160, model=None, language=auto, audio_speed=2.0`
 
 ---
 
@@ -283,7 +283,7 @@ Base64-encode video clips of uniform duration (no frame extraction). **Parameter
 
 #### `clips-w-transcript`
 
-`clips` + Whisper transcript prepended as the first message. **Parameters:** `duration=0, max_size_mb=None, model=None, language=auto, audio_speed=1.0`
+`clips` + Whisper transcript prepended as the first message. **Parameters:** `duration=0, max_size_mb=None, model=None, language=auto, audio_speed=2.0`
 
 ---
 
@@ -295,19 +295,19 @@ Adaptive N-frame visual summary of a video. **Parameters:** `num_frames=12, use_
 
 #### `summary-w-transcript`
 
-`summary` + Whisper transcript prepended as the first message. **Parameters:** `num_frames=12, use_scene_detection=True, max_width=1024, model=None, language=auto, audio_speed=1.0`
+`summary` + Whisper transcript prepended as the first message. **Parameters:** `num_frames=12, use_scene_detection=True, max_width=1024, model=None, language=auto, audio_speed=2.0`
 
 ---
 
 #### `transcript`
 
-Extract audio → Whisper transcription only, no visual frames. For podcasts, talks, interviews.  **Parameters:** `model=None, language=auto, audio_speed=1.0`
+Extract audio → Whisper transcription only, no visual frames. For podcasts, talks, interviews.  **Parameters:** `model=None, language=auto, audio_speed=2.0`
 
 ---
 
 #### `captions`
 
-Extract embedded subtitle stream from video; falls back to Whisper transcription if no subtitle track is found. **Parameters:** `subtitle_stream=0, fallback_to_whisper=True, model=None, language=auto, audio_speed=1.0, backend=None, base_url=None, api_key=None`
+Extract embedded subtitle stream from video; falls back to Whisper transcription if no subtitle track is found. **Parameters:** `subtitle_stream=0, fallback_to_whisper=True, model=None, language=auto, audio_speed=2.0, backend=None, base_url=None, api_key=None`
 
 ---
 
@@ -378,7 +378,7 @@ Send the raw audio file as a base64-encoded `input_audio` part. Default for Pyth
 
 #### `transcribe`
 
-Extract audio via ffmpeg, transcribe with Whisper (lightning-whisper-mlx / faster-whisper). Returns timestamped transcript as a text message. **Parameters:** `model=None, language=auto, audio_speed=1.0, backend=None, base_url=None, api_key=None`
+Extract audio via ffmpeg, transcribe with Whisper (lightning-whisper-mlx / faster-whisper). Returns timestamped transcript as a text message. **Parameters:** `model=None, language=auto, audio_speed=2.0, backend=None, base_url=None, api_key=None`
 
 ```mermaid
 %%{init: {'look': 'neo'} }%%

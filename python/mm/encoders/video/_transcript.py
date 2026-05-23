@@ -36,7 +36,7 @@ def transcript_messages(
     *,
     model: str | None = None,
     language: str = "auto",
-    audio_speed: float = 1.0,
+    audio_speed: float = 2.0,
     backend: str | None = None,
     base_url: str | None = None,
     api_key: str | None = None,
@@ -119,15 +119,14 @@ def encode_with_transcript(
         path: Video file path.
         visual_encode_fn: Callable ``(path, **kwargs) -> Iterable[Message]``.
         **kwargs: Passed to both the transcript helper and the visual encoder.
-            Transcript-specific kwargs: ``model``, ``language``,
-            ``audio_speed``.
+            Transcript-specific kwargs: ``model``, ``language``, ``audio_speed``.
     """
     from concurrent.futures import ThreadPoolExecutor
 
     transcript_kwargs = {
         "model": kwargs.get("audio_model") or kwargs.get("model"),
         "language": kwargs.get("language", "auto"),
-        "audio_speed": kwargs.get("audio_speed", 1.0),
+        "audio_speed": kwargs.get("audio_speed", 2.0),
         "backend": kwargs.get("audio_backend") or kwargs.get("backend"),
         "base_url": kwargs.get("audio_base_url") or kwargs.get("base_url"),
         "api_key": kwargs.get("audio_api_key") or kwargs.get("api_key"),

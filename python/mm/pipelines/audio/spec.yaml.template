@@ -21,7 +21,7 @@ encode:
   # backend: openai                        # "openai" | "mlx" | "ctranslate2"
   strategy_opts:
     # language: auto                        # language code or "auto"
-    # audio_speed: 1.0                      # playback speed multiplier
+    # audio_speed: 2.0                      # playback speed multiplier
     # base_url: null                        # custom OpenAI-compatible endpoint
     # api_key: null                         # API key for that endpoint
 

@@ -165,7 +165,7 @@ def accurate_video(path: Path, spec: PipelineSpec, opts: CatOpts) -> RunResult:
             return ""
 
         model: str | None = ekw.get("audio_model") or ekw.get("model") or None
-        audio_speed = ekw.get("audio_speed") or 1.0
+        audio_speed = ekw.get("audio_speed") or 2.0
         beam_size = 5
         backend: str | None = ekw.get("audio_backend") or ekw.get("backend") or None
         base_url: str | None = ekw.get("audio_base_url") or ekw.get("base_url") or None

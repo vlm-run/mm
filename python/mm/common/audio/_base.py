@@ -32,7 +32,7 @@ Example — a Gemini backend using the OpenAI-compatible endpoint
             model: str | None = None,
             language: str | None = None,
             beam_size: int = 1,
-            audio_speed: float = 1.0,
+            audio_speed: float = 2.0,
         ) -> TranscriptionResult:
             from openai import OpenAI
 
@@ -117,7 +117,7 @@ class TranscriptionBackend(abc.ABC):
         model: str | None = None,
         language: str | None = None,
         beam_size: int = 1,
-        audio_speed: float = 1.0,
+        audio_speed: float = 2.0,
     ) -> TranscriptionResult:
         """Transcribe an audio file and return a result."""
 

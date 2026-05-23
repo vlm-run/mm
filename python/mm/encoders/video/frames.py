@@ -100,7 +100,7 @@ class VideoFramesWithTranscript(Encoder):
         fps, max_width, max_frames_per_message: Same as ``VideoFrames``.
         model: Transcription model name (default chosen by backend).
         language: Language code or "auto" (default "auto").
-        audio_speed: Playback speed multiplier (default 1.0).
+        audio_speed: Playback speed multiplier (default 2.0).
     """
 
     name = "frames-w-transcript"

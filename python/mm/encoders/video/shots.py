@@ -142,8 +142,7 @@ class VideoShots(Encoder):
 class VideoShotsWithTranscript(Encoder):
     """Detect shots and extract frames, with Whisper transcript prepended.
 
-    Kwargs: Same as ``VideoShots`` plus ``model``, ``language``,
-    ``audio_speed``.
+    Kwargs: Same as ``VideoShots`` plus ``model``, ``language``, ``audio_speed``.
     """
 
     name = "shots-w-transcript"
@@ -252,8 +251,7 @@ class VideoShotMosaic(Encoder):
 class VideoShotMosaicWithTranscript(Encoder):
     """Detect shots and build mosaics, with Whisper transcript prepended.
 
-    Kwargs: Same as ``VideoShotMosaic`` plus ``model``,
-    ``language``, ``audio_speed``.
+    Kwargs: Same as ``VideoShotMosaic`` plus ``model``, ``language``, ``audio_speed``.
     """
 
     name = "shot-mosaic-w-transcript"

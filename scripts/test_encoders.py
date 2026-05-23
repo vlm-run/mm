@@ -9,6 +9,7 @@ Usage:
     uv run python scripts/test_encoders.py --model gemini-2.5-pro
     uv run python scripts/test_encoders.py --concurrency 4
     uv run python scripts/test_encoders.py --verbose
+    uv run python scripts/test_encoders.py --kind audio --encoder transcribe --mode fast
 """
 
 from __future__ import annotations
@@ -222,6 +223,7 @@ async def main(args: argparse.Namespace) -> int:
 
     kind_filter: set[str] = set(args.kind) if args.kind else set()
     encoder_filter: set[str] = set(args.encoder) if args.encoder else set()
+    mode_filter: set[str] = set(args.mode) if args.mode else set()
 
     if encoder_filter:
         unknown = encoder_filter - {enc for encs in ENCODERS.values() for enc in encs}
@@ -239,6 +241,7 @@ async def main(args: argparse.Namespace) -> int:
         for encoder in encoders
         if not encoder_filter or encoder in encoder_filter
         for mode in MODES
+        if not mode_filter or mode in mode_filter
     ]
 
     if not tasks:
@@ -386,6 +389,13 @@ def parse_args() -> argparse.Namespace:
         action="append",
         metavar="ENCODER",
         help="Restrict to a specific encoder name (e.g. shot-mosaic). Repeatable.",
+    )
+    parser.add_argument(
+        "--mode",
+        action="append",
+        metavar="MODE",
+        choices=list(MODES),
+        help=f"Restrict to one mode: {', '.join(MODES)}. Repeatable.",
     )
     parser.add_argument(
         "--dry-run",

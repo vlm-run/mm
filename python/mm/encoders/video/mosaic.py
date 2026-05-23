@@ -15,7 +15,7 @@ import logging
 from pathlib import Path
 from typing import Any, Iterable
 
-from mm.encoders import resolve_provider, register
+from mm.encoders import register, resolve_provider
 from mm.encoders.base import Encoder, Message
 from mm.encoders.image import _image_part, _to_message
 
@@ -158,7 +158,7 @@ class VideoMosaicWithTranscript(Encoder):
             Same as ``VideoMosaic``.
         model: Transcription model name (default chosen by backend).
         language: Language code or "auto" (default "auto").
-        audio_speed: Playback speed multiplier (default 1.0).
+        audio_speed: Playback speed multiplier (default 2.0).
         mode: fast | accurate.
     """
 

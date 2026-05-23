@@ -6,7 +6,7 @@ encode:
   backend: openai
   model: nvidia/parakeet-tdt-0.6b-v3
   strategy_opts:
-    audio_speed: 1.0
+    audio_speed: 2.0
 
 generate:
   prompt: >-

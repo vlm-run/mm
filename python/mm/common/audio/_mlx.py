@@ -54,7 +54,7 @@ class MLXBackend(TranscriptionBackend):
         model: str | None = None,
         language: str | None = None,
         beam_size: int = 1,
-        audio_speed: float = 1.0,
+        audio_speed: float = 2.0,
     ) -> TranscriptionResult:
         model = resolve_whisper_model(model)
         t0 = time.monotonic()
@@ -64,7 +64,7 @@ class MLXBackend(TranscriptionBackend):
         result = mdl.transcribe(audio_path=str(audio_path))
 
         text = result.get("text", "")
-        ts_scale = audio_speed if audio_speed > 0 else 1.0
+        ts_scale = audio_speed if audio_speed > 0 else 2.0
 
         raw_segments = result.get("segments", [])
         segments: list[TranscriptionSegment] = []

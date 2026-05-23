@@ -43,7 +43,7 @@ def accurate_audio(path: Path, spec: PipelineSpec, opts: CatOpts) -> RunResult:
 
     akw = spec.encode.strategy_opts
     model: str | None = spec.encode.model or akw.get("model") or None
-    audio_speed = akw.get("audio_speed") or 1.0
+    audio_speed = akw.get("audio_speed") or 2.0
     beam_size = 5
     backend = spec.encode.backend or akw.get("backend")
     base_url: str | None = akw.get("base_url")

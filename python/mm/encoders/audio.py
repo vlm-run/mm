@@ -164,7 +164,7 @@ class AudioTranscribe(Encoder):
     Kwargs:
         model: Model name (default chosen by backend).
         language: Language code or "auto" for detection (default "auto").
-        audio_speed: Playback speed multiplier (default 1.0).
+        audio_speed: Playback speed multiplier (default 2.0).
         backend: Transcription backend name (``"openai"``, ``"mlx"``,
             ``"ctranslate2"``).  ``None`` for auto-detect.
         base_url: Custom base URL for the ``openai`` backend.
@@ -178,7 +178,7 @@ class AudioTranscribe(Encoder):
     def encode(self, path: Path, **kwargs: Any) -> Iterable[Message]:
         model: str | None = kwargs.get("model")
         language: str = kwargs.get("language", "auto")
-        audio_speed: float = kwargs.get("audio_speed", 1.0)
+        audio_speed: float = kwargs.get("audio_speed", 2.0)
 
         backend: str | None = kwargs.get("backend", None)
         base_url: str | None = kwargs.get("base_url", None)

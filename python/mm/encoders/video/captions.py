@@ -126,7 +126,7 @@ class VideoCaptions(Encoder):
 
             model: str | None = kwargs.get("audio_model") or kwargs.get("model")
             language: str = kwargs.get("language", "auto")
-            audio_speed: float = kwargs.get("audio_speed", 1.0)
+            audio_speed: float = kwargs.get("audio_speed", 2.0)
 
             msgs = list(
                 transcript_messages(
