@@ -353,15 +353,15 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--model",
-        default="gemini-2.5-flash-lite",
+        default="qwen/qwen3.5-0.8b",
         metavar="MODEL",
-        help="Model passed via --generate.model (default: gemini-2.5-flash-lite)",
+        help="Model passed via --generate.model (default: qwen/qwen3.5-0.8b)",
     )
     parser.add_argument(
         "--profile",
-        default="openrouter",
+        default="gateway",
         metavar="PROFILE",
-        help="mm profile to use (default: openrouter)",
+        help="mm profile to use (default: gateway)",
     )
     parser.add_argument(
         "--concurrency",
