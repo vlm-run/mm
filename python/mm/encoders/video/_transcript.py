@@ -5,16 +5,15 @@ via Whisper and yields a timestamped transcript Message.  All
 ``-w-transcript`` video encoders delegate to this helper so that
 Whisper integration is not duplicated across files.
 
-Transcripts are cached **on disk** via :func:`mm.cache.memoize_file`,
-keyed on ``(path, mtime, size, model, language, audio_speed)``.  Whisper
-is the slowest step in the accurate-mode video pipeline (~76 s for a
-short clip), so persisting the result across CLI invocations turns the
-second ``mm cat video.mp4 -m accurate`` into a near-instant operation.
-Cache lives under ``$MM_CACHE_DIR / transcripts`` (see
-:func:`mm.cache.cache_dir`) and survives mtime-aware invalidation:
-re-encoding the source video automatically retranscribes.
+Transcripts are cached **on disk** via :func:`mm.cache.memoize_file` on
+:func:`mm.common.audio.transcribe_file`, keyed on
+``(path, mtime, size, model, language, audio_speed)``. Whisper is the
+slowest step in the accurate-mode video pipeline (~76 s for a short clip),
+so persisting the result across CLI invocations turns the second
+``mm cat video.mp4 -m accurate`` into a near-instant operation.  Cache
+lives under ``$MM_CACHE_DIR/transcripts`` and is mtime-aware.
 
-Use ``transcript_messages.cache_clear()`` to wipe the on-disk cache.
+Use ``transcribe_file.cache_clear()`` to wipe the on-disk transcript cache.
 """
 
 from __future__ import annotations

@@ -197,7 +197,7 @@ def transcribe_file(
             api_key=api_key,
         )
     except Exception:
-        return TranscriptionResult("", segments=[])
+        return TranscriptionResult("")
     finally:
         if audio_result is not None:
             try:
