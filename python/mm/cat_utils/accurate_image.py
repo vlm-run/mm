@@ -19,6 +19,10 @@ def accurate_image(path: Path, spec: PipelineSpec, opts: CatOpts) -> RunResult:
     if spec.encode.strategy:
         return run_encoder(path, "image", spec, opts)
 
+    return _inline_describe(path, spec, opts)
+
+
+def _inline_describe(path: Path, spec: PipelineSpec, opts: CatOpts) -> RunResult:
     from mm.llm import image_part
     from mm.profile import get_active_profile_name
 

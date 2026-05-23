@@ -23,14 +23,12 @@ import logging
 from pathlib import Path
 from typing import Any, Iterable
 
-from mm.cache import cache_dir, memoize_file
 from mm.encoders import Message
 from mm.encoders.image import _to_message
 
 logger = logging.getLogger(__name__)
 
 
-@memoize_file(maxsize=16, path=lambda: cache_dir() / "transcripts")
 def transcript_messages(
     path: Path,
     *,
@@ -52,20 +50,11 @@ def transcript_messages(
     Returns an empty list when the transcription backend or ffmpeg is
     unavailable so callers can fall back to visual-only output.
     """
-    try:
-        from mm.common.audio import transcribe, transcribe_available
-        from mm.ffmpeg import audio_transformer
-    except ImportError:
-        return []
-
-    if not transcribe_available():
-        return []
-
-    audio_result = audio_transformer(path, speed=audio_speed)
+    from mm.common.audio import transcribe_file
 
     resolved_lang = None if language == "auto" else language
-    whisper_result = transcribe(
-        audio_result.path,
+    whisper_result = transcribe_file(
+        path,
         model=model,
         language=resolved_lang,
         beam_size=5,
@@ -74,11 +63,6 @@ def transcript_messages(
         base_url=base_url,
         api_key=api_key,
     )
-
-    try:
-        audio_result.path.unlink(missing_ok=True)
-    except Exception:
-        pass
 
     transcript = whisper_result.text
     if not transcript or transcript.startswith("["):

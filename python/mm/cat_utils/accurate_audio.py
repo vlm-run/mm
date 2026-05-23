@@ -16,7 +16,7 @@ from mm.pipelines.schema import PipelineSpec
 
 def accurate_audio(path: Path, spec: PipelineSpec, opts: CatOpts) -> RunResult:
     """Audio extraction with transcription."""
-    from mm.common.audio import transcribe_available, transcribe_file
+    from mm.common.audio import transcribe_available
     from mm.ffmpeg import ffmpeg_available
 
     if not ffmpeg_available():
@@ -37,6 +37,13 @@ def accurate_audio(path: Path, spec: PipelineSpec, opts: CatOpts) -> RunResult:
 
     if spec.generate is None:
         return RunResult(content=extract_meta(path, "audio"))
+
+    return _inline_transcribe_and_summarize(path, spec, opts)
+
+
+def _inline_transcribe_and_summarize(path: Path, spec: PipelineSpec, opts: CatOpts) -> RunResult:
+    from mm.common.audio import transcribe_file
+    from mm.profile import get_active_profile_name
 
     timing: dict[str, float] = {}
     t_total = time.monotonic()
@@ -79,8 +86,6 @@ def accurate_audio(path: Path, spec: PipelineSpec, opts: CatOpts) -> RunResult:
 
     word_count = len(transcript.split())
     content = f"{summary}\n\n[Transcript: {word_count} words]"
-
-    from mm.profile import get_active_profile_name
 
     profile_name = get_active_profile_name()
     generate_output = format_generate_verbose(

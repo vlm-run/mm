@@ -168,7 +168,7 @@ def transcribe_file(
         language: ISO language code; ``None`` for auto-detection.
         audio_speed: Speed multiplier applied during extraction.
         beam_size: Beam size for local backends.
-        backend: Explicit backend name (``"openai"``, ``"mlx"``, etc.).
+        backend: Explicit backend name (``"openai"``, ``"mlx"``, ``"ctranslate2"``.).
         base_url: Custom base URL for the openai backend.
         api_key: API key for the openai backend.
 
@@ -176,6 +176,9 @@ def transcribe_file(
         :class:`TranscriptionResult`.
     """
     from mm.ffmpeg import audio_transformer
+
+    if not transcribe_available():
+        return TranscriptionResult("", segments=[])
 
     audio_result = None
     try:

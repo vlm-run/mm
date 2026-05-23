@@ -50,16 +50,7 @@ def _parse_tile(tile: str) -> tuple[int, int]:
 
 def accurate_video(path: Path, spec: PipelineSpec, opts: CatOpts) -> RunResult:
     """Video extraction with mode-aware mosaic + whisper + LLM pipeline."""
-    import shutil
-
-    from mm.ffmpeg import (
-        extract_frames_at_timestamps,
-        extract_uniform_mosaics,
-        ffmpeg_available,
-        probe_duration,
-        tile_frames_to_mosaics,
-    )
-    from mm.llm import image_part
+    from mm.ffmpeg import ffmpeg_available
 
     if not ffmpeg_available():
         return RunResult(content=f"[ffmpeg not found — cannot process {path.name}]")
@@ -69,6 +60,22 @@ def accurate_video(path: Path, spec: PipelineSpec, opts: CatOpts) -> RunResult:
 
     if spec.generate is None:
         return RunResult(content=extract_meta(path, "video"))
+
+    return _inline_mosaic_pipeline(path, spec, opts)
+
+
+def _inline_mosaic_pipeline(path: Path, spec: PipelineSpec, opts: CatOpts) -> RunResult:
+    import shutil
+    from concurrent.futures import Future, ThreadPoolExecutor
+
+    from mm.ffmpeg import (
+        extract_frames_at_timestamps,
+        extract_uniform_mosaics,
+        probe_duration,
+        tile_frames_to_mosaics,
+    )
+    from mm.llm import image_part
+    from mm.profile import get_active_profile_name
 
     timing: dict[str, float] = {}
     t_total = time.monotonic()
@@ -183,8 +190,6 @@ def accurate_video(path: Path, spec: PipelineSpec, opts: CatOpts) -> RunResult:
         timing["audio_transcription_ms"] = whisper_result.elapsed_ms
         return whisper_result.text
 
-    from concurrent.futures import Future, ThreadPoolExecutor
-
     with ThreadPoolExecutor(max_workers=2) as pool:
         visual_future: Future[tuple[list[Path], str]] = pool.submit(_extract_visual_and_vlm)
         audio_future: Future[str] = pool.submit(_extract_audio_transcript)
@@ -214,8 +219,6 @@ def accurate_video(path: Path, spec: PipelineSpec, opts: CatOpts) -> RunResult:
     token_keys = {k: v for k, v in timing.items() if "tokens" in k}
     prompt_tokens = int(token_keys.get("vlm_prompt_tokens", 0))
     completion_tokens = int(token_keys.get("vlm_completion_tokens", 0))
-
-    from mm.profile import get_active_profile_name
 
     profile_name = get_active_profile_name()
     generate_output = format_generate_verbose(
