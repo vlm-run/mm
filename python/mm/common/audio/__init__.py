@@ -21,6 +21,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from mm.cache import cache_dir, memoize_file
 from mm.common.audio._base import (
     TranscriptionBackend,
     TranscriptionResult,
@@ -147,7 +148,7 @@ def transcribe(
     )
 
 
-# @memoize_file(maxsize=16, path=lambda: cache_dir() / "transcripts")
+@memoize_file(maxsize=16, path=lambda: cache_dir() / "transcripts")
 def transcribe_file(
     path: str | Path,
     *,
