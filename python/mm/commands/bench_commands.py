@@ -465,9 +465,8 @@ def build_encoder_cat_commands(
 ) -> list[BenchCommand]:
     """Synthesise one ``mm cat`` BenchCommand per registered encoder.
 
-    For each registered encoder whose ``media_types`` intersect ``kinds`` and
-    where the directory contains at least one file of that kind, emit a
-    ``mm cat <file> -p <encoder>`` command. The encoder name is used as both
+    For each registered encoder whose ``kind`` where the directory contains at least one file of that kind,
+    emit a ``mm cat <file> -p <encoder>`` command. The encoder name is used as both
     the bench name and the trailing ``# encoder`` comment in stdout output.
 
     Args:
@@ -501,23 +500,20 @@ def build_encoder_cat_commands(
     cmds: list[BenchCommand] = []
     for encoder_name in sorted(_REGISTRY):
         strat = _REGISTRY[encoder_name]
-        for media_type in strat.media_types:
-            if media_type not in have_kind:
-                continue
+        if strat.kind in have_kind:
             cmds.append(
                 BenchCommand(
-                    name=f"mm cat <{media_type}> -p {encoder_name}",
-                    group=f"snapshot/{media_type}",
+                    name=f"mm cat <{strat.kind}> -p {encoder_name}",
+                    group=f"snapshot/{strat.kind}",
                     cmd_template=(
                         f"mm cat {{file}} --mode {mode} --pipeline {encoder_name}"
                         f" --no-cache{extras} --format json"
                     ),
-                    requires_kind=media_type,
+                    requires_kind=strat.kind,
                     smallest=True,
-                    skip_reason=f"no {media_type} files",
+                    skip_reason=f"no {strat.kind} files",
                 )
             )
-            break
 
     cmds.sort(key=lambda c: (c.group, c.name))
     return cmds

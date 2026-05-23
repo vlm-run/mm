@@ -267,7 +267,7 @@ class TestToMessages:
         ctx.add(tiny_png)
         msgs = ctx.to_messages(
             format="openai",
-            encoders={"image": "image-resize"},
+            encoders={"image": "resize"},
             encoder_kwargs={"image": {"max_width": 16}},
         )
         assert len(msgs) == 1

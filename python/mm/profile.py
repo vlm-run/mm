@@ -118,7 +118,7 @@ class Profile:
 
 def _profiles(file_data: ConfigData) -> dict[str, ProfileData]:
     """Return the mutable profile mapping from config data."""
-    return cast(dict[str, ProfileData], file_data.setdefault("profile", {}))
+    return file_data.setdefault("profile", {})
 
 
 def get_profile_defaults(profile_name: str) -> dict[str, str]:
@@ -370,3 +370,13 @@ def get_profile() -> Profile:
         api_key=_resolve("api_key", file_data, profile_name),
         model=_resolve("model", file_data, profile_name),
     )
+
+
+def get_profile_by_name(name: str) -> ProfileData:
+    """get a profile by the name"""
+    file_data = load_profile_config()
+    profiles = _profiles(file_data)
+    if name not in profiles:
+        raise ValueError(f"Profile '{name}' not found. Available: {', '.join(sorted(profiles))}")
+
+    return profiles[name]

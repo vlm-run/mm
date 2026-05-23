@@ -57,9 +57,9 @@ Running on bakery.mp4 (252 frames sampled, M3 Max):
 
 Translated to encoder shares:
 
-- **`video-frames`**: 4.27s = 0.5s decode + 1.5s seeks + 1.7s PIL resize + 0.4s JPEG = 50 % is resize.
-- **`video-shots`**: 16.07s = 3.2s scene-detect + 5.5s seeks (608 frames) + 5.5s PIL resize + 1.5s JPEG = 35 % scene-detect, 35 % resize.
-- **`video-shot-mosaic`**: 22.77s = 3.2s scene-detect + 5.5s seeks + 7.3s Pillow tiling + 5.0s JPEG of 76 mosaics. Tiling dominates because we re-thumbnail every frame inside `tile_to_mosaic`.
+- **`frames`**: 4.27s = 0.5s decode + 1.5s seeks + 1.7s PIL resize + 0.4s JPEG = 50 % is resize.
+- **`shots`**: 16.07s = 3.2s scene-detect + 5.5s seeks (608 frames) + 5.5s PIL resize + 1.5s JPEG = 35 % scene-detect, 35 % resize.
+- **`shot-mosaic`**: 22.77s = 3.2s scene-detect + 5.5s seeks + 7.3s Pillow tiling + 5.0s JPEG of 76 mosaics. Tiling dominates because we re-thumbnail every frame inside `tile_to_mosaic`.
 - **`-w-transcript` variants**: 78–101s = 76s Whisper + the visual cost above. Whisper completely masks visual work because the two run **sequentially**.
 
 ---
@@ -80,8 +80,8 @@ Implementation status: **all 5 P0 items shipped**.  Measured numbers:
 
 #### 1. Replace PIL resize with PyAV `Frame.reformat()` in the hot path  — **DONE**
 **Files**: `python/mm/video.py` (`_seek_and_decode_one`, `_decode_keyframes`)
-**Speedup**: 2.9× on the resize stage → ~30 % wall-time win on `video-frames`,
-`video-shots`, `video-shot-mosaic`, `video-summary`, `video-keyframes`.
+**Speedup**: 2.9× on the resize stage → ~30 % wall-time win on `frames`,
+`shots`, `shot-mosaic`, `summary`, `keyframes`.
 
 PyAV ships `libswscale` and the `Frame.reformat(width, height, format)` API which uses
 SIMD-accelerated chroma resample directly on the AVFrame, *before* the YUV→RGB→PIL
@@ -115,10 +115,10 @@ encode time in half and roughly halves output bytes (lower base64 → lower payl
 
 #### 3. Stream-to-output pipeline: avoid materialising frames in memory  — **DONE**
 **Files**: `python/mm/video.py`
-**Speedup**: marginal time win, big peak-RSS win (80 MB → ~15 MB on `video-shots`).
+**Speedup**: marginal time win, big peak-RSS win (80 MB → ~15 MB on `shots`).
 
 `reader.frames(...).collect()` is used in `mosaic.py`, `shots.py`, `summary.py` —
-materialising 600+ PIL images at once. For `video-shots`, peak alloc was 80 MB. Switch
+materialising 600+ PIL images at once. For `shots`, peak alloc was 80 MB. Switch
 the visual encoders that don't need a global view to `for frame in reader.frames(...)`
 and emit messages as we go.
 
@@ -129,7 +129,7 @@ and emit messages as we go.
 **Speedup**: 3.2s → 0ms on second `detect_scenes` invocation; 76s → 0ms on second
 `transcript` invocation in the same process.
 
-Within a single process (e.g. `mm cat -p video-shots video-mosaic file.mp4` chained),
+Within a single process (e.g. `mm cat -p shots mosaic file.mp4` chained),
 both encoders today re-run scene detection from scratch. A simple LRU keyed by
 `(content_hash, op_kind, params)` avoids that.
 
@@ -178,8 +178,8 @@ def encode_with_transcript(path, visual_encode_fn, **kwargs):
         yield from transcript_fut.result()
 ```
 
-For pipelines where `visual_encode_fn` is fast (e.g. `video-clips` at 0.04s), this is
-a free 0.04s. For `video-shots-w-transcript` (visual = 16s, transcript = 76s) we save
+For pipelines where `visual_encode_fn` is fast (e.g. `clips` at 0.04s), this is
+a free 0.04s. For `shots-w-transcript` (visual = 16s, transcript = 76s) we save
 the full 16s — the 92.2s encoder drops to ~76s.
 
 **Risk**: low. The order of yielded messages is documented to be transcript-first;
@@ -189,7 +189,7 @@ moving it to the end is a behaviour change but trivially overridable.
 
 #### 6. Reuse a single decoder per worker (sorted-timestamp fast path)
 **Files**: `python/mm/video.py` (`_seek_and_decode_one`, `_decode_timestamps_batched`)
-**Speedup**: 1.5–2× on `video-frames`, `video-shots` for sorted timestamps.
+**Speedup**: 1.5–2× on `frames`, `shots` for sorted timestamps.
 
 Today every timestamp does `av.open() → seek → decode → close`. For sorted timestamps
 we can: open one container per worker, seek to the earliest, then forward-decode through
@@ -228,8 +228,8 @@ def _open_with_hwaccel(path):
 
 #### 8. PyAV-based scene detection (replace OpenCV PySceneDetect)
 **Files**: new `python/mm/encoders/video/scene_detect_pyav.py`
-**Speedup**: 3–5× on scene detection → ~6s saved on each of `video-shots`,
-`video-shot-mosaic`, `video-summary`, `video-mosaic`.
+**Speedup**: 3–5× on scene detection → ~6s saved on each of `shots`,
+`shot-mosaic`, `summary`, `mosaic`.
 
 PySceneDetect uses OpenCV for its `ContentDetector`, which routes through OpenCV's own
 ffmpeg bindings (a second decode of the entire video) and computes HSV histograms on
@@ -247,7 +247,7 @@ class SceneDetectorObserver:
 reader.frames(timestamps, width=160, observers=[scene_detector])
 ```
 
-For `video-summary`, `video-mosaic`, `video-shots`, `video-shot-mosaic`, the dense
+For `summary`, `mosaic`, `shots`, `shot-mosaic`, the dense
 `frames()` call already touches every frame — scene detection is essentially free as
 a side observer.
 
@@ -267,7 +267,7 @@ candidates:
 Crates: `zune-jpeg` (encode) + `base64-simd` (Rust SIMD base64). PyO3 returns the
 `(bytes, "image/jpeg")` tuple already-base64-encoded; Python just str-decodes.
 
-For `video-shots` (608 frames) this saves ~1.0s. For `video-frames` (252 frames) it saves
+For `shots` (608 frames) this saves ~1.0s. For `frames` (252 frames) it saves
 ~0.4s.
 
 **Risk**: low–medium. JPEG encoding is well-trodden; the API surface is small.
@@ -285,7 +285,7 @@ Build on (8) — once we have HSV-diff in Python, port the inner loop to Rust. P
 
 #### 11. Skip base64 entirely for native-bytes providers
 **Files**: `python/mm/encoders/image.py` (`_image_part`)
-**Speedup**: 0.5–1s on `video-frames`, `video-shots-w-transcript` payload generation
+**Speedup**: 0.5–1s on `frames`, `shots-w-transcript` payload generation
 when the active profile is Gemini (or any provider that accepts raw bytes).
 
 Gemini's `inline_data` already accepts a base64 string in the wire format — we still
@@ -307,7 +307,7 @@ probe per call.
 
 1. **Land P0 #1, #2, #3 as a single PR** (PIL→reformat, JPEG subsampling, streaming).
    ~30 % win on every visual encoder. ~50 LOC change.
-2. **Land P0 #5 (parallel transcript)** as a second PR. -16s on `video-shots-w-transcript`,
+2. **Land P0 #5 (parallel transcript)** as a second PR. -16s on `shots-w-transcript`,
    -5s on the rest. ~30 LOC change.
 3. **Land P0 #4 (process-local cache)** as a third PR. Sets up the foundation for
    cross-encoder reuse. Add `lru_cache` on `probe`, scene detection, transcript. ~80 LOC.
@@ -323,22 +323,22 @@ If we land P0 #1, #2, #3, and #5 (parallel transcript), bakery.mp4 numbers proje
 
 | Encoder                          | Today |  After P0 |   Δ    |
 |:---------------------------------|------:|----------:|-------:|
-| `video-clips`                    |  37ms |     37ms  |    0%  |
-| `video-chunks`                   |  2.1s |     1.7s  |  -19%  |
-| `video-keyframes`                |  2.3s |     1.6s  |  -30%  |
-| `video-frames`                   |  4.3s |     2.9s  |  -33%  |
-| `video-mosaic`                   |  5.1s |     3.5s  |  -31%  |
-| `video-summary`                  |  5.3s |     3.7s  |  -30%  |
-| `video-shots`                    | 16.1s |    11.2s  |  -30%  |
-| `video-shot-mosaic`              | 22.8s |    14.5s  |  -36%  |
-| `video-frames-w-transcript`      | 81.7s |    76.5s  |   -6%  |
-| `video-shots-w-transcript`       | 92.2s |    76.5s  |  -17%  |
-| `video-shot-mosaic-w-transcript` |101.6s |    76.5s  |  -25%  |
-| `video-transcript`               | 78.9s |    78.9s  |    0%  |
+| `clips`                    |  37ms |     37ms  |    0%  |
+| `chunks`                   |  2.1s |     1.7s  |  -19%  |
+| `keyframes`                |  2.3s |     1.6s  |  -30%  |
+| `frames`                   |  4.3s |     2.9s  |  -33%  |
+| `mosaic`                   |  5.1s |     3.5s  |  -31%  |
+| `summary`                  |  5.3s |     3.7s  |  -30%  |
+| `shots`                    | 16.1s |    11.2s  |  -30%  |
+| `shot-mosaic`              | 22.8s |    14.5s  |  -36%  |
+| `frames-w-transcript`      | 81.7s |    76.5s  |   -6%  |
+| `shots-w-transcript`       | 92.2s |    76.5s  |  -17%  |
+| `shot-mosaic-w-transcript` |101.6s |    76.5s  |  -25%  |
+| `transcript`               | 78.9s |    78.9s  |    0%  |
 
 Adding P0 #4 (cache) makes second-and-onward invocations of the *same encoder*
 on the *same file* essentially instant (~10ms). For chained workflows
 (`mm cat -p shots,shot-mosaic`) that's another 30–50 % win.
 
-Adding P1 #8 (PyAV scene detection sharing decoded frames) drops `video-shots` and
-`video-shot-mosaic` further by ~3s each.
+Adding P1 #8 (PyAV scene detection sharing decoded frames) drops `shots` and
+`shot-mosaic` further by ~3s each.

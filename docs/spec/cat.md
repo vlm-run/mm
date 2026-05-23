@@ -37,18 +37,19 @@ Multi-file: `mm cat a.mp4 b.mp4 -y` runs each video sequentially; the same **≥
 
 | | fast (default) | accurate |
 |---|---|---|
-| Encoder | `mosaic` (4×4 grid, 128 frames, up to 8 mosaics) | `frames-transcript` (1fps, whisper medium, no speedup) |
+| Encoder | `mosaic` (4×4 grid, 128 frames, up to 8 mosaics) | `frames-w-transcript` (1fps, whisper medium, 2.0× speed) |
 | Output | 50-word description + tags | ~200-word summary + tags + scene breakdown |
 | Tokens | 512 max | 1536 max |
-| Audio | none | whisper medium, 1.0× speed |
+| Audio | none | whisper medium, 2.0× speed |
 
 ### Audio
 
 | | fast (default) | accurate |
 |---|---|---|
-| Encoder | `audio-transcribe` (whisper medium, 1.0×) | `audio-transcribe` (whisper medium, 1.0×) |
-| Output | raw timestamped transcript | ~80-word summary from transcript |
-| Tokens | — | 512 max |
+| Encoder | `transcribe` (whisper medium, 2.0×) | `transcribe` (whisper medium, 2.0×) |
+| Output | Whisper transcript | Whisper transcript |
+| LLM call | None — `transcribe` suppresses generate | None — `transcribe` suppresses generate |
+| For LLM output | Use `-p base64` (10-word description, 128 tok) | Use `-p base64` or `-p gemini` (full description, 1024 tok) |
 
 **Transcription backends** (auto-detected by priority, override via --encode.backend or `mm config set transcription.backend`):
 
@@ -70,9 +71,9 @@ Multi-file: `mm cat a.mp4 b.mp4 -y` runs each video sequentially; the same **≥
 
 | Name | Description |
 |---|---|
-| `audio-base64` | (default in `to_messages`) Raw base64-encoded audio for native VLM input |
-| `audio-transcribe` | Whisper transcript as text, supports `backend`/`base_url`/`api_key` kwargs |
-| `audio-gemini` | Pass audio file as a Gemini Part |
+| `base64` | (default in `to_messages`) Raw base64-encoded audio for native VLM input |
+| `transcribe` | Whisper transcript as text, supports `backend`/`base_url`/`api_key` kwargs |
+| `gemini` | Pass audio file as a Gemini Part |
 
 ### Document (PDF only)
 
@@ -112,7 +113,7 @@ pipeline
   └─ generate: ollama • 2.3s • 354→195 tokens
 ```
 
-- Encode-only pipelines (audio fast, document fast): single `└─` node
+- Encode-only pipelines (document fast): single `└─` node
 - Encode + generate: `├─` encode, `└─` generate
 - Generate line: `profile_name • elapsed • prompt→completion tokens`
 
@@ -190,7 +191,20 @@ Examples: `836ms • 38.2 KB • 45.7 KB/s`, `cached • 36ms • 412.8 KB • 7
 - Throughput auto-scales: B/s → KB/s → MB/s → GB/s
 - `cached` prefix when served from the extractions cache
 
+## Dry run
+
+`--dry-run` resolves and prints the pipeline that *would* run (encoder, strategy options, model, prompt) without executing it. No encoding, no LLM call, no cache writes.
+
+For passthrough kinds (text, code, `.docx`, `.pptx`) it emits a short header with the file size and a note that content would be passed through.
+
+```bash
+mm cat photo.png --dry-run            # show resolved image pipeline
+mm cat video.mp4 -m accurate --dry-run  # show accurate video pipeline
+mm cat notes.docx --dry-run           # passthrough preview
+```
+
 ## Introspection
 
 - `--list-pipelines`: show all built-in and user-override pipeline YAML files
 - `--list-encoders`: show all registered encoder strategies with parameters
+- `--dry-run`: resolve and display the pipeline without executing it

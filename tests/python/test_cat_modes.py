@@ -21,6 +21,7 @@ def _make_opts(mode: CatMode, **overrides: object) -> CatOpts:
         generate_overrides={},
         pipelines={},
         verbose=False,
+        dry_run=False,
     )
     defaults.update(overrides)
     return CatOpts(**defaults)

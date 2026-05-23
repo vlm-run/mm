@@ -119,7 +119,19 @@ class TranscriptionBackend(abc.ABC):
         beam_size: int = 1,
         audio_speed: float = 1.0,
     ) -> TranscriptionResult:
-        """Transcribe an audio file and return a result."""
+        """Transcribe an audio file and return a result.
+
+        Args:
+            audio_path: Path to the audio file to transcribe.
+            model: Model name; ``None`` picks the backend default.
+            language: ISO language code; ``None`` for auto-detection.
+            beam_size: Beam width for local backends (1 = greedy).
+            audio_speed: Speed multiplier applied to the audio *before*
+                this call. Timestamps returned by the transcription model
+                are in the sped-up timeline; backends multiply them by
+                ``audio_speed`` to restore original-file timestamps.
+                Pass ``1.0`` (default) when the audio has not been sped up.
+        """
 
     def clone_with_config(
         self,
@@ -215,3 +227,34 @@ def _reset() -> None:
     global _ACTIVE, _DETECTED
     _ACTIVE = None
     _DETECTED = False
+
+
+# Standard faster-whisper / Whisper model size identifiers.
+_WHISPER_SIZES: frozenset[str] = frozenset(
+    {
+        "tiny",
+        "tiny.en",
+        "base",
+        "base.en",
+        "small",
+        "small.en",
+        "medium",
+        "medium.en",
+        "large",
+        "large-v1",
+        "large-v2",
+        "large-v3",
+        "large-v3-turbo",
+        "turbo",
+        "distil-large-v2",
+        "distil-large-v3",
+        "distil-small.en",
+        "distil-medium.en",
+    }
+)
+
+
+def resolve_whisper_model(model: str | None) -> str:
+    if model and model in _WHISPER_SIZES:
+        return model
+    return "tiny"

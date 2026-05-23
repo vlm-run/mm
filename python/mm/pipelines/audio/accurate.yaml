@@ -2,8 +2,14 @@ kind: audio
 mode: accurate
 
 encode:
-  strategy: audio-transcribe
+  strategy: transcribe
   backend: openai
   model: nvidia/parakeet-tdt-0.6b-v3
   strategy_opts:
-    audio_speed: 1.0
+    audio_speed: 2.0
+
+generate:
+  prompt: >-
+    Describe the content of this audio in detail. Include what is spoken or heard,
+    key topics covered, the speaker's tone, and any notable sounds or context.
+  max_tokens: 1024

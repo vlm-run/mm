@@ -132,19 +132,26 @@ mm/
 │   │   └── video/
 │   │       └── shot_detection.py  # PySceneDetect wrapper (detect_scenes, sample_*)
 │   ├── encoders/               # Media encoders (file → VLM-ready Messages)
-│   │   ├── __init__.py         # Registry, @register_encoder, get()
-│   │   ├── audio.py            # transcribe (Whisper), audio-gemini
+│   │   ├── __init__.py         # Registry, register_encoder, get(name, kind)
+│   │   ├── base.py             # Encoder ABC + Message type
+│   │   ├── audio.py            # base64, transcribe, gemini
 │   │   ├── document/
-│   │   │   ├── __init__.py     # rasterize, rasterize-text (pypdfium2)
-│   │   │   └── page_text.py    # page-text (text extraction per page)
-│   │   ├── gemini.py           # video-gemini, video-gemini-chunked, document-gemini
-│   │   ├── image/              # Image encoders
-│   │   │   └── __init__.py     # resize, tile (overview + tile crops in one Message)
+│   │   │   ├── __init__.py     # (empty — encoders self-register on import)
+│   │   │   ├── page_text.py    # page-text (text extraction per page)
+│   │   │   └── rasterize.py    # rasterize, rasterize-text (pypdfium2)
+│   │   ├── gemini.py           # gemini, gemini-chunked (Gemini inline_data)
+│   │   ├── image.py            # resize, tile
 │   │   └── video/              # Video encoders
-│   │       ├── __init__.py     # frame-sample, video-chunk (ffmpeg-based)
-│   │       ├── frame_sample_transcript.py  # frames-transcript (frames + Whisper)
-│   │       ├── mosaic.py       # mosaic (scene-aware frame extraction + tiled grids)
-│   │       └── shot.py         # shot-frames + shot-mosaic (PySceneDetect-based)
+│   │       ├── __init__.py     # uniform_timestamps, uniform_timestamps_range helpers
+│   │       ├── captions.py     # captions
+│   │       ├── chunks.py       # chunks (overlapping time-based chunks)
+│   │       ├── clips.py        # clips, clips-w-transcript (base64 video clips)
+│   │       ├── frames.py       # frames, frames-w-transcript
+│   │       ├── keyframes.py    # keyframes, keyframes-w-transcript
+│   │       ├── mosaic.py       # mosaic, mosaic-w-transcript
+│   │       ├── shots.py        # shots, shots-w-transcript, shot-mosaic, shot-mosaic-w-transcript
+│   │       ├── summary.py      # summary, summary-w-transcript
+│   │       └── transcript.py   # transcript
 │   ├── pipelines/              # YAML-based MLLM generation pipelines
 │   │   ├── __init__.py         # Pipeline loading, caching, prompt rendering, overrides
 │   │   ├── schema.py           # Pydantic schema (Encode, Generate, PipelineSpec)
@@ -224,7 +231,7 @@ uv run mm <command> [args]
 |-----------|---------|-----------|
 | `find`    | Find/list files, tree view, schema | `--name`, `-i` (ignore case), `--kind`, `--ext`, `--min-size`, `--max-size`, `--sort`, `--columns`, `--tree`, `--depth`, `--schema`, `--limit`, `--no-ignore`, `--format` |
 | `peek`    | Raw file metadata (dimensions / EXIF / codec / mime / hash). | `--full` (include document author/title/subject/keywords/pages), `--format` (rich / json / pretty-json / tsv / csv) |
-| `cat`     | Content extraction (auto-detected by file type × mode) | `--mode fast/accurate` (default `fast`), `-p` (pipeline), `-n` (head/tail), `--encode.*`, `--generate.*`, `--format` |
+| `cat`     | Content extraction (auto-detected by file type × mode) | `--mode fast/accurate` (default `fast`), `-p` (pipeline), `-n` (head/tail), `--dry-run` (resolve pipeline without executing), `--encode.*`, `--generate.*`, `--format` |
 | `grep`    | Content search across files | `--kind`, `--ext`, `-C` (context), `--count`, `-i` (ignore case), `--no-ignore`, `--format` |
 | `sql`     | SQL on files, results, and chunks | `--dir`, `--format`, `--list-tables` |
 | `wc`      | Count files, size, lines (est.), tokens (est.) | `--kind`, `--by-kind`, `--format` |
@@ -239,7 +246,7 @@ The following commands were merged into the core commands:
 - `head` / `tail` → `cat -n 10` (head) / `cat -n -10` (tail)
 - `keyframes` → `cat video.mp4 -m accurate` (auto-generates mosaic)
 - `pages` → `cat document.pdf` (auto-extracts text)
-- `audio` → `cat audio.mp3 -m accurate` (transcript → LLM summary)
+- `audio` → `cat audio.mp3` (Whisper transcript; use `-p base64` or `-p gemini` for LLM description)
 - `ls` / `tree` / `describe` → `find` with `--tree`, `--schema`, `--columns`
 - `info` → `wc` (default summary panel)
 - `cat -m metadata` → `peek` (raw file metadata)
@@ -270,8 +277,8 @@ The following commands were merged into the core commands:
 - `mm cat file` — fast pipeline (default; passthrough text for code / non-PDF docs)
 - `mm cat file -n 20` — first 20 lines (head)
 - `mm cat file -n -20` — last 20 lines (tail)
-- `mm cat file -m fast` — kind's fast pipeline (image/video: short LLM caption; PDF: page-text via pypdfium2; audio: Whisper transcript; code/text/docx/pptx: passthrough)
-- `mm cat file -m accurate` — LLM-generated caption/description (image/video/audio/PDF); passthrough for code/text/docx/pptx
+- `mm cat file -m fast` — kind's fast pipeline (image/video: short LLM caption; PDF: page-text via pypdfium2; audio: Whisper transcript (no LLM); code/text/docx/pptx: passthrough)
+- `mm cat file -m accurate` — LLM-generated caption/description (image/video/PDF); audio: Whisper transcript only unless using `-p base64` or `-p gemini`; passthrough for code/text/docx/pptx
 - `mm cat video.mp4 -m accurate` — auto-generates keyframe mosaic → LLM description
 - `mm cat photo.png -p resize` — encode with named encoder
 - `mm cat photo.png -m accurate -p my-pipeline.yaml` — custom pipeline YAML
@@ -316,7 +323,7 @@ Columns (`files`): `uri`, `name`, `stem`, `ext`, `size`, `modified`, `created`, 
   kinds; passthrough handled directly by `cat_utils/extract_meta.py::extract_text`.
 - **cat accurate**: LLM-powered descriptions via OpenAI-compatible
   API. Images → VLM caption. Videos → mosaic → VLM description.
-  Audio → transcript → LLM summary. PDFs → page-text → LLM markdown
+  Audio → Whisper transcript only (default `transcribe` encoder suppresses LLM; use `-p base64` or `-p gemini` for LLM description). PDFs → page-text → LLM markdown
   structuring. Non-PDF documents and `kind=text` ignore mode and
   follow the same passthrough flow as fast. Requires a configured
   profile (`mm profile add/update`). Pipeline-driven via

@@ -197,7 +197,7 @@ mm cat photo.png --no-generate                                  # snapshot encod
 # --mode accurate: full LLM pipeline for image/video/audio/PDF (requires a configured profile)
 mm cat bench.jpg -m accurate                                    # LLM caption + tags + objects
 mm cat Timelapse.mp4 -m accurate                                # keyframe mosaic → LLM description
-mm cat mp3_44100Hz_320kbps_stereo.mp3 -m accurate               # Whisper transcript → LLM summary
+mm cat mp3_44100Hz_320kbps_stereo.mp3 -m accurate               # Whisper transcript only (use -p base64 or -p gemini for LLM description)
 mm cat wordpress-pdf-invoice-plugin-sample.pdf -m accurate      # LLM-structured invoice
 ```
 
@@ -257,7 +257,7 @@ messages: list[ChatCompletionMessageParam] = ctx.to_messages(
 )
 ```
 
-Unspecified kinds fall back to sensible defaults (`image-resize`, `video-mosaic`, `document-rasterize`, `audio-base64`).
+Unspecified kinds fall back to sensible defaults (`resize`, `mosaic`, `rasterize`, `base64`).
 
 ### Round-trip and resolve
 
@@ -390,7 +390,7 @@ mm cat notes.docx                                               # libreoffice-rs
 mm cat bench.jpg                                                # short VLM caption (fast pipeline)
 mm cat bench.jpg -m accurate                                    # full LLM caption + tags + objects
 mm cat Timelapse.mp4 -m accurate                                # mosaic → LLM description
-mm cat bench.jpg -p image-tile                                  # use named encoder
+mm cat bench.jpg -p tile                                  # use named encoder
 mm cat bench.jpg -m accurate -p my-pipeline.yaml                # custom pipeline YAML
 mm cat Timelapse.mp4 -m accurate --no-cache                     # force fresh LLM call
 mm cat bench.jpg -m accurate --no-generate                      # snapshot encoder output (no LLM)

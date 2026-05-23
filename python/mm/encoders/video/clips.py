@@ -4,10 +4,10 @@ Sends video content directly as base64-encoded clips rather than
 extracting individual frames.  Useful for models that accept video
 input natively.
 
-- ``video-clips``: Base64-encode video in uniform-duration chunks.
-- ``video-clips-w-transcript``: Same with Whisper transcript prepended.
+- ``clips``: Base64-encode video in uniform-duration chunks.
+- ``clips-w-transcript``: Same with Whisper transcript prepended.
 
-Uses PyAV for probing duration and ``mm.video.extract_segment`` for
+Uses PyAV for probing duration and ``mm.ffmpeg.extract_segment`` for
 stream-copy segment extraction (fastest available method).
 """
 
@@ -16,44 +16,56 @@ from __future__ import annotations
 import base64
 import logging
 import tempfile
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Any, Iterable
 
 from mm.constants import guess_mime
-from mm.encoders import Message, register
+from mm.encoders import register
+from mm.encoders.base import Encoder, Message
 from mm.encoders.image import _to_message
 from mm.encoders.video._transcript import encode_with_transcript
 
 logger = logging.getLogger(__name__)
 
+DEFAULT_CLIP_DURATION = 120
+DEFAULT_OVERLAP = 10
 
-class VideoClips:
+
+class VideoClips(Encoder):
     """Base64-encode video clips of uniform duration.
 
-    When ``duration`` is 0, -1, or not provided the entire video is sent
-    as a single base64-encoded clip.  Otherwise the video is split into
-    chunks of ``duration`` seconds and each is sent separately.
+    When ``duration`` is 0, -1, or not provided the video is clipped using
+    the default clip duration and each one processed as base64-encoded clip.
+    Otherwise the video is split into chunks of ``duration`` seconds and each
+    is processed separately.
 
     Kwargs:
-        duration: Clip length in seconds (default 0 = whole video).
+        duration: Clip length in seconds (default 120).
+        overlap: Overlap between clips in seconds (default 10).
         max_size_mb: Skip chunks exceeding this size in MB (default None).
+        mode: fast | accurate
     """
 
-    name: str = "video-clips"
-    media_types: tuple[str, ...] = ("video",)
+    name = "clips"
+    kind = "video"
 
     def encode(self, path: Path, **kwargs: Any) -> Iterable[Message]:
-        duration: int = kwargs.get("duration", 0)
-        max_size_mb: float | None = kwargs.get("max_size_mb", None)
+        from mm.video import probe, pyav_runnable
 
-        from mm.video import _pyav_available, probe
-
-        if not _pyav_available():
-            yield _to_message([{"type": "text", "text": f"[PyAV not available for {path.name}]"}])
+        if not pyav_runnable():
+            yield _to_message(
+                [
+                    {"type": "text", "text": f"[PyAV not runnable for {path.name}]"},
+                ]
+            )
             return
 
-        info = probe(path)
-        video_duration = info.duration
+        clip_duration: int = kwargs.get("duration", DEFAULT_CLIP_DURATION)
+        max_size_mb: float | None = kwargs.get("max_size_mb", None)
+        overlap: int = kwargs.get("overlap", DEFAULT_OVERLAP)
+        video_duration = probe(path).duration
+
         if video_duration <= 0:
             yield _to_message(
                 [{"type": "text", "text": f"[Cannot determine duration for {path.name}]"}]
@@ -61,11 +73,12 @@ class VideoClips:
             return
 
         mime: str = guess_mime(path.name)
-
-        if duration <= 0:
+        if video_duration <= clip_duration:
             yield from self._send_whole(path, video_duration, mime, max_size_mb)
         else:
-            yield from self._send_chunks(path, video_duration, duration, mime, max_size_mb)
+            yield from self._send_chunks(
+                path, video_duration, clip_duration, mime, max_size_mb, overlap
+            )
 
     def _send_whole(
         self,
@@ -94,14 +107,16 @@ class VideoClips:
             size_mb,
         )
 
-        b64 = base64.b64encode(data).decode()
         yield _to_message(
             [
                 {
                     "type": "text",
                     "text": f"Video clip of {path.name} (0.0s - {duration:.1f}s, {size_mb:.1f} MB):",
                 },
-                {"inline_data": {"mime_type": mime, "data": b64}},
+                {
+                    "type": "video_url",
+                    "video_url": {"url": f"data:{mime};base64,{base64.b64encode(data).decode()}"},
+                },
             ]
         )
 
@@ -112,21 +127,28 @@ class VideoClips:
         chunk_duration: int,
         mime: str,
         max_size_mb: float | None,
+        overlap: int,
     ) -> Iterable[Message]:
-        from mm.video import extract_segment
+        from mm.ffmpeg import extract_segment
 
         start: float = 0.0
-        chunk_idx: int = 0
+        step: int = max(chunk_duration - overlap, 1)
+        segments: list[tuple[float, float]] = []
+        while start < video_duration:
+            end = min(start + chunk_duration, video_duration)
+            segments.append((start, end))
+            start += step
 
         logger.debug(
-            "video_clips_chunked [path=%s, duration=%.1fs, chunk=%ds]",
+            "video_clips_chunked [path=%s, duration=%.1fs, chunk=%ds, segments=%d]",
             path.name,
             video_duration,
             chunk_duration,
+            len(segments),
         )
 
-        while start < video_duration:
-            end: float = min(start + chunk_duration, video_duration)
+        def _submit_fn(varg: tuple[int, tuple[float, float]]):
+            idx, (start, end) = varg
             with tempfile.NamedTemporaryFile(suffix=path.suffix, delete=False) as tmp:
                 seg_path = Path(tmp.name)
             try:
@@ -137,36 +159,38 @@ class VideoClips:
 
             size_mb = len(seg_data) / (1024 * 1024)
             if max_size_mb and size_mb > max_size_mb:
-                start = end
-                chunk_idx += 1
-                continue
+                return None
 
-            b64 = base64.b64encode(seg_data).decode()
-            yield _to_message(
+            return _to_message(
                 [
                     {
                         "type": "text",
                         "text": (
-                            f"Video clip {chunk_idx + 1} of {path.name} "
+                            f"Video clip {idx + 1} of {path.name} "
                             f"({start:.1f}s - {end:.1f}s, {size_mb:.1f} MB):"
                         ),
                     },
-                    {"inline_data": {"mime_type": mime, "data": b64}},
+                    {
+                        "type": "video_url",
+                        "video_url": {
+                            "url": f"data:{mime};base64,{base64.b64encode(seg_data).decode()}"
+                        },
+                    },
                 ]
             )
-            start = end
-            chunk_idx += 1
+
+        with ThreadPoolExecutor(max_workers=min(4, len(segments))) as pool:
+            yield from filter(None, pool.map(_submit_fn, enumerate(segments)))
 
 
-class VideoClipsWithTranscript:
+class VideoClipsWithTranscript(Encoder):
     """Base64 video clips with Whisper transcript prepended.
 
-    Kwargs: Same as ``VideoClips`` plus ``model``, ``language``,
-    ``audio_speed``.
+    Kwargs: Same as ``VideoClips`` plus ``model``, ``language``, ``audio_speed``.
     """
 
-    name: str = "video-clips-w-transcript"
-    media_types: tuple[str, ...] = ("video",)
+    name = "clips-w-transcript"
+    kind = "video"
 
     _visual = VideoClips()
 

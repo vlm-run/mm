@@ -9,10 +9,8 @@ from __future__ import annotations
 import base64
 import io
 
-import pytest
-from PIL import Image
-
 from mm.video import Frame
+from PIL import Image
 
 
 class TestFrameEncodeJpeg:
@@ -55,38 +53,25 @@ class TestEncoderRegistration:
         from mm.encoders import get
 
         expected = [
-            "video-frames",
-            "video-frames-w-transcript",
-            "video-mosaic",
-            "video-mosaic-w-transcript",
-            "video-shots",
-            "video-shots-w-transcript",
-            "video-shot-mosaic",
-            "video-shot-mosaic-w-transcript",
-            "video-clips",
-            "video-clips-w-transcript",
-            "video-chunks",
-            "video-keyframes",
-            "video-keyframes-w-transcript",
-            "video-summary",
-            "video-summary-w-transcript",
-            "video-captions",
-            "video-transcript",
+            "frames",
+            "frames-w-transcript",
+            "mosaic",
+            "mosaic-w-transcript",
+            "shots",
+            "shots-w-transcript",
+            "shot-mosaic",
+            "shot-mosaic-w-transcript",
+            "clips",
+            "clips-w-transcript",
+            "chunks",
+            "keyframes",
+            "keyframes-w-transcript",
+            "summary",
+            "summary-w-transcript",
+            "captions",
+            "transcript",
         ]
         for name in expected:
-            enc = get(name)
+            enc = get(name, "video")
             assert enc is not None, f"Encoder {name!r} not registered"
             assert hasattr(enc, "encode"), f"Encoder {name!r} has no encode method"
-
-    def test_old_names_not_registered(self):
-        from mm.encoders import get
-
-        for old_name in [
-            "frame-sample",
-            "shot-frames",
-            "shot-mosaic",
-            "video-frames-transcript",
-            "mosaic",
-        ]:
-            with pytest.raises(KeyError):
-                get(old_name)

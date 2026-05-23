@@ -1,3 +1,4 @@
+import dataclasses
 from pathlib import Path
 from typing import Any
 
@@ -7,42 +8,75 @@ from mm.cat_utils.base_utils import KIND_ORDER, CatOpts
 from mm.pipelines.schema import PipelineSpec
 
 
+def _apply_encoder_generate(spec: PipelineSpec, mode: str) -> PipelineSpec:
+    """Apply encoder-level generate override to the resolved pipeline spec.
+
+    If the encoder declares a ``generate`` field with an entry for *mode*,
+    that value replaces ``spec.generate`` regardless of what the YAML had.
+    A ``None`` entry suppresses the LLM call (passthrough);
+    a ``Generate`` instance replaces the YAML's generate block entirely.
+    Encoders with an empty ``generate`` field (the default) are left unchanged.
+    """
+    if not spec.encode.strategy:
+        return spec
+    from mm.encoders import get
+
+    enc = get(spec.encode.strategy, spec.kind)
+    generate_map = getattr(enc, "generate", {})
+    if not isinstance(generate_map, dict) or mode not in generate_map:
+        return spec
+
+    return dataclasses.replace(spec, generate=generate_map[mode])
+
+
 def resolve_pipeline(opts: CatOpts, kind: str) -> PipelineSpec:
     """Return a PipelineSpec from explicit -p pipelines or auto-resolve.
 
-    If -p specified a named encoder (stored under key '_encoder'), that
-    overrides for any kind. Validates that the encoder supports the
-    target media kind before applying it.
+    Resolution order:
+      1. ``-p <YAML file>`` keyed by kind
+      2. ``-p <encoder name>`` (stored under ``_encoder``): merges the
+         named encoder's encode config onto the base YAML pipeline
+      3. Built-in ``pipelines/{kind}/{mode}.yaml``
+
+    After resolving the YAML, encoder-level ``generate`` overrides are
+    applied via :func:`_apply_encoder_generate` so each encoder can
+    suppress or customise the generate step without touching the YAML.
     """
     from mm.pipelines import load
 
     if opts.pipelines:
         spec = opts.pipelines.get(kind)
         if spec is not None:
-            return spec
+            return _apply_encoder_generate(spec, opts.mode)
         encoder_spec = opts.pipelines.get("_encoder")
         if encoder_spec is not None and encoder_spec.encode.strategy:
             from mm.encoders import get
+            from mm.pipelines import deep_merge
+            from mm.pipelines.schema import Encode
 
-            enc = get(encoder_spec.encode.strategy)
-            if enc is not None:
-                supported = getattr(enc, "media_types", ())
-                if supported and kind not in supported:
-                    typer.echo(
-                        f"Warning: encoder '{encoder_spec.encode.strategy}' "
-                        f"supports {supported}, not '{kind}'. Falling back to default.",
-                        err=True,
-                    )
-                else:
-                    base = load(kind, opts.mode)
-                    return PipelineSpec(
-                        kind=base.kind,
-                        mode=base.mode,
-                        encode=encoder_spec.encode,
-                        generate=base.generate,
-                    )
+            try:
+                get(encoder_spec.encode.strategy, kind)
+            except KeyError:
+                typer.echo(
+                    f"Warning: encoder '{encoder_spec.encode.strategy}' "
+                    f"not available for kind '{kind}'. Falling back to default.",
+                    err=True,
+                )
+            else:
+                base = load(kind, opts.mode)
+                encode = Encode.from_dict(
+                    deep_merge(base.encode.to_dict(), encoder_spec.encode.to_dict())
+                )
+                spec = PipelineSpec(
+                    kind=base.kind,
+                    mode=base.mode,
+                    encode=encode,
+                    generate=base.generate,
+                )
+                return _apply_encoder_generate(spec, opts.mode)
 
-    return load(kind, opts.mode)
+    spec = load(kind, opts.mode)
+    return _apply_encoder_generate(spec, opts.mode)
 
 
 def build_pipeline_help() -> str:
@@ -92,7 +126,10 @@ def load_pipeline_args(pipeline_args: list[str]) -> dict[str, PipelineSpec]:
                     for spec in load_file(p):
                         specs[spec.kind] = spec
                 else:
-                    typer.echo(f"Warning: '{arg}' is not a known encoder or YAML file.", err=True)
+                    typer.echo(
+                        f"Warning: '{arg}' is not a known encoder or YAML file. Falling back to the default.",
+                        err=True,
+                    )
 
     return specs
 

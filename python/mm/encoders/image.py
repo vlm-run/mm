@@ -21,8 +21,8 @@ import logging
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Iterable, Union
 
-from mm.constants import IMAGE_EXTS
-from mm.encoders import Message, _resolve_provider, register
+from mm.encoders import resolve_provider, register
+from mm.encoders.base import Encoder, Message
 
 if TYPE_CHECKING:
     from PIL import Image
@@ -53,24 +53,6 @@ def _open_image_with_exif(path: Union[Path, str]) -> "Image.Image":
     except Exception:
         pass
     return img
-
-
-def _validate_image_path(path: Path) -> None:
-    """Raise early if *path* is not a readable image file.
-
-    Args:
-        path: Path to validate.
-
-    Raises:
-        FileNotFoundError: If the file does not exist.
-        ValueError: If the extension is not a recognised image type.
-    """
-    if not path.exists():
-        raise FileNotFoundError(f"Image not found: {path}")
-    if path.suffix.lower() not in IMAGE_EXTS:
-        raise ValueError(
-            f"Unsupported image type: {path.suffix}. Supported: {', '.join(sorted(IMAGE_EXTS))}"
-        )
 
 
 def _openai_image_part(b64: str, mime: str) -> dict[str, Any]:
@@ -180,92 +162,26 @@ def _pillow_resize(path: Path, max_width: int) -> dict[str, Any]:
     return {"base64": b64, "mime": mime, "width": w, "height": h}
 
 
-def _pillow_tile(path: Path, tile_size: int) -> list[dict[str, Any]]:
-    """Pillow fallback for image tiling.
-
-    Splits the image into ``tile_size x tile_size`` crops and encodes
-    each as base64.  Returns a single-element list when the image fits
-    within one tile.
-
-    Args:
-        path: Path to the source image.
-        tile_size: Maximum tile dimension in pixels.
-
-    Returns:
-        List of dicts with ``base64``, ``mime``, ``col``, ``row``,
-        ``total_cols``, ``total_rows``, ``width``, ``height``.
-    """
-    img = _open_image_with_exif(path)
-    w, h = img.size
-
-    if w <= tile_size and h <= tile_size:
-        b64, mime = _encode_pil_image(img, path)
-        return [
-            {
-                "base64": b64,
-                "mime": mime,
-                "col": 0,
-                "row": 0,
-                "total_cols": 1,
-                "total_rows": 1,
-                "width": w,
-                "height": h,
-            }
-        ]
-
-    cols: int = (w + tile_size - 1) // tile_size
-    rows: int = (h + tile_size - 1) // tile_size
-    tiles: list[dict[str, Any]] = []
-
-    for row_idx in range(rows):
-        for col_idx in range(cols):
-            x: int = col_idx * tile_size
-            y: int = row_idx * tile_size
-            tw: int = min(tile_size, w - x)
-            th: int = min(tile_size, h - y)
-            tile_img = img.crop((x, y, x + tw, y + th))
-            b64, mime = _encode_pil_image(tile_img, path)
-            tiles.append(
-                {
-                    "base64": b64,
-                    "mime": mime,
-                    "col": col_idx,
-                    "row": row_idx,
-                    "total_cols": cols,
-                    "total_rows": rows,
-                    "width": tw,
-                    "height": th,
-                }
-            )
-
-    logger.debug(
-        "pillow_tile [path=%s, %dx%d, tile_size=%d, tiles=%d]",
-        path.name,
-        w,
-        h,
-        tile_size,
-        len(tiles),
-    )
-    return tiles
-
-
-class ImageResize:
+class ImageResize(Encoder):
     """Resize an image to fit a bounding box, then base64 encode.
 
-    The default strategy.  Fits the image into a ``max_width x max_width``
+    The default strategy. Fits the image into a ``max_width x max_width``
     bounding box (default 1024 px) while preserving aspect ratio and EXIF
-    orientation.  Uses the Rust fast-path when available.
+    orientation. Uses the Rust fast-path when available.
 
     Kwargs:
         max_width: Maximum dimension in pixels (default 1024).
+        mode: fast | accurate.
+        generate_model: --generate.model CLI flag.
     """
 
-    name: str = "resize"
-    media_types: tuple[str, ...] = ("image",)
+    name = "resize"
+    kind = "image"
 
     def encode(self, path: Path, **kwargs: Any) -> Iterable[Message]:
         max_width: int = kwargs.get("max_width", 1024)
-        provider: str = _resolve_provider()
+        generate_model = kwargs.get("generate_model", None)
+        provider: str = resolve_provider(generate_model)
 
         try:
             from mm._mm import resize_image
@@ -278,7 +194,7 @@ class ImageResize:
         yield _to_message([part])
 
 
-class ImageTile:
+class ImageTile(Encoder):
     """Resize the full image + tile it, yielding overview and tiles in one Message.
 
     The Message contains:
@@ -290,16 +206,18 @@ class ImageTile:
     overview is returned (no redundant duplicate).
 
     Kwargs:
-        max_width: Pixel size for both tile dimension and overview
-            bounding box (default 1024).
+        max_width: Pixel size for both tile dimension and overview bounding box (default 1024).
+        mode: fast | accurate.
+        generate_model: --generate.model CLI flag.
     """
 
-    name: str = "tile"
-    media_types: tuple[str, ...] = ("image",)
+    name = "tile"
+    kind = "image"
 
     def encode(self, path: Path, **kwargs: Any) -> Iterable[Message]:
         max_width: int = kwargs.get("max_width", 1024)
-        provider: str = _resolve_provider()
+        generate_model = kwargs.get("generate_model", None)
+        provider: str = resolve_provider(generate_model)
 
         img = _open_image_with_exif(path)
         w, h = img.size

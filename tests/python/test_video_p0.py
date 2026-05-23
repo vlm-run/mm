@@ -22,15 +22,14 @@ import time
 from pathlib import Path
 
 import pytest
-from PIL import Image
-
+from mm.common.audio import transcribe_file
 from mm.common.video.shot_detection import (
     SceneResult,
     detect_scenes,
-    scenedetect_available,
 )
-from mm.encoders.video._transcript import encode_with_transcript, transcript_messages
+from mm.encoders.video._transcript import encode_with_transcript  # , transcript_messages
 from mm.video import Frame, VideoInfo, _resize_to_pil, probe
+from PIL import Image
 
 BAKERY = Path.home() / "data" / "mmbench-tiny" / "bakery.mp4"
 requires_bakery = pytest.mark.skipif(
@@ -38,9 +37,7 @@ requires_bakery = pytest.mark.skipif(
     reason="bakery.mp4 not found at ~/data/mmbench-tiny/",
 )
 
-# Every memoize_file-wrapped function exposes the same handle surface.
-# Iterating over them keeps test setup/teardown a one-liner.
-_CACHED = (probe, detect_scenes, transcript_messages)
+_CACHED = (probe, detect_scenes, transcribe_file)
 
 
 @pytest.fixture(autouse=True)
@@ -243,11 +240,6 @@ def _write_minimal_mp4(av_module, dest: Path, frames: int = 8) -> None:
 class TestSceneDetectCache:
     """P0 #4 — ``detect_scenes()`` is cached per (path, mtime, size, threshold, min_scene_len)."""
 
-    @pytest.fixture(autouse=True)
-    def _need_pyscenedetect(self):
-        if not scenedetect_available():
-            pytest.skip("PySceneDetect is not installed")
-
     def test_same_params_returns_equal_value(self):
         # ``detect_scenes`` is disk-backed, so the second call unpickles a
         # fresh object — identity (``is``) no longer holds, but value
@@ -287,97 +279,6 @@ class TestSceneDetectCache:
         assert detect_scenes.cache_info()["currsize"] >= 1
         detect_scenes.cache_clear()
         assert detect_scenes.cache_info()["currsize"] == 0
-
-
-class TestTranscriptCache:
-    """P0 #4 — Transcript helper caches via ``@memoize_file`` on the public
-    ``transcript_messages`` function.
-
-    The decorator's behaviour itself is exercised in ``test_cache.py``;
-    these tests verify the integration: that ``transcript_messages`` exposes
-    the standard ``cache_info`` / ``cache_clear`` handles and that its
-    cache key includes ``model``.
-    """
-
-    def test_exposes_cache_handles(self):
-        # Public surface contract — every memoize_file-wrapped function gets these.
-        assert callable(transcript_messages.cache_clear)
-        assert callable(transcript_messages.cache_info)
-
-    @staticmethod
-    def _stub_whisper(monkeypatch, *, available: bool = False) -> None:
-        """Make the transcript body terminate early without touching Whisper.
-
-        The body short-circuits on ``whisper_available() == False`` and returns
-        ``[]`` — that's the cleanest way to keep tests fast while still
-        exercising the real cached function (not a monkeypatched shim).
-        """
-        monkeypatch.setattr("mm.common.audio.transcribe_available", lambda: available)
-
-    def test_cache_hit_on_repeated_call(self, tmp_path, monkeypatch):
-        self._stub_whisper(monkeypatch)
-        clip = tmp_path / "fake.mp4"
-        clip.write_bytes(b"\x00\x00\x00\x18ftypisom")
-
-        a = transcript_messages(clip, model="tiny", language="auto", audio_speed=1.0)
-        b = transcript_messages(clip, model="tiny", language="auto", audio_speed=1.0)
-
-        info = transcript_messages.cache_info()
-        assert info["hits"] >= 1
-        assert info["misses"] == 1
-        assert info["currsize"] == 1
-        # Disk-backed cache rehydrates a fresh object — value equality
-        # plus the hit counter is the contract callers can rely on.
-        assert a == b == []
-
-    def test_cache_key_includes_model(self, tmp_path, monkeypatch):
-        self._stub_whisper(monkeypatch)
-        clip = tmp_path / "fake2.mp4"
-        clip.write_bytes(b"\x00\x00\x00\x18ftypisom")
-
-        a = transcript_messages(clip, model="tiny", language="auto", audio_speed=1.0)
-        b = transcript_messages(clip, model="medium", language="auto", audio_speed=1.0)
-        # Different models → separate cache entries.
-        assert transcript_messages.cache_info()["currsize"] == 2
-        # Same call should hit, not grow.
-        transcript_messages(clip, model="tiny", language="auto", audio_speed=1.0)
-        assert transcript_messages.cache_info()["currsize"] == 2
-        # Both empty because Whisper is stubbed unavailable.
-        assert a == b == []
-
-    def test_clear_cache_forces_rebuild(self, tmp_path, monkeypatch):
-        self._stub_whisper(monkeypatch)
-        clip = tmp_path / "fake3.mp4"
-        clip.write_bytes(b"\x00\x00\x00\x18ftypisom")
-
-        transcript_messages(clip, model="tiny", language="auto", audio_speed=1.0)
-        assert transcript_messages.cache_info()["currsize"] == 1
-        transcript_messages.cache_clear()
-        assert transcript_messages.cache_info() == {
-            "hits": 0,
-            "misses": 0,
-            "currsize": 0,
-            "maxsize": 16,
-        }
-
-    def test_mtime_change_invalidates(self, tmp_path, monkeypatch):
-        import os
-
-        self._stub_whisper(monkeypatch)
-        clip = tmp_path / "fake4.mp4"
-        clip.write_bytes(b"\x00\x00\x00\x18ftypisom")
-
-        transcript_messages(clip, model="tiny", language="auto", audio_speed=1.0)
-        before = transcript_messages.cache_info()["currsize"]
-
-        future = clip.stat().st_mtime + 100.0
-        os.utime(clip, (future, future))
-
-        transcript_messages(clip, model="tiny", language="auto", audio_speed=1.0)
-        after = transcript_messages.cache_info()["currsize"]
-
-        # New mtime → new cache entry, old one still present.
-        assert after == before + 1
 
 
 class TestEncodeWithTranscript:
@@ -453,7 +354,7 @@ class TestEncodeWithTranscript:
 
 @requires_bakery
 class TestStreamingMosaic:
-    """P0 #3 — ``video-mosaic`` streams via ``.batched()`` instead of ``.collect()``.
+    """P0 #3 — ``mosaic`` streams via ``.batched()`` instead of ``.collect()``.
 
     Verifies output remains identical (one Message containing N image parts).
     """
@@ -461,7 +362,7 @@ class TestStreamingMosaic:
     def test_default_run_yields_one_message(self):
         from mm.encoders import get
 
-        msgs = list(get("video-mosaic").encode(BAKERY))
+        msgs = list(get("mosaic", "video").encode(BAKERY))
         assert len(msgs) == 1
         parts = msgs[0]["content"]
         # 1 leading text part + N image parts.
@@ -475,7 +376,7 @@ class TestStreamingMosaic:
     def test_num_mosaics_kwarg_caps_emission(self):
         from mm.encoders import get
 
-        msgs = list(get("video-mosaic").encode(BAKERY, num_mosaics=2))
+        msgs = list(get("mosaic", "video").encode(BAKERY, num_mosaics=2))
         parts = msgs[0]["content"]
         image_parts = [p for p in parts if p.get("type") == "image_url"]
         assert len(image_parts) == 2
@@ -483,7 +384,7 @@ class TestStreamingMosaic:
     def test_each_mosaic_image_is_decodable(self):
         from mm.encoders import get
 
-        msgs = list(get("video-mosaic").encode(BAKERY, num_mosaics=1))
+        msgs = list(get("mosaic", "video").encode(BAKERY, num_mosaics=1))
         parts = msgs[0]["content"]
         image_parts = [p for p in parts if p.get("type") == "image_url"]
         url = image_parts[0]["image_url"]["url"]
@@ -495,20 +396,15 @@ class TestStreamingMosaic:
 
 @requires_bakery
 class TestBundledShots:
-    """P0 #3 — ``video-shots`` bundles all per-shot timestamps into one decode pass.
+    """P0 #3 — ``shots`` bundles all per-shot timestamps into one decode pass.
 
     Verifies one Message per shot with correctly-ordered frames inside each.
     """
 
-    @pytest.fixture(autouse=True)
-    def _need_pyscenedetect(self):
-        if not scenedetect_available():
-            pytest.skip("PySceneDetect is not installed")
-
     def test_one_message_per_shot(self):
         from mm.encoders import get
 
-        msgs = list(get("video-shots").encode(BAKERY, max_frames_per_shot=2))
+        msgs = list(get("shots", "video").encode(BAKERY, max_frames_per_shot=2))
         scenes = detect_scenes(BAKERY, threshold=27.0, min_scene_len=15)
         # Some shots may be skipped if their range produces no decodable frames,
         # so we allow ≤ but flag if we drop more than ~5%.
@@ -519,7 +415,7 @@ class TestBundledShots:
     def test_each_shot_has_text_then_images(self):
         from mm.encoders import get
 
-        msgs = list(get("video-shots").encode(BAKERY, max_frames_per_shot=2))
+        msgs = list(get("shots", "video").encode(BAKERY, max_frames_per_shot=2))
         for m in msgs[:5]:
             parts = m["content"]
             assert parts[0]["type"] == "text"
@@ -530,7 +426,7 @@ class TestBundledShots:
     def test_shot_mosaic_produces_one_image_per_shot(self):
         from mm.encoders import get
 
-        msgs = list(get("video-shot-mosaic").encode(BAKERY))
+        msgs = list(get("shot-mosaic", "video").encode(BAKERY))
         for m in msgs[:5]:
             parts = m["content"]
             text_parts = [p for p in parts if p.get("type") == "text"]
@@ -544,22 +440,17 @@ class TestCacheCrossEncoderReuse:
     """End-to-end check that running multiple encoders against the same file
     populates and reuses the caches as expected (P0 #4 integration)."""
 
-    @pytest.fixture(autouse=True)
-    def _need_pyscenedetect(self):
-        if not scenedetect_available():
-            pytest.skip("PySceneDetect is not installed")
-
     def test_probe_and_scene_caches_shared_across_encoders(self):
         from mm.encoders import get
 
-        list(get("video-mosaic").encode(BAKERY, num_mosaics=1))
+        list(get("mosaic", "video").encode(BAKERY, num_mosaics=1))
         probe_after_mosaic = probe.cache_info()["currsize"]
         scene_after_mosaic = detect_scenes.cache_info()["currsize"]
         scene_misses_before = detect_scenes.cache_info()["misses"]
 
         # A second encoder against the same file must NOT add new entries —
         # both probe and scene-detect should hit the cache.
-        list(get("video-shots").encode(BAKERY, max_frames_per_shot=1))
+        list(get("shots", "video").encode(BAKERY, max_frames_per_shot=1))
 
         assert probe.cache_info()["currsize"] == probe_after_mosaic
         assert detect_scenes.cache_info()["currsize"] == scene_after_mosaic

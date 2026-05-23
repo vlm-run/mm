@@ -14,14 +14,15 @@ import logging
 from pathlib import Path
 from typing import Any, Iterable
 
-from mm.encoders import Message, _resolve_provider, register
+from mm.encoders import register, resolve_provider
+from mm.encoders.base import Encoder, Message
 from mm.encoders.image import _image_part, _to_message
 from mm.encoders.video._transcript import encode_with_transcript
 
 logger = logging.getLogger(__name__)
 
 
-class VideoKeyframes:
+class VideoKeyframes(Encoder):
     """Extract I-frames (keyframes) from the video bitstream.
 
     Uses PyAV's ``skip_frame='NONKEY'`` to decode only I-frames in a
@@ -32,21 +33,23 @@ class VideoKeyframes:
         max_keyframes: Cap the number of keyframes (default None = all).
         max_width: Frame resize width in pixels (default 1024).
         max_keyframes_per_message: Keyframes per Message batch (default 16).
+        generate_model: --generate.model CLI flag.
     """
 
-    name: str = "video-keyframes"
-    media_types: tuple[str, ...] = ("video",)
+    name = "keyframes"
+    kind = "video"
 
     def encode(self, path: Path, **kwargs: Any) -> Iterable[Message]:
         max_keyframes: int | None = kwargs.get("max_keyframes", None)
         max_width: int = kwargs.get("max_width", 1024)
         max_keyframes_per_message: int = kwargs.get("max_keyframes_per_message", 16)
-        provider: str = _resolve_provider()
+        generate_model = kwargs.get("generate_model", None)
+        provider: str = resolve_provider(generate_model)
 
-        from mm.video import VideoReader, _pyav_available
+        from mm.video import VideoReader, pyav_runnable
 
-        if not _pyav_available():
-            yield _to_message([{"type": "text", "text": f"[PyAV not available for {path.name}]"}])
+        if not pyav_runnable():
+            yield _to_message([{"type": "text", "text": f"[PyAV not runnable for {path.name}]"}])
             return
 
         with VideoReader(path) as reader:
@@ -83,15 +86,14 @@ class VideoKeyframes:
                 yield _to_message(parts)
 
 
-class VideoKeyframesWithTranscript:
+class VideoKeyframesWithTranscript(Encoder):
     """Extract I-frames with Whisper transcript prepended.
 
-    Kwargs: Same as ``VideoKeyframes`` plus ``model``,
-    ``language``, ``audio_speed``.
+    Kwargs: Same as ``VideoKeyframes`` plus ``model``, ``language``, ``audio_speed``.
     """
 
-    name: str = "video-keyframes-w-transcript"
-    media_types: tuple[str, ...] = ("video",)
+    name = "keyframes-w-transcript"
+    kind = "video"
 
     _visual = VideoKeyframes()
 

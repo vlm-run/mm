@@ -1,8 +1,8 @@
 """Adaptive visual summary encoder.
 
 Selects a fixed budget of representative frames from a video using
-scene detection (when available) or uniform temporal spread.  Unlike
-``video-shots`` which returns ALL shots, this targets a compact
+scene detection (when available) or uniform temporal spread. Unlike
+``shots`` which returns ALL shots, this targets a compact
 fixed-size output suitable for long videos.
 
 Uses PyAV for in-process frame decoding — no subprocess or temp files.
@@ -14,7 +14,8 @@ import logging
 from pathlib import Path
 from typing import Any, Iterable
 
-from mm.encoders import Message, _resolve_provider, register
+from mm.encoders import register, resolve_provider
+from mm.encoders.base import Encoder, Message
 from mm.encoders.image import _image_part, _to_message
 from mm.encoders.video._transcript import encode_with_transcript
 
@@ -29,22 +30,15 @@ def _select_summary_timestamps(
 ) -> list[float]:
     """Pick N representative timestamps spread across the video."""
     if use_scene_detection:
-        try:
-            from mm.common.video.shot_detection import (
-                detect_scenes,
-                scenedetect_available,
-            )
+        from mm.common.video.shot_detection import detect_scenes
 
-            if scenedetect_available():
-                result = detect_scenes(path)
-                if result.scenes and len(result.scenes) > 1:
-                    midpoints = [(s + e) / 2 for s, e in result.scenes]
-                    if len(midpoints) <= num_frames:
-                        return midpoints
-                    step = len(midpoints) / num_frames
-                    return [midpoints[int(i * step)] for i in range(num_frames)]
-        except ImportError:
-            pass
+        result = detect_scenes(path)
+        if result.scenes and len(result.scenes) > 1:
+            midpoints = [(s + e) / 2 for s, e in result.scenes]
+            if len(midpoints) <= num_frames:
+                return midpoints
+            step = len(midpoints) / num_frames
+            return [midpoints[int(i * step)] for i in range(num_frames)]
 
     if num_frames <= 1:
         return [duration / 2]
@@ -52,48 +46,54 @@ def _select_summary_timestamps(
     return [step * (i + 1) for i in range(num_frames)]
 
 
-class VideoSummary:
+class VideoSummary(Encoder):
     """Adaptive N-frame visual summary of a video.
 
     Combines scene detection with temporal spread to select the most
-    representative frames.  Good for very long videos where a compact
+    representative frames. Good for very long videos where a compact
     overview is needed.
 
     Kwargs:
         num_frames: Number of frames in the summary (default 12).
         use_scene_detection: Try scene detection first (default True).
         max_width: Frame resize width in pixels (default 1024).
+        mode: fast | accurate.
+        generate_model: --generate.model CLI flag.
     """
 
-    name: str = "video-summary"
-    media_types: tuple[str, ...] = ("video",)
+    name = "summary"
+    kind = "video"
 
     def encode(self, path: Path, **kwargs: Any) -> Iterable[Message]:
+        from mm.video import VideoReader, pyav_runnable
+
+        if not pyav_runnable():
+            yield _to_message([{"type": "text", "text": f"[PyAV not runnable for {path.name}]"}])
+            return
+
         num_frames: int = kwargs.get("num_frames", 12)
         use_scene_detection: bool = kwargs.get("use_scene_detection", True)
         max_width: int = kwargs.get("max_width", 1024)
-        provider: str = _resolve_provider()
+        generate_model = kwargs.get("generate_model", None)
 
-        from mm.video import VideoReader, _pyav_available
-
-        if not _pyav_available():
-            yield _to_message([{"type": "text", "text": f"[PyAV not available for {path.name}]"}])
-            return
+        provider: str = resolve_provider(generate_model)
 
         with VideoReader(path) as reader:
-            duration = reader.duration
-            if duration <= 0:
+            video_duration = reader.duration
+            if video_duration <= 0:
                 yield _to_message(
                     [{"type": "text", "text": f"[Cannot determine duration for {path.name}]"}]
                 )
                 return
 
-            timestamps = _select_summary_timestamps(path, duration, num_frames, use_scene_detection)
+            timestamps = _select_summary_timestamps(
+                path, video_duration, num_frames, use_scene_detection
+            )
 
             logger.debug(
                 "video_summary [path=%s, duration=%.1fs, frames=%d, scene_detect=%s]",
                 path.name,
-                duration,
+                video_duration,
                 len(timestamps),
                 use_scene_detection,
             )
@@ -106,7 +106,7 @@ class VideoSummary:
                 )
                 return
 
-            mins, secs = divmod(duration, 60)
+            mins, secs = divmod(video_duration, 60)
             parts: list[dict[str, Any]] = [
                 {
                     "type": "text",
@@ -125,15 +125,14 @@ class VideoSummary:
             yield _to_message(parts)
 
 
-class VideoSummaryWithTranscript:
+class VideoSummaryWithTranscript(Encoder):
     """Adaptive video summary with Whisper transcript prepended.
 
-    Kwargs: Same as ``VideoSummary`` plus ``model``,
-    ``language``, ``audio_speed``.
+    Kwargs: Same as ``VideoSummary`` plus ``model``, ``language``, ``audio_speed``.
     """
 
-    name: str = "video-summary-w-transcript"
-    media_types: tuple[str, ...] = ("video",)
+    name = "summary-w-transcript"
+    kind = "video"
 
     _visual = VideoSummary()
 

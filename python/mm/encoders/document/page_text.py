@@ -1,4 +1,4 @@
-"""Document page-text encoder: structured text extraction per page.
+"""page-text encoder: structured text extraction per page.
 
 Extracts text from PDF pages via pypdfium2, and from office documents
 (docx/odt/pptx/odp/xlsx/ods) via the libreoffice-pure-backed
@@ -15,7 +15,8 @@ from pathlib import Path
 from typing import Any, Iterable, Optional
 
 from mm.constants import OFFICE_EXTS
-from mm.encoders import Message, register
+from mm.encoders import register
+from mm.encoders.base import Encoder, Message
 
 logger = logging.getLogger(__name__)
 
@@ -24,26 +25,27 @@ def _to_message(parts: list[dict[str, Any]]) -> Message:
     return {"role": "user", "content": parts}
 
 
-class DocumentPageText:
-    """Extract text from PDF / office docs, yield as text messages.
+class DocumentPageText(Encoder):
+    """Passthrough encoder — Extract text from PDF / office docs, yield as text messages.
 
     For PDFs, uses pypdfium2 to extract text page by page, batching
-    ``pages_per_message`` pages into each Message.  For office docs
+    ``pages_per_message`` pages into each Message. For office docs
     (docx/odt/pptx/odp/xlsx/ods), uses the libreoffice-pure–backed
     ``office_content`` and yields the full text in one Message.
 
     Kwargs:
-        pages_per_message: Pages per Message for PDFs (default 4).
+        pages_per_message: Pages per Message for PDFs (default 128).
         max_pages: Maximum pages to extract (default unlimited).
+        mode: fast | accurate.
     """
 
-    name: str = "page-text"
-    media_types: tuple[str, ...] = ("document",)
+    name = "page-text"
+    kind = "document"
+    generate = {"fast": None, "accurate": None}
 
     def encode(self, path: Path, **kwargs: Any) -> Iterable[Message]:
         pages_per_message: int = kwargs.get("pages_per_message", 128)
         max_pages: Optional[int] = kwargs.get("max_pages", None)
-
         ext = path.suffix.lower()
 
         if ext == ".pdf":
@@ -77,18 +79,7 @@ class DocumentPageText:
         pages_per_message: int,
         max_pages: Optional[int],
     ) -> Iterable[Message]:
-        try:
-            import pypdfium2 as pdfium
-        except ImportError:
-            yield _to_message(
-                [
-                    {
-                        "type": "text",
-                        "text": "[pypdfium2 not installed — pip install pypdfium2]",
-                    }
-                ]
-            )
-            return
+        import pypdfium2 as pdfium
 
         pdf = pdfium.PdfDocument(str(path))
         try:
@@ -97,14 +88,7 @@ class DocumentPageText:
                 total = min(total, max_pages)
 
             if total == 0:
-                yield _to_message(
-                    [
-                        {
-                            "type": "text",
-                            "text": f"[No pages in {path.name}]",
-                        }
-                    ]
-                )
+                yield _to_message([{"type": "text", "text": f"[No pages in {path.name}]"}])
                 return
 
             logger.debug("page_text [path=%s, pages=%d]", path.name, total)
@@ -159,14 +143,7 @@ class DocumentPageText:
             )
             return
 
-        yield _to_message(
-            [
-                {
-                    "type": "text",
-                    "text": f"Document {path.name}:\n\n{text}",
-                }
-            ]
-        )
+        yield _to_message([{"type": "text", "text": f"Document {path.name}:\n\n{text}"}])
 
 
 register(DocumentPageText())

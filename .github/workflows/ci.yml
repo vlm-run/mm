@@ -162,8 +162,47 @@ jobs:
           uv pip install -e ".[dev]"
       - run: make test-python-full
 
+  test-encoders:
+    needs: check-version
+    if: needs.check-version.outputs.changed == 'true'
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.11"]
+    steps:
+      - uses: actions/checkout@v6
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Python v-${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - uses: astral-sh/setup-uv@v4
+        with:
+          enable-cache: true
+          cache-dependency-glob: "pyproject.toml"
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: rust-stable
+          cache-on-failure: true
+
+      - name: Install dependencies and build Rust extension
+        run: |
+          uv venv --python ${{ matrix.python-version }}
+          uv pip install -e ".[dev]"
+      - run: uv run python scripts/test_encoders.py --kind image --kind document --mode fast --verbose
+
   tag:
-    needs: [check-version, lint, test-rust, test-python, test-python-full]
+    needs:
+      [
+        check-version,
+        lint,
+        test-rust,
+        test-python,
+        test-python-full,
+        test-encoders,
+      ]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.check-version.outputs.changed == 'true'
     runs-on: ubuntu-latest
     permissions:

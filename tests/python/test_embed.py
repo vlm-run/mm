@@ -186,6 +186,7 @@ class TestCatEmbedIntegration:
             generate_overrides={},
             pipelines={},
             verbose=False,
+            dry_run=False,
         )
 
         mock_db = MagicMock()

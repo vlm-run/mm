@@ -5,11 +5,12 @@ OpenAI-compatible Message dicts ready for chat/completions APIs. Each
 encoder is registered by name and referenced from pipeline YAMLs via
 the ``encode.strategy`` field.
 
-Custom encoders use the ``@register_encoder`` decorator::
+Built-in encoders extend the :class:`~mm.encoders.base.Encoder` ABC.
+Custom function-based encoders use the :func:`register_encoder` decorator::
 
     from mm.encoders import register_encoder
 
-    @register_encoder(name="my_custom", media_types=("image",))
+    @register_encoder(name="my_custom", kind="image")
     def my_custom(path, **kw):
         ...
         yield {"role": "user", "content": [...]}
@@ -26,8 +27,9 @@ import threading
 from pathlib import Path
 from typing import Any, Iterable, Protocol, runtime_checkable
 
-Message = dict[str, Any]
-"""OpenAI-compatible message dict: ``{"role": "user", "content": [...]}``."""
+from mm.encoders.base import Encoder, Message
+
+__all__ = ["Encoder", "Message", "MessageStrategy", "register", "register_encoder", "get"]
 
 
 @runtime_checkable
@@ -36,12 +38,11 @@ class MessageStrategy(Protocol):
 
     Attributes:
         name: Short identifier used with ``-s`` on the CLI.
-        media_types: Tuple of media kinds this strategy handles
-            (e.g. ``("image",)``, ``("video",)``).
+        kind: media kind this strategy handles (e.g. `"image"`, `"video"`).
     """
 
     name: str
-    media_types: tuple[str, ...]
+    kind: str
 
     def encode(self, path: Path, **kwargs: Any) -> Iterable[Message]:
         """Encode a media file into one or more Message dicts.
@@ -75,52 +76,40 @@ def register(strat: MessageStrategy) -> MessageStrategy:
     Returns:
         The same encoder, for use as a decorator return value.
     """
-    _REGISTRY[strat.name] = strat
+    _REGISTRY[f"{strat.kind}/{strat.name}"] = strat
     return strat
 
 
-_KIND_PREFIXES: tuple[str, ...] = ("image", "video", "audio", "document")
-
-
-def get(name: str) -> MessageStrategy:
+def get(name: str, kind: str) -> MessageStrategy:
     """Look up a registered encoder by name.
 
-    Accepts either the bare registry key (``"tile"``) or the
-    kind-prefixed display name shown by ``--list-encoders``
-    (``"image-tile"``). The prefix must match one of the encoder's
-    declared media types.
-
     Args:
-        name: Encoder identifier (e.g. ``"resize"`` or ``"image-resize"``).
+        name: Encoder name (e.g. ``"mosaic"``, ``"resize"``).
+        kind: Media kind. Required when ``name`` is shared across kinds
+            (e.g. ``"gemini"`` exists for audio, video, and document).
 
     Raises:
-        KeyError: If no encoder with that name is registered.
+        KeyError: If no encoder matches.
     """
     _ensure_discovered()
-    if name in _REGISTRY:
-        return _REGISTRY[name]
-    for prefix in _KIND_PREFIXES:
-        token = f"{prefix}-"
-        if name.startswith(token):
-            bare = name[len(token) :]
-            if bare in _REGISTRY and prefix in _REGISTRY[bare].media_types:
-                return _REGISTRY[bare]
-            break
-    available = ", ".join(sorted(_REGISTRY))
+    key = f"{kind}/{name}"
+    if key in _REGISTRY:
+        return _REGISTRY[key]
+    available = ", ".join(f"{k.split('/')[1]} [{k.split('/')[0]}]" for k in sorted(_REGISTRY))
     raise KeyError(f"Unknown encoder {name!r}. Available: {available}")
 
 
-def list_strategies(*, media_type: str | None = None) -> list[str]:
+def list_strategies(*, kind: str | None = None) -> list[str]:
     """Return sorted names of all registered encoders.
 
     Args:
-        media_type: If given, only return encoders that handle this
-            kind (``"image"``, ``"video"``, ``"document"``).
+        kind: If given, only return encoders that handle this
+            kind := (``"image"``, ``"audio"``, ``"video"``, ``"document"``).
     """
     _ensure_discovered()
-    if media_type is None:
-        return sorted(_REGISTRY)
-    return sorted(name for name, s in _REGISTRY.items() if media_type in s.media_types)
+    if kind is not None:
+        return sorted(enc.name for enc in _REGISTRY.values() if enc.kind == kind)
+    return sorted({enc.name for enc in _REGISTRY.values()})
 
 
 def _encoder_description(strat: MessageStrategy) -> str:
@@ -155,41 +144,37 @@ def _encoder_params(strat: MessageStrategy) -> list[tuple[str, str]]:
     return results
 
 
-def list_encoders_detail(*, media_type: str | None = None) -> list[dict[str, Any]]:
+def list_encoders_detail(*, kind: str | None = None) -> list[dict[str, Any]]:
     """Return structured info for all registered encoders.
 
-    Each entry contains ``name``, ``media_types``, ``description``, and
+    Each entry contains ``name``, ``kind``, ``description``, and
     ``params`` (list of ``(param_name, default_value)`` tuples).
     """
     _ensure_discovered()
     entries: list[dict[str, Any]] = []
-    for name in sorted(_REGISTRY):
-        s = _REGISTRY[name]
-        if media_type and media_type not in s.media_types:
+    for key in sorted(_REGISTRY):
+        s = _REGISTRY[key]
+        if kind and kind != s.kind:
             continue
-        media_prefix = s.media_types[0] if s.media_types else "unknown"
         entries.append(
             {
-                "name": name,
-                "prefixed_name": f"{media_prefix}-{name}"
-                if not name.startswith(media_prefix)
-                else name,
-                "media_types": s.media_types,
+                "name": s.name,
+                "kind": s.kind,
                 "description": _encoder_description(s),
                 "params": _encoder_params(s),
             }
         )
-    return sorted(entries, key=lambda e: e["prefixed_name"])
+    return sorted(entries, key=lambda e: (e["kind"], e["name"]))
 
 
 class _FunctionEncoder:
     """Adapts a bare generator function into a ``MessageStrategy``."""
 
-    __slots__ = ("name", "media_types", "_fn")
+    __slots__ = ("name", "kind", "_fn")
 
-    def __init__(self, name: str, media_types: tuple[str, ...], fn: Any) -> None:
+    def __init__(self, name: str, kind: str, fn: Any) -> None:
         self.name = name
-        self.media_types = media_types
+        self.kind = kind
         self._fn = fn
 
     def encode(self, path: Path, **kwargs: Any) -> Iterable[Message]:
@@ -197,10 +182,7 @@ class _FunctionEncoder:
         return result
 
 
-def register_encoder(
-    name: str | None = None,
-    media_types: tuple[str, ...] = ("image",),
-):
+def register_encoder(name: str, kind: str):
     """Decorator that turns a generator function into a registered encoder.
 
     The ``name`` is optional — if omitted, it is derived from the
@@ -208,25 +190,25 @@ def register_encoder(
 
     Examples::
 
-        @register_encoder(media_types=("image",))
+        @register_encoder(kind="image")
         def my_resize(path, **kw):
             ...
             yield {"role": "user", "content": [...]}
         # Registered as "my-resize"
 
-        @register_encoder(name="custom-name", media_types=("video",))
+        @register_encoder(name="custom-name", kind="video")
         def whatever(path, **kw):
             ...
 
     Args:
         name: Registry key.  Defaults to the function name with
             underscores replaced by hyphens.
-        media_types: Tuple of media kinds this encoder handles.
+        kind: kind this encoder handles.
     """
 
     def decorator(fn: Any) -> _FunctionEncoder:
         resolved_name = name if name is not None else fn.__name__.replace("_", "-")
-        s = _FunctionEncoder(resolved_name, media_types, fn)
+        s = _FunctionEncoder(resolved_name, kind, fn)
         register(s)
         return s
 
@@ -258,6 +240,13 @@ def load_strategy_file(path: Path) -> list[str]:
     if source_key in _LOADED_SOURCES:
         return _LOADED_SOURCES[source_key]
 
+    resolved = path.resolve()
+    for mod in sys.modules.values():
+        mod_file = getattr(mod, "__file__", None)
+        if mod_file and Path(mod_file).resolve() == resolved:
+            _LOADED_SOURCES[source_key] = []
+            return []
+
     before = set(_REGISTRY)
     module_name = f"mm_encoder_{path.stem}"
     spec = importlib.util.spec_from_file_location(module_name, str(path))
@@ -288,13 +277,14 @@ def _ensure_discovered() -> None:
 def _register_builtins() -> None:
     """Import built-in encoder modules so their classes self-register."""
     from mm.encoders import audio, document, gemini, image, video  # noqa: F401
-    from mm.encoders.document import page_text  # noqa: F401
+    from mm.encoders.document import page_text, rasterize  # noqa: F401
     from mm.encoders.video import (  # noqa: F401
         captions,
+        chunks,
+        clips,
         frames,
         keyframes,
         mosaic,
-        native,
         shots,
         summary,
         transcript,
@@ -346,7 +336,7 @@ def _user_encoders_dir() -> Path | None:
     return d if d.is_dir() else None
 
 
-def _resolve_provider() -> str:
+def resolve_provider(model: str | None = None) -> str:
     """Infer the message format from the active LLM profile.
 
     Returns:
@@ -354,9 +344,16 @@ def _resolve_provider() -> str:
         otherwise ``"openai"``.
     """
     try:
-        from mm.profile import get_active_profile_name
+        from mm.profile import get_active_profile_name, get_profile_by_name
 
         name = get_active_profile_name()
-        return "gemini" if "gemini" in name.lower() else "openai"
+        profile = get_profile_by_name(name)
+        _model = (model or profile["model"] or "").lower()
+
+        for kw in ("gemini", "google", "gemma"):
+            if kw in f"{name.lower()}:{(_model)}":
+                return "gemini"
     except Exception:
-        return "openai"
+        pass
+
+    return "openai"

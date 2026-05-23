@@ -24,8 +24,6 @@ from __future__ import annotations
 import base64
 import io
 import logging
-import subprocess
-import tempfile
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from pathlib import Path
@@ -157,30 +155,13 @@ class AudioResult:
     channels: int
 
 
-def _pyav_available() -> bool:
-    """Check if PyAV is importable."""
+def pyav_runnable() -> bool:
+    """Check if PyAV is runnable"""
     try:
         import av  # noqa: F401
 
         return True
-    except ImportError:
-        return False
-
-
-def ffmpeg_available() -> bool:
-    """Check if the ffmpeg CLI is on ``$PATH``.
-
-    Used to guard callers that still rely on ffmpeg subprocess
-    (audio extraction, segment stream-copy).
-    """
-    try:
-        subprocess.run(
-            ["ffmpeg", "-version"],
-            capture_output=True,
-            timeout=5,
-        )
-        return True
-    except (FileNotFoundError, subprocess.TimeoutExpired):
+    except (ImportError, OSError):
         return False
 
 
@@ -266,37 +247,6 @@ def _seek_and_decode_one(
         return Frame(timestamp=timestamp, image=Image.new("RGB", (1, 1)))
     finally:
         container.close()
-
-
-def _decode_timestamps_parallel(
-    path: str,
-    timestamps: list[float],
-    width: int | None,
-    max_workers: int,
-) -> Iterator[Frame]:
-    """Decode frames at timestamps using parallel seek.
-
-    Opens one container per worker thread for true parallelism.
-    Yields frames in timestamp order.
-    """
-    if not timestamps:
-        return
-
-    indexed = sorted(enumerate(timestamps), key=lambda x: x[1])
-
-    with ThreadPoolExecutor(max_workers=max_workers) as pool:
-        futures = [
-            (original_idx, pool.submit(_seek_and_decode_one, path, ts, width))
-            for original_idx, ts in indexed
-        ]
-
-    results: list[tuple[int, Frame]] = []
-    for original_idx, future in futures:
-        results.append((original_idx, future.result()))
-
-    results.sort(key=lambda x: x[0])
-    for _, frame in results:
-        yield frame
 
 
 def _decode_timestamps_batched(
@@ -506,112 +456,6 @@ def _decode_keyframes(
         container.close()
 
 
-def extract_audio(
-    video_path: str | Path,
-    *,
-    out_path: str | Path | None = None,
-    speed: float = 2.0,
-    sample_rate: int = 16000,
-    mono: bool = True,
-    fmt: str = "wav",
-) -> AudioResult:
-    """Extract audio track via ffmpeg CLI (stream copy + resample).
-
-    Kept as subprocess because ffmpeg stream-copy is 1.4x faster than
-    PyAV re-encoding for audio extraction with speed filters.
-    """
-    import os
-
-    video_path = Path(video_path)
-    if out_path is None:
-        suffix = f".{fmt}"
-        fd, tmp = tempfile.mkstemp(prefix="mm_audio_", suffix=suffix)
-        os.close(fd)
-        out_path = Path(tmp)
-    else:
-        out_path = Path(out_path)
-        out_path.parent.mkdir(parents=True, exist_ok=True)
-
-    af_filters: list[str] = []
-    if speed != 1.0:
-        if speed <= 2.0:
-            af_filters.append(f"atempo={speed}")
-        else:
-            remaining = speed
-            while remaining > 2.0:
-                af_filters.append("atempo=2.0")
-                remaining /= 2.0
-            if remaining > 1.0:
-                af_filters.append(f"atempo={remaining:.4f}")
-
-    channels = "1" if mono else "2"
-    codec_map = {"wav": "pcm_s16le", "mp3": "libmp3lame", "flac": "flac"}
-    codec = codec_map.get(fmt, "pcm_s16le")
-
-    cmd = [
-        "ffmpeg",
-        "-y",
-        "-i",
-        str(video_path),
-        "-vn",
-        "-ac",
-        channels,
-        "-ar",
-        str(sample_rate),
-        "-c:a",
-        codec,
-    ]
-    if af_filters:
-        cmd += ["-af", ",".join(af_filters)]
-    cmd.append(str(out_path))
-
-    result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
-    duration = _parse_duration(result.stderr)
-
-    return AudioResult(
-        path=out_path,
-        duration_s=duration / speed if duration > 0 else 0,
-        speed=speed,
-        sample_rate=sample_rate,
-        channels=1 if mono else 2,
-    )
-
-
-def extract_segment(
-    video_path: str | Path,
-    out_path: str | Path,
-    start_s: float,
-    end_s: float,
-) -> Path:
-    """Stream-copy a time segment via ffmpeg CLI.
-
-    Kept as subprocess because ffmpeg ``-c copy`` is ~23x faster than
-    PyAV re-encoding for segment extraction.
-    """
-    video_path = Path(video_path)
-    out_path = Path(out_path)
-    out_path.parent.mkdir(parents=True, exist_ok=True)
-
-    duration = end_s - start_s
-    cmd = [
-        "ffmpeg",
-        "-y",
-        "-ss",
-        f"{start_s:.3f}",
-        "-i",
-        str(video_path),
-        "-t",
-        f"{duration:.3f}",
-        "-c",
-        "copy",
-        "-avoid_negative_ts",
-        "make_zero",
-        str(out_path),
-    ]
-    subprocess.run(cmd, capture_output=True, check=True)
-    return out_path
-
-
 def tile_to_mosaic(
     images: list[Image.Image],
     *,
@@ -665,16 +509,3 @@ def probe_subtitle_streams(path: str | Path) -> list[dict[str, Any]]:
         return streams
     finally:
         container.close()
-
-
-def _parse_duration(stderr: str) -> float:
-    """Parse 'Duration: HH:MM:SS.ms' from ffmpeg stderr."""
-    for line in stderr.splitlines():
-        if "Duration:" in line:
-            parts = line.split("Duration:")[1].strip().split(",")[0].strip()
-            try:
-                h, m, s = parts.split(":")
-                return int(h) * 3600 + int(m) * 60 + float(s)
-            except (ValueError, IndexError):
-                pass
-    return 0.0

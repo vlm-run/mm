@@ -13,6 +13,7 @@ from mm.common.audio._base import (
     TranscriptionBackend,
     TranscriptionResult,
     TranscriptionSegment,
+    resolve_whisper_model,
 )
 
 _MODEL_CACHE: dict[str, Any] = {}
@@ -74,7 +75,7 @@ class CTranslate2Backend(TranscriptionBackend):
         beam_size: int = 1,
         audio_speed: float = 1.0,
     ) -> TranscriptionResult:
-        model = model or "tiny"
+        model = resolve_whisper_model(model)
         t0 = time.monotonic()
         device, _ = _get_device()
 
@@ -87,7 +88,7 @@ class CTranslate2Backend(TranscriptionBackend):
             vad_parameters={"min_silence_duration_ms": 500},
         )
 
-        ts_scale = audio_speed if audio_speed > 0 else 1.0
+        ts_scale = audio_speed
         segments: list[TranscriptionSegment] = []
         text_parts: list[str] = []
         for seg in segments_iter:

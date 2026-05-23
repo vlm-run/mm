@@ -7,7 +7,6 @@ from typing import Any
 
 import pytest
 import yaml
-
 from mm.pipelines import apply_overrides, deep_merge, load, render_prompt, run_pyfunc
 from mm.pipelines.schema import Encode, Generate, PipelineSpec, PipelineValidationError
 
@@ -185,12 +184,14 @@ class TestLoad:
     def test_load_audio_fast(self):
         spec = load("audio", "fast")
         assert spec.kind == "audio"
-        assert spec.generate is None
+        assert spec.generate is not None
+        assert spec.generate.max_tokens == 128
 
     def test_load_audio_accurate(self):
         spec = load("audio", "accurate")
         assert spec.kind == "audio"
-        assert spec.generate is None
+        assert spec.generate is not None
+        assert spec.generate.max_tokens == 1024
 
     def test_load_nonexistent_raises(self):
         with pytest.raises(FileNotFoundError, match="No pipeline"):
@@ -439,11 +440,10 @@ class TestApplyOverrides:
         assert result.encode.pyfunc == "my_filter.py"
 
     def test_generate_override_on_encode_only(self):
-        """Overriding generate on an encode-only spec creates the generate section."""
+        """Generate overrides are a no-op when the spec has no generate block."""
         spec = self._encode_only_spec()
         result = apply_overrides(spec, generate_overrides={"max_tokens": "512"})
-        assert result.generate is not None
-        assert result.generate.max_tokens == 512
+        assert result.generate is None
 
 
 class TestEncodeStrategyOpts:

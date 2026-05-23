@@ -518,3 +518,37 @@ def display_elapsed_wrapper(start_time: float, prefix: str | None = None):
             display_elapsed(start_time, total_bytes, cached, prefix=prefix)
 
     return check_exit, display_if_successful
+
+
+def root_progress():
+    if not _get_console().is_terminal:
+        return
+
+    import atexit
+
+    from rich.live import Live
+    from rich.spinner import Spinner
+
+    _real_stdout = sys.stdout
+    _live = Live(
+        Spinner("dots", style="green"),
+        console=_get_console(),
+        redirect_stdout=False,
+        transient=True,
+    )
+    _live.start()
+
+    class _StopOnWrite:
+        def write(self, s: str) -> int:
+            sys.stdout = _real_stdout
+            _live.stop()
+            return _real_stdout.write(s)
+
+        def flush(self) -> None:
+            _real_stdout.flush()
+
+        def __getattr__(self, name: str):
+            return getattr(_real_stdout, name)
+
+    sys.stdout = _StopOnWrite()
+    atexit.register(_live.stop)

@@ -2,8 +2,6 @@
 
 Provides ``VideoFrames`` (uniform frame extraction) and
 ``VideoFramesWithTranscript`` (frames + Whisper audio transcript).
-Refactored from the original ``VideoFrameSample`` and
-``VideoFrameSampleWithTranscript`` with the new ``video-*`` naming.
 
 Uses PyAV for in-process frame decoding — no subprocess or temp files.
 """
@@ -14,15 +12,16 @@ import logging
 from pathlib import Path
 from typing import Any, Iterable
 
-from mm.encoders import Message, _resolve_provider, register
+from mm.encoders import resolve_provider, register
+from mm.encoders.base import Encoder, Message
 from mm.encoders.image import _image_part, _to_message
-from mm.encoders.video import _uniform_timestamps
+from mm.encoders.video import uniform_timestamps
 from mm.encoders.video._transcript import encode_with_transcript
 
 logger = logging.getLogger(__name__)
 
 
-class VideoFrames:
+class VideoFrames(Encoder):
     """Extract frames at *fps* and batch them into Messages.
 
     Each yielded Message contains up to ``max_frames_per_message`` base64
@@ -32,22 +31,24 @@ class VideoFrames:
         fps: Frames per second to sample (default 1.0).
         max_width: Frame resize width in pixels (default 1024).
         max_frames_per_message: Frames per Message (default 16).
+        generate_model: --generate.model CLI flag.
     """
 
-    name: str = "video-frames"
-    media_types: tuple[str, ...] = ("video",)
+    name = "frames"
+    kind = "video"
 
     def encode(self, path: Path, **kwargs: Any) -> Iterable[Message]:
+        from mm.video import VideoReader, pyav_runnable
+
+        if not pyav_runnable():
+            yield _to_message([{"type": "text", "text": f"[PyAV not runnable for {path.name}]"}])
+            return
+
         fps: float = kwargs.get("fps", 1.0)
         max_width: int = kwargs.get("max_width", 1024)
         max_frames_per_message: int = kwargs.get("max_frames_per_message", 16)
-        provider: str = _resolve_provider()
-
-        from mm.video import VideoReader, _pyav_available
-
-        if not _pyav_available():
-            yield _to_message([{"type": "text", "text": f"[PyAV not available for {path.name}]"}])
-            return
+        generate_model = kwargs.get("generate_model", None)
+        provider: str = resolve_provider(generate_model)
 
         with VideoReader(path) as reader:
             duration = reader.duration
@@ -57,7 +58,7 @@ class VideoFrames:
                 )
                 return
 
-            timestamps: list[float] = _uniform_timestamps(duration, fps)
+            timestamps: list[float] = uniform_timestamps(duration, fps)
 
             max_total: int = max_frames_per_message * 8
             if len(timestamps) > max_total:
@@ -88,22 +89,22 @@ class VideoFrames:
                 yield _to_message(parts)
 
 
-class VideoFramesWithTranscript:
+class VideoFramesWithTranscript(Encoder):
     """Extract frames at *fps* **and** transcribe audio via Whisper.
 
     Yields a transcript Message first, then batches of frames identical
-    to ``VideoFrames``.  Falls back to frame-only output when Whisper
+    to ``VideoFrames``. Falls back to frame-only output when Whisper
     is unavailable.
 
     Kwargs:
         fps, max_width, max_frames_per_message: Same as ``VideoFrames``.
         model: Transcription model name (default chosen by backend).
         language: Language code or "auto" (default "auto").
-        audio_speed: Playback speed multiplier (default 1.0).
+        audio_speed: Playback speed multiplier (default 2.0).
     """
 
-    name: str = "video-frames-w-transcript"
-    media_types: tuple[str, ...] = ("video",)
+    name = "frames-w-transcript"
+    kind = "video"
 
     _visual = VideoFrames()
 

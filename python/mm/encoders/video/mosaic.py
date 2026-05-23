@@ -9,23 +9,24 @@ Uses PyAV for in-process frame decoding — no subprocess or temp files.
 
 from __future__ import annotations
 
-import io
 import base64
+import io
 import logging
 from pathlib import Path
 from typing import Any, Iterable
 
-from mm.encoders import Message, _resolve_provider, register
+from mm.encoders import register, resolve_provider
+from mm.encoders.base import Encoder, Message
 from mm.encoders.image import _image_part, _to_message
 
 logger = logging.getLogger(__name__)
 
 
-class VideoMosaic:
+class VideoMosaic(Encoder):
     """Build mosaic grids from video frames, one Message per mosaic.
 
     Uses scene detection (PySceneDetect) when available, falling back
-    to uniform temporal sampling.  Frames are tiled into ``tile_cols x
+    to uniform temporal sampling. Frames are tiled into ``tile_cols x
     tile_rows`` grids at ``thumb_width`` px per thumbnail.
 
     Kwargs:
@@ -34,24 +35,31 @@ class VideoMosaic:
         thumb_width: Per-frame thumbnail width in pixels (default 160).
         num_mosaics: Maximum number of mosaics to produce (default 8).
         num_frames: Total frames to sample before tiling (default 128).
+        mode: fast | accurate.
+        generate_model: --generate.model CLI flag.
     """
 
-    name: str = "video-mosaic"
-    media_types: tuple[str, ...] = ("video",)
+    name = "mosaic"
+    kind = "video"
 
     def encode(self, path: Path, **kwargs: Any) -> Iterable[Message]:
+        from mm.video import VideoReader, pyav_runnable, tile_to_mosaic
+
+        if not pyav_runnable():
+            yield _to_message(
+                [
+                    {"type": "text", "text": f"[PyAV not runnable for {path.name}]"},
+                ]
+            )
+            return
+
         tile_cols: int = kwargs.get("tile_cols", 4)
         tile_rows: int = kwargs.get("tile_rows", 4)
         thumb_width: int = kwargs.get("thumb_width", 160)
         num_mosaics: int = kwargs.get("num_mosaics", 8)
         num_frames: int = kwargs.get("num_frames", 128)
-        provider: str = _resolve_provider()
-
-        from mm.video import VideoReader, _pyav_available, tile_to_mosaic
-
-        if not _pyav_available():
-            yield _to_message([{"type": "text", "text": f"[PyAV not available for {path.name}]"}])
-            return
+        generate_model = kwargs.get("generate_model", None)
+        provider: str = resolve_provider(generate_model)
 
         with VideoReader(path) as reader:
             duration = reader.duration
@@ -127,25 +135,22 @@ def _get_timestamps(
             detect_scenes,
             sample_scene_timestamps,
             sample_uniform_timestamps,
-            scenedetect_available,
         )
 
-        if scenedetect_available():
-            result = detect_scenes(path)
-            if result.scenes:
-                return sample_scene_timestamps(result.scenes, num_frames)
-            return sample_uniform_timestamps(duration, num_frames)
+        result = detect_scenes(path)
+        if result.scenes:
+            return sample_scene_timestamps(result.scenes, num_frames)
         return sample_uniform_timestamps(duration, num_frames)
     except ImportError:
         step = duration / num_frames if num_frames > 0 else duration
         return [i * step for i in range(num_frames)]
 
 
-class VideoMosaicWithTranscript:
+class VideoMosaicWithTranscript(Encoder):
     """Build mosaic grids from video frames with Whisper transcript.
 
     Yields a transcript Message first, then mosaic grids identical
-    to ``VideoMosaic``.  Falls back to mosaic-only output when Whisper
+    to ``VideoMosaic``. Falls back to mosaic-only output when Whisper
     is unavailable.
 
     Kwargs:
@@ -153,11 +158,12 @@ class VideoMosaicWithTranscript:
             Same as ``VideoMosaic``.
         model: Transcription model name (default chosen by backend).
         language: Language code or "auto" (default "auto").
-        audio_speed: Playback speed multiplier (default 1.0).
+        audio_speed: Playback speed multiplier (default 2.0).
+        mode: fast | accurate.
     """
 
-    name: str = "video-mosaic-w-transcript"
-    media_types: tuple[str, ...] = ("video",)
+    name = "mosaic-w-transcript"
+    kind = "video"
 
     _visual = VideoMosaic()
 

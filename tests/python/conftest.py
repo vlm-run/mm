@@ -28,7 +28,7 @@ def active_profile() -> str:
     """Name of the LLM profile to pin for the duration of a test.
 
     Defaults to ``"ollama"`` — the built-in OpenAI-compatible profile.
-    It has no ``"gemini"`` substring, so ``mm.encoders._resolve_provider``
+    It has no ``"gemini"`` substring, so ``mm.encoders.resolve_provider``
     resolves to ``"openai"`` and encoders emit OpenAI-shaped content
     parts, matching what ``LlmBackend`` (OpenAI SDK) and
     ``refs_messages._adapt_part`` assume.
@@ -60,6 +60,13 @@ def use_active_profile(active_profile: str, monkeypatch) -> None:
     precedence within that module.
     """
     monkeypatch.setenv("MM_PROFILE", active_profile)
+    _stub = {
+        "name": active_profile,
+        "model": "test_model",
+        "base_url": "test_base_url",
+        "api_key": "noop",
+    }
+    monkeypatch.setattr("mm.profile.get_profile_by_name", lambda _n: _stub)
 
 
 def _sqlite_vec_available() -> bool:

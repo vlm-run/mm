@@ -101,7 +101,7 @@ column section breaks in the bench table:
   disabled (Internal Server Error from the gateway).
 * ``image-res`` (3 rows) -- client-side image-resolution sweep on
   ``qwen/qwen3.5-0.8b``: 512 / 1024 / 1536 px.
-* ``video-frames`` (3 rows) -- ``video_fps`` x ``video_max_frames``
+* ``frames`` (3 rows) -- ``video_fps`` x ``video_max_frames``
   sweep on ``qwen/qwen3.5-0.8b``.
 * ``cache`` (2 rows) -- cold (``--no-cache``) vs warm cache hit on
   the same prompt+model+file.
@@ -627,13 +627,13 @@ _IMAGE_RES: list[BenchCommand] = [
 ]
 
 
-# ── video-frames: fps × max_frames sweep on qwen ─────────────────────
+# ── frames: fps × max_frames sweep on qwen ─────────────────────
 
 
 _VIDEO_FRAMES: list[BenchCommand] = [
     BenchCommand(
         name=f"qwen/video-fps={fps}-max={max_frames}",
-        group="video-frames",
+        group="frames",
         cmd_template=(
             f"{_CAT} {{file}} {_BASE_FLAGS} --model {shlex.quote(QWEN)} "
             "--prompt 'Summarise what happens in this video in one sentence.' "

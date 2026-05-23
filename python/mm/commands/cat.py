@@ -191,7 +191,7 @@ def cat_cmd(
             help="Override LLM prompt template (alias: --generate.prompt)",
         ),
     ] = None,
-    model: Annotated[
+    generate_model: Annotated[
         Optional[str],
         typer.Option(
             "--model",
@@ -230,6 +230,17 @@ def cat_cmd(
     ] = None,
     # -- Utility --
     verbose: Annotated[bool, typer.Option("--verbose", "-v", help="Show progress bars")] = False,
+    dry_run: Annotated[
+        bool,
+        typer.Option(
+            "--dry-run",
+            help=(
+                "Snapshot the pipeline (encode + generate) that "
+                "*would* run, without executing it. For passthrough kinds "
+                "(text, code, .docx, .pptx), emit a short header/info block."
+            ),
+        ),
+    ] = False,
     yes: Annotated[
         bool,
         typer.Option(
@@ -249,7 +260,7 @@ def cat_cmd(
                                 fast (default)                  accurate
     Images:                     short VLM caption               full VLM caption + tags
     Videos:                     mosaic → short VLM              mosaic + transcript → VLM
-    Audio:                      Whisper transcript              transcript → LLM summary
+    Audio:                      Whisper transcript              Whisper transcript (no LLM; use -p base64/-p gemini for LLM)
     PDFs:                       page-text extraction            text → LLM markdown
     Non-PDF docs (.docx/.pptx): passthrough text (no LLM)       passthrough text (no LLM)
     Code / text:                passthrough text (no LLM)       passthrough text (no LLM)
@@ -265,7 +276,7 @@ def cat_cmd(
       mm cat photo.png                      # short VLM caption (fast pipeline)
       mm cat photo.png -m accurate          # full VLM description
       mm cat video.mp4 -m accurate          # mosaic → VLM
-      mm cat photo.png -p tile              # use named encoder
+      mm cat photo.png -p tile        # use named encoder
       mm cat photo.png -m accurate -p my-pipeline.yaml
                                             # custom pipeline YAML
       mm cat photo.png -m accurate --encode.strategy_opts max_width=768
@@ -375,7 +386,7 @@ def cat_cmd(
 
     gen_overrides: dict[str, Any] = collect_overrides(
         prompt=prompt,
-        model=model,
+        model=generate_model,
         max_tokens=generate_max_tokens,
         temperature=generate_temperature,
         json_mode=generate_json_mode,
@@ -406,6 +417,7 @@ def cat_cmd(
         generate_overrides=gen_overrides,
         pipelines=pipeline_specs,
         verbose=verbose,
+        dry_run=dry_run,
     )
 
     multi_file = len(paths) > 1
@@ -462,7 +474,7 @@ def cat_cmd(
                 if _emitted > 0:
                     output_console.print("\n====")
                 output_console.print(f"<{p.name}>")
-            _display_rich(p, content, mode, n)
+            _display_rich(p, content, mode, n, skip_formatting=dry_run)
             _emitted += 1
         else:
             if multi_file:
@@ -520,6 +532,8 @@ def _extract(path: Path, opts: CatOpts) -> str:
     global _was_cached
     kind = file_kind(path)
     ext = path.suffix.lower()
+    if opts.dry_run:
+        return _dry_run_preview(path, kind, ext, opts)
 
     if kind == "text" or (
         kind == "document"
@@ -549,9 +563,6 @@ def _extract(path: Path, opts: CatOpts) -> str:
     spec = resolve_pipeline(opts, kind)
     spec = apply_overrides(spec, opts.encode_overrides or None, opts.generate_overrides or None)
     eff_model = effective_model(spec, profile.model)
-
-    content_hash = get_content_hash(path)
-
     extra = override_extra(
         opts.encode_overrides,
         opts.generate_overrides,
@@ -559,6 +570,7 @@ def _extract(path: Path, opts: CatOpts) -> str:
     )
 
     extraction_id: str | None = None
+    content_hash = get_content_hash(path)
     if content_hash:
         from mm.store.utils import get_extraction_id
 
@@ -584,10 +596,6 @@ def _extract(path: Path, opts: CatOpts) -> str:
         else:
             db.evict_extraction(extraction_id)
 
-    # Each branch returns a RunResult carrying the rendered verbose tail
-    # (regardless of opts.verbose) so we can persist it for replay on a
-    # future cached + verbose run. The merged ``spec`` is threaded down so
-    # the LLM call sites read ``spec.generate.{model, extra_body}`` directly.
     if ext in OFFICE_EXTS and opts.mode == "accurate":
         with tempfile.TemporaryDirectory(prefix="mm-office-") as tmpdir:
             from mm._mm import office_to_pdf
@@ -741,10 +749,7 @@ def _accurate_dispatch(
 
 
 def _display_rich(
-    path: Path,
-    content: str,
-    mode: str,
-    n: int | None,
+    path: Path, content: str, mode: str, n: int | None, *, skip_formatting: bool = False
 ) -> None:
     from mm.display import output_console
 
@@ -752,32 +757,37 @@ def _display_rich(
     kind = file_kind(path)
     is_binary = kind in ("image", "document", "video", "audio") or "\x00" in content[:512]
 
-    if not is_binary and ext in (
-        "py",
-        "rs",
-        "js",
-        "ts",
-        "tsx",
-        "jsx",
-        "go",
-        "java",
-        "c",
-        "cpp",
-        "h",
-        "hpp",
-        "rb",
-        "sh",
-        "bash",
-        "zsh",
-        "yaml",
-        "yml",
-        "toml",
-        "json",
-        "md",
-        "html",
-        "css",
-        "sql",
-        "xml",
+    if (
+        not skip_formatting
+        and not is_binary
+        and ext
+        in (
+            "py",
+            "rs",
+            "js",
+            "ts",
+            "tsx",
+            "jsx",
+            "go",
+            "java",
+            "c",
+            "cpp",
+            "h",
+            "hpp",
+            "rb",
+            "sh",
+            "bash",
+            "zsh",
+            "yaml",
+            "yml",
+            "toml",
+            "json",
+            "md",
+            "html",
+            "css",
+            "sql",
+            "xml",
+        )
     ):
         from rich.syntax import Syntax
 
@@ -811,3 +821,63 @@ def _display_rich(
         output_console.print(syntax)
     else:
         output_console.print(content)
+
+
+def _dry_run_preview(path: Path, kind: str, ext: str, opts: CatOpts) -> str:
+    """Render the resolved pipeline for ``path × opts.mode`` without invoking it.
+    For passthrough kinds (``kind=text``, or non-PDF/non-office documents), emit a short header/info block.
+    """
+    from mm.constants import OFFICE_EXTS
+    from mm.display import format_size
+    from mm.pipelines import apply_overrides
+    from mm.pipelines.pipelines_utils import resolve_pipeline
+    from mm.profile import get_profile
+
+    is_passthrough = kind == "text" or (
+        kind == "document"
+        and (
+            (ext != ".pdf" and ext not in OFFICE_EXTS)
+            or (ext in OFFICE_EXTS and opts.mode != "accurate")
+        )
+    )
+    if is_passthrough:
+        size_str = format_size(path.stat().st_size)
+        header = f"\n# {path} (kind={kind}, mode={opts.mode}) — passthrough preview (--dry-run)"
+        info_lines = [
+            f"  ├─ size: {size_str}",
+            "  └─ passthrough: content emitted as-is \\[skipped via --dry-run]",
+        ]
+        return "\n".join(["[dim]", header, "passthrough", *info_lines, "[/dim]"])
+
+    spec = resolve_pipeline(opts, kind)
+    spec = apply_overrides(spec, opts.encode_overrides or None, opts.generate_overrides or None)
+    header = f"\n# {path} (kind={kind}, mode={opts.mode}) — pipeline preview (--dry-run)"
+
+    encode = spec.encode
+    strategy = encode.strategy or "<unspecified>"
+    enc_opts = encode.strategy_opts or {}
+    enc_opts_str = (
+        ", ".join(f"{k}={v}" for k, v in sorted(enc_opts.items())) if enc_opts else "<defaults>"
+    )
+
+    if spec.generate is not None:
+        gen = spec.generate
+        lines = (gen.prompt or "").strip().splitlines()
+        first_line = lines[0] if lines else ""
+        if len(first_line) > 60:
+            first_line = first_line[:60] + "…"
+
+        prompt_part = f' · prompt="{first_line}"' if first_line else ""
+        eff = gen.model or get_profile().model
+        gen_line = f"generate: model={eff}{prompt_part}  [skipped via --dry-run]"
+    else:
+        gen_line = "generate: <none>  [encode-only pipeline]"
+
+    if ext in OFFICE_EXTS and opts.mode == "accurate":
+        header += " [routes through office→PDF before encode]"
+
+    middle: list[str] = [f"  ├─ encode: {strategy} · {enc_opts_str}"]
+    if encode.pyfunc:
+        middle.append(f"  ├─ pyfunc: {encode.pyfunc}")
+
+    return "\n".join(["[dim]", header, "pipeline", *middle, f"  └─ {gen_line}", "[/dim]"])

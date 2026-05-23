@@ -212,8 +212,8 @@ messages: list[ChatCompletionMessageParam] = ctx.to_messages(
 )
 ```
 
-Unspecified kinds use sensible defaults (`image-resize`,
-`video-mosaic`, `document-rasterize`, `audio-base64`). Encoder names come from
+Unspecified kinds use sensible defaults (`resize`,
+`mosaic`, `rasterize`, `base64`). Encoder names come from
 the `mm.encoders` registry — see `--list-encoders`.
 
 User metadata is emitted as a leading text part per item

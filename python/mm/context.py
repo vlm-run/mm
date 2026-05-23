@@ -367,8 +367,7 @@ class Context:
                 labelled text parts.
             encoders: Per-kind encoder overrides, e.g. ``{"image": "tile",
                 "video": "mosaic"}``. Unspecified kinds fall back to
-                sensible defaults (``image-resize``, ``video-mosaic``,
-                ``document-rasterize``, ``audio-base64``).
+                sensible defaults (``resize``, ``mosaic``, ``rasterize``, ``base64``).
             encoder_kwargs: Per-kind keyword arguments forwarded to the
                 encoder's ``encode()`` method, e.g.
                 ``{"document": {"pages_per_message": 8}}``.
@@ -691,10 +690,10 @@ class Context:
 
         Args:
             path: Relative path within the context root.
-            strategy: Registered encoder name (e.g. ``"image-resize"``).
-                If ``None``, defaults to ``image-resize`` for images,
-                ``video-frames`` for video, ``document-rasterize``
-                for documents.
+            strategy: Registered encoder name (e.g. ``"resize"``).
+                If ``None``, defaults to ``resize`` for images,
+                ``mosaic`` for video, ``rasterize`` for documents,
+                and ``base64`` for audio.
             **kwargs: Forwarded to ``encoder.encode()``.
 
         Returns:
@@ -702,6 +701,7 @@ class Context:
         """
         self._require_table("encode")
         from mm.encoders import get as get_encoder
+        from mm.refs_messages import OPENAI_DEFAULT_ENCODERS
         from mm.utils import file_kind
 
         assert self.root is not None
@@ -709,15 +709,11 @@ class Context:
         if not full_path.exists():
             raise FileNotFoundError(f"{path} not found in {self.root}")
 
-        media_type = file_kind(full_path.name)
+        kind = file_kind(full_path.name)
         if strategy is None:
-            strategy = {
-                "image": "image-resize",
-                "video": "video-frames",
-                "document": "document-rasterize",
-            }.get(media_type, "image-resize")
+            strategy = OPENAI_DEFAULT_ENCODERS.get(kind, "resize")
 
-        strat = get_encoder(strategy)
+        strat = get_encoder(strategy, kind)
         return list(strat.encode(full_path, **kwargs))
 
     def grep(self, pattern: str, *, kind: str | None = None) -> list[dict[str, Any]]:
@@ -924,7 +920,7 @@ class Context:
             title: Optional title bar text. Defaults to an auto-generated
                 summary.
             encoders: Per-kind encoder overrides, e.g.
-                ``{"image": "image-tile", "video": "video-mosaic"}``.
+                ``{"image": "tile", "video": "mosaic"}``.
             encoder_kwargs: Per-kind kwargs forwarded to the encoder's
                 ``encode()`` method.
 
@@ -1000,12 +996,7 @@ def _classify_add_obj(
     Only ``str``, ``pathlib.Path``, and ``PIL.Image.Image`` are accepted.
     The tuple feeds directly into the Rust ``PyContext.add`` signature.
     """
-    try:
-        from PIL import Image as _PILImageMod  # noqa: PLC0415
-
-        _PILImage: Any = _PILImageMod
-    except ImportError:  # pragma: no cover - PIL is a hard dep in mm
-        _PILImage = None
+    from PIL import Image as _PILImage
 
     # PIL.Image
     if _PILImage is not None and isinstance(obj, _PILImage.Image):

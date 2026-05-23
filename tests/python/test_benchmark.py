@@ -147,14 +147,14 @@ def test_bench_audio_2x(benchmark, youtube_dir):
     if youtube_dir is None:
         pytest.skip("~/data/youtube not available")
 
-    from mm.ffmpeg import extract_audio, ffmpeg_available
+    from mm.ffmpeg import audio_transformer, ffmpeg_available
 
     if not ffmpeg_available():
         pytest.skip("ffmpeg not available")
 
     target = min(youtube_dir.glob("*.mp4"), key=lambda p: p.stat().st_size)
 
-    result = benchmark(extract_audio, target, speed=2.0)
+    result = benchmark(audio_transformer, target, speed=2.0)
     assert result.path.exists()
 
 

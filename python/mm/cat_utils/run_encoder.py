@@ -76,11 +76,16 @@ def _extract_llm_parts(msg: dict) -> list[dict]:
                 idata = part["inline_data"]
                 mime = idata.get("mime_type", "")
                 b64 = idata.get("data", "")
-                if mime.startswith("video/"):
-                    continue
-                parts.append(
-                    {"type": "image_url", "image_url": {"url": f"data:{mime};base64,{b64}"}}
-                )
+                if mime.startswith("image/"):
+                    parts.append(
+                        {"type": "image_url", "image_url": {"url": f"data:{mime};base64,{b64}"}}
+                    )
+                elif mime.startswith("video/"):
+                    parts.append(
+                        {"type": "video_url", "video_url": {"url": f"data:{mime};base64,{b64}"}}
+                    )
+                else:
+                    parts.append(part)
             else:
                 parts.append(part)
     elif isinstance(content, str):
@@ -94,13 +99,15 @@ def run_encoder(path: Path, kind: BinaryFileKind, spec: PipelineSpec, opts: CatO
 
     assert spec.encode.strategy is not None
     t_encode = time.monotonic()
-    strat = get_encoder(spec.encode.strategy)
+    strat = get_encoder(spec.encode.strategy, kind)
     encode_kwargs: dict[str, Any] = dict(spec.encode.strategy_opts)
+    opts_kwargs = {"mode": opts.mode, "generate_model": opts.generate_overrides.get("model")}
+
     if spec.encode.backend is not None:
         encode_kwargs.setdefault("backend", spec.encode.backend)
     if spec.encode.model is not None:
         encode_kwargs.setdefault("model", spec.encode.model)
-    messages = list(strat.encode(path, **encode_kwargs))
+    messages = list(strat.encode(path, **encode_kwargs, **opts_kwargs))
     encode_elapsed = (time.monotonic() - t_encode) * 1000
 
     if spec.generate is None:
@@ -127,8 +134,7 @@ def run_encoder(path: Path, kind: BinaryFileKind, spec: PipelineSpec, opts: CatO
     llm = make_llm_from_spec(spec)
     chunks: list[list[dict]] = []
     for msg in messages:
-        parts = _extract_llm_parts(msg)
-        if parts:
+        if parts := _extract_llm_parts(msg):
             chunks.append(parts)
 
     if not chunks:

@@ -17,45 +17,45 @@ Same Python process, MLX-Whisper model loaded lazily on first `-w-transcript` ro
 
 | # | Encoder                             |  Mean ms | Std ms |    Min |    Max | Msgs | Parts | Imgs | Payload | Peak alloc |
 |--:|:------------------------------------|---------:|-------:|-------:|-------:|-----:|------:|-----:|--------:|-----------:|
-| 1 | `video-clips`                       |       37 |      0 |     37 |     37 |    1 |     2 |    0 |   37.3M |    102.6M |
-| 2 | `video-chunks`                      |    2,145 |     15 |  2,135 |  2,156 |    7 |   119 |  112 |   11.4M |     21.9M |
-| 3 | `video-keyframes`                   |    2,278 |      2 |  2,276 |  2,279 |    6 |    92 |   86 |   10.0M |     15.0M |
-| 4 | `video-frames`                      |    4,270 |     20 |  4,257 |  4,284 |   16 |   269 |  253 |   29.4M |     38.5M |
-| 5 | `video-mosaic`                      |    5,126 |    205 |  4,981 |  5,271 |    1 |     6 |    5 |  418.5K |     10.9M |
-| 6 | `video-summary`                     |    5,306 |  1,265 |  4,411 |  6,200 |    1 |    25 |   12 |    1.6M |     10.7M |
-| 7 | `video-shots`                       |   16,074 |    631 | 15,628 | 16,521 |   76 |   684 |  608 |   69.1M |     80.0M |
-| 8 | `video-shot-mosaic`                 |   22,770 |    376 | 22,504 | 23,035 |   76 |   152 |   76 |    6.4M |     25.2M |
-| 9 | `video-captions` (whisper fallback) |   78,284 |    777 | 77,734 | 78,834 |    1 |     1 |    0 |    4.4K |    229.6M |
-|10 | `video-transcript`                  |   78,898 |    866 | 78,286 | 79,511 |    1 |     1 |    0 |    4.4K |    229.6M |
-|11 | `video-clips-w-transcript`          |   79,392 |  2,216 | 77,825 | 80,959 |    2 |     3 |    0 |   37.3M |    229.6M |
-|12 | `video-keyframes-w-transcript`      |   80,489 |  1,434 | 79,476 | 81,503 |    7 |    93 |   86 |   10.0M |    229.6M |
-|13 | `video-frames-w-transcript`         |   81,716 |    514 | 81,353 | 82,080 |   17 |   270 |  253 |   29.4M |    229.6M |
-|14 | `video-summary-w-transcript`        |   82,636 |    577 | 82,228 | 83,044 |    2 |    26 |   12 |    1.6M |    229.6M |
-|15 | `video-mosaic-w-transcript`         |   82,851 |    585 | 82,438 | 83,265 |    2 |     7 |    5 |  422.9K |    229.6M |
-|16 | `video-shots-w-transcript`          |   92,221 |    634 | 91,772 | 92,669 |   77 |   685 |  608 |   69.1M |    229.6M |
-|17 | `video-shot-mosaic-w-transcript`    |  101,647 |  1,829 |100,354 |102,941 |   77 |   153 |   76 |    6.4M |    229.6M |
+| 1 | `clips`                       |       37 |      0 |     37 |     37 |    1 |     2 |    0 |   37.3M |    102.6M |
+| 2 | `chunks`                      |    2,145 |     15 |  2,135 |  2,156 |    7 |   119 |  112 |   11.4M |     21.9M |
+| 3 | `keyframes`                   |    2,278 |      2 |  2,276 |  2,279 |    6 |    92 |   86 |   10.0M |     15.0M |
+| 4 | `frames`                      |    4,270 |     20 |  4,257 |  4,284 |   16 |   269 |  253 |   29.4M |     38.5M |
+| 5 | `mosaic`                      |    5,126 |    205 |  4,981 |  5,271 |    1 |     6 |    5 |  418.5K |     10.9M |
+| 6 | `summary`                     |    5,306 |  1,265 |  4,411 |  6,200 |    1 |    25 |   12 |    1.6M |     10.7M |
+| 7 | `shots`                       |   16,074 |    631 | 15,628 | 16,521 |   76 |   684 |  608 |   69.1M |     80.0M |
+| 8 | `shot-mosaic`                 |   22,770 |    376 | 22,504 | 23,035 |   76 |   152 |   76 |    6.4M |     25.2M |
+| 9 | `captions` (whisper fallback) |   78,284 |    777 | 77,734 | 78,834 |    1 |     1 |    0 |    4.4K |    229.6M |
+|10 | `transcript`                  |   78,898 |    866 | 78,286 | 79,511 |    1 |     1 |    0 |    4.4K |    229.6M |
+|11 | `clips-w-transcript`          |   79,392 |  2,216 | 77,825 | 80,959 |    2 |     3 |    0 |   37.3M |    229.6M |
+|12 | `keyframes-w-transcript`      |   80,489 |  1,434 | 79,476 | 81,503 |    7 |    93 |   86 |   10.0M |    229.6M |
+|13 | `frames-w-transcript`         |   81,716 |    514 | 81,353 | 82,080 |   17 |   270 |  253 |   29.4M |    229.6M |
+|14 | `summary-w-transcript`        |   82,636 |    577 | 82,228 | 83,044 |    2 |    26 |   12 |    1.6M |    229.6M |
+|15 | `mosaic-w-transcript`         |   82,851 |    585 | 82,438 | 83,265 |    2 |     7 |    5 |  422.9K |    229.6M |
+|16 | `shots-w-transcript`          |   92,221 |    634 | 91,772 | 92,669 |   77 |   685 |  608 |   69.1M |    229.6M |
+|17 | `shot-mosaic-w-transcript`    |  101,647 |  1,829 |100,354 |102,941 |   77 |   153 |   76 |    6.4M |    229.6M |
 
 ## Throughput per encoder (bakery.mp4 = 252.7s of video)
 
 | Encoder                          | Wall time | **Real-time multiplier** | Cost breakdown |
 |:---------------------------------|----------:|-------------------------:|:---------------|
-| `video-clips`                    |     0.04s |              **6,840×**  | probe + read bytes + base64 |
-| `video-chunks`                   |     2.1s  |                **120×**  | 7 × 16 frames seek/decode |
-| `video-keyframes`                |     2.3s  |                **111×**  | single-pass demux + I-frame decode |
-| `video-frames`                   |     4.3s  |                 **59×**  | 252 frames (1 fps) seek/decode |
-| `video-mosaic`                   |     5.1s  |                 **49×**  | scene-detect + 128 frames + Pillow tile |
-| `video-summary`                  |     5.3s  |                 **48×**  | scene-detect + 12 frames |
-| `video-shots`                    |    16.1s  |                 **16×**  | scene-detect + 76 × 8 frames |
-| `video-shot-mosaic`              |    22.8s  |                 **11×**  | scene-detect + 76 × 16 frames + 76 mosaics |
-| `video-captions`                 |    78.3s  |                **3.2×**  | Whisper (no embedded subs in bakery.mp4) |
-| `video-transcript`               |    78.9s  |                **3.2×**  | Whisper only |
-| `video-clips-w-transcript`       |    79.4s  |                **3.2×**  | clips + Whisper |
-| `video-keyframes-w-transcript`   |    80.5s  |                **3.1×**  | keyframes + Whisper |
-| `video-frames-w-transcript`      |    81.7s  |                **3.1×**  | frames + Whisper |
-| `video-summary-w-transcript`     |    82.6s  |                **3.1×**  | summary + Whisper |
-| `video-mosaic-w-transcript`      |    82.9s  |                **3.0×**  | mosaic + Whisper |
-| `video-shots-w-transcript`       |    92.2s  |                **2.7×**  | shots + Whisper |
-| `video-shot-mosaic-w-transcript` |   101.6s  |                **2.5×**  | shot-mosaic + Whisper |
+| `clips`                    |     0.04s |              **6,840×**  | probe + read bytes + base64 |
+| `chunks`                   |     2.1s  |                **120×**  | 7 × 16 frames seek/decode |
+| `keyframes`                |     2.3s  |                **111×**  | single-pass demux + I-frame decode |
+| `frames`                   |     4.3s  |                 **59×**  | 252 frames (1 fps) seek/decode |
+| `mosaic`                   |     5.1s  |                 **49×**  | scene-detect + 128 frames + Pillow tile |
+| `summary`                  |     5.3s  |                 **48×**  | scene-detect + 12 frames |
+| `shots`                    |    16.1s  |                 **16×**  | scene-detect + 76 × 8 frames |
+| `shot-mosaic`              |    22.8s  |                 **11×**  | scene-detect + 76 × 16 frames + 76 mosaics |
+| `captions`                 |    78.3s  |                **3.2×**  | Whisper (no embedded subs in bakery.mp4) |
+| `transcript`               |    78.9s  |                **3.2×**  | Whisper only |
+| `clips-w-transcript`       |    79.4s  |                **3.2×**  | clips + Whisper |
+| `keyframes-w-transcript`   |    80.5s  |                **3.1×**  | keyframes + Whisper |
+| `frames-w-transcript`      |    81.7s  |                **3.1×**  | frames + Whisper |
+| `summary-w-transcript`     |    82.6s  |                **3.1×**  | summary + Whisper |
+| `mosaic-w-transcript`      |    82.9s  |                **3.0×**  | mosaic + Whisper |
+| `shots-w-transcript`       |    92.2s  |                **2.7×**  | shots + Whisper |
+| `shot-mosaic-w-transcript` |   101.6s  |                **2.5×**  | shot-mosaic + Whisper |
 
 ## Compared to PR's pre-rebase numbers (M3 Max, 260421)
 
@@ -65,16 +65,16 @@ no encoder regressed.
 
 | Encoder                | PR #83 (ms) | Rebased (ms) | Δ      |
 |------------------------|------------:|-------------:|-------:|
-| `video-clips`          |          88 |           37 |  -58%  |
-| `video-chunks`         |       1,906 |        2,145 |  +13%  |
-| `video-keyframes`      |       1,978 |        2,278 |  +15%  |
-| `video-summary`        |       4,368 |        5,306 |  +21%  |
-| `video-frames`         |       3,963 |        4,270 |   +8%  |
-| `video-mosaic`         |       4,512 |        5,126 |  +14%  |
-| `video-shots`          |      16,112 |       16,074 |   ~0%  |
-| `video-shot-mosaic`    |      21,139 |       22,770 |   +8%  |
+| `clips`          |          88 |           37 |  -58%  |
+| `chunks`         |       1,906 |        2,145 |  +13%  |
+| `keyframes`      |       1,978 |        2,278 |  +15%  |
+| `summary`        |       4,368 |        5,306 |  +21%  |
+| `frames`         |       3,963 |        4,270 |   +8%  |
+| `mosaic`         |       4,512 |        5,126 |  +14%  |
+| `shots`          |      16,112 |       16,074 |   ~0%  |
+| `shot-mosaic`    |      21,139 |       22,770 |   +8%  |
 
-(Negative = faster than PR; the only large drift is `video-clips` which got faster after
+(Negative = faster than PR; the only large drift is `clips` which got faster after
 rebasing — consistent with running on a freshly imported Python process where probe is
 skipped on `_pyav_available()` cache hit.)
 
@@ -84,18 +84,18 @@ Decomposing the wall-time line items reveals where time is actually spent:
 
 ```
                        PyAV decode  Scene-det  Pillow   Whisper  Audio extr
-video-frames               4.3s         —         —         —         —
-video-mosaic               4.3s        ~0.6s    ~0.2s        —         —
-video-shots               13.5s         2s        —         —         —
-video-shot-mosaic         13.5s         2s     ~7.3s       —         —
-video-keyframes            2.3s         —         —         —         —
-video-summary              4.0s        ~0.7s     —         —         —
-video-clips                <0.1s        —         —         —         —
-video-chunks               2.0s         —         —         —         —
+frames               4.3s         —         —         —         —
+mosaic               4.3s        ~0.6s    ~0.2s        —         —
+shots               13.5s         2s        —         —         —
+shot-mosaic         13.5s         2s     ~7.3s       —         —
+keyframes            2.3s         —         —         —         —
+summary              4.0s        ~0.7s     —         —         —
+clips                <0.1s        —         —         —         —
+chunks               2.0s         —         —         —         —
 
-video-frames-w-transcript  4.3s        —         —        76.4s    ~1.0s
-video-shots-w-transcript  13.5s        2s        —        75.7s    ~1.0s
-video-transcript            —          —         —        77.9s    ~1.0s
+frames-w-transcript  4.3s        —         —        76.4s    ~1.0s
+shots-w-transcript  13.5s        2s        —        75.7s    ~1.0s
+transcript            —          —         —        77.9s    ~1.0s
 ```
 
 (Scene detection is *not* cached across encoders — it runs from scratch in
@@ -104,7 +104,7 @@ video-transcript            —          —         —        77.9s    ~1.0s
 ## Observations
 
 1. **Whisper is the elephant**: every `-w-transcript` variant pays a ~78s tax for a
-   252s video, regardless of how cheap the visual encoder is. Even `video-clips`
+   252s video, regardless of how cheap the visual encoder is. Even `clips`
    (37ms by itself) becomes 79s when wrapped.
 2. **Sequential, not parallel**: `encode_with_transcript()` does
    `yield from transcript_messages(); yield from visual_encode_fn()`. On Apple
@@ -113,7 +113,7 @@ video-transcript            —          —         —        77.9s    ~1.0s
 3. **Scene detection is duplicated**: `shots`, `shot-mosaic`, `summary`, `mosaic` each
    run `detect_scenes()` from scratch. No sharing across encoders, no caching across
    invocations of the same encoder.
-4. **Per-frame seek dominates dense extraction**: `video-frames` extracts 252 frames
+4. **Per-frame seek dominates dense extraction**: `frames` extracts 252 frames
    each via `open container → seek → decode forward → close`. A single forward
    sequential pass should be ~2-4× faster.
 5. **Pillow JPEG encode + base64** runs serially after every decode. Each frame:

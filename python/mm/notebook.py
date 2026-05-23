@@ -81,7 +81,7 @@ def render_context(
         max_image_width: Maximum rendered width for images in pixels.
         title: Optional title bar text.
         encoders: Per-kind encoder overrides, e.g.
-            ``{"image": "image-tile", "video": "video-mosaic"}``.
+            ``{"image": "tile", "video": "mosaic"}``.
         encoder_kwargs: Per-kind kwargs forwarded to the encoder's
             ``encode()`` method.
 
@@ -464,9 +464,9 @@ def _render_native_video(path: Path, scope: str, max_width: int) -> str:
     info_parts = [mime, _fmt_bytes(file_size)]
 
     try:
-        from mm.video import VideoReader, _pyav_available
+        from mm.video import VideoReader, pyav_runnable
 
-        if _pyav_available():
+        if pyav_runnable():
             with VideoReader(path) as reader:
                 dur = reader.duration
                 w, h = reader.width, reader.height

@@ -7,7 +7,6 @@ import struct
 from typing import Any
 
 from mm.notebook import (
-    _Stats,
     _classify_part,
     _collapse_extras,
     _css,
@@ -27,6 +26,7 @@ from mm.notebook import (
     _render_stats,
     _render_text_part,
     _split_encoded_parts,
+    _Stats,
     render_context,
     render_messages,
 )
@@ -36,8 +36,9 @@ TINY_B64 = base64.b64encode(b"\x89PNG\r\n\x1a\n" + b"\x00" * 20).decode()
 
 def _make_valid_png(w: int = 100, h: int = 80) -> bytes:
     """Create a valid PNG file with actual pixel data using PIL."""
-    from PIL import Image as PILImage
     import io
+
+    from PIL import Image as PILImage
 
     img = PILImage.new("RGB", (w, h), color=(128, 200, 255))
     buf = io.BytesIO()
@@ -423,7 +424,7 @@ class TestRenderContext:
         assert "<details" not in result
 
     def test_encoded_renders_for_image_with_tiles(self, tmp_path):
-        """Image with multiple encoded parts (e.g. image-tile) is informative."""
+        """Image with multiple encoded parts (e.g. tile) is informative."""
         from mm.notebook import _render_encoded_section, _Stats
 
         parts = [_image_part(), _image_part(), _image_part()]

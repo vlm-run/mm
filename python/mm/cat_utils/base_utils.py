@@ -3,7 +3,7 @@ import os
 import sys
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any, Iterator, Literal
 
 import typer
 
@@ -27,6 +27,7 @@ class CatOpts:
         "generate_overrides",
         "pipelines",
         "verbose",
+        "dry_run",
     )
 
     n: int | None
@@ -39,10 +40,23 @@ class CatOpts:
     generate_overrides: dict[str, str]
     pipelines: dict[str, PipelineSpec]
     verbose: bool
+    dry_run: bool
 
-    def __init__(self, **kwargs: object) -> None:
+    def __init__(self, **kwargs) -> None:
         for k, v in kwargs.items():
             setattr(self, k, v)
+
+    def __iter__(self) -> Iterator[str]:
+        return iter(self.__slots__)
+
+    def __getitem__(self, key: str) -> Any:
+        return getattr(self, key)
+
+    def keys(self) -> tuple[str, ...]:
+        return self.__slots__
+
+    def items(self) -> Iterator[tuple[str, Any]]:
+        yield from ((k, getattr(self, k)) for k in self.__slots__)
 
 
 @dataclass(slots=True)
@@ -114,12 +128,7 @@ def spec_extra_body(spec: PipelineSpec) -> dict[str, Any] | None:
 
 
 def make_llm_from_spec(spec: PipelineSpec) -> Any:
-    """Build an ``LlmBackend`` honouring any pipeline/CLI-merged model override.
-
-    Reads ``spec.generate.model`` (which already reflects CLI ``--model`` /
-    ``--generate.model`` overrides via ``apply_overrides``); falls back to
-    the active profile's default model when unset.
-    """
+    """Build an ``LlmBackend`` honouring any pipeline/CLI-merged model override."""
     from mm.llm import LlmBackend
 
     model = spec.generate.model if spec.generate is not None else None

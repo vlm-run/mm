@@ -165,7 +165,7 @@ mm cat FILE... [-m fast|accurate] [-p PIPELINE]... [-n N] [-o DIR]
 |------|----------------|----------|
 | Image | short VLM caption | full VLM caption + tags |
 | Video | mosaic → short VLM | frames + transcript → VLM |
-| Audio | Whisper transcript (no LLM) | transcript → LLM summary |
+| Audio | transcript → 10-word description | transcript → detailed LLM description |
 | PDF | page-text via pypdfium2 (no LLM) | page-text → LLM markdown |
 | `.docx` / `.pptx` | passthrough text | passthrough text |
 | code / text | passthrough text | passthrough text |
@@ -191,6 +191,7 @@ mm cat FILE... [-m fast|accurate] [-p PIPELINE]... [-n N] [-o DIR]
 | `--generate.temperature` | Sampling temperature. |
 | `--generate.json-mode` | Request JSON response (`true`/`false`). |
 | `--generate.extra-body` | JSON object deep-merged into OpenAI `extra_body` (CLI keys win). |
+| `--dry-run` | Resolve and display the pipeline without executing it. |
 | `--list-pipelines` | List built-in pipelines and exit. |
 | `--list-encoders` | List registered encoders and exit. |
 | `--print-pipeline KIND/MODE` | Print built-in pipeline YAML (e.g. `image/accurate`). |
@@ -200,7 +201,7 @@ mm cat FILE... [-m fast|accurate] [-p PIPELINE]... [-n N] [-o DIR]
 # Default fast mode
 mm cat photo.png                                  # short VLM caption
 mm cat video.mp4                                  # mosaic → short VLM
-mm cat audio.mp3                                  # Whisper transcript only
+mm cat audio.mp3                                  # Whisper transcript → 10-word description
 mm cat paper.pdf                                  # page-text (pypdfium2)
 mm cat src/main.py                                # passthrough text
 mm cat notes.docx                                 # libreoffice-rs passthrough
@@ -216,7 +217,7 @@ mm cat <file> -n 20                               # first 20 lines
 mm cat <file> -n -10                              # last 10 lines
 
 # Pipelines
-mm cat photo.png   -p image-tile
+mm cat photo.png   -p tile
 mm cat *.jpg *.mp4 -p image.yaml -p video.yaml    # multi-kind
 mm cat --list-pipelines
 mm cat --list-encoders
@@ -230,18 +231,22 @@ mm cat audio.mp3 -m accurate --encode.backend mlx                 # force MLX tr
 mm cat audio.mp3 -m accurate --encode.backend ctranslate2         # force ctranslate2
 mm cat audio.mp3 -m accurate --encode.backend openai              # force OpenAI-compatible endpoint
 mm cat audio.mp3 -m accurate --encode.model whisper-1             # override transcription model
+
+# Dry run (resolve pipeline without executing)
+mm cat photo.png --dry-run
+mm cat video.mp4 -m accurate --dry-run
 ```
 
 ### Override surfaces (right-most wins)
 
 ```
-profile (mm.toml)  →  pipeline YAML (generate.*)  →  CLI flags
-  base_url             prompt                          --prompt / --generate.prompt
-  api_key              model                           --model  / --generate.model
-  model (default)      max_tokens                      --generate.max-tokens
-                       temperature                     --generate.temperature
-                       json_mode                       --generate.json-mode
-                       extra_body (deep-merged)        --generate.extra-body
+profile (mm.toml)  →  pipeline YAML (generate.*)  →  encoder generate[mode]  →  CLI flags
+  base_url             prompt                          prompt (if set)              --prompt / --generate.prompt
+  api_key              model                           model (if set)               --model  / --generate.model
+  model (default)      max_tokens                      (None = suppress LLM)        --generate.max-tokens
+                       temperature                                                  --generate.temperature
+                       json_mode                                                    --generate.json-mode
+                       extra_body (deep-merged)                                     --generate.extra-body
 ```
 
 `base_url` and `api_key` are profile-only. The merged `model` + `extra_body` participate in the L2 cache key.
@@ -250,33 +255,33 @@ profile (mm.toml)  →  pipeline YAML (generate.*)  →  CLI flags
 
 | Name | Kind | Notes |
 |------|------|-------|
-| `image-resize` | image | **Default.** Fit to bbox (default 1024 px). |
-| `image-tile` | image | Resized overview + tile crops in one Message. |
-| `video-frames` | video | Frames at `fps` (ffmpeg). |
-| `video-frames-w-transcript` | video | Frames + Whisper transcript (accurate-mode default). |
-| `video-keyframes` | video | I-frames from bitstream. |
-| `video-keyframes-w-transcript` | video | + transcript. |
-| `video-mosaic` | video | Mosaic grids from sampled frames (fast-mode default). |
-| `video-mosaic-w-transcript` | video | + transcript. |
-| `video-shots` | video | PySceneDetect → frames per shot. |
-| `video-shots-w-transcript` | video | + transcript. |
-| `video-shot-mosaic` | video | PySceneDetect → mosaic per shot. |
-| `video-shot-mosaic-w-transcript` | video | + transcript. |
-| `video-chunks` | video | Overlapping time-based chunks. |
-| `video-clips` | video | Base64 video clips of uniform duration. |
-| `video-clips-w-transcript` | video | + transcript. |
-| `video-summary` | video | Adaptive N-frame summary. |
-| `video-summary-w-transcript` | video | + transcript. |
-| `video-captions` | video | Embedded subtitle stream (falls back to Whisper). |
-| `video-transcript` | video | Whisper transcript only. |
-| `video-gemini` / `video-gemini-chunked` | video | Gemini `inline_data` Part(s). |
-| `audio-base64` | audio | **Default (Python API).** Raw `input_audio` part. |
-| `audio-transcribe` | audio | Whisper transcript (`backend`/`base_url`/`api_key` kwargs). |
-| `audio-gemini` | audio | Gemini Part. |
-| `document-page-text` | document | Per-page text (PDF/DOCX/PPTX). |
-| `document-rasterize` | document | Render PDF pages as images. |
-| `document-rasterize-text` | document | Rasterize + extract text, interleaved. |
-| `document-gemini` | document | Gemini Part. |
+| `resize` | image | **Default.** Fit to bbox (default 1024 px). |
+| `tile` | image | Resized overview + tile crops in one Message. |
+| `frames` | video | Frames at `fps` (ffmpeg). |
+| `frames-w-transcript` | video | Frames + Whisper transcript (accurate-mode default). |
+| `keyframes` | video | I-frames from bitstream. |
+| `keyframes-w-transcript` | video | + transcript. |
+| `mosaic` | video | Mosaic grids from sampled frames (fast-mode default). |
+| `mosaic-w-transcript` | video | + transcript. |
+| `shots` | video | PySceneDetect → frames per shot. |
+| `shots-w-transcript` | video | + transcript. |
+| `shot-mosaic` | video | PySceneDetect → mosaic per shot. |
+| `shot-mosaic-w-transcript` | video | + transcript. |
+| `chunks` | video | Overlapping time-based chunks. |
+| `clips` | video | Base64 video clips of uniform duration. |
+| `clips-w-transcript` | video | + transcript. |
+| `summary` | video | Adaptive N-frame summary. |
+| `summary-w-transcript` | video | + transcript. |
+| `captions` | video | Embedded subtitle stream (falls back to Whisper). |
+| `transcript` | video | Whisper transcript only. |
+| `gemini` / `gemini-chunked` | video | Gemini `inline_data` Part(s). |
+| `base64` | audio | **Default (Python API).** Raw `input_audio` part. |
+| `transcribe` | audio | Whisper transcript (`backend`/`base_url`/`api_key` kwargs). |
+| `gemini` | audio | Gemini Part. |
+| `page-text` | document | Per-page text (PDF/DOCX/PPTX). |
+| `rasterize` | document | Render PDF pages as images. |
+| `rasterize-text` | document | Rasterize + extract text, interleaved. |
+| `gemini` | document | Gemini Part. |
 
 ### Custom pipeline YAML
 
@@ -285,7 +290,7 @@ profile (mm.toml)  →  pipeline YAML (generate.*)  →  CLI flags
 kind: image
 mode: accurate
 encode:
-  strategy: image-tile
+  strategy: tile
   strategy_opts:
     max_width: 2048
 generate:
@@ -295,7 +300,7 @@ generate:
 kind: video
 mode: accurate
 encode:
-  strategy: video-mosaic
+  strategy: mosaic
   strategy_opts:
     tile_cols: 8
     tile_rows: 6
@@ -521,7 +526,7 @@ mm find <dir> --kind image | mm cat -m accurate --format dataset-jsonl
 - `--mode` is a no-op for `kind=text` and non-PDF documents — they always passthrough.
 - `--no-cache` forces fresh LLM call; no-op for passthrough kinds.
 - `--no-generate` snapshots encoder output without calling the LLM.
-- For PDFs, `cat` returns empty in fast mode if scanned; use `-m accurate` or `-p document-rasterize`.
+- For PDFs, `cat` returns empty in fast mode if scanned; use `-m accurate` or `-p rasterize`.
 - Chunks are written on first `cat`. Embedding + vec storage happens on `mm grep -s --pre-index`.
 - `mm sql --list-tables` shows row counts across `files`, `extractions`, `chunks`.
 

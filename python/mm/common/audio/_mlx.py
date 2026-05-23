@@ -10,6 +10,7 @@ from mm.common.audio._base import (
     TranscriptionBackend,
     TranscriptionResult,
     TranscriptionSegment,
+    resolve_whisper_model,
 )
 
 _MODEL_CACHE: dict[str, Any] = {}
@@ -55,7 +56,7 @@ class MLXBackend(TranscriptionBackend):
         beam_size: int = 1,
         audio_speed: float = 1.0,
     ) -> TranscriptionResult:
-        model = model or "tiny"
+        model = resolve_whisper_model(model)
         t0 = time.monotonic()
         batch_size = 12
 
@@ -63,7 +64,7 @@ class MLXBackend(TranscriptionBackend):
         result = mdl.transcribe(audio_path=str(audio_path))
 
         text = result.get("text", "")
-        ts_scale = audio_speed if audio_speed > 0 else 1.0
+        ts_scale = audio_speed
 
         raw_segments = result.get("segments", [])
         segments: list[TranscriptionSegment] = []

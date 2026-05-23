@@ -11,30 +11,32 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, Iterable
 
-from mm.encoders import Message, register
+from mm.encoders import register
+from mm.encoders.base import Encoder, Message
 from mm.encoders.image import _to_message
 from mm.encoders.video._transcript import transcript_messages
 
 
-class VideoTranscript:
+class VideoTranscript(Encoder):
     """Transcribe audio from a video file, return transcript only.
 
-    Equivalent to the ``audio-transcribe`` encoder but registered for
-    the ``video`` media type.  No visual frames are extracted.
+    Equivalent to the ``transcribe`` encoder but registered for the
+    ``video`` kind. No visual frames are extracted.
 
     Kwargs:
         model: Transcription model name (default chosen by backend).
         language: Language code or "auto" (default "auto").
-        audio_speed: Playback speed multiplier (default 1.0).
+        audio_speed: Playback speed multiplier (default 2.0).
     """
 
-    name: str = "video-transcript"
-    media_types: tuple[str, ...] = ("video",)
+    name = "transcript"
+    kind = "video"
+    generate = {"fast": None, "accurate": None}
 
     def encode(self, path: Path, **kwargs: Any) -> Iterable[Message]:
         model: str | None = kwargs.get("model")
         language: str = kwargs.get("language", "auto")
-        audio_speed: float = kwargs.get("audio_speed", 1.0)
+        audio_speed: float = kwargs.get("audio_speed", 2.0)
 
         msgs = list(
             transcript_messages(

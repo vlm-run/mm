@@ -9,15 +9,20 @@ from mm.cat_utils.base_utils import (
     make_llm_from_spec,
     spec_extra_body,
 )
-from mm.cat_utils.run_encoder import run_encoder
 from mm.pipelines.schema import PipelineSpec
 
 
 def accurate_image(path: Path, spec: PipelineSpec, opts: CatOpts) -> RunResult:
     """Image extraction with mode-specific LLM prompts."""
+    from mm.cat_utils.run_encoder import run_encoder
+
     if spec.encode.strategy:
         return run_encoder(path, "image", spec, opts)
 
+    return _inline_describe(path, spec, opts)
+
+
+def _inline_describe(path: Path, spec: PipelineSpec, opts: CatOpts) -> RunResult:
     from mm.llm import image_part
     from mm.profile import get_active_profile_name
 

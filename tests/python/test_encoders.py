@@ -48,35 +48,58 @@ class TestRegistryExtended:
 
         names = list_strategies()
         assert "tile" in names
-        # ``video-shots`` + ``video-shot-mosaic`` are the current shot-aware
+        # ``shots`` + ``shot-mosaic`` are the current shot-aware
         # encoders (formerly ``shot-frames`` / ``shot-mosaic``).
-        assert "video-shots" in names
-        assert "video-shot-mosaic" in names
+        assert "shots" in names
+        assert "shot-mosaic" in names
 
     def test_shot_encoders_are_video_type(self):
         from mm.encoders import list_strategies
 
-        video_names = list_strategies(media_type="video")
-        assert "video-shots" in video_names
-        assert "video-shot-mosaic" in video_names
+        video_names = list_strategies(kind="video")
+        assert "shots" in video_names
+        assert "shot-mosaic" in video_names
 
     def test_tile_is_image_type(self):
         from mm.encoders import list_strategies
 
-        image_names = list_strategies(media_type="image")
+        image_names = list_strategies(kind="image")
         assert "tile" in image_names
 
     def test_resolve_provider_default_openai(self):
-        from mm.encoders import _resolve_provider
+        from mm.encoders import resolve_provider
 
         with patch("mm.profile.get_active_profile_name", side_effect=Exception("no config")):
-            assert _resolve_provider() == "openai"
+            assert resolve_provider() == "openai"
 
     def test_resolve_provider_gemini(self):
-        from mm.encoders import _resolve_provider
+        from mm.encoders import resolve_provider
 
-        with patch("mm.profile.get_active_profile_name", return_value="my-gemini-profile"):
-            assert _resolve_provider() == "gemini"
+        with (
+            patch("mm.profile.get_active_profile_name", return_value="my-gemini-profile"),
+            patch("mm.profile.get_profile_by_name", return_value={"model": "some-model"}),
+        ):
+            assert resolve_provider() == "gemini"
+
+    def test_resolve_provider_model_override_gemini(self):
+        """generate_model containing 'gemini' forces gemini provider regardless of profile name."""
+        from mm.encoders import resolve_provider
+
+        with (
+            patch("mm.profile.get_active_profile_name", return_value="default"),
+            patch("mm.profile.get_profile_by_name", return_value={"model": "gpt-4o"}),
+        ):
+            assert resolve_provider("gemini-2.0-flash") == "gemini"
+
+    def test_resolve_provider_model_override_non_gemini(self):
+        """Non-gemini model with non-gemini profile → openai."""
+        from mm.encoders import resolve_provider
+
+        with (
+            patch("mm.profile.get_active_profile_name", return_value="default"),
+            patch("mm.profile.get_profile_by_name", return_value={"model": "gpt-4o"}),
+        ):
+            assert resolve_provider("gpt-4o") == "openai"
 
     def test_load_strategy_file_caching(self, tmp_path):
         from mm.encoders import _LOADED_SOURCES, load_strategy_file
@@ -84,7 +107,7 @@ class TestRegistryExtended:
         strat_file = tmp_path / "cached_encoder.py"
         strat_file.write_text(
             "from mm.encoders import register_encoder\n"
-            "@register_encoder(name='test-cached-enc', media_types=('image',))\n"
+            "@register_encoder(name='test-cached-enc', kind='image')\n"
             "def test_cached(path, **kw):\n"
             "    yield {'role': 'user', 'content': []}\n"
         )
@@ -100,20 +123,6 @@ class TestRegistryExtended:
 
 
 class TestImageEncoders:
-    def test_validate_image_path_not_found(self, tmp_path):
-        from mm.encoders.image import _validate_image_path
-
-        with pytest.raises(FileNotFoundError, match="Image not found"):
-            _validate_image_path(tmp_path / "nonexistent.jpg")
-
-    def test_validate_image_path_unsupported_ext(self, tmp_path):
-        from mm.encoders.image import _validate_image_path
-
-        f = tmp_path / "test.xyz"
-        f.write_bytes(b"\x00")
-        with pytest.raises(ValueError, match="Unsupported image type"):
-            _validate_image_path(f)
-
     def test_gemini_image_part_format(self):
         from mm.encoders.image import _gemini_image_part
 
@@ -137,8 +146,8 @@ class TestImageEncoders:
         assert part["inline_data"]["data"] == "abc"
 
     def test_encode_pil_image_png_alpha(self, tmp_path):
-        from PIL import Image
         from mm.encoders.image import _encode_pil_image
+        from PIL import Image
 
         img = Image.new("RGBA", (10, 10), (255, 0, 0, 128))
         b64, mime = _encode_pil_image(img, tmp_path / "test.png")
@@ -147,8 +156,8 @@ class TestImageEncoders:
         assert decoded[:4] == b"\x89PNG"
 
     def test_encode_pil_image_jpeg_converts_grayscale(self, tmp_path):
-        from PIL import Image
         from mm.encoders.image import _encode_pil_image
+        from PIL import Image
 
         img = Image.new("L", (10, 10), 128)
         b64, mime = _encode_pil_image(img, tmp_path / "test.jpg")
@@ -166,7 +175,7 @@ class TestTileOverview:
         from mm.encoders import get
 
         img = _make_jpeg(tmp_path / "small.jpg", 100, 80)
-        strat = get("tile")
+        strat = get("tile", "image")
         messages = list(strat.encode(img, max_width=1024))
         assert len(messages) == 1
         msg = messages[0]
@@ -175,12 +184,38 @@ class TestTileOverview:
         image_parts = [p for p in content if p.get("type") == "image_url" or "inline_data" in p]
         assert len(image_parts) == 1
 
+    def test_generate_model_gemini_produces_inline_data(self, tmp_path):
+        """generate_model='gemini-flash' routes image parts to inline_data format."""
+        from mm.encoders import get
+
+        img = _make_jpeg(tmp_path / "img.jpg", 100, 80)
+        strat = get("tile", "image")
+        messages = list(strat.encode(img, max_width=1024, generate_model="gemini-2.0-flash"))
+        content = messages[0]["content"]
+        image_parts = [p for p in content if "inline_data" in p]
+        assert len(image_parts) == 1
+
+    def test_generate_model_openai_produces_image_url(self, tmp_path):
+        """generate_model='gpt-4o' routes image parts to image_url format."""
+        from mm.encoders import get
+
+        img = _make_jpeg(tmp_path / "img.jpg", 100, 80)
+        strat = get("resize", "image")
+        with (
+            patch("mm.profile.get_active_profile_name", return_value="default"),
+            patch("mm.profile.get_profile_by_name", return_value={"model": "gpt-4o"}),
+        ):
+            messages = list(strat.encode(img, max_width=1024, generate_model="gpt-4o"))
+        content = messages[0]["content"]
+        image_parts = [p for p in content if p.get("type") == "image_url"]
+        assert len(image_parts) == 1
+
     def test_large_image_overview_plus_tiles(self, tmp_path):
         """Large image yields overview + N tiles in a single message."""
         from mm.encoders import get
 
         img = _make_jpeg(tmp_path / "large.jpg", 2048, 2048)
-        strat = get("tile")
+        strat = get("tile", "image")
         messages = list(strat.encode(img, max_width=1024))
         assert len(messages) == 1
         msg = messages[0]
@@ -198,7 +233,7 @@ class TestTileOverview:
         from mm.encoders import get
 
         img = _make_jpeg(tmp_path / "huge.jpg", 4096, 4096)
-        strat = get("tile")
+        strat = get("tile", "image")
         messages = list(strat.encode(img, max_width=1024))
         assert len(messages) == 1
         content = messages[0]["content"]
@@ -213,45 +248,45 @@ class TestTileOverview:
 
 class TestVideoTimestamps:
     def test_uniform_timestamps_basic(self):
-        from mm.encoders.video import _uniform_timestamps
+        from mm.encoders.video import uniform_timestamps
 
-        ts = _uniform_timestamps(10.0, 1.0)
+        ts = uniform_timestamps(10.0, 1.0)
         assert len(ts) == 10
         assert ts[0] == pytest.approx(0.0)
         assert ts[-1] == pytest.approx(9.0)
 
     def test_uniform_timestamps_half_fps(self):
-        from mm.encoders.video import _uniform_timestamps
+        from mm.encoders.video import uniform_timestamps
 
-        ts = _uniform_timestamps(10.0, 0.5)
+        ts = uniform_timestamps(10.0, 0.5)
         assert len(ts) == 5
         assert ts[1] == pytest.approx(2.0)
 
     def test_uniform_timestamps_zero_duration(self):
-        from mm.encoders.video import _uniform_timestamps
+        from mm.encoders.video import uniform_timestamps
 
-        ts = _uniform_timestamps(0.0, 1.0)
+        ts = uniform_timestamps(0.0, 1.0)
         assert ts == []
 
     def test_uniform_timestamps_range_basic(self):
-        from mm.encoders.video import _uniform_timestamps_range
+        from mm.encoders.video import uniform_timestamps_range
 
-        ts = _uniform_timestamps_range(10.0, 20.0, 5)
+        ts = uniform_timestamps_range(10.0, 20.0, 5)
         assert len(ts) == 5
         assert ts[0] == pytest.approx(10.0)
         assert all(10.0 <= t <= 20.0 for t in ts)
 
     def test_uniform_timestamps_range_single(self):
-        from mm.encoders.video import _uniform_timestamps_range
+        from mm.encoders.video import uniform_timestamps_range
 
-        ts = _uniform_timestamps_range(5.0, 10.0, 1)
+        ts = uniform_timestamps_range(5.0, 10.0, 1)
         assert len(ts) == 1
         assert ts[0] == pytest.approx(5.0)
 
 
 # NOTE: ``TestVideoFrameSample`` and ``TestVideoChunk`` were removed when the
 # old ffmpeg-CLI-driven encoders ``frame-sample`` and ``video-chunk`` were
-# replaced by the PyAV-based ``video-frames`` / ``video-chunks`` family.
+# replaced by the PyAV-based ``frames`` / ``chunks`` family.
 # Equivalent behaviour is exercised end-to-end in ``test_video_p0.py`` and
 # ``test_video_encoders.py`` against real video fixtures.
 
@@ -267,9 +302,9 @@ class TestDocumentRasterize:
 
         doc = tmp_path / "test.pdf"
         doc.write_bytes(b"%PDF-1.4 fake")
-        strat = get("rasterize")
-        with patch("mm.encoders.document._rasterize_pages", return_value=[]):
-            messages = list(strat.encode(doc))
+        strat = get("rasterize", "document")
+        with patch("mm.encoders.document.rasterize.rasterize_pages", return_value=[]):
+            messages = list(strat.encode(doc, mode="accurate"))
             assert len(messages) == 1
             assert "No pages" in messages[0]["content"][0]["text"]
 
@@ -281,8 +316,8 @@ class TestDocumentRasterize:
         doc.write_bytes(b"%PDF-1.4 fake")
         fake_pages = [(base64.b64encode(b"\xff").decode(), "image/jpeg")] * 10
 
-        strat = get("rasterize")
-        with patch("mm.encoders.document._rasterize_pages", return_value=iter(fake_pages)):
+        strat = get("rasterize", "document")
+        with patch("mm.encoders.document.rasterize.rasterize_pages", return_value=iter(fake_pages)):
             messages = list(strat.encode(doc, pages_per_message=4))
             assert len(messages) == 3
             for msg in messages:
@@ -299,12 +334,12 @@ class TestDocumentRasterizeText:
         fake_pages = [(base64.b64encode(b"\xff").decode(), "image/jpeg")] * 2
         fake_texts = ["Page one text.", "Page two text."]
 
-        strat = get("rasterize-text")
+        strat = get("rasterize-text", "document")
         with (
-            patch("mm.encoders.document._rasterize_pages", return_value=iter(fake_pages)),
-            patch("mm.encoders.document._extract_page_texts", return_value=fake_texts),
+            patch("mm.encoders.document.rasterize.rasterize_pages", return_value=iter(fake_pages)),
+            patch("mm.encoders.document.rasterize.extract_page_texts", return_value=fake_texts),
         ):
-            messages = list(strat.encode(doc, pages_per_message=4))
+            messages = list(strat.encode(doc, mode="accurate", pages_per_message=4))
             assert len(messages) == 1
             content = messages[0]["content"]
             text_contents = [p["text"] for p in content if p.get("type") == "text"]
@@ -347,13 +382,13 @@ class TestGeminiEncoders:
         doc = tmp_path / "test.pdf"
         doc.write_bytes(b"%PDF-1.4 content here")
         strat = GeminiDocument()
-        messages = list(strat.encode(doc))
+        messages = list(strat.encode(doc, mode="accurate"))
         assert len(messages) == 1
         content = messages[0]["content"]
         assert any("inline_data" in p for p in content)
 
     def test_gemini_video_chunked_short_video(self, tmp_path):
-        # ``video-gemini-chunked`` calls ``mm.video.probe()`` (PyAV) — not
+        # ``gemini-chunked`` calls ``mm.video.probe()`` (PyAV) — not
         # ``mm.ffmpeg.probe_duration`` anymore.  Mock probe to short-circuit
         # to the single-Part fast path without parsing the (fake) bytes.
         from mm.encoders import get
@@ -371,7 +406,7 @@ class TestGeminiEncoders:
             codec="h264",
             has_audio=False,
         )
-        strat = get("video-gemini-chunked")
+        strat = get("gemini-chunked", "video")
         with patch("mm.video.probe", return_value=info):
             messages = list(strat.encode(video, max_seconds=120))
             assert len(messages) == 1
@@ -386,17 +421,17 @@ class TestGeminiEncoders:
 
         video = tmp_path / "test.mp4"
         video.write_bytes(b"\x00" * 100)
-        strat = get("video-gemini-chunked")
-        with patch("mm.video._pyav_available", return_value=False):
+        strat = get("gemini-chunked", "video")
+        with patch("mm.video.pyav_runnable", return_value=False):
             messages = list(strat.encode(video))
             assert len(messages) == 1
-            assert "PyAV not available" in messages[0]["content"][0]["text"]
+            assert "PyAV not runnable" in messages[0]["content"][0]["text"]
 
 
 # NOTE: ``TestShotTimestamps``, ``TestShotFrames`` and ``TestShotMosaic`` were
 # removed when the ``mm.encoders.video.shot`` module was replaced by the
-# unified PyAV-based shots/mosaic stack (``video-shots``, ``video-shots-w-
-# transcript``, ``video-shot-mosaic``, ``video-shot-mosaic-w-transcript``).
+# unified PyAV-based shots/mosaic stack (``shots``, ``shots-w-
+# transcript``, ``shot-mosaic``, ``shot-mosaic-w-transcript``).
 # Replacement coverage:
 #   * Shot detection / boundary sampling — ``mm.common.video.shot_detection``
 #     is exercised by ``test_video_p0.py::TestSceneDetectCache``.

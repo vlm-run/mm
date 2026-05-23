@@ -343,7 +343,7 @@ class TestOpenAIBackend:
             from mm.common.audio._openai import OpenAIBackend
 
             be = OpenAIBackend(base_url="http://localhost:11434/v1", api_key="test-key")
-            result = be.transcribe(audio, model="whisper-1")
+            result = be.transcribe(audio, model="whisper-1", audio_speed=1.0)
 
             assert result.text == "Hello from API"
             assert result.language == "en"

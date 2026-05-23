@@ -24,8 +24,8 @@ class SceneResult:
     num_scenes: int = 0
 
 
-def scenedetect_available() -> bool:
-    """Check if scenedetect is installed."""
+def scenedetect_runnable() -> bool:
+    """Check if scenedetect is runnable."""
     from mm._bootstrap import preload_media_libs
 
     preload_media_libs()
@@ -66,22 +66,26 @@ def detect_scenes(
     Returns:
         SceneResult with list of (start_s, end_s) tuples.
     """
-    if not scenedetect_available():
+    if not scenedetect_runnable():
         return SceneResult()
 
     t0 = time.monotonic()
 
     from scenedetect import ContentDetector, SceneManager, open_video
 
-    video = open_video(str(video_path))
-    scene_manager = SceneManager()
-    scene_manager.add_detector(ContentDetector(threshold=threshold, min_scene_len=min_scene_len))
-    scene_manager.detect_scenes(video)
-    scene_list = scene_manager.get_scene_list()
+    try:
+        video = open_video(str(video_path))
+        scene_manager = SceneManager()
+        scene_manager.add_detector(
+            ContentDetector(threshold=threshold, min_scene_len=min_scene_len)
+        )
+        scene_manager.detect_scenes(video)
+        scene_list = scene_manager.get_scene_list()
+    except Exception:
+        return SceneResult()
 
     scenes = [(scene[0].get_seconds(), scene[1].get_seconds()) for scene in scene_list]
     elapsed = (time.monotonic() - t0) * 1000
-
     return SceneResult(
         scenes=scenes,
         elapsed_ms=round(elapsed, 1),

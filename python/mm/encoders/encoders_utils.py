@@ -13,19 +13,19 @@ def do_list_encoders() -> None:
     entries = list_encoders_detail()
 
     kind_rank = {k: i for i, k in enumerate(KIND_ORDER)}
-    entries.sort(key=lambda e: (kind_rank.get(e["media_types"][0], 99), e["prefixed_name"]))
+    entries.sort(key=lambda e: (kind_rank.get(e["kind"], 99), e["name"]))
 
-    max_name = max((len(e["prefixed_name"]) for e in entries), default=28)
+    max_name = max((len(e["name"]) for e in entries), default=28)
     name_w = max_name + 2
     lines: list[Text] = []
     prev_kind = ""
     for entry in entries:
-        cur_kind = entry["media_types"][0] if entry["media_types"] else "unknown"
+        cur_kind = entry["kind"] or "unknown"
         if cur_kind != prev_kind and prev_kind:
             lines.append(Text(""))
         prev_kind = cur_kind
 
-        prefixed = entry["prefixed_name"]
+        prefixed = f"{entry['kind']}:{entry['name']}"
         desc = entry["description"]
         params: list[tuple[str, str]] = entry["params"]
 

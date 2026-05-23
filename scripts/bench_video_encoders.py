@@ -21,23 +21,23 @@ from pathlib import Path
 from typing import Any
 
 VIDEO_ENCODERS: list[str] = [
-    "video-frames",
-    "video-frames-w-transcript",
-    "video-mosaic",
-    "video-mosaic-w-transcript",
-    "video-shots",
-    "video-shots-w-transcript",
-    "video-shot-mosaic",
-    "video-shot-mosaic-w-transcript",
-    "video-keyframes",
-    "video-keyframes-w-transcript",
-    "video-summary",
-    "video-summary-w-transcript",
-    "video-clips",
-    "video-clips-w-transcript",
-    "video-chunks",
-    "video-captions",
-    "video-transcript",
+    "frames",
+    "frames-w-transcript",
+    "mosaic",
+    "mosaic-w-transcript",
+    "shots",
+    "shots-w-transcript",
+    "shot-mosaic",
+    "shot-mosaic-w-transcript",
+    "keyframes",
+    "keyframes-w-transcript",
+    "summary",
+    "summary-w-transcript",
+    "clips",
+    "clips-w-transcript",
+    "chunks",
+    "captions",
+    "transcript",
 ]
 
 
@@ -147,7 +147,7 @@ def run_encoder(
 
     run = EncoderRun(encoder=name)
     try:
-        encoder = get(name)
+        encoder = get(name, "video")
     except KeyError as e:
         run.error = f"encoder not found: {e}"
         return run
