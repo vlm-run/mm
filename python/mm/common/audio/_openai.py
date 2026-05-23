@@ -120,7 +120,7 @@ class OpenAIBackend(TranscriptionBackend):
         model: str | None = None,
         language: str | None = None,
         beam_size: int = 1,
-        audio_speed: float = 2.0,
+        audio_speed: float = 1.0,
     ) -> TranscriptionResult:
         from openai import OpenAI
 
@@ -157,7 +157,6 @@ class OpenAIBackend(TranscriptionBackend):
         lang = getattr(resp, "language", "") or ""
         raw_segments = getattr(resp, "segments", None) or []
 
-        ts_scale = audio_speed if audio_speed > 0 else 2.0
         segments: list[TranscriptionSegment] = []
         for seg in raw_segments:
             start = getattr(seg, "start", 0) or 0
@@ -165,8 +164,8 @@ class OpenAIBackend(TranscriptionBackend):
             seg_text = (getattr(seg, "text", "") or "").strip()
             segments.append(
                 TranscriptionSegment(
-                    start=round(float(start) * ts_scale, 3),
-                    end=round(float(end) * ts_scale, 3),
+                    start=round(float(start) * audio_speed, 3),
+                    end=round(float(end) * audio_speed, 3),
                     text=seg_text,
                 )
             )

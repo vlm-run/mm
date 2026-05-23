@@ -73,7 +73,7 @@ class CTranslate2Backend(TranscriptionBackend):
         model: str | None = None,
         language: str | None = None,
         beam_size: int = 1,
-        audio_speed: float = 2.0,
+        audio_speed: float = 1.0,
     ) -> TranscriptionResult:
         model = resolve_whisper_model(model)
         t0 = time.monotonic()
@@ -88,7 +88,7 @@ class CTranslate2Backend(TranscriptionBackend):
             vad_parameters={"min_silence_duration_ms": 500},
         )
 
-        ts_scale = audio_speed if audio_speed > 0 else 2.0
+        ts_scale = audio_speed
         segments: list[TranscriptionSegment] = []
         text_parts: list[str] = []
         for seg in segments_iter:

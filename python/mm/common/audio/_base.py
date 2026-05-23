@@ -32,7 +32,7 @@ Example — a Gemini backend using the OpenAI-compatible endpoint
             model: str | None = None,
             language: str | None = None,
             beam_size: int = 1,
-            audio_speed: float = 2.0,
+            audio_speed: float = 1.0,
         ) -> TranscriptionResult:
             from openai import OpenAI
 
@@ -117,9 +117,21 @@ class TranscriptionBackend(abc.ABC):
         model: str | None = None,
         language: str | None = None,
         beam_size: int = 1,
-        audio_speed: float = 2.0,
+        audio_speed: float = 1.0,
     ) -> TranscriptionResult:
-        """Transcribe an audio file and return a result."""
+        """Transcribe an audio file and return a result.
+
+        Args:
+            audio_path: Path to the audio file to transcribe.
+            model: Model name; ``None`` picks the backend default.
+            language: ISO language code; ``None`` for auto-detection.
+            beam_size: Beam width for local backends (1 = greedy).
+            audio_speed: Speed multiplier applied to the audio *before*
+                this call. Timestamps returned by the transcription model
+                are in the sped-up timeline; backends multiply them by
+                ``audio_speed`` to restore original-file timestamps.
+                Pass ``1.0`` (default) when the audio has not been sped up.
+        """
 
     def clone_with_config(
         self,

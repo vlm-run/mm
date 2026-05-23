@@ -258,7 +258,7 @@ class TestCTranslate2Backend:
             from mm.common.audio._ctranslate2 import CTranslate2Backend
 
             be = CTranslate2Backend()
-            result = be.transcribe(audio, model="tiny", audio_speed=1.0)
+            result = be.transcribe(audio, model="tiny")
             assert result.text == "Hello world"
             assert len(result.segments) == 1
             assert result.segments[0].start == 0.0
