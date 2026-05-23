@@ -38,7 +38,7 @@ jobs:
         run: |
           pip install "mkdocs>=1.6" "mkdocs-material>=9.5" "mkdocs-jupyter>=0.25" mkdocstrings-python mm-ctx
       - name: Build site
-        run: mkdocs build
+        run: mkdocs build --strict
       - name: Write /readme → / redirect
         run: |
           mkdir -p site/readme
