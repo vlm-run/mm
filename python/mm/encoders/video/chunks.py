@@ -29,7 +29,7 @@ class VideoChunk(Encoder):
 
     Kwargs:
         chunk_duration: Seconds per chunk (default 60).
-        overlap: Overlap between chunks in seconds (default 20).
+        overlap: Overlap between chunks in seconds (default 5).
         max_width: Frame resize width in pixels (default 1024).
         frames_per_chunk: Number of frames to extract per chunk (default 16).
         generate_model: --generate.model CLI flag

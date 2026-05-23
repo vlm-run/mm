@@ -16,7 +16,7 @@ mm cat FILE [FILE ...] [OPTIONS]
 |---------------------------|-------------------------------------------|-----------------------------------------|
 | **Images**                | Short VLM caption                         | Full VLM description + tags             |
 | **Videos**                | Frame mosaic → short VLM description      | Mosaic + transcript → VLM description   |
-| **Audio**                 | Whisper transcript                        | Transcript → LLM summary                |
+| **Audio**                 | Whisper transcript → 10-word description  | Transcript → detailed LLM description   |
 | **PDFs**                  | Page-text extraction (pypdfium2)          | Text → LLM markdown structuring         |
 | **Non-PDF docs** (.docx/.pptx) | Passthrough text (no LLM)           | Passthrough text (no LLM)               |
 | **Code / text**           | Passthrough text (no LLM)                 | Passthrough text (no LLM)               |
@@ -38,6 +38,7 @@ mm cat FILE [FILE ...] [OPTIONS]
 | `--output-dir DIR` | `-o` | path | Output directory for generated artifacts (datasets) |
 | `--no-cache` | | flag | Bypass cache, force a fresh run |
 | `--no-generate` | | flag | Skip the LLM step — emit only the encoder's text parts |
+| `--dry-run` | | flag | Resolve and display the pipeline without executing it |
 | `--format FORMAT` | `-f` | enum | Output format: `rich`, `json`, `pretty-json`, `tsv`, `csv`, `dataset-jsonl`, `dataset-hf` |
 | `--verbose` | `-v` | flag | Show progress bars and LLM call details |
 | `--yes` | `-y` | flag | Skip the confirmation prompt when batching many files |
@@ -216,6 +217,19 @@ mm cat photo.png --no-generate
 
 # useful for offline testing / snapshotting encoder behavior
 mm cat photo.png -p tile --no-generate
+```
+
+### Pipeline inspection (dry run)
+
+```bash
+# show the resolved pipeline without executing it
+mm cat photo.png --dry-run
+
+# inspect accurate mode pipeline
+mm cat video.mp4 -m accurate --dry-run
+
+# preview with overrides applied
+mm cat audio.mp3 -m accurate --encode.backend mlx --dry-run
 ```
 
 ## Per-provider / per-model overrides with `--generate.extra-body`

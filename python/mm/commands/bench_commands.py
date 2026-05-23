@@ -500,22 +500,20 @@ def build_encoder_cat_commands(
     cmds: list[BenchCommand] = []
     for encoder_name in sorted(_REGISTRY):
         strat = _REGISTRY[encoder_name]
-        if strat.kind not in have_kind:
-            continue
-        cmds.append(
-            BenchCommand(
-                name=f"mm cat <{strat.kind}> -p {encoder_name}",
-                group=f"snapshot/{strat.kind}",
-                cmd_template=(
-                    f"mm cat {{file}} --mode {mode} --pipeline {encoder_name}"
-                    f" --no-cache{extras} --format json"
-                ),
-                requires_kind=strat.kind,
-                smallest=True,
-                skip_reason=f"no {strat.kind} files",
+        if strat.kind in have_kind:
+            cmds.append(
+                BenchCommand(
+                    name=f"mm cat <{strat.kind}> -p {encoder_name}",
+                    group=f"snapshot/{strat.kind}",
+                    cmd_template=(
+                        f"mm cat {{file}} --mode {mode} --pipeline {encoder_name}"
+                        f" --no-cache{extras} --format json"
+                    ),
+                    requires_kind=strat.kind,
+                    smallest=True,
+                    skip_reason=f"no {strat.kind} files",
+                )
             )
-        )
-        break
 
     cmds.sort(key=lambda c: (c.group, c.name))
     return cmds

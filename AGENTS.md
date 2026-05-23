@@ -132,18 +132,26 @@ mm/
 │   │   └── video/
 │   │       └── shot_detection.py  # PySceneDetect wrapper (detect_scenes, sample_*)
 │   ├── encoders/               # Media encoders (file → VLM-ready Messages)
-│   │   ├── __init__.py         # Registry, @register_encoder, get()
-│   │   ├── audio.py            # transcribe (Whisper), gemini, base64
+│   │   ├── __init__.py         # Registry, register_encoder, get(name, kind)
+│   │   ├── base.py             # Encoder ABC + Message type
+│   │   ├── audio.py            # base64, transcribe, gemini
 │   │   ├── document/
-│   │   │   ├── __init__.py     # rasterize, rasterize-text (pypdfium2)
-│   │   │   └── page_text.py    # page-text (text extraction per page)
-│   │   ├── gemini.py           # gemini, gemini-chunked, gemini
-│   │   ├── image/              # Image encoders
-│   │   │   └── __init__.py     # resize, tile (overview + tile crops in one Message)
+│   │   │   ├── __init__.py     # (empty — encoders self-register on import)
+│   │   │   ├── page_text.py    # page-text (text extraction per page)
+│   │   │   └── rasterize.py    # rasterize, rasterize-text (pypdfium2)
+│   │   ├── gemini.py           # gemini, gemini-chunked (Gemini inline_data)
+│   │   ├── image.py            # resize, tile
 │   │   └── video/              # Video encoders
-│   │       ├── __init__.py     # frame-sample, video-chunk (ffmpeg-based)
-│   │       ├── mosaic.py       # mosaic (scene-aware frame extraction + tiled grids)
-│   │       └── shot.py         # shot-frames + shot-mosaic (PySceneDetect-based)
+│   │       ├── __init__.py     # uniform_timestamps, uniform_timestamps_range helpers
+│   │       ├── captions.py     # captions
+│   │       ├── chunks.py       # chunks (overlapping time-based chunks)
+│   │       ├── clips.py        # clips, clips-w-transcript (base64 video clips)
+│   │       ├── frames.py       # frames, frames-w-transcript
+│   │       ├── keyframes.py    # keyframes, keyframes-w-transcript
+│   │       ├── mosaic.py       # mosaic, mosaic-w-transcript
+│   │       ├── shots.py        # shots, shots-w-transcript, shot-mosaic, shot-mosaic-w-transcript
+│   │       ├── summary.py      # summary, summary-w-transcript
+│   │       └── transcript.py   # transcript
 │   ├── pipelines/              # YAML-based MLLM generation pipelines
 │   │   ├── __init__.py         # Pipeline loading, caching, prompt rendering, overrides
 │   │   ├── schema.py           # Pydantic schema (Encode, Generate, PipelineSpec)
@@ -223,7 +231,7 @@ uv run mm <command> [args]
 |-----------|---------|-----------|
 | `find`    | Find/list files, tree view, schema | `--name`, `-i` (ignore case), `--kind`, `--ext`, `--min-size`, `--max-size`, `--sort`, `--columns`, `--tree`, `--depth`, `--schema`, `--limit`, `--no-ignore`, `--format` |
 | `peek`    | Raw file metadata (dimensions / EXIF / codec / mime / hash). | `--full` (include document author/title/subject/keywords/pages), `--format` (rich / json / pretty-json / tsv / csv) |
-| `cat`     | Content extraction (auto-detected by file type × mode) | `--mode fast/accurate` (default `fast`), `-p` (pipeline), `-n` (head/tail), `--encode.*`, `--generate.*`, `--format` |
+| `cat`     | Content extraction (auto-detected by file type × mode) | `--mode fast/accurate` (default `fast`), `-p` (pipeline), `-n` (head/tail), `--dry-run` (resolve pipeline without executing), `--encode.*`, `--generate.*`, `--format` |
 | `grep`    | Content search across files | `--kind`, `--ext`, `-C` (context), `--count`, `-i` (ignore case), `--no-ignore`, `--format` |
 | `sql`     | SQL on files, results, and chunks | `--dir`, `--format`, `--list-tables` |
 | `wc`      | Count files, size, lines (est.), tokens (est.) | `--kind`, `--by-kind`, `--format` |

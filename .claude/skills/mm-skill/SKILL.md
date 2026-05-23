@@ -165,7 +165,7 @@ mm cat FILE... [-m fast|accurate] [-p PIPELINE]... [-n N] [-o DIR]
 |------|----------------|----------|
 | Image | short VLM caption | full VLM caption + tags |
 | Video | mosaic → short VLM | frames + transcript → VLM |
-| Audio | Whisper transcript (no LLM) | transcript → LLM summary |
+| Audio | transcript → 10-word description | transcript → detailed LLM description |
 | PDF | page-text via pypdfium2 (no LLM) | page-text → LLM markdown |
 | `.docx` / `.pptx` | passthrough text | passthrough text |
 | code / text | passthrough text | passthrough text |
@@ -191,6 +191,7 @@ mm cat FILE... [-m fast|accurate] [-p PIPELINE]... [-n N] [-o DIR]
 | `--generate.temperature` | Sampling temperature. |
 | `--generate.json-mode` | Request JSON response (`true`/`false`). |
 | `--generate.extra-body` | JSON object deep-merged into OpenAI `extra_body` (CLI keys win). |
+| `--dry-run` | Resolve and display the pipeline without executing it. |
 | `--list-pipelines` | List built-in pipelines and exit. |
 | `--list-encoders` | List registered encoders and exit. |
 | `--print-pipeline KIND/MODE` | Print built-in pipeline YAML (e.g. `image/accurate`). |
@@ -200,7 +201,7 @@ mm cat FILE... [-m fast|accurate] [-p PIPELINE]... [-n N] [-o DIR]
 # Default fast mode
 mm cat photo.png                                  # short VLM caption
 mm cat video.mp4                                  # mosaic → short VLM
-mm cat audio.mp3                                  # Whisper transcript only
+mm cat audio.mp3                                  # Whisper transcript → 10-word description
 mm cat paper.pdf                                  # page-text (pypdfium2)
 mm cat src/main.py                                # passthrough text
 mm cat notes.docx                                 # libreoffice-rs passthrough
@@ -230,18 +231,22 @@ mm cat audio.mp3 -m accurate --encode.backend mlx                 # force MLX tr
 mm cat audio.mp3 -m accurate --encode.backend ctranslate2         # force ctranslate2
 mm cat audio.mp3 -m accurate --encode.backend openai              # force OpenAI-compatible endpoint
 mm cat audio.mp3 -m accurate --encode.model whisper-1             # override transcription model
+
+# Dry run (resolve pipeline without executing)
+mm cat photo.png --dry-run
+mm cat video.mp4 -m accurate --dry-run
 ```
 
 ### Override surfaces (right-most wins)
 
 ```
-profile (mm.toml)  →  pipeline YAML (generate.*)  →  CLI flags
-  base_url             prompt                          --prompt / --generate.prompt
-  api_key              model                           --model  / --generate.model
-  model (default)      max_tokens                      --generate.max-tokens
-                       temperature                     --generate.temperature
-                       json_mode                       --generate.json-mode
-                       extra_body (deep-merged)        --generate.extra-body
+profile (mm.toml)  →  pipeline YAML (generate.*)  →  encoder generate[mode]  →  CLI flags
+  base_url             prompt                          prompt (if set)              --prompt / --generate.prompt
+  api_key              model                           model (if set)               --model  / --generate.model
+  model (default)      max_tokens                      (None = suppress LLM)        --generate.max-tokens
+                       temperature                                                  --generate.temperature
+                       json_mode                                                    --generate.json-mode
+                       extra_body (deep-merged)                                     --generate.extra-body
 ```
 
 `base_url` and `api_key` are profile-only. The merged `model` + `extra_body` participate in the L2 cache key.

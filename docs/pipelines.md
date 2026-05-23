@@ -121,19 +121,21 @@ the L2 cache key so cached results are invalidated when knobs change.
 
 ## Override surfaces — full precedence rules
 
-For every `cat` invocation the effective LLM call comes from three layers
+For every `cat` invocation the effective LLM call comes from four layers
 (right-most wins on conflict):
 
 ```
-profile (mm.toml)  ->  pipeline YAML (generate.*)  ->  CLI flags on `cat`
-  base_url              prompt                          --prompt / --generate.prompt
-  api_key               model                           --model  / --generate.model
-  model (default)       max_tokens                      --generate.max-tokens
-                        temperature                     --generate.temperature
-                        json_mode                       --generate.json-mode
-                        extra_body                      --generate.extra-body
-                                                        (deep-merged onto YAML)
+profile (mm.toml)  ->  pipeline YAML (generate.*)  ->  encoder generate[mode]  ->  CLI flags on `cat`
+  base_url              prompt                          prompt (if set)              --prompt / --generate.prompt
+  api_key               model                           model (if set)               --model  / --generate.model
+  model (default)       max_tokens                      max_tokens (if set)          --generate.max-tokens
+                        temperature                                                  --generate.temperature
+                        json_mode                                                    --generate.json-mode
+                        extra_body                                                   --generate.extra-body
+                                                                                     (deep-merged onto YAML)
 ```
+
+**Encoder `generate` override**: Built-in encoders can declare a `generate` class variable that maps modes to `Generate` overrides. This layer sits between the pipeline YAML and CLI flags. Setting a mode to `None` suppresses the LLM call entirely (useful for transcript-only encoders like `transcribe`). CLI flags still win over encoder-level overrides.
 
 `base_url` and `api_key` are profile-only — they have no pipeline or CLI
 override.
@@ -162,6 +164,18 @@ encode:
     def transform(parts, context):
         return [p for p in parts if p.get("type") == "image_url"]
 ```
+
+## Dry run
+
+Use `--dry-run` to inspect the fully-resolved pipeline for a file without executing it. Shows the encoder, strategy options, model, and prompt that *would* be used:
+
+```bash
+mm cat photo.png --dry-run
+mm cat video.mp4 -m accurate --dry-run
+mm cat audio.mp3 -m accurate --encode.backend mlx --dry-run
+```
+
+Output is a dim preview block rendered to the terminal — no file reads, no LLM calls, no cache writes.
 
 ## Encoders
 

@@ -90,7 +90,7 @@ class VideoCaptions(Encoder):
         fallback_to_whisper: Use Whisper if no subtitles found (default True).
         model: Transcription model name for fallback (default chosen by backend).
         language: Language code or "auto" for fallback (default "auto").
-        audio_speed: Playback speed for fallback (default 1.0).
+        audio_speed: Playback speed for fallback (default 2.0).
     """
 
     name = "captions"

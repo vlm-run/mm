@@ -351,7 +351,7 @@ def resolve_provider(model: str | None = None) -> str:
         _model = (model or profile["model"] or "").lower()
 
         for kw in ("gemini", "google", "gemma"):
-            if kw in f"{name.lower()}:{(_model)})":
+            if kw in f"{name.lower()}:{(_model)}":
                 return "gemini"
     except Exception:
         pass

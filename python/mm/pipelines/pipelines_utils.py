@@ -11,11 +11,11 @@ from mm.pipelines.schema import PipelineSpec
 def _apply_encoder_generate(spec: PipelineSpec, mode: str) -> PipelineSpec:
     """Apply encoder-level generate override to the resolved pipeline spec.
 
-    If the encoder declares a ``generate`` dict with an entry for *mode*,
+    If the encoder declares a ``generate`` field with an entry for *mode*,
     that value replaces ``spec.generate`` regardless of what the YAML had.
-    A ``None`` entry suppresses the LLM call (passthrough); a
-    ``Generate`` instance replaces the YAML's generate block entirely.
-    Encoders with an empty ``generate`` dict (the default) are left unchanged.
+    A ``None`` entry suppresses the LLM call (passthrough);
+    a ``Generate`` instance replaces the YAML's generate block entirely.
+    Encoders with an empty ``generate`` field (the default) are left unchanged.
     """
     if not spec.encode.strategy:
         return spec

@@ -12,11 +12,11 @@ mode: fast        # fast | accurate
 
 encode:
 
-  # ── audio-transcribe (default) ──────────────────────────────────
+  # ── transcribe (default) ──────────────────────────────────
   # Transcribes audio via the modular backend system.  By default
   # uses the VLM Run gateway (OpenAI-compatible).  Override base_url
   # to point at localhost or OpenAI directly.
-  strategy: audio-transcribe
+  strategy: transcribe
   # model: nvidia/parakeet-tdt-0.6b-v3     # encoder model (default for gateway)
   # backend: openai                        # "openai" | "mlx" | "ctranslate2"
   strategy_opts:
@@ -25,18 +25,18 @@ encode:
     # base_url: null                        # custom OpenAI-compatible endpoint
     # api_key: null                         # API key for that endpoint
 
-  # ── audio-base64 ────────────────────────────────────────────────
+  # ── base64 ────────────────────────────────────────────────
   # Sends raw audio as a base64 input_audio part (no transcription).
   # Best for models with native audio understanding.
-  # strategy: audio-base64
+  # strategy: base64
   # strategy_opts:
   #   format: mp3             # mp3 | wav | flac | ogg | m4a | aac | opus | webm
   #                           # default: inferred from file extension
 
-  # ── audio-gemini ────────────────────────────────────────────────
+  # ── gemini ────────────────────────────────────────────────
   # Passes audio as Gemini inline_data Part(s).  Long files are
   # automatically chunked.
-  # strategy: audio-gemini
+  # strategy: gemini
   # strategy_opts:
   #   max_seconds: 120        # max chunk length in seconds
   #   overlap: 10             # overlap between chunks in seconds

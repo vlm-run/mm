@@ -65,7 +65,7 @@ def transcript_messages(
 
     resolved_lang = None if language == "auto" else language
     whisper_result = transcribe(
-        path,
+        audio_result.path,
         model=model,
         language=resolved_lang,
         beam_size=5,

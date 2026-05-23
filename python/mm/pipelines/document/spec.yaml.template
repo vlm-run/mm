@@ -12,10 +12,10 @@ mode: fast        # fast | accurate
 
 encode:
 
-  # ── document-page-text (default) ─────────────────────────────────────────
+  # ── page-text (default) ─────────────────────────────────────────
   # Extracts text per page from PDF/DOCX/PPTX.  No rasterization —
   # fast and lightweight.
-  strategy: document-page-text
+  strategy: page-text
   strategy_opts:
     pages_per_message: 128    # pages batched into each Message
     # max_pages: null         # total page cap (null = unlimited)
@@ -38,10 +38,10 @@ encode:
   #   pages_per_message: 4    # pages per Message
   #   max_pages: null         # total page cap (null = unlimited)
 
-  # ── document-gemini ─────────────────────────────────────────────
+  # ── gemini ─────────────────────────────────────────────────────
   # Passes the document directly as a Gemini inline_data Part.
   # No strategy_opts — the raw file is sent as-is.
-  # strategy: document-gemini
+  # strategy: gemini
 
   # Custom post-processing transform (optional).
   # pyfunc: null
