@@ -289,7 +289,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../USER_GUIDE/" class="md-nav__link">
+      <a href="../user-guide/" class="md-nav__link">
         
   
   
@@ -797,6 +797,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#pipeline-inspection-dry-run" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Pipeline inspection (dry run)
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -1006,7 +1017,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../mm_context/" class="md-nav__link">
+      <a href="../mm-context/" class="md-nav__link">
         
   
   
@@ -1068,7 +1079,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../ENCODERS/" class="md-nav__link">
+      <a href="../encoders/" class="md-nav__link">
         
   
   
@@ -1095,7 +1106,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../PIPELINES/" class="md-nav__link">
+      <a href="../pipelines/" class="md-nav__link">
         
   
   
@@ -1705,6 +1716,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#pipeline-inspection-dry-run" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Pipeline inspection (dry run)
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -1776,9 +1798,19 @@
 <td>Mosaic + transcript → VLM description</td>
 </tr>
 <tr>
-<td><strong>Audio</strong></td>
+<td><strong>Audio</strong> (default: <code>transcribe</code>)</td>
 <td>Whisper transcript</td>
-<td>Transcript → LLM summary</td>
+<td>Whisper transcript</td>
+</tr>
+<tr>
+<td><strong>Audio</strong> (<code>-p base64</code>)</td>
+<td>10-word description</td>
+<td>Detailed LLM description</td>
+</tr>
+<tr>
+<td><strong>Audio</strong> (<code>-p gemini</code>)</td>
+<td>10-word description</td>
+<td>Detailed LLM description</td>
 </tr>
 <tr>
 <td><strong>PDFs</strong></td>
@@ -1863,6 +1895,12 @@
 <td></td>
 <td>flag</td>
 <td>Skip the LLM step — emit only the encoder's text parts</td>
+</tr>
+<tr>
+<td><code>--dry-run</code></td>
+<td></td>
+<td>flag</td>
+<td>Resolve and display the pipeline without executing it</td>
 </tr>
 <tr>
 <td><code>--format FORMAT</code></td>
@@ -2018,7 +2056,7 @@
 <div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="c1"># Whisper transcript (fast)</span>
 <a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>mm<span class="w"> </span>cat<span class="w"> </span>recording.mp3
 <a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>
-<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="c1"># transcript → LLM summary (accurate)</span>
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="c1"># Whisper transcript only (default)</span>
 <a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>mm<span class="w"> </span>cat<span class="w"> </span>recording.mp3<span class="w"> </span>-m<span class="w"> </span>accurate
 <a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>
 <a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a><span class="c1"># MLX backend (Apple Silicon)</span>
@@ -2075,28 +2113,38 @@
 <a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a><span class="c1"># useful for offline testing / snapshotting encoder behavior</span>
 <a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a>mm<span class="w"> </span>cat<span class="w"> </span>photo.png<span class="w"> </span>-p<span class="w"> </span>tile<span class="w"> </span>--no-generate
 </code></pre></div>
+<h3 id="pipeline-inspection-dry-run">Pipeline inspection (dry run)<a class="headerlink" href="#pipeline-inspection-dry-run" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="c1"># show the resolved pipeline without executing it</span>
+<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>mm<span class="w"> </span>cat<span class="w"> </span>photo.png<span class="w"> </span>--dry-run
+<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a>
+<a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a><span class="c1"># inspect accurate mode pipeline</span>
+<a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a>mm<span class="w"> </span>cat<span class="w"> </span>video.mp4<span class="w"> </span>-m<span class="w"> </span>accurate<span class="w"> </span>--dry-run
+<a id="__codelineno-11-6" name="__codelineno-11-6" href="#__codelineno-11-6"></a>
+<a id="__codelineno-11-7" name="__codelineno-11-7" href="#__codelineno-11-7"></a><span class="c1"># preview with overrides applied</span>
+<a id="__codelineno-11-8" name="__codelineno-11-8" href="#__codelineno-11-8"></a>mm<span class="w"> </span>cat<span class="w"> </span>audio.mp3<span class="w"> </span>-m<span class="w"> </span>accurate<span class="w"> </span>--encode.backend<span class="w"> </span>mlx<span class="w"> </span>--dry-run
+</code></pre></div>
 <h2 id="per-provider-per-model-overrides-with-generateextra-body">Per-provider / per-model overrides with <code>--generate.extra-body</code><a class="headerlink" href="#per-provider-per-model-overrides-with-generateextra-body" title="Permanent link">&para;</a></h2>
 <p>The <code>--generate.extra-body</code> flag accepts a JSON object forwarded to the OpenAI SDK's <code>extra_body</code> parameter. This enables provider-specific capabilities:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="c1"># Florence-2 OCR on a scanned page (vlmrt deployment)</span>
-<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>mm<span class="w"> </span>--profile<span class="w"> </span>vlmrt<span class="w"> </span>cat<span class="w"> </span>page.png<span class="w"> </span>-m<span class="w"> </span>accurate<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a><span class="w">  </span>--model<span class="w"> </span>florence-2-base-ft<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a><span class="w">  </span>--generate.extra-body<span class="w"> </span><span class="s1">&#39;{&quot;method&quot;:&quot;ocr&quot;}&#39;</span>
-<a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a>
-<a id="__codelineno-11-6" name="__codelineno-11-6" href="#__codelineno-11-6"></a><span class="c1"># Moondream2 object detection</span>
-<a id="__codelineno-11-7" name="__codelineno-11-7" href="#__codelineno-11-7"></a>mm<span class="w"> </span>--profile<span class="w"> </span>vlmrt<span class="w"> </span>cat<span class="w"> </span>photo.jpg<span class="w"> </span>-m<span class="w"> </span>accurate<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-11-8" name="__codelineno-11-8" href="#__codelineno-11-8"></a><span class="w">  </span>--model<span class="w"> </span>moondream2<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-11-9" name="__codelineno-11-9" href="#__codelineno-11-9"></a><span class="w">  </span>--generate.extra-body<span class="w"> </span><span class="s1">&#39;{&quot;method&quot;:&quot;detect&quot;,&quot;method_params&quot;:{&quot;object&quot;:&quot;fish&quot;}}&#39;</span>
-<a id="__codelineno-11-10" name="__codelineno-11-10" href="#__codelineno-11-10"></a>
-<a id="__codelineno-11-11" name="__codelineno-11-11" href="#__codelineno-11-11"></a><span class="c1"># PaddleOCR scene-text recognition (Chinese)</span>
-<a id="__codelineno-11-12" name="__codelineno-11-12" href="#__codelineno-11-12"></a>mm<span class="w"> </span>--profile<span class="w"> </span>vlmrt<span class="w"> </span>cat<span class="w"> </span>storefront.jpg<span class="w"> </span>-m<span class="w"> </span>accurate<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-11-13" name="__codelineno-11-13" href="#__codelineno-11-13"></a><span class="w">  </span>--model<span class="w"> </span>paddleocr-v5<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-11-14" name="__codelineno-11-14" href="#__codelineno-11-14"></a><span class="w">  </span>--generate.extra-body<span class="w"> </span><span class="s1">&#39;{&quot;method&quot;:&quot;ocr&quot;,&quot;method_params&quot;:{&quot;lang&quot;:&quot;ch&quot;,&quot;score_threshold&quot;:0.6}}&#39;</span>
-<a id="__codelineno-11-15" name="__codelineno-11-15" href="#__codelineno-11-15"></a>
-<a id="__codelineno-11-16" name="__codelineno-11-16" href="#__codelineno-11-16"></a><span class="c1"># Qwen3.5 video summarization with frame sampling controls</span>
-<a id="__codelineno-11-17" name="__codelineno-11-17" href="#__codelineno-11-17"></a>mm<span class="w"> </span>--profile<span class="w"> </span>vlmrt<span class="w"> </span>cat<span class="w"> </span>clip.mp4<span class="w"> </span>-m<span class="w"> </span>accurate<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-11-18" name="__codelineno-11-18" href="#__codelineno-11-18"></a><span class="w">  </span>--model<span class="w"> </span>qwen3.5-0.8b<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-11-19" name="__codelineno-11-19" href="#__codelineno-11-19"></a><span class="w">  </span>--prompt<span class="w"> </span><span class="s2">&quot;Summarize this clip in two sentences.&quot;</span><span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-11-20" name="__codelineno-11-20" href="#__codelineno-11-20"></a><span class="w">  </span>--generate.extra-body<span class="w"> </span><span class="s1">&#39;{&quot;video_fps&quot;:1.0,&quot;video_max_frames&quot;:8}&#39;</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="c1"># Florence-2 OCR on a scanned page (vlmrt deployment)</span>
+<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>mm<span class="w"> </span>--profile<span class="w"> </span>vlmrt<span class="w"> </span>cat<span class="w"> </span>page.png<span class="w"> </span>-m<span class="w"> </span>accurate<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a><span class="w">  </span>--model<span class="w"> </span>florence-2-base-ft<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a><span class="w">  </span>--generate.extra-body<span class="w"> </span><span class="s1">&#39;{&quot;method&quot;:&quot;ocr&quot;}&#39;</span>
+<a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a>
+<a id="__codelineno-12-6" name="__codelineno-12-6" href="#__codelineno-12-6"></a><span class="c1"># Moondream2 object detection</span>
+<a id="__codelineno-12-7" name="__codelineno-12-7" href="#__codelineno-12-7"></a>mm<span class="w"> </span>--profile<span class="w"> </span>vlmrt<span class="w"> </span>cat<span class="w"> </span>photo.jpg<span class="w"> </span>-m<span class="w"> </span>accurate<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-12-8" name="__codelineno-12-8" href="#__codelineno-12-8"></a><span class="w">  </span>--model<span class="w"> </span>moondream2<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-12-9" name="__codelineno-12-9" href="#__codelineno-12-9"></a><span class="w">  </span>--generate.extra-body<span class="w"> </span><span class="s1">&#39;{&quot;method&quot;:&quot;detect&quot;,&quot;method_params&quot;:{&quot;object&quot;:&quot;fish&quot;}}&#39;</span>
+<a id="__codelineno-12-10" name="__codelineno-12-10" href="#__codelineno-12-10"></a>
+<a id="__codelineno-12-11" name="__codelineno-12-11" href="#__codelineno-12-11"></a><span class="c1"># PaddleOCR scene-text recognition (Chinese)</span>
+<a id="__codelineno-12-12" name="__codelineno-12-12" href="#__codelineno-12-12"></a>mm<span class="w"> </span>--profile<span class="w"> </span>vlmrt<span class="w"> </span>cat<span class="w"> </span>storefront.jpg<span class="w"> </span>-m<span class="w"> </span>accurate<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-12-13" name="__codelineno-12-13" href="#__codelineno-12-13"></a><span class="w">  </span>--model<span class="w"> </span>paddleocr-v5<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-12-14" name="__codelineno-12-14" href="#__codelineno-12-14"></a><span class="w">  </span>--generate.extra-body<span class="w"> </span><span class="s1">&#39;{&quot;method&quot;:&quot;ocr&quot;,&quot;method_params&quot;:{&quot;lang&quot;:&quot;ch&quot;,&quot;score_threshold&quot;:0.6}}&#39;</span>
+<a id="__codelineno-12-15" name="__codelineno-12-15" href="#__codelineno-12-15"></a>
+<a id="__codelineno-12-16" name="__codelineno-12-16" href="#__codelineno-12-16"></a><span class="c1"># Qwen3.5 video summarization with frame sampling controls</span>
+<a id="__codelineno-12-17" name="__codelineno-12-17" href="#__codelineno-12-17"></a>mm<span class="w"> </span>--profile<span class="w"> </span>vlmrt<span class="w"> </span>cat<span class="w"> </span>clip.mp4<span class="w"> </span>-m<span class="w"> </span>accurate<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-12-18" name="__codelineno-12-18" href="#__codelineno-12-18"></a><span class="w">  </span>--model<span class="w"> </span>qwen3.5-0.8b<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-12-19" name="__codelineno-12-19" href="#__codelineno-12-19"></a><span class="w">  </span>--prompt<span class="w"> </span><span class="s2">&quot;Summarize this clip in two sentences.&quot;</span><span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-12-20" name="__codelineno-12-20" href="#__codelineno-12-20"></a><span class="w">  </span>--generate.extra-body<span class="w"> </span><span class="s1">&#39;{&quot;video_fps&quot;:1.0,&quot;video_max_frames&quot;:8}&#39;</span>
 </code></pre></div>
 <h2 id="notes">Notes<a class="headerlink" href="#notes" title="Permanent link">&para;</a></h2>
 <ul>

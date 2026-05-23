@@ -16,7 +16,7 @@
         <link rel="prev" href="../config/">
       
       
-        <link rel="next" href="../mm_context/">
+        <link rel="next" href="../mm-context/">
       
       
         
@@ -289,7 +289,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../USER_GUIDE/" class="md-nav__link">
+      <a href="../user-guide/" class="md-nav__link">
         
   
   
@@ -1101,7 +1101,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../mm_context/" class="md-nav__link">
+      <a href="../mm-context/" class="md-nav__link">
         
   
   
@@ -1163,7 +1163,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../ENCODERS/" class="md-nav__link">
+      <a href="../encoders/" class="md-nav__link">
         
   
   
@@ -1190,7 +1190,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../PIPELINES/" class="md-nav__link">
+      <a href="../pipelines/" class="md-nav__link">
         
   
   
@@ -1948,7 +1948,7 @@ is compact and insert/lookup/render is sub-millisecond at 10K items.</p>
 <blockquote>
 <p>Looking for the directory-scan surface (<code>Context("~/data")</code> +
 <code>to_polars</code>/<code>sql</code>/<code>show</code>)? That mode is preserved unchanged — see
-<a href="../USER_GUIDE/">USER_GUIDE.md</a>. This doc is about the new
+<a href="../user-guide/">user-guide.md</a>. This doc is about the new
 <strong>incremental role-aware</strong> mode.</p>
 </blockquote>
 <h2 id="tldr">TL;DR<a class="headerlink" href="#tldr" title="Permanent link">&para;</a></h2>
@@ -2132,8 +2132,8 @@ list of dicts, typed to match the target SDK:</p>
 <a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>    <span class="n">encoder_kwargs</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;document&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;pages_per_message&quot;</span><span class="p">:</span> <span class="mi">8</span><span class="p">}},</span>
 <a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a><span class="p">)</span>
 </code></pre></div>
-<p>Unspecified kinds use sensible defaults (<code>image-resize</code>,
-<code>video-mosaic</code>, <code>document-rasterize</code>, <code>audio-base64</code>). Encoder names come from
+<p>Unspecified kinds use sensible defaults (<code>resize</code>,
+<code>mosaic</code>, <code>rasterize</code>, <code>base64</code>). Encoder names come from
 the <code>mm.encoders</code> registry — see <code>--list-encoders</code>.</p>
 <p>User metadata is emitted as a leading text part per item
 (<code>[ref=&lt;id&gt;] note: &lt;text&gt;</code>), so VLMs see your context inline.</p>

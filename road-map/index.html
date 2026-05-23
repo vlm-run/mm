@@ -1,0 +1,1582 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Fast, multimodal context for agents.">
+      
+      
+      
+        <link rel="canonical" href="https://vlm-run.github.io/mm/road-map/">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>mm Roadmap - mm</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/_mkdocstrings.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#mm-roadmap" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="mm" class="md-header__button md-logo" aria-label="mm" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            mm
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              mm Roadmap
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://pypi.org/project/mm-ctx/" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.8 200.5c-7.7-30.9-22.3-54.2-53.4-54.2h-40.1v47.4c0 36.8-31.2 67.8-66.8 67.8H172.7c-29.2 0-53.4 25-53.4 54.3v101.8c0 29 25.2 46 53.4 54.3 33.8 9.9 66.3 11.7 106.8 0 26.9-7.8 53.4-23.5 53.4-54.3v-40.7H226.2v-13.6h160.2c31.1 0 42.6-21.7 53.4-54.2 11.2-33.5 10.7-65.7 0-108.6M286.2 444.7a20.4 20.4 0 1 1 0-40.7 20.4 20.4 0 1 1 0 40.7M167.8 248.1h106.8c29.7 0 53.4-24.5 53.4-54.3V91.9c0-29-24.4-50.7-53.4-55.6-35.8-5.9-74.7-5.6-106.8.1-45.2 8-53.4 24.7-53.4 55.6v40.7h106.9v13.6h-147c-31.1 0-58.3 18.7-66.8 54.2-9.8 40.7-10.2 66.1 0 108.6 7.6 31.6 25.7 54.2 56.8 54.2H101v-48.8c0-35.3 30.5-66.4 66.8-66.4m-6.6-183.4a20.4 20.4 0 1 1 0 40.8 20.4 20.4 0 1 1 0-40.8"/></svg>
+  </div>
+  <div class="md-source__repository">
+    mm-ctx
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="mm" class="md-nav__button md-logo" aria-label="mm" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    mm
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://pypi.org/project/mm-ctx/" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.8 200.5c-7.7-30.9-22.3-54.2-53.4-54.2h-40.1v47.4c0 36.8-31.2 67.8-66.8 67.8H172.7c-29.2 0-53.4 25-53.4 54.3v101.8c0 29 25.2 46 53.4 54.3 33.8 9.9 66.3 11.7 106.8 0 26.9-7.8 53.4-23.5 53.4-54.3v-40.7H226.2v-13.6h160.2c31.1 0 42.6-21.7 53.4-54.2 11.2-33.5 10.7-65.7 0-108.6M286.2 444.7a20.4 20.4 0 1 1 0-40.7 20.4 20.4 0 1 1 0 40.7M167.8 248.1h106.8c29.7 0 53.4-24.5 53.4-54.3V91.9c0-29-24.4-50.7-53.4-55.6-35.8-5.9-74.7-5.6-106.8.1-45.2 8-53.4 24.7-53.4 55.6v40.7h106.9v13.6h-147c-31.1 0-58.3 18.7-66.8 54.2-9.8 40.7-10.2 66.1 0 108.6 7.6 31.6 25.7 54.2 56.8 54.2H101v-48.8c0-35.3 30.5-66.4 66.8-66.4m-6.6-183.4a20.4 20.4 0 1 1 0 40.8 20.4 20.4 0 1 1 0-40.8"/></svg>
+  </div>
+  <div class="md-source__repository">
+    mm-ctx
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../user-guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    User guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CLI
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    CLI
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cli/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../find/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    find
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../wc/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    wc
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../peek/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    peek
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../sql/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    sql
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../grep/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    grep
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cat/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    cat
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../bench/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    bench
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../profile/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    profile
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../config/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    config
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Python API
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Python API
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Index
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../mm-context/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    mm.Context
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../use-cases/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Use cases
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../encoders/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Encoders
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../pipelines/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Pipelines
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../fixtures/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Fixtures
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_9" >
+        
+          
+          <label class="md-nav__link" for="__nav_9" id="__nav_9_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Notebooks
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_9">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Notebooks
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../notebooks/mm_cookbook_gateway/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Cookbook (gateway)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../notebooks/mm_cookbook/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Cookbook (local vlm)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../notebooks/mm-context-api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Context API
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../notebooks/mm-context-viz/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Context visualization
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_10" >
+        
+          
+          <label class="md-nav__link" for="__nav_10" id="__nav_10_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Pipeline templates
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_10_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_10">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Pipeline templates
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../spec-templates/image/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Image
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../spec-templates/video/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Video
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../spec-templates/audio/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Audio
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../spec-templates/document/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Document
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="mm-roadmap">mm Roadmap<a class="headerlink" href="#mm-roadmap" title="Permanent link">&para;</a></h1>
+<blockquote>
+<p>Make every multimodal directory instantly queryable. Speed is the feature.</p>
+</blockquote>
+<p>Design principle: <strong>70-80% semantic coverage at 1000x the speed of full VLM inference.</strong>
+Same philosophy as <code>fast_fingerprint</code> — trade marginal precision for orders-of-magnitude speedup.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>mm roadmap
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>│
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>├── P0 — Sub-100ms Everything (DX + Speed)
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>│   │
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>│   │   The goal: every CLI command feels instant. No command should take
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>│   │   longer than 100ms wall-clock for &lt;10K files. Iteration speed is
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>│   │   the single biggest value-add over alternatives.
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>│   │
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>│   ├── Persistent index with incremental rebuild
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>│   │   ├── Write .mm/index.parquet on first scan (~already exists)
+<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>│   │   ├── On subsequent runs: stat() only changed files (mtime+size)
+<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>│   │   ├── Merge changed entries into existing RecordBatch (no full rescan)
+<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>│   │   ├── Target: &lt;2ms for 1K files when nothing changed (vs 5ms full scan)
+<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>│   │   └── Invalidation: hash .gitignore mtime into manifest
+<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>│   │
+<a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>│   ├── [DONE] JSON output in Rust (bypass pyarrow entirely)
+<a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a>│   │   ├── Scanner.to_json_fast() — serde_json with filtering/sorting in Rust
+<a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a>│   │   ├── Scanner.to_lines_fast() — newline-delimited paths, filtered in Rust
+<a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a>│   │   ├── Eliminated 35ms pyarrow import for --format=json and piped paths
+<a id="__codelineno-0-20" name="__codelineno-0-20" href="#__codelineno-0-20"></a>│   │   ├── CLI find/ls with --format=json: ~60ms cold start (was 330ms, 5.5x speedup)
+<a id="__codelineno-0-21" name="__codelineno-0-21" href="#__codelineno-0-21"></a>│   │   └── Arrow path preserved for DataFrame/SQL/Rich display use cases
+<a id="__codelineno-0-22" name="__codelineno-0-22" href="#__codelineno-0-22"></a>│   │
+<a id="__codelineno-0-23" name="__codelineno-0-23" href="#__codelineno-0-23"></a>│   ├── Parallel fast-mode batch extraction
+<a id="__codelineno-0-24" name="__codelineno-0-24" href="#__codelineno-0-24"></a>│   │   ├── extract_metadata_batch(paths) — rayon parallel across files
+<a id="__codelineno-0-25" name="__codelineno-0-25" href="#__codelineno-0-25"></a>│   │   ├── All 17 demo videos: 5.1s sequential → &lt;1s parallel
+<a id="__codelineno-0-26" name="__codelineno-0-26" href="#__codelineno-0-26"></a>│   │   ├── 218 images: already fast, but batch hashing benefits from IO overlap
+<a id="__codelineno-0-27" name="__codelineno-0-27" href="#__codelineno-0-27"></a>│   │   └── Return Vec&lt;MetadataRecord&gt; as Arrow RecordBatch (fast-mode schema)
+<a id="__codelineno-0-28" name="__codelineno-0-28" href="#__codelineno-0-28"></a>│   │
+<a id="__codelineno-0-29" name="__codelineno-0-29" href="#__codelineno-0-29"></a>│   ├── [DONE] mm wc — token counting for LLM budgeting
+<a id="__codelineno-0-30" name="__codelineno-0-30" href="#__codelineno-0-30"></a>│   │   ├── Fast byte-level token estimator (~4 chars/token for text)
+<a id="__codelineno-0-31" name="__codelineno-0-31" href="#__codelineno-0-31"></a>│   │   ├── Image token estimation via OpenAI-style tile counting
+<a id="__codelineno-0-32" name="__codelineno-0-32" href="#__codelineno-0-32"></a>│   │   ├── Per-file, per-kind, total token counts (--by-kind)
+<a id="__codelineno-0-33" name="__codelineno-0-33" href="#__codelineno-0-33"></a>│   │   ├── [ ] --budget 128K flag: show what fits in a context window
+<a id="__codelineno-0-34" name="__codelineno-0-34" href="#__codelineno-0-34"></a>│   │   └── [ ] Optional tiktoken/cl100k for exact counts
+<a id="__codelineno-0-35" name="__codelineno-0-35" href="#__codelineno-0-35"></a>│   │
+<a id="__codelineno-0-36" name="__codelineno-0-36" href="#__codelineno-0-36"></a>│   ├── [DONE] mm tree — hierarchical directory view
+<a id="__codelineno-0-37" name="__codelineno-0-37" href="#__codelineno-0-37"></a>│   │   ├── Size-annotated tree (file counts + sizes per directory)
+<a id="__codelineno-0-38" name="__codelineno-0-38" href="#__codelineno-0-38"></a>│   │   ├── Kind-colored branches (ANSI: image yellow, video magenta, etc.)
+<a id="__codelineno-0-39" name="__codelineno-0-39" href="#__codelineno-0-39"></a>│   │   ├── --depth, --kind filters, --size toggle
+<a id="__codelineno-0-40" name="__codelineno-0-40" href="#__codelineno-0-40"></a>│   │   └── --format=json for programmatic consumption
+<a id="__codelineno-0-41" name="__codelineno-0-41" href="#__codelineno-0-41"></a>│   │
+<a id="__codelineno-0-42" name="__codelineno-0-42" href="#__codelineno-0-42"></a>│   ├── [DONE] Faster pipe composability
+<a id="__codelineno-0-43" name="__codelineno-0-43" href="#__codelineno-0-43"></a>│   │   ├── Plain-text path output for piped find (via to_lines_fast)
+<a id="__codelineno-0-44" name="__codelineno-0-44" href="#__codelineno-0-44"></a>│   │   ├── [ ] Streaming output for large result sets (don&#39;t buffer all rows)
+<a id="__codelineno-0-45" name="__codelineno-0-45" href="#__codelineno-0-45"></a>│   │   └── [ ] --format tsv|csv|jsonl for one-row-at-a-time output
+<a id="__codelineno-0-46" name="__codelineno-0-46" href="#__codelineno-0-46"></a>│   │
+<a id="__codelineno-0-47" name="__codelineno-0-47" href="#__codelineno-0-47"></a>│   ├── Faster grep on document directories
+<a id="__codelineno-0-48" name="__codelineno-0-48" href="#__codelineno-0-48"></a>│   │   ├── Current: fast-mode extraction on every file → 81s for 545 PDFs
+<a id="__codelineno-0-49" name="__codelineno-0-49" href="#__codelineno-0-49"></a>│   │   ├── Pre-index text content in .mm/text_cache/ (one-time cost)
+<a id="__codelineno-0-50" name="__codelineno-0-50" href="#__codelineno-0-50"></a>│   │   ├── Subsequent greps search the text cache (&lt; 1s for 500 files)
+<a id="__codelineno-0-51" name="__codelineno-0-51" href="#__codelineno-0-51"></a>│   │   ├── Rust-native regex search over cached text (bypass Python)
+<a id="__codelineno-0-52" name="__codelineno-0-52" href="#__codelineno-0-52"></a>│   │   └── --no-cache flag for fresh extraction
+<a id="__codelineno-0-53" name="__codelineno-0-53" href="#__codelineno-0-53"></a>│   │
+<a id="__codelineno-0-54" name="__codelineno-0-54" href="#__codelineno-0-54"></a>│   └── info command fast path
+<a id="__codelineno-0-55" name="__codelineno-0-55" href="#__codelineno-0-55"></a>│       ├── Current: 700ms (Arrow + pyarrow + Rich)
+<a id="__codelineno-0-56" name="__codelineno-0-56" href="#__codelineno-0-56"></a>│       ├── Compute kind/ext/size stats in Rust from Vec&lt;FileEntry&gt;
+<a id="__codelineno-0-57" name="__codelineno-0-57" href="#__codelineno-0-57"></a>│       └── Target: ~70ms (only import Rich for display)
+<a id="__codelineno-0-58" name="__codelineno-0-58" href="#__codelineno-0-58"></a>│
+<a id="__codelineno-0-59" name="__codelineno-0-59" href="#__codelineno-0-59"></a>├── P1 — Smart Extraction (80% Semantics, No VLM)
+<a id="__codelineno-0-60" name="__codelineno-0-60" href="#__codelineno-0-60"></a>│   │
+<a id="__codelineno-0-61" name="__codelineno-0-61" href="#__codelineno-0-61"></a>│   │   Extract the maximum possible signal from each file type using only
+<a id="__codelineno-0-62" name="__codelineno-0-62" href="#__codelineno-0-62"></a>│   │   local, deterministic, sub-second operations. No network calls,
+<a id="__codelineno-0-63" name="__codelineno-0-63" href="#__codelineno-0-63"></a>│   │   no GPU, no model weights. This is the smart local extraction layer.
+<a id="__codelineno-0-64" name="__codelineno-0-64" href="#__codelineno-0-64"></a>│   │
+<a id="__codelineno-0-65" name="__codelineno-0-65" href="#__codelineno-0-65"></a>│   ├── [DONE] PDF → visual snapshots (mm cat)
+<a id="__codelineno-0-66" name="__codelineno-0-66" href="#__codelineno-0-66"></a>│   │   ├── Render pages to thumbnails via pypdfium2 + Pillow
+<a id="__codelineno-0-67" name="__codelineno-0-67" href="#__codelineno-0-67"></a>│   │   ├── Tile into mosaic grids (4x4 default, configurable)
+<a id="__codelineno-0-68" name="__codelineno-0-68" href="#__codelineno-0-68"></a>│   │   ├── Captures tables, charts, diagrams that text extraction misses
+<a id="__codelineno-0-69" name="__codelineno-0-69" href="#__codelineno-0-69"></a>│   │   ├── 68-page PDF → 5 mosaics in 1.1s (~10ms/page)
+<a id="__codelineno-0-70" name="__codelineno-0-70" href="#__codelineno-0-70"></a>│   │   ├── Single-page invoice → 5ms
+<a id="__codelineno-0-71" name="__codelineno-0-71" href="#__codelineno-0-71"></a>│   │   └── mm cat &lt;file/dir&gt; --max-pages N --format=json
+<a id="__codelineno-0-72" name="__codelineno-0-72" href="#__codelineno-0-72"></a>│   │
+<a id="__codelineno-0-73" name="__codelineno-0-73" href="#__codelineno-0-73"></a>│   ├── Image perceptual fingerprint
+<a id="__codelineno-0-74" name="__codelineno-0-74" href="#__codelineno-0-74"></a>│   │   ├── pHash (perceptual hash) — 64-bit, invariant to resize/compression (DONE)
+<a id="__codelineno-0-75" name="__codelineno-0-75" href="#__codelineno-0-75"></a>│   │   ├── Average color histogram (dominant colors as hex triplet)
+<a id="__codelineno-0-76" name="__codelineno-0-76" href="#__codelineno-0-76"></a>│   │   ├── Aspect ratio + orientation classification (portrait/landscape/square)
+<a id="__codelineno-0-77" name="__codelineno-0-77" href="#__codelineno-0-77"></a>│   │   ├── Near-duplicate detection: hamming distance on pHash &lt; 8 (DONE)
+<a id="__codelineno-0-78" name="__codelineno-0-78" href="#__codelineno-0-78"></a>│   │   ├── Add to fast-mode record: phash, dominant_colors, aspect (DONE)
+<a id="__codelineno-0-79" name="__codelineno-0-79" href="#__codelineno-0-79"></a>│   │   └── All in Rust via image crate (already a dep), ~1ms/image
+<a id="__codelineno-0-80" name="__codelineno-0-80" href="#__codelineno-0-80"></a>│   │
+<a id="__codelineno-0-81" name="__codelineno-0-81" href="#__codelineno-0-81"></a>│   ├── Document structure extraction
+<a id="__codelineno-0-82" name="__codelineno-0-82" href="#__codelineno-0-82"></a>│   │   ├── Heading detection from PDF text (font-size heuristic via pypdfium2)
+<a id="__codelineno-0-83" name="__codelineno-0-83" href="#__codelineno-0-83"></a>│   │   ├── Table detection (grid pattern in text layout)
+<a id="__codelineno-0-84" name="__codelineno-0-84" href="#__codelineno-0-84"></a>│   │   ├── Table-of-contents extraction (outline/bookmark API in pypdfium2)
+<a id="__codelineno-0-85" name="__codelineno-0-85" href="#__codelineno-0-85"></a>│   │   ├── Output: list of {page, type, text} structural elements
+<a id="__codelineno-0-86" name="__codelineno-0-86" href="#__codelineno-0-86"></a>│   │   └── Enables &quot;find me the table on page 12&quot; without VLM
+<a id="__codelineno-0-87" name="__codelineno-0-87" href="#__codelineno-0-87"></a>│   │
+<a id="__codelineno-0-88" name="__codelineno-0-88" href="#__codelineno-0-88"></a>│   ├── Code semantic summary
+<a id="__codelineno-0-89" name="__codelineno-0-89" href="#__codelineno-0-89"></a>│   │   ├── Function/class name extraction via tree-sitter (Rust bindings)
+<a id="__codelineno-0-90" name="__codelineno-0-90" href="#__codelineno-0-90"></a>│   │   ├── Import graph (which modules does this file depend on)
+<a id="__codelineno-0-91" name="__codelineno-0-91" href="#__codelineno-0-91"></a>│   │   ├── Complexity heuristic (line count × nesting depth)
+<a id="__codelineno-0-92" name="__codelineno-0-92" href="#__codelineno-0-92"></a>│   │   ├── Languages: Python, Rust, JS/TS, Go, Java, C/C++
+<a id="__codelineno-0-93" name="__codelineno-0-93" href="#__codelineno-0-93"></a>│   │   └── Add to fast-mode record: symbols, imports, complexity_score
+<a id="__codelineno-0-94" name="__codelineno-0-94" href="#__codelineno-0-94"></a>│   │
+<a id="__codelineno-0-95" name="__codelineno-0-95" href="#__codelineno-0-95"></a>│   ├── Video scene graph
+<a id="__codelineno-0-96" name="__codelineno-0-96" href="#__codelineno-0-96"></a>│   │   ├── Scene boundary detection (already have scene-change mosaics)
+<a id="__codelineno-0-97" name="__codelineno-0-97" href="#__codelineno-0-97"></a>│   │   ├── Per-scene: timestamp range, representative frame, dominant colors
+<a id="__codelineno-0-98" name="__codelineno-0-98" href="#__codelineno-0-98"></a>│   │   ├── Temporal text overlay detection (ffmpeg OCR filter for burned-in text)
+<a id="__codelineno-0-99" name="__codelineno-0-99" href="#__codelineno-0-99"></a>│   │   ├── Motion classification: static/pan/zoom/fast-motion per segment
+<a id="__codelineno-0-100" name="__codelineno-0-100" href="#__codelineno-0-100"></a>│   │   └── Output: [{scene_id, start_s, end_s, thumbnail_path, motion_type}]
+<a id="__codelineno-0-101" name="__codelineno-0-101" href="#__codelineno-0-101"></a>│   │
+<a id="__codelineno-0-102" name="__codelineno-0-102" href="#__codelineno-0-102"></a>│   ├── Audio signal features
+<a id="__codelineno-0-103" name="__codelineno-0-103" href="#__codelineno-0-103"></a>│   │   ├── Voice activity detection (energy threshold, zero-crossing rate)
+<a id="__codelineno-0-104" name="__codelineno-0-104" href="#__codelineno-0-104"></a>│   │   ├── Speech vs music vs silence segmentation
+<a id="__codelineno-0-105" name="__codelineno-0-105" href="#__codelineno-0-105"></a>│   │   ├── Dominant speaker diarization (simple energy-based, not neural)
+<a id="__codelineno-0-106" name="__codelineno-0-106" href="#__codelineno-0-106"></a>│   │   └── Output: [{segment_type, start_s, end_s, confidence}]
+<a id="__codelineno-0-107" name="__codelineno-0-107" href="#__codelineno-0-107"></a>│   │
+<a id="__codelineno-0-108" name="__codelineno-0-108" href="#__codelineno-0-108"></a>│   └── Content deduplication
+<a id="__codelineno-0-109" name="__codelineno-0-109" href="#__codelineno-0-109"></a>│       ├── Exact: xxh3 content hash (already done)
+<a id="__codelineno-0-110" name="__codelineno-0-110" href="#__codelineno-0-110"></a>│       ├── Near-exact: fast_fingerprint for large file dedup
+<a id="__codelineno-0-111" name="__codelineno-0-111" href="#__codelineno-0-111"></a>│       ├── Perceptual: pHash for image near-dupes (DONE)
+<a id="__codelineno-0-112" name="__codelineno-0-112" href="#__codelineno-0-112"></a>│       ├── mm dedup — find and report duplicate clusters
+<a id="__codelineno-0-113" name="__codelineno-0-113" href="#__codelineno-0-113"></a>│       └── --dry-run shows what would be removed, --symlink replaces dupes
+<a id="__codelineno-0-114" name="__codelineno-0-114" href="#__codelineno-0-114"></a>│
+<a id="__codelineno-0-115" name="__codelineno-0-115" href="#__codelineno-0-115"></a>├── P2 — VLM-in-the-Loop (Remaining 20%)
+<a id="__codelineno-0-116" name="__codelineno-0-116" href="#__codelineno-0-116"></a>│   │
+<a id="__codelineno-0-117" name="__codelineno-0-117" href="#__codelineno-0-117"></a>│   │   Use VLMs selectively where the smart local layer leaves gaps. Key insight: the smart
+<a id="__codelineno-0-118" name="__codelineno-0-118" href="#__codelineno-0-118"></a>│   │   extraction layer provides enough structure to know WHICH files need
+<a id="__codelineno-0-119" name="__codelineno-0-119" href="#__codelineno-0-119"></a>│   │   VLM attention and WHAT to ask about them. Targeted queries &gt;&gt; blind captioning.
+<a id="__codelineno-0-120" name="__codelineno-0-120" href="#__codelineno-0-120"></a>│   │
+<a id="__codelineno-0-121" name="__codelineno-0-121" href="#__codelineno-0-121"></a>│   ├── Keyframe mosaic → VLM video summary
+<a id="__codelineno-0-122" name="__codelineno-0-122" href="#__codelineno-0-122"></a>│   │   ├── Feed mosaic grid(s) to qwen3-2b / llava for scene description
+<a id="__codelineno-0-123" name="__codelineno-0-123" href="#__codelineno-0-123"></a>│   │   ├── describe_video() already implemented, needs CLI integration
+<a id="__codelineno-0-124" name="__codelineno-0-124" href="#__codelineno-0-124"></a>│   │   ├── mm cat video.mp4 -m accurate → mosaic + VLM caption
+<a id="__codelineno-0-125" name="__codelineno-0-125" href="#__codelineno-0-125"></a>│   │   ├── Batch: mm find --kind video | mm cat -m accurate --format=json
+<a id="__codelineno-0-126" name="__codelineno-0-126" href="#__codelineno-0-126"></a>│   │   └── Output: {filename_suggestion, tags, summary, scenes}
+<a id="__codelineno-0-127" name="__codelineno-0-127" href="#__codelineno-0-127"></a>│   │
+<a id="__codelineno-0-128" name="__codelineno-0-128" href="#__codelineno-0-128"></a>│   ├── Audio transcription pipeline
+<a id="__codelineno-0-129" name="__codelineno-0-129" href="#__codelineno-0-129"></a>│   │   ├── 2x audio extraction already done (Whisper-optimized WAV)
+<a id="__codelineno-0-130" name="__codelineno-0-130" href="#__codelineno-0-130"></a>│   │   ├── Local Whisper via whisper.cpp or faster-whisper (Python)
+<a id="__codelineno-0-131" name="__codelineno-0-131" href="#__codelineno-0-131"></a>│   │   ├── API-based: OpenAI Whisper API, Groq, Deepgram
+<a id="__codelineno-0-132" name="__codelineno-0-132" href="#__codelineno-0-132"></a>│   │   ├── mm transcribe video.mp4 → timestamped transcript
+<a id="__codelineno-0-133" name="__codelineno-0-133" href="#__codelineno-0-133"></a>│   │   ├── Speaker diarization as post-process on transcript
+<a id="__codelineno-0-134" name="__codelineno-0-134" href="#__codelineno-0-134"></a>│   │   └── Cache transcripts in .mm/transcripts/{hash}.txt
+<a id="__codelineno-0-135" name="__codelineno-0-135" href="#__codelineno-0-135"></a>│   │
+<a id="__codelineno-0-136" name="__codelineno-0-136" href="#__codelineno-0-136"></a>│   ├── PDF visual understanding
+<a id="__codelineno-0-137" name="__codelineno-0-137" href="#__codelineno-0-137"></a>│   │   ├── Page thumbnails (from P1) → VLM for table/chart extraction
+<a id="__codelineno-0-138" name="__codelineno-0-138" href="#__codelineno-0-138"></a>│   │   ├── Targeted: only pages where text extraction returned &lt;50 chars
+<a id="__codelineno-0-139" name="__codelineno-0-139" href="#__codelineno-0-139"></a>│   │   ├── Output structured data: extracted tables as CSV, chart descriptions
+<a id="__codelineno-0-140" name="__codelineno-0-140" href="#__codelineno-0-140"></a>│   │   └── mm cat scanned.pdf -m accurate → OCR + layout understanding
+<a id="__codelineno-0-141" name="__codelineno-0-141" href="#__codelineno-0-141"></a>│   │
+<a id="__codelineno-0-142" name="__codelineno-0-142" href="#__codelineno-0-142"></a>│   ├── Embedding generation
+<a id="__codelineno-0-143" name="__codelineno-0-143" href="#__codelineno-0-143"></a>│   │   ├── SemanticAnalyzer.embed() trait already defined in Rust
+<a id="__codelineno-0-144" name="__codelineno-0-144" href="#__codelineno-0-144"></a>│   │   ├── CLIP/SigLIP for images (via Python or ONNX Runtime)
+<a id="__codelineno-0-145" name="__codelineno-0-145" href="#__codelineno-0-145"></a>│   │   ├── Text embeddings for code/documents (sentence-transformers)
+<a id="__codelineno-0-146" name="__codelineno-0-146" href="#__codelineno-0-146"></a>│   │   ├── Store in .mm/embeddings.parquet (path, embedding vector)
+<a id="__codelineno-0-147" name="__codelineno-0-147" href="#__codelineno-0-147"></a>│   │   └── Enable: mm search &quot;sunset over mountains&quot; --kind image
+<a id="__codelineno-0-148" name="__codelineno-0-148" href="#__codelineno-0-148"></a>│   │
+<a id="__codelineno-0-149" name="__codelineno-0-149" href="#__codelineno-0-149"></a>│   └── Semantic search
+<a id="__codelineno-0-150" name="__codelineno-0-150" href="#__codelineno-0-150"></a>│       ├── mm search &quot;query&quot; — natural language search across all files
+<a id="__codelineno-0-151" name="__codelineno-0-151" href="#__codelineno-0-151"></a>│       ├── Hybrid: keyword (grep) + vector (embedding cosine similarity)
+<a id="__codelineno-0-152" name="__codelineno-0-152" href="#__codelineno-0-152"></a>│       ├── Cross-modal: text query → image/video/document results
+<a id="__codelineno-0-153" name="__codelineno-0-153" href="#__codelineno-0-153"></a>│       └── Ranking: combine metadata, fast-mode features, accurate-mode embeddings
+<a id="__codelineno-0-154" name="__codelineno-0-154" href="#__codelineno-0-154"></a>│
+<a id="__codelineno-0-155" name="__codelineno-0-155" href="#__codelineno-0-155"></a>├── P3 — Context Builder (The Killer Feature)
+<a id="__codelineno-0-156" name="__codelineno-0-156" href="#__codelineno-0-156"></a>│   │
+<a id="__codelineno-0-157" name="__codelineno-0-157" href="#__codelineno-0-157"></a>│   │   This is what &quot;mm&quot; exists for: construct optimal LLM context
+<a id="__codelineno-0-158" name="__codelineno-0-158" href="#__codelineno-0-158"></a>│   │   payloads from multimodal directories. Given a token budget and a
+<a id="__codelineno-0-159" name="__codelineno-0-159" href="#__codelineno-0-159"></a>│   │   task, select and format the most relevant content.
+<a id="__codelineno-0-160" name="__codelineno-0-160" href="#__codelineno-0-160"></a>│   │
+<a id="__codelineno-0-161" name="__codelineno-0-161" href="#__codelineno-0-161"></a>│   ├── mm context — LLM-ready payload builder
+<a id="__codelineno-0-162" name="__codelineno-0-162" href="#__codelineno-0-162"></a>│   │   ├── --budget 128K: fit as much as possible in N tokens
+<a id="__codelineno-0-163" name="__codelineno-0-163" href="#__codelineno-0-163"></a>│   │   ├── --task &quot;describe the architecture&quot;: relevance-weighted selection
+<a id="__codelineno-0-164" name="__codelineno-0-164" href="#__codelineno-0-164"></a>│   │   ├── --format markdown|xml|json: output format for LLM consumption
+<a id="__codelineno-0-165" name="__codelineno-0-165" href="#__codelineno-0-165"></a>│   │   ├── Priority: code &gt; docs &gt; images (by default, configurable)
+<a id="__codelineno-0-166" name="__codelineno-0-166" href="#__codelineno-0-166"></a>│   │   ├── Images: inline as base64 or reference mosaic thumbnails
+<a id="__codelineno-0-167" name="__codelineno-0-167" href="#__codelineno-0-167"></a>│   │   ├── Videos: include keyframe mosaics + transcript excerpts
+<a id="__codelineno-0-168" name="__codelineno-0-168" href="#__codelineno-0-168"></a>│   │   └── PDFs: include text + page thumbnails for visual content
+<a id="__codelineno-0-169" name="__codelineno-0-169" href="#__codelineno-0-169"></a>│   │
+<a id="__codelineno-0-170" name="__codelineno-0-170" href="#__codelineno-0-170"></a>│   ├── Smart token allocation
+<a id="__codelineno-0-171" name="__codelineno-0-171" href="#__codelineno-0-171"></a>│   │   ├── Estimate tokens per file (wc --tokens from P0)
+<a id="__codelineno-0-172" name="__codelineno-0-172" href="#__codelineno-0-172"></a>│   │   ├── Greedy knapsack: maximize coverage within budget
+<a id="__codelineno-0-173" name="__codelineno-0-173" href="#__codelineno-0-173"></a>│   │   ├── File importance scoring: size, recency, kind, depth
+<a id="__codelineno-0-174" name="__codelineno-0-174" href="#__codelineno-0-174"></a>│   │   ├── Truncation: head/tail for large files, page selection for PDFs
+<a id="__codelineno-0-175" name="__codelineno-0-175" href="#__codelineno-0-175"></a>│   │   └── Show allocation: &quot;12 files, 847 images, 102K tokens used&quot;
+<a id="__codelineno-0-176" name="__codelineno-0-176" href="#__codelineno-0-176"></a>│   │
+<a id="__codelineno-0-177" name="__codelineno-0-177" href="#__codelineno-0-177"></a>│   ├── Incremental context updates
+<a id="__codelineno-0-178" name="__codelineno-0-178" href="#__codelineno-0-178"></a>│   │   ├── Track which files were included in last context payload
+<a id="__codelineno-0-179" name="__codelineno-0-179" href="#__codelineno-0-179"></a>│   │   ├── On re-run: only include changed/new files (diffing)
+<a id="__codelineno-0-180" name="__codelineno-0-180" href="#__codelineno-0-180"></a>│   │   ├── Useful for long-running LLM conversations about a directory
+<a id="__codelineno-0-181" name="__codelineno-0-181" href="#__codelineno-0-181"></a>│   │   └── --since &quot;2h&quot; flag: only files modified in last 2 hours
+<a id="__codelineno-0-182" name="__codelineno-0-182" href="#__codelineno-0-182"></a>│   │
+<a id="__codelineno-0-183" name="__codelineno-0-183" href="#__codelineno-0-183"></a>│   └── Context profiles
+<a id="__codelineno-0-184" name="__codelineno-0-184" href="#__codelineno-0-184"></a>│       ├── .mm/profiles/code-review.toml — predefined configurations
+<a id="__codelineno-0-185" name="__codelineno-0-185" href="#__codelineno-0-185"></a>│       ├── Profiles: code-review, bug-report, documentation, data-analysis
+<a id="__codelineno-0-186" name="__codelineno-0-186" href="#__codelineno-0-186"></a>│       ├── Each profile defines: kinds, priorities, format, budget
+<a id="__codelineno-0-187" name="__codelineno-0-187" href="#__codelineno-0-187"></a>│       └── mm context --profile code-review
+<a id="__codelineno-0-188" name="__codelineno-0-188" href="#__codelineno-0-188"></a>│
+<a id="__codelineno-0-189" name="__codelineno-0-189" href="#__codelineno-0-189"></a>├── P4 — Ecosystem &amp; Integrations
+<a id="__codelineno-0-190" name="__codelineno-0-190" href="#__codelineno-0-190"></a>│   │
+<a id="__codelineno-0-191" name="__codelineno-0-191" href="#__codelineno-0-191"></a>│   ├── MCP server (Model Context Protocol)
+<a id="__codelineno-0-192" name="__codelineno-0-192" href="#__codelineno-0-192"></a>│   │   ├── Expose mm as an MCP tool server
+<a id="__codelineno-0-193" name="__codelineno-0-193" href="#__codelineno-0-193"></a>│   │   ├── Tools: scan, find, cat, grep, sql, keyframes, context
+<a id="__codelineno-0-194" name="__codelineno-0-194" href="#__codelineno-0-194"></a>│   │   ├── Resources: directory index as MCP resource
+<a id="__codelineno-0-195" name="__codelineno-0-195" href="#__codelineno-0-195"></a>│   │   ├── LLM agents can query file systems via mm natively
+<a id="__codelineno-0-196" name="__codelineno-0-196" href="#__codelineno-0-196"></a>│   │   └── Zero-config: mm serve --mcp
+<a id="__codelineno-0-197" name="__codelineno-0-197" href="#__codelineno-0-197"></a>│   │
+<a id="__codelineno-0-198" name="__codelineno-0-198" href="#__codelineno-0-198"></a>│   ├── Watch mode
+<a id="__codelineno-0-199" name="__codelineno-0-199" href="#__codelineno-0-199"></a>│   │   ├── mm watch — inotify/FSEvents file watcher
+<a id="__codelineno-0-200" name="__codelineno-0-200" href="#__codelineno-0-200"></a>│   │   ├── Keep index hot in memory, update incrementally
+<a id="__codelineno-0-201" name="__codelineno-0-201" href="#__codelineno-0-201"></a>│   │   ├── Emit events on file changes (for downstream consumers)
+<a id="__codelineno-0-202" name="__codelineno-0-202" href="#__codelineno-0-202"></a>│   │   ├── WebSocket/SSE endpoint for real-time dashboards
+<a id="__codelineno-0-203" name="__codelineno-0-203" href="#__codelineno-0-203"></a>│   │   └── Combined with MCP: always-fresh context for LLM agents
+<a id="__codelineno-0-204" name="__codelineno-0-204" href="#__codelineno-0-204"></a>│   │
+<a id="__codelineno-0-205" name="__codelineno-0-205" href="#__codelineno-0-205"></a>│   ├── mm diff — compare two directories
+<a id="__codelineno-0-206" name="__codelineno-0-206" href="#__codelineno-0-206"></a>│   │   ├── Structural diff: files added, removed, modified, moved
+<a id="__codelineno-0-207" name="__codelineno-0-207" href="#__codelineno-0-207"></a>│   │   ├── Content diff: changed hash, changed dimensions, etc.
+<a id="__codelineno-0-208" name="__codelineno-0-208" href="#__codelineno-0-208"></a>│   │   ├── Semantic diff: different VLM captions (expensive, opt-in)
+<a id="__codelineno-0-209" name="__codelineno-0-209" href="#__codelineno-0-209"></a>│   │   └── Output as enriched changelog for LLM consumption
+<a id="__codelineno-0-210" name="__codelineno-0-210" href="#__codelineno-0-210"></a>│   │
+<a id="__codelineno-0-211" name="__codelineno-0-211" href="#__codelineno-0-211"></a>│   ├── Cloud storage backends
+<a id="__codelineno-0-212" name="__codelineno-0-212" href="#__codelineno-0-212"></a>│   │   ├── S3/GCS/Azure Blob as scan targets (list + head requests)
+<a id="__codelineno-0-213" name="__codelineno-0-213" href="#__codelineno-0-213"></a>│   │   ├── Lazy download: only fetch content for fast-mode extraction when needed
+<a id="__codelineno-0-214" name="__codelineno-0-214" href="#__codelineno-0-214"></a>│   │   └── Cache metadata locally in .mm/
+<a id="__codelineno-0-215" name="__codelineno-0-215" href="#__codelineno-0-215"></a>│   │
+<a id="__codelineno-0-216" name="__codelineno-0-216" href="#__codelineno-0-216"></a>│   └── Pre-built wheels + Homebrew
+<a id="__codelineno-0-217" name="__codelineno-0-217" href="#__codelineno-0-217"></a>│       ├── CI/CD: maturin build for manylinux, macOS arm64/x86, Windows
+<a id="__codelineno-0-218" name="__codelineno-0-218" href="#__codelineno-0-218"></a>│       ├── PyPI: pip install mm-ctx (no Rust toolchain needed)
+<a id="__codelineno-0-219" name="__codelineno-0-219" href="#__codelineno-0-219"></a>│       ├── Homebrew: brew install mm (standalone binary)
+<a id="__codelineno-0-220" name="__codelineno-0-220" href="#__codelineno-0-220"></a>│       └── Docker: ghcr.io/spillai/mm (with ffmpeg pre-installed)
+<a id="__codelineno-0-221" name="__codelineno-0-221" href="#__codelineno-0-221"></a>│
+<a id="__codelineno-0-222" name="__codelineno-0-222" href="#__codelineno-0-222"></a>└── Performance Targets
+<a id="__codelineno-0-223" name="__codelineno-0-223" href="#__codelineno-0-223"></a>    │
+<a id="__codelineno-0-224" name="__codelineno-0-224" href="#__codelineno-0-224"></a>    ├── Metadata scan
+<a id="__codelineno-0-225" name="__codelineno-0-225" href="#__codelineno-0-225"></a>    │   ├── Current: 5ms / 249 files, 5.7ms / 1K files
+<a id="__codelineno-0-226" name="__codelineno-0-226" href="#__codelineno-0-226"></a>    │   ├── With persistent index: &lt;2ms / 1K files (no changes)
+<a id="__codelineno-0-227" name="__codelineno-0-227" href="#__codelineno-0-227"></a>    │   └── Target: &lt;50ms / 100K files
+<a id="__codelineno-0-228" name="__codelineno-0-228" href="#__codelineno-0-228"></a>    │
+<a id="__codelineno-0-229" name="__codelineno-0-229" href="#__codelineno-0-229"></a>    ├── CLI cold start
+<a id="__codelineno-0-230" name="__codelineno-0-230" href="#__codelineno-0-230"></a>    │   ├── Current: 66ms (in-process), 116ms (with uv startup)
+<a id="__codelineno-0-231" name="__codelineno-0-231" href="#__codelineno-0-231"></a>    │   ├── With Rust JSON: &lt;30ms in-process for --format=json
+<a id="__codelineno-0-232" name="__codelineno-0-232" href="#__codelineno-0-232"></a>    │   └── Target: &lt;50ms wall-clock for any --format=json command
+<a id="__codelineno-0-233" name="__codelineno-0-233" href="#__codelineno-0-233"></a>    │
+<a id="__codelineno-0-234" name="__codelineno-0-234" href="#__codelineno-0-234"></a>    ├── Fast-mode batch extraction
+<a id="__codelineno-0-235" name="__codelineno-0-235" href="#__codelineno-0-235"></a>    │   ├── Current: 5.1s for 17 videos (sequential)
+<a id="__codelineno-0-236" name="__codelineno-0-236" href="#__codelineno-0-236"></a>    │   ├── Target: &lt;1s for 17 videos (parallel)
+<a id="__codelineno-0-237" name="__codelineno-0-237" href="#__codelineno-0-237"></a>    │   └── Target: &lt;100ms for 200 images (parallel hash + dims)
+<a id="__codelineno-0-238" name="__codelineno-0-238" href="#__codelineno-0-238"></a>    │
+<a id="__codelineno-0-239" name="__codelineno-0-239" href="#__codelineno-0-239"></a>    ├── Smart local extraction
+<a id="__codelineno-0-240" name="__codelineno-0-240" href="#__codelineno-0-240"></a>    │   ├── PDF page thumbnails: &lt;20ms/page
+<a id="__codelineno-0-241" name="__codelineno-0-241" href="#__codelineno-0-241"></a>    │   ├── Image pHash: &lt;1ms/image (DONE)
+<a id="__codelineno-0-242" name="__codelineno-0-242" href="#__codelineno-0-242"></a>    │   ├── Code symbol extraction: &lt;5ms/file (tree-sitter)
+<a id="__codelineno-0-243" name="__codelineno-0-243" href="#__codelineno-0-243"></a>    │   └── Video scene graph: &lt;2s for 86min video
+<a id="__codelineno-0-244" name="__codelineno-0-244" href="#__codelineno-0-244"></a>    │
+<a id="__codelineno-0-245" name="__codelineno-0-245" href="#__codelineno-0-245"></a>    └── Context generation
+<a id="__codelineno-0-246" name="__codelineno-0-246" href="#__codelineno-0-246"></a>        ├── mm context (metadata + fast mode): &lt;200ms for 1K files
+<a id="__codelineno-0-247" name="__codelineno-0-247" href="#__codelineno-0-247"></a>        ├── mm context -m accurate: depends on VLM latency
+<a id="__codelineno-0-248" name="__codelineno-0-248" href="#__codelineno-0-248"></a>        └── Token estimation: &lt;1ms/file (byte heuristic)
+</code></pre></div>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+        
+<div class="md-social">
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://github.com/vlm-run/mm" target="_blank" rel="noopener" title="github.com" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+    </a>
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://pypi.org/project/mm-ctx/" target="_blank" rel="noopener" title="pypi.org" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.8 200.5c-7.7-30.9-22.3-54.2-53.4-54.2h-40.1v47.4c0 36.8-31.2 67.8-66.8 67.8H172.7c-29.2 0-53.4 25-53.4 54.3v101.8c0 29 25.2 46 53.4 54.3 33.8 9.9 66.3 11.7 106.8 0 26.9-7.8 53.4-23.5 53.4-54.3v-40.7H226.2v-13.6h160.2c31.1 0 42.6-21.7 53.4-54.2 11.2-33.5 10.7-65.7 0-108.6M286.2 444.7a20.4 20.4 0 1 1 0-40.7 20.4 20.4 0 1 1 0 40.7M167.8 248.1h106.8c29.7 0 53.4-24.5 53.4-54.3V91.9c0-29-24.4-50.7-53.4-55.6-35.8-5.9-74.7-5.6-106.8.1-45.2 8-53.4 24.7-53.4 55.6v40.7h106.9v13.6h-147c-31.1 0-58.3 18.7-66.8 54.2-9.8 40.7-10.2 66.1 0 108.6 7.6 31.6 25.7 54.2 56.8 54.2H101v-48.8c0-35.3 30.5-66.4 66.8-66.4m-6.6-183.4a20.4 20.4 0 1 1 0 40.8 20.4 20.4 0 1 1 0-40.8"/></svg>
+    </a>
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://discord.gg/6aqcyvPF79" target="_blank" rel="noopener" title="discord.gg" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M492.5 69.8c-.2-.3-.4-.6-.8-.7-38.1-17.5-78.4-30-119.7-37.1-.4-.1-.8 0-1.1.1s-.6.4-.8.8c-5.5 9.9-10.5 20.2-14.9 30.6-44.6-6.8-89.9-6.8-134.4 0-4.5-10.5-9.5-20.7-15.1-30.6-.2-.3-.5-.6-.8-.8s-.7-.2-1.1-.2C162.5 39 122.2 51.5 84.1 69c-.3.1-.6.4-.8.7C7.1 183.5-13.8 294.6-3.6 404.2c0 .3.1.5.2.8s.3.4.5.6c44.4 32.9 94 58 146.8 74.2.4.1.8.1 1.1 0s.7-.4.9-.7c11.3-15.4 21.4-31.8 30-48.8.1-.2.2-.5.2-.8s0-.5-.1-.8-.2-.5-.4-.6-.4-.3-.7-.4c-15.8-6.1-31.2-13.4-45.9-21.9-.3-.2-.5-.4-.7-.6s-.3-.6-.3-.9 0-.6.2-.9.3-.5.6-.7c3.1-2.3 6.2-4.7 9.1-7.1.3-.2.6-.4.9-.4s.7 0 1 .1c96.2 43.9 200.4 43.9 295.5 0 .3-.1.7-.2 1-.2s.7.2.9.4c2.9 2.4 6 4.9 9.1 7.2.2.2.4.4.6.7s.2.6.2.9-.1.6-.3.9-.4.5-.6.6c-14.7 8.6-30 15.9-45.9 21.8-.2.1-.5.2-.7.4s-.3.4-.4.7-.1.5-.1.8.1.5.2.8c8.8 17 18.8 33.3 30 48.8.2.3.6.6.9.7s.8.1 1.1 0c52.9-16.2 102.6-41.3 147.1-74.2.2-.2.4-.4.5-.6s.2-.5.2-.8c12.3-126.8-20.5-236.9-86.9-334.5zm-302 267.7c-29 0-52.8-26.6-52.8-59.2s23.4-59.2 52.8-59.2c29.7 0 53.3 26.8 52.8 59.2 0 32.7-23.4 59.2-52.8 59.2m195.4 0c-29 0-52.8-26.6-52.8-59.2s23.4-59.2 52.8-59.2c29.7 0 53.3 26.8 52.8 59.2 0 32.7-23.2 59.2-52.8 59.2"/></svg>
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.instant", "navigation.tracking", "navigation.top", "toc.follow", "content.code.copy", "content.code.annotate"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>

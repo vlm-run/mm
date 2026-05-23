@@ -1,0 +1,3173 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Fast, multimodal context for agents.">
+      
+      
+      
+        <link rel="canonical" href="https://vlm-run.github.io/mm/encoders/">
+      
+      
+        <link rel="prev" href="../use-cases/">
+      
+      
+        <link rel="next" href="../pipelines/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>Encoders - mm</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/_mkdocstrings.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#encoders" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="mm" class="md-header__button md-logo" aria-label="mm" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            mm
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Encoders
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://pypi.org/project/mm-ctx/" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.8 200.5c-7.7-30.9-22.3-54.2-53.4-54.2h-40.1v47.4c0 36.8-31.2 67.8-66.8 67.8H172.7c-29.2 0-53.4 25-53.4 54.3v101.8c0 29 25.2 46 53.4 54.3 33.8 9.9 66.3 11.7 106.8 0 26.9-7.8 53.4-23.5 53.4-54.3v-40.7H226.2v-13.6h160.2c31.1 0 42.6-21.7 53.4-54.2 11.2-33.5 10.7-65.7 0-108.6M286.2 444.7a20.4 20.4 0 1 1 0-40.7 20.4 20.4 0 1 1 0 40.7M167.8 248.1h106.8c29.7 0 53.4-24.5 53.4-54.3V91.9c0-29-24.4-50.7-53.4-55.6-35.8-5.9-74.7-5.6-106.8.1-45.2 8-53.4 24.7-53.4 55.6v40.7h106.9v13.6h-147c-31.1 0-58.3 18.7-66.8 54.2-9.8 40.7-10.2 66.1 0 108.6 7.6 31.6 25.7 54.2 56.8 54.2H101v-48.8c0-35.3 30.5-66.4 66.8-66.4m-6.6-183.4a20.4 20.4 0 1 1 0 40.8 20.4 20.4 0 1 1 0-40.8"/></svg>
+  </div>
+  <div class="md-source__repository">
+    mm-ctx
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="mm" class="md-nav__button md-logo" aria-label="mm" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    mm
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://pypi.org/project/mm-ctx/" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.8 200.5c-7.7-30.9-22.3-54.2-53.4-54.2h-40.1v47.4c0 36.8-31.2 67.8-66.8 67.8H172.7c-29.2 0-53.4 25-53.4 54.3v101.8c0 29 25.2 46 53.4 54.3 33.8 9.9 66.3 11.7 106.8 0 26.9-7.8 53.4-23.5 53.4-54.3v-40.7H226.2v-13.6h160.2c31.1 0 42.6-21.7 53.4-54.2 11.2-33.5 10.7-65.7 0-108.6M286.2 444.7a20.4 20.4 0 1 1 0-40.7 20.4 20.4 0 1 1 0 40.7M167.8 248.1h106.8c29.7 0 53.4-24.5 53.4-54.3V91.9c0-29-24.4-50.7-53.4-55.6-35.8-5.9-74.7-5.6-106.8.1-45.2 8-53.4 24.7-53.4 55.6v40.7h106.9v13.6h-147c-31.1 0-58.3 18.7-66.8 54.2-9.8 40.7-10.2 66.1 0 108.6 7.6 31.6 25.7 54.2 56.8 54.2H101v-48.8c0-35.3 30.5-66.4 66.8-66.4m-6.6-183.4a20.4 20.4 0 1 1 0 40.8 20.4 20.4 0 1 1 0-40.8"/></svg>
+  </div>
+  <div class="md-source__repository">
+    mm-ctx
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../user-guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    User guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CLI
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    CLI
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cli/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../find/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    find
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../wc/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    wc
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../peek/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    peek
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../sql/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    sql
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../grep/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    grep
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cat/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    cat
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../bench/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    bench
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../profile/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    profile
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../config/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    config
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Python API
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Python API
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Index
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../mm-context/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    mm.Context
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../use-cases/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Use cases
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Encoders
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Encoders
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#current-encoders" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Current Encoders
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Current Encoders">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#image" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Image
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Image">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#resize" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        resize
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tile" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        tile
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#video" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Video
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Video">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#mosaic" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        mosaic
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#mosaic-w-transcript" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        mosaic-w-transcript
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#frames" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        frames
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#frames-w-transcript" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        frames-w-transcript
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#keyframes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        keyframes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#keyframes-w-transcript" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        keyframes-w-transcript
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#shots" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        shots
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#shots-w-transcript" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        shots-w-transcript
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#shot-mosaic" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        shot-mosaic
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#shot-mosaic-w-transcript" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        shot-mosaic-w-transcript
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#chunks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        chunks
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#clips" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        clips
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#clips-w-transcript" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        clips-w-transcript
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        summary
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#summary-w-transcript" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        summary-w-transcript
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#transcript" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        transcript
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#captions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        captions
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#gemini" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        gemini
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#gemini-chunked" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        gemini-chunked
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#audio" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Audio
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Audio">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#base64" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        base64
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#transcribe" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        transcribe
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#gemini_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        gemini
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#document" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Document
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Document">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#page-text" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        page-text
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rasterize" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        rasterize
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rasterize-text" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        rasterize-text
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#gemini_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        gemini
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#planned-encoders" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Planned Encoders
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Planned Encoders">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#image_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Image
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#document_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Document
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#writing-custom-encoders" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Writing Custom Encoders
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Writing Custom Encoders">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#class-based-recommended" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Class-based (recommended)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#function-based" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Function-based
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#multi-chunk-encoders" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Multi-chunk encoders
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#encoder-abc" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Encoder ABC
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#gaps" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Gaps
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../pipelines/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Pipelines
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../fixtures/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Fixtures
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_9" >
+        
+          
+          <label class="md-nav__link" for="__nav_9" id="__nav_9_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Notebooks
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_9">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Notebooks
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../notebooks/mm_cookbook_gateway/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Cookbook (gateway)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../notebooks/mm_cookbook/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Cookbook (local vlm)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../notebooks/mm-context-api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Context API
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../notebooks/mm-context-viz/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Context visualization
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_10" >
+        
+          
+          <label class="md-nav__link" for="__nav_10" id="__nav_10_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Pipeline templates
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_10_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_10">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Pipeline templates
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../spec-templates/image/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Image
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../spec-templates/video/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Video
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../spec-templates/audio/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Audio
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../spec-templates/document/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Document
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#current-encoders" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Current Encoders
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Current Encoders">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#image" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Image
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Image">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#resize" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        resize
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tile" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        tile
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#video" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Video
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Video">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#mosaic" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        mosaic
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#mosaic-w-transcript" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        mosaic-w-transcript
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#frames" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        frames
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#frames-w-transcript" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        frames-w-transcript
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#keyframes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        keyframes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#keyframes-w-transcript" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        keyframes-w-transcript
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#shots" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        shots
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#shots-w-transcript" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        shots-w-transcript
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#shot-mosaic" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        shot-mosaic
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#shot-mosaic-w-transcript" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        shot-mosaic-w-transcript
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#chunks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        chunks
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#clips" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        clips
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#clips-w-transcript" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        clips-w-transcript
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        summary
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#summary-w-transcript" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        summary-w-transcript
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#transcript" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        transcript
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#captions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        captions
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#gemini" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        gemini
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#gemini-chunked" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        gemini-chunked
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#audio" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Audio
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Audio">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#base64" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        base64
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#transcribe" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        transcribe
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#gemini_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        gemini
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#document" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Document
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Document">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#page-text" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        page-text
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rasterize" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        rasterize
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rasterize-text" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        rasterize-text
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#gemini_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        gemini
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#planned-encoders" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Planned Encoders
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Planned Encoders">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#image_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Image
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#document_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Document
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#writing-custom-encoders" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Writing Custom Encoders
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Writing Custom Encoders">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#class-based-recommended" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Class-based (recommended)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#function-based" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Function-based
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#multi-chunk-encoders" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Multi-chunk encoders
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#encoder-abc" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Encoder ABC
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#gaps" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Gaps
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="encoders">Encoders<a class="headerlink" href="#encoders" title="Permanent link">&para;</a></h1>
+<p>Encoders transform media files into OpenAI-compatible Message dicts ready for VLM chat/completions APIs. Each encoder is registered via <code>@register_encoder</code> and can be used with <code>mm cat -p &lt;name&gt;</code>.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>file → encoder → [{&quot;role&quot;: &quot;user&quot;, &quot;content&quot;: [...]}] → LLM (if pipeline has generate step)
+</code></pre></div>
+<h2 id="current-encoders">Current Encoders<a class="headerlink" href="#current-encoders" title="Permanent link">&para;</a></h2>
+<h3 id="image">Image<a class="headerlink" href="#image" title="Permanent link">&para;</a></h3>
+<h4 id="resize"><code>resize</code><a class="headerlink" href="#resize" title="Permanent link">&para;</a></h4>
+<p>Resize to bounding box, base64 encode. Uses Rust fast-path when available, Pillow fallback. EXIF orientation applied. <strong>Parameters:</strong> <code>max_width=1024</code></p>
+<pre class="mermaid"><code>%%{init: {'look': 'neo'} }%%
+graph LR
+  img("🖼️ image")
+
+  subgraph encode ["Encode"]
+    exif("EXIF orient")
+    resize("Resize")
+  end
+
+  subgraph message ["Message"]
+    msg("image_url")
+  end
+
+  img --&gt; exif --&gt; resize --&gt; msg
+  style encode rx:10px,ry:10px
+  style message rx:10px,ry:10px</code></pre>
+<hr />
+<h4 id="tile"><code>tile</code><a class="headerlink" href="#tile" title="Permanent link">&para;</a></h4>
+<p>Resized overview + tile crops in a single message. Gives VLMs both global context and fine detail. Falls back to overview-only when image fits in one tile. <strong>Parameters:</strong> <code>max_width=1024</code></p>
+<pre class="mermaid"><code>%%{init: {'look': 'neo'} }%%
+graph LR
+  img("🖼️ image")
+
+  subgraph encode ["Encode"]
+    exif("EXIF orient")
+    overview("Resize overview image\n(global context)")
+    tiles("Crop NxM tile images\n(fine detail)")
+  end
+
+  subgraph message ["Message"]
+    msg("tile metadata\n+ overview image\n+ N tile images")
+  end
+
+  img --&gt; exif
+  exif --&gt; overview
+  exif --&gt; tiles
+  overview --&gt; msg
+  tiles --&gt; msg
+  style encode rx:10px,ry:10px
+  style message rx:10px,ry:10px</code></pre>
+<hr />
+<h3 id="video">Video<a class="headerlink" href="#video" title="Permanent link">&para;</a></h3>
+<h4 id="mosaic"><code>mosaic</code><a class="headerlink" href="#mosaic" title="Permanent link">&para;</a></h4>
+<p>Scene-aware frame extraction + tiled mosaic grids. Default for fast mode. Uses PySceneDetect when available, falls back to uniform sampling. <strong>Parameters:</strong> <code>tile_cols=4, tile_rows=4, thumb_width=160, num_mosaics=8, num_frames=128</code></p>
+<pre class="mermaid"><code>%%{init: {'look': 'neo'} }%%
+graph LR
+  video("🎬 video")
+
+  subgraph encode ["Encode"]
+    detect("Scene detect\n(or uniform)")
+    frames("Extract\nN frames")
+    tile("Tile into\n4x4 mosaics")
+  end
+
+  subgraph message ["Message"]
+    msg("N: mosaic grids")
+  end
+
+  video --&gt; detect --&gt; frames --&gt; tile --&gt; msg
+  style encode rx:10px,ry:10px
+  style message rx:10px,ry:10px</code></pre>
+<hr />
+<h4 id="mosaic-w-transcript"><code>mosaic-w-transcript</code><a class="headerlink" href="#mosaic-w-transcript" title="Permanent link">&para;</a></h4>
+<p><code>mosaic</code> + Whisper transcript prepended as the first message. <strong>Parameters:</strong> <code>tile_cols=4, tile_rows=4, thumb_width=160, num_mosaics=8, num_frames=128, model=None, language=auto, audio_speed=2.0</code></p>
+<pre class="mermaid"><code>%%{init: {'look': 'neo'} }%%
+graph LR
+  video("🎬 video")
+
+  subgraph encode ["Encode"]
+    direction TB
+    audio("ffmpeg\nextract audio")
+    whisper("Whisper\ntranscribe")
+    detect("Scene detect\n(or uniform)")
+    frames("Extract N frames\n→ tile mosaics")
+  end
+
+  subgraph message ["Message"]
+    transcript("1: transcript")
+    mosaic_msgs("2..N: mosaic grids")
+  end
+
+  video --&gt; audio --&gt; whisper --&gt; transcript
+  video --&gt; detect --&gt; frames --&gt; mosaic_msgs
+  style encode rx:10px,ry:10px
+  style message rx:10px,ry:10px</code></pre>
+<hr />
+<h4 id="frames"><code>frames</code><a class="headerlink" href="#frames" title="Permanent link">&para;</a></h4>
+<p>Extract frames at N fps via parallel ffmpeg seeking, batch into messages (max 16 frames each). Text header with time range per batch. <strong>Parameters:</strong> <code>fps=1.0, max_width=1024, max_frames_per_message=16</code></p>
+<pre class="mermaid"><code>%%{init: {'look': 'neo'} }%%
+graph LR
+  video("🎬 video")
+
+  subgraph encode ["Encode"]
+    ts("Uniform timestamps\nat fps")
+    ffmpeg("ffmpeg seek\n+ extract")
+    batch("Batch ≤16\nframes/msg")
+  end
+
+  subgraph message ["Message"]
+    msgs("N: text header\n+ frame images")
+  end
+
+  video --&gt; ts --&gt; ffmpeg --&gt; batch --&gt; msgs
+  style encode rx:10px,ry:10px
+  style message rx:10px,ry:10px</code></pre>
+<hr />
+<h4 id="frames-w-transcript"><code>frames-w-transcript</code><a class="headerlink" href="#frames-w-transcript" title="Permanent link">&para;</a></h4>
+<p>Frame sampling + Whisper audio transcription. Transcript yielded first as context, then batched frames. Default for accurate mode. Falls back to frame-only when Whisper is unavailable. <strong>Parameters:</strong> <code>fps=1.0, max_width=1024, max_frames_per_message=16, model=None, language=auto, audio_speed=2.0</code></p>
+<pre class="mermaid"><code>%%{init: {'look': 'neo'} }%%
+graph LR
+  video("🎬 video")
+
+  subgraph encode ["Encode"]
+    direction TB
+    audio("ffmpeg\nextract audio")
+    whisper("Whisper\ntranscribe")
+    frames("Extract frames\nat fps")
+    batch("Batch ≤16\nframes/msg")
+  end
+
+  subgraph message ["Message"]
+    transcript("1: transcript")
+    frame_msgs("2..N: frame batches")
+  end
+
+  video --&gt; audio --&gt; whisper --&gt; transcript
+  video --&gt; frames --&gt; batch --&gt; frame_msgs
+  style encode rx:10px,ry:10px
+  style message rx:10px,ry:10px</code></pre>
+<hr />
+<h4 id="keyframes"><code>keyframes</code><a class="headerlink" href="#keyframes" title="Permanent link">&para;</a></h4>
+<p>Extract I-frames (keyframes) directly from the video bitstream. <strong>Parameters:</strong> <code>max_keyframes=None, max_width=1024, max_keyframes_per_message=16</code></p>
+<pre class="mermaid"><code>%%{init: {'look': 'neo'} }%%
+graph LR
+  video("🎬 video")
+
+  subgraph encode ["Encode"]
+    read("Read bitstream\n(PyAV)")
+    kf("Extract I-frames\n(keyframes only)")
+    batch("Batch ≤16\nkeyframes/msg")
+  end
+
+  subgraph message ["Message"]
+    msgs("N: text header\n+ keyframe images")
+  end
+
+  video --&gt; read --&gt; kf --&gt; batch --&gt; msgs
+  style encode rx:10px,ry:10px
+  style message rx:10px,ry:10px</code></pre>
+<hr />
+<h4 id="keyframes-w-transcript"><code>keyframes-w-transcript</code><a class="headerlink" href="#keyframes-w-transcript" title="Permanent link">&para;</a></h4>
+<p><code>keyframes</code> + Whisper transcript prepended as the first message. <strong>Parameters:</strong> <code>max_keyframes=None, max_width=1024, max_keyframes_per_message=16, model=None, language=auto, audio_speed=2.0</code></p>
+<pre class="mermaid"><code>%%{init: {'look': 'neo'} }%%
+graph LR
+  video("🎬 video")
+
+  subgraph encode ["Encode"]
+    direction TB
+    audio("ffmpeg\nextract audio")
+    whisper("Whisper\ntranscribe")
+    kf("Extract\nI-frames")
+    batch("Batch ≤16\nkeyframes/msg")
+  end
+
+  subgraph message ["Message"]
+    transcript("1: transcript")
+    frame_msgs("2..N: keyframe batches")
+  end
+
+  video --&gt; audio --&gt; whisper --&gt; transcript
+  video --&gt; kf --&gt; batch --&gt; frame_msgs
+  style encode rx:10px,ry:10px
+  style message rx:10px,ry:10px</code></pre>
+<hr />
+<h4 id="shots"><code>shots</code><a class="headerlink" href="#shots" title="Permanent link">&para;</a></h4>
+<p>PySceneDetect shot detection, extract representative frames per shot. One message per shot. <strong>Parameters:</strong> <code>threshold=27.0, max_frames_per_shot=8, max_width=1024</code></p>
+<pre class="mermaid"><code>%%{init: {'look': 'neo'} }%%
+graph LR
+  video("🎬 video")
+
+  subgraph encode ["Encode"]
+    detect("PySceneDetect\nshot boundaries")
+    s1("Shot 1\n≤8 frames")
+    s2("Shot 2\n≤8 frames")
+    s3("Shot N\n≤8 frames")
+  end
+
+  subgraph message ["Message"]
+    m1("1: ≤8 frames")
+    m2("2: ≤8 frames")
+    m3("N: ≤8 frames")
+  end
+
+  video --&gt; detect
+  detect --&gt; s1 --&gt; m1
+  detect --&gt; s2 --&gt; m2
+  detect --&gt; s3 --&gt; m3
+  style encode rx:10px,ry:10px
+  style message rx:10px,ry:10px</code></pre>
+<hr />
+<h4 id="shots-w-transcript"><code>shots-w-transcript</code><a class="headerlink" href="#shots-w-transcript" title="Permanent link">&para;</a></h4>
+<p><code>shots</code> + Whisper transcript prepended as the first message. <strong>Parameters:</strong> <code>threshold=27.0, max_frames_per_shot=8, max_width=1024, model=None, language=auto, audio_speed=2.0</code></p>
+<pre class="mermaid"><code>%%{init: {'look': 'neo'} }%%
+graph LR
+  video("🎬 video")
+
+  subgraph encode ["Encode"]
+    direction TB
+    audio("ffmpeg\nextract audio")
+    whisper("Whisper\ntranscribe")
+    detect("PySceneDetect\nshot boundaries")
+    shots("Extract frames\nper shot")
+  end
+
+  subgraph message ["Message"]
+    transcript("1: transcript")
+    shot_msgs("2..N: shot frame batches")
+  end
+
+  video --&gt; audio --&gt; whisper --&gt; transcript
+  video --&gt; detect --&gt; shots --&gt; shot_msgs
+  style encode rx:10px,ry:10px
+  style message rx:10px,ry:10px</code></pre>
+<hr />
+<h4 id="shot-mosaic"><code>shot-mosaic</code><a class="headerlink" href="#shot-mosaic" title="Permanent link">&para;</a></h4>
+<p>PySceneDetect shot detection, build a mosaic grid per shot. One message per shot. <strong>Parameters:</strong> <code>threshold=27.0, tile_cols=4, tile_rows=4, thumb_width=160</code></p>
+<pre class="mermaid"><code>%%{init: {'look': 'neo'} }%%
+graph LR
+  video("🎬 video")
+
+  subgraph encode ["Encode"]
+    detect("PySceneDetect\nshot boundaries")
+    s1("Shot 1 frames\n→ tile mosaic")
+    s2("Shot 2 frames\n→ tile mosaic")
+    s3("Shot N frames\n→ tile mosaic")
+  end
+
+  subgraph message ["Message"]
+    m1("1: mosaic grid")
+    m2("2: mosaic grid")
+    m3("N: mosaic grid")
+  end
+
+  video --&gt; detect
+  detect --&gt; s1 --&gt; m1
+  detect --&gt; s2 --&gt; m2
+  detect --&gt; s3 --&gt; m3
+  style encode rx:10px,ry:10px
+  style message rx:10px,ry:10px</code></pre>
+<hr />
+<h4 id="shot-mosaic-w-transcript"><code>shot-mosaic-w-transcript</code><a class="headerlink" href="#shot-mosaic-w-transcript" title="Permanent link">&para;</a></h4>
+<p><code>shot-mosaic</code> + Whisper transcript prepended as the first message. <strong>Parameters:</strong> <code>threshold=27.0, tile_cols=4, tile_rows=4, thumb_width=160, model=None, language=auto, audio_speed=2.0</code></p>
+<pre class="mermaid"><code>%%{init: {'look': 'neo'} }%%
+graph LR
+  video("🎬 video")
+
+  subgraph encode ["Encode"]
+    direction TB
+    audio("ffmpeg\nextract audio")
+    whisper("Whisper\ntranscribe")
+    detect("PySceneDetect\nshot boundaries")
+    mosaic("Tile frames\nper shot")
+  end
+
+  subgraph message ["Message"]
+    transcript("1: transcript")
+    mosaic_msgs("2..N: shot mosaic grids")
+  end
+
+  video --&gt; audio --&gt; whisper --&gt; transcript
+  video --&gt; detect --&gt; mosaic --&gt; mosaic_msgs
+  style encode rx:10px,ry:10px
+  style message rx:10px,ry:10px</code></pre>
+<hr />
+<h4 id="chunks"><code>chunks</code><a class="headerlink" href="#chunks" title="Permanent link">&para;</a></h4>
+<p>Split into overlapping time-based chunks, extract frames per chunk. One message per chunk with time range header. <strong>Parameters:</strong> <code>chunk_duration=60, overlap=5, max_width=1024, frames_per_chunk=16</code></p>
+<pre class="mermaid"><code>%%{init: {'look': 'neo'} }%%
+graph LR
+  video("🎬 video")
+
+  subgraph encode ["Encode"]
+    split("Split by duration\n(overlap=5s)")
+    c1("Chunk 1\n16 frames")
+    c2("Chunk 2\n16 frames")
+    c3("Chunk N\n16 frames")
+  end
+
+  subgraph message ["Message"]
+    m1("1: 16 frames")
+    m2("2: 16 frames")
+    m3("N: 16 frames")
+  end
+
+  video --&gt; split
+  split --&gt; c1 --&gt; m1
+  split --&gt; c2 --&gt; m2
+  split --&gt; c3 --&gt; m3
+  style encode rx:10px,ry:10px
+  style message rx:10px,ry:10px</code></pre>
+<hr />
+<h4 id="clips"><code>clips</code><a class="headerlink" href="#clips" title="Permanent link">&para;</a></h4>
+<p>Base64-encode video clips. Videos ≤ <code>duration</code> seconds are sent whole; longer videos are split into overlapping <code>duration</code>-second chunks. Each clip sent as a <code>video_url</code> base64 part — useful for models with native video input. <strong>Parameters:</strong> <code>duration=120, overlap=10, max_size_mb=None</code></p>
+<pre class="mermaid"><code>%%{init: {'look': 'neo'} }%%
+graph LR
+  video("🎬 video")
+
+  subgraph encode ["Encode"]
+    probe("Probe duration")
+    whole("≤120s: send\nwhole file")
+    chunked("120s: split into\noverlapping clips\n(ffmpeg stream-copy)")
+  end
+
+  subgraph message ["Message"]
+    m1("video_url (base64)")
+    mN("N: video_url (base64)")
+  end
+
+  video --&gt; probe
+  probe --&gt; whole --&gt; m1
+  probe --&gt; chunked --&gt; mN
+  style encode rx:10px,ry:10px
+  style message rx:10px,ry:10px</code></pre>
+<hr />
+<h4 id="clips-w-transcript"><code>clips-w-transcript</code><a class="headerlink" href="#clips-w-transcript" title="Permanent link">&para;</a></h4>
+<p><code>clips</code> + Whisper transcript prepended as the first message. <strong>Parameters:</strong> <code>duration=120, overlap=10, max_size_mb=None, model=None, language=auto, audio_speed=2.0</code></p>
+<pre class="mermaid"><code>%%{init: {'look': 'neo'} }%%
+graph LR
+  video("🎬 video")
+
+  subgraph encode ["Encode"]
+    direction TB
+    audio("ffmpeg\nextract audio")
+    whisper("Whisper\ntranscribe")
+    clips("Base64 encode\nvideo clips")
+  end
+
+  subgraph message ["Message"]
+    transcript("1: transcript")
+    clip_msgs("2..N: video_url clips")
+  end
+
+  video --&gt; audio --&gt; whisper --&gt; transcript
+  video --&gt; clips --&gt; clip_msgs
+  style encode rx:10px,ry:10px
+  style message rx:10px,ry:10px</code></pre>
+<hr />
+<h4 id="summary"><code>summary</code><a class="headerlink" href="#summary" title="Permanent link">&para;</a></h4>
+<p>Adaptive N-frame visual summary. Uses PySceneDetect to spread frames across scene boundaries when available; falls back to uniform sampling. <strong>Parameters:</strong> <code>num_frames=12, use_scene_detection=True, max_width=1024</code></p>
+<pre class="mermaid"><code>%%{init: {'look': 'neo'} }%%
+graph LR
+  video("🎬 video")
+
+  subgraph encode ["Encode"]
+    detect("Scene detect\n(optional)")
+    select("Select N representative\nframes across scenes")
+    extract("ffmpeg extract\n+ resize")
+  end
+
+  subgraph message ["Message"]
+    msg("text header\n+ N frame images")
+  end
+
+  video --&gt; detect --&gt; select --&gt; extract --&gt; msg
+  style encode rx:10px,ry:10px
+  style message rx:10px,ry:10px</code></pre>
+<hr />
+<h4 id="summary-w-transcript"><code>summary-w-transcript</code><a class="headerlink" href="#summary-w-transcript" title="Permanent link">&para;</a></h4>
+<p><code>summary</code> + Whisper transcript prepended as the first message. <strong>Parameters:</strong> <code>num_frames=12, use_scene_detection=True, max_width=1024, model=None, language=auto, audio_speed=2.0</code></p>
+<pre class="mermaid"><code>%%{init: {'look': 'neo'} }%%
+graph LR
+  video("🎬 video")
+
+  subgraph encode ["Encode"]
+    direction TB
+    audio("ffmpeg\nextract audio")
+    whisper("Whisper\ntranscribe")
+    select("Select N representative\nframes across scenes")
+    extract("ffmpeg extract\n+ resize")
+  end
+
+  subgraph message ["Message"]
+    transcript("1: transcript")
+    frame_msgs("2: N summary frames")
+  end
+
+  video --&gt; audio --&gt; whisper --&gt; transcript
+  video --&gt; select --&gt; extract --&gt; frame_msgs
+  style encode rx:10px,ry:10px
+  style message rx:10px,ry:10px</code></pre>
+<hr />
+<h4 id="transcript"><code>transcript</code><a class="headerlink" href="#transcript" title="Permanent link">&para;</a></h4>
+<p>Extract audio track → Whisper transcription only, no visual frames. For podcasts, talks, interviews. <strong>Parameters:</strong> <code>model=None, language=auto, audio_speed=2.0</code></p>
+<pre class="mermaid"><code>%%{init: {'look': 'neo'} }%%
+graph LR
+  video("🎬 video")
+
+  subgraph encode ["Encode"]
+    extract("ffmpeg\nextract audio track")
+    whisper("Whisper\ntranscribe")
+    fmt("Format timestamped\nsegments")
+  end
+
+  subgraph message ["Message"]
+    msg("text transcript")
+  end
+
+  video --&gt; extract --&gt; whisper --&gt; fmt --&gt; msg
+  style encode rx:10px,ry:10px
+  style message rx:10px,ry:10px</code></pre>
+<hr />
+<h4 id="captions"><code>captions</code><a class="headerlink" href="#captions" title="Permanent link">&para;</a></h4>
+<p>Extract embedded subtitle stream (SRT/VTT/SSA) from video; falls back to Whisper transcription if no subtitle track is found. <strong>Parameters:</strong> <code>subtitle_stream=0, fallback_to_whisper=True, model=None, language=auto, audio_speed=2.0, backend=None, base_url=None, api_key=None</code></p>
+<pre class="mermaid"><code>%%{init: {'look': 'neo'} }%%
+graph LR
+  video("🎬 video")
+
+  subgraph encode ["Encode"]
+    probe("Detect subtitle\nstreams")
+    subs("Extract embedded\nsubtitles (SRT/VTT/SSA)")
+    fallback("Whisper fallback\n(no subtitle track)")
+  end
+
+  subgraph message ["Message"]
+    msg("text transcript/captions")
+  end
+
+  video --&gt; probe
+  probe --&gt; subs --&gt; msg
+  probe --&gt; fallback --&gt; msg
+  style encode rx:10px,ry:10px
+  style message rx:10px,ry:10px</code></pre>
+<hr />
+<h4 id="gemini"><code>gemini</code><a class="headerlink" href="#gemini" title="Permanent link">&para;</a></h4>
+<p>Gemini native <code>inline_data</code> passthrough. Sends the entire video file. Rust fast-path with Python fallback.</p>
+<pre class="mermaid"><code>%%{init: {'look': 'neo'} }%%
+graph LR
+  video("🎬 video")
+
+  subgraph encode ["Encode"]
+    read("Read file bytes\n(Rust fast-path)")
+    b64("Base64 encode\ninline_data")
+  end
+
+  subgraph message ["Message"]
+    msg("Gemini Part")
+  end
+
+  video --&gt; read --&gt; b64 --&gt; msg
+  style encode rx:10px,ry:10px
+  style message rx:10px,ry:10px</code></pre>
+<hr />
+<h4 id="gemini-chunked"><code>gemini-chunked</code><a class="headerlink" href="#gemini-chunked" title="Permanent link">&para;</a></h4>
+<p>Gemini passthrough with duration-based chunking via ffmpeg. Each chunk as a separate Gemini Part. <strong>Parameters:</strong> <code>max_seconds=120, overlap=10</code></p>
+<pre class="mermaid"><code>%%{init: {'look': 'neo'} }%%
+graph LR
+  video("🎬 video")
+
+  subgraph encode ["Encode"]
+    probe("Probe duration")
+    c1("ffmpeg segment\nChunk 1")
+    c2("ffmpeg segment\nChunk 2")
+    c3("ffmpeg segment\nChunk N")
+  end
+
+  subgraph message ["Message"]
+    m1("1: Gemini Part")
+    m2("2: Gemini Part")
+    m3("N: Gemini Part")
+  end
+
+  video --&gt; probe
+  probe --&gt; c1 --&gt; m1
+  probe --&gt; c2 --&gt; m2
+  probe --&gt; c3 --&gt; m3
+  style encode rx:10px,ry:10px
+  style message rx:10px,ry:10px</code></pre>
+<hr />
+<h3 id="audio">Audio<a class="headerlink" href="#audio" title="Permanent link">&para;</a></h3>
+<h4 id="base64"><code>base64</code><a class="headerlink" href="#base64" title="Permanent link">&para;</a></h4>
+<p>Send the raw audio file as a base64-encoded <code>input_audio</code> part. Default for Python <code>Context.to_messages()</code>. For files longer than <code>max_seconds</code>, splits into overlapping chunks via ffmpeg and yields one Message per chunk. <strong>Parameters:</strong> <code>format=auto, max_seconds=120, overlap=10</code></p>
+<pre class="mermaid"><code>%%{init: {'look': 'neo'} }%%
+graph LR
+  audio("🎵 audio")
+
+  subgraph encode_short ["Encode (≤120s)"]
+    read("Read file bytes")
+    b64("Base64 encode\ninput_audio")
+  end
+
+  subgraph encode_long ["Encode (&gt;120s)"]
+    probe("Probe duration")
+    c1("ffmpeg segment\nChunk 1")
+    c2("ffmpeg segment\nChunk N")
+    b64c("Base64 encode\neach chunk")
+  end
+
+  subgraph message ["Message"]
+    msg1("input_audio part")
+    msgN("N: input_audio parts")
+  end
+
+  audio --&gt; read --&gt; b64 --&gt; msg1
+  audio --&gt; probe
+  probe --&gt; c1 --&gt; b64c --&gt; msgN
+  probe --&gt; c2 --&gt; b64c
+  style encode_short rx:10px,ry:10px
+  style encode_long rx:10px,ry:10px
+  style message rx:10px,ry:10px</code></pre>
+<hr />
+<h4 id="transcribe"><code>transcribe</code><a class="headerlink" href="#transcribe" title="Permanent link">&para;</a></h4>
+<p>Extract audio via ffmpeg, transcribe with Whisper (lightning-whisper-mlx / faster-whisper). Returns timestamped transcript as a text message. <strong>Parameters:</strong> <code>model=None, language=auto, audio_speed=2.0, backend=None, base_url=None, api_key=None</code></p>
+<pre class="mermaid"><code>%%{init: {'look': 'neo'} }%%
+graph LR
+  audio("🎵 audio")
+
+  subgraph encode ["Encode"]
+    extract("ffmpeg\nextract audio")
+    whisper("Whisper\ntranscribe")
+    fmt("Format timestamped\nsegments")
+  end
+
+  subgraph message ["Message"]
+    msg("text transcript")
+  end
+
+  audio --&gt; extract --&gt; whisper --&gt; fmt --&gt; msg
+  style encode rx:10px,ry:10px
+  style message rx:10px,ry:10px</code></pre>
+<hr />
+<h4 id="gemini_1"><code>gemini</code><a class="headerlink" href="#gemini_1" title="Permanent link">&para;</a></h4>
+<p>Pass the audio file as a base64-encoded <code>input_audio</code> part (OpenAI format), with automatic chunking for files longer than <code>max_seconds</code>. Each chunk yielded as a separate Message. <strong>Parameters:</strong> <code>max_seconds=120, overlap=10</code></p>
+<pre class="mermaid"><code>%%{init: {'look': 'neo'} }%%
+graph LR
+  audio("🎵 audio")
+
+  subgraph encode ["Encode (short ≤120s)"]
+    read("Read file bytes")
+    b64("Base64 encode\ninline_data")
+  end
+
+  subgraph encode2 ["Encode (long &gt;120s)"]
+    probe("Probe duration")
+    c1("ffmpeg segment\nChunk 1")
+    c2("ffmpeg segment\nChunk N")
+  end
+
+  subgraph message ["Message"]
+    msg1("Gemini Part")
+    msgN("N: Gemini Part")
+  end
+
+  audio --&gt; read --&gt; b64 --&gt; msg1
+  audio --&gt; probe
+  probe --&gt; c1 --&gt; msgN
+  probe --&gt; c2 --&gt; msgN
+  style encode rx:10px,ry:10px
+  style encode2 rx:10px,ry:10px
+  style message rx:10px,ry:10px</code></pre>
+<hr />
+<h3 id="document">Document<a class="headerlink" href="#document" title="Permanent link">&para;</a></h3>
+<h4 id="page-text"><code>page-text</code><a class="headerlink" href="#page-text" title="Permanent link">&para;</a></h4>
+<p>Text-per-page extraction from PDF/DOCX/PPTX as structured text messages (no rasterization). Default for fast mode. Much lighter than <code>rasterize</code>. <strong>Parameters:</strong> <code>pages_per_message=128, max_pages=None</code></p>
+<pre class="mermaid"><code>%%{init: {'look': 'neo'} }%%
+graph LR
+  doc("📄 PDF/DOCX/PPTX")
+
+  subgraph encode ["Encode"]
+    open("Open document\n(pypdfium2 / docx)")
+    extract("Extract text\nper page")
+    batch("Batch ≤128\npages/msg")
+  end
+
+  subgraph message ["Message"]
+    msgs("N: text per page batch")
+  end
+
+  doc --&gt; open --&gt; extract --&gt; batch --&gt; msgs
+  style encode rx:10px,ry:10px
+  style message rx:10px,ry:10px</code></pre>
+<hr />
+<h4 id="rasterize"><code>rasterize</code><a class="headerlink" href="#rasterize" title="Permanent link">&para;</a></h4>
+<p>Render PDF pages as JPEG images via pypdfium2, batch into messages. Text header with page range per batch. <strong>Parameters:</strong> <code>max_width=1024, pages_per_message=4, max_pages=None</code></p>
+<pre class="mermaid"><code>%%{init: {'look': 'neo'} }%%
+graph LR
+  doc("📄 PDF")
+
+  subgraph encode ["Encode"]
+    open("Open PDF\n(pypdfium2)")
+    render("Render pages\nas JPEG")
+    batch("Batch ≤4\npages/msg")
+  end
+
+  subgraph message ["Message"]
+    msgs("N: text header\n+ page images")
+  end
+
+  doc --&gt; open --&gt; render --&gt; batch --&gt; msgs
+  style encode rx:10px,ry:10px
+  style message rx:10px,ry:10px</code></pre>
+<hr />
+<h4 id="rasterize-text"><code>rasterize-text</code><a class="headerlink" href="#rasterize-text" title="Permanent link">&para;</a></h4>
+<p>Rasterize pages + interleave extracted text after each image. Useful when the VLM benefits from an OCR fallback alongside the rendered page. <strong>Parameters:</strong> <code>max_width=1024, pages_per_message=4, max_pages=None</code></p>
+<pre class="mermaid"><code>%%{init: {'look': 'neo'} }%%
+graph LR
+  doc("📄 PDF")
+
+  subgraph encode ["Encode"]
+    open("Open PDF\n(pypdfium2)")
+    render("Render pages\nas JPEG")
+    text("Extract text\nper page")
+    interleave("Interleave\nimage + text")
+    batch("Batch ≤4\npages/msg")
+  end
+
+  subgraph message ["Message"]
+    msgs("N: image + text per page")
+  end
+
+  doc --&gt; open
+  open --&gt; render --&gt; interleave
+  open --&gt; text --&gt; interleave
+  interleave --&gt; batch --&gt; msgs
+  style encode rx:10px,ry:10px
+  style message rx:10px,ry:10px</code></pre>
+<hr />
+<h4 id="gemini_2"><code>gemini</code><a class="headerlink" href="#gemini_2" title="Permanent link">&para;</a></h4>
+<p>Gemini native <code>inline_data</code> passthrough. Sends the entire document file. Rust fast-path with Python fallback.</p>
+<pre class="mermaid"><code>%%{init: {'look': 'neo'} }%%
+graph LR
+  doc("📄 document")
+
+  subgraph encode ["Encode"]
+    read("Read file bytes\n(Rust fast-path)")
+    b64("Base64 encode\ninline_data")
+  end
+
+  subgraph message ["Message"]
+    msg("Gemini Part")
+  end
+
+  doc --&gt; read --&gt; b64 --&gt; msg
+  style encode rx:10px,ry:10px
+  style message rx:10px,ry:10px</code></pre>
+<hr />
+<h2 id="planned-encoders">Planned Encoders<a class="headerlink" href="#planned-encoders" title="Permanent link">&para;</a></h2>
+<h3 id="image_1">Image<a class="headerlink" href="#image_1" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Description</th>
+<th>Parameters</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>image-crop-grid</code></td>
+<td>Fixed NxM grid crop (e.g. 3x3). Unlike <code>tile</code> which uses fixed pixel size, this always produces exactly N*M tiles regardless of image dimensions.</td>
+<td><code>rows=3, cols=3, max_width=1024</code></td>
+</tr>
+<tr>
+<td><code>image-metadata</code></td>
+<td>EXIF metadata, dimensions, and histogram stats as a structured text message. Analysis without sending pixel data.</td>
+<td><code>include_exif=true, include_histogram=false</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="document_1">Document<a class="headerlink" href="#document_1" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Description</th>
+<th>Parameters</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ocr</code></td>
+<td>OCR fallback for scanned/image-only PDFs where pypdfium2 returns empty text. Rasterize then OCR via tesseract or VLM.</td>
+<td><code>max_width=1024, ocr_engine=tesseract, max_pages=None</code></td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="writing-custom-encoders">Writing Custom Encoders<a class="headerlink" href="#writing-custom-encoders" title="Permanent link">&para;</a></h2>
+<h3 id="class-based-recommended">Class-based (recommended)<a class="headerlink" href="#class-based-recommended" title="Permanent link">&para;</a></h3>
+<p>Subclass <code>mm.encoders.base.Encoder</code>. This is the pattern all built-in encoders use and gives access to the <code>generate</code> class variable for per-mode LLM overrides:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Iterable</span>
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="kn">from</span><span class="w"> </span><span class="nn">mm.encoders</span><span class="w"> </span><span class="kn">import</span> <span class="n">register</span>
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="kn">from</span><span class="w"> </span><span class="nn">mm.encoders.base</span><span class="w"> </span><span class="kn">import</span> <span class="n">Encoder</span><span class="p">,</span> <span class="n">Message</span>
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="k">class</span><span class="w"> </span><span class="nc">MyVideoEncoder</span><span class="p">(</span><span class="n">Encoder</span><span class="p">):</span>
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>    <span class="n">name</span> <span class="o">=</span> <span class="s2">&quot;my-encoder&quot;</span>
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>    <span class="n">kind</span> <span class="o">=</span> <span class="s2">&quot;video&quot;</span>
+<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>    <span class="c1"># Optional: suppress LLM call for both modes (encode-only)</span>
+<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>    <span class="c1"># generate = {&quot;fast&quot;: None, &quot;accurate&quot;: None}</span>
+<a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a>
+<a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">encode</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Iterable</span><span class="p">[</span><span class="n">Message</span><span class="p">]:</span>
+<a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a>        <span class="k">yield</span> <span class="p">{</span><span class="s2">&quot;role&quot;</span><span class="p">:</span> <span class="s2">&quot;user&quot;</span><span class="p">,</span> <span class="s2">&quot;content&quot;</span><span class="p">:</span> <span class="p">[</span>
+<a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a>            <span class="p">{</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;text&quot;</span><span class="p">,</span> <span class="s2">&quot;text&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;Processing </span><span class="si">{</span><span class="n">path</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">}</span>
+<a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a>        <span class="p">]}</span>
+<a id="__codelineno-1-16" name="__codelineno-1-16" href="#__codelineno-1-16"></a>
+<a id="__codelineno-1-17" name="__codelineno-1-17" href="#__codelineno-1-17"></a><span class="n">register</span><span class="p">(</span><span class="n">MyVideoEncoder</span><span class="p">())</span>
+</code></pre></div>
+<h3 id="function-based">Function-based<a class="headerlink" href="#function-based" title="Permanent link">&para;</a></h3>
+<p>For simple cases, drop a <code>.py</code> file in <code>~/.config/mm/encoders/</code> and use the <code>@register_encoder</code> decorator:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">mm.encoders</span><span class="w"> </span><span class="kn">import</span> <span class="n">register_encoder</span>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="nd">@register_encoder</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;my-custom&quot;</span><span class="p">,</span> <span class="n">kind</span><span class="o">=</span><span class="s2">&quot;video&quot;</span><span class="p">)</span>
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="k">def</span><span class="w"> </span><span class="nf">my_custom</span><span class="p">(</span><span class="n">path</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span> <span class="o">**</span><span class="n">kw</span><span class="p">):</span>
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>    <span class="k">yield</span> <span class="p">{</span><span class="s2">&quot;role&quot;</span><span class="p">:</span> <span class="s2">&quot;user&quot;</span><span class="p">,</span> <span class="s2">&quot;content&quot;</span><span class="p">:</span> <span class="p">[</span>
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>        <span class="p">{</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;text&quot;</span><span class="p">,</span> <span class="s2">&quot;text&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;Processing </span><span class="si">{</span><span class="n">path</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">}</span>
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>    <span class="p">]}</span>
+</code></pre></div>
+<h3 id="multi-chunk-encoders">Multi-chunk encoders<a class="headerlink" href="#multi-chunk-encoders" title="Permanent link">&para;</a></h3>
+<p>Encoders that yield multiple Messages (e.g. one per video shot) are processed sequentially via <code>generate_chunked</code>. Each Message gets its own LLM call and results are concatenated. This avoids OOM from loading all chunks into memory simultaneously.</p>
+<pre class="mermaid"><code>%%{init: {'look': 'neo'} }%%
+graph LR
+  video("🎬 video")
+
+  subgraph encode ["Encode"]
+    s1("Shot 1")
+    s2("Shot 2")
+    s3("Shot N")
+  end
+
+  subgraph generate ["Generate"]
+    g1("LLM")
+    g2("LLM")
+    g3("LLM")
+  end
+
+  concat("Concat")
+  out("stdout")
+
+  video --&gt; s1
+  video --&gt; s2
+  video --&gt; s3
+  s1 --&gt; g1
+  s2 --&gt; g2
+  s3 --&gt; g3
+  g1 --&gt; concat
+  g2 --&gt; concat
+  g3 --&gt; concat
+  concat --&gt; out
+  style encode rx:10px,ry:10px
+  style generate rx:10px,ry:10px</code></pre>
+<h3 id="encoder-abc">Encoder ABC<a class="headerlink" href="#encoder-abc" title="Permanent link">&para;</a></h3>
+<p>All built-in encoders extend <code>mm.encoders.base.Encoder</code>:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="k">class</span><span class="w"> </span><span class="nc">Encoder</span><span class="p">(</span><span class="n">ABC</span><span class="p">):</span>
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>    <span class="n">name</span><span class="p">:</span> <span class="n">ClassVar</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>          <span class="c1"># registry key</span>
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>    <span class="n">kind</span><span class="p">:</span> <span class="n">ClassVar</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>          <span class="c1"># &quot;image&quot; | &quot;video&quot; | &quot;audio&quot; | &quot;document&quot;</span>
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>    <span class="n">generate</span><span class="p">:</span> <span class="n">ClassVar</span><span class="p">[</span><span class="nb">dict</span><span class="p">]</span>     <span class="c1"># per-mode generate overrides (default: {})</span>
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>    <span class="nd">@abstractmethod</span>
+<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">encode</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Iterable</span><span class="p">[</span><span class="n">Message</span><span class="p">]:</span>
+<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>        <span class="o">...</span>
+</code></pre></div>
+<p>The <code>generate</code> dict maps mode strings (<code>"fast"</code>, <code>"accurate"</code>) to <code>Generate</code> objects or <code>None</code>. Setting a mode to <code>None</code> suppresses the LLM call entirely (encode-only for that mode). Resolution order, highest priority first:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>CLI flags (--generate.*)
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>  → encoder generate[mode] override
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>  → pipeline YAML generate block
+</code></pre></div>
+<p>The <code>MessageStrategy</code> protocol is also satisfied by any object with <code>name</code>, <code>kind</code>, and <code>encode()</code>.</p>
+<p><code>Message = dict[str, Any]</code> — OpenAI-compatible message dict: <code>{"role": "user", "content": [...]}</code>.</p>
+<hr />
+<h2 id="gaps">Gaps<a class="headerlink" href="#gaps" title="Permanent link">&para;</a></h2>
+<p>Python's <code>FileKind</code> recognizes 5 kinds (<code>image</code>, <code>video</code>, <code>audio</code>, <code>document</code>, <code>text</code>) while the Rust core recognizes 9 (<code>Code</code>, <code>Image</code>, <code>Document</code>, <code>Video</code>, <code>Audio</code>, <code>Data</code>, <code>Config</code>, <code>Text</code>, <code>Other</code>). The Python <code>file_kind()</code> function collapses <code>code</code>, <code>data</code>, <code>config</code>, and <code>other</code> into <code>text</code>. Pipelines only exist for image, video, audio, and document — text and code files pass through as raw content without an encoder or pipeline.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+        
+<div class="md-social">
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://github.com/vlm-run/mm" target="_blank" rel="noopener" title="github.com" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+    </a>
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://pypi.org/project/mm-ctx/" target="_blank" rel="noopener" title="pypi.org" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.8 200.5c-7.7-30.9-22.3-54.2-53.4-54.2h-40.1v47.4c0 36.8-31.2 67.8-66.8 67.8H172.7c-29.2 0-53.4 25-53.4 54.3v101.8c0 29 25.2 46 53.4 54.3 33.8 9.9 66.3 11.7 106.8 0 26.9-7.8 53.4-23.5 53.4-54.3v-40.7H226.2v-13.6h160.2c31.1 0 42.6-21.7 53.4-54.2 11.2-33.5 10.7-65.7 0-108.6M286.2 444.7a20.4 20.4 0 1 1 0-40.7 20.4 20.4 0 1 1 0 40.7M167.8 248.1h106.8c29.7 0 53.4-24.5 53.4-54.3V91.9c0-29-24.4-50.7-53.4-55.6-35.8-5.9-74.7-5.6-106.8.1-45.2 8-53.4 24.7-53.4 55.6v40.7h106.9v13.6h-147c-31.1 0-58.3 18.7-66.8 54.2-9.8 40.7-10.2 66.1 0 108.6 7.6 31.6 25.7 54.2 56.8 54.2H101v-48.8c0-35.3 30.5-66.4 66.8-66.4m-6.6-183.4a20.4 20.4 0 1 1 0 40.8 20.4 20.4 0 1 1 0-40.8"/></svg>
+    </a>
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://discord.gg/6aqcyvPF79" target="_blank" rel="noopener" title="discord.gg" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M492.5 69.8c-.2-.3-.4-.6-.8-.7-38.1-17.5-78.4-30-119.7-37.1-.4-.1-.8 0-1.1.1s-.6.4-.8.8c-5.5 9.9-10.5 20.2-14.9 30.6-44.6-6.8-89.9-6.8-134.4 0-4.5-10.5-9.5-20.7-15.1-30.6-.2-.3-.5-.6-.8-.8s-.7-.2-1.1-.2C162.5 39 122.2 51.5 84.1 69c-.3.1-.6.4-.8.7C7.1 183.5-13.8 294.6-3.6 404.2c0 .3.1.5.2.8s.3.4.5.6c44.4 32.9 94 58 146.8 74.2.4.1.8.1 1.1 0s.7-.4.9-.7c11.3-15.4 21.4-31.8 30-48.8.1-.2.2-.5.2-.8s0-.5-.1-.8-.2-.5-.4-.6-.4-.3-.7-.4c-15.8-6.1-31.2-13.4-45.9-21.9-.3-.2-.5-.4-.7-.6s-.3-.6-.3-.9 0-.6.2-.9.3-.5.6-.7c3.1-2.3 6.2-4.7 9.1-7.1.3-.2.6-.4.9-.4s.7 0 1 .1c96.2 43.9 200.4 43.9 295.5 0 .3-.1.7-.2 1-.2s.7.2.9.4c2.9 2.4 6 4.9 9.1 7.2.2.2.4.4.6.7s.2.6.2.9-.1.6-.3.9-.4.5-.6.6c-14.7 8.6-30 15.9-45.9 21.8-.2.1-.5.2-.7.4s-.3.4-.4.7-.1.5-.1.8.1.5.2.8c8.8 17 18.8 33.3 30 48.8.2.3.6.6.9.7s.8.1 1.1 0c52.9-16.2 102.6-41.3 147.1-74.2.2-.2.4-.4.5-.6s.2-.5.2-.8c12.3-126.8-20.5-236.9-86.9-334.5zm-302 267.7c-29 0-52.8-26.6-52.8-59.2s23.4-59.2 52.8-59.2c29.7 0 53.3 26.8 52.8 59.2 0 32.7-23.4 59.2-52.8 59.2m195.4 0c-29 0-52.8-26.6-52.8-59.2s23.4-59.2 52.8-59.2c29.7 0 53.3 26.8 52.8 59.2 0 32.7-23.2 59.2-52.8 59.2"/></svg>
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.instant", "navigation.tracking", "navigation.top", "toc.follow", "content.code.copy", "content.code.annotate"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>

@@ -13,10 +13,10 @@
         <link rel="canonical" href="https://vlm-run.github.io/mm/use-cases/">
       
       
-        <link rel="prev" href="../mm_context/">
+        <link rel="prev" href="../mm-context/">
       
       
-        <link rel="next" href="../ENCODERS/">
+        <link rel="next" href="../encoders/">
       
       
         
@@ -289,7 +289,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../USER_GUIDE/" class="md-nav__link">
+      <a href="../user-guide/" class="md-nav__link">
         
   
   
@@ -725,7 +725,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../mm_context/" class="md-nav__link">
+      <a href="../mm-context/" class="md-nav__link">
         
   
   
@@ -972,7 +972,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../ENCODERS/" class="md-nav__link">
+      <a href="../encoders/" class="md-nav__link">
         
   
   
@@ -999,7 +999,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../PIPELINES/" class="md-nav__link">
+      <a href="../pipelines/" class="md-nav__link">
         
   
   
@@ -1562,7 +1562,7 @@
 <h1 id="mm-use-cases">mm — Use Cases<a class="headerlink" href="#mm-use-cases" title="Permanent link">&para;</a></h1>
 <p>53 scenarios that leverage mm's multimodal awareness, Rust-speed metadata extraction, token estimation, and semantic search. Each maps to existing CLI commands.</p>
 <blockquote>
-<p><strong>Note on <code>mm peek</code> vs <code>mm cat</code>:</strong> <code>mm peek</code> returns local file metadata (image dims/EXIF/hash, video resolution/duration/codecs, audio metadata, mime, content hash). <code>mm cat</code> extracts content: PDF text, raw text/code passthrough, or a short LLM caption (<code>-m fast</code>) / LLM-heavy description (<code>-m accurate</code>) for image/video/audio/PDF. Examples below that need an LLM make the mode explicit.</p>
+<p><strong>Note on <code>mm peek</code> vs <code>mm cat</code>:</strong> <code>mm peek</code> returns local file metadata (image dims/EXIF/hash, video resolution/duration/codecs, audio metadata, mime, content hash). <code>mm cat</code> extracts content: PDF text, raw text/code passthrough, or a short LLM caption (<code>-m fast</code>) / LLM-heavy description (<code>-m accurate</code>) for image/video/PDF; audio returns a Whisper transcript by default (use <code>-p base64</code> or <code>-p gemini</code> for LLM description). Examples below that need an LLM make the mode explicit.</p>
 </blockquote>
 <hr />
 <h2 id="video-20">Video (20)<a class="headerlink" href="#video-20" title="Permanent link">&para;</a></h2>
@@ -1775,7 +1775,7 @@ Audio files over 80 seconds exceed Gemini's single-part embedding limit. `mm sql
 
 <details><summary>40. Summarize a meeting recording</summary>
 
-`mm cat meeting.mp3 -m accurate` runs the full pipeline: audio extraction, transcription, and LLM summarization. Returns a structured summary without manual transcription.
+`mm cat meeting.mp3 -p base64 -m accurate` runs the full pipeline: audio extraction and transcription or LLM summarization. The default `transcribe` encoder is encode-only — use `-p base64` or `-p gemini` for LLM description.
 </details>
 
 <details><summary>41. Assess a field recording SD card</summary>

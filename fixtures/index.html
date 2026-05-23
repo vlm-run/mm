@@ -13,7 +13,7 @@
         <link rel="canonical" href="https://vlm-run.github.io/mm/fixtures/">
       
       
-        <link rel="prev" href="../PIPELINES/">
+        <link rel="prev" href="../pipelines/">
       
       
         <link rel="next" href="../notebooks/mm_cookbook_gateway/">
@@ -289,7 +289,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../USER_GUIDE/" class="md-nav__link">
+      <a href="../user-guide/" class="md-nav__link">
         
   
   
@@ -725,7 +725,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../mm_context/" class="md-nav__link">
+      <a href="../mm-context/" class="md-nav__link">
         
   
   
@@ -787,7 +787,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../ENCODERS/" class="md-nav__link">
+      <a href="../encoders/" class="md-nav__link">
         
   
   
@@ -814,7 +814,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../PIPELINES/" class="md-nav__link">
+      <a href="../pipelines/" class="md-nav__link">
         
   
   
@@ -2229,9 +2229,9 @@ with real example outputs across the CLI surface.</p>
 <a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="c1"># Extract images accurately (with VLMs)</span>
 <a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>uv<span class="w"> </span>run<span class="w"> </span>mm<span class="w"> </span>cat<span class="w"> </span>input.png<span class="w"> </span>-m<span class="w"> </span>accurate
 <a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="c1"># Custom image tiling (for extra-large resolution images)</span>
-<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>uv<span class="w"> </span>run<span class="w"> </span>mm<span class="w"> </span>cat<span class="w"> </span>input.png<span class="w"> </span>--encode.strategy<span class="w"> </span>image-tile
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>uv<span class="w"> </span>run<span class="w"> </span>mm<span class="w"> </span>cat<span class="w"> </span>input.png<span class="w"> </span>--encode.strategy<span class="w"> </span>tile
 <a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a><span class="c1"># Custom image resizing (for smaller resolution images)</span>
-<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>uv<span class="w"> </span>run<span class="w"> </span>mm<span class="w"> </span>cat<span class="w"> </span>input.png<span class="w"> </span>--encode.strategy<span class="w"> </span>image-resize<span class="w"> </span>-m<span class="w"> </span>accurate
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>uv<span class="w"> </span>run<span class="w"> </span>mm<span class="w"> </span>cat<span class="w"> </span>input.png<span class="w"> </span>--encode.strategy<span class="w"> </span>resize<span class="w"> </span>-m<span class="w"> </span>accurate
 <a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a><span class="c1"># With verbose output (shows pipeline steps and token usage)</span>
 <a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>uv<span class="w"> </span>run<span class="w"> </span>mm<span class="w"> </span>cat<span class="w"> </span>input.png<span class="w"> </span>-v
 </code></pre></div>
@@ -2245,19 +2245,19 @@ with real example outputs across the CLI surface.</p>
 <a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="c1"># Extract non-PDF documents accurately (single VLM inference, batch=1)</span>
 <a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>uv<span class="w"> </span>run<span class="w"> </span>mm<span class="w"> </span>cat<span class="w"> </span>input.docx<span class="w"> </span>-m<span class="w"> </span>accurate
 <a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a><span class="c1"># Extract per-page text only (no rasterization, no VLM)</span>
-<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>uv<span class="w"> </span>run<span class="w"> </span>mm<span class="w"> </span>cat<span class="w"> </span>input.pdf<span class="w"> </span>--encode.strategy<span class="w"> </span>document-page-text
+<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>uv<span class="w"> </span>run<span class="w"> </span>mm<span class="w"> </span>cat<span class="w"> </span>input.pdf<span class="w"> </span>--encode.strategy<span class="w"> </span>page-text
 <a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a><span class="c1"># Rasterize pages and interleave extracted text (hybrid, batch=auto)</span>
-<a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a>uv<span class="w"> </span>run<span class="w"> </span>mm<span class="w"> </span>cat<span class="w"> </span>input.pdf<span class="w"> </span>--encode.strategy<span class="w"> </span>document-rasterize-text<span class="w"> </span>-m<span class="w"> </span>accurate
+<a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a>uv<span class="w"> </span>run<span class="w"> </span>mm<span class="w"> </span>cat<span class="w"> </span>input.pdf<span class="w"> </span>--encode.strategy<span class="w"> </span>rasterize-text<span class="w"> </span>-m<span class="w"> </span>accurate
 <a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a><span class="c1"># With verbose output (shows pipeline steps and token usage)</span>
 <a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a>uv<span class="w"> </span>run<span class="w"> </span>mm<span class="w"> </span>cat<span class="w"> </span>input.pdf<span class="w"> </span>-v
 </code></pre></div>
 <h3 id="audio">Audio<a class="headerlink" href="#audio" title="Permanent link">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="c1"># Extract audio quickly (Whisper transcript, default model=medium)</span>
 <a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>uv<span class="w"> </span>run<span class="w"> </span>mm<span class="w"> </span>cat<span class="w"> </span>input.mp3
-<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="c1"># Extract audio accurately (Whisper transcript + LLM summary)</span>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="c1"># same as fast when using transcribe (default) encoding strategy</span>
 <a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>uv<span class="w"> </span>run<span class="w"> </span>mm<span class="w"> </span>cat<span class="w"> </span>input.mp3<span class="w"> </span>-m<span class="w"> </span>accurate
 <a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="c1"># Extract audio accurately (pass audio directly to a Gemini-compatible VLM)</span>
-<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>uv<span class="w"> </span>run<span class="w"> </span>mm<span class="w"> </span>cat<span class="w"> </span>input.mp3<span class="w"> </span>--encode.strategy<span class="w"> </span>audio-gemini<span class="w"> </span>-m<span class="w"> </span>accurate
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>uv<span class="w"> </span>run<span class="w"> </span>mm<span class="w"> </span>cat<span class="w"> </span>input.mp3<span class="w"> </span>--encode.strategy<span class="w"> </span>gemini<span class="w"> </span>-m<span class="w"> </span>accurate
 <a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="c1"># With verbose output (shows pipeline steps and token usage)</span>
 <a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>uv<span class="w"> </span>run<span class="w"> </span>mm<span class="w"> </span>cat<span class="w"> </span>input.mp3<span class="w"> </span>-v
 </code></pre></div>
@@ -2267,7 +2267,7 @@ with real example outputs across the CLI surface.</p>
 <a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="c1"># Extract video accurately (mosaic + whisper + VLM)</span>
 <a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>uv<span class="w"> </span>run<span class="w"> </span>mm<span class="w"> </span>cat<span class="w"> </span>input.mp4<span class="w"> </span>-m<span class="w"> </span>accurate
 <a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="c1"># Extract video accurately (frame-sample encoder at fps=1)</span>
-<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>uv<span class="w"> </span>run<span class="w"> </span>mm<span class="w"> </span>cat<span class="w"> </span>input.mp4<span class="w"> </span>--encode.strategy<span class="w"> </span>video-frames<span class="w"> </span>-m<span class="w"> </span>accurate
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>uv<span class="w"> </span>run<span class="w"> </span>mm<span class="w"> </span>cat<span class="w"> </span>input.mp4<span class="w"> </span>--encode.strategy<span class="w"> </span>frames<span class="w"> </span>-m<span class="w"> </span>accurate
 </code></pre></div>
 <hr />
 <h2 id="wc-token-aware-counting"><code>wc</code> — Token-aware counting<a class="headerlink" href="#wc-token-aware-counting" title="Permanent link">&para;</a></h2>

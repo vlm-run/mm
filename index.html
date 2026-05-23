@@ -14,7 +14,7 @@
       
       
       
-        <link rel="next" href="USER_GUIDE/">
+        <link rel="next" href="user-guide/">
       
       
         
@@ -818,7 +818,7 @@
   
   
     <li class="md-nav__item">
-      <a href="USER_GUIDE/" class="md-nav__link">
+      <a href="user-guide/" class="md-nav__link">
         
   
   
@@ -1254,7 +1254,7 @@
   
   
     <li class="md-nav__item">
-      <a href="mm_context/" class="md-nav__link">
+      <a href="mm-context/" class="md-nav__link">
         
   
   
@@ -1316,7 +1316,7 @@
   
   
     <li class="md-nav__item">
-      <a href="ENCODERS/" class="md-nav__link">
+      <a href="encoders/" class="md-nav__link">
         
   
   
@@ -1343,7 +1343,7 @@
   
   
     <li class="md-nav__item">
-      <a href="PIPELINES/" class="md-nav__link">
+      <a href="pipelines/" class="md-nav__link">
         
   
   
@@ -2430,7 +2430,7 @@ Indexing is implicit — every command auto-builds a metadata index on first use
 <a id="__codelineno-16-21" name="__codelineno-16-21" href="#__codelineno-16-21"></a><span class="c1"># --mode accurate: full LLM pipeline for image/video/audio/PDF (requires a configured profile)</span>
 <a id="__codelineno-16-22" name="__codelineno-16-22" href="#__codelineno-16-22"></a>mm<span class="w"> </span>cat<span class="w"> </span>bench.jpg<span class="w"> </span>-m<span class="w"> </span>accurate<span class="w">                                    </span><span class="c1"># LLM caption + tags + objects</span>
 <a id="__codelineno-16-23" name="__codelineno-16-23" href="#__codelineno-16-23"></a>mm<span class="w"> </span>cat<span class="w"> </span>Timelapse.mp4<span class="w"> </span>-m<span class="w"> </span>accurate<span class="w">                                </span><span class="c1"># keyframe mosaic → LLM description</span>
-<a id="__codelineno-16-24" name="__codelineno-16-24" href="#__codelineno-16-24"></a>mm<span class="w"> </span>cat<span class="w"> </span>mp3_44100Hz_320kbps_stereo.mp3<span class="w"> </span>-m<span class="w"> </span>accurate<span class="w">               </span><span class="c1"># Whisper transcript → LLM summary</span>
+<a id="__codelineno-16-24" name="__codelineno-16-24" href="#__codelineno-16-24"></a>mm<span class="w"> </span>cat<span class="w"> </span>mp3_44100Hz_320kbps_stereo.mp3<span class="w"> </span>-m<span class="w"> </span>accurate<span class="w">               </span><span class="c1"># Whisper transcript only (use -p base64 or -p gemini for LLM description)</span>
 <a id="__codelineno-16-25" name="__codelineno-16-25" href="#__codelineno-16-25"></a>mm<span class="w"> </span>cat<span class="w"> </span>wordpress-pdf-invoice-plugin-sample.pdf<span class="w"> </span>-m<span class="w"> </span>accurate<span class="w">      </span><span class="c1"># LLM-structured invoice</span>
 </code></pre></div>
 <h2 id="python-api">Python API<a class="headerlink" href="#python-api" title="Permanent link">&para;</a></h2>
@@ -2474,7 +2474,7 @@ Indexing is implicit — every command auto-builds a metadata index on first use
 <a id="__codelineno-20-3" name="__codelineno-20-3" href="#__codelineno-20-3"></a>    <span class="n">encoders</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;image&quot;</span><span class="p">:</span> <span class="s2">&quot;tile&quot;</span><span class="p">,</span> <span class="s2">&quot;video&quot;</span><span class="p">:</span> <span class="s2">&quot;mosaic&quot;</span><span class="p">},</span>
 <a id="__codelineno-20-4" name="__codelineno-20-4" href="#__codelineno-20-4"></a><span class="p">)</span>
 </code></pre></div>
-<p>Unspecified kinds fall back to sensible defaults (<code>image-resize</code>, <code>video-mosaic</code>, <code>document-rasterize</code>, <code>audio-base64</code>).</p>
+<p>Unspecified kinds fall back to sensible defaults (<code>resize</code>, <code>mosaic</code>, <code>rasterize</code>, <code>base64</code>).</p>
 <h3 id="round-trip-and-resolve">Round-trip and resolve<a class="headerlink" href="#round-trip-and-resolve" title="Permanent link">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-21-1" name="__codelineno-21-1" href="#__codelineno-21-1"></a><span class="n">obj</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">Path</span> <span class="o">|</span> <span class="n">Image</span><span class="o">.</span><span class="n">Image</span> <span class="o">=</span> <span class="n">ctx</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">img</span><span class="p">)</span>            <span class="c1"># instance: returns the stored object</span>
 <a id="__codelineno-21-2" name="__codelineno-21-2" href="#__codelineno-21-2"></a><span class="n">row</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="n">mm</span><span class="o">.</span><span class="n">Context</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">ctx</span><span class="o">.</span><span class="n">session_id</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">img</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>  <span class="c1"># classmethod: cross-session DB lookup</span>
@@ -2613,7 +2613,7 @@ Indexing is implicit — every command auto-builds a metadata index on first use
 <a id="__codelineno-29-5" name="__codelineno-29-5" href="#__codelineno-29-5"></a>mm<span class="w"> </span>cat<span class="w"> </span>bench.jpg<span class="w">                                                </span><span class="c1"># short VLM caption (fast pipeline)</span>
 <a id="__codelineno-29-6" name="__codelineno-29-6" href="#__codelineno-29-6"></a>mm<span class="w"> </span>cat<span class="w"> </span>bench.jpg<span class="w"> </span>-m<span class="w"> </span>accurate<span class="w">                                    </span><span class="c1"># full LLM caption + tags + objects</span>
 <a id="__codelineno-29-7" name="__codelineno-29-7" href="#__codelineno-29-7"></a>mm<span class="w"> </span>cat<span class="w"> </span>Timelapse.mp4<span class="w"> </span>-m<span class="w"> </span>accurate<span class="w">                                </span><span class="c1"># mosaic → LLM description</span>
-<a id="__codelineno-29-8" name="__codelineno-29-8" href="#__codelineno-29-8"></a>mm<span class="w"> </span>cat<span class="w"> </span>bench.jpg<span class="w"> </span>-p<span class="w"> </span>image-tile<span class="w">                                  </span><span class="c1"># use named encoder</span>
+<a id="__codelineno-29-8" name="__codelineno-29-8" href="#__codelineno-29-8"></a>mm<span class="w"> </span>cat<span class="w"> </span>bench.jpg<span class="w"> </span>-p<span class="w"> </span>tile<span class="w">                                  </span><span class="c1"># use named encoder</span>
 <a id="__codelineno-29-9" name="__codelineno-29-9" href="#__codelineno-29-9"></a>mm<span class="w"> </span>cat<span class="w"> </span>bench.jpg<span class="w"> </span>-m<span class="w"> </span>accurate<span class="w"> </span>-p<span class="w"> </span>my-pipeline.yaml<span class="w">                </span><span class="c1"># custom pipeline YAML</span>
 <a id="__codelineno-29-10" name="__codelineno-29-10" href="#__codelineno-29-10"></a>mm<span class="w"> </span>cat<span class="w"> </span>Timelapse.mp4<span class="w"> </span>-m<span class="w"> </span>accurate<span class="w"> </span>--no-cache<span class="w">                     </span><span class="c1"># force fresh LLM call</span>
 <a id="__codelineno-29-11" name="__codelineno-29-11" href="#__codelineno-29-11"></a>mm<span class="w"> </span>cat<span class="w"> </span>bench.jpg<span class="w"> </span>-m<span class="w"> </span>accurate<span class="w"> </span>--no-generate<span class="w">                      </span><span class="c1"># snapshot encoder output (no LLM)</span>
@@ -2943,7 +2943,7 @@ input for fast/accurate pipelines) is Rust-native (~60ms / 700 files).</p>
 <p>The <code>files</code> table includes metadata columns (path, size, kind, etc.) and content columns (content_hash, text_preview, line_count, duration_s, exif_*, video_codec, etc.).</p>
 <p>Use <code>mm config reset-db</code> to clear all databases and caches.</p>
 <h3 id="pipelines-encode-generate">Pipelines — encode + generate<a class="headerlink" href="#pipelines-encode-generate" title="Permanent link">&para;</a></h3>
-<p>Pipelines are YAML configs under <code>pipelines/{kind}/{mode}.yaml</code> that pair an <strong>encoder</strong> with optional LLM <strong>generation</strong> parameters. When <code>generate</code> is <code>null</code>, the pipeline is encode-only (no LLM call). Encoders are Python classes under <code>encoders/</code> that convert media files into VLM-ready Messages. See <code>[docs/PIPELINES.md](PIPELINES.md)</code> and <code>[docs/ENCODERS.md](ENCODERS.md)</code> for the full pipeline and encoder reference.</p>
+<p>Pipelines are YAML configs under <code>pipelines/{kind}/{mode}.yaml</code> that pair an <strong>encoder</strong> with optional LLM <strong>generation</strong> parameters. When <code>generate</code> is <code>null</code>, the pipeline is encode-only (no LLM call). Encoders are Python classes under <code>encoders/</code> that convert media files into VLM-ready Messages. See <code>[docs/pipelines.md](pipelines.md)</code> and <code>[docs/encoders.md](encoders.md)</code> for the full pipeline and encoder reference.</p>
 <p>Pipeline fields can be overridden from the CLI:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-39-1" name="__codelineno-39-1" href="#__codelineno-39-1"></a>mm<span class="w"> </span>cat<span class="w"> </span>photo.jpg<span class="w"> </span>-m<span class="w"> </span>accurate<span class="w"> </span>--encode.strategy<span class="w"> </span>tile<span class="w"> </span>--generate.max-tokens<span class="w"> </span><span class="m">1024</span>
 <a id="__codelineno-39-2" name="__codelineno-39-2" href="#__codelineno-39-2"></a>mm<span class="w"> </span>cat<span class="w"> </span>photo.jpg<span class="w"> </span>-m<span class="w"> </span>accurate<span class="w"> </span>--generate.temperature<span class="w"> </span><span class="m">0</span>.5

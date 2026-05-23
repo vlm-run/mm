@@ -285,7 +285,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../USER_GUIDE/" class="md-nav__link">
+      <a href="../../user-guide/" class="md-nav__link">
         
   
   
@@ -721,7 +721,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../mm_context/" class="md-nav__link">
+      <a href="../../mm-context/" class="md-nav__link">
         
   
   
@@ -783,7 +783,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../ENCODERS/" class="md-nav__link">
+      <a href="../../encoders/" class="md-nav__link">
         
   
   
@@ -810,7 +810,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../PIPELINES/" class="md-nav__link">
+      <a href="../../pipelines/" class="md-nav__link">
         
   
   
@@ -1404,6 +1404,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#dry-run" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Dry run
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#introspection" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1491,7 +1502,7 @@ text and write FK-orphan chunks + concurrent embeddings on first sight, no <code
 <tr>
 <td>Encoder</td>
 <td><code>mosaic</code> (4×4 grid, 128 frames, up to 8 mosaics)</td>
-<td><code>frames-transcript</code> (1fps, whisper medium, no speedup)</td>
+<td><code>frames-w-transcript</code> (1fps, whisper medium, 2.0× speed)</td>
 </tr>
 <tr>
 <td>Output</td>
@@ -1506,7 +1517,7 @@ text and write FK-orphan chunks + concurrent embeddings on first sight, no <code
 <tr>
 <td>Audio</td>
 <td>none</td>
-<td>whisper medium, 1.0× speed</td>
+<td>whisper medium, 2.0× speed</td>
 </tr>
 </tbody>
 </table>
@@ -1522,18 +1533,23 @@ text and write FK-orphan chunks + concurrent embeddings on first sight, no <code
 <tbody>
 <tr>
 <td>Encoder</td>
-<td><code>audio-transcribe</code> (whisper medium, 1.0×)</td>
-<td><code>audio-transcribe</code> (whisper medium, 1.0×)</td>
+<td><code>transcribe</code> (whisper medium, 2.0×)</td>
+<td><code>transcribe</code> (whisper medium, 2.0×)</td>
 </tr>
 <tr>
 <td>Output</td>
-<td>raw timestamped transcript</td>
-<td>~80-word summary from transcript</td>
+<td>Whisper transcript</td>
+<td>Whisper transcript</td>
 </tr>
 <tr>
-<td>Tokens</td>
-<td>—</td>
-<td>512 max</td>
+<td>LLM call</td>
+<td>None — <code>transcribe</code> suppresses generate</td>
+<td>None — <code>transcribe</code> suppresses generate</td>
+</tr>
+<tr>
+<td>For LLM output</td>
+<td>Use <code>-p base64</code> (10-word description, 128 tok)</td>
+<td>Use <code>-p base64</code> or <code>-p gemini</code> (full description, 1024 tok)</td>
 </tr>
 </tbody>
 </table>
@@ -1586,15 +1602,15 @@ text and write FK-orphan chunks + concurrent embeddings on first sight, no <code
 </thead>
 <tbody>
 <tr>
-<td><code>audio-base64</code></td>
+<td><code>base64</code></td>
 <td>(default in <code>to_messages</code>) Raw base64-encoded audio for native VLM input</td>
 </tr>
 <tr>
-<td><code>audio-transcribe</code></td>
+<td><code>transcribe</code></td>
 <td>Whisper transcript as text, supports <code>backend</code>/<code>base_url</code>/<code>api_key</code> kwargs</td>
 </tr>
 <tr>
-<td><code>audio-gemini</code></td>
+<td><code>gemini</code></td>
 <td>Pass audio file as a Gemini Part</td>
 </tr>
 </tbody>
@@ -1649,7 +1665,7 @@ here — it lives in <code>files</code>).</p>
 <a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>  └─ generate: ollama • 2.3s • 354→195 tokens
 </code></pre></div>
 <ul>
-<li>Encode-only pipelines (audio fast, document fast): single <code>└─</code> node</li>
+<li>Encode-only pipelines (document fast): single <code>└─</code> node</li>
 <li>Encode + generate: <code>├─</code> encode, <code>└─</code> generate</li>
 <li>Generate line: <code>profile_name • elapsed • prompt→completion tokens</code></li>
 </ul>
@@ -1715,10 +1731,18 @@ here — it lives in <code>files</code>).</p>
 <li>Throughput auto-scales: B/s → KB/s → MB/s → GB/s</li>
 <li><code>cached</code> prefix when served from the extractions cache</li>
 </ul>
+<h2 id="dry-run">Dry run<a class="headerlink" href="#dry-run" title="Permanent link">&para;</a></h2>
+<p><code>--dry-run</code> resolves and prints the pipeline that <em>would</em> run (encoder, strategy options, model, prompt) without executing it. No encoding, no LLM call, no cache writes.</p>
+<p>For passthrough kinds (text, code, <code>.docx</code>, <code>.pptx</code>) it emits a short header with the file size and a note that content would be passed through.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>mm<span class="w"> </span>cat<span class="w"> </span>photo.png<span class="w"> </span>--dry-run<span class="w">            </span><span class="c1"># show resolved image pipeline</span>
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>mm<span class="w"> </span>cat<span class="w"> </span>video.mp4<span class="w"> </span>-m<span class="w"> </span>accurate<span class="w"> </span>--dry-run<span class="w">  </span><span class="c1"># show accurate video pipeline</span>
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>mm<span class="w"> </span>cat<span class="w"> </span>notes.docx<span class="w"> </span>--dry-run<span class="w">           </span><span class="c1"># passthrough preview</span>
+</code></pre></div>
 <h2 id="introspection">Introspection<a class="headerlink" href="#introspection" title="Permanent link">&para;</a></h2>
 <ul>
 <li><code>--list-pipelines</code>: show all built-in and user-override pipeline YAML files</li>
 <li><code>--list-encoders</code>: show all registered encoder strategies with parameters</li>
+<li><code>--dry-run</code>: resolve and display the pipeline without executing it</li>
 </ul>
 
 
