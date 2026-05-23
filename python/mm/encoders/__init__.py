@@ -240,6 +240,13 @@ def load_strategy_file(path: Path) -> list[str]:
     if source_key in _LOADED_SOURCES:
         return _LOADED_SOURCES[source_key]
 
+    resolved = path.resolve()
+    for mod in sys.modules.values():
+        mod_file = getattr(mod, "__file__", None)
+        if mod_file and Path(mod_file).resolve() == resolved:
+            _LOADED_SOURCES[source_key] = []
+            return []
+
     before = set(_REGISTRY)
     module_name = f"mm_encoder_{path.stem}"
     spec = importlib.util.spec_from_file_location(module_name, str(path))
@@ -270,13 +277,14 @@ def _ensure_discovered() -> None:
 def _register_builtins() -> None:
     """Import built-in encoder modules so their classes self-register."""
     from mm.encoders import audio, document, gemini, image, video  # noqa: F401
-    from mm.encoders.document import page_text  # noqa: F401
+    from mm.encoders.document import page_text, rasterize  # noqa: F401
     from mm.encoders.video import (  # noqa: F401
         captions,
+        chunks,
+        clips,
         frames,
         keyframes,
         mosaic,
-        native,
         shots,
         summary,
         transcript,
