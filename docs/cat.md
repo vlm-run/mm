@@ -16,7 +16,9 @@ mm cat FILE [FILE ...] [OPTIONS]
 |---------------------------|-------------------------------------------|-----------------------------------------|
 | **Images**                | Short VLM caption                         | Full VLM description + tags             |
 | **Videos**                | Frame mosaic → short VLM description      | Mosaic + transcript → VLM description   |
-| **Audio**                 | Whisper transcript → 10-word description  | Transcript → detailed LLM description   |
+| **Audio** (default: `transcribe`) | Whisper transcript         | Whisper transcript             |
+| **Audio** (`-p base64`)   | 10-word description  | Detailed LLM description |
+| **Audio** (`-p gemini`)   | 10-word description               | Detailed LLM description        |
 | **PDFs**                  | Page-text extraction (pypdfium2)          | Text → LLM markdown structuring         |
 | **Non-PDF docs** (.docx/.pptx) | Passthrough text (no LLM)           | Passthrough text (no LLM)               |
 | **Code / text**           | Passthrough text (no LLM)                 | Passthrough text (no LLM)               |
@@ -146,7 +148,7 @@ mm cat clip.mp4 -m accurate
 # Whisper transcript (fast)
 mm cat recording.mp3
 
-# transcript → LLM summary (accurate)
+# Whisper transcript only (default)
 mm cat recording.mp3 -m accurate
 
 # MLX backend (Apple Silicon)

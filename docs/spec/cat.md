@@ -47,8 +47,9 @@ Multi-file: `mm cat a.mp4 b.mp4 -y` runs each video sequentially; the same **≥
 | | fast (default) | accurate |
 |---|---|---|
 | Encoder | `transcribe` (whisper medium, 2.0×) | `transcribe` (whisper medium, 2.0×) |
-| Output | 10-word audio description | detailed audio content description |
-| Tokens | 128 max | 1024 max |
+| Output | Whisper transcript | Whisper transcript |
+| LLM call | None — `transcribe` suppresses generate | None — `transcribe` suppresses generate |
+| For LLM output | Use `-p base64` (10-word description, 128 tok) | Use `-p base64` or `-p gemini` (full description, 1024 tok) |
 
 **Transcription backends** (auto-detected by priority, override via --encode.backend or `mm config set transcription.backend`):
 

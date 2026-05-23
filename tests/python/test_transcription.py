@@ -258,7 +258,7 @@ class TestCTranslate2Backend:
             from mm.common.audio._ctranslate2 import CTranslate2Backend
 
             be = CTranslate2Backend()
-            result = be.transcribe(audio, model="tiny")
+            result = be.transcribe(audio, model="tiny", audio_speed=1.0)
             assert result.text == "Hello world"
             assert len(result.segments) == 1
             assert result.segments[0].start == 0.0
@@ -343,7 +343,7 @@ class TestOpenAIBackend:
             from mm.common.audio._openai import OpenAIBackend
 
             be = OpenAIBackend(base_url="http://localhost:11434/v1", api_key="test-key")
-            result = be.transcribe(audio, model="whisper-1")
+            result = be.transcribe(audio, model="whisper-1", audio_speed=1.0)
 
             assert result.text == "Hello from API"
             assert result.language == "en"
