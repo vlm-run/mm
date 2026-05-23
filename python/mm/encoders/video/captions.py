@@ -78,7 +78,7 @@ def _parse_srt(srt_text: str) -> list[tuple[str, str]]:
 
 
 class VideoCaptions(Encoder):
-    """Passthrough encoder — Extract embedded subtitles from video files.
+    """Extract embedded subtitles from video files.
 
     Probes the video for subtitle streams via PyAV (no ffprobe
     subprocess) and extracts the first (or specified) stream as

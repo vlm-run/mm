@@ -64,11 +64,11 @@ def accurate_video(path: Path, spec: PipelineSpec, opts: CatOpts) -> RunResult:
     if not ffmpeg_available():
         return RunResult(content=f"[ffmpeg not found — cannot process {path.name}]")
 
-    if spec.generate is None:
-        return RunResult(content=extract_meta(path, "video"))
-
     if spec.encode.strategy:
         return run_encoder(path, "video", spec, opts)
+
+    if spec.generate is None:
+        return RunResult(content=extract_meta(path, "video"))
 
     timing: dict[str, float] = {}
     t_total = time.monotonic()

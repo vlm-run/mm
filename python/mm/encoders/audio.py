@@ -5,8 +5,7 @@ part — the native way to send audio to multimodal LLMs. Generate prompts come
 from the pipeline YAML.
 
 ``AudioTranscribe`` runs Whisper transcription and returns the transcript as
-text. Passthrough encoder — suppresses the LLM call via
-``generate = {"fast": None, "accurate": None}``.
+text. Suppresses the LLM call via ``generate = {"fast": None, "accurate": None}``.
 
 ``GeminiAudio`` passes audio directly as Gemini ``inline_data`` Parts with
 automatic chunking for long files. Generate prompts come from the pipeline YAML.
@@ -156,7 +155,7 @@ class AudioBase64(Encoder):
 
 
 class AudioTranscribe(Encoder):
-    """Passthrough encoder — Transcribe audio and return the transcript as a text message.
+    """Transcribe audio and return the transcript as a text message.
 
     Uses the modular transcription backend system. By default, calls
     the VLM Run gateway's OpenAI-compatible endpoint. Override
