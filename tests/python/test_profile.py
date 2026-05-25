@@ -32,6 +32,7 @@ from mm.profile import (
     get_profile,
     get_profile_names,
     get_profile_section,
+    clone_profile,
     remove_profile,
     set_active_profile,
     update_profile,
@@ -414,6 +415,83 @@ class TestRemoveProfile:
             remove_profile("nope")
 
 
+class TestCloneProfile:
+    def test_clone_exact_copy(self, two_profile_config):
+        clone_profile("openrouter", "openrouter-copy")
+        file_data = _read_config_file()
+        src = _profiles(file_data)["openrouter"]
+        dst = _profiles(file_data)["openrouter-copy"]
+        assert dst["base_url"] == src["base_url"]
+        assert dst["model"] == src["model"]
+        assert dst["api_key"] == src["api_key"]
+
+    def test_clone_with_model_override(self, two_profile_config):
+        clone_profile("openrouter", "openrouter-fast", model="google/gemma-3-27b-it:free")
+        file_data = _read_config_file()
+        dst = _profiles(file_data)["openrouter-fast"]
+        assert dst["model"] == "google/gemma-3-27b-it:free"
+        assert dst["base_url"] == OPENROUTER_DEFAULTS["base_url"]
+
+    def test_clone_with_api_key_override(self, two_profile_config):
+        clone_profile("openrouter", "openrouter-keyed", api_key="sk-new")
+        file_data = _read_config_file()
+        dst = _profiles(file_data)["openrouter-keyed"]
+        assert dst["api_key"] == "sk-new"
+        assert dst["base_url"] == OPENROUTER_DEFAULTS["base_url"]
+        assert dst["model"] == OPENROUTER_DEFAULTS["model"]
+
+    def test_clone_with_base_url_override(self, two_profile_config):
+        clone_profile("openrouter", "openrouter-eu", base_url="https://eu.openrouter.ai/api/v1")
+        file_data = _read_config_file()
+        dst = _profiles(file_data)["openrouter-eu"]
+        assert dst["base_url"] == "https://eu.openrouter.ai/api/v1"
+        assert dst["model"] == OPENROUTER_DEFAULTS["model"]
+
+    def test_clone_with_all_overrides(self, two_profile_config):
+        clone_profile(
+            "openrouter",
+            "openrouter-full",
+            base_url="http://x",
+            api_key="k",
+            model="m",
+        )
+        file_data = _read_config_file()
+        dst = _profiles(file_data)["openrouter-full"]
+        assert dst["base_url"] == "http://x"
+        assert dst["api_key"] == "k"
+        assert dst["model"] == "m"
+
+    def test_clone_from_reserved_profile_not_in_file(self, tmp_path: Path):
+        """Clone from a reserved profile that isn't written to the config yet."""
+        clone_profile("ollama", "my-ollama")
+        file_data = _read_config_file()
+        dst = _profiles(file_data)["my-ollama"]
+        assert dst["base_url"] == OLLAMA_DEFAULTS["base_url"]
+        assert dst["model"] == OLLAMA_DEFAULTS["model"]
+
+    def test_clone_nonexistent_source_raises(self, two_profile_config):
+        with pytest.raises(ValueError, match="not found"):
+            clone_profile("nope", "copy-of-nope")
+
+    def test_clone_duplicate_dest_raises(self, two_profile_config):
+        with pytest.raises(ValueError, match="already exists"):
+            clone_profile("openrouter", "ollama")
+
+    def test_clone_invalid_dest_name_raises(self, two_profile_config):
+        with pytest.raises(ValueError, match="Invalid profile name"):
+            clone_profile("openrouter", "bad name!")
+
+    def test_clone_does_not_affect_source(self, two_profile_config):
+        clone_profile("openrouter", "openrouter-clone", model="new-model")
+        file_data = _read_config_file()
+        assert _profiles(file_data)["openrouter"]["model"] == OPENROUTER_DEFAULTS["model"]
+
+    def test_cloned_profile_is_removable(self, two_profile_config):
+        clone_profile("openrouter", "openrouter-tmp")
+        remove_profile("openrouter-tmp")
+        assert "openrouter-tmp" not in get_profile_names()
+
+
 class TestSetActiveProfile:
     def test_switch_profile(self, two_profile_config):
         set_active_profile("openrouter")
@@ -759,11 +837,59 @@ class TestProfileCli:
         data = json.loads(r.output)
         assert "test-p" not in data["profiles"]
 
+    def test_profile_clone_exact_copy(self, runner, two_profile_config):
+        cli_runner, app = runner
+
+        result = cli_runner.invoke(app, ["profile", "clone", "openrouter", "openrouter-copy"])
+        assert result.exit_code == 0
+        assert "openrouter" in result.output
+        assert "openrouter-copy" in result.output
+
+        result2 = cli_runner.invoke(app, ["profile", "list", "--format", "json"])
+        data = json.loads(result2.output)
+        assert "openrouter-copy" in data["profiles"]
+        assert data["profiles"]["openrouter-copy"]["base_url"] == OPENROUTER_DEFAULTS["base_url"]
+        assert data["profiles"]["openrouter-copy"]["model"] == OPENROUTER_DEFAULTS["model"]
+
+    def test_profile_clone_with_model_override(self, runner, two_profile_config):
+        cli_runner, app = runner
+        result = cli_runner.invoke(
+            app, ["profile", "clone", "openrouter", "or-fast", "--model", "gemma-3-27b"]
+        )
+        assert result.exit_code == 0
+        plain = self._strip_ansi(result.output)
+        assert "model=gemma-3-27b" in plain
+        result2 = cli_runner.invoke(app, ["profile", "list", "--format", "json"])
+        data = json.loads(result2.output)
+        assert data["profiles"]["or-fast"]["model"] == "gemma-3-27b"
+        assert data["profiles"]["or-fast"]["base_url"] == OPENROUTER_DEFAULTS["base_url"]
+
+    def test_profile_clone_api_key_masked_in_output(self, runner, two_profile_config):
+        cli_runner, app = runner
+        result = cli_runner.invoke(
+            app, ["profile", "clone", "openrouter", "or-keyed", "--api-key", "sk-secret"]
+        )
+        assert result.exit_code == 0
+        assert "sk-secret" not in result.output
+        assert "api_key=••••" in result.output
+
+    def test_profile_clone_nonexistent_source_fails(self, runner, two_profile_config):
+        cli_runner, app = runner
+        result = cli_runner.invoke(app, ["profile", "clone", "nope", "copy"])
+        assert result.exit_code == 1
+        assert "not found" in result.output
+
+    def test_profile_clone_duplicate_dest_fails(self, runner, two_profile_config):
+        cli_runner, app = runner
+        result = cli_runner.invoke(app, ["profile", "clone", "openrouter", "ollama"])
+        assert result.exit_code == 1
+        assert "already exists" in result.output
+
     def test_profile_help_shows_all_subcommands(self, runner):
         cli_runner, app = runner
         result = cli_runner.invoke(app, ["profile", "--help"])
         assert result.exit_code == 0
-        for cmd in ("list", "use", "add", "update", "remove"):
+        for cmd in ("list", "use", "add", "update", "remove", "clone"):
             assert cmd in result.output
 
 
