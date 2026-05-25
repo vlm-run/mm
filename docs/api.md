@@ -8,7 +8,7 @@ is compact and insert/lookup/render is sub-millisecond at 10K items.
 
 > Looking for the directory-scan surface (`Context("~/data")` +
 > `to_polars`/`sql`/`show`)? That mode is preserved unchanged — see
-> [USER_GUIDE.md](USER_GUIDE.md). This doc is about the new
+> [user-guide.md](user-guide.md). This doc is about the new
 > **incremental role-aware** mode.
 
 ## TL;DR

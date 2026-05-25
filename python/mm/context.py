@@ -169,7 +169,8 @@ class Context:
             omitted *and* ``root`` is not provided. Stays ``None`` when
             ``root`` is provided without ``session_id`` (preserves the
             legacy default).
-        llm_base_url, llm_api_key: Optional LLM overrides.
+        llm_base_url: Optional LLM overrides for base_url.
+        llm_api_key: Optional LLM overrides for api_key.
 
     Examples:
         Incremental (role-aware)::
@@ -366,8 +367,7 @@ class Context:
                 labelled text parts.
             encoders: Per-kind encoder overrides, e.g. ``{"image": "tile",
                 "video": "mosaic"}``. Unspecified kinds fall back to
-                sensible defaults (``resize``, ``mosaic``,
-                ``rasterize``, ``base64``).
+                sensible defaults (``resize``, ``mosaic``, ``rasterize``, ``base64``).
             encoder_kwargs: Per-kind keyword arguments forwarded to the
                 encoder's ``encode()`` method, e.g.
                 ``{"document": {"pages_per_message": 8}}``.
@@ -692,8 +692,8 @@ class Context:
             path: Relative path within the context root.
             strategy: Registered encoder name (e.g. ``"resize"``).
                 If ``None``, defaults to ``resize`` for images,
-                ``frames`` for video, ``rasterize``
-                for documents.
+                ``mosaic`` for video, ``rasterize`` for documents,
+                and ``base64`` for audio.
             **kwargs: Forwarded to ``encoder.encode()``.
 
         Returns:
@@ -701,6 +701,7 @@ class Context:
         """
         self._require_table("encode")
         from mm.encoders import get as get_encoder
+        from mm.refs_messages import OPENAI_DEFAULT_ENCODERS
         from mm.utils import file_kind
 
         assert self.root is not None
@@ -708,15 +709,11 @@ class Context:
         if not full_path.exists():
             raise FileNotFoundError(f"{path} not found in {self.root}")
 
-        media_type = file_kind(full_path.name)
+        kind = file_kind(full_path.name)
         if strategy is None:
-            strategy = {
-                "image": "resize",
-                "video": "frames",
-                "document": "rasterize",
-            }.get(media_type, "resize")
+            strategy = OPENAI_DEFAULT_ENCODERS.get(kind, "resize")
 
-        strat = get_encoder(strategy, media_type)
+        strat = get_encoder(strategy, kind)
         return list(strat.encode(full_path, **kwargs))
 
     def grep(self, pattern: str, *, kind: str | None = None) -> list[dict[str, Any]]:

@@ -260,7 +260,7 @@ def cat_cmd(
                                 fast (default)                  accurate
     Images:                     short VLM caption               full VLM caption + tags
     Videos:                     mosaic → short VLM              mosaic + transcript → VLM
-    Audio:                      Whisper transcript              transcript → LLM summary
+    Audio:                      Whisper transcript              Whisper transcript (no LLM; use -p base64/-p gemini for LLM)
     PDFs:                       page-text extraction            text → LLM markdown
     Non-PDF docs (.docx/.pptx): passthrough text (no LLM)       passthrough text (no LLM)
     Code / text:                passthrough text (no LLM)       passthrough text (no LLM)

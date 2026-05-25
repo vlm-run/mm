@@ -34,7 +34,7 @@ class DocumentPageText(Encoder):
     ``office_content`` and yields the full text in one Message.
 
     Kwargs:
-        pages_per_message: Pages per Message for PDFs (default 4).
+        pages_per_message: Pages per Message for PDFs (default 128).
         max_pages: Maximum pages to extract (default unlimited).
         mode: fast | accurate.
     """

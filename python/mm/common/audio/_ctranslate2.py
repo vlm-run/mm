@@ -88,7 +88,7 @@ class CTranslate2Backend(TranscriptionBackend):
             vad_parameters={"min_silence_duration_ms": 500},
         )
 
-        ts_scale = audio_speed if audio_speed > 0 else 1.0
+        ts_scale = audio_speed
         segments: list[TranscriptionSegment] = []
         text_parts: list[str] = []
         for seg in segments_iter:

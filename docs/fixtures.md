@@ -62,7 +62,7 @@ uv run mm cat input.pdf -v
 ```bash
 # Extract audio quickly (Whisper transcript, default model=medium)
 uv run mm cat input.mp3
-# Extract audio accurately (Whisper transcript + LLM summary)
+# same as fast when using transcribe (default) encoding strategy
 uv run mm cat input.mp3 -m accurate
 # Extract audio accurately (pass audio directly to a Gemini-compatible VLM)
 uv run mm cat input.mp3 --encode.strategy gemini -m accurate

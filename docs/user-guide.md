@@ -141,10 +141,10 @@ mm cat notes.docx              # libreoffice-rs text
 mm cat image.jpg               # short VLM caption (fast pipeline)
 mm cat video.mp4               # mosaic → short VLM description (fast pipeline)
 
-# --mode accurate: LLM-heavy pipeline for image/video/audio/PDF (requires a configured profile).
+# --mode accurate: LLM-heavy pipeline for image/video/PDF (requires a configured profile).
 mm cat image.jpg -m accurate   # LLM-powered caption + tags + objects
 mm cat video.mp4 -m accurate   # keyframe mosaic → LLM description
-mm cat audio.mp3 -m accurate   # transcript → LLM summary
+mm cat audio.mp3 -m accurate   # Whisper transcript only (use -p base64 or -p gemini for LLM description)
 mm cat report.pdf -m accurate  # text → LLM markdown structuring
 ```
 

@@ -5,16 +5,15 @@ via Whisper and yields a timestamped transcript Message.  All
 ``-w-transcript`` video encoders delegate to this helper so that
 Whisper integration is not duplicated across files.
 
-Transcripts are cached **on disk** via :func:`mm.cache.memoize_file`,
-keyed on ``(path, mtime, size, model, language, audio_speed)``.  Whisper
-is the slowest step in the accurate-mode video pipeline (~76 s for a
-short clip), so persisting the result across CLI invocations turns the
-second ``mm cat video.mp4 -m accurate`` into a near-instant operation.
-Cache lives under ``$MM_CACHE_DIR / transcripts`` (see
-:func:`mm.cache.cache_dir`) and survives mtime-aware invalidation:
-re-encoding the source video automatically retranscribes.
+Transcripts are cached **on disk** via :func:`mm.cache.memoize_file` on
+:func:`mm.common.audio.transcribe_file`, keyed on
+``(path, mtime, size, model, language, audio_speed)``. Whisper is the
+slowest step in the accurate-mode video pipeline (~76 s for a short clip),
+so persisting the result across CLI invocations turns the second
+``mm cat video.mp4 -m accurate`` into a near-instant operation.  Cache
+lives under ``$MM_CACHE_DIR/transcripts`` and is mtime-aware.
 
-Use ``transcript_messages.cache_clear()`` to wipe the on-disk cache.
+Use ``transcribe_file.cache_clear()`` to wipe the on-disk transcript cache.
 """
 
 from __future__ import annotations
@@ -23,20 +22,18 @@ import logging
 from pathlib import Path
 from typing import Any, Iterable
 
-from mm.cache import cache_dir, memoize_file
 from mm.encoders import Message
 from mm.encoders.image import _to_message
 
 logger = logging.getLogger(__name__)
 
 
-@memoize_file(maxsize=16, path=lambda: cache_dir() / "transcripts")
 def transcript_messages(
     path: Path,
     *,
     model: str | None = None,
     language: str = "auto",
-    audio_speed: float = 1.0,
+    audio_speed: float = 2.0,
     backend: str | None = None,
     base_url: str | None = None,
     api_key: str | None = None,
@@ -52,19 +49,10 @@ def transcript_messages(
     Returns an empty list when the transcription backend or ffmpeg is
     unavailable so callers can fall back to visual-only output.
     """
-    try:
-        from mm.common.audio import transcribe, transcribe_available
-        from mm.ffmpeg import audio_transformer
-    except ImportError:
-        return []
-
-    if not transcribe_available():
-        return []
-
-    audio_result = audio_transformer(path, speed=audio_speed)
+    from mm.common.audio import transcribe_file
 
     resolved_lang = None if language == "auto" else language
-    whisper_result = transcribe(
+    whisper_result = transcribe_file(
         path,
         model=model,
         language=resolved_lang,
@@ -74,11 +62,6 @@ def transcript_messages(
         base_url=base_url,
         api_key=api_key,
     )
-
-    try:
-        audio_result.path.unlink(missing_ok=True)
-    except Exception:
-        pass
 
     transcript = whisper_result.text
     if not transcript or transcript.startswith("["):
@@ -119,15 +102,14 @@ def encode_with_transcript(
         path: Video file path.
         visual_encode_fn: Callable ``(path, **kwargs) -> Iterable[Message]``.
         **kwargs: Passed to both the transcript helper and the visual encoder.
-            Transcript-specific kwargs: ``model``, ``language``,
-            ``audio_speed``.
+            Transcript-specific kwargs: ``model``, ``language``, ``audio_speed``.
     """
     from concurrent.futures import ThreadPoolExecutor
 
     transcript_kwargs = {
         "model": kwargs.get("audio_model") or kwargs.get("model"),
         "language": kwargs.get("language", "auto"),
-        "audio_speed": kwargs.get("audio_speed", 1.0),
+        "audio_speed": kwargs.get("audio_speed", 2.0),
         "backend": kwargs.get("audio_backend") or kwargs.get("backend"),
         "base_url": kwargs.get("audio_base_url") or kwargs.get("base_url"),
         "api_key": kwargs.get("audio_api_key") or kwargs.get("api_key"),

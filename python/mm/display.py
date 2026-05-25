@@ -521,12 +521,13 @@ def display_elapsed_wrapper(start_time: float, prefix: str | None = None):
 
 
 def root_progress():
+    if not _get_console().is_terminal:
+        return
+
     import atexit
 
     from rich.live import Live
     from rich.spinner import Spinner
-
-    from mm.display import _get_console
 
     _real_stdout = sys.stdout
     _live = Live(

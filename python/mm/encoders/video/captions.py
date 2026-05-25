@@ -78,7 +78,7 @@ def _parse_srt(srt_text: str) -> list[tuple[str, str]]:
 
 
 class VideoCaptions(Encoder):
-    """Passthrough encoder — Extract embedded subtitles from video files.
+    """Extract embedded subtitles from video files.
 
     Probes the video for subtitle streams via PyAV (no ffprobe
     subprocess) and extracts the first (or specified) stream as
@@ -90,7 +90,7 @@ class VideoCaptions(Encoder):
         fallback_to_whisper: Use Whisper if no subtitles found (default True).
         model: Transcription model name for fallback (default chosen by backend).
         language: Language code or "auto" for fallback (default "auto").
-        audio_speed: Playback speed for fallback (default 1.0).
+        audio_speed: Playback speed for fallback (default 2.0).
     """
 
     name = "captions"
@@ -126,7 +126,7 @@ class VideoCaptions(Encoder):
 
             model: str | None = kwargs.get("audio_model") or kwargs.get("model")
             language: str = kwargs.get("language", "auto")
-            audio_speed: float = kwargs.get("audio_speed", 1.0)
+            audio_speed: float = kwargs.get("audio_speed", 2.0)
 
             msgs = list(
                 transcript_messages(

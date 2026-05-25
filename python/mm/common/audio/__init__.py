@@ -21,6 +21,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from mm.cache import cache_dir, memoize_file
 from mm.common.audio._base import (
     TranscriptionBackend,
     TranscriptionResult,
@@ -83,7 +84,7 @@ def transcribe(
     model: str | None = None,
     language: str | None = None,
     beam_size: int = 1,
-    audio_speed: float = 1.0,
+    audio_speed: float = 2.0,
     backend: str | None = None,
     base_url: str | None = None,
     api_key: str | None = None,
@@ -147,13 +148,13 @@ def transcribe(
     )
 
 
-# @memoize_file(maxsize=16, path=lambda: cache_dir() / "transcripts")
+@memoize_file(maxsize=16, path=lambda: cache_dir() / "transcripts")
 def transcribe_file(
     path: str | Path,
     *,
     model: str | None = None,
     language: str | None = None,
-    audio_speed: float = 1.0,
+    audio_speed: float = 2.0,
     beam_size: int = 5,
     backend: str | None = None,
     base_url: str | None = None,
@@ -167,7 +168,7 @@ def transcribe_file(
         language: ISO language code; ``None`` for auto-detection.
         audio_speed: Speed multiplier applied during extraction.
         beam_size: Beam size for local backends.
-        backend: Explicit backend name (``"openai"``, ``"mlx"``, etc.).
+        backend: Explicit backend name (``"openai"``, ``"mlx"``, ``"ctranslate2"``.).
         base_url: Custom base URL for the openai backend.
         api_key: API key for the openai backend.
 
@@ -175,6 +176,9 @@ def transcribe_file(
         :class:`TranscriptionResult`.
     """
     from mm.ffmpeg import audio_transformer
+
+    if not transcribe_available():
+        return TranscriptionResult("", segments=[])
 
     audio_result = None
     try:
@@ -193,7 +197,7 @@ def transcribe_file(
             api_key=api_key,
         )
     except Exception:
-        return TranscriptionResult("", segments=[])
+        return TranscriptionResult("")
     finally:
         if audio_result is not None:
             try:

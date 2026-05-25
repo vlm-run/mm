@@ -35,12 +35,14 @@ DEFAULT_OVERLAP = 10
 class VideoClips(Encoder):
     """Base64-encode video clips of uniform duration.
 
-    When ``duration`` is 0, -1, or not provided the entire video is sent
-    as a single base64-encoded clip. Otherwise the video is split into
-    chunks of ``duration`` seconds and each is sent separately.
+    When ``duration`` is 0, -1, or not provided the video is clipped using
+    the default clip duration and each one processed as base64-encoded clip.
+    Otherwise the video is split into chunks of ``duration`` seconds and each
+    is processed separately.
 
     Kwargs:
-        duration: Clip length in seconds (default 0 = whole video).
+        duration: Clip length in seconds (default 120).
+        overlap: Overlap between clips in seconds (default 10).
         max_size_mb: Skip chunks exceeding this size in MB (default None).
         mode: fast | accurate
     """
@@ -184,8 +186,7 @@ class VideoClips(Encoder):
 class VideoClipsWithTranscript(Encoder):
     """Base64 video clips with Whisper transcript prepended.
 
-    Kwargs: Same as ``VideoClips`` plus ``model``, ``language``,
-    ``audio_speed``.
+    Kwargs: Same as ``VideoClips`` plus ``model``, ``language``, ``audio_speed``.
     """
 
     name = "clips-w-transcript"

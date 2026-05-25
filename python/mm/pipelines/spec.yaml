@@ -57,10 +57,10 @@ encode:
     # fps: 1.0
     # max_width: 1024
     # max_frames_per_message: 16
-    # audio_speed: 1.0
+    # audio_speed: 2.0
 
     # Examples for transcribe:
-    # audio_speed: 1.0
+    # audio_speed: 2.0
 
   # Custom Python transform — file path or inline `def`.
   # Must define: def transform(parts, context) -> list[dict]

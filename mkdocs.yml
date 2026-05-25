@@ -67,7 +67,7 @@ plugins:
 
 nav:
   - Home: index.md
-  - User guide: USER_GUIDE.md
+  - User guide: user-guide.md
   - CLI:
       - Overview: cli.md
       - find: find.md
@@ -81,10 +81,10 @@ nav:
       - config: config.md
   - Python API:
       - Index: api.md
-      - mm.Context: mm_context.md
+      - mm.Context: mm-context.md
   - Use cases: use-cases.md
-  - Encoders: ENCODERS.md
-  - Pipelines: PIPELINES.md
+  - Encoders: encoders.md
+  - Pipelines: pipelines.md
   - Fixtures: fixtures.md
   - Notebooks:
       - Cookbook (gateway): notebooks/mm_cookbook_gateway.ipynb

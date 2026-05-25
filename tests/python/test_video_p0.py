@@ -22,11 +22,12 @@ import time
 from pathlib import Path
 
 import pytest
+from mm.common.audio import transcribe_file
 from mm.common.video.shot_detection import (
     SceneResult,
     detect_scenes,
 )
-from mm.encoders.video._transcript import encode_with_transcript, transcript_messages
+from mm.encoders.video._transcript import encode_with_transcript  # , transcript_messages
 from mm.video import Frame, VideoInfo, _resize_to_pil, probe
 from PIL import Image
 
@@ -36,9 +37,7 @@ requires_bakery = pytest.mark.skipif(
     reason="bakery.mp4 not found at ~/data/mmbench-tiny/",
 )
 
-# Every memoize_file-wrapped function exposes the same handle surface.
-# Iterating over them keeps test setup/teardown a one-liner.
-_CACHED = (probe, detect_scenes, transcript_messages)
+_CACHED = (probe, detect_scenes, transcribe_file)
 
 
 @pytest.fixture(autouse=True)
@@ -280,97 +279,6 @@ class TestSceneDetectCache:
         assert detect_scenes.cache_info()["currsize"] >= 1
         detect_scenes.cache_clear()
         assert detect_scenes.cache_info()["currsize"] == 0
-
-
-class TestTranscriptCache:
-    """P0 #4 — Transcript helper caches via ``@memoize_file`` on the public
-    ``transcript_messages`` function.
-
-    The decorator's behaviour itself is exercised in ``test_cache.py``;
-    these tests verify the integration: that ``transcript_messages`` exposes
-    the standard ``cache_info`` / ``cache_clear`` handles and that its
-    cache key includes ``model``.
-    """
-
-    def test_exposes_cache_handles(self):
-        # Public surface contract — every memoize_file-wrapped function gets these.
-        assert callable(transcript_messages.cache_clear)
-        assert callable(transcript_messages.cache_info)
-
-    @staticmethod
-    def _stub_whisper(monkeypatch, *, available: bool = False) -> None:
-        """Make the transcript body terminate early without touching Whisper.
-
-        The body short-circuits on ``whisper_available() == False`` and returns
-        ``[]`` — that's the cleanest way to keep tests fast while still
-        exercising the real cached function (not a monkeypatched shim).
-        """
-        monkeypatch.setattr("mm.common.audio.transcribe_available", lambda: available)
-
-    def test_cache_hit_on_repeated_call(self, tmp_path, monkeypatch):
-        self._stub_whisper(monkeypatch)
-        clip = tmp_path / "fake.mp4"
-        clip.write_bytes(b"\x00\x00\x00\x18ftypisom")
-
-        a = transcript_messages(clip, model="tiny", language="auto", audio_speed=1.0)
-        b = transcript_messages(clip, model="tiny", language="auto", audio_speed=1.0)
-
-        info = transcript_messages.cache_info()
-        assert info["hits"] >= 1
-        assert info["misses"] == 1
-        assert info["currsize"] == 1
-        # Disk-backed cache rehydrates a fresh object — value equality
-        # plus the hit counter is the contract callers can rely on.
-        assert a == b == []
-
-    def test_cache_key_includes_model(self, tmp_path, monkeypatch):
-        self._stub_whisper(monkeypatch)
-        clip = tmp_path / "fake2.mp4"
-        clip.write_bytes(b"\x00\x00\x00\x18ftypisom")
-
-        a = transcript_messages(clip, model="tiny", language="auto", audio_speed=1.0)
-        b = transcript_messages(clip, model="medium", language="auto", audio_speed=1.0)
-        # Different models → separate cache entries.
-        assert transcript_messages.cache_info()["currsize"] == 2
-        # Same call should hit, not grow.
-        transcript_messages(clip, model="tiny", language="auto", audio_speed=1.0)
-        assert transcript_messages.cache_info()["currsize"] == 2
-        # Both empty because Whisper is stubbed unavailable.
-        assert a == b == []
-
-    def test_clear_cache_forces_rebuild(self, tmp_path, monkeypatch):
-        self._stub_whisper(monkeypatch)
-        clip = tmp_path / "fake3.mp4"
-        clip.write_bytes(b"\x00\x00\x00\x18ftypisom")
-
-        transcript_messages(clip, model="tiny", language="auto", audio_speed=1.0)
-        assert transcript_messages.cache_info()["currsize"] == 1
-        transcript_messages.cache_clear()
-        assert transcript_messages.cache_info() == {
-            "hits": 0,
-            "misses": 0,
-            "currsize": 0,
-            "maxsize": 16,
-        }
-
-    def test_mtime_change_invalidates(self, tmp_path, monkeypatch):
-        import os
-
-        self._stub_whisper(monkeypatch)
-        clip = tmp_path / "fake4.mp4"
-        clip.write_bytes(b"\x00\x00\x00\x18ftypisom")
-
-        transcript_messages(clip, model="tiny", language="auto", audio_speed=1.0)
-        before = transcript_messages.cache_info()["currsize"]
-
-        future = clip.stat().st_mtime + 100.0
-        os.utime(clip, (future, future))
-
-        transcript_messages(clip, model="tiny", language="auto", audio_speed=1.0)
-        after = transcript_messages.cache_info()["currsize"]
-
-        # New mtime → new cache entry, old one still present.
-        assert after == before + 1
 
 
 class TestEncodeWithTranscript:

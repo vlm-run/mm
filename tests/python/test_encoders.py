@@ -269,17 +269,17 @@ class TestVideoTimestamps:
         assert ts == []
 
     def test_uniform_timestamps_range_basic(self):
-        from mm.encoders.video import _uniform_timestamps_range
+        from mm.encoders.video import uniform_timestamps_range
 
-        ts = _uniform_timestamps_range(10.0, 20.0, 5)
+        ts = uniform_timestamps_range(10.0, 20.0, 5)
         assert len(ts) == 5
         assert ts[0] == pytest.approx(10.0)
         assert all(10.0 <= t <= 20.0 for t in ts)
 
     def test_uniform_timestamps_range_single(self):
-        from mm.encoders.video import _uniform_timestamps_range
+        from mm.encoders.video import uniform_timestamps_range
 
-        ts = _uniform_timestamps_range(5.0, 10.0, 1)
+        ts = uniform_timestamps_range(5.0, 10.0, 1)
         assert len(ts) == 1
         assert ts[0] == pytest.approx(5.0)
 
@@ -303,7 +303,7 @@ class TestDocumentRasterize:
         doc = tmp_path / "test.pdf"
         doc.write_bytes(b"%PDF-1.4 fake")
         strat = get("rasterize", "document")
-        with patch("mm.encoders.document._rasterize_pages", return_value=[]):
+        with patch("mm.encoders.document.rasterize.rasterize_pages", return_value=[]):
             messages = list(strat.encode(doc, mode="accurate"))
             assert len(messages) == 1
             assert "No pages" in messages[0]["content"][0]["text"]
@@ -317,7 +317,7 @@ class TestDocumentRasterize:
         fake_pages = [(base64.b64encode(b"\xff").decode(), "image/jpeg")] * 10
 
         strat = get("rasterize", "document")
-        with patch("mm.encoders.document._rasterize_pages", return_value=iter(fake_pages)):
+        with patch("mm.encoders.document.rasterize.rasterize_pages", return_value=iter(fake_pages)):
             messages = list(strat.encode(doc, pages_per_message=4))
             assert len(messages) == 3
             for msg in messages:
@@ -336,8 +336,8 @@ class TestDocumentRasterizeText:
 
         strat = get("rasterize-text", "document")
         with (
-            patch("mm.encoders.document._rasterize_pages", return_value=iter(fake_pages)),
-            patch("mm.encoders.document._extract_page_texts", return_value=fake_texts),
+            patch("mm.encoders.document.rasterize.rasterize_pages", return_value=iter(fake_pages)),
+            patch("mm.encoders.document.rasterize.extract_page_texts", return_value=fake_texts),
         ):
             messages = list(strat.encode(doc, mode="accurate", pages_per_message=4))
             assert len(messages) == 1

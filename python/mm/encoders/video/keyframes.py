@@ -14,7 +14,7 @@ import logging
 from pathlib import Path
 from typing import Any, Iterable
 
-from mm.encoders import resolve_provider, register
+from mm.encoders import register, resolve_provider
 from mm.encoders.base import Encoder, Message
 from mm.encoders.image import _image_part, _to_message
 from mm.encoders.video._transcript import encode_with_transcript
@@ -89,8 +89,7 @@ class VideoKeyframes(Encoder):
 class VideoKeyframesWithTranscript(Encoder):
     """Extract I-frames with Whisper transcript prepended.
 
-    Kwargs: Same as ``VideoKeyframes`` plus ``model``,
-    ``language``, ``audio_speed``.
+    Kwargs: Same as ``VideoKeyframes`` plus ``model``, ``language``, ``audio_speed``.
     """
 
     name = "keyframes-w-transcript"

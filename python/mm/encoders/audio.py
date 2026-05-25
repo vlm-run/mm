@@ -5,8 +5,7 @@ part — the native way to send audio to multimodal LLMs. Generate prompts come
 from the pipeline YAML.
 
 ``AudioTranscribe`` runs Whisper transcription and returns the transcript as
-text. Passthrough encoder — suppresses the LLM call via
-``generate = {"fast": None, "accurate": None}``.
+text. Suppresses the LLM call via ``generate = {"fast": None, "accurate": None}``.
 
 ``GeminiAudio`` passes audio directly as Gemini ``inline_data`` Parts with
 automatic chunking for long files. Generate prompts come from the pipeline YAML.
@@ -156,7 +155,7 @@ class AudioBase64(Encoder):
 
 
 class AudioTranscribe(Encoder):
-    """Passthrough encoder — Transcribe audio and return the transcript as a text message.
+    """Transcribe audio and return the transcript as a text message.
 
     Uses the modular transcription backend system. By default, calls
     the VLM Run gateway's OpenAI-compatible endpoint. Override
@@ -165,7 +164,7 @@ class AudioTranscribe(Encoder):
     Kwargs:
         model: Model name (default chosen by backend).
         language: Language code or "auto" for detection (default "auto").
-        audio_speed: Playback speed multiplier (default 1.0).
+        audio_speed: Playback speed multiplier (default 2.0).
         backend: Transcription backend name (``"openai"``, ``"mlx"``,
             ``"ctranslate2"``).  ``None`` for auto-detect.
         base_url: Custom base URL for the ``openai`` backend.
@@ -179,7 +178,7 @@ class AudioTranscribe(Encoder):
     def encode(self, path: Path, **kwargs: Any) -> Iterable[Message]:
         model: str | None = kwargs.get("model")
         language: str = kwargs.get("language", "auto")
-        audio_speed: float = kwargs.get("audio_speed", 1.0)
+        audio_speed: float = kwargs.get("audio_speed", 2.0)
 
         backend: str | None = kwargs.get("backend", None)
         base_url: str | None = kwargs.get("base_url", None)

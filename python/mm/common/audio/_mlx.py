@@ -64,7 +64,7 @@ class MLXBackend(TranscriptionBackend):
         result = mdl.transcribe(audio_path=str(audio_path))
 
         text = result.get("text", "")
-        ts_scale = audio_speed if audio_speed > 0 else 1.0
+        ts_scale = audio_speed
 
         raw_segments = result.get("segments", [])
         segments: list[TranscriptionSegment] = []

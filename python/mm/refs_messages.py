@@ -17,7 +17,7 @@ if TYPE_CHECKING:
     from mm.context import Context
 
 
-_OPENAI_DEFAULT_ENCODERS: dict[str, str] = {
+OPENAI_DEFAULT_ENCODERS: dict[str, str] = {
     "image": "resize",
     "video": "mosaic",
     "document": "rasterize",
@@ -253,7 +253,7 @@ def _spool_image(obj: Any) -> Path:
 
 
 def _resolve_strategy(kind: str, encoders: dict[str, str]) -> str | None:
-    return encoders.get(kind) or _OPENAI_DEFAULT_ENCODERS.get(kind)
+    return encoders.get(kind) or OPENAI_DEFAULT_ENCODERS.get(kind)
 
 
 def _adapt_part(part: dict[str, Any], *, format: str) -> dict[str, Any]:

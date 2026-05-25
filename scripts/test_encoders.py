@@ -9,6 +9,7 @@ Usage:
     uv run python scripts/test_encoders.py --model gemini-2.5-pro
     uv run python scripts/test_encoders.py --concurrency 4
     uv run python scripts/test_encoders.py --verbose
+    uv run python scripts/test_encoders.py --kind audio --encoder transcribe --mode fast
 """
 
 from __future__ import annotations
@@ -152,10 +153,13 @@ def build_cmd(kind: str, encoder: str, mode: str, model: str, profile: str) -> l
         profile,
         "cat",
         str(SAMPLE_FILES[kind]),
-        f"--mode={mode}",
-        f"--pipeline={encoder}",
+        "--mode",
+        mode,
+        "--pipeline",
+        encoder,
         "--no-cache",
-        f"--generate.model={model}",
+        "--generate.model",
+        model,
     ]
 
 
@@ -219,6 +223,7 @@ async def main(args: argparse.Namespace) -> int:
 
     kind_filter: set[str] = set(args.kind) if args.kind else set()
     encoder_filter: set[str] = set(args.encoder) if args.encoder else set()
+    mode_filter: set[str] = set(args.mode) if args.mode else set()
 
     if encoder_filter:
         unknown = encoder_filter - {enc for encs in ENCODERS.values() for enc in encs}
@@ -236,6 +241,7 @@ async def main(args: argparse.Namespace) -> int:
         for encoder in encoders
         if not encoder_filter or encoder in encoder_filter
         for mode in MODES
+        if not mode_filter or mode in mode_filter
     ]
 
     if not tasks:
@@ -347,15 +353,15 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--model",
-        default="gemini-2.5-flash-lite",
+        default="qwen/qwen3.5-0.8b",
         metavar="MODEL",
-        help="Model passed via --generate.model (default: gemini-2.5-flash-lite)",
+        help="Model passed via --generate.model (default: qwen/qwen3.5-0.8b)",
     )
     parser.add_argument(
         "--profile",
-        default="openrouter",
+        default="gateway",
         metavar="PROFILE",
-        help="mm profile to use (default: openrouter)",
+        help="mm profile to use (default: gateway)",
     )
     parser.add_argument(
         "--concurrency",
@@ -383,6 +389,13 @@ def parse_args() -> argparse.Namespace:
         action="append",
         metavar="ENCODER",
         help="Restrict to a specific encoder name (e.g. shot-mosaic). Repeatable.",
+    )
+    parser.add_argument(
+        "--mode",
+        action="append",
+        metavar="MODE",
+        choices=list(MODES),
+        help=f"Restrict to one mode: {', '.join(MODES)}. Repeatable.",
     )
     parser.add_argument(
         "--dry-run",

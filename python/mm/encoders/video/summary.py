@@ -128,8 +128,7 @@ class VideoSummary(Encoder):
 class VideoSummaryWithTranscript(Encoder):
     """Adaptive video summary with Whisper transcript prepended.
 
-    Kwargs: Same as ``VideoSummary`` plus ``model``,
-    ``language``, ``audio_speed``.
+    Kwargs: Same as ``VideoSummary`` plus ``model``, ``language``, ``audio_speed``.
     """
 
     name = "summary-w-transcript"

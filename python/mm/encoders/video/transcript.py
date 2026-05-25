@@ -18,7 +18,7 @@ from mm.encoders.video._transcript import transcript_messages
 
 
 class VideoTranscript(Encoder):
-    """Passthrough encoder — Transcribe audio from a video file, return transcript only.
+    """Transcribe audio from a video file, return transcript only.
 
     Equivalent to the ``transcribe`` encoder but registered for the
     ``video`` kind. No visual frames are extracted.
@@ -26,7 +26,7 @@ class VideoTranscript(Encoder):
     Kwargs:
         model: Transcription model name (default chosen by backend).
         language: Language code or "auto" (default "auto").
-        audio_speed: Playback speed multiplier (default 1.0).
+        audio_speed: Playback speed multiplier (default 2.0).
     """
 
     name = "transcript"
@@ -36,7 +36,7 @@ class VideoTranscript(Encoder):
     def encode(self, path: Path, **kwargs: Any) -> Iterable[Message]:
         model: str | None = kwargs.get("model")
         language: str = kwargs.get("language", "auto")
-        audio_speed: float = kwargs.get("audio_speed", 1.0)
+        audio_speed: float = kwargs.get("audio_speed", 2.0)
 
         msgs = list(
             transcript_messages(
