@@ -212,7 +212,8 @@ def profile_clone(
         Optional[str], typer.Option("--base-url", "-b", help="Override base URL")
     ] = None,
     api_key: Annotated[
-        Optional[str], typer.Option("--api-key", "-k", help="Override API key")
+        Optional[str],
+        typer.Option("--api-key", "-k", help="Override API key. Defaults to '' if not provided"),
     ] = None,
     model: Annotated[
         Optional[str], typer.Option("--model", "-m", help="Override model name")
@@ -226,10 +227,10 @@ def profile_clone(
     fields inherit the source value unchanged.
 
     Examples:
-      mm profile clone ollama my-ollama                          # exact copy
-      mm profile clone ollama my-ollama --model qwen3-vl:8b     # different model
+      mm profile clone ollama my-ollama                          # exact copy. api-key defaults to ''
+      mm profile clone ollama my-ollama --model qwen3-vl:8b     # different model. api-key defaults to ''
       mm profile clone openai openai-dev --api-key sk-dev-...   # different key
-      mm profile clone openai openai-eu --base-url https://eu.openai.com/v1
+      mm profile clone openai openai-eu --model qwen3-vl:8b --base-url https://eu.openai.com/v1
     """
     from mm.display import output_console
     from mm.profile import clone_profile
