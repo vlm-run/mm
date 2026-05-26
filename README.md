@@ -15,11 +15,12 @@ middle; padding-right: 5px;"><br>
   <a href="https://pypi.org/project/mm-ctx/"><img src="https://img.shields.io/pypi/l/mm-ctx" alt="License"></a>
   <a href="https://discord.gg/6aqcyvPF79"><img src="https://img.shields.io/badge/discord-chat-purple?color=%235765F2&label=discord&logo=discord" alt="Discord"></a>
   <a href="https://twitter.com/vlmrun"><img src="https://img.shields.io/twitter/follow/vlmrun.svg?style=social&logo=twitter" alt="Twitter Follow"></a>
+  <a href="https://huggingface.co/spaces/vlm-run/mm-ctx"><img src="https://img.shields.io/badge/🤗%20Spaces-Try%20it-blue" alt="Try it on HF Spaces"></a>
 </div>
 
 <br />
 <p align="center">
-  <img src="docs/assets/mm-terminal-window.png" alt="mm terminal demo" width="880" style="border-radius: 12px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);">
+  <img src="docs/assets/mm-terminal-window-v2.png" alt="mm terminal demo" width="880" style="border-radius: 12px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);">
 </p>
 
 ---
