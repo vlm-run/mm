@@ -218,5 +218,4 @@ def auto_strategy(path: Path) -> str:
 
 def spec_replace_strategy(spec: PipelineSpec, strategy: str):
     encode = dataclasses.replace(spec.encode, strategy=strategy)
-    spec = dataclasses.replace(spec, encode=encode)
-    return spec
+    return dataclasses.replace(spec, encode=encode)
