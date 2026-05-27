@@ -33,7 +33,7 @@ def accurate_audio(path: Path, spec: PipelineSpec, opts: CatOpts) -> RunResult:
     if spec.generate is None:
         return RunResult(content=extract_meta(path, "audio"))
 
-    from mm.encoders.auto_strategy import auto_strategy
+    from mm.encoders.auto_strategy import auto_strategy, spec_replace_strategy
 
-    spec.encode.strategy = auto_strategy(path)
+    spec = spec_replace_strategy(spec, auto_strategy(path))
     return run_encoder(path, "audio", spec, opts)

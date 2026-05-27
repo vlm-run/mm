@@ -14,7 +14,7 @@ def accurate_image(path: Path, spec: PipelineSpec, opts: CatOpts) -> RunResult:
     if spec.encode.strategy:
         return run_encoder(path, "image", spec, opts)
 
-    from mm.encoders.auto_strategy import auto_strategy
+    from mm.encoders.auto_strategy import auto_strategy, spec_replace_strategy
 
-    spec.encode.strategy = auto_strategy(path)
+    spec = spec_replace_strategy(spec, auto_strategy(path))
     return run_encoder(path, "image", spec, opts)

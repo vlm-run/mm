@@ -78,7 +78,10 @@ scanned document with no meaningful text layer; ``rasterize`` is used
 instead of ``rasterize-text`` to avoid wasted text-extraction attempts.
 """
 
+import dataclasses
 from pathlib import Path
+
+from mm.pipelines.schema import PipelineSpec
 
 _MB = 1024 * 1024
 
@@ -211,3 +214,9 @@ def auto_strategy(path: Path) -> str:
     is_scanned = any(tok in creator_str for tok in _SCANNER_TOKENS)
 
     return "rasterize" if is_scanned else "rasterize-text"
+
+
+def spec_replace_strategy(spec: PipelineSpec, strategy: str):
+    encode = dataclasses.replace(spec.encode, strategy=strategy)
+    spec = dataclasses.replace(spec, encode=encode)
+    return spec
