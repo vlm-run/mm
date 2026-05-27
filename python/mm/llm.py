@@ -122,8 +122,8 @@ class LlmBackend:
 
         if content_parts:
             message_content: list[dict[str, Any]] | str = [
-                *content_parts,
                 {"type": "text", "text": prompt},
+                *content_parts,
             ]
         else:
             message_content = prompt
