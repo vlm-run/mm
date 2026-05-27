@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import tempfile
-import time
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, Any, Optional
 
@@ -15,12 +14,8 @@ from mm.cat_utils.base_utils import (
     coerce_opt_value,
     collect_overrides,
     effective_model,
-    format_footer,
-    format_generate_verbose,
-    make_llm_from_spec,
     maybe_confirm_large_cat_batch,
     override_extra,
-    spec_extra_body,
 )
 from mm.cat_utils.extract_meta import extract_meta
 from mm.common.audio._base import BackendLabel
@@ -638,42 +633,23 @@ def _format_run(run: RunResult, verbose: bool) -> str:
 
 def _run_fast(path: Path, kind: BinaryFileKind, spec: PipelineSpec, opts: CatOpts) -> RunResult:
     """Fast mode: run the kind's fast pipeline."""
+    from mm.cat_utils.run_encoder import run_encoder
+
     if getattr(opts, "no_generate", False):
         import dataclasses
 
         spec = dataclasses.replace(spec, generate=None)
     if spec.encode.strategy:
-        from mm.cat_utils.run_encoder import run_encoder
-
         return run_encoder(path, kind, spec, opts)
 
     content = extract_meta(path, kind, no_cache=opts.no_cache)
     if spec.generate is None:
         return RunResult(content=content)
 
-    from mm.profile import get_active_profile_name
+    from mm.encoders.auto_strategy import auto_strategy
 
-    t0 = time.monotonic()
-    llm = make_llm_from_spec(spec)
-    result = llm.generate(
-        kind,
-        "fast",
-        context={"filename": path.name, "content": content[:4000]},
-        pipeline_spec=spec,
-        extra_body=spec_extra_body(spec),
-    )
-
-    elapsed = (time.monotonic() - t0) * 1000
-    u = llm.last_usage
-    footer = format_footer(path, "fast", elapsed, u.prompt_tokens, u.completion_tokens)
-
-    profile_name = get_active_profile_name()
-    generate_output = format_generate_verbose(
-        profile_name, elapsed, u.prompt_tokens, u.completion_tokens
-    )
-    suffix = "\n\n".join([generate_output, footer])
-
-    return RunResult(content=result, verbose_suffix=suffix)
+    spec.encode.strategy = auto_strategy(path)
+    return run_encoder(path, kind, spec, opts)
 
 
 def _run_accurate(
@@ -715,37 +691,19 @@ def _accurate_dispatch(
     if kind == "audio":
         return accurate_audio(path, spec, opts)
 
-    if spec.encode.strategy:
-        from mm.cat_utils.run_encoder import run_encoder
+    from mm.cat_utils.run_encoder import run_encoder
 
+    if spec.encode.strategy:
         return run_encoder(path, kind, spec, opts)
 
     content = extract_meta(path, kind)
     if spec.generate is None:
         return RunResult(content=content)
 
-    from mm.profile import get_active_profile_name
+    from mm.encoders.auto_strategy import auto_strategy
 
-    t0 = time.monotonic()
-    llm = make_llm_from_spec(spec)
-    result = llm.generate(
-        kind,
-        "accurate",
-        context={"filename": path.name, "content": content[:4000]},
-        pipeline_spec=spec,
-        extra_body=spec_extra_body(spec),
-    )
-    elapsed = (time.monotonic() - t0) * 1000
-    u = llm.last_usage
-
-    profile_name = get_active_profile_name()
-    generate_output = format_generate_verbose(
-        profile_name, elapsed, u.prompt_tokens, u.completion_tokens
-    )
-    footer = format_footer(path, "accurate", elapsed, u.prompt_tokens, u.completion_tokens)
-    suffix = "\n\n".join([generate_output, footer])
-
-    return RunResult(content=result, verbose_suffix=suffix)
+    spec.encode.strategy = auto_strategy(path)
+    return run_encoder(path, kind, spec, opts)
 
 
 def _display_rich(
