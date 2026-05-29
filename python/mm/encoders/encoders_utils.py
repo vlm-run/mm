@@ -64,7 +64,7 @@ def do_list_encoders() -> None:
     console.print()
 
 
-def get_b64(v: Path | bytes):
+def get_b64(v: Path | bytes) -> str:
     """Return the base64-encoded string for a file path or raw bytes."""
     if isinstance(v, Path):
         return base64.b64encode(v.read_bytes()).decode()

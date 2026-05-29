@@ -648,7 +648,7 @@ def _run_fast(path: Path, kind: BinaryFileKind, spec: PipelineSpec, opts: CatOpt
 
     from mm.encoders.auto_strategy import auto_strategy, spec_replace_strategy
 
-    spec = spec_replace_strategy(spec, auto_strategy(path))
+    spec = spec_replace_strategy(spec, auto_strategy(path), opts.mode)
     return run_encoder(path, kind, spec, opts)
 
 
@@ -702,7 +702,7 @@ def _accurate_dispatch(
 
     from mm.encoders.auto_strategy import auto_strategy, spec_replace_strategy
 
-    spec = spec_replace_strategy(spec, auto_strategy(path))
+    spec = spec_replace_strategy(spec, auto_strategy(path), opts.mode)
     return run_encoder(path, kind, spec, opts)
 
 

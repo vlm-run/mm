@@ -78,6 +78,7 @@ import dataclasses
 from pathlib import Path
 
 from mm.pipelines.schema import PipelineSpec
+from mm.cat_utils.base_utils import CatMode
 
 _MB = 1024 * 1024
 _LOSSLESS_EXTS = frozenset({".png", ".tiff", ".tif", ".bmp"})
@@ -210,6 +211,10 @@ def auto_strategy(path: Path) -> str:
     return "rasterize" if is_scanned else "rasterize-text"
 
 
-def spec_replace_strategy(spec: PipelineSpec, strategy: str):
+def spec_replace_strategy(spec: PipelineSpec, strategy: str, mode: CatMode) -> PipelineSpec:
+    """Return a copy of *spec* with ``encode.strategy`` set to *strategy*."""
+    from mm.pipelines.pipelines_utils import _apply_encoder_generate
+
     encode = dataclasses.replace(spec.encode, strategy=strategy)
-    return dataclasses.replace(spec, encode=encode)
+    _spec = dataclasses.replace(spec, encode=encode)
+    return _apply_encoder_generate(_spec, mode)

@@ -24,5 +24,5 @@ def accurate_video(path: Path, spec: PipelineSpec, opts: CatOpts) -> RunResult:
 
     from mm.encoders.auto_strategy import auto_strategy, spec_replace_strategy
 
-    spec = spec_replace_strategy(spec, auto_strategy(path))
+    spec = spec_replace_strategy(spec, auto_strategy(path), opts.mode)
     return run_encoder(path, "video", spec, opts)
