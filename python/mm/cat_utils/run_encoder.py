@@ -11,6 +11,7 @@ from mm.cat_utils.base_utils import (
 )
 from mm.constants import BinaryFileKind
 from mm.pipelines.schema import PipelineSpec
+from mm.encoders.base import Message
 
 
 def _format_pipeline_tree(encode_info: str, generate_info: str | None = None) -> str:
@@ -104,12 +105,13 @@ def get_encoded_messages(
     *,
     spec: PipelineSpec,
     opts: CatOpts,
-):
+) -> list[Message]:
+    """Run a named encoder and return the raw Message dicts."""
     from mm.encoders import get as get_encoder
 
     strat = get_encoder(strategy, kind)
     opts_kwargs = {"mode": opts.mode, "generate_model": opts.generate_overrides.get("model")}
-    encode_kwargs: dict[str, Any] = dict(spec.encode.strategy_opts)
+    encode_kwargs: dict[str, Any] = dict(spec.encode.strategy_opts or {})
 
     if spec.encode.backend is not None:
         encode_kwargs.setdefault("backend", spec.encode.backend)

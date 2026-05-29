@@ -20,7 +20,7 @@ for all three tiers.
 
 **Audio**
 - *Short compressed* : duration ≤ 5 min **and** size ≤ 10 MB   → ``transcribe``
-- *All other cases*   : duration ≤ 2 min  **and** size ≤ 10 MB  → ``base64``
+- *All other cases*   : ``base64``
 
 **Image**
 - *Standard* : size ≤ 10 MB, ≤ 1080p, normal aspect ratio → ``resize``
@@ -44,10 +44,6 @@ encoder passes raw video bytes; ``mosaic`` / ``keyframes`` / ``summary``
 extract still images instead and are universally safe.  This function
 never returns ``clips`` — callers that need clip-based delivery must
 request it explicitly.
-
-**Lossless audio** (WAV, FLAC) is inherently large for its duration
-(a 5-min WAV ≈ 50 MB at CD quality).  The ``base64`` threshold for
-lossless formats is therefore tighter than for lossy formats.
 
 **Lossless images** (PNG, TIFF, BMP) preserve full bit-depth and are
 often larger than equivalent JPEGs at the same resolution.  At 1080p–4 K
@@ -84,6 +80,23 @@ from pathlib import Path
 from mm.pipelines.schema import PipelineSpec
 
 _MB = 1024 * 1024
+_LOSSLESS_EXTS = frozenset({".png", ".tiff", ".tif", ".bmp"})
+_HIGH_RES_EXTS = frozenset({".heic", ".heif"})
+# Image-heavy PDF: check creator for scanner fingerprints.
+_SCANNER_TOKENS = frozenset(
+    {
+        "scansnap",
+        "twain",
+        "hp",
+        "adobescan",
+        "exactscan",
+        "scanner",
+        "camscanner",
+        "scanbot",
+        "readiris",
+        "epson scan",
+    }
+)
 
 
 def auto_strategy(path: Path) -> str:
@@ -111,12 +124,11 @@ def auto_strategy(path: Path) -> str:
     meta = FileMetadata.from_path(path, full=(kind == "document"))
     ext = path.suffix.lower()
 
-    # ── VIDEO ────────────────────────────────────────────────────────────────
     if kind == "video":
         duration = meta.duration_s or 0.0
         size = meta.size
         # Only use transcript variants when an audio track is confirmed present.
-        with_tx = bool(meta.has_audio and meta.audio_codec)
+        with_tx = bool(meta.has_audio)
 
         if duration <= 600 and size <= 25 * _MB:
             base = "mosaic"
@@ -127,7 +139,6 @@ def auto_strategy(path: Path) -> str:
 
         return f"{base}-w-transcript" if with_tx else base
 
-    # ── AUDIO ────────────────────────────────────────────────────────────────
     if kind == "audio":
         duration = meta.duration_s or 0.0
         if duration <= 300 and meta.size <= 10 * _MB:
@@ -137,8 +148,6 @@ def auto_strategy(path: Path) -> str:
     # ── IMAGE ────────────────────────────────────────────────────────────────
     if kind == "image":
         size = meta.size
-        _LOSSLESS_EXTS = frozenset({".png", ".tiff", ".tif", ".bmp"})
-        _HIGH_RES_EXTS = frozenset({".heic", ".heif"})
         is_lossless = ext in _LOSSLESS_EXTS
 
         # Parse "WxH" dimensions string; fall back to size-only heuristic.
@@ -193,21 +202,6 @@ def auto_strategy(path: Path) -> str:
     if not is_image_heavy:
         return "page-text"
 
-    # Image-heavy PDF: check creator for scanner fingerprints.
-    _SCANNER_TOKENS = frozenset(
-        {
-            "scansnap",
-            "twain",
-            "hp",
-            "adobescan",
-            "exactscan",
-            "scanner",
-            "camscanner",
-            "scanbot",
-            "readiris",
-            "epson scan",
-        }
-    )
     creator = (meta.doc_creator or "").lower()
     producer = (meta.doc_producer or "").lower()
     creator_str = f"{creator} {producer}"
