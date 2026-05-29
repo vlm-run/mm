@@ -18,17 +18,7 @@ FileKind = Literal["text"] | BinaryFileKind
 # -- Extension sets ----------------------------------------------------------
 
 IMAGE_EXTS: frozenset[str] = frozenset(
-    (
-        ".png",
-        ".jpg",
-        ".jpeg",
-        ".gif",
-        ".webp",
-        ".bmp",
-        ".tiff",
-        ".tif",
-        ".svg",
-    )
+    (".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp", ".tiff", ".tif", ".svg", ".heif", ".heic")
 )
 
 VIDEO_EXTS: frozenset[str] = frozenset(
