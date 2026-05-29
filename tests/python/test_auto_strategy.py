@@ -8,10 +8,15 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
+from typing import TYPE_CHECKING
 from unittest.mock import patch
 
 import pytest
 from mm.encoders.auto_strategy import auto_strategy
+
+if TYPE_CHECKING:
+    from mm.cat_utils.base_utils import CatOpts
+    from mm.pipelines.schema import PipelineSpec
 
 _MB = 1024 * 1024
 
@@ -261,3 +266,110 @@ class TestInvalidKind:
         meta = _Meta(size=2000)
         with pytest.raises(ValueError, match="auto_strategy only handles binary"):
             _run(Path("/fake/main.py"), "code", meta)
+
+
+# ---------------------------------------------------------------------------
+# RESOLVE AUTO STRATEGY
+# ---------------------------------------------------------------------------
+
+
+class TestResolveAutoStrategy:
+    def _path(self, name: str = "file.jpg") -> Path:
+        return Path(f"/fake/{name}")
+
+    def _spec(self, strategy: str | None = None, generate: str | None = None) -> PipelineSpec:
+        from mm.pipelines.schema import Encode, Generate, PipelineSpec
+
+        enc = Encode(strategy=strategy)
+        gen = Generate(prompt=generate) if generate else None
+        return PipelineSpec(kind="image", mode="fast", encode=enc, generate=gen)
+
+    def _opts(self, mode: str = "fast") -> CatOpts:
+        from mm.cat_utils.base_utils import CatOpts
+
+        return CatOpts(
+            mode=mode,
+            n=None,
+            output_dir=None,
+            no_cache=False,
+            no_generate=False,
+            format="",
+            encode_overrides={},
+            generate_overrides={},
+            pipelines={},
+            verbose=False,
+            dry_run=False,
+        )
+
+    def test_auto_strategy_resolves_when_strategy_is_auto(self):
+        from mm.encoders.auto_strategy import resolve_auto_strategy
+
+        spec = self._spec(strategy="auto")
+        opts = self._opts()
+
+        with patch("mm.encoders.auto_strategy.auto_strategy", return_value="tile"):
+            result = resolve_auto_strategy(self._path(), spec, opts)
+
+        assert result.encode.strategy == "tile"
+
+    def test_auto_strategy_resolves_when_strategy_is_none_with_generate(self):
+        from mm.encoders.auto_strategy import resolve_auto_strategy
+
+        spec = self._spec(strategy=None, generate="Describe this image")
+        opts = self._opts()
+
+        with patch("mm.encoders.auto_strategy.auto_strategy", return_value="resize"):
+            result = resolve_auto_strategy(self._path(), spec, opts)
+
+        assert result.encode.strategy == "resize"
+
+    def test_auto_strategy_does_not_resolve_when_strategy_is_none_without_generate(self):
+        from mm.encoders.auto_strategy import resolve_auto_strategy
+
+        spec = self._spec(strategy=None, generate=None)
+        opts = self._opts()
+
+        with patch("mm.encoders.auto_strategy.auto_strategy") as mock_auto:
+            result = resolve_auto_strategy(self._path(), spec, opts)
+
+        mock_auto.assert_not_called()
+        assert result.encode.strategy is None
+
+    def test_auto_strategy_does_not_resolve_when_strategy_is_concrete(self):
+        from mm.encoders.auto_strategy import resolve_auto_strategy
+
+        spec = self._spec(strategy="tile", generate="Describe this image")
+        opts = self._opts()
+
+        with patch("mm.encoders.auto_strategy.auto_strategy") as mock_auto:
+            result = resolve_auto_strategy(self._path(), spec, opts)
+
+        mock_auto.assert_not_called()
+        assert result.encode.strategy == "tile"
+
+    def test_resolved_spec_applies_encoder_generate(self):
+        from mm.encoders.auto_strategy import resolve_auto_strategy
+
+        spec = self._spec(strategy="auto", generate="Describe this image")
+        opts = self._opts()
+
+        with patch("mm.encoders.auto_strategy.auto_strategy", return_value="resize"):
+            with patch(
+                "mm.pipelines.pipelines_utils._apply_encoder_generate", side_effect=lambda s, o: s
+            ) as mock_apply:
+                result = resolve_auto_strategy(self._path(), spec, opts)
+
+        mock_apply.assert_called_once()
+        assert result.encode.strategy == "resize"
+
+    def test_returns_spec_unchanged_when_no_resolution_needed(self):
+        from mm.encoders.auto_strategy import resolve_auto_strategy
+
+        spec = self._spec(strategy="resize")
+        opts = self._opts()
+
+        with patch("mm.encoders.auto_strategy.auto_strategy") as mock_auto:
+            result = resolve_auto_strategy(self._path(), spec, opts)
+
+        mock_auto.assert_not_called()
+        assert result is spec

@@ -544,6 +544,7 @@ def _extract(path: Path, opts: CatOpts) -> str:
             _was_cached = True
         return content
 
+    from mm.encoders.auto_strategy import resolve_auto_strategy
     from mm.pipelines import apply_overrides
     from mm.pipelines.pipelines_utils import resolve_pipeline
     from mm.profile import get_profile
@@ -557,6 +558,8 @@ def _extract(path: Path, opts: CatOpts) -> str:
     # invalidation on `--model` / `--generate.extra-body` changes.
     spec = resolve_pipeline(opts, kind)
     spec = apply_overrides(spec, opts.encode_overrides or None, opts.generate_overrides or None)
+    spec = resolve_auto_strategy(path, spec, opts)
+
     eff_model = effective_model(spec, profile.model)
     extra = override_extra(
         opts.encode_overrides,
@@ -642,14 +645,7 @@ def _run_fast(path: Path, kind: BinaryFileKind, spec: PipelineSpec, opts: CatOpt
     if spec.encode.strategy:
         return run_encoder(path, kind, spec, opts)
 
-    content = extract_meta(path, kind, no_cache=opts.no_cache)
-    if spec.generate is None:
-        return RunResult(content=content)
-
-    from mm.encoders.auto_strategy import auto_strategy, spec_replace_strategy
-
-    spec = spec_replace_strategy(spec, auto_strategy(path), opts.mode)
-    return run_encoder(path, kind, spec, opts)
+    return RunResult(content=extract_meta(path, kind, no_cache=opts.no_cache))
 
 
 def _run_accurate(
@@ -696,14 +692,7 @@ def _accurate_dispatch(
     if spec.encode.strategy:
         return run_encoder(path, kind, spec, opts)
 
-    content = extract_meta(path, kind)
-    if spec.generate is None:
-        return RunResult(content=content)
-
-    from mm.encoders.auto_strategy import auto_strategy, spec_replace_strategy
-
-    spec = spec_replace_strategy(spec, auto_strategy(path), opts.mode)
-    return run_encoder(path, kind, spec, opts)
+    return RunResult(content=extract_meta(path, kind))
 
 
 def _display_rich(
@@ -787,6 +776,7 @@ def _dry_run_preview(path: Path, kind: str, ext: str, opts: CatOpts) -> str:
     """
     from mm.constants import OFFICE_EXTS
     from mm.display import format_size
+    from mm.encoders.auto_strategy import resolve_auto_strategy
     from mm.pipelines import apply_overrides
     from mm.pipelines.pipelines_utils import resolve_pipeline
     from mm.profile import get_profile
@@ -809,10 +799,13 @@ def _dry_run_preview(path: Path, kind: str, ext: str, opts: CatOpts) -> str:
 
     spec = resolve_pipeline(opts, kind)
     spec = apply_overrides(spec, opts.encode_overrides or None, opts.generate_overrides or None)
+    autoencode = spec.encode.strategy == "auto"
+    spec = resolve_auto_strategy(path, spec, opts)
     header = f"\n# {path} (kind={kind}, mode={opts.mode}) — pipeline preview (--dry-run)"
 
     encode = spec.encode
     strategy = encode.strategy or "<unspecified>"
+    strategy = f"auto → {strategy}" if autoencode else strategy
     enc_opts = encode.strategy_opts or {}
     enc_opts_str = (
         ", ".join(f"{k}={v}" for k, v in sorted(enc_opts.items())) if enc_opts else "<defaults>"
@@ -823,11 +816,14 @@ def _dry_run_preview(path: Path, kind: str, ext: str, opts: CatOpts) -> str:
         lines = (gen.prompt or "").strip().splitlines()
         first_line = lines[0] if lines else ""
         if len(first_line) > 60:
-            first_line = first_line[:60] + "…"
+            first_line = first_line[:60] + "..."
 
         prompt_part = f' · prompt="{first_line}"' if first_line else ""
-        eff = gen.model or get_profile().model
-        gen_line = f"generate: model={eff}{prompt_part}  [skipped via --dry-run]"
+        profile = get_profile()
+        eff = gen.model or profile.model
+        gen_line = (
+            f"generate: profile={profile.name} · model={eff}{prompt_part}  [skipped via --dry-run]"
+        )
     else:
         gen_line = "generate: <none>  [encode-only pipeline]"
 

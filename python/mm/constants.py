@@ -18,7 +18,20 @@ FileKind = Literal["text"] | BinaryFileKind
 # -- Extension sets ----------------------------------------------------------
 
 IMAGE_EXTS: frozenset[str] = frozenset(
-    (".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp", ".tiff", ".tif", ".svg", ".heif", ".heic")
+    (
+        ".png",
+        ".jpg",
+        ".jpeg",
+        ".gif",
+        ".webp",
+        ".bmp",
+        ".tiff",
+        ".tif",
+        ".svg",
+        ".heif",
+        ".heic",
+        ".avif",
+    )
 )
 
 VIDEO_EXTS: frozenset[str] = frozenset(
@@ -39,16 +52,7 @@ VIDEO_EXTS: frozenset[str] = frozenset(
 )
 
 AUDIO_EXTS: frozenset[str] = frozenset(
-    (
-        ".mp3",
-        ".wav",
-        ".flac",
-        ".aac",
-        ".ogg",
-        ".m4a",
-        ".wma",
-        ".opus",
-    )
+    (".mp3", ".wav", ".flac", ".aac", ".ogg", ".m4a", ".wma", ".opus")
 )
 
 OFFICE_EXTS: frozenset[str] = frozenset((".docx", ".odt", ".pptx", ".odp", ".xlsx", ".ods"))

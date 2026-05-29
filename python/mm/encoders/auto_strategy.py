@@ -77,8 +77,8 @@ instead of ``rasterize-text`` to avoid wasted text-extraction attempts.
 import dataclasses
 from pathlib import Path
 
+from mm.cat_utils.base_utils import CatOpts
 from mm.pipelines.schema import PipelineSpec
-from mm.cat_utils.base_utils import CatMode
 
 _MB = 1024 * 1024
 _LOSSLESS_EXTS = frozenset({".png", ".tiff", ".tif", ".bmp"})
@@ -211,10 +211,20 @@ def auto_strategy(path: Path) -> str:
     return "rasterize" if is_scanned else "rasterize-text"
 
 
-def spec_replace_strategy(spec: PipelineSpec, strategy: str, mode: CatMode) -> PipelineSpec:
+def _spec_replace_strategy(strategy: str, spec: PipelineSpec, opts: CatOpts) -> PipelineSpec:
     """Return a copy of *spec* with ``encode.strategy`` set to *strategy*."""
     from mm.pipelines.pipelines_utils import _apply_encoder_generate
 
     encode = dataclasses.replace(spec.encode, strategy=strategy)
     _spec = dataclasses.replace(spec, encode=encode)
-    return _apply_encoder_generate(_spec, mode)
+    return _apply_encoder_generate(_spec, opts)
+
+
+def resolve_auto_strategy(path: Path, spec: PipelineSpec, opts: CatOpts) -> PipelineSpec:
+    """Resolve the encode strategy when it is unspecified or set to ``"auto"``."""
+    should_resolve = spec.encode.strategy == "auto" or (
+        spec.encode.strategy is None and spec.generate is not None
+    )
+    if should_resolve:
+        return _spec_replace_strategy(auto_strategy(path), spec, opts)
+    return spec

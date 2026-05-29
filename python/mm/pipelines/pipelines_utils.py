@@ -8,14 +8,18 @@ from mm.cat_utils.base_utils import KIND_ORDER, CatOpts
 from mm.pipelines.schema import PipelineSpec
 
 
-def _apply_encoder_generate(spec: PipelineSpec, mode: str) -> PipelineSpec:
+def _apply_encoder_generate(spec: PipelineSpec, opts: CatOpts) -> PipelineSpec:
     """Apply encoder-level generate override to the resolved pipeline spec.
 
     If the encoder declares a ``generate`` field with an entry for *mode*,
     that value replaces ``spec.generate`` regardless of what the YAML had.
-    A ``None`` entry suppresses the LLM call (passthrough);
-    a ``Generate`` instance replaces the YAML's generate block entirely.
-    Encoders with an empty ``generate`` field (the default) are left unchanged.
+    A ``None`` entry is an *absolute* suppression of the LLM call: the
+    encoder's output is the final answer (e.g. ``transcribe`` → transcript,
+    ``page-text`` → extracted text), so the pipeline stays encode-only even
+    when the user passes ``--generate.*`` overrides.
+    A ``Generate`` instance replaces the YAML's generate block
+    entirely. Encoders with an empty ``generate`` field (the default) are
+    left unchanged.
     """
     if not spec.encode.strategy:
         return spec
@@ -23,10 +27,40 @@ def _apply_encoder_generate(spec: PipelineSpec, mode: str) -> PipelineSpec:
 
     enc = get(spec.encode.strategy, spec.kind)
     generate_map = getattr(enc, "generate", {})
-    if not isinstance(generate_map, dict) or mode not in generate_map:
+    if not isinstance(generate_map, dict) or opts.mode not in generate_map:
         return spec
 
-    return dataclasses.replace(spec, generate=generate_map[mode])
+    if generate_map[opts.mode] is None:
+        return dataclasses.replace(spec, generate=None)
+    _generate = dataclasses.replace(generate_map[opts.mode], **opts.generate_overrides)
+    return dataclasses.replace(spec, generate=_generate)
+
+
+def _encode_strategy_override(opts: CatOpts) -> str | None:
+    override = (opts.encode_overrides or {}).get("strategy")
+    return override if isinstance(override, str) and override else None
+
+
+def _apply_encode_strategy_override(spec: PipelineSpec, opts: CatOpts) -> PipelineSpec:
+    """Overlay a concrete ``--encode.strategy`` override before generate is derived.
+
+    This mirrors ``-p <encoder>`` so the *chosen* encoder — not the base YAML
+    strategy — governs prompt handling in :func:`_apply_encoder_generate`.
+    Without this, for e.g., ``--encode.strategy base64`` would run generate resolution
+    against the YAML's ``transcribe`` (which suppresses generate), wiping the
+    prompt. ``"auto"`` is left untouched for :func:`resolve_auto_strategy`.
+    """
+    override = _encode_strategy_override(opts)
+    if override is None or override == "auto":
+        return spec
+    from mm.encoders import get
+
+    try:
+        get(override, spec.kind)
+    except KeyError:
+        return spec
+    encode = dataclasses.replace(spec.encode, strategy=override)
+    return dataclasses.replace(spec, encode=encode)
 
 
 def resolve_pipeline(opts: CatOpts, kind: str) -> PipelineSpec:
@@ -47,7 +81,7 @@ def resolve_pipeline(opts: CatOpts, kind: str) -> PipelineSpec:
     if opts.pipelines:
         spec = opts.pipelines.get(kind)
         if spec is not None:
-            return _apply_encoder_generate(spec, opts.mode)
+            return _apply_encoder_generate(spec, opts)
         encoder_spec = opts.pipelines.get("_encoder")
         if encoder_spec is not None and encoder_spec.encode.strategy:
             from mm.encoders import get
@@ -73,10 +107,17 @@ def resolve_pipeline(opts: CatOpts, kind: str) -> PipelineSpec:
                     encode=encode,
                     generate=base.generate,
                 )
-                return _apply_encoder_generate(spec, opts.mode)
+                return _apply_encoder_generate(spec, opts)
 
     spec = load(kind, opts.mode)
-    return _apply_encoder_generate(spec, opts.mode)
+    spec = _apply_encode_strategy_override(spec, opts)
+    if _encode_strategy_override(opts) == "auto":
+        # Defer generate derivation: the real encoder is chosen later by
+        # resolve_auto_strategy, which applies *that* encoder's generate map.
+        # Deriving it now (against the base YAML strategy) would wrongly wipe
+        # the prompt before auto picks an encoder that keeps it (e.g. base64).
+        return spec
+    return _apply_encoder_generate(spec, opts)
 
 
 def build_pipeline_help() -> str:
