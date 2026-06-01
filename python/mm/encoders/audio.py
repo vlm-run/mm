@@ -13,7 +13,6 @@ automatic chunking for long files. Generate prompts come from the pipeline YAML.
 
 from __future__ import annotations
 
-import base64
 import logging
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
@@ -21,6 +20,7 @@ from typing import Any, Iterable
 
 from mm.encoders import register
 from mm.encoders.base import Encoder, Message
+from mm.utils import get_b64
 
 logger = logging.getLogger(__name__)
 
@@ -73,15 +73,8 @@ class AudioBase64(Encoder):
             yield _to_message(
                 [
                     {
-                        "type": "text",
-                        "text": "Audio content to analyze",
-                    },
-                    {
                         "type": "input_audio",
-                        "input_audio": {
-                            "data": base64.b64encode(path.read_bytes()).decode(),
-                            "format": fmt,
-                        },
+                        "input_audio": {"data": get_b64(path), "format": fmt},
                     },
                 ]
             )
@@ -95,15 +88,8 @@ class AudioBase64(Encoder):
             yield _to_message(
                 [
                     {
-                        "type": "text",
-                        "text": "Audio content to analyze",
-                    },
-                    {
                         "type": "input_audio",
-                        "input_audio": {
-                            "data": base64.b64encode(path.read_bytes()).decode(),
-                            "format": fmt,
-                        },
+                        "input_audio": {"data": get_b64(path), "format": fmt},
                     },
                 ]
             )
@@ -127,8 +113,8 @@ class AudioBase64(Encoder):
             len(segments),
         )
 
-        def _submit_fn(varg: tuple[int, tuple[float, float]]) -> Message:
-            idx, (start, end) = varg
+        def _submit_fn(varg: tuple[float, float]) -> Message:
+            start, end = varg
             with tempfile.NamedTemporaryFile(suffix=path.suffix, delete=False) as tmp:
                 seg_path = Path(tmp.name)
             try:
@@ -140,18 +126,14 @@ class AudioBase64(Encoder):
             return _to_message(
                 [
                     {
-                        "type": "text",
-                        "text": f"Audio chunk to analyze {idx + 1} ({start:.0f}s-{end:.0f}s):",
-                    },
-                    {
                         "type": "input_audio",
-                        "input_audio": {"data": base64.b64encode(seg_data).decode(), "format": fmt},
+                        "input_audio": {"data": get_b64(seg_data), "format": fmt},
                     },
                 ]
             )
 
         with ThreadPoolExecutor(max_workers=min(4, len(segments))) as pool:
-            yield from pool.map(_submit_fn, enumerate(segments))
+            yield from pool.map(_submit_fn, segments)
 
 
 class AudioTranscribe(Encoder):
@@ -305,12 +287,8 @@ class GeminiAudio(Encoder):
             yield _to_message(
                 [
                     {
-                        "type": "text",
-                        "text": "Audio content to analyze",
-                    },
-                    {
                         "type": "input_audio",
-                        "input_audio": {"data": base64.b64encode(data).decode(), "format": fmt},
+                        "input_audio": {"data": get_b64(data), "format": fmt},
                     },
                 ]
             )
@@ -326,12 +304,8 @@ class GeminiAudio(Encoder):
             yield _to_message(
                 [
                     {
-                        "type": "text",
-                        "text": "Audio content to analyze",
-                    },
-                    {
                         "type": "input_audio",
-                        "input_audio": {"data": base64.b64encode(data).decode(), "format": fmt},
+                        "input_audio": {"data": get_b64(data), "format": fmt},
                     },
                 ]
             )
@@ -355,8 +329,8 @@ class GeminiAudio(Encoder):
             len(segments),
         )
 
-        def _submit_fn(varg: tuple[int, tuple[float, float]]) -> Message:
-            idx, (start, end) = varg
+        def _submit_fn(varg: tuple[float, float]) -> Message:
+            start, end = varg
             with tempfile.NamedTemporaryFile(suffix=path.suffix, delete=False) as tmp:
                 seg_path = Path(tmp.name)
             try:
@@ -367,18 +341,14 @@ class GeminiAudio(Encoder):
             return _to_message(
                 [
                     {
-                        "type": "text",
-                        "text": f"Audio chunk to analyze {idx + 1} ({start:.0f}s-{end:.0f}s):",
-                    },
-                    {
                         "type": "input_audio",
-                        "input_audio": {"data": base64.b64encode(seg_data).decode(), "format": fmt},
+                        "input_audio": {"data": get_b64(seg_data), "format": fmt},
                     },
                 ]
             )
 
         with ThreadPoolExecutor(max_workers=min(4, len(segments))) as pool:
-            yield from pool.map(_submit_fn, enumerate(segments))
+            yield from pool.map(_submit_fn, segments)
 
 
 register(AudioBase64())

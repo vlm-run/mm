@@ -9,7 +9,6 @@ Uses PyAV for in-process frame decoding — no subprocess or temp files.
 
 from __future__ import annotations
 
-import base64
 import io
 import logging
 from pathlib import Path
@@ -18,6 +17,7 @@ from typing import Any, Iterable
 from mm.encoders import register, resolve_provider
 from mm.encoders.base import Encoder, Message
 from mm.encoders.image import _image_part, _to_message
+from mm.utils import get_b64
 
 logger = logging.getLogger(__name__)
 
@@ -85,7 +85,7 @@ class VideoMosaic(Encoder):
                 )
                 buf = io.BytesIO()
                 mosaic_img.save(buf, "JPEG", quality=85)
-                mosaic_b64s.append(base64.b64encode(buf.getvalue()).decode())
+                mosaic_b64s.append(get_b64(buf.getvalue()))
                 frames_used += len(batch)
 
             if not mosaic_b64s:

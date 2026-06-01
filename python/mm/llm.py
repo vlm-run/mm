@@ -14,7 +14,6 @@ Public API:
 
 from __future__ import annotations
 
-import base64
 import logging
 import re
 import threading
@@ -27,6 +26,7 @@ from openai.types.chat import ChatCompletion
 
 from mm.constants import BinaryFileKind
 from mm.pipelines.schema import PipelineSpec
+from mm.utils import get_b64
 
 logger = logging.getLogger(__name__)
 
@@ -123,8 +123,8 @@ class LlmBackend:
 
         if content_parts:
             message_content: list[dict[str, Any]] | str = [
-                *content_parts,
                 {"type": "text", "text": prompt},
+                *content_parts,
             ]
         else:
             message_content = prompt
@@ -351,7 +351,7 @@ class LlmBackend:
 
 def image_part(path: Path, *, mime: str | None = None) -> dict[str, Any]:
     """Build an OpenAI ``image_url`` content part from a file path."""
-    b64 = base64.b64encode(path.read_bytes()).decode()
+    b64 = get_b64(path)
     if mime is None:
         from mm.constants import guess_mime
 

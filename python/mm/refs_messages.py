@@ -116,9 +116,7 @@ def _parts_for_item(
         return
 
     if src_kind == "path":
-        yield from _encode_path(
-            Path(src_value), kind, format=format, encoders=encoders, extra_kwargs=ekw
-        )
+        yield from _encode_path(Path(src_value), kind, extra_kwargs=ekw)
         return
 
     if src_kind == "in_memory":
@@ -165,11 +163,9 @@ def _encode_path(
     path: Path,
     kind: str,
     *,
-    format: str,
-    encoders: dict[str, str],
     extra_kwargs: dict[str, Any] | None = None,
 ) -> Iterable[dict[str, Any]]:
-    strategy_name = _resolve_strategy(kind, encoders)
+    strategy_name = _resolve_strategy(path)
     if strategy_name is None:
         return
     from mm.encoders import get as get_encoder
@@ -213,9 +209,7 @@ def _encode_in_memory(
         }
         return
     try:
-        yield from _encode_path(
-            path, "image", format=format, encoders=encoders, extra_kwargs=extra_kwargs
-        )
+        yield from _encode_path(path, "image", extra_kwargs=extra_kwargs)
     finally:
         try:
             path.unlink()
@@ -252,8 +246,10 @@ def _spool_image(obj: Any) -> Path:
     raise TypeError(f"cannot spool {type(obj).__name__} to a temp file")
 
 
-def _resolve_strategy(kind: str, encoders: dict[str, str]) -> str | None:
-    return encoders.get(kind) or OPENAI_DEFAULT_ENCODERS.get(kind)
+def _resolve_strategy(path: Path) -> str | None:
+    from mm.encoders.auto_strategy import auto_strategy
+
+    return auto_strategy(path)
 
 
 def _adapt_part(part: dict[str, Any], *, format: str) -> dict[str, Any]:

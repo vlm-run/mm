@@ -446,6 +446,181 @@ class TestApplyOverrides:
         assert result.generate is None
 
 
+class TestResolvePipelineStrategyParity:
+    """`--encode.strategy X` must behave like `-p X` for prompt handling."""
+
+    def _opts(self, **kw):
+        from mm.cat_utils.base_utils import CatOpts
+
+        defaults = dict(
+            n=None,
+            output_dir=None,
+            mode="fast",
+            no_cache=True,
+            no_generate=False,
+            format="json",
+            encode_overrides={},
+            generate_overrides={},
+            pipelines={},
+            verbose=False,
+            dry_run=False,
+        )
+        defaults.update(kw)
+        return CatOpts(**defaults)
+
+    def test_encode_strategy_override_preserves_prompt_like_dash_p(self):
+        """`--encode.strategy base64` keeps the YAML prompt, matching `-p base64`.
+
+        Regression: previously the prompt was derived against the base YAML
+        strategy (``transcribe``, which suppresses generate), wiping it.
+        """
+        from mm.pipelines.pipelines_utils import resolve_pipeline
+
+        # --encode.strategy base64
+        opts_flag = self._opts(encode_overrides={"strategy": "base64"})
+        flag_spec = resolve_pipeline(opts_flag, "audio")
+
+        # -p base64 (stored under "_encoder")
+        encoder_pipe = PipelineSpec(
+            kind="_encoder",
+            mode="fast",
+            encode=Encode(strategy="base64"),
+            generate=None,
+        )
+        opts_p = self._opts(pipelines={"_encoder": encoder_pipe})
+        p_spec = resolve_pipeline(opts_p, "audio")
+
+        assert flag_spec.encode.strategy == "base64"
+        assert p_spec.encode.strategy == "base64"
+        assert flag_spec.generate is not None
+        assert p_spec.generate is not None
+        assert flag_spec.generate.prompt == p_spec.generate.prompt
+        assert flag_spec.generate.prompt != ""
+
+    def test_auto_left_for_later_resolution(self):
+        """``--encode.strategy auto`` is not resolved here (no get('auto'))."""
+        from mm.pipelines.pipelines_utils import resolve_pipeline
+
+        opts = self._opts(encode_overrides={"strategy": "auto"})
+        spec = resolve_pipeline(opts, "audio")
+        # Untouched: base YAML strategy remains; auto handled by resolve_auto_strategy.
+        assert spec.encode.strategy == "transcribe"
+
+    def test_auto_defers_generate_so_prompt_survives(self):
+        """``--encode.strategy auto`` must NOT derive generate against the base strategy.
+
+        Regression: the base YAML strategy (``transcribe``) suppresses generate,
+        so deriving it here wiped the prompt before auto could pick an encoder
+        (e.g. ``base64``) that preserves it. The prompt must survive resolution.
+        """
+        from mm.pipelines.pipelines_utils import resolve_pipeline
+
+        opts = self._opts(
+            encode_overrides={"strategy": "auto"},
+            generate_overrides={"model": "some-model"},
+        )
+        spec = resolve_pipeline(opts, "audio")
+        assert spec.generate is not None
+        assert spec.generate.prompt != ""
+
+    def test_auto_resolved_to_base64_matches_explicit(self):
+        """End-to-end: auto→base64 yields the same prompt as `--encode.strategy base64`.
+
+        Mocks ``auto_strategy`` to return ``base64`` so the test stays offline.
+        """
+        from unittest.mock import patch
+
+        from mm.encoders.auto_strategy import resolve_auto_strategy
+        from mm.pipelines.pipelines_utils import resolve_pipeline
+
+        # auto path
+        opts_auto = self._opts(
+            encode_overrides={"strategy": "auto"},
+            generate_overrides={"model": "some-model"},
+        )
+        spec_auto = apply_overrides(
+            resolve_pipeline(opts_auto, "audio"),
+            opts_auto.encode_overrides,
+            opts_auto.generate_overrides,
+        )
+        with patch("mm.encoders.auto_strategy.auto_strategy", return_value="base64"):
+            spec_auto = resolve_auto_strategy(Path("/fake/audio.mp3"), spec_auto, opts_auto)
+
+        # explicit base64 path
+        opts_b64 = self._opts(
+            encode_overrides={"strategy": "base64"},
+            generate_overrides={"model": "some-model"},
+        )
+        spec_b64 = apply_overrides(
+            resolve_pipeline(opts_b64, "audio"),
+            opts_b64.encode_overrides,
+            opts_b64.generate_overrides,
+        )
+
+        assert spec_auto.encode.strategy == "base64"
+        assert spec_auto.generate is not None and spec_b64.generate is not None
+        assert spec_auto.generate.prompt == spec_b64.generate.prompt
+        assert spec_auto.generate.prompt != ""
+
+    def test_suppressing_encoder_stays_passthrough_without_overrides(self):
+        """A generate-suppressing encoder (page-text) keeps generate=None in fast mode."""
+        from mm.pipelines.pipelines_utils import resolve_pipeline
+
+        opts = self._opts()
+        spec = resolve_pipeline(opts, "document")
+        assert spec.encode.strategy == "page-text"
+        assert spec.generate is None
+
+    def test_suppressing_encoder_stays_passthrough_with_overrides(self):
+        """A ``None`` generate entry is absolute: ``--generate.*`` overrides do NOT
+        revive the LLM step.
+
+        Regression: ``--generate.model`` alone (no prompt) used to materialise an
+        empty-prompt Generate for ``transcribe``/``page-text``, feeding the
+        passthrough output to the LLM. Suppressing encoders must stay encode-only.
+        """
+        from mm.pipelines.pipelines_utils import resolve_pipeline
+
+        opts = self._opts(generate_overrides={"model": "some-model"})
+        spec = resolve_pipeline(opts, "document")
+        assert spec.encode.strategy == "page-text"
+        assert spec.generate is None
+
+    def test_transcribe_stays_passthrough_with_generate_model(self):
+        """``--encode.strategy transcribe --generate.model X`` never hits the LLM."""
+        from mm.pipelines.pipelines_utils import resolve_pipeline
+
+        opts = self._opts(
+            encode_overrides={"strategy": "transcribe"},
+            generate_overrides={"model": "some-model"},
+        )
+        spec = resolve_pipeline(opts, "audio")
+        assert spec.encode.strategy == "transcribe"
+        assert spec.generate is None
+
+    def test_auto_resolved_to_transcribe_stays_passthrough(self):
+        """auto→transcribe stays encode-only even with a ``--generate.model`` override."""
+        from unittest.mock import patch
+
+        from mm.encoders.auto_strategy import resolve_auto_strategy
+        from mm.pipelines.pipelines_utils import resolve_pipeline
+
+        opts = self._opts(
+            encode_overrides={"strategy": "auto"},
+            generate_overrides={"model": "some-model"},
+        )
+        spec = apply_overrides(
+            resolve_pipeline(opts, "audio"),
+            opts.encode_overrides,
+            opts.generate_overrides,
+        )
+        with patch("mm.encoders.auto_strategy.auto_strategy", return_value="transcribe"):
+            spec = resolve_auto_strategy(Path("/fake/audio.mp3"), spec, opts)
+
+        assert spec.encode.strategy == "transcribe"
+        assert spec.generate is None
+
+
 class TestEncodeStrategyOpts:
     """Validate strategy_opts carries encoder parameters."""
 

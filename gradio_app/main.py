@@ -118,7 +118,7 @@ def list_mmbench_files() -> dict:
 @app.get("/api/files/raw/{rel_path:path}")
 def get_mmbench_file(rel_path: str) -> FileResponse:
     """Stream a raw file from mmbench-tiny for inline viewing."""
-    return FileResponse(_safe_resolve(rel_path))
+    return FileResponse(_safe_resolve(rel_path), content_disposition_type="inline")
 
 
 app.include_router(router, prefix="/api")
