@@ -155,6 +155,7 @@ class LlmBackend:
         on_chunk: Any | None = None,
         pipeline_spec: PipelineSpec | None = None,
         extra_body: dict[str, Any] | None = None,
+        stream: bool = False,
     ) -> str:
         """Process multiple content chunks sequentially and concatenate results.
 
@@ -195,6 +196,7 @@ class LlmBackend:
                 parts=parts,
                 pipeline_spec=pipeline_spec,
                 extra_body=extra_body,
+                stream=stream,
             )
             results[i] = result
             usage = getattr(self._local, "last_usage", LlmUsage())
