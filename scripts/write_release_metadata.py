@@ -2,10 +2,9 @@
 
 from __future__ import annotations
 
-from pathlib import Path
 import subprocess
 import tomllib
-
+from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 RELEASE_FILE = ROOT / "python" / "mm" / "_release.py"
@@ -38,12 +37,15 @@ def main() -> None:
 
 
 def _git(*args: str) -> str:
-    result = subprocess.run(
-        ["git", "-C", str(ROOT), *args],
-        capture_output=True,
-        check=False,
-        text=True,
-    )
+    try:
+        result = subprocess.run(
+            ["git", "-C", str(ROOT), *args],
+            capture_output=True,
+            check=False,
+            text=True,
+        )
+    except Exception:
+        return ""
     if result.returncode != 0:
         return ""
     return result.stdout.strip()

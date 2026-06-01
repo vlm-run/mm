@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
+import subprocess
 from datetime import datetime
 from pathlib import Path
-import subprocess
 
 from . import _release
 
@@ -36,6 +36,8 @@ def _static_release_metadata(version: str) -> tuple[str, str] | None:
 
 def _git_release_metadata(version: str) -> tuple[str, str] | None:
     repo = _repo_root()
+    if not repo:
+        return None
     tag = f"v{version.split('+', maxsplit=1)[0]}"
     tag_date = _run_git(
         repo, "for-each-ref", f"refs/tags/{tag}", "--format=%(creatordate:iso-strict)"
@@ -47,8 +49,13 @@ def _git_release_metadata(version: str) -> tuple[str, str] | None:
     return released_at, commit
 
 
-def _repo_root() -> Path:
-    return Path(__file__).resolve().parents[2]
+def _repo_root() -> Path | None:
+    resolved = Path(__file__).resolve()
+    if len(resolved.parents) > 2:
+        root = resolved.parents[2]
+        if (root / ".git").exists():
+            return root
+    return None
 
 
 def _run_git(cwd: Path, *args: str) -> str:
