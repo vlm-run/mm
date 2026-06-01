@@ -421,7 +421,8 @@ def cat_cmd(
         pipelines=pipeline_specs,
         verbose=verbose,
         dry_run=dry_run,
-        stream=stream,
+        stream=stream
+        and fmt not in ("json", "pretty-json", "dataset-jsonl", "dataset-hf", "tsv", "csv"),
     )
 
     multi_file = len(paths) > 1
@@ -514,8 +515,7 @@ def cat_cmd(
             except Exception as exc:
                 typer.echo(f"Error processing {p}: {exc}", err=True)
                 continue
-            if fmt in ("json", "pretty-json", "dataset-jsonl", "dataset-hf"):
-                _render(p, content)
+            _render(p, content)
     elif valid_paths:
         from concurrent.futures import ThreadPoolExecutor
 
