@@ -147,7 +147,7 @@ mm peek paper.pdf --full                     # author/title/subject/keywords/pag
 
 ```
 mm cat FILE... [-m fast|accurate] [-p PIPELINE]... [-n N] [-o DIR]
-               [--no-cache] [--no-generate] [-v] [-y]
+               [--no-cache] [--no-generate] [--stream] [-v] [-y]
                [--encode.strategy NAME] [--encode.backend mlx|ctranslate2|openai]
                [--encode.model MODEL] [--encode.pyfunc PATH|CODE]
                [--encode.strategy_opts KEY=VALUE]...
@@ -178,6 +178,7 @@ mm cat FILE... [-m fast|accurate] [-p PIPELINE]... [-n N] [-o DIR]
 | `--output-dir` / `-o` | Write generated artifacts to dir. |
 | `--no-cache` | Bypass L2 cache; force fresh run. |
 | `--no-generate` | Skip the generate (LLM) step; emit encoder text parts only. |
+| `--stream` | Stream LLM tokens to stdout as they arrive. Takes precedence over `--format`. |
 | `--verbose` / `-v` | Show pipeline tree (encode/generate timings). |
 | `--yes` / `-y` | Skip the batch-size confirmation (≥9 paths; env `MM_CAT_BATCH_CONFIRM_THRESHOLD`). |
 | `--encode.strategy` | Override encoder name. |
@@ -231,6 +232,11 @@ mm cat audio.mp3 -m accurate --encode.backend mlx                 # force MLX tr
 mm cat audio.mp3 -m accurate --encode.backend ctranslate2         # force ctranslate2
 mm cat audio.mp3 -m accurate --encode.backend openai              # force OpenAI-compatible endpoint
 mm cat audio.mp3 -m accurate --encode.model whisper-1             # override transcription model
+
+# Streaming (LLM tokens to stdout as they arrive)
+mm cat photo.png -m accurate --stream
+mm cat video.mp4 -m accurate --stream --no-cache
+mm cat photo.png -m accurate --stream -v                           # streaming + verbose
 
 # Dry run (resolve pipeline without executing)
 mm cat photo.png --dry-run

@@ -2,6 +2,13 @@
 
 ## [Unreleased]
 
+### Features
+- **`mm cat --stream`**: Stream LLM output tokens to stdout as they arrive.
+  Token-by-token streaming when the backend supports it (e.g. OpenAI, OpenRouter);
+  transparent fallback to non-streaming for backends that don't (e.g. VLM gateway).
+  `--stream` takes precedence over `--format`. Works with `--verbose` (pipeline
+  tree and timing metadata still displayed).
+
 ### Performance
 - **Disk-backed cache for `detect_scenes` + `transcript_messages` (260430)**:
   the slow steps in the accurate-mode video pipeline now persist across CLI

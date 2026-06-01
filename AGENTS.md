@@ -231,7 +231,7 @@ uv run mm <command> [args]
 |-----------|---------|-----------|
 | `find`    | Find/list files, tree view, schema | `--name`, `-i` (ignore case), `--kind`, `--ext`, `--min-size`, `--max-size`, `--sort`, `--columns`, `--tree`, `--depth`, `--schema`, `--limit`, `--no-ignore`, `--format` |
 | `peek`    | Raw file metadata (dimensions / EXIF / codec / mime / hash). | `--full` (include document author/title/subject/keywords/pages), `--format` (rich / json / pretty-json / tsv / csv) |
-| `cat`     | Content extraction (auto-detected by file type × mode) | `--mode fast/accurate` (default `fast`), `-p` (pipeline), `-n` (head/tail), `--dry-run` (resolve pipeline without executing), `--encode.*`, `--generate.*`, `--format` |
+| `cat`     | Content extraction (auto-detected by file type × mode) | `--mode fast/accurate` (default `fast`), `-p` (pipeline), `-n` (head/tail), `--dry-run` (resolve pipeline without executing), `--stream` (stream LLM tokens to stdout), `--encode.*`, `--generate.*`, `--format` |
 | `grep`    | Content search across files | `--kind`, `--ext`, `-C` (context), `--count`, `-i` (ignore case), `--no-ignore`, `--format` |
 | `sql`     | SQL on files, results, and chunks | `--dir`, `--format`, `--list-tables` |
 | `wc`      | Count files, size, lines (est.), tokens (est.) | `--kind`, `--by-kind`, `--format` |
@@ -282,6 +282,8 @@ The following commands were merged into the core commands:
 - `mm cat video.mp4 -m accurate` — auto-generates keyframe mosaic → LLM description
 - `mm cat photo.png -p resize` — encode with named encoder
 - `mm cat photo.png -m accurate -p my-pipeline.yaml` — custom pipeline YAML
+- `mm cat photo.png -m accurate --stream` — stream LLM tokens to stdout as they arrive
+- `mm cat video.mp4 -m accurate --stream` — streaming works for any LLM-powered pipeline
 
 ### Schema and SQL
 

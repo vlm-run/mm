@@ -514,12 +514,13 @@ def cat_cmd(
 
             if _llm_mod.streamed_to_stdout:
                 # Content already written to stdout by _chat_stream;
-                # only emit [dim] metadata lines (verbose timing, etc.).
-                dim_lines = [ln for ln in content.split("\n") if "[dim]" in ln]
-                if dim_lines:
+                # emit the verbose suffix (pipeline tree + timing) if present.
+                parts = content.split("\n\n")
+                suffix_parts = [p for p in parts if "[dim]" in p]
+                if suffix_parts:
                     from mm.display import output_console
 
-                    output_console.print("\n".join(dim_lines))
+                    output_console.print("\n".join(suffix_parts))
             else:
                 _render(p, content)
     elif valid_paths:
