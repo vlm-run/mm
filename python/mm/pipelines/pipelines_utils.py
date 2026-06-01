@@ -8,6 +8,16 @@ from mm.cat_utils.base_utils import KIND_ORDER, CatOpts
 from mm.pipelines.schema import PipelineSpec
 
 
+def _encoder_exists(strategy: str, kind: str) -> bool:
+    from mm.encoders import get
+
+    try:
+        get(strategy, kind)
+    except KeyError:
+        return False
+    return True
+
+
 def _apply_encoder_generate(spec: PipelineSpec, opts: CatOpts) -> PipelineSpec:
     """Apply encoder-level generate override to the resolved pipeline spec.
 
@@ -36,7 +46,7 @@ def _apply_encoder_generate(spec: PipelineSpec, opts: CatOpts) -> PipelineSpec:
     return dataclasses.replace(spec, generate=_generate)
 
 
-def _encode_strategy_override(opts: CatOpts) -> str | None:
+def _get_override_strategy(opts: CatOpts) -> str | None:
     override = (opts.encode_overrides or {}).get("strategy")
     return override if isinstance(override, str) and override else None
 
@@ -50,16 +60,10 @@ def _apply_encode_strategy_override(spec: PipelineSpec, opts: CatOpts) -> Pipeli
     against the YAML's ``transcribe`` (which suppresses generate), wiping the
     prompt. ``"auto"`` is left untouched for :func:`resolve_auto_strategy`.
     """
-    override = _encode_strategy_override(opts)
-    if override is None or override == "auto":
+    strategy = _get_override_strategy(opts)
+    if strategy is None or strategy == "auto" or not _encoder_exists(strategy, spec.kind):
         return spec
-    from mm.encoders import get
-
-    try:
-        get(override, spec.kind)
-    except KeyError:
-        return spec
-    encode = dataclasses.replace(spec.encode, strategy=override)
+    encode = dataclasses.replace(spec.encode, strategy=strategy)
     return dataclasses.replace(spec, encode=encode)
 
 
@@ -82,21 +86,19 @@ def resolve_pipeline(opts: CatOpts, kind: str) -> PipelineSpec:
         spec = opts.pipelines.get(kind)
         if spec is not None:
             return _apply_encoder_generate(spec, opts)
+
         encoder_spec = opts.pipelines.get("_encoder")
         if encoder_spec is not None and encoder_spec.encode.strategy:
-            from mm.encoders import get
-            from mm.pipelines import deep_merge
-            from mm.pipelines.schema import Encode
-
-            try:
-                get(encoder_spec.encode.strategy, kind)
-            except KeyError:
+            if not _encoder_exists(encoder_spec.encode.strategy, kind):
                 typer.echo(
                     f"Warning: encoder '{encoder_spec.encode.strategy}' "
                     f"not available for kind '{kind}'. Falling back to default.",
                     err=True,
                 )
             else:
+                from mm.pipelines import deep_merge
+                from mm.pipelines.schema import Encode
+
                 base = load(kind, opts.mode)
                 encode = Encode.from_dict(
                     deep_merge(base.encode.to_dict(), encoder_spec.encode.to_dict())
@@ -111,7 +113,7 @@ def resolve_pipeline(opts: CatOpts, kind: str) -> PipelineSpec:
 
     spec = load(kind, opts.mode)
     spec = _apply_encode_strategy_override(spec, opts)
-    if _encode_strategy_override(opts) == "auto":
+    if _get_override_strategy(opts) == "auto":
         # Defer generate derivation: the real encoder is chosen later by
         # resolve_auto_strategy, which applies *that* encoder's generate map.
         # Deriving it now (against the base YAML strategy) would wrongly wipe
@@ -148,30 +150,23 @@ def load_pipeline_args(pipeline_args: list[str]) -> dict[str, PipelineSpec]:
 
             for spec in load_file(p):
                 specs[spec.kind] = spec
+            continue
+
+        from mm.encoders import list_strategies
+        from mm.pipelines.schema import Encode
+
+        if arg in list_strategies():
+            specs["_encoder"] = PipelineSpec(
+                kind="_encoder",
+                mode="fast",
+                encode=Encode(strategy=arg),
+                generate=None,
+            )
         else:
-            from mm.encoders import list_strategies
-            from mm.pipelines.schema import Encode
-
-            known = list_strategies()
-            if arg in known:
-                specs["_encoder"] = PipelineSpec(
-                    kind="_encoder",
-                    mode="fast",
-                    encode=Encode(strategy=arg),
-                    generate=None,
-                )
-            else:
-                if p.is_file():
-                    from mm.pipelines import load_file
-
-                    for spec in load_file(p):
-                        specs[spec.kind] = spec
-                else:
-                    typer.echo(
-                        f"Warning: '{arg}' is not a known encoder or YAML file. Falling back to the default.",
-                        err=True,
-                    )
-
+            typer.echo(
+                f"Warning: '{arg}' is not a known encoder or YAML file. Falling back to the default.",
+                err=True,
+            )
     return specs
 
 

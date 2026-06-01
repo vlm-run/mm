@@ -150,7 +150,6 @@ def auto_strategy(path: Path) -> str:
     if kind == "image":
         size = meta.size
         is_lossless = ext in _LOSSLESS_EXTS
-
         # Parse "WxH" dimensions string; fall back to size-only heuristic.
         width: int = 0
         height: int = 0
