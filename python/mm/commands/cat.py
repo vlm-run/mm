@@ -509,7 +509,19 @@ def cat_cmd(
             except Exception as exc:
                 typer.echo(f"Error processing {p}: {exc}", err=True)
                 continue
-            _render(p, content)
+
+            import mm.llm as _llm_mod
+
+            if _llm_mod.streamed_to_stdout:
+                # Content already written to stdout by _chat_stream;
+                # only emit [dim] metadata lines (verbose timing, etc.).
+                dim_lines = [ln for ln in content.split("\n") if "[dim]" in ln]
+                if dim_lines:
+                    from mm.display import output_console
+
+                    output_console.print("\n".join(dim_lines))
+            else:
+                _render(p, content)
     elif valid_paths:
         from concurrent.futures import ThreadPoolExecutor
 

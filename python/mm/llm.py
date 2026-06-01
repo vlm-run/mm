@@ -28,6 +28,10 @@ from mm.constants import BinaryFileKind
 from mm.pipelines.schema import PipelineSpec
 from mm.utils import get_b64
 
+# Set by ``_chat_stream`` after writing content to stdout so callers can
+# avoid re-emitting the same text.  Reset at the start of each ``_chat`` call.
+streamed_to_stdout: bool = False
+
 logger = logging.getLogger(__name__)
 
 
@@ -254,6 +258,9 @@ class LlmBackend:
         ``extra_body`` is deep-merged with the built-in ``think`` /
         ``reasoning_effort`` keys (caller-supplied values win).
         """
+        global streamed_to_stdout
+        streamed_to_stdout = False
+
         from mm.pipelines import deep_merge
 
         effective_max = min(max_tokens * 8, 16384) if think else max_tokens
@@ -348,6 +355,8 @@ class LlmBackend:
                     collected.append(token)
 
             if collected:
+                global streamed_to_stdout
+                streamed_to_stdout = True
                 sys.stdout.write("\n")
                 sys.stdout.flush()
                 return "".join(collected).strip()
@@ -367,6 +376,7 @@ class LlmBackend:
                 self._local.last_usage = usage
             text = (response.choices[0].message.content or "").strip()
             if text:
+                streamed_to_stdout = True
                 sys.stdout.write(text)
                 sys.stdout.write("\n")
                 sys.stdout.flush()
