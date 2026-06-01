@@ -98,6 +98,9 @@ nav:
       - Document: spec-templates/document.md
 
 extra:
+  analytics:
+    provider: google
+    property: G-VHNYCGZR4V
   social:
     - icon: fontawesome/brands/github
       link: https://github.com/vlm-run/mm
