@@ -111,7 +111,9 @@ def _main(
     version: Annotated[bool, typer.Option("--version", "-v", help="Show version and exit")] = False,
 ) -> None:
     if version:
-        typer.echo(f"mm v{__version__}")
+        from mm.version import version_imprint
+
+        typer.echo(f"mm {version_imprint(__version__)}")
         raise typer.Exit()
 
     if ctx.invoked_subcommand is None:
