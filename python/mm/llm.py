@@ -308,6 +308,10 @@ class LlmBackend:
     def _chat_stream(self, kwargs: dict[str, Any]) -> str:
         """Streaming variant of ``_chat`` — writes tokens to stdout as they arrive.
 
+        Falls back transparently to a non-streaming call when the backend
+        yields no chunks (some OpenAI-compatible gateways silently ignore
+        ``stream=True``).
+
         Args:
             kwargs: Fully-assembled keyword arguments for
                 ``chat.completions.create`` (model, messages, temperature, …).
@@ -341,9 +345,30 @@ class LlmBackend:
                     sys.stdout.flush()
                     collected.append(token)
 
-            sys.stdout.write("\n")
-            sys.stdout.flush()
-            return "".join(collected).strip()
+            if collected:
+                sys.stdout.write("\n")
+                sys.stdout.flush()
+                return "".join(collected).strip()
+
+            # Backend returned no content chunks — fall back to non-streaming.
+            logger.debug("Streaming yielded no tokens; falling back to non-streaming call")
+            kwargs.pop("stream", None)
+            kwargs.pop("stream_options", None)
+            response = self.client.chat.completions.create(**kwargs)
+            if response.usage:
+                usage = LlmUsage(
+                    prompt_tokens=response.usage.prompt_tokens or 0,
+                    completion_tokens=response.usage.completion_tokens or 0,
+                    total_tokens=response.usage.total_tokens or 0,
+                )
+                self.last_usage = usage
+                self._local.last_usage = usage
+            text = (response.choices[0].message.content or "").strip()
+            if text:
+                sys.stdout.write(text)
+                sys.stdout.write("\n")
+                sys.stdout.flush()
+            return text
         except Exception as e:
             logger.debug("LLM streaming error %s", e)
             return f"[LLM error: {e}]"
