@@ -79,6 +79,7 @@ def _inline_transcribe_and_summarize(path: Path, spec: PipelineSpec, opts: CatOp
         context={"filename": path.name, "transcript": transcript},
         pipeline_spec=spec,
         extra_body=spec_extra_body(spec),
+        stream=getattr(opts, "stream", False),
     )
     timing["llm_call_ms"] = (time.monotonic() - t_llm) * 1000
     timing["total_ms"] = (time.monotonic() - t_total) * 1000

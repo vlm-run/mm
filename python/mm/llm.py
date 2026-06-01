@@ -87,6 +87,7 @@ class LlmBackend:
         parts: list[dict[str, Any]] | None = None,
         pipeline_spec: PipelineSpec | None = None,
         extra_body: dict[str, Any] | None = None,
+        stream: bool = False,
     ) -> str:
         """Pipeline-driven MLLM generation.
 
@@ -140,6 +141,7 @@ class LlmBackend:
             think=tpl.generate.think,
             reasoning_effort=tpl.generate.reasoning_effort,
             extra_body=merged_extra_body or None,
+            stream=stream,
         )
 
     def generate_chunked(
@@ -243,6 +245,7 @@ class LlmBackend:
         think: bool = False,
         reasoning_effort: str = "none",
         extra_body: dict[str, Any] | None = None,
+        stream: bool = False,
     ) -> str:
         """Single chat/completions call via the OpenAI SDK.
 
@@ -272,6 +275,9 @@ class LlmBackend:
         if eb:
             kwargs["extra_body"] = eb
 
+        if stream:
+            return self._chat_stream(kwargs)
+
         try:
             response: ChatCompletion = self.client.chat.completions.create(**kwargs)
             if response.usage:
@@ -297,6 +303,49 @@ class LlmBackend:
             return ""
         except Exception as e:
             logger.debug("LLM error %s", e)
+            return f"[LLM error: {e}]"
+
+    def _chat_stream(self, kwargs: dict[str, Any]) -> str:
+        """Streaming variant of ``_chat`` — writes tokens to stdout as they arrive.
+
+        Args:
+            kwargs: Fully-assembled keyword arguments for
+                ``chat.completions.create`` (model, messages, temperature, …).
+
+        Returns:
+            The concatenated response text (same contract as ``_chat``).
+        """
+        import sys
+
+        kwargs["stream"] = True
+        kwargs["stream_options"] = {"include_usage": True}
+
+        try:
+            response_stream = self.client.chat.completions.create(**kwargs)
+            collected: list[str] = []
+            for chunk in response_stream:
+                if chunk.usage is not None:
+                    usage = LlmUsage(
+                        prompt_tokens=chunk.usage.prompt_tokens or 0,
+                        completion_tokens=chunk.usage.completion_tokens or 0,
+                        total_tokens=chunk.usage.total_tokens or 0,
+                    )
+                    self.last_usage = usage
+                    self._local.last_usage = usage
+                if not chunk.choices:
+                    continue
+                delta = chunk.choices[0].delta
+                token = delta.content or ""
+                if token:
+                    sys.stdout.write(token)
+                    sys.stdout.flush()
+                    collected.append(token)
+
+            sys.stdout.write("\n")
+            sys.stdout.flush()
+            return "".join(collected).strip()
+        except Exception as e:
+            logger.debug("LLM streaming error %s", e)
             return f"[LLM error: {e}]"
 
 

@@ -156,6 +156,7 @@ def _inline_mosaic_pipeline(path: Path, spec: PipelineSpec, opts: CatOpts) -> Ru
             parts=img_parts,
             pipeline_spec=spec,
             extra_body=spec_extra_body(spec),
+            stream=getattr(opts, "stream", False),
         )
         timing["vlm_call_ms"] = (time.monotonic() - t_vlm) * 1000
         timing["vlm_prompt_tokens"] = llm.last_usage.prompt_tokens

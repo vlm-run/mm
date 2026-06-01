@@ -142,9 +142,16 @@ def run_encoder(path: Path, kind: BinaryFileKind, spec: PipelineSpec, opts: CatO
 
     ctx = {"filename": path.name}
     extra = spec_extra_body(spec)
+    do_stream = getattr(opts, "stream", False)
     if len(chunks) == 1:
         result = llm.generate(
-            kind, opts.mode, context=ctx, parts=chunks[0], pipeline_spec=spec, extra_body=extra
+            kind,
+            opts.mode,
+            context=ctx,
+            parts=chunks[0],
+            pipeline_spec=spec,
+            extra_body=extra,
+            stream=do_stream,
         )
     else:
         result = llm.generate_chunked(

@@ -36,6 +36,7 @@ def _inline_describe(path: Path, spec: PipelineSpec, opts: CatOpts) -> RunResult
         parts=parts,
         pipeline_spec=spec,
         extra_body=spec_extra_body(spec),
+        stream=getattr(opts, "stream", False),
     )
     elapsed = (time.monotonic() - t0) * 1000
     u = llm.last_usage

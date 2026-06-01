@@ -229,6 +229,9 @@ def cat_cmd(
         ),
     ] = None,
     # -- Utility --
+    stream: Annotated[
+        bool, typer.Option("--stream", help="Stream LLM output token-by-token to stdout")
+    ] = False,
     verbose: Annotated[bool, typer.Option("--verbose", "-v", help="Show progress bars")] = False,
     dry_run: Annotated[
         bool,
@@ -418,6 +421,7 @@ def cat_cmd(
         pipelines=pipeline_specs,
         verbose=verbose,
         dry_run=dry_run,
+        stream=stream,
     )
 
     multi_file = len(paths) > 1
@@ -501,7 +505,18 @@ def cat_cmd(
                 output_console.print("\n".join(rich_lines))
             _emitted += 1
 
-    if valid_paths:
+    if valid_paths and stream:
+        for p in valid_paths:
+            if multi_file:
+                typer.echo(f"<{p.name}>", err=True)
+            try:
+                content = _process(p)
+            except Exception as exc:
+                typer.echo(f"Error processing {p}: {exc}", err=True)
+                continue
+            if fmt in ("json", "pretty-json", "dataset-jsonl", "dataset-hf"):
+                _render(p, content)
+    elif valid_paths:
         from concurrent.futures import ThreadPoolExecutor
 
         with ThreadPoolExecutor(max_workers=min(8, len(valid_paths))) as pool:
@@ -661,6 +676,7 @@ def _run_fast(path: Path, kind: BinaryFileKind, spec: PipelineSpec, opts: CatOpt
         context={"filename": path.name, "content": content[:4000]},
         pipeline_spec=spec,
         extra_body=spec_extra_body(spec),
+        stream=getattr(opts, "stream", False),
     )
 
     elapsed = (time.monotonic() - t0) * 1000
@@ -734,6 +750,7 @@ def _accurate_dispatch(
         context={"filename": path.name, "content": content[:4000]},
         pipeline_spec=spec,
         extra_body=spec_extra_body(spec),
+        stream=getattr(opts, "stream", False),
     )
     elapsed = (time.monotonic() - t0) * 1000
     u = llm.last_usage
