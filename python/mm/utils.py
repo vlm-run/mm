@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import base64
 import sys
 import time as _time
 from enum import Enum
@@ -98,3 +99,10 @@ def is_binary_content(*, kind: str, content: str | None = None) -> bool:
     return kind in ("image", "document", "video", "audio") or bool(
         content and "\x00" in content[:512]
     )
+
+
+def get_b64(v: Path | bytes) -> str:
+    """Return the base64-encoded string for a file path or raw bytes."""
+    if isinstance(v, Path):
+        return base64.b64encode(v.read_bytes()).decode()
+    return base64.b64encode(v).decode()

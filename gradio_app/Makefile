@@ -1,7 +1,7 @@
 .PHONY: help deploy status logs logs-build logs-follow restart hardware-gpu hardware-cpu
 
 SPACE ?= vlm-run/mm-ctx
-MSG   ?= ui polish
+MSG   ?= $(error MSG is required — run: make deploy MSG="your message")
 
 EXCLUDES := \
 	--exclude "__pycache__/**" --exclude "**/__pycache__/**" \

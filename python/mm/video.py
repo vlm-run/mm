@@ -21,7 +21,6 @@ where stream-copy outperforms re-encoding.
 
 from __future__ import annotations
 
-import base64
 import io
 import logging
 from concurrent.futures import ThreadPoolExecutor
@@ -32,6 +31,7 @@ from typing import Any, Callable, Iterator
 from PIL import Image
 
 from mm.cache import memoize_file
+from mm.utils import get_b64
 
 logger = logging.getLogger(__name__)
 
@@ -90,7 +90,7 @@ class Frame:
             img = img.convert("RGB")
         buf = io.BytesIO()
         img.save(buf, "JPEG", quality=quality, subsampling=subsampling)
-        return base64.b64encode(buf.getvalue()).decode(), "image/jpeg"
+        return get_b64(buf.getvalue()), "image/jpeg"
 
 
 class FrameStream:

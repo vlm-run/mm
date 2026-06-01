@@ -418,9 +418,10 @@ def _render_native_image(
         data = path.read_bytes()
     except OSError:
         return ""
+    from mm.utils import get_b64
 
     mime = _mime_from_ext(path.suffix)
-    b64 = base64.b64encode(data).decode()
+    b64 = get_b64(data)
     dims = _image_dims_from_bytes(data)
     src = f"data:{mime};base64,{b64}"
     byte_size = encoded_size if encoded_size is not None else len(data)
@@ -481,7 +482,9 @@ def _render_native_video(path: Path, scope: str, max_width: int) -> str:
 
     if file_size <= _VIDEO_EMBED_MAX_BYTES:
         try:
-            b64 = base64.b64encode(path.read_bytes()).decode()
+            from mm.utils import get_b64
+
+            b64 = get_b64(path)
         except OSError as exc:
             logger.warning("notebook: cannot read video %s for embedding: %s", path, exc)
             return _render_native_placeholder(f"Video unreadable: {path.name}", info, scope)
@@ -511,7 +514,9 @@ def _render_native_audio(path: Path, scope: str) -> str:
 
     if file_size <= _AUDIO_EMBED_MAX_BYTES:
         try:
-            b64 = base64.b64encode(path.read_bytes()).decode()
+            from mm.utils import get_b64
+
+            b64 = get_b64(path)
         except OSError as exc:
             logger.warning("notebook: cannot read audio %s for embedding: %s", path, exc)
             return _render_native_placeholder(f"Audio unreadable: {path.name}", info, scope)

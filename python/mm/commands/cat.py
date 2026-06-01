@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import tempfile
-import time
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, Any, Optional
 
@@ -15,12 +14,8 @@ from mm.cat_utils.base_utils import (
     coerce_opt_value,
     collect_overrides,
     effective_model,
-    format_footer,
-    format_generate_verbose,
-    make_llm_from_spec,
     maybe_confirm_large_cat_batch,
     override_extra,
-    spec_extra_body,
 )
 from mm.cat_utils.extract_meta import extract_meta
 from mm.common.audio._base import BackendLabel
@@ -549,6 +544,7 @@ def _extract(path: Path, opts: CatOpts) -> str:
             _was_cached = True
         return content
 
+    from mm.encoders.auto_strategy import resolve_auto_strategy
     from mm.pipelines import apply_overrides
     from mm.pipelines.pipelines_utils import resolve_pipeline
     from mm.profile import get_profile
@@ -562,6 +558,8 @@ def _extract(path: Path, opts: CatOpts) -> str:
     # invalidation on `--model` / `--generate.extra-body` changes.
     spec = resolve_pipeline(opts, kind)
     spec = apply_overrides(spec, opts.encode_overrides or None, opts.generate_overrides or None)
+    spec = resolve_auto_strategy(path, spec, opts)
+
     eff_model = effective_model(spec, profile.model)
     extra = override_extra(
         opts.encode_overrides,
@@ -638,42 +636,16 @@ def _format_run(run: RunResult, verbose: bool) -> str:
 
 def _run_fast(path: Path, kind: BinaryFileKind, spec: PipelineSpec, opts: CatOpts) -> RunResult:
     """Fast mode: run the kind's fast pipeline."""
+    from mm.cat_utils.run_encoder import run_encoder
+
     if getattr(opts, "no_generate", False):
         import dataclasses
 
         spec = dataclasses.replace(spec, generate=None)
     if spec.encode.strategy:
-        from mm.cat_utils.run_encoder import run_encoder
-
         return run_encoder(path, kind, spec, opts)
 
-    content = extract_meta(path, kind, no_cache=opts.no_cache)
-    if spec.generate is None:
-        return RunResult(content=content)
-
-    from mm.profile import get_active_profile_name
-
-    t0 = time.monotonic()
-    llm = make_llm_from_spec(spec)
-    result = llm.generate(
-        kind,
-        "fast",
-        context={"filename": path.name, "content": content[:4000]},
-        pipeline_spec=spec,
-        extra_body=spec_extra_body(spec),
-    )
-
-    elapsed = (time.monotonic() - t0) * 1000
-    u = llm.last_usage
-    footer = format_footer(path, "fast", elapsed, u.prompt_tokens, u.completion_tokens)
-
-    profile_name = get_active_profile_name()
-    generate_output = format_generate_verbose(
-        profile_name, elapsed, u.prompt_tokens, u.completion_tokens
-    )
-    suffix = "\n\n".join([generate_output, footer])
-
-    return RunResult(content=result, verbose_suffix=suffix)
+    return RunResult(content=extract_meta(path, kind, no_cache=opts.no_cache))
 
 
 def _run_accurate(
@@ -715,37 +687,12 @@ def _accurate_dispatch(
     if kind == "audio":
         return accurate_audio(path, spec, opts)
 
-    if spec.encode.strategy:
-        from mm.cat_utils.run_encoder import run_encoder
+    from mm.cat_utils.run_encoder import run_encoder
 
+    if spec.encode.strategy:
         return run_encoder(path, kind, spec, opts)
 
-    content = extract_meta(path, kind)
-    if spec.generate is None:
-        return RunResult(content=content)
-
-    from mm.profile import get_active_profile_name
-
-    t0 = time.monotonic()
-    llm = make_llm_from_spec(spec)
-    result = llm.generate(
-        kind,
-        "accurate",
-        context={"filename": path.name, "content": content[:4000]},
-        pipeline_spec=spec,
-        extra_body=spec_extra_body(spec),
-    )
-    elapsed = (time.monotonic() - t0) * 1000
-    u = llm.last_usage
-
-    profile_name = get_active_profile_name()
-    generate_output = format_generate_verbose(
-        profile_name, elapsed, u.prompt_tokens, u.completion_tokens
-    )
-    footer = format_footer(path, "accurate", elapsed, u.prompt_tokens, u.completion_tokens)
-    suffix = "\n\n".join([generate_output, footer])
-
-    return RunResult(content=result, verbose_suffix=suffix)
+    return RunResult(content=extract_meta(path, kind))
 
 
 def _display_rich(
@@ -829,6 +776,7 @@ def _dry_run_preview(path: Path, kind: str, ext: str, opts: CatOpts) -> str:
     """
     from mm.constants import OFFICE_EXTS
     from mm.display import format_size
+    from mm.encoders.auto_strategy import resolve_auto_strategy
     from mm.pipelines import apply_overrides
     from mm.pipelines.pipelines_utils import resolve_pipeline
     from mm.profile import get_profile
@@ -851,10 +799,13 @@ def _dry_run_preview(path: Path, kind: str, ext: str, opts: CatOpts) -> str:
 
     spec = resolve_pipeline(opts, kind)
     spec = apply_overrides(spec, opts.encode_overrides or None, opts.generate_overrides or None)
+    autoencode = spec.encode.strategy == "auto"
+    spec = resolve_auto_strategy(path, spec, opts)
     header = f"\n# {path} (kind={kind}, mode={opts.mode}) — pipeline preview (--dry-run)"
 
     encode = spec.encode
     strategy = encode.strategy or "<unspecified>"
+    strategy = f"auto → {strategy}" if autoencode else strategy
     enc_opts = encode.strategy_opts or {}
     enc_opts_str = (
         ", ".join(f"{k}={v}" for k, v in sorted(enc_opts.items())) if enc_opts else "<defaults>"
@@ -865,11 +816,14 @@ def _dry_run_preview(path: Path, kind: str, ext: str, opts: CatOpts) -> str:
         lines = (gen.prompt or "").strip().splitlines()
         first_line = lines[0] if lines else ""
         if len(first_line) > 60:
-            first_line = first_line[:60] + "…"
+            first_line = first_line[:60] + "..."
 
         prompt_part = f' · prompt="{first_line}"' if first_line else ""
-        eff = gen.model or get_profile().model
-        gen_line = f"generate: model={eff}{prompt_part}  [skipped via --dry-run]"
+        profile = get_profile()
+        eff = gen.model or profile.model
+        gen_line = (
+            f"generate: profile={profile.name} · model={eff}{prompt_part}  [skipped via --dry-run]"
+        )
     else:
         gen_line = "generate: <none>  [encode-only pipeline]"
 
