@@ -20,7 +20,7 @@ from typing import Any, Iterable
 
 from mm.encoders import register
 from mm.encoders.base import Encoder, Message
-from mm.encoders.encoders_utils import get_b64
+from mm.utils import get_b64
 
 logger = logging.getLogger(__name__)
 

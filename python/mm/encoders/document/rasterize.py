@@ -7,7 +7,6 @@ interleaves extracted page text alongside each page image.
 
 from __future__ import annotations
 
-import base64
 import io
 import logging
 from itertools import islice
@@ -17,6 +16,7 @@ from typing import Any, Iterable, Iterator, Optional
 from mm.encoders import register, resolve_provider
 from mm.encoders.base import Encoder, Message
 from mm.encoders.image import _image_part, _to_message
+from mm.utils import get_b64
 
 logger = logging.getLogger(__name__)
 
@@ -198,7 +198,7 @@ def rasterize_pages(
                 pil_img = bitmap.to_pil()
                 buf = io.BytesIO()
                 pil_img.save(buf, "JPEG", quality=_JPEG_QUALITY, subsampling=0)
-                b64: str = base64.b64encode(buf.getvalue()).decode()
+                b64: str = get_b64(buf.getvalue())
                 yield (b64, "image/jpeg")
             finally:
                 page.close()

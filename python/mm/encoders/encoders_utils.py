@@ -1,7 +1,3 @@
-import base64
-from pathlib import Path
-from typing import Any
-
 from mm.cat_utils.base_utils import KIND_ORDER
 
 
@@ -62,16 +58,3 @@ def do_list_encoders() -> None:
     console.print()
     console.print(panel)
     console.print()
-
-
-def get_b64(v: Path | bytes) -> str:
-    """Return the base64-encoded string for a file path or raw bytes."""
-    if isinstance(v, Path):
-        return base64.b64encode(v.read_bytes()).decode()
-    return base64.b64encode(v).decode()
-
-
-def audio_part(b64_data: str, fmt: str, provider: str) -> dict[str, Any]:
-    if provider == "gemini":
-        return {"inline_data": {"mime_type": f"audio/{fmt}", "data": b64_data}}
-    return {"type": "input_audio", "input_audio": {"data": b64_data, "format": fmt}}

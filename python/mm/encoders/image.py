@@ -15,7 +15,6 @@ Typical usage::
 
 from __future__ import annotations
 
-import base64
 import io
 import logging
 from pathlib import Path
@@ -23,6 +22,7 @@ from typing import TYPE_CHECKING, Any, Iterable, Union
 
 from mm.encoders import resolve_provider, register
 from mm.encoders.base import Encoder, Message
+from mm.utils import get_b64
 
 if TYPE_CHECKING:
     from PIL import Image
@@ -119,7 +119,7 @@ def _encode_pil_image(
         save_kwargs["subsampling"] = 0  # 4:4:4 — no chroma subsampling
     img.save(buf, **save_kwargs)
 
-    b64 = base64.b64encode(buf.getvalue()).decode()
+    b64 = get_b64(buf.getvalue())
     return b64, mime
 
 
