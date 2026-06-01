@@ -13,6 +13,8 @@ import tempfile
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Iterable, Literal
 
+from mm.cache import memoize_file
+
 if TYPE_CHECKING:
     from mm.context import Context
 
@@ -116,7 +118,7 @@ def _parts_for_item(
         return
 
     if src_kind == "path":
-        yield from _encode_path(Path(src_value), kind, extra_kwargs=ekw)
+        yield from _encode_path(Path(src_value), kind, encoders=encoders, extra_kwargs=ekw)
         return
 
     if src_kind == "in_memory":
@@ -159,24 +161,39 @@ def _read_text_or_placeholder(src_kind: str, src_value: str) -> str:
     return ""
 
 
+@memoize_file(maxsize=128)
+def _encode_path_cached(
+    path: Path,
+    kind: str,
+    strategy_override: str | None,
+    kwargs_items: tuple[tuple[str, Any], ...],
+) -> list[dict[str, Any]]:
+    """Resolve the encoder for *path* and flatten its output into parts."""
+    from mm.encoders import get as get_encoder
+    from mm.encoders.auto_strategy import auto_strategy
+
+    strategy_name = strategy_override or auto_strategy(path)
+    try:
+        strategy = get_encoder(strategy_name, kind)
+    except KeyError:
+        return []
+    return [
+        part
+        for msg in strategy.encode(path, **dict(kwargs_items))
+        for part in msg.get("content", [])
+    ]
+
+
 def _encode_path(
     path: Path,
     kind: str,
     *,
+    encoders: dict[str, str] | None = None,
     extra_kwargs: dict[str, Any] | None = None,
-) -> Iterable[dict[str, Any]]:
-    strategy_name = _resolve_strategy(path)
-    if strategy_name is None:
-        return
-    from mm.encoders import get as get_encoder
-
-    try:
-        strategy = get_encoder(strategy_name, kind)
-    except KeyError:
-        return
-    for msg in strategy.encode(path, **(extra_kwargs or {})):
-        for part in msg.get("content", []):
-            yield part
+) -> list[dict[str, Any]]:
+    override = (encoders or {}).get(kind)
+    kwargs_items = tuple(sorted((extra_kwargs or {}).items()))
+    return _encode_path_cached(path, kind, override, kwargs_items)
 
 
 def _encode_in_memory(
@@ -209,7 +226,7 @@ def _encode_in_memory(
         }
         return
     try:
-        yield from _encode_path(path, "image", extra_kwargs=extra_kwargs)
+        yield from _encode_path(path, "image", encoders=encoders, extra_kwargs=extra_kwargs)
     finally:
         try:
             path.unlink()
@@ -244,12 +261,6 @@ def _spool_image(obj: Any) -> Path:
         tmp.close()
         return Path(tmp.name)
     raise TypeError(f"cannot spool {type(obj).__name__} to a temp file")
-
-
-def _resolve_strategy(path: Path) -> str | None:
-    from mm.encoders.auto_strategy import auto_strategy
-
-    return auto_strategy(path)
 
 
 def _adapt_part(part: dict[str, Any], *, format: str) -> dict[str, Any]:

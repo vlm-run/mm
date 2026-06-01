@@ -113,7 +113,6 @@ def auto_strategy(path: Path) -> str:
         ValueError: If the file kind is not one of image / audio / video /
             document, or if the file does not exist.
     """
-    from mm.peek import FileMetadata
     from mm.utils import file_kind
 
     kind = file_kind(path)
@@ -121,6 +120,8 @@ def auto_strategy(path: Path) -> str:
         raise ValueError(
             f"auto_strategy only handles binary media kinds; got kind={kind!r} for {path.name}"
         )
+
+    from mm.peek import FileMetadata
 
     meta = FileMetadata.from_path(path, full=(kind == "document"))
     ext = path.suffix.lower()
