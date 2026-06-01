@@ -234,3 +234,14 @@ jobs:
           publish_dir: ./_pages
           destination_dir: install
           keep_files: true
+
+      # README images are served from the public Pages site because the source
+      # repo is private (raw.githubusercontent.com 404s for anonymous viewers).
+      # Published to https://vlm-run.github.io/mm/assets/<name>.png.
+      - name: Deploy README assets to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./docs/assets
+          destination_dir: assets
+          keep_files: true
