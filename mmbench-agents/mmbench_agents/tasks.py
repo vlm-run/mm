@@ -6,8 +6,10 @@ discover others). Prompts deliberately never name an ``mm`` command — the agen
 must decide to use ``mm`` — and they pin the answer JSON schema and the kind
 taxonomy so baseline and ``mm`` arms are scored identically.
 
-This module currently encodes the foundational slice of tasks; the full
-20-case catalogue (see ``README.md`` §3) is added incrementally.
+The catalogue spans all three scopes (file/directory/mixed) and collectively
+exercises every action command (``find``/``wc``/``sql``/``peek``/``grep``/``cat``).
+It is intentionally extensible: richer cases (video, EXIF, near-duplicate,
+invoice arithmetic) only need corpus assets plus a verifier, not new harness code.
 """
 
 from __future__ import annotations
@@ -16,6 +18,7 @@ from dataclasses import dataclass, field
 
 from mmbench_agents.types import Scope
 from mmbench_agents.verifiers import (
+    ContainsVerifier,
     ExactValueVerifier,
     ManifestVerifier,
     SetMembershipVerifier,
@@ -24,7 +27,7 @@ from mmbench_agents.verifiers import (
 
 _KIND_TAXONOMY = (
     "Classify each file by extension: .md/.txt=text, .py=code, .csv/.json=data, "
-    ".png=image, .wav=audio."
+    ".png=image, .wav=audio, .pdf=document."
 )
 
 
@@ -78,6 +81,74 @@ TASKS: tuple[TaskSpec, ...] = (
             {"duration_s": (("audio_durations_s", "audio/tone.wav"), 0.05)}
         ),
         intended_mm_commands=("cat", "peek"),
+    ),
+    TaskSpec(
+        id="largest_file",
+        title="Largest file",
+        scope=Scope.MIXED,
+        prompt=(
+            "Identify the single largest file in CORPUS by byte size. Return JSON with key "
+            "'largest_file' (its POSIX path relative to CORPUS)."
+        ),
+        verifier=ExactValueVerifier({"largest_file": (("largest_file",), None)}),
+        intended_mm_commands=("find", "sql"),
+    ),
+    TaskSpec(
+        id="loc_count",
+        title="Line count across text and code",
+        scope=Scope.DIRECTORY,
+        prompt=(
+            "Count the total number of newline characters across every text and code file in "
+            "CORPUS. " + _KIND_TAXONOMY + " Consider only files of kind text or code. Return "
+            "JSON with key 'total_lines' (integer)."
+        ),
+        verifier=ExactValueVerifier({"total_lines": (("total_lines_text_code",), 0)}),
+        intended_mm_commands=("wc", "find"),
+    ),
+    TaskSpec(
+        id="wide_images",
+        title="Wide images",
+        scope=Scope.DIRECTORY,
+        prompt=(
+            "List every image file in CORPUS whose pixel width is strictly greater than 200. "
+            "Return JSON with key 'wide_images' (list of POSIX paths relative to CORPUS)."
+        ),
+        verifier=SetMembershipVerifier(answer_field="wide_images", gt_field="wide_images"),
+        intended_mm_commands=("peek", "find"),
+    ),
+    TaskSpec(
+        id="pdf_secret",
+        title="Extract a PDF activation code",
+        scope=Scope.FILE,
+        prompt=(
+            "The document CORPUS/docs/contract.pdf states an activation code. Read the document "
+            "and report that code. Return JSON with key 'answer' (string)."
+        ),
+        verifier=ContainsVerifier(answer_field="answer", gt_field="secret_token"),
+        intended_mm_commands=("cat",),
+    ),
+    TaskSpec(
+        id="needle",
+        title="Locate a phrase across files",
+        scope=Scope.DIRECTORY,
+        prompt=(
+            "Exactly one file in CORPUS contains the phrase 'activation code'. Identify it. "
+            "Return JSON with key 'file' (its POSIX path relative to CORPUS)."
+        ),
+        verifier=ExactValueVerifier({"file": (("needle_file",), None)}),
+        intended_mm_commands=("grep", "find", "cat"),
+    ),
+    TaskSpec(
+        id="scanned_pdf",
+        title="Detect image-only PDFs",
+        scope=Scope.DIRECTORY,
+        prompt=(
+            "Some PDFs in CORPUS are image-only (scanned) with no extractable text layer. "
+            "List every such PDF. Return JSON with key 'image_only_pdfs' (list of POSIX paths "
+            "relative to CORPUS)."
+        ),
+        verifier=SetMembershipVerifier(answer_field="image_only_pdfs", gt_field="image_only_pdfs"),
+        intended_mm_commands=("cat", "find"),
     ),
 )
 

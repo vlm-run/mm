@@ -7,7 +7,7 @@ that verifiers produce. Kept dependency-free so tasks, verifiers, and the
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 from enum import Enum
 
 
@@ -76,3 +76,126 @@ class VerifierReport:
     def passed(self) -> bool:
         """True only when there is at least one sub-check and all passed."""
         return bool(self.sub_checks) and all(c.passed for c in self.sub_checks)
+
+
+class FailureMode(str, Enum):
+    """Why a trial did not yield a scoreable answer (``NONE`` = it did)."""
+
+    NONE = "none"
+    TIMEOUT = "timeout"
+    BUDGET = "budget"
+    ERROR = "error"
+    SKIPPED = "skipped"
+    NO_ANSWER = "no_answer"
+
+
+@dataclass(frozen=True)
+class Profile:
+    """An ``mm`` backend profile (model + endpoint) the agent's tools call.
+
+    ``Profile.none()`` marks the baseline arm, where ``mm`` is unavailable and
+    no backend is exercised.
+    """
+
+    name: str
+    model: str = ""
+    endpoint: str = ""
+
+    @classmethod
+    def none(cls) -> Profile:
+        """The sentinel profile used by the baseline (no-``mm``) arm."""
+        return cls(name="none")
+
+
+@dataclass(frozen=True)
+class AssistantSpec:
+    """A universal assistant harness under evaluation.
+
+    Args:
+        name: Stable identifier shown on the leaderboard (e.g. ``claude``).
+        adapter: Key into the adapter registry that knows how to drive it.
+        command: Optional binary name used for availability preflight.
+    """
+
+    name: str
+    adapter: str
+    command: str = ""
+
+
+@dataclass(frozen=True)
+class TrialKey:
+    """The atomic, idempotent coordinate of one benchmark trial."""
+
+    assistant: str
+    profile: str
+    mm_condition: MmCondition
+    task_id: str
+    repeat: int
+
+    def as_dict(self) -> dict[str, object]:
+        """Return a JSON-friendly mapping of the key fields."""
+        return {
+            "assistant": self.assistant,
+            "profile": self.profile,
+            "mm_condition": self.mm_condition.value,
+            "task_id": self.task_id,
+            "repeat": self.repeat,
+        }
+
+
+@dataclass
+class TrialMetrics:
+    """Performance signals captured while running a trial."""
+
+    wall_s: float = 0.0
+    turns: int = 0
+    tool_calls: int = 0
+    mm_calls: int = 0
+    tokens_in: int = 0
+    tokens_out: int = 0
+    cost_usd: float = 0.0
+
+
+@dataclass
+class Score:
+    """Qualitative scoring for a trial, kept separate from performance.
+
+    ``completion``/``grounding`` are 0/1, ``correctness`` and ``rubric`` are
+    0..1, and ``overall`` is the 0..100 headline. The deterministic verifier
+    drives ``correctness``/``grounding``; ``rubric`` (the optional free-text
+    judge) can only adjust within a passing answer and never rescues a
+    deterministic failure.
+    """
+
+    completion: float = 0.0
+    correctness: float = 0.0
+    grounding: float = 0.0
+    rubric: float | None = None
+    overall: float = 0.0
+
+
+@dataclass
+class TrialResult:
+    """Everything recorded about a single executed trial."""
+
+    key: TrialKey
+    failure_mode: FailureMode = FailureMode.NONE
+    metrics: TrialMetrics = field(default_factory=TrialMetrics)
+    score: Score = field(default_factory=Score)
+    answer: dict = field(default_factory=dict)
+    mm_commands: list[str] = field(default_factory=list)
+    sub_checks: list[SubCheck] = field(default_factory=list)
+    raw_output: str = ""
+
+    def to_row(self) -> dict[str, object]:
+        """Flatten into a JSON-serialisable row for the store."""
+        return {
+            **self.key.as_dict(),
+            "failure_mode": self.failure_mode.value,
+            "metrics": asdict(self.metrics),
+            "score": asdict(self.score),
+            "answer": self.answer,
+            "mm_commands": self.mm_commands,
+            "sub_checks": [asdict(c) for c in self.sub_checks],
+            "raw_output": self.raw_output,
+        }

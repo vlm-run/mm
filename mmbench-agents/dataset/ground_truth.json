@@ -4,8 +4,9 @@
   },
   "counts_by_kind": {
     "audio": 1,
-    "code": 2,
-    "data": 1,
+    "code": 3,
+    "data": 2,
+    "document": 2,
     "image": 3,
     "text": 2
   },
@@ -15,10 +16,26 @@
       "img/red_copy.png"
     ]
   ],
+  "image_only_pdfs": [
+    "docs/scanned.pdf"
+  ],
+  "image_widths": {
+    "img/blue.png": 128,
+    "img/red.png": 320,
+    "img/red_copy.png": 320
+  },
+  "largest_file": "audio/tone.wav",
+  "needle_file": "docs/contract.pdf",
+  "secret_token": "ALPHA-7",
   "top_files": [
     "audio/tone.wav",
     "img/red.png",
     "img/red_copy.png"
   ],
-  "total_bytes": 34091
+  "total_bytes": 35727,
+  "total_lines_text_code": 20,
+  "wide_images": [
+    "img/red.png",
+    "img/red_copy.png"
+  ]
 }

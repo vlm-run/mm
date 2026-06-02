@@ -116,6 +116,52 @@ class ExactValueVerifier(Verifier):
         return report
 
 
+class ContainsVerifier(Verifier):
+    """Verify that a ground-truth string appears within an answer field.
+
+    Rewards grounding without demanding an exact full-text match: the agent's
+    free-text answer must contain the expected token/snippet (case-insensitive,
+    whitespace-collapsed).
+
+    Args:
+        answer_field: Key in the agent answer holding the free text.
+        gt_field: Key in ground truth holding the required substring.
+    """
+
+    def __init__(self, answer_field: str, gt_field: str) -> None:
+        self.answer_field = answer_field
+        self.gt_field = gt_field
+
+    @staticmethod
+    def _norm(value: Any) -> str:
+        return " ".join(str(value).split()).casefold()
+
+    def verify(self, answer: dict[str, Any], gt: dict[str, Any]) -> VerifierReport:
+        report = VerifierReport()
+        want = self._norm(gt[self.gt_field])
+        got = self._norm(answer.get(self.answer_field, ""))
+        report.add(self.gt_field, want in got, f"want {want!r} in answer {self.answer_field!r}")
+        return report
+
+
+class CompositeVerifier(Verifier):
+    """Run several verifiers and merge their sub-checks into one report.
+
+    Args:
+        verifiers: Verifiers whose sub-checks are concatenated; the task passes
+            only if every sub-check across all of them passes.
+    """
+
+    def __init__(self, *verifiers: Verifier) -> None:
+        self.verifiers = verifiers
+
+    def verify(self, answer: dict[str, Any], gt: dict[str, Any]) -> VerifierReport:
+        report = VerifierReport()
+        for verifier in self.verifiers:
+            report.sub_checks.extend(verifier.verify(answer, gt).sub_checks)
+        return report
+
+
 def _flatten(value: Any) -> list[str]:
     """Flatten one level of nested lists (e.g. duplicate groups) into strings."""
     out: list[str] = []
