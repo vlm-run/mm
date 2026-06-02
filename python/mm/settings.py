@@ -82,8 +82,8 @@ class MmSettings(BaseSettings):
     cache_dir: Path = Field(default_factory=_default_cache_dir)
     data_dir: Path = Field(default_factory=_default_data_dir)
     config_dir: Path = Field(default_factory=_default_config_dir)
-    db_path: Path = Field(default_factory=lambda: _default_data_dir() / "mm.db")
-    blobs_dir: Path = Field(default_factory=lambda: _default_data_dir() / "blobs")
+    db_path: Path = Field(default=Path("mm.db"))
+    blobs_dir: Path = Field(default=Path("blobs"))
 
     @model_validator(mode="after")
     def _anchor_and_expand(self) -> MmSettings:
@@ -91,8 +91,9 @@ class MmSettings(BaseSettings):
 
         ``db_path`` and ``blobs_dir`` follow ``data_dir`` whenever they were not
         set explicitly (via ``MM_DB_PATH`` / ``MM_BLOBS_DIR``), so overriding
-        ``MM_DATA_DIR`` alone relocates the whole storage root. ``~`` is then
-        expanded across every path.
+        ``MM_DATA_DIR`` alone relocates the whole storage root. Their declared
+        defaults are bare placeholders, always replaced here unless an explicit
+        override is present. ``~`` is then expanded across every path.
         """
         explicit = self.model_fields_set
         if "db_path" not in explicit:

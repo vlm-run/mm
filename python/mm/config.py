@@ -17,11 +17,11 @@ from pathlib import Path
 from typing import Literal, TypedDict, cast
 
 from mm.common.audio._base import BackendLabel
-from mm.settings import MmSettings
+from mm.settings import get_settings
 
 # ── Config paths ────────────────────────────────────────────────────
 
-CONFIG_DIR_XDG = MmSettings().config_dir
+CONFIG_DIR_XDG = get_settings().config_dir
 CONFIG_PATH_XDG = CONFIG_DIR_XDG / "mm.toml"
 CONFIG_DIR_LEGACY = Path.home() / ".mm"
 CONFIG_PATH_LEGACY = CONFIG_DIR_LEGACY / "config.toml"

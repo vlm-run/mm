@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import atexit
 import os
+import shutil
 import sqlite3
 import tempfile
 from pathlib import Path
@@ -27,6 +29,8 @@ _MM_CACHE_TMP = tempfile.mkdtemp(prefix="mm-test-cache-")
 _MM_DATA_TMP = tempfile.mkdtemp(prefix="mm-test-data-")
 os.environ.setdefault("MM_CACHE_DIR", _MM_CACHE_TMP)
 os.environ.setdefault("MM_DATA_DIR", _MM_DATA_TMP)
+atexit.register(shutil.rmtree, _MM_CACHE_TMP, ignore_errors=True)
+atexit.register(shutil.rmtree, _MM_DATA_TMP, ignore_errors=True)
 
 
 @pytest.fixture
