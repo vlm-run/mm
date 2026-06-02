@@ -318,12 +318,11 @@ class LlmBackend:
         """Streaming variant of ``_chat`` — writes tokens to stdout as they arrive.
 
         Falls back transparently to a non-streaming call when the backend
-        yields no chunks (some OpenAI-compatible gateways silently ignore
-        ``stream=True``).
+        yields no chunks.
 
         Args:
             kwargs: Fully-assembled keyword arguments for
-                ``chat.completions.create`` (model, messages, temperature, …).
+                ``chat.completions.create`` (model, messages, temperature, ...).
 
         Returns:
             The concatenated response text (same contract as ``_chat``).
@@ -332,7 +331,6 @@ class LlmBackend:
 
         kwargs["stream"] = True
         kwargs["stream_options"] = {"include_usage": True}
-
         try:
             response_stream = self.client.chat.completions.create(**kwargs)
             collected: list[str] = []

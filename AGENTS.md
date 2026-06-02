@@ -282,8 +282,7 @@ The following commands were merged into the core commands:
 - `mm cat video.mp4 -m accurate` — auto-generates keyframe mosaic → LLM description
 - `mm cat photo.png -p resize` — encode with named encoder
 - `mm cat photo.png -m accurate -p my-pipeline.yaml` — custom pipeline YAML
-- `mm cat photo.png -m accurate --stream` — stream LLM tokens to stdout as they arrive
-- `mm cat video.mp4 -m accurate --stream` — streaming works for any LLM-powered pipeline
+- `mm cat photo.png -m accurate --stream` — stream LLM tokens to stdout as they arrive, works for any LLM-powered pipeline
 
 ### Schema and SQL
 

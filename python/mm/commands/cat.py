@@ -513,7 +513,7 @@ def cat_cmd(
             import mm.llm as _llm_mod
 
             if _llm_mod.streamed_to_stdout:
-                # Content already written to stdout by _chat_stream;
+                # Content already written to stdout;
                 # emit the verbose suffix (pipeline tree + timing) if present.
                 parts = content.split("\n\n")
                 suffix_parts = [p for p in parts if "[dim]" in p]
