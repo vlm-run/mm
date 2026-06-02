@@ -20,7 +20,7 @@ middle; padding-right: 5px;"><br>
 
 <br />
 <p align="center">
-  <img src="https://raw.githubusercontent.com/vlm-run/mm/refs/heads/main/docs/assets/mm-terminal-window-v2.png" alt="mm terminal demo" width="880" style="border-radius: 12px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);">
+  <img src="https://vlm-run.github.io/mm/assets/mm-terminal-window-v2.png" alt="mm terminal demo" width="880" style="border-radius: 12px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);">
 </p>
 
 ---
@@ -508,7 +508,7 @@ mm sql --list-tables                              # show available tables
 ### bench — benchmarks with statistical analysis
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/vlm-run/mm/refs/heads/main/docs/assets/mm-benchmarks-14052026.png" alt="mm bench output" width="880" style="border-radius: 12px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);">
+  <img src="https://vlm-run.github.io/mm/assets/mm-benchmarks-14052026.png" alt="mm bench output" width="880" style="border-radius: 12px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);">
 </p>
 
 `overhead + metadata` always run; `--mode` adds an extraction tier on top.
