@@ -1,0 +1,7 @@
+# Generated, version-independent corpus (rebuilt from mmbench_agents/dataset.py
+# and pinned by dataset/MANIFEST.json). Not committed to keep binaries out of git.
+dataset/corpus/
+
+__pycache__/
+*.pyc
+.pytest_cache/
