@@ -10,7 +10,28 @@ Extract and describe file content — pipeline-driven, mode-aware, and LLM-capab
 mm cat FILE [FILE ...] [OPTIONS]
 ```
 
-## Behavior by file type
+## Input
+
+- **Multimodal**: auto-detects kind from extension → image, video, audio, document, text
+- **Multi-file**: `mm cat a.jpg b.pdf c.mp4` — processes each sequentially
+- **Large batches**: if the path count is **≥ 9** (i.e. more than 8 files; override with `MM_CAT_BATCH_CONFIRM_THRESHOLD`), `cat` asks for confirmation in a TTY; in non-interactive use it **exits with an error** unless you pass **`--yes` / `-y`**
+- **Stdin**: `find . -name '*.pdf' | mm cat` — reads newline-delimited paths from stdin
+- **Head/tail**: `-n 20` (first 20 lines), `-n -20` (last 20 lines)
+
+## Modes
+
+`--mode fast` (default) — runs the kind's fast pipeline. Whether an LLM is involved depends on the pipeline's `generate` step (image/fast.yaml has one, document/fast.yaml does not).
+`--mode accurate` — runs the kind's accurate pipeline; always LLM-heavy.
+
+Both `fast` and `accurate` read from the **metadata tier** as their input —
+the locally-extracted content cached in `files.text_preview`. That tier
+never invokes an LLM and is reusable across both `fast` and `accurate`
+extractions of the same file.
+
+`kind=text` and non-PDF documents (`.docx` / `.pptx`) ignore `--mode` entirely: they always return passthrough
+text and write FK-orphan chunks + concurrent embeddings on first sight, no `extractions` row.
+
+### Overview
 
 |                           | `fast` (default)                          | `accurate`                              |
 |---------------------------|-------------------------------------------|-----------------------------------------|
@@ -24,6 +45,70 @@ mm cat FILE [FILE ...] [OPTIONS]
 | **Code / text**           | Passthrough text (no LLM)                 | Passthrough text (no LLM)               |
 
 `--mode` is a no-op for non-PDF documents, code, and text — they always return passthrough text regardless of mode.
+
+### Image
+
+| | fast (default) | accurate |
+|---|---|---|
+| Encoder | `resize` (max 512px) | `resize` (max 1024px) |
+| Output | 10-word description + 5 tags | ~200-word description + 10 tags + 10 objects |
+| Tokens | 256 max | 2048 max |
+
+### Video
+
+Multi-file: `mm cat a.mp4 b.mp4 -y` runs each video sequentially; the same **≥ 9 paths** batch rule applies as for images.
+
+| | fast (default) | accurate |
+|---|---|---|
+| Encoder | `mosaic` (4×4 grid, 128 frames, up to 8 mosaics) | `frames-w-transcript` (1fps, whisper medium, 2.0× speed) |
+| Output | 50-word description + tags | ~200-word summary + tags + scene breakdown |
+| Tokens | 512 max | 1536 max |
+| Audio | none | whisper medium, 2.0× speed |
+
+### Audio
+
+| | fast (default) | accurate |
+|---|---|---|
+| Encoder | `transcribe` (whisper medium, 2.0×) | `transcribe` (whisper medium, 2.0×) |
+| Output | Whisper transcript | Whisper transcript |
+| LLM call | None — `transcribe` suppresses generate | None — `transcribe` suppresses generate |
+| For LLM output | Use `-p base64` (10-word description, 128 tok) | Use `-p base64` or `-p gemini` (full description, 1024 tok) |
+
+**Transcription backends** (auto-detected by priority, override via --encode.backend or `mm config set transcription.backend`):
+
+| Backend | Priority | Device | Notes |
+|---|---|---|---|
+| `mlx` | 10 | Apple Metal GPU | Requires `mm[mlx]` extra |
+| `ctranslate2` | 20 | CPU (int8) / CUDA (float16) | Included in core install |
+| `openai` | 30 | Remote API | Any OpenAI-compatible `/v1/audio/transcriptions` endpoint |
+
+**Selecting a backend** — precedence from most to least specific:
+
+1. **CLI flag** (one-off): `mm cat audio.mp3 --encode.backend openai`
+2. **Pipeline YAML** (`encode.backend:` top-level)
+3. **Global default** (`mm config set transcription.backend openai`), persisted in `[transcription]` of `~/.config/mm/mm.toml`
+4. **Environment** (`MM_TRANSCRIPTION_BASE_URL`, openai backend only)
+5. **Auto-detect** (mlx → ctranslate2 → openai)
+
+**Python API** encoders for audio:
+
+| Name | Description |
+|---|---|
+| `base64` | (default in `to_messages`) Raw base64-encoded audio for native VLM input |
+| `transcribe` | Whisper transcript as text, supports `backend`/`base_url`/`api_key` kwargs |
+| `gemini` | Pass audio file as a Gemini Part |
+
+### Document (PDF only)
+
+| | fast (default) | accurate |
+|---|---|---|
+| Encoder | `page-text` (pypdfium2, 1 page/message) | `page-text` (pypdfium2, 1 page/message) |
+| Output | concatenated page text | lossless markdown restructuring |
+| Tokens | — | 16384 max |
+
+### Document (DOCX / PPTX) and Text / Code / Config
+
+Passthrough in all modes — raw file content extracted via libreoffice-rs (DOCX/PPTX/XLSX/ODS/ODT/ODP) or `read_text` (text/code/config). No pipeline, no LLM; mode is a no-op.
 
 ## Options
 
@@ -85,16 +170,130 @@ profile (mm.toml)  →  pipeline YAML (generate.*)  →  CLI flags
                          extra_body (deep-merged)       --generate.extra-body
 ```
 
+## Pipeline customization
+
+### Built-in pipelines
+
+```
+pipelines/
+  image/    fast.yaml    accurate.yaml
+  video/    fast.yaml    accurate.yaml
+  audio/    fast.yaml    accurate.yaml
+  document/ fast.yaml    accurate.yaml
+```
+
+### Override mechanisms (priority order)
+
+1. `-p pipeline.yaml` — explicit YAML file
+2. `-p encoder_name` — named encoder (e.g. `tile`, `mosaic`, `page-text`)
+3. `~/.config/mm/pipelines/{kind}/{mode}.yaml` — user override directory
+4. Built-in `pipelines/{kind}/{mode}.yaml`
+
+### Pipeline YAML structure
+
+```yaml
+kind: image
+mode: fast
+
+encode:
+  strategy: resize          # registered encoder name
+  strategy_opts:
+    max_width: 512          # encoder-specific options
+
+generate:                   # optional — omit for encode-only
+  prompt: "Describe..."     # supports {filename}, {content}, {transcript}
+  max_tokens: 256
+  temperature: 0.1          # optional
+  json_mode: false          # optional
+```
+
+### CLI overrides
+
+Namespaced flags override individual pipeline fields:
+
+- `--encode.strategy resize` — swap encoder
+- `--encode.strategy_opts max_width=768` — override a single `strategy_opts` entry
+  (repeatable; values are coerced to int/float/bool when possible, e.g.
+  `--encode.strategy_opts max_width=768 --encode.strategy_opts fps=5`)
+- `--encode.pyfunc transform.py` — custom Python transform
+- `--generate.prompt "..."` — override prompt
+- `--generate.max-tokens 512` — override token limit
+- `--generate.temperature 0.5` — override temperature
+- `--print-pipeline image/accurate` — print the YAML source of a built-in pipeline
+  (accepts `<kind>/<mode>`, useful as a starting point for a custom pipeline)
+
 ## Caching
 
-Extractions are cached in the SQLite database at `~/.local/share/mm/mm.db` keyed on:
-- Content hash (xxh3) of the file
-- Profile name
-- Effective model
-- Mode
-- Override fingerprint
+The metadata tier is cached in `files.text_preview` keyed by `content_hash`
+(populated by `extract_meta`; reused on every subsequent `cat` of the same
+file, regardless of mode).
 
-`--no-cache` bypasses the cache and forces a fresh extraction. A subsequent run without `--no-cache` will use the newly stored result.
+The unified `extractions` table (SQLite at `~/.local/share/mm/mm.db`) caches
+**both** fast and accurate pipeline outputs (the metadata tier never writes
+here — it lives in `files`).
+
+- Cache key (`extractions`): `content_hash × profile × model × mode × overrides`
+  - Same file with different modes/profiles/overrides → separate cache entries
+- `--no-cache`: bypasses read, evicts existing entry, forces fresh run (applies to fast/accurate for image/video/audio/PDF; the metadata tier is always read from `files`, and `kind=text` + non-PDF documents ignore `--no-cache` since their content is deterministic)
+- Cache hit indicator: footer shows `cached • 36ms • 412.8 KB • 7.0 MB/s`
+- Embedding: on cache miss with accurate mode, `embed_file_chunks` auto-generates Gemini embeddings
+
+## Verbose (`--verbose` / `-v`)
+
+Pipeline execution tree shown after content:
+
+```
+pipeline
+  ├─ encode: resize • 0.0s → 1 parts (1 image)
+  └─ generate: ollama • 2.3s • 354→195 tokens
+```
+
+- Encode-only pipelines (document fast): single `└─` node
+- Encode + generate: `├─` encode, `└─` generate
+- Generate line: `profile_name • elapsed • prompt→completion tokens`
+
+## Streaming (`--stream`)
+
+When `--stream` is passed, LLM tokens are written to stdout incrementally as the backend generates them. Streaming takes precedence over `--format` — formatted output modes are bypassed.
+
+- **Multi-file**: files are processed sequentially (no parallel threads) to avoid interleaved output.
+- **Verbose**: `--stream -v` still displays the pipeline tree and timing metadata after the streamed content.
+- **Fallback**: if the backend doesn't support streaming (e.g. VLM gateway returns 0 chunks), `_chat_stream` transparently falls back to a non-streaming call.
+
+## Output formats
+
+- **TTY** (default): Rich-formatted with syntax highlighting for code files
+- **Piped** (default): plain text, no ANSI codes
+- `--format json`: `{"path", "mode", "content"}`
+- `--format pretty-json`: always-indented JSON (good for piping into docs)
+- `--format dataset-jsonl`: one JSON object per line with metadata
+- `--format dataset-hf`: HuggingFace-compatible dataset export (requires `--output-dir`)
+- Multi-file separator: `--- path (kind, sizeB) ---`
+
+## Footer
+
+Always shown (dimmed):
+
+```
+elapsed • size • throughput
+```
+
+Examples: `836ms • 38.2 KB • 45.7 KB/s`, `cached • 36ms • 412.8 KB • 7.0 MB/s`
+
+- Throughput auto-scales: B/s → KB/s → MB/s → GB/s
+- `cached` prefix when served from the extractions cache
+
+## Dry run
+
+`--dry-run` resolves and prints the pipeline that *would* run (encoder, strategy options, model, prompt) without executing it. No encoding, no LLM call, no cache writes.
+
+For passthrough kinds (text, code, `.docx`, `.pptx`) it emits a short header with the file size and a note that content would be passed through.
+
+```bash
+mm cat photo.png --dry-run            # show resolved image pipeline
+mm cat video.mp4 -m accurate --dry-run  # show accurate video pipeline
+mm cat notes.docx --dry-run           # passthrough preview
+```
 
 ## Examples
 
@@ -199,11 +398,6 @@ mm cat video.mp4 -m accurate --stream --no-cache
 mm cat photo.png -m accurate --stream -v
 ```
 
-When `--stream` is active, tokens are written to stdout incrementally as the
-LLM generates them. `--stream` takes precedence over `--format` — formatted
-output modes are bypassed. Multi-file streaming processes files sequentially
-to avoid interleaved output.
-
 ### Output formats
 
 ```bash
@@ -238,19 +432,6 @@ mm cat photo.png --no-generate
 
 # useful for offline testing / snapshotting encoder behavior
 mm cat photo.png -p tile --no-generate
-```
-
-### Pipeline inspection (dry run)
-
-```bash
-# show the resolved pipeline without executing it
-mm cat photo.png --dry-run
-
-# inspect accurate mode pipeline
-mm cat video.mp4 -m accurate --dry-run
-
-# preview with overrides applied
-mm cat audio.mp3 -m accurate --encode.backend mlx --dry-run
 ```
 
 ## Per-provider / per-model overrides with `--generate.extra-body`
@@ -289,3 +470,5 @@ mm --profile vlmrt cat clip.mp4 -m accurate \
 - Batch confirmation is triggered when the path count reaches a threshold (default 9). Override with `--yes` or the `MM_CAT_BATCH_CONFIRM_THRESHOLD` environment variable.
 - `--no-generate` is useful for snapshotting encoder behavior offline and for testing pipeline encoders without an LLM server.
 - For `dataset-jsonl` and `dataset-hf` output formats, each record includes `path`, `mode`, `content`, `name`, `type`, and `size` fields.
+- `--list-pipelines`: show all built-in and user-override pipeline YAML files.
+- `--list-encoders`: show all registered encoder strategies with parameters.
