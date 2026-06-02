@@ -20,7 +20,6 @@ from functools import cache
 from pathlib import Path
 from typing import Any, Literal
 
-from mm.cache import memoize_file
 from mm.utils import file_kind
 
 PeekKind = Literal["image", "video", "audio", "document", "text"]
@@ -141,57 +140,52 @@ class FileMetadata:
 
         Pure read used by ``mm peek`` as the metadata-tier provider.
         """
+        from mm._mm import Scanner
+        from mm.constants import guess_mime
 
-        @memoize_file(maxsize=128)
-        def handler(path: Path | str, *, full: bool = False):
-            from mm._mm import Scanner
-            from mm.constants import guess_mime
+        p = Path(path)
+        scanner = Scanner(str(p.parent))
+        scanner.scan()
+        r = scanner.extract_metadata(p.name)
+        size = p.stat().st_size
 
-            p = Path(path)
-            scanner = Scanner(str(p.parent))
-            scanner.scan()
-            r = scanner.extract_metadata(p.name)
-            size = p.stat().st_size
+        try:
+            result = _magika().identify_path(p)
+            aimeta = {**result.output.__dict__, "confidence": result.score}
+        except Exception:
+            aimeta = None
 
-            try:
-                result = _magika().identify_path(p)
-                aimeta = {**result.output.__dict__, "confidence": result.score}
-            except Exception:
-                aimeta = None
+        kind = file_kind(p)
+        if full:
+            doc = _doc_props(p) if kind == "document" else {}
+        else:
+            doc = {}
 
-            kind = file_kind(p)
-            if full:
-                doc = _doc_props(p) if kind == "document" else {}
-            else:
-                doc = {}
-
-            return cls(
-                path=str(p.resolve()),
-                name=p.name,
-                size=size,
-                mime=guess_mime(p.name, fallback="application/octet-stream"),
-                kind=kind,  # type: ignore[arg-type]
-                dimensions=r.dimensions,
-                phash=r.phash,
-                exif_camera=r.exif_camera,
-                exif_date=r.exif_date,
-                exif_gps=r.exif_gps,
-                exif_orientation=r.exif_orientation,
-                duration_s=r.duration_s,
-                fps=r.fps,
-                video_codec=r.video_codec,
-                audio_codec=r.audio_codec,
-                has_audio=r.has_audio,
-                pages=doc.get("pages", r.pages),
-                doc_author=doc.get("doc_author"),
-                doc_title=doc.get("doc_title"),
-                doc_subject=doc.get("doc_subject"),
-                doc_keywords=doc.get("doc_keywords"),
-                doc_creator=doc.get("doc_creator"),
-                doc_producer=doc.get("doc_producer"),
-                content_hash=r.content_hash,
-                magic_mime=r.magic_mime,
-                aimeta=aimeta,
-            )
-
-        return handler(path, full=full)
+        return cls(
+            path=str(p.resolve()),
+            name=p.name,
+            size=size,
+            mime=guess_mime(p.name, fallback="application/octet-stream"),
+            kind=kind,  # type: ignore[arg-type]
+            dimensions=r.dimensions,
+            phash=r.phash,
+            exif_camera=r.exif_camera,
+            exif_date=r.exif_date,
+            exif_gps=r.exif_gps,
+            exif_orientation=r.exif_orientation,
+            duration_s=r.duration_s,
+            fps=r.fps,
+            video_codec=r.video_codec,
+            audio_codec=r.audio_codec,
+            has_audio=r.has_audio,
+            pages=doc.get("pages", r.pages),
+            doc_author=doc.get("doc_author"),
+            doc_title=doc.get("doc_title"),
+            doc_subject=doc.get("doc_subject"),
+            doc_keywords=doc.get("doc_keywords"),
+            doc_creator=doc.get("doc_creator"),
+            doc_producer=doc.get("doc_producer"),
+            content_hash=r.content_hash,
+            magic_mime=r.magic_mime,
+            aimeta=aimeta,
+        )

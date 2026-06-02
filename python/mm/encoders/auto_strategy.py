@@ -77,6 +77,7 @@ instead of ``rasterize-text`` to avoid wasted text-extraction attempts.
 import dataclasses
 from pathlib import Path
 
+from mm.cache import memoize_file
 from mm.cat_utils.base_utils import CatOpts
 from mm.pipelines.schema import PipelineSpec
 
@@ -100,6 +101,7 @@ _SCANNER_TOKENS = frozenset(
 )
 
 
+@memoize_file(maxsize=64)
 def auto_strategy(path: Path) -> str:
     """Determine the optimal encoding strategy for a binary media file.
 
