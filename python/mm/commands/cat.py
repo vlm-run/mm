@@ -224,6 +224,9 @@ def cat_cmd(
         ),
     ] = None,
     # -- Utility --
+    stream: Annotated[
+        bool, typer.Option("--stream", help="Stream LLM output token-by-token to stdout")
+    ] = False,
     verbose: Annotated[bool, typer.Option("--verbose", "-v", help="Show progress bars")] = False,
     dry_run: Annotated[
         bool,
@@ -413,6 +416,7 @@ def cat_cmd(
         pipelines=pipeline_specs,
         verbose=verbose,
         dry_run=dry_run,
+        stream=stream,
     )
 
     multi_file = len(paths) > 1
@@ -496,7 +500,30 @@ def cat_cmd(
                 output_console.print("\n".join(rich_lines))
             _emitted += 1
 
-    if valid_paths:
+    if valid_paths and stream:
+        for p in valid_paths:
+            if multi_file:
+                typer.echo(f"<{p.name}>", err=True)
+            try:
+                content = _process(p)
+            except Exception as exc:
+                typer.echo(f"Error processing {p}: {exc}", err=True)
+                continue
+
+            import mm.llm as _llm_mod
+
+            if _llm_mod.streamed_to_stdout:
+                # Content already written to stdout;
+                # emit the verbose suffix (pipeline tree + timing) if present.
+                parts = content.split("\n\n")
+                suffix_parts = [p for p in parts if "[dim]" in p]
+                if suffix_parts:
+                    from mm.display import output_console
+
+                    output_console.print("\n".join(suffix_parts))
+            else:
+                _render(p, content)
+    elif valid_paths:
         from concurrent.futures import ThreadPoolExecutor
 
         with ThreadPoolExecutor(max_workers=min(8, len(valid_paths))) as pool:

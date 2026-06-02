@@ -42,6 +42,7 @@ mm cat FILE [FILE ...] [OPTIONS]
 | `--no-generate` | | flag | Skip the LLM step — emit only the encoder's text parts |
 | `--dry-run` | | flag | Resolve and display the pipeline without executing it |
 | `--format FORMAT` | `-f` | enum | Output format: `rich`, `json`, `pretty-json`, `tsv`, `csv`, `dataset-jsonl`, `dataset-hf` |
+| `--stream` | | flag | Stream LLM output tokens to stdout as they arrive. Takes precedence over `--format`. |
 | `--verbose` | `-v` | flag | Show progress bars and LLM call details |
 | `--yes` | `-y` | flag | Skip the confirmation prompt when batching many files |
 
@@ -185,6 +186,24 @@ mm cat photo.png -m accurate -p my-pipeline.yaml
 mm cat photo.png -m accurate --prompt "List all objects visible in this image."
 ```
 
+### Streaming
+
+```bash
+# stream LLM tokens to stdout as they arrive
+mm cat photo.png -m accurate --stream
+
+# stream + force fresh LLM call (no cache)
+mm cat video.mp4 -m accurate --stream --no-cache
+
+# streaming works with verbose (pipeline tree + timing still shown)
+mm cat photo.png -m accurate --stream -v
+```
+
+When `--stream` is active, tokens are written to stdout incrementally as the
+LLM generates them. `--stream` takes precedence over `--format` — formatted
+output modes are bypassed. Multi-file streaming processes files sequentially
+to avoid interleaved output.
+
 ### Output formats
 
 ```bash
@@ -264,6 +283,7 @@ mm --profile vlmrt cat clip.mp4 -m accurate \
 ## Notes
 
 - Multi-file output uses `====` as a separator with `<filename>` headers in rich mode.
+- `--stream` writes LLM tokens to stdout as they arrive; takes precedence over `--format`. Falls back to non-streaming when the backend doesn't support it.
 - `--verbose` shows timing, prompt tokens, and completion tokens from the LLM call.
 - Files that do not exist are skipped with a warning; missing files are also pruned from the cache index.
 - Batch confirmation is triggered when the path count reaches a threshold (default 9). Override with `--yes` or the `MM_CAT_BATCH_CONFIRM_THRESHOLD` environment variable.

@@ -146,6 +146,10 @@ mm cat image.jpg -m accurate   # LLM-powered caption + tags + objects
 mm cat video.mp4 -m accurate   # keyframe mosaic → LLM description
 mm cat audio.mp3 -m accurate   # Whisper transcript only (use -p base64 or -p gemini for LLM description)
 mm cat report.pdf -m accurate  # text → LLM markdown structuring
+
+# --stream: stream LLM tokens to stdout as they arrive (takes precedence over --format)
+mm cat image.jpg -m accurate --stream
+mm cat video.mp4 -m accurate --stream --no-cache
 ```
 
 `kind=text` and non-PDF documents (`.docx` / `.pptx`) ignore `--mode` entirely: they always return passthrough

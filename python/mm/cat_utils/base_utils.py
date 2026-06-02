@@ -28,6 +28,7 @@ class CatOpts:
         "pipelines",
         "verbose",
         "dry_run",
+        "stream",
     )
 
     n: int | None
@@ -41,6 +42,7 @@ class CatOpts:
     pipelines: dict[str, PipelineSpec]
     verbose: bool
     dry_run: bool
+    stream: bool
 
     def __init__(self, **kwargs) -> None:
         for k, v in kwargs.items():

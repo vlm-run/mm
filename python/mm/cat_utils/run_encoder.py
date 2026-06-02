@@ -10,8 +10,8 @@ from mm.cat_utils.base_utils import (
     spec_extra_body,
 )
 from mm.constants import BinaryFileKind
-from mm.pipelines.schema import PipelineSpec
 from mm.encoders.base import Message
+from mm.pipelines.schema import PipelineSpec
 
 
 def _format_pipeline_tree(encode_info: str, generate_info: str | None = None) -> str:
@@ -160,13 +160,26 @@ def run_encoder(path: Path, kind: BinaryFileKind, spec: PipelineSpec, opts: CatO
 
     ctx = {"filename": path.name}
     extra = spec_extra_body(spec)
+    do_stream = getattr(opts, "stream", False)
     if len(chunks) == 1:
         result = llm.generate(
-            kind, opts.mode, context=ctx, parts=chunks[0], pipeline_spec=spec, extra_body=extra
+            kind,
+            opts.mode,
+            context=ctx,
+            parts=chunks[0],
+            pipeline_spec=spec,
+            extra_body=extra,
+            stream=do_stream,
         )
     else:
         result = llm.generate_chunked(
-            kind, opts.mode, context=ctx, chunks=chunks, pipeline_spec=spec, extra_body=extra
+            kind,
+            opts.mode,
+            context=ctx,
+            chunks=chunks,
+            pipeline_spec=spec,
+            extra_body=extra,
+            stream=do_stream,
         )
 
     elapsed = (time.monotonic() - t0) * 1000

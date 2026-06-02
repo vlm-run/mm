@@ -169,6 +169,14 @@ Namespaced flags override individual pipeline fields:
 - `--print-pipeline image/accurate` — print the YAML source of a built-in pipeline
   (accepts `<kind>/<mode>`, useful as a starting point for a custom pipeline)
 
+## Streaming (`--stream`)
+
+When `--stream` is passed, LLM tokens are written to stdout incrementally as the backend generates them. Streaming takes precedence over `--format` — formatted output modes are bypassed.
+
+- **Multi-file**: files are processed sequentially (no parallel threads) to avoid interleaved output.
+- **Verbose**: `--stream -v` still displays the pipeline tree and timing metadata after the streamed content.
+- **Fallback**: if the backend doesn't support streaming (e.g. VLM gateway returns 0 chunks), `_chat_stream` transparently falls back to a non-streaming call.
+
 ## Output Formats
 
 - **TTY** (default): Rich-formatted with syntax highlighting for code files

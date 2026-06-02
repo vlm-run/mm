@@ -28,6 +28,10 @@ from mm.constants import BinaryFileKind
 from mm.pipelines.schema import PipelineSpec
 from mm.utils import get_b64
 
+# Set by ``_chat_stream`` after writing content to stdout so callers can
+# avoid re-emitting the same text.  Reset at the start of each ``_chat`` call.
+streamed_to_stdout: bool = False
+
 logger = logging.getLogger(__name__)
 
 
@@ -87,6 +91,7 @@ class LlmBackend:
         parts: list[dict[str, Any]] | None = None,
         pipeline_spec: PipelineSpec | None = None,
         extra_body: dict[str, Any] | None = None,
+        stream: bool = False,
     ) -> str:
         """Pipeline-driven MLLM generation.
 
@@ -140,6 +145,7 @@ class LlmBackend:
             think=tpl.generate.think,
             reasoning_effort=tpl.generate.reasoning_effort,
             extra_body=merged_extra_body or None,
+            stream=stream,
         )
 
     def generate_chunked(
@@ -153,6 +159,7 @@ class LlmBackend:
         on_chunk: Any | None = None,
         pipeline_spec: PipelineSpec | None = None,
         extra_body: dict[str, Any] | None = None,
+        stream: bool = False,
     ) -> str:
         """Process multiple content chunks sequentially and concatenate results.
 
@@ -193,6 +200,7 @@ class LlmBackend:
                 parts=parts,
                 pipeline_spec=pipeline_spec,
                 extra_body=extra_body,
+                stream=stream,
             )
             results[i] = result
             usage = getattr(self._local, "last_usage", LlmUsage())
@@ -243,12 +251,16 @@ class LlmBackend:
         think: bool = False,
         reasoning_effort: str = "none",
         extra_body: dict[str, Any] | None = None,
+        stream: bool = False,
     ) -> str:
         """Single chat/completions call via the OpenAI SDK.
 
         ``extra_body`` is deep-merged with the built-in ``think`` /
         ``reasoning_effort`` keys (caller-supplied values win).
         """
+        global streamed_to_stdout
+        streamed_to_stdout = False
+
         from mm.pipelines import deep_merge
 
         effective_max = min(max_tokens * 8, 16384) if think else max_tokens
@@ -271,6 +283,9 @@ class LlmBackend:
 
         if eb:
             kwargs["extra_body"] = eb
+
+        if stream:
+            return self._chat_stream(kwargs)
 
         try:
             response: ChatCompletion = self.client.chat.completions.create(**kwargs)
@@ -297,6 +312,75 @@ class LlmBackend:
             return ""
         except Exception as e:
             logger.debug("LLM error %s", e)
+            return f"[LLM error: {e}]"
+
+    def _chat_stream(self, kwargs: dict[str, Any]) -> str:
+        """Streaming variant of ``_chat`` — writes tokens to stdout as they arrive.
+
+        Falls back transparently to a non-streaming call when the backend
+        yields no chunks.
+
+        Args:
+            kwargs: Fully-assembled keyword arguments for
+                ``chat.completions.create`` (model, messages, temperature, ...).
+
+        Returns:
+            The concatenated response text (same contract as ``_chat``).
+        """
+        import sys
+
+        kwargs["stream"] = True
+        kwargs["stream_options"] = {"include_usage": True}
+        try:
+            response_stream = self.client.chat.completions.create(**kwargs)
+            collected: list[str] = []
+            for chunk in response_stream:
+                if chunk.usage is not None:
+                    usage = LlmUsage(
+                        prompt_tokens=chunk.usage.prompt_tokens or 0,
+                        completion_tokens=chunk.usage.completion_tokens or 0,
+                        total_tokens=chunk.usage.total_tokens or 0,
+                    )
+                    self.last_usage = usage
+                    self._local.last_usage = usage
+                if not chunk.choices:
+                    continue
+                delta = chunk.choices[0].delta
+                token = delta.content or ""
+                if token:
+                    sys.stdout.write(token)
+                    sys.stdout.flush()
+                    collected.append(token)
+
+            if collected:
+                global streamed_to_stdout
+                streamed_to_stdout = True
+                sys.stdout.write("\n")
+                sys.stdout.flush()
+                return "".join(collected).strip()
+
+            # Backend returned no content chunks — fall back to non-streaming.
+            logger.debug("Streaming yielded no tokens; falling back to non-streaming call")
+            kwargs.pop("stream", None)
+            kwargs.pop("stream_options", None)
+            response = self.client.chat.completions.create(**kwargs)
+            if response.usage:
+                usage = LlmUsage(
+                    prompt_tokens=response.usage.prompt_tokens or 0,
+                    completion_tokens=response.usage.completion_tokens or 0,
+                    total_tokens=response.usage.total_tokens or 0,
+                )
+                self.last_usage = usage
+                self._local.last_usage = usage
+            text = (response.choices[0].message.content or "").strip()
+            if text:
+                streamed_to_stdout = True
+                sys.stdout.write(text)
+                sys.stdout.write("\n")
+                sys.stdout.flush()
+            return text
+        except Exception as e:
+            logger.debug("LLM streaming error %s", e)
             return f"[LLM error: {e}]"
 
 
