@@ -13,7 +13,7 @@ mm cat FILE [FILE ...] [OPTIONS]
 ## Input
 
 - **Multimodal**: auto-detects kind from extension → image, video, audio, document, text
-- **Multi-file**: `mm cat a.jpg b.pdf c.mp4` — processes each sequentially
+- **Multi-file**: `mm cat a.jpg b.pdf c.mp4` — processes files in parallel (up to 8 threads); output order matches input order. With `--stream`, files are processed sequentially to avoid interleaved output.
 - **Large batches**: if the path count is **≥ 9** (i.e. more than 8 files; override with `MM_CAT_BATCH_CONFIRM_THRESHOLD`), `cat` asks for confirmation in a TTY; in non-interactive use it **exits with an error** unless you pass **`--yes` / `-y`**
 - **Stdin**: `find . -name '*.pdf' | mm cat` — reads newline-delimited paths from stdin
 - **Head/tail**: `-n 20` (first 20 lines), `-n -20` (last 20 lines)
@@ -28,8 +28,9 @@ the locally-extracted content cached in `files.text_preview`. That tier
 never invokes an LLM and is reusable across both `fast` and `accurate`
 extractions of the same file.
 
-`kind=text` and non-PDF documents (`.docx` / `.pptx`) ignore `--mode` entirely: they always return passthrough
-text and write FK-orphan chunks + concurrent embeddings on first sight, no `extractions` row.
+`kind=text` files ignore `--mode` entirely: they always return passthrough text and
+write FK-orphan chunks + concurrent embeddings on first sight, no `extractions` row.
+Office documents are passthrough in fast mode but go through the LLM pipeline in accurate mode (see below).
 
 ### Overview
 
@@ -41,10 +42,10 @@ text and write FK-orphan chunks + concurrent embeddings on first sight, no `extr
 | **Audio** (`-p base64`)   | 10-word description  | Detailed LLM description |
 | **Audio** (`-p gemini`)   | 10-word description               | Detailed LLM description        |
 | **PDFs**                  | Page-text extraction (pypdfium2)          | Text → LLM markdown structuring         |
-| **Non-PDF docs** (.docx/.pptx) | Passthrough text (no LLM)           | Passthrough text (no LLM)               |
+| **Office docs** (.docx/.pptx/.xlsx/.odt/.odp/.ods) | Passthrough text (no LLM) | Office → PDF conversion → LLM markdown  |
 | **Code / text**           | Passthrough text (no LLM)                 | Passthrough text (no LLM)               |
 
-`--mode` is a no-op for non-PDF documents, code, and text — they always return passthrough text regardless of mode.
+`--mode` is a no-op for code and text — they always return passthrough text regardless of mode. Office documents (`.docx`, `.pptx`, `.xlsx`, `.odt`, `.odp`, `.ods`) are passthrough in fast mode but converted to PDF and processed through the LLM pipeline in accurate mode.
 
 ### Image
 
@@ -79,7 +80,7 @@ Multi-file: `mm cat a.mp4 b.mp4 -y` runs each video sequentially; the same **≥
 | Backend | Priority | Device | Notes |
 |---|---|---|---|
 | `mlx` | 10 | Apple Metal GPU | Requires `mm[mlx]` extra |
-| `ctranslate2` | 20 | CPU (int8) / CUDA (float16) | Included in core install |
+| `ctranslate2` | 20 | CPU (int8) / CUDA (float16) | Requires `mm-ctx[gpu]` extra |
 | `openai` | 30 | Remote API | Any OpenAI-compatible `/v1/audio/transcriptions` endpoint |
 
 **Selecting a backend** — precedence from most to least specific:
@@ -106,9 +107,18 @@ Multi-file: `mm cat a.mp4 b.mp4 -y` runs each video sequentially; the same **≥
 | Output | concatenated page text | lossless markdown restructuring |
 | Tokens | — | 16384 max |
 
-### Document (DOCX / PPTX) and Text / Code / Config
+### Document (Office: DOCX / PPTX / XLSX / ODS / ODT / ODP)
 
-Passthrough in all modes — raw file content extracted via libreoffice-rs (DOCX/PPTX/XLSX/ODS/ODT/ODP) or `read_text` (text/code/config). No pipeline, no LLM; mode is a no-op.
+| | fast (default) | accurate |
+|---|---|---|
+| Behavior | Passthrough text via libreoffice-rs | Office → PDF conversion → LLM markdown structuring |
+| LLM call | None | Yes (routes through office→PDF before encode) |
+
+In fast mode, raw text is extracted directly. In accurate mode, the file is converted to PDF via `office_to_pdf` and then processed through the document/accurate pipeline.
+
+### Text / Code / Config
+
+Passthrough in all modes — raw file content via `read_text`. No pipeline, no LLM; mode is a no-op.
 
 ## Options
 
@@ -139,8 +149,8 @@ Override the pipeline's encoder behavior for this invocation.
 |------|-------------|
 | `--encode.strategy NAME` | Override the encoder name |
 | `--encode.pyfunc CODE_OR_PATH` | Inline Python transform or path to a `.py` file |
-| `--encode.backend BACKEND` | Transcription backend: `openai`, `mlx`, `ctranslate2` |
-| `--encode.model MODEL` | Encoder model (e.g. Whisper model for audio transcription) |
+| `--encode.backend BACKEND` | Transcription backend for audio/video encoding: `openai`, `mlx`, `ctranslate2`. Ignored by encoders that have no backend concept. |
+| `--encode.model MODEL` | Model used by the encoder, independent of the LLM generate model (e.g. `nvidia/parakeet-tdt-0.6b-v3`, `whisper-1`). Ignored by encoders that have no model concept. |
 | `--encode.strategy_opts KEY=VALUE` | Override individual strategy options. Repeatable. Values are coerced to int/float/bool where possible. |
 
 ### Generate overrides
@@ -256,7 +266,7 @@ pipeline
 
 When `--stream` is passed, LLM tokens are written to stdout incrementally as the backend generates them. Streaming takes precedence over `--format` — formatted output modes are bypassed.
 
-- **Multi-file**: files are processed sequentially (no parallel threads) to avoid interleaved output.
+- **Multi-file**: files are processed sequentially (no parallel threads) to avoid interleaved output. Without `--stream`, files are processed in parallel.
 - **Verbose**: `--stream -v` still displays the pipeline tree and timing metadata after the streamed content.
 - **Fallback**: if the backend doesn't support streaming (e.g. VLM gateway returns 0 chunks), `_chat_stream` transparently falls back to a non-streaming call.
 
