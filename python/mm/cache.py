@@ -83,19 +83,10 @@ PathSpec = PathLike | Callable[[], PathLike] | None
 
 
 def cache_dir() -> Path:
-    """Return mm's on-disk cache directory, honouring XDG conventions.
+    """Return mm's on-disk cache directory from :class:`~mm.settings.MmSettings`.
 
-    Delegates to :class:`~mm.settings.MmSettings`, which resolves the path in
-    order:
-
-    1. ``$MM_CACHE_DIR`` — mm-specific override (used in tests/CI).
-    2. ``$XDG_CACHE_HOME/mm`` — XDG Base Directory spec.
-    3. ``~/.cache/mm`` — fallback.
-
-    Resolution is lazy (read on access, not at import), so tests that set
-    ``MM_CACHE_DIR`` after importing mm still take effect. The directory is
-    *not* created here; callers (or the disk-cache backend) create it on
-    demand so a read-only check is free.
+    Resolved lazily on access (not created here), so ``MM_CACHE_DIR`` set after
+    import still takes effect.
     """
     from mm.settings import get_settings
 

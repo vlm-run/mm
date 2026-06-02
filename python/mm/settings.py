@@ -1,30 +1,10 @@
-"""Centralized on-disk path settings for mm.
+"""Centralized on-disk paths for mm.
 
-All of mm's cache, storage, database, blob, and config locations are declared
-here in a single :class:`MmSettings` object. Keeping them in one place lets a
-test or benchmark redirect *every* path at once to a fresh, isolated location
-via ``MM_*`` environment variables (or by stubbing the settings object),
-guaranteeing zero state contamination between runs.
-
-Resolution is lazy: :func:`get_settings` builds the singleton on first access,
-so environment variables set *after* ``mm`` is imported — e.g. in
-``conftest.py`` — are still honoured. Call :func:`reset_settings` to rebuild the
-singleton after mutating the environment within a live process.
-
-Each path has an XDG-compliant default and a dedicated ``MM_*`` override:
-
-==============  =================  ============================================
-Setting         Env var            Default
-==============  =================  ============================================
-``cache_dir``   ``MM_CACHE_DIR``   ``$XDG_CACHE_HOME/mm`` or ``~/.cache/mm``
-``data_dir``    ``MM_DATA_DIR``    ``$XDG_DATA_HOME/mm`` or ``~/.local/share/mm``
-``config_dir``  ``MM_CONFIG_DIR``  ``$XDG_CONFIG_HOME/mm`` or ``~/.config/mm``
-``db_path``     ``MM_DB_PATH``     ``<data_dir>/mm.db``
-``blobs_dir``   ``MM_BLOBS_DIR``   ``<data_dir>/blobs``
-==============  =================  ============================================
-
-``db_path`` and ``blobs_dir`` default to being derived from ``data_dir`` but
-each remains independently overridable by its own env var.
+A single :class:`MmSettings` is the source of truth for every cache, data,
+db, blob, and config location, each with an XDG default and an ``MM_*``
+override. Resolution is lazy via :func:`get_settings`, so env vars set after
+``mm`` is imported are honoured; call :func:`reset_settings` to rebuild the
+singleton after mutating the environment in-process.
 """
 
 from __future__ import annotations
@@ -59,22 +39,10 @@ def _default_config_dir() -> Path:
 
 
 class MmSettings(BaseSettings):
-    """Single source of truth for mm's on-disk paths.
+    """Source of truth for mm's on-disk paths.
 
-    Attributes:
-        cache_dir: Memoisation cache root (transcripts, scene detection).
-        data_dir: Storage root for the SQLite DB and content-addressed blobs.
-        config_dir: Directory holding ``mm.toml`` plus user pipelines/encoders.
-        db_path: SQLite database file; defaults to ``data_dir / "mm.db"``.
-        blobs_dir: Content-addressed blob store; defaults to ``data_dir / "blobs"``.
-
-    Example:
-        >>> import os
-        >>> os.environ["MM_DATA_DIR"] = "/tmp/mm-run"
-        >>> from mm.settings import get_settings, reset_settings
-        >>> reset_settings()
-        >>> get_settings().db_path
-        PosixPath('/tmp/mm-run/mm.db')
+    ``db_path`` and ``blobs_dir`` derive from ``data_dir`` unless given their
+    own ``MM_DB_PATH`` / ``MM_BLOBS_DIR`` override.
     """
 
     model_config = SettingsConfigDict(env_prefix="MM_", extra="ignore")
@@ -86,19 +54,11 @@ class MmSettings(BaseSettings):
     blobs_dir: Path = Field(default=Path("blobs"))
 
     @model_validator(mode="after")
-    def _anchor_and_expand(self) -> MmSettings:
-        """Anchor derived paths to ``data_dir`` and expand user home references.
-
-        ``db_path`` and ``blobs_dir`` follow ``data_dir`` whenever they were not
-        set explicitly (via ``MM_DB_PATH`` / ``MM_BLOBS_DIR``), so overriding
-        ``MM_DATA_DIR`` alone relocates the whole storage root. Their declared
-        defaults are bare placeholders, always replaced here unless an explicit
-        override is present. ``~`` is then expanded across every path.
-        """
-        explicit = self.model_fields_set
-        if "db_path" not in explicit:
+    def _derive(self) -> MmSettings:
+        """Anchor derived paths to ``data_dir`` and expand ``~`` in every path."""
+        if "db_path" not in self.model_fields_set:
             self.db_path = self.data_dir / "mm.db"
-        if "blobs_dir" not in explicit:
+        if "blobs_dir" not in self.model_fields_set:
             self.blobs_dir = self.data_dir / "blobs"
         self.cache_dir = self.cache_dir.expanduser()
         self.data_dir = self.data_dir.expanduser()
@@ -110,12 +70,7 @@ class MmSettings(BaseSettings):
 
 @lru_cache(maxsize=1)
 def get_settings() -> MmSettings:
-    """Return the process-wide :class:`MmSettings` singleton.
-
-    Built lazily on first call so env vars set before that first access take
-    effect. Use :func:`reset_settings` to rebuild it after changing the
-    environment within a running process (e.g. in tests).
-    """
+    """Return the process-wide :class:`MmSettings` singleton, built on first call."""
     return MmSettings()
 
 

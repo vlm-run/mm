@@ -46,13 +46,10 @@ CHUNK_OVERLAP = 100
 
 
 class _SettingsPath:
-    """Expose an :class:`~mm.settings.MmSettings` path as a class attribute.
+    """Lazily expose an :class:`~mm.settings.MmSettings` path as a class attribute.
 
-    Resolved lazily on every access so ``MM_*`` env-var overrides and
-    in-process :func:`~mm.settings.reset_settings` calls take effect even for
-    already-imported, long-lived code (a CLI subprocess or a test rebinding
-    paths mid-run). Tests may still ``monkeypatch.setattr`` the attribute to a
-    concrete path, which shadows the descriptor for the duration of the patch.
+    Reading it always reflects the current settings (env overrides, in-process
+    ``reset_settings``); tests may ``monkeypatch.setattr`` it to a fixed path.
     """
 
     def __init__(self, attr: str) -> None:
@@ -79,11 +76,9 @@ def _to_us(val) -> int | None:
 class MmDatabase:
     """Global SQLite database for mm.
 
-    The default database location is resolved lazily from
-    :class:`~mm.settings.MmSettings` (``db_path`` / ``MM_DB_PATH``), so a
-    freshly-constructed ``MmDatabase()`` — including the one cached by
-    :func:`~mm.store.utils.shared_db` — picks up any env override in effect at
-    construction time. Pass ``db_path`` to target a specific file.
+    Defaults to :class:`~mm.settings.MmSettings`' ``db_path`` (``MM_DB_PATH``),
+    resolved at construction so ``shared_db()`` honours env overrides. Pass
+    ``db_path`` to target a specific file.
     """
 
     DB_DIR = _SettingsPath("data_dir")
