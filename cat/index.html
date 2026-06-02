@@ -775,6 +775,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#streaming" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Streaming
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#output-formats" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1694,6 +1705,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#streaming" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Streaming
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#output-formats" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1919,6 +1941,12 @@
 <td>Output format: <code>rich</code>, <code>json</code>, <code>pretty-json</code>, <code>tsv</code>, <code>csv</code>, <code>dataset-jsonl</code>, <code>dataset-hf</code></td>
 </tr>
 <tr>
+<td><code>--stream</code></td>
+<td></td>
+<td>flag</td>
+<td>Stream LLM output tokens to stdout as they arrive. Takes precedence over <code>--format</code>.</td>
+</tr>
+<tr>
 <td><code>--verbose</code></td>
 <td><code>-v</code></td>
 <td>flag</td>
@@ -2096,69 +2124,84 @@
 <a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a><span class="c1"># override the prompt inline</span>
 <a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>mm<span class="w"> </span>cat<span class="w"> </span>photo.png<span class="w"> </span>-m<span class="w"> </span>accurate<span class="w"> </span>--prompt<span class="w"> </span><span class="s2">&quot;List all objects visible in this image.&quot;</span>
 </code></pre></div>
-<h3 id="output-formats">Output formats<a class="headerlink" href="#output-formats" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="c1"># JSON (compact in pipes, pretty in TTY)</span>
-<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>mm<span class="w"> </span>cat<span class="w"> </span>photo.png<span class="w"> </span>--format<span class="w"> </span>json
+<h3 id="streaming">Streaming<a class="headerlink" href="#streaming" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="c1"># stream LLM tokens to stdout as they arrive</span>
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>mm<span class="w"> </span>cat<span class="w"> </span>photo.png<span class="w"> </span>-m<span class="w"> </span>accurate<span class="w"> </span>--stream
 <a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>
-<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a><span class="c1"># always-indented JSON (good for piping into docs)</span>
-<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>mm<span class="w"> </span>cat<span class="w"> </span>photo.png<span class="w"> </span>--format<span class="w"> </span>pretty-json
+<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a><span class="c1"># stream + force fresh LLM call (no cache)</span>
+<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>mm<span class="w"> </span>cat<span class="w"> </span>video.mp4<span class="w"> </span>-m<span class="w"> </span>accurate<span class="w"> </span>--stream<span class="w"> </span>--no-cache
 <a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a>
-<a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a><span class="c1"># HuggingFace Dataset export</span>
-<a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a>mm<span class="w"> </span>cat<span class="w"> </span>--format<span class="w"> </span>dataset-hf<span class="w"> </span>*.png<span class="w"> </span>--output-dir<span class="w"> </span>./my_dataset
+<a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a><span class="c1"># streaming works with verbose (pipeline tree + timing still shown)</span>
+<a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a>mm<span class="w"> </span>cat<span class="w"> </span>photo.png<span class="w"> </span>-m<span class="w"> </span>accurate<span class="w"> </span>--stream<span class="w"> </span>-v
+</code></pre></div>
+<p>When <code>--stream</code> is active, tokens are written to stdout incrementally as the
+LLM generates them. <code>--stream</code> takes precedence over <code>--format</code> — formatted
+output modes are bypassed. Multi-file streaming processes files sequentially
+to avoid interleaved output.</p>
+<h3 id="output-formats">Output formats<a class="headerlink" href="#output-formats" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="c1"># JSON (compact in pipes, pretty in TTY)</span>
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>mm<span class="w"> </span>cat<span class="w"> </span>photo.png<span class="w"> </span>--format<span class="w"> </span>json
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a><span class="c1"># always-indented JSON (good for piping into docs)</span>
+<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>mm<span class="w"> </span>cat<span class="w"> </span>photo.png<span class="w"> </span>--format<span class="w"> </span>pretty-json
+<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a>
+<a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a><span class="c1"># HuggingFace Dataset export</span>
+<a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a>mm<span class="w"> </span>cat<span class="w"> </span>--format<span class="w"> </span>dataset-hf<span class="w"> </span>*.png<span class="w"> </span>--output-dir<span class="w"> </span>./my_dataset
 </code></pre></div>
 <h3 id="batch-processing">Batch processing<a class="headerlink" href="#batch-processing" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="c1"># multi-file (output is separated by ==== headers)</span>
-<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>mm<span class="w"> </span>cat<span class="w"> </span>*.png<span class="w"> </span>-m<span class="w"> </span>accurate
-<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>
-<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a><span class="c1"># pipe from find</span>
-<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>mm<span class="w"> </span>find<span class="w"> </span>~/data<span class="w"> </span>--kind<span class="w"> </span>image<span class="w"> </span><span class="p">|</span><span class="w"> </span>mm<span class="w"> </span>cat<span class="w"> </span>-m<span class="w"> </span>accurate
-<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a>
-<a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a><span class="c1"># skip confirmation for large batches</span>
-<a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a>mm<span class="w"> </span>find<span class="w"> </span>~/data<span class="w"> </span>--kind<span class="w"> </span>image<span class="w"> </span><span class="p">|</span><span class="w"> </span>mm<span class="w"> </span>cat<span class="w"> </span>-m<span class="w"> </span>accurate<span class="w"> </span>--yes
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="c1"># multi-file (output is separated by ==== headers)</span>
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>mm<span class="w"> </span>cat<span class="w"> </span>*.png<span class="w"> </span>-m<span class="w"> </span>accurate
+<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>
+<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a><span class="c1"># pipe from find</span>
+<a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a>mm<span class="w"> </span>find<span class="w"> </span>~/data<span class="w"> </span>--kind<span class="w"> </span>image<span class="w"> </span><span class="p">|</span><span class="w"> </span>mm<span class="w"> </span>cat<span class="w"> </span>-m<span class="w"> </span>accurate
+<a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a>
+<a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a><span class="c1"># skip confirmation for large batches</span>
+<a id="__codelineno-10-8" name="__codelineno-10-8" href="#__codelineno-10-8"></a>mm<span class="w"> </span>find<span class="w"> </span>~/data<span class="w"> </span>--kind<span class="w"> </span>image<span class="w"> </span><span class="p">|</span><span class="w"> </span>mm<span class="w"> </span>cat<span class="w"> </span>-m<span class="w"> </span>accurate<span class="w"> </span>--yes
 </code></pre></div>
 <h3 id="encode-only-no-llm">Encode-only (no LLM)<a class="headerlink" href="#encode-only-no-llm" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="c1"># emit only the encoder&#39;s text parts, skip the LLM call</span>
-<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>mm<span class="w"> </span>cat<span class="w"> </span>photo.png<span class="w"> </span>--no-generate
-<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>
-<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a><span class="c1"># useful for offline testing / snapshotting encoder behavior</span>
-<a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a>mm<span class="w"> </span>cat<span class="w"> </span>photo.png<span class="w"> </span>-p<span class="w"> </span>tile<span class="w"> </span>--no-generate
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="c1"># emit only the encoder&#39;s text parts, skip the LLM call</span>
+<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>mm<span class="w"> </span>cat<span class="w"> </span>photo.png<span class="w"> </span>--no-generate
+<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a>
+<a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a><span class="c1"># useful for offline testing / snapshotting encoder behavior</span>
+<a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a>mm<span class="w"> </span>cat<span class="w"> </span>photo.png<span class="w"> </span>-p<span class="w"> </span>tile<span class="w"> </span>--no-generate
 </code></pre></div>
 <h3 id="pipeline-inspection-dry-run">Pipeline inspection (dry run)<a class="headerlink" href="#pipeline-inspection-dry-run" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="c1"># show the resolved pipeline without executing it</span>
-<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>mm<span class="w"> </span>cat<span class="w"> </span>photo.png<span class="w"> </span>--dry-run
-<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a>
-<a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a><span class="c1"># inspect accurate mode pipeline</span>
-<a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a>mm<span class="w"> </span>cat<span class="w"> </span>video.mp4<span class="w"> </span>-m<span class="w"> </span>accurate<span class="w"> </span>--dry-run
-<a id="__codelineno-11-6" name="__codelineno-11-6" href="#__codelineno-11-6"></a>
-<a id="__codelineno-11-7" name="__codelineno-11-7" href="#__codelineno-11-7"></a><span class="c1"># preview with overrides applied</span>
-<a id="__codelineno-11-8" name="__codelineno-11-8" href="#__codelineno-11-8"></a>mm<span class="w"> </span>cat<span class="w"> </span>audio.mp3<span class="w"> </span>-m<span class="w"> </span>accurate<span class="w"> </span>--encode.backend<span class="w"> </span>mlx<span class="w"> </span>--dry-run
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="c1"># show the resolved pipeline without executing it</span>
+<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>mm<span class="w"> </span>cat<span class="w"> </span>photo.png<span class="w"> </span>--dry-run
+<a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a>
+<a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a><span class="c1"># inspect accurate mode pipeline</span>
+<a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a>mm<span class="w"> </span>cat<span class="w"> </span>video.mp4<span class="w"> </span>-m<span class="w"> </span>accurate<span class="w"> </span>--dry-run
+<a id="__codelineno-12-6" name="__codelineno-12-6" href="#__codelineno-12-6"></a>
+<a id="__codelineno-12-7" name="__codelineno-12-7" href="#__codelineno-12-7"></a><span class="c1"># preview with overrides applied</span>
+<a id="__codelineno-12-8" name="__codelineno-12-8" href="#__codelineno-12-8"></a>mm<span class="w"> </span>cat<span class="w"> </span>audio.mp3<span class="w"> </span>-m<span class="w"> </span>accurate<span class="w"> </span>--encode.backend<span class="w"> </span>mlx<span class="w"> </span>--dry-run
 </code></pre></div>
 <h2 id="per-provider-per-model-overrides-with-generateextra-body">Per-provider / per-model overrides with <code>--generate.extra-body</code><a class="headerlink" href="#per-provider-per-model-overrides-with-generateextra-body" title="Permanent link">&para;</a></h2>
 <p>The <code>--generate.extra-body</code> flag accepts a JSON object forwarded to the OpenAI SDK's <code>extra_body</code> parameter. This enables provider-specific capabilities:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="c1"># Florence-2 OCR on a scanned page (vlmrt deployment)</span>
-<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>mm<span class="w"> </span>--profile<span class="w"> </span>vlmrt<span class="w"> </span>cat<span class="w"> </span>page.png<span class="w"> </span>-m<span class="w"> </span>accurate<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a><span class="w">  </span>--model<span class="w"> </span>florence-2-base-ft<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a><span class="w">  </span>--generate.extra-body<span class="w"> </span><span class="s1">&#39;{&quot;method&quot;:&quot;ocr&quot;}&#39;</span>
-<a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a>
-<a id="__codelineno-12-6" name="__codelineno-12-6" href="#__codelineno-12-6"></a><span class="c1"># Moondream2 object detection</span>
-<a id="__codelineno-12-7" name="__codelineno-12-7" href="#__codelineno-12-7"></a>mm<span class="w"> </span>--profile<span class="w"> </span>vlmrt<span class="w"> </span>cat<span class="w"> </span>photo.jpg<span class="w"> </span>-m<span class="w"> </span>accurate<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-12-8" name="__codelineno-12-8" href="#__codelineno-12-8"></a><span class="w">  </span>--model<span class="w"> </span>moondream2<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-12-9" name="__codelineno-12-9" href="#__codelineno-12-9"></a><span class="w">  </span>--generate.extra-body<span class="w"> </span><span class="s1">&#39;{&quot;method&quot;:&quot;detect&quot;,&quot;method_params&quot;:{&quot;object&quot;:&quot;fish&quot;}}&#39;</span>
-<a id="__codelineno-12-10" name="__codelineno-12-10" href="#__codelineno-12-10"></a>
-<a id="__codelineno-12-11" name="__codelineno-12-11" href="#__codelineno-12-11"></a><span class="c1"># PaddleOCR scene-text recognition (Chinese)</span>
-<a id="__codelineno-12-12" name="__codelineno-12-12" href="#__codelineno-12-12"></a>mm<span class="w"> </span>--profile<span class="w"> </span>vlmrt<span class="w"> </span>cat<span class="w"> </span>storefront.jpg<span class="w"> </span>-m<span class="w"> </span>accurate<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-12-13" name="__codelineno-12-13" href="#__codelineno-12-13"></a><span class="w">  </span>--model<span class="w"> </span>paddleocr-v5<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-12-14" name="__codelineno-12-14" href="#__codelineno-12-14"></a><span class="w">  </span>--generate.extra-body<span class="w"> </span><span class="s1">&#39;{&quot;method&quot;:&quot;ocr&quot;,&quot;method_params&quot;:{&quot;lang&quot;:&quot;ch&quot;,&quot;score_threshold&quot;:0.6}}&#39;</span>
-<a id="__codelineno-12-15" name="__codelineno-12-15" href="#__codelineno-12-15"></a>
-<a id="__codelineno-12-16" name="__codelineno-12-16" href="#__codelineno-12-16"></a><span class="c1"># Qwen3.5 video summarization with frame sampling controls</span>
-<a id="__codelineno-12-17" name="__codelineno-12-17" href="#__codelineno-12-17"></a>mm<span class="w"> </span>--profile<span class="w"> </span>vlmrt<span class="w"> </span>cat<span class="w"> </span>clip.mp4<span class="w"> </span>-m<span class="w"> </span>accurate<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-12-18" name="__codelineno-12-18" href="#__codelineno-12-18"></a><span class="w">  </span>--model<span class="w"> </span>qwen3.5-0.8b<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-12-19" name="__codelineno-12-19" href="#__codelineno-12-19"></a><span class="w">  </span>--prompt<span class="w"> </span><span class="s2">&quot;Summarize this clip in two sentences.&quot;</span><span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-12-20" name="__codelineno-12-20" href="#__codelineno-12-20"></a><span class="w">  </span>--generate.extra-body<span class="w"> </span><span class="s1">&#39;{&quot;video_fps&quot;:1.0,&quot;video_max_frames&quot;:8}&#39;</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a><span class="c1"># Florence-2 OCR on a scanned page (vlmrt deployment)</span>
+<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a>mm<span class="w"> </span>--profile<span class="w"> </span>vlmrt<span class="w"> </span>cat<span class="w"> </span>page.png<span class="w"> </span>-m<span class="w"> </span>accurate<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a><span class="w">  </span>--model<span class="w"> </span>florence-2-base-ft<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-13-4" name="__codelineno-13-4" href="#__codelineno-13-4"></a><span class="w">  </span>--generate.extra-body<span class="w"> </span><span class="s1">&#39;{&quot;method&quot;:&quot;ocr&quot;}&#39;</span>
+<a id="__codelineno-13-5" name="__codelineno-13-5" href="#__codelineno-13-5"></a>
+<a id="__codelineno-13-6" name="__codelineno-13-6" href="#__codelineno-13-6"></a><span class="c1"># Moondream2 object detection</span>
+<a id="__codelineno-13-7" name="__codelineno-13-7" href="#__codelineno-13-7"></a>mm<span class="w"> </span>--profile<span class="w"> </span>vlmrt<span class="w"> </span>cat<span class="w"> </span>photo.jpg<span class="w"> </span>-m<span class="w"> </span>accurate<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-13-8" name="__codelineno-13-8" href="#__codelineno-13-8"></a><span class="w">  </span>--model<span class="w"> </span>moondream2<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-13-9" name="__codelineno-13-9" href="#__codelineno-13-9"></a><span class="w">  </span>--generate.extra-body<span class="w"> </span><span class="s1">&#39;{&quot;method&quot;:&quot;detect&quot;,&quot;method_params&quot;:{&quot;object&quot;:&quot;fish&quot;}}&#39;</span>
+<a id="__codelineno-13-10" name="__codelineno-13-10" href="#__codelineno-13-10"></a>
+<a id="__codelineno-13-11" name="__codelineno-13-11" href="#__codelineno-13-11"></a><span class="c1"># PaddleOCR scene-text recognition (Chinese)</span>
+<a id="__codelineno-13-12" name="__codelineno-13-12" href="#__codelineno-13-12"></a>mm<span class="w"> </span>--profile<span class="w"> </span>vlmrt<span class="w"> </span>cat<span class="w"> </span>storefront.jpg<span class="w"> </span>-m<span class="w"> </span>accurate<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-13-13" name="__codelineno-13-13" href="#__codelineno-13-13"></a><span class="w">  </span>--model<span class="w"> </span>paddleocr-v5<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-13-14" name="__codelineno-13-14" href="#__codelineno-13-14"></a><span class="w">  </span>--generate.extra-body<span class="w"> </span><span class="s1">&#39;{&quot;method&quot;:&quot;ocr&quot;,&quot;method_params&quot;:{&quot;lang&quot;:&quot;ch&quot;,&quot;score_threshold&quot;:0.6}}&#39;</span>
+<a id="__codelineno-13-15" name="__codelineno-13-15" href="#__codelineno-13-15"></a>
+<a id="__codelineno-13-16" name="__codelineno-13-16" href="#__codelineno-13-16"></a><span class="c1"># Qwen3.5 video summarization with frame sampling controls</span>
+<a id="__codelineno-13-17" name="__codelineno-13-17" href="#__codelineno-13-17"></a>mm<span class="w"> </span>--profile<span class="w"> </span>vlmrt<span class="w"> </span>cat<span class="w"> </span>clip.mp4<span class="w"> </span>-m<span class="w"> </span>accurate<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-13-18" name="__codelineno-13-18" href="#__codelineno-13-18"></a><span class="w">  </span>--model<span class="w"> </span>qwen3.5-0.8b<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-13-19" name="__codelineno-13-19" href="#__codelineno-13-19"></a><span class="w">  </span>--prompt<span class="w"> </span><span class="s2">&quot;Summarize this clip in two sentences.&quot;</span><span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-13-20" name="__codelineno-13-20" href="#__codelineno-13-20"></a><span class="w">  </span>--generate.extra-body<span class="w"> </span><span class="s1">&#39;{&quot;video_fps&quot;:1.0,&quot;video_max_frames&quot;:8}&#39;</span>
 </code></pre></div>
 <h2 id="notes">Notes<a class="headerlink" href="#notes" title="Permanent link">&para;</a></h2>
 <ul>
 <li>Multi-file output uses <code>====</code> as a separator with <code>&lt;filename&gt;</code> headers in rich mode.</li>
+<li><code>--stream</code> writes LLM tokens to stdout as they arrive; takes precedence over <code>--format</code>. Falls back to non-streaming when the backend doesn't support it.</li>
 <li><code>--verbose</code> shows timing, prompt tokens, and completion tokens from the LLM call.</li>
 <li>Files that do not exist are skipped with a warning; missing files are also pruned from the cache index.</li>
 <li>Batch confirmation is triggered when the path count reaches a threshold (default 9). Override with <code>--yes</code> or the <code>MM_CAT_BATCH_CONFIRM_THRESHOLD</code> environment variable.</li>

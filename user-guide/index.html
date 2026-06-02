@@ -1984,6 +1984,10 @@ Rust core for speed. Python for developer experience. Unix philosophy for compos
 <a id="__codelineno-9-10" name="__codelineno-9-10" href="#__codelineno-9-10"></a>mm<span class="w"> </span>cat<span class="w"> </span>video.mp4<span class="w"> </span>-m<span class="w"> </span>accurate<span class="w">   </span><span class="c1"># keyframe mosaic → LLM description</span>
 <a id="__codelineno-9-11" name="__codelineno-9-11" href="#__codelineno-9-11"></a>mm<span class="w"> </span>cat<span class="w"> </span>audio.mp3<span class="w"> </span>-m<span class="w"> </span>accurate<span class="w">   </span><span class="c1"># Whisper transcript only (use -p base64 or -p gemini for LLM description)</span>
 <a id="__codelineno-9-12" name="__codelineno-9-12" href="#__codelineno-9-12"></a>mm<span class="w"> </span>cat<span class="w"> </span>report.pdf<span class="w"> </span>-m<span class="w"> </span>accurate<span class="w">  </span><span class="c1"># text → LLM markdown structuring</span>
+<a id="__codelineno-9-13" name="__codelineno-9-13" href="#__codelineno-9-13"></a>
+<a id="__codelineno-9-14" name="__codelineno-9-14" href="#__codelineno-9-14"></a><span class="c1"># --stream: stream LLM tokens to stdout as they arrive (takes precedence over --format)</span>
+<a id="__codelineno-9-15" name="__codelineno-9-15" href="#__codelineno-9-15"></a>mm<span class="w"> </span>cat<span class="w"> </span>image.jpg<span class="w"> </span>-m<span class="w"> </span>accurate<span class="w"> </span>--stream
+<a id="__codelineno-9-16" name="__codelineno-9-16" href="#__codelineno-9-16"></a>mm<span class="w"> </span>cat<span class="w"> </span>video.mp4<span class="w"> </span>-m<span class="w"> </span>accurate<span class="w"> </span>--stream<span class="w"> </span>--no-cache
 </code></pre></div>
 <p><code>kind=text</code> and non-PDF documents (<code>.docx</code> / <code>.pptx</code>) ignore <code>--mode</code> entirely: they always return passthrough
 text.</p>

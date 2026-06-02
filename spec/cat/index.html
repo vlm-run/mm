@@ -1392,6 +1392,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#streaming-stream" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Streaming (--stream)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#output-formats" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1722,6 +1733,13 @@ here — it lives in <code>files</code>).</p>
 <li><code>--generate.temperature 0.5</code> — override temperature</li>
 <li><code>--print-pipeline image/accurate</code> — print the YAML source of a built-in pipeline
   (accepts <code>&lt;kind&gt;/&lt;mode&gt;</code>, useful as a starting point for a custom pipeline)</li>
+</ul>
+<h2 id="streaming-stream">Streaming (<code>--stream</code>)<a class="headerlink" href="#streaming-stream" title="Permanent link">&para;</a></h2>
+<p>When <code>--stream</code> is passed, LLM tokens are written to stdout incrementally as the backend generates them. Streaming takes precedence over <code>--format</code> — formatted output modes are bypassed.</p>
+<ul>
+<li><strong>Multi-file</strong>: files are processed sequentially (no parallel threads) to avoid interleaved output.</li>
+<li><strong>Verbose</strong>: <code>--stream -v</code> still displays the pipeline tree and timing metadata after the streamed content.</li>
+<li><strong>Fallback</strong>: if the backend doesn't support streaming (e.g. VLM gateway returns 0 chunks), <code>_chat_stream</code> transparently falls back to a non-streaming call.</li>
 </ul>
 <h2 id="output-formats">Output Formats<a class="headerlink" href="#output-formats" title="Permanent link">&para;</a></h2>
 <ul>
