@@ -42,7 +42,9 @@ _PIPELINES_DIR = Path(__file__).parent
 
 
 def _user_pipelines_dir() -> Path:
-    return Path.home() / ".config" / "mm" / "pipelines"
+    from mm.settings import get_settings
+
+    return get_settings().config_dir / "pipelines"
 
 
 @lru_cache(maxsize=32)

@@ -519,10 +519,10 @@ class Context:
         yet**. Planned behaviour:
 
             - Write ``(session_id, ref_id, kind, uri, content_hash, metadata)``
-              to the ``files`` table in ``~/.local/share/mm/mm.db``.
-            - For in-memory objects, spool to a content-addressed cache
-              dir (``~/.local/share/mm/blobs/<xxh3>.<ext>``) and record
-              the blob URI.
+              to the ``files`` table in the mm DB (``MmSettings.db_path``).
+            - For in-memory objects, spool to the content-addressed blob
+              store (``MmSettings.blobs_dir``, ``<blobs_dir>/<xxh3>.<ext>``)
+              and record the blob URI.
             - Make ``Context.get("<session>/<ref>")`` resolve via the DB
               across processes.
             - Idempotent on repeat calls for the same

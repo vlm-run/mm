@@ -17,10 +17,16 @@ import pytest
 #
 # Done at module-level (not in a fixture) because pytest imports test
 # modules — which transitively import mm — before any fixture fires.
-# ``mm.cache.cache_dir()`` resolves ``MM_CACHE_DIR`` lazily on first
-# cache access, so setting the env var here is sufficient.
+# ``MmSettings`` resolves these env vars lazily on first access, so
+# setting them here is sufficient.
+#
+# ``MM_DATA_DIR`` redirects the storage root too, so the SQLite DB
+# (``<data_dir>/mm.db``) and blob store (``<data_dir>/blobs``) land in a
+# throwaway temp dir instead of the developer's ``~/.local/share/mm``.
 _MM_CACHE_TMP = tempfile.mkdtemp(prefix="mm-test-cache-")
+_MM_DATA_TMP = tempfile.mkdtemp(prefix="mm-test-data-")
 os.environ.setdefault("MM_CACHE_DIR", _MM_CACHE_TMP)
+os.environ.setdefault("MM_DATA_DIR", _MM_DATA_TMP)
 
 
 @pytest.fixture
@@ -87,6 +93,22 @@ requires_sqlite_vec = pytest.mark.skipif(
     not _sqlite_vec_available(),
     reason="sqlite3 extension loading not available (no sqlite-vec support)",
 )
+
+
+@pytest.fixture(autouse=True)
+def reset_mm_settings():
+    """Rebuild the ``MmSettings`` singleton around each test.
+
+    Resolution is lazy, so a test that mutates ``MM_*`` env vars (e.g. via
+    ``monkeypatch.setenv``) only takes effect once the cached settings are
+    discarded. Resetting on both setup and teardown keeps per-test path
+    overrides from leaking across tests.
+    """
+    from mm.settings import reset_settings
+
+    reset_settings()
+    yield
+    reset_settings()
 
 
 @pytest.fixture(autouse=True)

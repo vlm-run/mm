@@ -332,7 +332,9 @@ def _project_encoders_dir() -> Path | None:
 
 
 def _user_encoders_dir() -> Path | None:
-    d = Path.home() / ".config" / "mm" / "encoders"
+    from mm.settings import get_settings
+
+    d = get_settings().config_dir / "encoders"
     return d if d.is_dir() else None
 
 

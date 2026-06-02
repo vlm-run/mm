@@ -35,6 +35,7 @@ import threading
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
+from mm.settings import get_settings
 from mm.store.utils import fill_metadata, get_extraction_id, now_us
 
 if TYPE_CHECKING:
@@ -42,6 +43,23 @@ if TYPE_CHECKING:
 
 CHUNK_SIZE = 2048
 CHUNK_OVERLAP = 100
+
+
+class _SettingsPath:
+    """Expose an :class:`~mm.settings.MmSettings` path as a class attribute.
+
+    Resolved lazily on every access so ``MM_*`` env-var overrides and
+    in-process :func:`~mm.settings.reset_settings` calls take effect even for
+    already-imported, long-lived code (a CLI subprocess or a test rebinding
+    paths mid-run). Tests may still ``monkeypatch.setattr`` the attribute to a
+    concrete path, which shadows the descriptor for the duration of the patch.
+    """
+
+    def __init__(self, attr: str) -> None:
+        self._attr = attr
+
+    def __get__(self, obj: object, objtype: type | None = None) -> Path:
+        return getattr(get_settings(), self._attr)
 
 
 def _to_us(val) -> int | None:
@@ -59,10 +77,17 @@ def _to_us(val) -> int | None:
 
 
 class MmDatabase:
-    """Global SQLite database for mm."""
+    """Global SQLite database for mm.
 
-    DB_DIR = Path.home() / ".local" / "share" / "mm"
-    DB_PATH = DB_DIR / "mm.db"
+    The default database location is resolved lazily from
+    :class:`~mm.settings.MmSettings` (``db_path`` / ``MM_DB_PATH``), so a
+    freshly-constructed ``MmDatabase()`` — including the one cached by
+    :func:`~mm.store.utils.shared_db` — picks up any env override in effect at
+    construction time. Pass ``db_path`` to target a specific file.
+    """
+
+    DB_DIR = _SettingsPath("data_dir")
+    DB_PATH = _SettingsPath("db_path")
 
     def __init__(self, db_path: Path | None = None):
         self._db_path = db_path or self.DB_PATH
