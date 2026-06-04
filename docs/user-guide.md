@@ -120,6 +120,8 @@ mm grep "architecture overview" ~/docs -s --pre-index   # auto-index unindexed f
 
 Returns matching files via vector similarity (embeddings). Use `--semantic/-s` for semantic search, `--pre-index` to auto-index unindexed files before searching.
 
+If your search pattern starts with `-` or `--`, the CLI parser reads it as an option and fails with `No such option`. Put `--` before the pattern to end option parsing — `mm grep -- "--release" ./Makefile` — the same convention as `grep` and `ripgrep`.
+
 ### Raw file metadata
 
 ```bash
