@@ -73,6 +73,51 @@ def _to_us(val) -> int | None:
     return int(val.timestamp() * 1_000_000)
 
 
+def _load_vec(conn: sqlite3.Connection) -> bool:
+    """Load the sqlite-vec extension into *conn* once; return whether vec0 is usable.
+
+    Memoized per connection so the numpy/extension import is paid at most once,
+    and only when a query actually touches a ``vec0`` table.
+    """
+    loaded = getattr(conn, "_vec_loaded", None)
+    if loaded is None:
+        try:
+            import sqlite_vec
+
+            conn.enable_load_extension(True)
+            sqlite_vec.load(conn)
+            conn.enable_load_extension(False)
+            loaded = True
+        except (AttributeError, ImportError, OSError):
+            loaded = False
+        setattr(conn, "_vec_loaded", loaded)
+    return loaded
+
+
+class _VecConnection(sqlite3.Connection):
+    """Connection that loads sqlite-vec on first access to a ``vec0`` table.
+
+    Centralizes extension loading so any ``chunks_vec`` query just works —
+    callers never pre-check — while non-vector queries pay no import cost.
+    """
+
+    def execute(self, sql, parameters=(), /):
+        try:
+            return super().execute(sql, parameters)
+        except sqlite3.OperationalError as e:
+            if "vec0" in str(e) and getattr(self, "_vec_loaded", None) is None and _load_vec(self):
+                return super().execute(sql, parameters)
+            raise
+
+    def executemany(self, sql, parameters, /):
+        try:
+            return super().executemany(sql, parameters)
+        except sqlite3.OperationalError as e:
+            if "vec0" in str(e) and getattr(self, "_vec_loaded", None) is None and _load_vec(self):
+                return super().executemany(sql, parameters)
+            raise
+
+
 class MmDatabase:
     """Global SQLite database for mm.
 
@@ -92,18 +137,7 @@ class MmDatabase:
 
     @property
     def _vec_available(self) -> bool:
-        conn = self._connect
-        if getattr(self._tls, "vec_loaded", None) is None:
-            try:
-                import sqlite_vec
-
-                conn.enable_load_extension(True)
-                sqlite_vec.load(conn)
-                conn.enable_load_extension(False)
-                self._tls.vec_loaded = True
-            except (AttributeError, ImportError, OSError):
-                self._tls.vec_loaded = False
-        return self._tls.vec_loaded
+        return _load_vec(self._connect)
 
     @property
     def _conn(self) -> sqlite3.Connection | None:
@@ -116,7 +150,11 @@ class MmDatabase:
             return conn
 
         self._db_path.parent.mkdir(parents=True, exist_ok=True)
-        conn = sqlite3.connect(str(self._db_path), check_same_thread=False)
+        conn = sqlite3.connect(
+            str(self._db_path),
+            check_same_thread=False,
+            factory=_VecConnection,
+        )
         conn.row_factory = sqlite3.Row
         conn.execute("PRAGMA journal_mode=WAL")
         conn.execute("PRAGMA foreign_keys=ON")
@@ -355,7 +393,7 @@ class MmDatabase:
         deleted = 0
         for batch in batch_array(uris, 500):
             ph = ",".join("?" * len(batch))
-            if has_vec and self._vec_available:
+            if has_vec:
                 chunk_ids = [
                     r[0]
                     for r in db.execute(
@@ -471,7 +509,7 @@ class MmDatabase:
             has_vec = db.execute(
                 "SELECT 1 FROM sqlite_master WHERE type='table' AND name='chunks_vec'"
             ).fetchone()
-            if has_vec and self._vec_available:
+            if has_vec:
                 db.execute(f"DELETE FROM chunks_vec WHERE chunk_id IN ({cp})", chunk_ids)
 
         cursor = db.execute("DELETE FROM extractions WHERE id = ?", (extraction_id,))
@@ -633,7 +671,7 @@ class MmDatabase:
             has_vec = db.execute(
                 "SELECT 1 FROM sqlite_master WHERE type='table' AND name='chunks_vec'"
             ).fetchone()
-            if has_vec and self._vec_available:
+            if has_vec:
                 cp = ",".join("?" * len(old_ids))
                 db.execute(f"DELETE FROM chunks_vec WHERE chunk_id IN ({cp})", old_ids)
             cp = ",".join("?" * len(old_ids))
