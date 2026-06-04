@@ -11,6 +11,7 @@ for per-mode defaults (whisper model, audio speed, etc.).
 
 from __future__ import annotations
 
+import sys
 import tomllib
 from dataclasses import dataclass, field, replace
 from pathlib import Path
@@ -21,22 +22,27 @@ from mm.settings import get_settings
 
 # ── Config paths ────────────────────────────────────────────────────
 
-CONFIG_DIR_XDG = get_settings().config_dir
-CONFIG_PATH_XDG = CONFIG_DIR_XDG / "mm.toml"
 CONFIG_DIR_LEGACY = Path.home() / ".mm"
 CONFIG_PATH_LEGACY = CONFIG_DIR_LEGACY / "config.toml"
 
-CONFIG_DIR = CONFIG_DIR_XDG
-CONFIG_PATH = CONFIG_PATH_XDG
+
+def __getattr__(name: str) -> Path:
+    """Resolve the XDG config paths live from :class:`~mm.settings.MmSettings`."""
+    if name in ("CONFIG_DIR_XDG", "CONFIG_DIR"):
+        return get_settings().config_dir
+    if name in ("CONFIG_PATH_XDG", "CONFIG_PATH"):
+        return get_settings().config_dir / "mm.toml"
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 
 def _find_config_path() -> Path:
     """Return the first existing config path, or the XDG path as default."""
-    if CONFIG_PATH_XDG.exists():
-        return CONFIG_PATH_XDG
+    xdg_path = sys.modules[__name__].CONFIG_PATH_XDG
+    if xdg_path.exists():
+        return xdg_path
     if CONFIG_PATH_LEGACY.exists():
         return CONFIG_PATH_LEGACY
-    return CONFIG_PATH_XDG
+    return xdg_path
 
 
 # ── Defaults ────────────────────────────────────────────────────────

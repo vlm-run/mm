@@ -73,8 +73,6 @@ dependencies = [
     "pypdfium2>=4.0",
     "Pillow>=10.0",
     "openai>=1.0",
-    "pydantic>=2.0",
-    "pydantic-settings>=2.0",
     "pyyaml>=6.0",
     "av>=13.0",
     "scenedetect==0.7",

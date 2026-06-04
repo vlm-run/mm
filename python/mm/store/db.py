@@ -92,8 +92,18 @@ class MmDatabase:
 
     @property
     def _vec_available(self) -> bool:
-        _ = self._connect
-        return getattr(self._tls, "vec_loaded", False)
+        conn = self._connect
+        if getattr(self._tls, "vec_loaded", None) is None:
+            try:
+                import sqlite_vec
+
+                conn.enable_load_extension(True)
+                sqlite_vec.load(conn)
+                conn.enable_load_extension(False)
+                self._tls.vec_loaded = True
+            except (AttributeError, ImportError, OSError):
+                self._tls.vec_loaded = False
+        return self._tls.vec_loaded
 
     @property
     def _conn(self) -> sqlite3.Connection | None:
@@ -108,15 +118,6 @@ class MmDatabase:
         self._db_path.parent.mkdir(parents=True, exist_ok=True)
         conn = sqlite3.connect(str(self._db_path), check_same_thread=False)
         conn.row_factory = sqlite3.Row
-        try:
-            import sqlite_vec
-
-            conn.enable_load_extension(True)
-            sqlite_vec.load(conn)
-            conn.enable_load_extension(False)
-            self._tls.vec_loaded = True
-        except (AttributeError, ImportError, OSError):
-            self._tls.vec_loaded = False
         conn.execute("PRAGMA journal_mode=WAL")
         conn.execute("PRAGMA foreign_keys=ON")
         self._tls.conn = conn
@@ -354,7 +355,7 @@ class MmDatabase:
         deleted = 0
         for batch in batch_array(uris, 500):
             ph = ",".join("?" * len(batch))
-            if has_vec:
+            if has_vec and self._vec_available:
                 chunk_ids = [
                     r[0]
                     for r in db.execute(
@@ -470,7 +471,7 @@ class MmDatabase:
             has_vec = db.execute(
                 "SELECT 1 FROM sqlite_master WHERE type='table' AND name='chunks_vec'"
             ).fetchone()
-            if has_vec:
+            if has_vec and self._vec_available:
                 db.execute(f"DELETE FROM chunks_vec WHERE chunk_id IN ({cp})", chunk_ids)
 
         cursor = db.execute("DELETE FROM extractions WHERE id = ?", (extraction_id,))
@@ -632,7 +633,7 @@ class MmDatabase:
             has_vec = db.execute(
                 "SELECT 1 FROM sqlite_master WHERE type='table' AND name='chunks_vec'"
             ).fetchone()
-            if has_vec:
+            if has_vec and self._vec_available:
                 cp = ",".join("?" * len(old_ids))
                 db.execute(f"DELETE FROM chunks_vec WHERE chunk_id IN ({cp})", old_ids)
             cp = ",".join("?" * len(old_ids))

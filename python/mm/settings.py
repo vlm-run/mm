@@ -13,16 +13,15 @@ import os
 from functools import lru_cache
 from pathlib import Path
 
-from pydantic import Field, model_validator
-from pydantic_settings import BaseSettings, SettingsConfigDict
-
 __all__ = ["MmSettings", "get_settings", "reset_settings"]
 
 
 def _xdg_dir(xdg_var: str, fallback: Path) -> Path:
-    """Resolve an ``$XDG_*_HOME/mm`` location, falling back to a home path."""
+    """Resolve an ``$XDG_*_HOME/mm`` location, ignoring non-absolute values."""
     if xdg := os.environ.get(xdg_var):
-        return Path(xdg).expanduser() / "mm"
+        base = Path(xdg).expanduser()
+        if base.is_absolute():
+            return base / "mm"
     return fallback
 
 
@@ -38,34 +37,34 @@ def _default_config_dir() -> Path:
     return _xdg_dir("XDG_CONFIG_HOME", Path.home() / ".config" / "mm")
 
 
-class MmSettings(BaseSettings):
+class MmSettings:
     """Source of truth for mm's on-disk paths.
 
     ``db_path`` and ``blobs_dir`` derive from ``data_dir`` unless given their
     own ``MM_DB_PATH`` / ``MM_BLOBS_DIR`` override.
     """
 
-    model_config = SettingsConfigDict(env_prefix="MM_", extra="ignore")
+    __slots__ = ("blobs_dir", "cache_dir", "config_dir", "data_dir", "db_path")
 
-    cache_dir: Path = Field(default_factory=_default_cache_dir)
-    data_dir: Path = Field(default_factory=_default_data_dir)
-    config_dir: Path = Field(default_factory=_default_config_dir)
-    db_path: Path = Field(default=Path("mm.db"))
-    blobs_dir: Path = Field(default=Path("blobs"))
-
-    @model_validator(mode="after")
-    def _derive(self) -> MmSettings:
-        """Anchor derived paths to ``data_dir`` and expand ``~`` in every path."""
-        if "db_path" not in self.model_fields_set:
-            self.db_path = self.data_dir / "mm.db"
-        if "blobs_dir" not in self.model_fields_set:
-            self.blobs_dir = self.data_dir / "blobs"
-        self.cache_dir = self.cache_dir.expanduser()
-        self.data_dir = self.data_dir.expanduser()
-        self.config_dir = self.config_dir.expanduser()
-        self.db_path = self.db_path.expanduser()
-        self.blobs_dir = self.blobs_dir.expanduser()
-        return self
+    def __init__(
+        self,
+        *,
+        cache_dir: Path | str | None = None,
+        data_dir: Path | str | None = None,
+        config_dir: Path | str | None = None,
+        db_path: Path | str | None = None,
+        blobs_dir: Path | str | None = None,
+    ) -> None:
+        env = os.environ.get
+        self.cache_dir = Path(cache_dir or env("MM_CACHE_DIR") or _default_cache_dir()).expanduser()
+        self.data_dir = Path(data_dir or env("MM_DATA_DIR") or _default_data_dir()).expanduser()
+        self.config_dir = Path(
+            config_dir or env("MM_CONFIG_DIR") or _default_config_dir()
+        ).expanduser()
+        self.db_path = Path(db_path or env("MM_DB_PATH") or self.data_dir / "mm.db").expanduser()
+        self.blobs_dir = Path(
+            blobs_dir or env("MM_BLOBS_DIR") or self.data_dir / "blobs"
+        ).expanduser()
 
 
 @lru_cache(maxsize=1)

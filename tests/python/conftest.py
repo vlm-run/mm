@@ -11,17 +11,20 @@ from pathlib import Path
 
 import pytest
 
-# Redirect mm's cache and storage root to temp dirs before any ``mm.*`` import,
-# so the cache, SQLite DB (``<data_dir>/mm.db``), and blobs never touch the
-# developer's real ``~/.cache/mm`` / ``~/.local/share/mm``. Set at module level
-# because pytest imports mm before any fixture fires; MmSettings reads these
+# Redirect mm's cache, data, and config roots to temp dirs before any ``mm.*``
+# import, so the cache, SQLite DB, blobs, and config never touch the developer's
+# real ``~/.cache/mm`` / ``~/.local/share/mm`` / ``~/.config/mm``. Set at module
+# level because pytest imports mm before any fixture fires; MmSettings reads these
 # lazily on first access.
 _MM_CACHE_TMP = tempfile.mkdtemp(prefix="mm-test-cache-")
 _MM_DATA_TMP = tempfile.mkdtemp(prefix="mm-test-data-")
+_MM_CONFIG_TMP = tempfile.mkdtemp(prefix="mm-test-config-")
 os.environ.setdefault("MM_CACHE_DIR", _MM_CACHE_TMP)
 os.environ.setdefault("MM_DATA_DIR", _MM_DATA_TMP)
+os.environ.setdefault("MM_CONFIG_DIR", _MM_CONFIG_TMP)
 atexit.register(shutil.rmtree, _MM_CACHE_TMP, ignore_errors=True)
 atexit.register(shutil.rmtree, _MM_DATA_TMP, ignore_errors=True)
+atexit.register(shutil.rmtree, _MM_CONFIG_TMP, ignore_errors=True)
 
 
 @pytest.fixture
