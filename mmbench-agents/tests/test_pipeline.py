@@ -88,6 +88,18 @@ def test_analysis_reports_uplift_and_leaderboard(tmp_path):
         assert entry["speedup"] > 1.0  # mock models mm as faster
 
 
+def test_headline_leaderboard_pairs_baseline_and_mm(tmp_path):
+    store, run_id = _sweep(tmp_path, repeats=2)
+    head = analysis.headline_leaderboard(store.trials(run_id))
+    assert head
+    rates = [r["success_mm"] for r in head]
+    assert rates == sorted(rates, reverse=True)  # ranked by with-mm success
+    for r in head:
+        assert 0.0 <= r["success_mm"] <= 1.0
+        assert 0.0 <= r["success_baseline"] <= 1.0
+        assert r["avg_duration_s"] > 0.0
+
+
 def test_unavailable_cli_assistant_is_skipped(tmp_path):
     register(CliAdapter("ghost", "definitely-not-a-real-binary-xyz"))
     result = Harness(sandbox_root=tmp_path).run_trial(
@@ -107,3 +119,4 @@ def test_report_renders_html(tmp_path):
     out = build_report(store, run_id, tmp_path / "report.html")
     html = out.read_text()
     assert "Leaderboard" in html and "mm speedup" in html
+    assert "success w/ mm" in html and "id='lead'" in html

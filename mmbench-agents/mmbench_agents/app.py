@@ -41,6 +41,7 @@ def create_app(db_path: str | Path):
             rows = s.trials(run_id)
             return JSONResponse(
                 {
+                    "headline": analysis.headline_leaderboard(rows),
                     "leaderboard": analysis.leaderboard(rows),
                     "condition_split": analysis.condition_split(rows),
                     "uplift": analysis.uplift(rows),
@@ -103,10 +104,18 @@ select{padding:6px} .chart{margin:18px 0}
 table{border-collapse:collapse;width:100%;font-size:13px}
 th,td{border:1px solid #ddd;padding:6px;text-align:left}
 .pass{color:#0a7} .fail{color:#c33}
+#lead{font-size:14px} #lead td,#lead th{padding:9px 12px}
+#lead thead th{background:#fafafa;border-bottom:2px solid #ccc}
+#lead tbody tr:nth-child(even){background:#fafafa}
+#lead .num{text-align:right;font-variant-numeric:tabular-nums}
+#lead .up{color:#0a7;font-weight:600} #lead .down{color:#c33;font-weight:600}
+.section-title{margin:24px 0 6px}
 </style></head><body>
 <header><h1>mmbench-agents</h1>
 <label>run <select id="run"></select></label>
 <span id="meta" style="color:#666"></span></header>
+<h3 class="section-title">Leaderboard</h3>
+<div id="lead"></div>
 <div id="trend" class="chart"></div>
 <div id="board" class="chart"></div>
 <div id="uplift" class="chart"></div>
@@ -125,8 +134,25 @@ async function loadTrends(){
     x:t.map(r=>r.run_id),y:t.map(r=>r.mean_overall)}],
     {title:"Trend — mean overall across runs",height:320});
 }
+function pct(v){return v==null?"—":(v*100).toFixed(0)+"%"}
+function leadTable(rows){
+  const head="<tr><th>#</th><th>model</th><th>assistant</th><th class='num'>avg duration</th>"+
+    "<th class='num'>success</th><th class='num'>success w/ mm</th><th class='num'>Δ</th></tr>";
+  const body=rows.map((r,i)=>{
+    const d=r.success_baseline==null?null:r.success_mm-r.success_baseline;
+    const cls=d==null?"":d>0?"up":d<0?"down":"";
+    const dtxt=d==null?"—":(d>0?"+":"")+(d*100).toFixed(0)+"%";
+    return `<tr><td class='num'>${i+1}</td><td>${r.model}</td><td>${r.assistant}</td>`+
+      `<td class='num'>${r.avg_duration_s.toFixed(2)}s</td>`+
+      `<td class='num'>${pct(r.success_baseline)}</td>`+
+      `<td class='num'>${pct(r.success_mm)}</td>`+
+      `<td class='num ${cls}'>${dtxt}</td></tr>`;
+  }).join("");
+  return `<table><thead>${head}</thead><tbody>${body}</tbody></table>`;
+}
 async function loadRun(id){
   const d=await j(`/api/runs/${id}`);
+  document.getElementById("lead").innerHTML=leadTable(d.headline);
   Plotly.newPlot("board",[{type:"bar",x:d.leaderboard.map(r=>r.assistant),
     y:d.leaderboard.map(r=>r.mean_overall)}],{title:"Leaderboard — mean overall",height:360});
   Plotly.newPlot("uplift",grouped(d.condition_split,"assistant","mean_overall"),

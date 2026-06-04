@@ -93,3 +93,46 @@ def by_task(rows: list[dict]) -> list[dict]:
         {"task_id": key[0], "mm_condition": key[1], **_summarise(group)}
         for key, group in sorted(_group(rows, "task_id", "mm_condition").items())
     ]
+
+
+def headline_leaderboard(rows: list[dict]) -> list[dict]:
+    """Next.js-evals-style leaderboard: one row per (assistant, model).
+
+    Each row pairs the ``mm`` arm of an (assistant, profile) combination with
+    that assistant's ``baseline`` arm, exposing success rate without vs. with
+    ``mm`` (the analogue of "Success Rate with AGENTS.md") alongside the mean
+    wall-clock duration. Ranked by with-``mm`` success rate, then by speed.
+
+    Args:
+        rows: Decoded trial rows from :meth:`mmbench_agents.store.Store.trials`.
+
+    Returns:
+        Ranked rows with ``assistant``, ``model`` (the profile), ``avg_duration_s``,
+        ``success_baseline`` (``None`` when the assistant has no baseline arm),
+        ``success_mm``, and the trial counts feeding each figure.
+    """
+    baseline = {
+        key[0]: _summarise(group)
+        for key, group in _group(
+            [r for r in rows if r["mm_condition"] == "baseline"], "assistant"
+        ).items()
+    }
+    out = []
+    for key, group in _group(
+        [r for r in rows if r["mm_condition"] == "mm"], "assistant", "profile"
+    ).items():
+        mm = _summarise(group)
+        base = baseline.get(key[0])
+        out.append(
+            {
+                "assistant": key[0],
+                "model": key[1],
+                "avg_duration_s": mm["mean_wall_s"],
+                "success_baseline": base["success_rate"] if base else None,
+                "success_mm": mm["success_rate"],
+                "mm_trials": mm["trials"],
+                "baseline_trials": base["trials"] if base else 0,
+            }
+        )
+    out.sort(key=lambda r: (-r["success_mm"], r["avg_duration_s"]))
+    return out
