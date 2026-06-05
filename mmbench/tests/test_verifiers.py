@@ -7,8 +7,8 @@ answer and fails when the answer is corrupted.
 
 from __future__ import annotations
 
-from mmbench_agents import dataset
-from mmbench_agents.tasks import TASKS_BY_ID
+from mmbench import dataset
+from mmbench.tasks import TASKS_BY_ID
 
 
 def test_dataset_rebuilds_to_pinned_hash_and_ground_truth(tmp_path):

@@ -12,10 +12,10 @@ from __future__ import annotations
 import hashlib
 import json
 
-from mmbench_agents.adapters import AdapterRequest, AdapterResult, AssistantAdapter, register
-from mmbench_agents.dataset import load_ground_truth
-from mmbench_agents.oracle import correct_answer, corrupt_answer
-from mmbench_agents.types import FailureMode, MmCondition
+from mmbench.adapters import AdapterRequest, AdapterResult, AssistantAdapter, register
+from mmbench.dataset import load_ground_truth
+from mmbench.oracle import correct_answer, corrupt_answer
+from mmbench.types import FailureMode, MmCondition
 
 
 def _unit(*parts: object) -> float:

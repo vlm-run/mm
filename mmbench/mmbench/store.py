@@ -17,7 +17,7 @@ from dataclasses import asdict
 from datetime import datetime, timezone
 from pathlib import Path
 
-from mmbench_agents.types import TrialKey, TrialResult
+from mmbench.types import TrialKey, TrialResult
 
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS runs (

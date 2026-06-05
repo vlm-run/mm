@@ -10,8 +10,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from mmbench_agents import analysis
-from mmbench_agents.store import Store
+from mmbench import analysis
+from mmbench.store import Store
 
 _PAGE = """<!doctype html>
 <html><head><meta charset="utf-8"><title>mmbench-agents — run {run_id}</title>

@@ -13,8 +13,8 @@ are imported lazily, so importing this package stays dependency-free.
 
 from __future__ import annotations
 
-from mmbench_agents.tasks import TASKS, TASKS_BY_ID, TaskSpec
-from mmbench_agents.types import (
+from mmbench.tasks import TASKS, TASKS_BY_ID, TaskSpec
+from mmbench.types import (
     AssistantSpec,
     FailureMode,
     MmCondition,

@@ -16,10 +16,10 @@ from __future__ import annotations
 from collections.abc import Iterator
 from dataclasses import dataclass, field
 
-from mmbench_agents.harness import Harness
-from mmbench_agents.store import Store
-from mmbench_agents.tasks import TASKS, TaskSpec
-from mmbench_agents.types import (
+from mmbench.harness import Harness
+from mmbench.store import Store
+from mmbench.tasks import TASKS, TaskSpec
+from mmbench.types import (
     AssistantSpec,
     MmCondition,
     Profile,

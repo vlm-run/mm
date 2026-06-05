@@ -8,7 +8,7 @@ completed — it can never turn a deterministic failure into a pass.
 
 from __future__ import annotations
 
-from mmbench_agents.types import FailureMode, Score, VerifierReport
+from mmbench.types import FailureMode, Score, VerifierReport
 
 _RUBRIC_WEIGHT = 0.3
 

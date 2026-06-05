@@ -1,6 +1,0 @@
-# Optional dependencies for the mmbench-agents dashboard/visualization.
-# The core benchmark (dataset, tasks, verifiers, harness, store, sweep, analysis)
-# and the unit tests run without these; they are only needed for `report`/`serve`.
-plotly>=5.20
-fastapi>=0.110
-uvicorn>=0.29

@@ -1,7 +1,7 @@
 """Aggregations over trial rows for the leaderboard, uplift, and trends.
 
 Pure-Python (no DataFrame dependency) so it runs anywhere the store does.
-Consumes the decoded rows returned by :meth:`mmbench_agents.store.Store.trials`
+Consumes the decoded rows returned by :meth:`mmbench.store.Store.trials`
 and produces the summaries the dashboard and static report render. ``success``
 means a fully-correct, grounded answer (all sub-checks passed).
 """
@@ -104,7 +104,7 @@ def headline_leaderboard(rows: list[dict]) -> list[dict]:
     wall-clock duration. Ranked by with-``mm`` success rate, then by speed.
 
     Args:
-        rows: Decoded trial rows from :meth:`mmbench_agents.store.Store.trials`.
+        rows: Decoded trial rows from :meth:`mmbench.store.Store.trials`.
 
     Returns:
         Ranked rows with ``assistant``, ``model`` (the profile), ``avg_duration_s``,

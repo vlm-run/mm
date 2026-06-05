@@ -16,8 +16,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from mmbench_agents.types import Scope
-from mmbench_agents.verifiers import (
+from mmbench.types import Scope
+from mmbench.verifiers import (
     ContainsVerifier,
     ExactValueVerifier,
     ManifestVerifier,

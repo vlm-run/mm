@@ -12,7 +12,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import Any
 
-from mmbench_agents.types import VerifierReport
+from mmbench.types import VerifierReport
 
 
 def _as_set(value: Any) -> set[str]:

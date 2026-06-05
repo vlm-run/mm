@@ -1,6 +1,6 @@
 """Every task's verifier must pass the reference answer and fail a corruption.
 
-Uses :mod:`mmbench_agents.oracle` to derive a schema-correct answer and a
+Uses :mod:`mmbench.oracle` to derive a schema-correct answer and a
 deterministically wrong one for each task, exercising the whole catalogue
 (including the PDF, line-count, and image-width tasks) against frozen GT.
 """
@@ -8,10 +8,10 @@ deterministically wrong one for each task, exercising the whole catalogue
 from __future__ import annotations
 
 import pytest
+from mmbench.oracle import correct_answer, corrupt_answer
+from mmbench.tasks import TASKS_BY_ID
 
-from mmbench_agents import dataset
-from mmbench_agents.oracle import correct_answer, corrupt_answer
-from mmbench_agents.tasks import TASKS_BY_ID
+from mmbench import dataset
 
 
 @pytest.mark.parametrize("task_id", sorted(TASKS_BY_ID))

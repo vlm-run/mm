@@ -22,14 +22,14 @@ import tempfile
 import time
 from pathlib import Path
 
-from mmbench_agents import adapters
-from mmbench_agents.adapters import AdapterRequest
-from mmbench_agents.answers import parse_answer
-from mmbench_agents.dataset import ensure_corpus, load_ground_truth
-from mmbench_agents.judge import Judge, NullJudge
-from mmbench_agents.scoring import score_trial
-from mmbench_agents.tasks import TaskSpec
-from mmbench_agents.types import (
+from mmbench import adapters
+from mmbench.adapters import AdapterRequest
+from mmbench.answers import parse_answer
+from mmbench.dataset import ensure_corpus, load_ground_truth
+from mmbench.judge import Judge, NullJudge
+from mmbench.scoring import score_trial
+from mmbench.tasks import TaskSpec
+from mmbench.types import (
     AssistantSpec,
     FailureMode,
     MmCondition,

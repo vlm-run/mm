@@ -8,15 +8,15 @@ so the core package has no web dependency.
 
 Run with::
 
-    python -m mmbench_agents serve --db runs.db
+    python -m mmbench serve --db benchmark.db
 """
 
 from __future__ import annotations
 
 from pathlib import Path
 
-from mmbench_agents import analysis
-from mmbench_agents.store import Store
+from mmbench import analysis
+from mmbench.store import Store
 
 
 def create_app(db_path: str | Path):
@@ -80,13 +80,13 @@ def create_app(db_path: str | Path):
 
 
 def main(argv: list[str] | None = None) -> int:
-    """CLI entrypoint: ``serve --db runs.db [--host H] [--port P]``."""
+    """CLI entrypoint: ``serve --db benchmark.db [--host H] [--port P]``."""
     import argparse
 
     import uvicorn
 
     parser = argparse.ArgumentParser(prog="mmbench-agents serve")
-    parser.add_argument("--db", default="runs.db")
+    parser.add_argument("--db", default="benchmark.db")
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=8008)
     args = parser.parse_args(argv)

@@ -18,7 +18,7 @@ dashboard below. Real assistants plug in through the same adapter interface.
 
 ```
 mmbench-agents/
-  mmbench_agents/
+  mmbench/
     types.py        # trial-matrix axes, Profile/AssistantSpec, Score, TrialResult
     dataset.py      # deterministic corpus + independent ground truth + hash pin
     tasks.py        # TaskSpec + the task catalogue (9 tasks, all six mm commands)
@@ -109,20 +109,20 @@ leaderboard/uplift aggregations without any credentials.
 ### Freeze / verify the dataset
 
 ```bash
-python -m mmbench_agents dataset freeze    # rebuild corpus + ground_truth + pin
-python -m mmbench_agents dataset verify    # confirm a checkout reproduces the pin
+python -m mmbench dataset freeze    # rebuild corpus + ground_truth + pin
+python -m mmbench dataset verify    # confirm a checkout reproduces the pin
 ```
 
 ### Run a sweep (mock adapter — no credentials needed)
 
 ```bash
 # Assistant sweep (leaderboard): fix profile, vary assistant
-python -m mmbench_agents run --db runs.db \
+python -m mmbench run --db benchmark.db \
   --assistants mock-strong,mock-weak --repeats 3 \
   --sweep-mode assistant --label "assistant sweep (gateway)"
 
 # Profile sweep: fix assistant, vary the model mm calls
-python -m mmbench_agents run --db runs.db \
+python -m mmbench run --db benchmark.db \
   --assistants mock-strong --profiles gateway,orion-2 --repeats 3 \
   --sweep-mode profile --label "profile sweep (claude)"
 ```
@@ -138,17 +138,17 @@ CLI binary is on `PATH`; otherwise the trial is recorded as `failure_mode=skippe
 (never a silent zero). Configure the `mm` profile/model out of band as usual.
 
 ```bash
-python -m mmbench_agents run --db runs.db --assistants claude,codex --repeats 3
+python -m mmbench run --db benchmark.db --assistants claude,codex --repeats 3
 ```
 
 ### View the dashboard / visualization
 
 ```bash
 # Static, self-contained HTML (no server, easy to share/archive)
-python -m mmbench_agents report --db runs.db --run 1 --out report.html
+python -m mmbench report --db benchmark.db --run 1 --out report.html
 
 # Interactive FastAPI dashboard at http://127.0.0.1:8008
-python -m mmbench_agents serve --db runs.db
+python -m mmbench serve --db benchmark.db
 ```
 
 The dashboard shows the **leaderboard** (mean overall per assistant), the

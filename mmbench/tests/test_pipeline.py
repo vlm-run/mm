@@ -8,15 +8,14 @@ aggregations exactly as a real run would.
 from __future__ import annotations
 
 import pytest
-
-from mmbench_agents import analysis, dataset
-from mmbench_agents.adapters import register
-from mmbench_agents.adapters.cli import CliAdapter
-from mmbench_agents.harness import Harness
-from mmbench_agents.store import Store
-from mmbench_agents.sweep import Sweep, SweepConfig
-from mmbench_agents.tasks import TASKS_BY_ID
-from mmbench_agents.types import (
+from mmbench import analysis, dataset
+from mmbench.adapters import register
+from mmbench.adapters.cli import CliAdapter
+from mmbench.harness import Harness
+from mmbench.store import Store
+from mmbench.sweep import Sweep, SweepConfig
+from mmbench.tasks import TASKS_BY_ID
+from mmbench.types import (
     AssistantSpec,
     FailureMode,
     MmCondition,
@@ -33,7 +32,7 @@ def _sweep(tmp_path, **kwargs):
         tasks=[TASKS_BY_ID["manifest"], TASKS_BY_ID["needle"]],
         **kwargs,
     )
-    store = Store(tmp_path / "runs.db")
+    store = Store(tmp_path / "benchmark.db")
     sweep = Sweep(Harness(sandbox_root=tmp_path), store)
     run_id = sweep.run(config, dataset_hash=dataset.pinned_hash())
     return store, run_id
@@ -67,7 +66,7 @@ def test_sweep_is_idempotent_and_resumable(tmp_path):
 
 
 def _plan_for(key: TrialKey):
-    from mmbench_agents.sweep import TrialPlan
+    from mmbench.sweep import TrialPlan
 
     return TrialPlan(
         assistant=AssistantSpec(key.assistant, key.assistant),
@@ -113,7 +112,7 @@ def test_unavailable_cli_assistant_is_skipped(tmp_path):
 
 def test_report_renders_html(tmp_path):
     pytest.importorskip("plotly")
-    from mmbench_agents.report import build_report
+    from mmbench.report import build_report
 
     store, run_id = _sweep(tmp_path)
     out = build_report(store, run_id, tmp_path / "report.html")

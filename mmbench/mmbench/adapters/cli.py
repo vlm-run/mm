@@ -17,8 +17,8 @@ import shutil
 import subprocess
 from typing import Callable
 
-from mmbench_agents.adapters import AdapterRequest, AdapterResult, AssistantAdapter, register
-from mmbench_agents.types import FailureMode, MmCondition
+from mmbench.adapters import AdapterRequest, AdapterResult, AssistantAdapter, register
+from mmbench.types import FailureMode, MmCondition
 
 _MM_CALL = re.compile(r"\bmm\s+(find|sql|peek|wc|grep|cat)\b")
 _MAX_OUTPUT = 20_000

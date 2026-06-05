@@ -9,11 +9,11 @@ to avoid circularity, then frozen into ``dataset/ground_truth.json``.
 
 Regenerate the committed corpus + ground truth with::
 
-    python -m mmbench_agents.dataset freeze
+    python -m mmbench.dataset freeze
 
 and verify a checkout matches the pin with::
 
-    python -m mmbench_agents.dataset verify
+    python -m mmbench.dataset verify
 """
 
 from __future__ import annotations

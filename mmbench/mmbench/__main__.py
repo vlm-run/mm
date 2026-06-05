@@ -2,10 +2,10 @@
 
 Subcommands::
 
-    python -m mmbench_agents dataset {freeze,verify}
-    python -m mmbench_agents run --assistants mock-strong,mock-weak [options]
-    python -m mmbench_agents report --db runs.db --run 1 --out report.html
-    python -m mmbench_agents serve --db runs.db
+    python -m mmbench dataset {freeze,verify}
+    python -m mmbench run --assistants mock-strong,mock-weak [options]
+    python -m mmbench report --db benchmark.db --run 1 --out report.html
+    python -m mmbench serve --db benchmark.db
 
 ``run`` defaults to the deterministic mock assistants so a full sweep, store,
 and dashboard can be produced with no external credentials. Pass real assistant
@@ -18,12 +18,12 @@ from __future__ import annotations
 import argparse
 import sys
 
-from mmbench_agents.dataset import _main as dataset_main
-from mmbench_agents.dataset import pinned_hash
-from mmbench_agents.harness import Harness
-from mmbench_agents.sweep import Sweep, SweepConfig
-from mmbench_agents.tasks import TASKS, TASKS_BY_ID
-from mmbench_agents.types import AssistantSpec, Profile, SweepMode
+from mmbench.dataset import _main as dataset_main
+from mmbench.dataset import pinned_hash
+from mmbench.harness import Harness
+from mmbench.sweep import Sweep, SweepConfig
+from mmbench.tasks import TASKS, TASKS_BY_ID
+from mmbench.types import AssistantSpec, Profile, SweepMode
 
 _CLI_ASSISTANTS = {"claude", "codex", "gemini"}
 
@@ -51,14 +51,14 @@ def _cmd_run(args: argparse.Namespace) -> int:
         max_cost_usd=args.max_cost,
         label=args.label,
     )
-    from mmbench_agents.store import Store
+    from mmbench.store import Store
 
     with Store(args.db) as store:
         sweep = Sweep(Harness(), store)
         run_id = sweep.run(config, dataset_hash=pinned_hash())
         print(f"run {run_id} complete · db={args.db}")
         if args.report:
-            from mmbench_agents.report import build_report
+            from mmbench.report import build_report
 
             out = build_report(store, run_id, args.report)
             print(f"report written: {out}")
@@ -66,8 +66,8 @@ def _cmd_run(args: argparse.Namespace) -> int:
 
 
 def _cmd_report(args: argparse.Namespace) -> int:
-    from mmbench_agents.report import build_report
-    from mmbench_agents.store import Store
+    from mmbench.report import build_report
+    from mmbench.store import Store
 
     with Store(args.db) as store:
         out = build_report(store, args.run, args.out)
@@ -76,7 +76,7 @@ def _cmd_report(args: argparse.Namespace) -> int:
 
 
 def _cmd_serve(args: argparse.Namespace) -> int:
-    from mmbench_agents.app import main as serve_main
+    from mmbench.app import main as serve_main
 
     return serve_main(["--db", args.db, "--host", args.host, "--port", str(args.port)])
 
@@ -84,14 +84,14 @@ def _cmd_serve(args: argparse.Namespace) -> int:
 def main(argv: list[str] | None = None) -> int:
     """Parse arguments and dispatch to a subcommand."""
     argv = list(sys.argv[1:] if argv is None else argv)
-    parser = argparse.ArgumentParser(prog="mmbench_agents")
+    parser = argparse.ArgumentParser(prog="mmbench")
     sub = parser.add_subparsers(dest="command", required=True)
 
     p_data = sub.add_parser("dataset", help="freeze or verify the corpus pin")
     p_data.add_argument("action", choices=["freeze", "verify"])
 
     p_run = sub.add_parser("run", help="run a benchmark sweep")
-    p_run.add_argument("--db", default="runs.db")
+    p_run.add_argument("--db", default="benchmark.db")
     p_run.add_argument("--assistants", default="mock-strong,mock-weak")
     p_run.add_argument("--profiles", default="")
     p_run.add_argument("--tasks", default="all")
@@ -104,12 +104,12 @@ def main(argv: list[str] | None = None) -> int:
     p_run.add_argument("--report", default="")
 
     p_report = sub.add_parser("report", help="render a static HTML report")
-    p_report.add_argument("--db", default="runs.db")
+    p_report.add_argument("--db", default="benchmark.db")
     p_report.add_argument("--run", type=int, required=True)
     p_report.add_argument("--out", default="report.html")
 
     p_serve = sub.add_parser("serve", help="serve the interactive dashboard")
-    p_serve.add_argument("--db", default="runs.db")
+    p_serve.add_argument("--db", default="benchmark.db")
     p_serve.add_argument("--host", default="127.0.0.1")
     p_serve.add_argument("--port", type=int, default=8008)
 

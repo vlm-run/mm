@@ -15,8 +15,8 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from mmbench_agents.tasks import TaskSpec
-from mmbench_agents.types import AssistantSpec, FailureMode, MmCondition, Profile
+from mmbench.tasks import TaskSpec
+from mmbench.types import AssistantSpec, FailureMode, MmCondition, Profile
 
 
 @dataclass
@@ -98,5 +98,5 @@ def available_names() -> list[str]:
     return sorted(name for name, a in _REGISTRY.items() if a.available())
 
 
-from mmbench_agents.adapters import cli as cli  # noqa: E402,F401
-from mmbench_agents.adapters import mock as mock  # noqa: E402,F401
+from mmbench.adapters import cli as cli  # noqa: E402,F401
+from mmbench.adapters import mock as mock  # noqa: E402,F401

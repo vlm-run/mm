@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from mmbench_agents.answers import parse_answer
+from mmbench.answers import parse_answer
 
 
 def test_parses_fenced_json_block():
