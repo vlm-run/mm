@@ -2759,7 +2759,14 @@ Indexing is implicit — every command auto-builds a metadata index on first use
 <a id="__codelineno-32-5" name="__codelineno-32-5" href="#__codelineno-32-5"></a>mm<span class="w"> </span>grep<span class="w"> </span><span class="s2">&quot;secret&quot;</span><span class="w"> </span>~/data<span class="w"> </span>--no-ignore<span class="w">            </span><span class="c1"># search gitignored files</span>
 <a id="__codelineno-32-6" name="__codelineno-32-6" href="#__codelineno-32-6"></a>mm<span class="w"> </span>grep<span class="w"> </span><span class="s2">&quot;revenue forecast&quot;</span><span class="w"> </span>~/data<span class="w"> </span>-s<span class="w">             </span><span class="c1"># semantic (vector) search</span>
 <a id="__codelineno-32-7" name="__codelineno-32-7" href="#__codelineno-32-7"></a>mm<span class="w"> </span>grep<span class="w"> </span><span class="s2">&quot;architecture&quot;</span><span class="w"> </span>~/data<span class="w"> </span>-s<span class="w"> </span>--pre-index<span class="w">      </span><span class="c1"># auto-index before search</span>
+<a id="__codelineno-32-8" name="__codelineno-32-8" href="#__codelineno-32-8"></a>mm<span class="w"> </span>grep<span class="w"> </span>--<span class="w"> </span><span class="s2">&quot;--release&quot;</span><span class="w"> </span>./Makefile<span class="w">                </span><span class="c1"># pattern starting with - (see note)</span>
 </code></pre></div>
+<blockquote>
+<p><strong>Patterns starting with <code>-</code> or <code>--</code>:</strong> the CLI parser treats them as options
+(<code>mm grep "--release"</code> fails with <code>No such option</code>). Put <code>--</code> before the
+pattern to mark the end of options: <code>mm grep -- "--release" ./Makefile</code>. This
+matches standard <code>grep</code>/<code>ripgrep</code> behavior.</p>
+</blockquote>
 <h3 id="sql-query-the-index">sql — query the index<a class="headerlink" href="#sql-query-the-index" title="Permanent link">&para;</a></h3>
 <p>Queries file metadata via scan + SQLite, or results and chunks from the persistent SQLite store.</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-33-1" name="__codelineno-33-1" href="#__codelineno-33-1"></a>mm<span class="w"> </span>find<span class="w"> </span>~/data<span class="w"> </span>--schema<span class="w">                          </span><span class="c1"># see available columns</span>

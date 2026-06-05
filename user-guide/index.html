@@ -1963,6 +1963,7 @@ Rust core for speed. Python for developer experience. Unix philosophy for compos
 <a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>mm<span class="w"> </span>grep<span class="w"> </span><span class="s2">&quot;architecture overview&quot;</span><span class="w"> </span>~/docs<span class="w"> </span>-s<span class="w"> </span>--pre-index<span class="w">   </span><span class="c1"># auto-index unindexed files</span>
 </code></pre></div>
 <p>Returns matching files via vector similarity (embeddings). Use <code>--semantic/-s</code> for semantic search, <code>--pre-index</code> to auto-index unindexed files before searching.</p>
+<p>If your search pattern starts with <code>-</code> or <code>--</code>, the CLI parser reads it as an option and fails with <code>No such option</code>. Put <code>--</code> before the pattern to end option parsing — <code>mm grep -- "--release" ./Makefile</code> — the same convention as <code>grep</code> and <code>ripgrep</code>.</p>
 <h3 id="raw-file-metadata">Raw file metadata<a class="headerlink" href="#raw-file-metadata" title="Permanent link">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="c1"># mm peek: dimensions / EXIF / codec / duration / mime / hash.</span>
 <a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>mm<span class="w"> </span>peek<span class="w"> </span>report.pdf<span class="w">             </span><span class="c1"># mime, content hash</span>
