@@ -59,6 +59,7 @@ Then use it via ``mm cat audio.mp3 --encode.backend gemini``.
 from __future__ import annotations
 
 import abc
+import threading
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -152,6 +153,7 @@ _BACKENDS: list[TranscriptionBackend] = []
 _ACTIVE: TranscriptionBackend | None = None
 _DETECTED = False
 _REGISTER: Callable[[], None] | None = None
+_REGISTER_LOCK = threading.Lock()
 
 
 def set_register_hook(fn: Callable[[], None]) -> None:
@@ -160,14 +162,18 @@ def set_register_hook(fn: Callable[[], None]) -> None:
     import time so non-audio commands pay no startup cost.
     """
     global _REGISTER
-    _REGISTER = fn
+    with _REGISTER_LOCK:
+        _REGISTER = fn
 
 
 def _ensure_registered() -> None:
     global _REGISTER
-    if _REGISTER is not None:
-        fn, _REGISTER = _REGISTER, None
-        fn()
+    if _REGISTER is None:
+        return
+    with _REGISTER_LOCK:
+        if _REGISTER is not None:
+            fn, _REGISTER = _REGISTER, None
+            fn()
 
 
 def register_backend(backend: TranscriptionBackend) -> None:
