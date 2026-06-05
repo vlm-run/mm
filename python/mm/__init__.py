@@ -1,5 +1,10 @@
 """mm -- Fast, multimodal context for agents."""
 
+import os as _os
+
+if not _os.environ.get("LOGFIRE_TOKEN"):
+    _os.environ.setdefault("PYDANTIC_DISABLE_PLUGINS", "logfire-plugin")
+
 from importlib.metadata import version
 
 __all__ = [

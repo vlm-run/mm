@@ -374,6 +374,8 @@ mm grep "Quantum Phase" ~/data -s --pre-index    # semantic
 
 **Warning**: regex grep extracts content from each matching file. On large doc directories prefer `--kind code` / `--kind text` for speed.
 
+**Patterns starting with `-`/`--`**: the parser reads them as options, so `mm grep "--release" .` fails with `No such option`. Mark the end of options with `--`: `mm grep -- "--release" ./Makefile` (standard `grep`/`ripgrep` behavior).
+
 ## sql — query metadata, extractions, chunks
 
 ```

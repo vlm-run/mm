@@ -2,25 +2,29 @@
 
 from __future__ import annotations
 
+import atexit
 import os
+import shutil
 import sqlite3
 import tempfile
 from pathlib import Path
 
 import pytest
 
-# Redirect mm's on-disk caches (FSLRUCache for transcripts/scenes) to a
-# session-scoped temp directory before any ``mm.*`` import runs.  Without
-# this, tests that invoke ``transcript_messages`` or ``detect_scenes``
-# would write pickle entries into the developer's real ``~/.cache/mm/``
-# and pollute it with ephemeral fingerprints from ``tmp_path`` files.
-#
-# Done at module-level (not in a fixture) because pytest imports test
-# modules — which transitively import mm — before any fixture fires.
-# ``mm.cache.cache_dir()`` resolves ``MM_CACHE_DIR`` lazily on first
-# cache access, so setting the env var here is sufficient.
+# Redirect mm's cache, data, and config roots to temp dirs before any ``mm.*``
+# import, so the cache, SQLite DB, blobs, and config never touch the developer's
+# real ``~/.cache/mm`` / ``~/.local/share/mm`` / ``~/.config/mm``. Set at module
+# level because pytest imports mm before any fixture fires; MmSettings reads these
+# lazily on first access.
 _MM_CACHE_TMP = tempfile.mkdtemp(prefix="mm-test-cache-")
+_MM_DATA_TMP = tempfile.mkdtemp(prefix="mm-test-data-")
+_MM_CONFIG_TMP = tempfile.mkdtemp(prefix="mm-test-config-")
 os.environ.setdefault("MM_CACHE_DIR", _MM_CACHE_TMP)
+os.environ.setdefault("MM_DATA_DIR", _MM_DATA_TMP)
+os.environ.setdefault("MM_CONFIG_DIR", _MM_CONFIG_TMP)
+atexit.register(shutil.rmtree, _MM_CACHE_TMP, ignore_errors=True)
+atexit.register(shutil.rmtree, _MM_DATA_TMP, ignore_errors=True)
+atexit.register(shutil.rmtree, _MM_CONFIG_TMP, ignore_errors=True)
 
 
 @pytest.fixture
@@ -87,6 +91,17 @@ requires_sqlite_vec = pytest.mark.skipif(
     not _sqlite_vec_available(),
     reason="sqlite3 extension loading not available (no sqlite-vec support)",
 )
+
+
+@pytest.fixture(autouse=True)
+def reset_mm_settings():
+    """Rebuild the ``MmSettings`` singleton around each test so ``MM_*`` overrides
+    set via ``monkeypatch.setenv`` take effect and never leak across tests."""
+    from mm.settings import reset_settings
+
+    reset_settings()
+    yield
+    reset_settings()
 
 
 @pytest.fixture(autouse=True)

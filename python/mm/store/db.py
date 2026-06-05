@@ -35,6 +35,7 @@ import threading
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
+from mm.settings import get_settings
 from mm.store.utils import fill_metadata, get_extraction_id, now_us
 
 if TYPE_CHECKING:
@@ -42,6 +43,20 @@ if TYPE_CHECKING:
 
 CHUNK_SIZE = 2048
 CHUNK_OVERLAP = 100
+
+
+class _SettingsPath:
+    """Lazily expose an :class:`~mm.settings.MmSettings` path as a class attribute.
+
+    Reading it always reflects the current settings (env overrides, in-process
+    ``reset_settings``); tests may ``monkeypatch.setattr`` it to a fixed path.
+    """
+
+    def __init__(self, attr: str) -> None:
+        self._attr = attr
+
+    def __get__(self, obj: object, objtype: type | None = None) -> Path:
+        return getattr(get_settings(), self._attr)
 
 
 def _to_us(val) -> int | None:
@@ -58,11 +73,61 @@ def _to_us(val) -> int | None:
     return int(val.timestamp() * 1_000_000)
 
 
-class MmDatabase:
-    """Global SQLite database for mm."""
+def _load_vec(conn: sqlite3.Connection) -> bool:
+    """Load the sqlite-vec extension into *conn* once; return whether vec0 is usable.
 
-    DB_DIR = Path.home() / ".local" / "share" / "mm"
-    DB_PATH = DB_DIR / "mm.db"
+    Memoized per connection so the numpy/extension import is paid at most once,
+    and only when a query actually touches a ``vec0`` table.
+    """
+    loaded = getattr(conn, "_vec_loaded", None)
+    if loaded is None:
+        try:
+            import sqlite_vec
+
+            conn.enable_load_extension(True)
+            sqlite_vec.load(conn)
+            conn.enable_load_extension(False)
+            loaded = True
+        except (AttributeError, ImportError, OSError):
+            loaded = False
+        setattr(conn, "_vec_loaded", loaded)
+    return loaded
+
+
+class _VecConnection(sqlite3.Connection):
+    """Connection that loads sqlite-vec on first access to a ``vec0`` table.
+
+    Centralizes extension loading so any ``chunks_vec`` query just works —
+    callers never pre-check — while non-vector queries pay no import cost.
+    """
+
+    def execute(self, sql, parameters=(), /):
+        try:
+            return super().execute(sql, parameters)
+        except sqlite3.OperationalError as e:
+            if "vec0" in str(e) and getattr(self, "_vec_loaded", None) is None and _load_vec(self):
+                return super().execute(sql, parameters)
+            raise
+
+    def executemany(self, sql, parameters, /):
+        try:
+            return super().executemany(sql, parameters)
+        except sqlite3.OperationalError as e:
+            if "vec0" in str(e) and getattr(self, "_vec_loaded", None) is None and _load_vec(self):
+                return super().executemany(sql, parameters)
+            raise
+
+
+class MmDatabase:
+    """Global SQLite database for mm.
+
+    Defaults to :class:`~mm.settings.MmSettings`' ``db_path`` (``MM_DB_PATH``),
+    resolved at construction so ``shared_db()`` honours env overrides. Pass
+    ``db_path`` to target a specific file.
+    """
+
+    DB_DIR = _SettingsPath("data_dir")
+    DB_PATH = _SettingsPath("db_path")
 
     def __init__(self, db_path: Path | None = None):
         self._db_path = db_path or self.DB_PATH
@@ -72,8 +137,7 @@ class MmDatabase:
 
     @property
     def _vec_available(self) -> bool:
-        _ = self._connect
-        return getattr(self._tls, "vec_loaded", False)
+        return _load_vec(self._connect)
 
     @property
     def _conn(self) -> sqlite3.Connection | None:
@@ -86,17 +150,12 @@ class MmDatabase:
             return conn
 
         self._db_path.parent.mkdir(parents=True, exist_ok=True)
-        conn = sqlite3.connect(str(self._db_path), check_same_thread=False)
+        conn = sqlite3.connect(
+            str(self._db_path),
+            check_same_thread=False,
+            factory=_VecConnection,
+        )
         conn.row_factory = sqlite3.Row
-        try:
-            import sqlite_vec
-
-            conn.enable_load_extension(True)
-            sqlite_vec.load(conn)
-            conn.enable_load_extension(False)
-            self._tls.vec_loaded = True
-        except (AttributeError, ImportError, OSError):
-            self._tls.vec_loaded = False
         conn.execute("PRAGMA journal_mode=WAL")
         conn.execute("PRAGMA foreign_keys=ON")
         self._tls.conn = conn

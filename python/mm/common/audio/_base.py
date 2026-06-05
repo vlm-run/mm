@@ -59,6 +59,8 @@ Then use it via ``mm cat audio.mp3 --encode.backend gemini``.
 from __future__ import annotations
 
 import abc
+import threading
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -150,6 +152,28 @@ class TranscriptionBackend(abc.ABC):
 _BACKENDS: list[TranscriptionBackend] = []
 _ACTIVE: TranscriptionBackend | None = None
 _DETECTED = False
+_REGISTER: Callable[[], None] | None = None
+_REGISTER_LOCK = threading.Lock()
+
+
+def set_register_hook(fn: Callable[[], None]) -> None:
+    """Defer backend registration until the registry is first read.
+    Avoids importing optional heavy backends (faster-whisper, mlx) at package
+    import time so non-audio commands pay no startup cost.
+    """
+    global _REGISTER
+    with _REGISTER_LOCK:
+        _REGISTER = fn
+
+
+def _ensure_registered() -> None:
+    global _REGISTER
+    if _REGISTER is None:
+        return
+    with _REGISTER_LOCK:
+        if _REGISTER is not None:
+            fn, _REGISTER = _REGISTER, None
+            fn()
 
 
 def register_backend(backend: TranscriptionBackend) -> None:
@@ -176,6 +200,7 @@ def unregister_backend(name: str) -> bool:
 
 def list_backends() -> list[tuple[str, bool]]:
     """Return ``(name, available)`` for every registered backend."""
+    _ensure_registered()
     return [(b.name, b.available()) for b in _BACKENDS]
 
 
@@ -195,6 +220,7 @@ def detect_backend(
     user must explicitly request them via ``--encode.backend``.
     """
     global _ACTIVE, _DETECTED
+    _ensure_registered()
 
     if name is not None:
         for b in _BACKENDS:
@@ -219,6 +245,7 @@ def detect_backend(
 
 def transcribe_available() -> bool:
     """Return True if at least one backend (local or remote) can run."""
+    _ensure_registered()
     return any(b.available() for b in _BACKENDS)
 
 

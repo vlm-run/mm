@@ -135,11 +135,14 @@ def _index_one(uri: str) -> str | None:
         output_dir=None,
         mode="fast",
         no_cache=False,
+        no_generate=False,
         format="rich",
         encode_overrides={},
         generate_overrides={},
         pipelines={},
         verbose=False,
+        dry_run=False,
+        stream=False,
     )
 
     try:

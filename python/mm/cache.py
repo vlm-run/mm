@@ -65,7 +65,6 @@ from __future__ import annotations
 import functools
 import hashlib
 import inspect
-import os
 import threading
 from collections.abc import Callable, Hashable, MutableMapping
 from pathlib import Path
@@ -84,22 +83,14 @@ PathSpec = PathLike | Callable[[], PathLike] | None
 
 
 def cache_dir() -> Path:
-    """Return mm's on-disk cache directory, honouring XDG conventions.
+    """Return mm's on-disk cache directory from :class:`~mm.settings.MmSettings`.
 
-    Resolution order:
-
-    1. ``$MM_CACHE_DIR`` — mm-specific override (used in tests/CI).
-    2. ``$XDG_CACHE_HOME/mm`` — XDG Base Directory spec.
-    3. ``~/.cache/mm`` — fallback.
-
-    The directory is *not* created here; callers (or the disk-cache
-    backend) create it on demand so a read-only check is free.
+    Resolved lazily on access (not created here), so ``MM_CACHE_DIR`` set after
+    import still takes effect.
     """
-    if env := os.environ.get("MM_CACHE_DIR"):
-        return Path(env).expanduser()
-    if xdg := os.environ.get("XDG_CACHE_HOME"):
-        return Path(xdg).expanduser() / "mm"
-    return Path.home() / ".cache" / "mm"
+    from mm.settings import get_settings
+
+    return get_settings().cache_dir
 
 
 def file_fingerprint(path: Any) -> tuple[str, float, int] | None:

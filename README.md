@@ -487,7 +487,13 @@ mm grep "Quantum Phase" ~/data -i              # case-insensitive search
 mm grep "secret" ~/data --no-ignore            # search gitignored files
 mm grep "revenue forecast" ~/data -s             # semantic (vector) search
 mm grep "architecture" ~/data -s --pre-index      # auto-index before search
+mm grep -- "--release" ./Makefile                # pattern starting with - (see note)
 ```
+
+> **Patterns starting with `-` or `--`:** the CLI parser treats them as options
+> (`mm grep "--release"` fails with `No such option`). Put `--` before the
+> pattern to mark the end of options: `mm grep -- "--release" ./Makefile`. This
+> matches standard `grep`/`ripgrep` behavior.
 
 ### sql — query the index
 

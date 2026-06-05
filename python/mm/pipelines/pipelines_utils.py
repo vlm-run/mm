@@ -178,8 +178,10 @@ def do_list_pipelines() -> None:
     from rich.panel import Panel
     from rich.text import Text
 
+    from mm.settings import get_settings
+
     pipelines_dir = Path(__file__).resolve().parent.parent / "pipelines"
-    user_dir = Path.home() / ".config" / "mm" / "pipelines"
+    user_dir = get_settings().config_dir / "pipelines"
 
     _RESERVED_KEYS = {"strategy", "pyfunc"}
 
