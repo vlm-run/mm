@@ -204,6 +204,55 @@ def profile_update(
         raise typer.Exit(1)
 
 
+@profile_app.command("clone")
+def profile_clone(
+    source: Annotated[str, typer.Argument(help="Profile to clone from")],
+    dest: Annotated[str, typer.Argument(help="Name for the new profile")],
+    base_url: Annotated[
+        Optional[str], typer.Option("--base-url", "-b", help="Override base URL")
+    ] = None,
+    api_key: Annotated[
+        Optional[str],
+        typer.Option("--api-key", "-k", help="Override API key. Defaults to '' if not provided"),
+    ] = None,
+    model: Annotated[
+        Optional[str], typer.Option("--model", "-m", help="Override model name")
+    ] = None,
+) -> None:
+    """Clone a profile, optionally overriding individual fields.
+
+    \b
+    All fields are copied from the source profile. Any option provided on the
+    command line overwrites the corresponding field in the clone; unspecified
+    fields inherit the source value unchanged.
+
+    Examples:
+      mm profile clone ollama my-ollama                          # exact copy. api-key defaults to ''
+      mm profile clone ollama my-ollama --model qwen3-vl:8b     # different model. api-key defaults to ''
+      mm profile clone openai openai-dev --api-key sk-dev-...   # different key
+      mm profile clone openai openai-eu --model qwen3-vl:8b --base-url https://eu.openai.com/v1
+    """
+    from mm.display import output_console
+    from mm.profile import clone_profile
+
+    try:
+        path = clone_profile(source, dest, base_url=base_url, api_key=api_key, model=model)
+        overrides = []
+        if base_url is not None:
+            overrides.append(f"base_url={base_url}")
+        if api_key is not None:
+            overrides.append("api_key=••••")
+        if model is not None:
+            overrides.append(f"model={model}")
+        suffix = f" ({', '.join(overrides)})" if overrides else ""
+        output_console.print(
+            f"Cloned profile: [bold]{source}[/bold] → [bold]{dest}[/bold]{suffix}  ({path})"
+        )
+    except ValueError as e:
+        output_console.print(f"{e}")
+        raise typer.Exit(1)
+
+
 @profile_app.command("remove")
 def profile_remove(
     name: Annotated[str, typer.Argument(help="Profile name to remove")],

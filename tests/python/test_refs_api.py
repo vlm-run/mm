@@ -254,12 +254,19 @@ class TestToMessages:
         with pytest.raises(ValueError):
             ctx.to_messages(format="claude")  # type: ignore[arg-type]
 
-    def test_encoders_override(self, tiny_png: Path):
+    def test_encoders_override(self, tmp_path: Path):
+        """An explicit per-kind override must replace auto-detection, not be ignored."""
+        img = tmp_path / "wide.jpg"  # wide lossy JPEG → auto-detects to 'resize'
+        Image.new("RGB", (1500, 1500), "red").save(img)
         ctx = mm.Context()
-        ctx.add(tiny_png)
-        # Should not raise — 'tile' is a registered image encoder.
-        msgs = ctx.to_messages(format="openai", encoders={"image": "tile"})
-        assert len(msgs) == 1
+        ctx.add(img)
+
+        def n_images(msgs: list) -> int:
+            return sum(p.get("type") == "image_url" for p in msgs[0]["content"])
+
+        assert n_images(ctx.to_messages(format="openai")) == 1  # auto → resize: 1 part
+        tiled = ctx.to_messages(format="openai", encoders={"image": "tile"})
+        assert n_images(tiled) > 1  # override → tile: overview + crops
 
     def test_encoder_kwargs_forwarded(self, tiny_png: Path):
         """encoder_kwargs are forwarded to the encoder's encode() method."""

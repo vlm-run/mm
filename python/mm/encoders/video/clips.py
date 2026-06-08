@@ -13,7 +13,6 @@ stream-copy segment extraction (fastest available method).
 
 from __future__ import annotations
 
-import base64
 import logging
 import tempfile
 from concurrent.futures import ThreadPoolExecutor
@@ -25,6 +24,7 @@ from mm.encoders import register
 from mm.encoders.base import Encoder, Message
 from mm.encoders.image import _to_message
 from mm.encoders.video._transcript import encode_with_transcript
+from mm.utils import get_b64
 
 logger = logging.getLogger(__name__)
 
@@ -115,7 +115,7 @@ class VideoClips(Encoder):
                 },
                 {
                     "type": "video_url",
-                    "video_url": {"url": f"data:{mime};base64,{base64.b64encode(data).decode()}"},
+                    "video_url": {"url": f"data:{mime};base64,{get_b64(data)}"},
                 },
             ]
         )
@@ -172,9 +172,7 @@ class VideoClips(Encoder):
                     },
                     {
                         "type": "video_url",
-                        "video_url": {
-                            "url": f"data:{mime};base64,{base64.b64encode(seg_data).decode()}"
-                        },
+                        "video_url": {"url": f"data:{mime};base64,{get_b64(seg_data)}"},
                     },
                 ]
             )

@@ -29,6 +29,7 @@ from mm.common.audio._base import (
     detect_backend,
     list_backends,
     register_backend,
+    set_register_hook,
     transcribe_available,
     unregister_backend,
 )
@@ -71,7 +72,7 @@ def _register_backends() -> None:
         logger.debug("ctranslate2 backend not available (install mm-ctx[gpu])")
 
 
-_register_backends()
+set_register_hook(_register_backends)
 
 ACTIVE_VARIANT = "openai"
 

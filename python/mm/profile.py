@@ -372,6 +372,59 @@ def get_profile() -> Profile:
     )
 
 
+def clone_profile(
+    source: str,
+    dest: str,
+    *,
+    base_url: str | None = None,
+    api_key: str | None = None,
+    model: str | None = None,
+) -> Path:
+    """Clone an existing profile into a new one, optionally overriding fields.
+
+    Copies all fields from *source* then applies any non-None overrides.
+    Returns the config file path.
+
+    Args:
+        source: Name of the profile to clone from.
+        dest: Name of the new profile to create.
+        base_url: Override the base_url field; if None, inherited from source.
+        api_key: Override the api_key field; if None, inherited from source.
+        model: Override the model field; if None, inherited from source.
+
+    Returns:
+        Path to the written config file.
+
+    Raises:
+        ValueError: If *source* doesn't exist, *dest* already exists, or
+            *dest* is an invalid profile name.
+    """
+    _validate_profile_name(dest)
+
+    file_data = load_profile_config()
+    profiles = _profiles(file_data)
+
+    # Resolve source — reserved profiles are always available even if not in
+    # the profiles dict, so fall back to their defaults.
+    if source in profiles:
+        src_section = {k: v for k, v in profiles[source].items()}
+    elif source in RESERVED_PROFILES:
+        src_section = {k: v for k, v in RESERVED_DEFAULTS[source].items() if k != "name"}
+    else:
+        raise ValueError(f"Profile '{source}' not found. Available: {', '.join(sorted(profiles))}")
+
+    if dest in profiles:
+        raise ValueError(f"Profile '{dest}' already exists. Use 'mm profile update' to modify it.")
+
+    cloned = {
+        "base_url": base_url if base_url is not None else src_section.get("base_url", ""),
+        "api_key": api_key or "",
+        "model": model if model is not None else src_section.get("model", ""),
+    }
+    profiles[dest] = cast(ProfileData, cloned)
+    return write_full_config(file_data)
+
+
 def get_profile_by_name(name: str) -> ProfileData:
     """get a profile by the name"""
     file_data = load_profile_config()

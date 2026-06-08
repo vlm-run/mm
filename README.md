@@ -15,11 +15,12 @@ middle; padding-right: 5px;"><br>
   <a href="https://pypi.org/project/mm-ctx/"><img src="https://img.shields.io/pypi/l/mm-ctx" alt="License"></a>
   <a href="https://discord.gg/6aqcyvPF79"><img src="https://img.shields.io/badge/discord-chat-purple?color=%235765F2&label=discord&logo=discord" alt="Discord"></a>
   <a href="https://twitter.com/vlmrun"><img src="https://img.shields.io/twitter/follow/vlmrun.svg?style=social&logo=twitter" alt="Twitter Follow"></a>
+  <a href="https://huggingface.co/spaces/vlm-run/mm-ctx"><img src="https://img.shields.io/badge/🤗%20Spaces-Try%20it-blue" alt="Try it on HF Spaces"></a>
 </div>
 
 <br />
 <p align="center">
-  <img src="docs/assets/mm-terminal-window.png" alt="mm terminal demo" width="880" style="border-radius: 12px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);">
+  <img src="https://vlm-run.github.io/mm/assets/mm-terminal-window-v2.png" alt="mm terminal demo" width="880" style="border-radius: 12px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);">
 </p>
 
 ---
@@ -335,7 +336,7 @@ The skill exposes mm's capabilities to any tool that supports the skills protoco
 |---------|---------|-----------|
 | `find`  | Find/list files; tabular, tree, or schema view | `-n` / `--name`, `-i` / `--ignore-case`, `-k` / `--kind`, `-e` / `--ext`, `--min-size`, `--max-size`, `-s` / `--sort`, `-r` / `--reverse`, `-c` / `--columns`, `--tree`, `-d` / `--depth`, `--schema`, `--limit`, `--no-ignore`, `-f` / `--format` |
 | `peek`  | Local file metadata (dimensions / EXIF / codec / duration / mime / hash) | `--full` (adds `doc_author/title/subject/keywords/creator/producer/pages`), `-f` / `--format` (rich / json / pretty-json / tsv / csv / stdout) |
-| `cat`   | Content extraction (auto-detected by kind × mode); pipeline-driven | `-m` / `--mode fast`/`accurate`, `-p` / `--pipeline` (encoder name or YAML), `-n` (head/tail), `-o` / `--output-dir`, `--no-cache`, `--no-generate`, `-v` / `--verbose`, `-y` / `--yes`, `--encode.strategy`, `--encode.backend` (mlx/ctranslate2/openai), `--encode.model`, `--encode.pyfunc`, `--encode.strategy_opts KEY=VALUE`, `--prompt` (= `--generate.prompt`), `--model` (= `--generate.model`), `--generate.max-tokens`, `--generate.temperature`, `--generate.json-mode`, `--generate.extra-body`, `--list-pipelines`, `--list-encoders`, `--print-pipeline <kind>/<mode>`, `-f` / `--format` |
+| `cat`   | Content extraction (auto-detected by kind × mode); pipeline-driven | `-m` / `--mode fast`/`accurate`, `-p` / `--pipeline` (encoder name or YAML), `-n` (head/tail), `-o` / `--output-dir`, `--no-cache`, `--no-generate`, `-v` / `--verbose`, `--stream` (stream LLM tokens to stdout), `-y` / `--yes`, `--encode.strategy`, `--encode.backend` (mlx/ctranslate2/openai), `--encode.model`, `--encode.pyfunc`, `--encode.strategy_opts KEY=VALUE`, `--prompt` (= `--generate.prompt`), `--model` (= `--generate.model`), `--generate.max-tokens`, `--generate.temperature`, `--generate.json-mode`, `--generate.extra-body`, `--list-pipelines`, `--list-encoders`, `--print-pipeline <kind>/<mode>`, `-f` / `--format` |
 | `grep`  | Text + semantic content search | `-k` / `--kind`, `-e` / `--ext`, `-C` (context lines), `-c` / `--count`, `-i` / `--ignore-case`, `-s` / `--semantic`, `--pre-index`, `--no-ignore`, `-f` / `--format` |
 | `sql`   | SQL on `files` / `extractions` / `chunks` (auto-routed) | `-d` / `--dir`, `--pre-index`, `--list-tables`, `-f` / `--format` |
 | `wc`    | Count files, bytes, lines (est.), tokens (est.) | `-k` / `--kind`, `--by-kind`, `-f` / `--format` |
@@ -395,6 +396,8 @@ mm cat bench.jpg -m accurate -p my-pipeline.yaml                # custom pipelin
 mm cat Timelapse.mp4 -m accurate --no-cache                     # force fresh LLM call
 mm cat bench.jpg -m accurate --no-generate                      # snapshot encoder output (no LLM)
 mm cat bench.jpg -m accurate -v                                 # verbose (shows pipeline tree)
+mm cat bench.jpg -m accurate --stream                            # stream LLM tokens to stdout
+mm cat bench.jpg -m accurate --stream --no-cache                 # stream + force fresh LLM call
 mm cat --list-pipelines                                         # list registered pipelines
 mm cat --list-encoders                                          # list registered encoders
 mm cat --print-pipeline image/accurate                          # print a built-in pipeline's YAML source
@@ -484,7 +487,13 @@ mm grep "Quantum Phase" ~/data -i              # case-insensitive search
 mm grep "secret" ~/data --no-ignore            # search gitignored files
 mm grep "revenue forecast" ~/data -s             # semantic (vector) search
 mm grep "architecture" ~/data -s --pre-index      # auto-index before search
+mm grep -- "--release" ./Makefile                # pattern starting with - (see note)
 ```
+
+> **Patterns starting with `-` or `--`:** the CLI parser treats them as options
+> (`mm grep "--release"` fails with `No such option`). Put `--` before the
+> pattern to mark the end of options: `mm grep -- "--release" ./Makefile`. This
+> matches standard `grep`/`ripgrep` behavior.
 
 ### sql — query the index
 
@@ -505,7 +514,7 @@ mm sql --list-tables                              # show available tables
 ### bench — benchmarks with statistical analysis
 
 <p align="center">
-  <img src="docs/assets/mm-benchmarks-14052026.png" alt="mm bench output" width="880" style="border-radius: 12px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);">
+  <img src="https://vlm-run.github.io/mm/assets/mm-benchmarks-14052026.png" alt="mm bench output" width="880" style="border-radius: 12px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);">
 </p>
 
 `overhead + metadata` always run; `--mode` adds an extraction tier on top.

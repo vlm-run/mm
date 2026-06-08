@@ -8,6 +8,13 @@ DESIGN_HEAD = """
 <script src="https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.8.0/lib/xterm-addon-fit.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xterm-addon-canvas@0.5.0/lib/xterm-addon-canvas.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js"></script>
+<script>
+if (typeof pdfjsLib !== 'undefined') {
+  pdfjsLib.GlobalWorkerOptions.workerSrc =
+    'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
+}
+</script>
 <script>
 (function() {
   function mount() {
@@ -234,6 +241,35 @@ DESIGN_HEAD = """
     renderPreview(f);
   }
 
+  function renderPdf(url, wrap) {
+    if (typeof pdfjsLib === 'undefined') {
+      wrap.innerHTML = '<div class="mm-fv-empty">PDF.js not loaded. <a href="' + url + '" target="_blank">Open PDF →</a></div>';
+      return;
+    }
+    wrap.innerHTML = '<div class="mm-fv-empty">Loading PDF…</div>';
+    pdfjsLib.getDocument({ url: url, withCredentials: false }).promise.then(function(pdf) {
+      wrap.innerHTML = '';
+      var availW = (wrap.parentElement ? wrap.parentElement.clientWidth : 700) - 32;
+      for (var i = 1; i <= pdf.numPages; i++) {
+        (function(pageNum) {
+          var canvas = document.createElement('canvas');
+          canvas.className = 'mm-fv-pdf-canvas';
+          wrap.appendChild(canvas);
+          pdf.getPage(pageNum).then(function(page) {
+            var base = page.getViewport({ scale: 1 });
+            var scale = Math.max(0.5, Math.min(3, availW / base.width));
+            var vp = page.getViewport({ scale: scale });
+            canvas.width = vp.width;
+            canvas.height = vp.height;
+            page.render({ canvasContext: canvas.getContext('2d'), viewport: vp });
+          });
+        })(i);
+      }
+    }).catch(function() {
+      wrap.innerHTML = '<div class="mm-fv-empty">Failed to render PDF. <a href="' + url + '" target="_blank">Open PDF →</a></div>';
+    });
+  }
+
   function renderPreview(f) {
     var pv = document.getElementById('mm-fv-preview');
     var meta = document.getElementById('mm-fv-meta');
@@ -256,7 +292,8 @@ DESIGN_HEAD = """
                        '<audio src="' + url + '" controls></audio>' +
                      '</div>';
     } else if (f.kind === 'document' && f.ext === 'pdf') {
-      pv.innerHTML = '<iframe class="mm-fv-iframe" src="' + url + '"></iframe>';
+      pv.innerHTML = '<div class="mm-fv-pdf-pages" id="mm-fv-pdf-pages"></div>';
+      renderPdf(url, document.getElementById('mm-fv-pdf-pages'));
     } else if (f.kind === 'text') {
       pv.innerHTML = '<pre class="mm-fv-text">Loading…</pre>';
       fetch(url).then(function(r) { return r.text(); }).then(function(t) {
@@ -1119,6 +1156,21 @@ DESIGN_HEAD = """
     height: 100%;
     border: 0;
     background: var(--mm-surface);
+  }
+  #mm-fv-modal .mm-fv-pdf-pages {
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    background: var(--mm-bg);
+    min-height: 100%;
+  }
+  #mm-fv-modal .mm-fv-pdf-canvas {
+    max-width: 100%;
+    border-radius: 4px;
+    box-shadow: 0 2px 8px rgba(1, 9, 23, 0.1);
+    background: white;
   }
   #mm-fv-modal .mm-fv-text {
     margin: 0;

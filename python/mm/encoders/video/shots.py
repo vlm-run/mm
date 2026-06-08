@@ -14,7 +14,6 @@ or temp files.
 
 from __future__ import annotations
 
-import base64
 import io
 import logging
 from pathlib import Path
@@ -24,6 +23,7 @@ from mm.encoders import register, resolve_provider
 from mm.encoders.base import Encoder, Message
 from mm.encoders.image import _image_part, _to_message
 from mm.encoders.video._transcript import encode_with_transcript
+from mm.utils import get_b64
 
 logger = logging.getLogger(__name__)
 
@@ -233,7 +233,7 @@ class VideoShotMosaic(Encoder):
 
             buf = io.BytesIO()
             mosaic_img.save(buf, "JPEG", quality=85)
-            b64 = base64.b64encode(buf.getvalue()).decode()
+            b64 = get_b64(buf.getvalue())
 
             parts: list[dict[str, Any]] = [
                 {

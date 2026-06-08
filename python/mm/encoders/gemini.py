@@ -7,7 +7,6 @@ duration-based chunking for long videos.
 
 from __future__ import annotations
 
-import base64
 import json
 import logging
 from concurrent.futures import ThreadPoolExecutor
@@ -17,6 +16,7 @@ from typing import Any, Iterable
 from mm.constants import guess_mime
 from mm.encoders import register
 from mm.encoders.base import Encoder, Message
+from mm.utils import get_b64
 
 logger = logging.getLogger(__name__)
 
@@ -31,12 +31,7 @@ def _gemini_inline_data_part(data: bytes, mime: str) -> dict[str, Any]:
     Returns:
         Dict matching the ``google.genai.types.Part`` schema.
     """
-    return {
-        "inline_data": {
-            "mime_type": mime,
-            "data": base64.b64encode(data).decode(),
-        }
-    }
+    return {"inline_data": {"mime_type": mime, "data": get_b64(data)}}
 
 
 def _to_gemini_message(parts: list[dict[str, Any]]) -> Message:

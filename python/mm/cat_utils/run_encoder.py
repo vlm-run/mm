@@ -10,6 +10,7 @@ from mm.cat_utils.base_utils import (
     spec_extra_body,
 )
 from mm.constants import BinaryFileKind
+from mm.encoders.base import Message
 from mm.pipelines.schema import PipelineSpec
 
 
@@ -27,7 +28,11 @@ def _format_pipeline_tree(encode_info: str, generate_info: str | None = None) ->
     return f"[dim]{pipeline}[/dim]"
 
 
-def _format_encode_verbose(strategy: str | None, messages: list[dict], elapsed_ms: float) -> str:
+def _format_encode_verbose(
+    strategy: str | None,
+    messages: list[dict],
+    elapsed_ms: float,
+) -> str:
     """Format verbose output for the encode step."""
     from mm.display import format_time
 
@@ -93,21 +98,34 @@ def _extract_llm_parts(msg: dict) -> list[dict]:
     return parts
 
 
-def run_encoder(path: Path, kind: BinaryFileKind, spec: PipelineSpec, opts: CatOpts) -> RunResult:
-    """Run a named encoder strategy and output JSON messages or pipe to LLM."""
+def get_encoded_messages(
+    path: Path,
+    kind: BinaryFileKind,
+    strategy: str,
+    *,
+    spec: PipelineSpec,
+    opts: CatOpts,
+) -> list[Message]:
+    """Run a named encoder and return the raw Message dicts."""
     from mm.encoders import get as get_encoder
 
-    assert spec.encode.strategy is not None
-    t_encode = time.monotonic()
-    strat = get_encoder(spec.encode.strategy, kind)
-    encode_kwargs: dict[str, Any] = dict(spec.encode.strategy_opts)
+    strat = get_encoder(strategy, kind)
     opts_kwargs = {"mode": opts.mode, "generate_model": opts.generate_overrides.get("model")}
+    encode_kwargs: dict[str, Any] = dict(spec.encode.strategy_opts or {})
 
     if spec.encode.backend is not None:
         encode_kwargs.setdefault("backend", spec.encode.backend)
     if spec.encode.model is not None:
         encode_kwargs.setdefault("model", spec.encode.model)
     messages = list(strat.encode(path, **encode_kwargs, **opts_kwargs))
+    return messages
+
+
+def run_encoder(path: Path, kind: BinaryFileKind, spec: PipelineSpec, opts: CatOpts) -> RunResult:
+    """Run a named encoder strategy and output JSON messages or pipe to LLM."""
+    assert spec.encode.strategy is not None
+    t_encode = time.monotonic()
+    messages = get_encoded_messages(path, kind, spec.encode.strategy, spec=spec, opts=opts)
     encode_elapsed = (time.monotonic() - t_encode) * 1000
 
     if spec.generate is None:
@@ -142,13 +160,26 @@ def run_encoder(path: Path, kind: BinaryFileKind, spec: PipelineSpec, opts: CatO
 
     ctx = {"filename": path.name}
     extra = spec_extra_body(spec)
+    do_stream = getattr(opts, "stream", False)
     if len(chunks) == 1:
         result = llm.generate(
-            kind, opts.mode, context=ctx, parts=chunks[0], pipeline_spec=spec, extra_body=extra
+            kind,
+            opts.mode,
+            context=ctx,
+            parts=chunks[0],
+            pipeline_spec=spec,
+            extra_body=extra,
+            stream=do_stream,
         )
     else:
         result = llm.generate_chunked(
-            kind, opts.mode, context=ctx, chunks=chunks, pipeline_spec=spec, extra_body=extra
+            kind,
+            opts.mode,
+            context=ctx,
+            chunks=chunks,
+            pipeline_spec=spec,
+            extra_body=extra,
+            stream=do_stream,
         )
 
     elapsed = (time.monotonic() - t0) * 1000

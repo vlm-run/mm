@@ -532,6 +532,46 @@ class TestEmbeddings:
 
 
 # ---------------------------------------------------------------------------
+# sqlite-vec extension auto-loading (centralized in _VecConnection / _load_vec)
+# ---------------------------------------------------------------------------
+
+
+def _seed_embeddings(path: Path) -> None:
+    seed = MmDatabase(db_path=path)
+    uri = "/test/data/doc.txt"
+    ensure_fast(seed, uri)
+    extraction_id = seed.put_extraction(uri, get_hash(uri), "default", "qwen", "content " * 50)
+    seed.upsert_embeddings(extraction_id=extraction_id, vectors=[[0.1, 0.2], [0.3, 0.4]])
+
+
+class TestVecAutoLoad:
+    @requires_sqlite_vec
+    def test_raw_chunks_vec_query_autoloads_on_fresh_connection(self, tmp_path: Path):
+        path = tmp_path / "test.db"
+        _seed_embeddings(path)
+
+        conn = MmDatabase(db_path=path)._connect
+        assert getattr(conn, "_vec_loaded", None) is None
+
+        count = conn.execute("SELECT COUNT(*) FROM chunks_vec").fetchone()[0]
+        assert count >= 1
+        assert getattr(conn, "_vec_loaded", None) is True
+
+    @requires_sqlite_vec
+    def test_sql_method_on_chunks_vec_autoloads(self, tmp_path: Path):
+        path = tmp_path / "test.db"
+        _seed_embeddings(path)
+
+        _, rows = MmDatabase(db_path=path).sql("SELECT COUNT(*) AS n FROM chunks_vec")
+        assert rows[0][0] >= 1
+
+    def test_vector_free_query_never_loads_extension(self, db: MmDatabase):
+        ensure_metadata(db, ["a.py"])
+        db.sql("SELECT COUNT(*) FROM chunks")
+        assert getattr(db._connect, "_vec_loaded", None) is None
+
+
+# ---------------------------------------------------------------------------
 # SQL
 # ---------------------------------------------------------------------------
 
