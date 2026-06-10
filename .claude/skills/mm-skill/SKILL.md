@@ -67,7 +67,7 @@ mm [--profile NAME | -p] [--color auto|always|never] [--version | -v] <command> 
 | `sql` | SQL on `files`, `extractions`, `chunks` tables. |
 | `wc` | Count files, bytes, lines (est.), tokens (est.). |
 | `bench` | Benchmark suite with statistical analysis. |
-| `config` | Configuration: `show`, `init`, `set`, `reset-db`, `reset-profiles`, `reset`. |
+| `config` | Configuration: `show`, `init`, `set`, `reset-db`, `reset-profiles`, `reset`, `doctor`. |
 | `profile` | LLM provider profiles: `list`, `add`, `update`, `use`, `remove`. |
 
 ## Quick workflow
@@ -482,6 +482,8 @@ mm config set transcription.api_key sk-...
 mm config reset-db        [-y]                       # delete all DBs & caches
 mm config reset-profiles  [-y]                       # restore default profiles
 mm config reset           [-y]                       # both (irreversible)
+mm config doctor                                     # environment health check
+mm config doctor --format json                       # machine-readable output
 ```
 
 ## profile — LLM provider profiles
