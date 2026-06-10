@@ -1,11 +1,10 @@
 .PHONY: dev develop build test test-rust test-python test-python-fast test-python-full bench clean lint lint-rust lint-python typecheck fmt dist dist-verify dist-test dist-publish dist-publish-test
 
-dev: ## One-command full setup: venv + deps + Rust build + pre-commit hooks
+dev:
 	uv venv --python 3.12
-	uv pip install -e ".[dev]"
+	. .venv/bin/activate && uv pip install -e ".[dev]"
 	uv run maturin develop --release
 	@uv run pre-commit install --install-hooks >/dev/null 2>&1 || true
-	@echo "── Ready! Activate with: source .venv/bin/activate ──"
 
 develop:
 	uv run maturin develop --release
