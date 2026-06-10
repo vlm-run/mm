@@ -73,6 +73,7 @@ dependencies = [
     "pypdfium2>=4.0",
     "Pillow>=10.0",
     "openai>=1.0",
+    "httpx>=0.24",
     "pyyaml>=6.0",
     "av>=13.0",
     "scenedetect==0.7",
