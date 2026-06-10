@@ -453,13 +453,12 @@ def doctor(
 
         prof = get_profile()
         _ok("profile", f"{prof.name} -> {prof.model} @ {prof.base_url}")
-        # Lightweight reachability: single completion with max_tokens=1
         try:
             from openai import OpenAI
 
             client = OpenAI(base_url=prof.base_url, api_key=prof.api_key or "unused", timeout=10)
             client.chat.completions.create(
-                model=prof.model, messages=[{"role": "user", "content": "hi"}], max_tokens=1
+                model=prof.model, messages=[{"role": "user", "content": "hi"}], max_tokens=64
             )
             _ok("profile_reachable", "endpoint responded")
         except Exception as e:
