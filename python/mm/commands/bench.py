@@ -11,6 +11,7 @@ import typer
 
 from mm.commands.bench_commands import BenchCommand
 from mm.commands.bench_render import (
+    _MAX_RECORDING_STDOUT_BYTES,
     _build_args_line,
     _build_command_cells,
     _build_footer_line,
@@ -37,6 +38,7 @@ from mm.utils import BaseFormat
 
 __all__ = [
     "BenchResult",
+    "_MAX_RECORDING_STDOUT_BYTES",
     "_build_args_line",
     "_build_command_cells",
     "_build_footer_line",
