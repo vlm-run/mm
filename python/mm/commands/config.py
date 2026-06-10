@@ -494,10 +494,10 @@ def doctor(
         print(json_dumps(checks))
         return
     if fmt in ("tsv", "csv"):
-        sep = "\t" if fmt == "tsv" else ","
-        print(f"check{sep}status{sep}detail")
-        for c in checks:
-            print(f"{c['name']}{sep}{c['status']}{sep}{c['detail']}")
+        from mm.display import emit_csv, emit_tsv
+
+        emitter = emit_tsv if fmt == "tsv" else emit_csv
+        emitter(checks, columns=["check", "status", "detail"])
         return
 
     from rich import box
