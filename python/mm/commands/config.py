@@ -469,9 +469,9 @@ def doctor(
 
     # Optional deps
     for mod_name, purpose in [
-        ("scenedetect", "shot detection"),
+        ("ctranslate2", "CTranslate2 runtime"),
         ("faster_whisper", "local Whisper"),
-        ("cv2", "OpenCV"),
+        ("lightning_whisper_mlx", "MLX Whisper (Apple Silicon)"),
     ]:
         try:
             __import__(mod_name)
