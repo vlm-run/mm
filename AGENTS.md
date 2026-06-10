@@ -175,7 +175,7 @@ mm/
 │       ├── sql.py              # mm sql (all tables via SQLite)
 │       ├── wc.py               # mm wc (--by-kind)
 │       ├── bench.py            # mm bench (benchmark suite)
-│       ├── config.py           # mm config (show, init, set, reset-db)
+│       ├── config.py           # mm config (show, init, set, reset-db, doctor)
 │       └── profile.py          # mm profile (list, add, update, use, remove)
 ├── tests/
 │   └── python/                 # pytest suite
@@ -236,7 +236,7 @@ uv run mm <command> [args]
 | `sql`     | SQL on files, results, and chunks | `--dir`, `--format`, `--list-tables` |
 | `wc`      | Count files, size, lines (est.), tokens (est.) | `--kind`, `--by-kind`, `--format` |
 | `bench`   | Benchmark suite | `--format`, `--rounds` |
-| `config`  | Extraction mode settings | `show`, `init`, `set`, `reset-db`, `reset-profiles`, `reset` |
+| `config`  | Extraction mode settings | `show`, `init`, `set`, `reset-db`, `reset-profiles`, `reset`, `doctor` |
 | `profile` | Manage LLM provider profiles | `list`, `add`, `update`, `use`, `remove`, `--format` |
 
 ### Consolidated commands

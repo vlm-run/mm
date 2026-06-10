@@ -341,7 +341,7 @@ The skill exposes mm's capabilities to any tool that supports the skills protoco
 | `sql`   | SQL on `files` / `extractions` / `chunks` (auto-routed) | `-d` / `--dir`, `--pre-index`, `--list-tables`, `-f` / `--format` |
 | `wc`    | Count files, bytes, lines (est.), tokens (est.) | `-k` / `--kind`, `--by-kind`, `-f` / `--format` |
 | `bench` | Benchmark suite with statistical analysis | `-r` / `--rounds`, `-w` / `--warmup`, `-m` / `--mode metadata`/`fast`/`accurate`/`all`, `-c` / `--command`, `-g` / `--group`, `--model`, `--task`, `-b` / `--bench-file`, `--dry-run`, `--host-info`, `--with-generate`, `--timeout`, `-f` / `--format` (incl. `stdout`) |
-| `config` | Configuration | `show`, `init [-f]`, `set <key> <value>`, `reset-db [-y]`, `reset-profiles [-y]`, `reset [-y]` |
+| `config` | Configuration | `show`, `init [-f]`, `set <key> <value>`, `reset-db [-y]`, `reset-profiles [-y]`, `reset [-y]`, `doctor [--format]` |
 | `profile` | LLM provider profiles | `list [-f FORMAT]`, `add NAME -b URL -m MODEL [-k KEY]`, `update NAME [-b/-k/-m]`, `use NAME`, `remove NAME` |
 
 Top-level: `mm [-p / --profile NAME] [--color auto/always/never] [-v / --version] <command>`.
