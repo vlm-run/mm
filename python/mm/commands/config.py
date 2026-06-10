@@ -378,7 +378,7 @@ def set_key(
 def doctor(
     format: Annotated[
         Optional[BaseFormat],
-        typer.Option("--format", help="Output format: json, tsv, csv"),
+        typer.Option("--format", "-f", help="Output format: json, tsv, csv"),
     ] = None,
 ) -> None:
     """Run environment health checks and print a diagnostic table."""
@@ -399,14 +399,6 @@ def doctor(
 
     def _fail(name: str, detail: str) -> None:
         checks.append({"name": name, "status": "fail", "detail": detail})
-
-    # Rust extension
-    try:
-        import mm._mm  # noqa: F401
-
-        _ok("rust_extension", "loaded")
-    except ImportError as e:
-        _fail("rust_extension", str(e))
 
     # mm version
     from mm import __version__
@@ -458,7 +450,7 @@ def doctor(
 
             client = OpenAI(base_url=prof.base_url, api_key=prof.api_key or "unused", timeout=10)
             client.chat.completions.create(
-                model=prof.model, messages=[{"role": "user", "content": "hi"}], max_tokens=64
+                model=prof.model, messages=[{"role": "user", "content": "hi"}], max_tokens=32
             )
             _ok("profile_reachable", "endpoint responded")
         except Exception as e:
