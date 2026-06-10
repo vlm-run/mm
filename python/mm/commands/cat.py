@@ -20,8 +20,9 @@ from mm.cat_utils.base_utils import (
 from mm.cat_utils.extract_meta import extract_meta
 from mm.utils import Format, file_kind
 
+from mm.common.audio._base import BackendLabel
+
 if TYPE_CHECKING:
-    from mm.common.audio._base import BackendLabel
     from mm.constants import BinaryFileKind
     from mm.pipelines.schema import PipelineSpec
 

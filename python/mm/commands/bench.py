@@ -32,7 +32,7 @@ from mm.commands.bench_render import (
     _strip_flag,
     _write_bench_recording,
 )
-from mm.commands.bench_runner import BenchResult, _run_benchmarks
+from mm.commands.bench_runner import BenchResult, _run_benchmarks, _sanitize_files, _time_cmd
 from mm.utils import BaseFormat
 
 __all__ = [
@@ -54,6 +54,8 @@ __all__ = [
     "_replace_paths",
     "_run_benchmarks",
     "_run_stdout_snapshot",
+    "_sanitize_files",
+    "_time_cmd",
     "_split_base_extra",
     "_stdout_fence_lang",
     "_strip_ansi",
