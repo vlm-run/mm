@@ -16,6 +16,8 @@ from typing import Any, Callable
 
 from mm.commands.bench_commands import ALL_COMMANDS, BenchCommand, resolve_command
 
+
+@dataclass
 class BenchResult:
     """Timing results for a single benchmark."""
 
@@ -211,8 +213,6 @@ class BenchResult:
         return self._annotate(payload)
 
 
-
-
 def _sanitize_files(files: list) -> list:
     """Return *files* with filesystem-noise entries removed."""
 
@@ -220,8 +220,6 @@ def _sanitize_files(files: list) -> list:
         return name.startswith("._") or name == ".DS_Store"
 
     return [f for f in files if not _is_filesystem_noise(Path(f.path).name)]
-
-
 
 
 def _time_cmd(
@@ -261,8 +259,6 @@ def _time_cmd(
         # extra subprocess invocation.
         last_proc = subprocess.CompletedProcess(argv, 0, "", "")
     return timings, last_proc
-
-
 
 
 def _run_benchmarks(

@@ -18,12 +18,16 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from mm.cache import memoize_file
+
+
 def ffmpeg_available() -> bool:
     try:
         subprocess.run(["ffmpeg", "-version"], capture_output=True, timeout=5)
         return True
     except (FileNotFoundError, subprocess.TimeoutExpired):
         return False
+
+
 @dataclass
 class MosaicResult:
     """Result of mosaic extraction."""
@@ -37,6 +41,8 @@ class MosaicResult:
     strategy: str = "uniform"
     elapsed_ms: float = 0.0
     timestamps: list[float] = field(default_factory=list)
+
+
 @dataclass
 class AudioResult:
     """Result of audio extraction."""
@@ -46,6 +52,8 @@ class AudioResult:
     speed: float
     sample_rate: int
     channels: int
+
+
 @memoize_file(maxsize=64)
 def probe_duration(video_path: str | Path) -> float:
     """Get video duration in seconds via ffprobe. Fast container-level read."""
@@ -68,6 +76,8 @@ def probe_duration(video_path: str | Path) -> float:
         return float(result.stdout.strip())
     except ValueError:
         return 0.0
+
+
 def extract_uniform_mosaics(
     video_path: str | Path,
     *,
@@ -200,6 +210,8 @@ def extract_uniform_mosaics(
         elapsed_ms=elapsed,
         timestamps=timestamps,
     )
+
+
 def extract_keyframe_mosaics(
     video_path: str | Path,
     *,
@@ -255,6 +267,7 @@ def extract_keyframe_mosaics(
         thumb_width=thumb_width,
         strategy="keyframe",
     )
+
 
 def audio_transformer(
     media_path: str | Path,
@@ -323,6 +336,8 @@ def audio_transformer(
         sample_rate=sample_rate,
         channels=1 if mono else 2,
     )
+
+
 def extract_segment(
     video_path: str | Path,
     out_path: str | Path,
@@ -363,6 +378,7 @@ def extract_segment(
     subprocess.run(cmd, capture_output=True, check=True)
     return out_path
 
+
 def _parse_frame_count(stderr: str) -> int:
     """Parse 'frame=  NNN' from ffmpeg stderr."""
     for line in reversed(stderr.splitlines()):
@@ -382,6 +398,8 @@ def _parse_frame_count(stderr: str) -> int:
                 except ValueError:
                     pass
     return 0
+
+
 def _parse_duration(stderr: str) -> float:
     """Parse 'Duration: HH:MM:SS.ms' from ffmpeg stderr."""
     for line in stderr.splitlines():

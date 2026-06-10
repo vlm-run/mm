@@ -6,11 +6,11 @@ import json
 import re
 import shlex
 import subprocess
-import time
 from pathlib import Path
 from typing import Any
 
-from mm.commands.bench_commands import BenchCommand, resolve_command
+import typer
+
 from mm.commands.bench_runner import BenchResult, _sanitize_files
 
 
@@ -936,8 +936,6 @@ def _write_bench_recording(
     return path
 
 
-
-
 # CSI escape sequences (colour, dim, cursor, etc.) leak into snapshots when
 # Rich treats ``subprocess.PIPE`` as a terminal. Strip them so the recorded
 # markdown is plain text and diff-friendly.
@@ -1075,5 +1073,3 @@ def _run_stdout_snapshot(
         blocks.append(_format_stdout_block(cmd.name, cmd_str, clean_stdout))
 
     print("\n---\n".join(blocks))
-
-

@@ -40,6 +40,8 @@ _JPEG_QUALITY = 85
 # without perceptible quality loss for VLM thumbnails. PIL accepts:
 #   0 → 4:4:4, 1 → 4:2:2, 2 → 4:2:0  (or "keep" / -1 to copy from source)
 _JPEG_SUBSAMPLING = 2
+
+
 @dataclass(frozen=True, slots=True)
 class VideoInfo:
     """Container-level metadata read via PyAV. No subprocess."""
@@ -52,6 +54,8 @@ class VideoInfo:
     num_frames: int
     codec: str
     has_audio: bool
+
+
 @dataclass(frozen=True, slots=True)
 class Frame:
     """A decoded video frame with its timestamp.
@@ -87,6 +91,8 @@ class Frame:
         buf = io.BytesIO()
         img.save(buf, "JPEG", quality=quality, subsampling=subsampling)
         return get_b64(buf.getvalue()), "image/jpeg"
+
+
 class FrameStream:
     """Lazy, parallel-batched frame stream with three consumption modes.
 
@@ -137,6 +143,7 @@ class FrameStream:
         if batch:
             yield batch
 
+
 def pyav_runnable() -> bool:
     """Check if PyAV is runnable"""
     try:
@@ -145,6 +152,8 @@ def pyav_runnable() -> bool:
         return True
     except (ImportError, OSError):
         return False
+
+
 @memoize_file(maxsize=64)
 def probe(path: str | Path) -> VideoInfo:
     """Read video metadata via PyAV.
@@ -180,6 +189,8 @@ def probe(path: str | Path) -> VideoInfo:
         )
     finally:
         container.close()
+
+
 def _resize_to_pil(frame: Any, width: int | None) -> Image.Image:
     """Convert an AVFrame to a PIL Image, resizing in-decoder when possible.
 
@@ -194,6 +205,8 @@ def _resize_to_pil(frame: Any, width: int | None) -> Image.Image:
         # callers can post-process with PIL.
         frame = frame.reformat(width=width, height=new_h)
     return frame.to_image()
+
+
 def _seek_and_decode_one(
     path: str,
     timestamp: float,
@@ -223,6 +236,8 @@ def _seek_and_decode_one(
         return Frame(timestamp=timestamp, image=Image.new("RGB", (1, 1)))
     finally:
         container.close()
+
+
 def _decode_timestamps_batched(
     path: str,
     timestamps: list[float],
@@ -254,6 +269,8 @@ def _decode_timestamps_batched(
         results.sort(key=lambda x: x[0])
         for _, frame in results:
             yield frame
+
+
 class VideoReader:
     """High-performance video reader backed by PyAV.
 
@@ -400,6 +417,8 @@ class VideoReader:
             return count
         finally:
             container.close()
+
+
 def _decode_keyframes(
     path: str,
     width: int | None,
@@ -424,6 +443,8 @@ def _decode_keyframes(
                 count += 1
     finally:
         container.close()
+
+
 def tile_to_mosaic(
     images: list[Image.Image],
     *,
@@ -455,6 +476,8 @@ def tile_to_mosaic(
         mosaic.paste(resized, (x, y))
 
     return mosaic
+
+
 def probe_subtitle_streams(path: str | Path) -> list[dict[str, Any]]:
     """Inspect subtitle streams via PyAV (no ffprobe subprocess)."""
     import av
