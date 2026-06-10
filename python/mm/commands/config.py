@@ -372,3 +372,176 @@ def set_key(
 
     path = update_config_key(key, value)
     output_console.print(f"Set {key} = {value}  ({path})")
+
+
+@config_app.command("doctor")
+def doctor(
+    format: Annotated[
+        Optional[BaseFormat],
+        typer.Option("--format", help="Output format: json, tsv, csv"),
+    ] = None,
+) -> None:
+    """Run environment health checks and print a diagnostic table.
+
+    \b
+    Checks:
+      ffmpeg presence and version
+      Rust extension loaded (_mm native module)
+      Config file exists and is valid
+      Database accessible
+      Active profile configured and reachable
+      Optional dependencies (scenedetect, faster-whisper, mlx)
+
+    \b
+    Examples:
+      mm config doctor
+      mm config doctor --format json
+    """
+    import platform
+    import shutil
+    import subprocess
+
+    from mm.display import resolve_format
+
+    fmt = resolve_format(format.value if format else None)
+
+    checks: list[dict[str, str]] = []
+
+    def _check(name: str, status: str, detail: str = "") -> None:
+        checks.append({"name": name, "status": status, "detail": detail})
+
+    # Rust extension
+    try:
+        import mm._mm as _native
+
+        _check("rust_extension", "ok", f"loaded ({type(_native).__name__})")
+    except ImportError as e:
+        _check("rust_extension", "fail", str(e))
+
+    # mm version
+    try:
+        from mm import __version__
+
+        _check("mm_version", "ok", __version__)
+    except Exception as e:
+        _check("mm_version", "fail", str(e))
+
+    # ffmpeg
+    ffmpeg_path = shutil.which("ffmpeg")
+    if ffmpeg_path:
+        try:
+            result = subprocess.run(
+                ["ffmpeg", "-version"],
+                capture_output=True,
+                text=True,
+                timeout=5,
+            )
+            version_line = result.stdout.split("\n")[0] if result.stdout else "unknown"
+            _check("ffmpeg", "ok", version_line)
+        except Exception as e:
+            _check("ffmpeg", "warn", f"found but error: {e}")
+    else:
+        _check("ffmpeg", "warn", "not found (needed for accurate mode video/audio)")
+
+    # Config file
+    try:
+        from mm.config import _find_config_path
+
+        cfg_path = _find_config_path()
+        if cfg_path.exists():
+            _check("config_file", "ok", str(cfg_path))
+        else:
+            _check("config_file", "warn", "no config file (using defaults)")
+    except Exception as e:
+        _check("config_file", "fail", str(e))
+
+    # Database
+    try:
+        from mm.store.db import MmDatabase
+
+        db_path = MmDatabase.DB_PATH
+        if db_path.exists():
+            _check("database", "ok", str(db_path))
+        else:
+            _check("database", "info", f"not yet created ({db_path})")
+    except Exception as e:
+        _check("database", "fail", str(e))
+
+    # Active profile
+    try:
+        from mm.profile import get_profile
+
+        prof = get_profile()
+        _check("profile", "ok", f"{prof.name} -> {prof.model} @ {prof.base_url}")
+    except Exception as e:
+        _check("profile", "warn", str(e))
+
+    # Optional deps
+    _optional = [
+        ("scenedetect", "shot detection (video)"),
+        ("faster_whisper", "local Whisper transcription"),
+        ("lightning_whisper_mlx", "MLX Whisper (Apple Silicon)"),
+        ("cv2", "OpenCV (video frame extraction)"),
+    ]
+    for mod_name, purpose in _optional:
+        try:
+            __import__(mod_name)
+            _check(f"opt:{mod_name}", "ok", purpose)
+        except ImportError:
+            _check(f"opt:{mod_name}", "skip", f"not installed ({purpose})")
+
+    # Python version
+    _check("python", "ok", platform.python_version())
+
+    # Output
+    if fmt == "json":
+        from mm.display import json_dumps
+
+        print(json_dumps(checks))
+        return
+
+    if fmt in ("tsv", "csv"):
+        sep = "\t" if fmt == "tsv" else ","
+        print(f"check{sep}status{sep}detail")
+        for c in checks:
+            print(f"{c['name']}{sep}{c['status']}{sep}{c['detail']}")
+        return
+
+    from rich import box
+    from rich.table import Table
+
+    from mm.display import output_console
+
+    _STATUS_STYLE = {
+        "ok": "[green]\u2713[/green]",
+        "warn": "[yellow]![/yellow]",
+        "fail": "[red]\u2717[/red]",
+        "info": "[blue]\u00b7[/blue]",
+        "skip": "[dim]\u2013[/dim]",
+    }
+
+    tbl = Table(
+        title="[bold]mm config doctor[/bold]",
+        show_lines=False,
+        padding=(0, 1),
+        header_style="bold",
+        box=box.ROUNDED,
+    )
+    tbl.add_column("check")
+    tbl.add_column("status", justify="center")
+    tbl.add_column("detail")
+
+    for c in checks:
+        icon = _STATUS_STYLE.get(c["status"], c["status"])
+        tbl.add_row(c["name"], icon, c["detail"])
+
+    output_console.print(tbl)
+
+    fails = sum(1 for c in checks if c["status"] == "fail")
+    warns = sum(1 for c in checks if c["status"] == "warn")
+    if fails:
+        output_console.print(f"\n[red]{fails} check(s) failed.[/red]")
+    elif warns:
+        output_console.print(f"\n[yellow]{warns} warning(s), but no failures.[/yellow]")
+    else:
+        output_console.print("\n[green]All checks passed.[/green]")
