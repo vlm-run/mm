@@ -149,7 +149,6 @@ def auto_strategy(path: Path) -> str:
             return "transcribe"
         return "base64"
 
-    # ── IMAGE ────────────────────────────────────────────────────────────────
     if kind == "image":
         size = meta.size
         is_lossless = ext in _LOSSLESS_EXTS
@@ -184,7 +183,6 @@ def auto_strategy(path: Path) -> str:
 
         return "resize"
 
-    # ── DOCUMENT ─────────────────────────────────────────────────────────────
     # kind == "document"
     if ext != ".pdf":
         # DOCX, PPTX, ODT, etc. — always have an extractable text layer.

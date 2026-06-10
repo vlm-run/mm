@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import tempfile
 from pathlib import Path
-from typing import TYPE_CHECKING, Annotated, Any, Optional
+from typing import TYPE_CHECKING, Annotated, Any, Optional, cast
 
 import typer
 
@@ -30,6 +30,19 @@ if TYPE_CHECKING:
 _total_bytes_processed = 0
 # Track whether the result was served from cache
 _was_cached: bool = False
+
+
+def _is_passthrough(kind: str, ext: str, mode: str) -> bool:
+    """Return True when the file should bypass the encode→generate pipeline."""
+    from mm.constants import OFFICE_EXTS
+
+    return kind == "text" or (
+        kind == "document"
+        and (
+            (ext != ".pdf" and ext not in OFFICE_EXTS)
+            or (ext in OFFICE_EXTS and mode != "accurate")
+        )
+    )
 
 
 def _validate_extra_body_json(raw: str | None) -> str | None:
@@ -549,28 +562,23 @@ def cat_cmd(
 
 def _extract(path: Path, opts: CatOpts) -> str:
     """Pipeline-driven extraction dispatch with unified extraction caching."""
-    from mm.constants import OFFICE_EXTS
-
     global _was_cached
     kind = file_kind(path)
     ext = path.suffix.lower()
     if opts.dry_run:
         return _dry_run_preview(path, kind, ext, opts)
 
-    if kind == "text" or (
-        kind == "document"
-        and (
-            (ext != ".pdf" and ext not in OFFICE_EXTS)
-            or (ext in OFFICE_EXTS and opts.mode != "accurate")
-        )
-    ):
+    if _is_passthrough(kind, ext, opts.mode):
         from mm.cat_utils.extract_meta import extract_text
 
-        content, cached = extract_text(path, kind)
+        assert kind in ("document", "text")
+        content, cached = extract_text(path, kind)  # type: ignore[arg-type]
         if cached:
             _was_cached = True
         return content
 
+    kind = cast("BinaryFileKind", kind)
+    from mm.constants import OFFICE_EXTS
     from mm.encoders.auto_strategy import resolve_auto_strategy
     from mm.pipelines import apply_overrides
     from mm.pipelines.pipelines_utils import resolve_pipeline
@@ -808,14 +816,7 @@ def _dry_run_preview(path: Path, kind: str, ext: str, opts: CatOpts) -> str:
     from mm.pipelines.pipelines_utils import resolve_pipeline
     from mm.profile import get_profile
 
-    is_passthrough = kind == "text" or (
-        kind == "document"
-        and (
-            (ext != ".pdf" and ext not in OFFICE_EXTS)
-            or (ext in OFFICE_EXTS and opts.mode != "accurate")
-        )
-    )
-    if is_passthrough:
+    if _is_passthrough(kind, ext, opts.mode):
         size_str = format_size(path.stat().st_size)
         header = f"\n# {path} (kind={kind}, mode={opts.mode}) — passthrough preview (--dry-run)"
         info_lines = [
@@ -826,7 +827,9 @@ def _dry_run_preview(path: Path, kind: str, ext: str, opts: CatOpts) -> str:
 
     spec = resolve_pipeline(opts, kind)
     spec = apply_overrides(spec, opts.encode_overrides or None, opts.generate_overrides or None)
-    autoencode = spec.encode.strategy == "auto"
+    autoencode = spec.encode.strategy == "auto" or (
+        spec.encode.strategy is None and spec.generate is not None
+    )
     spec = resolve_auto_strategy(path, spec, opts)
     header = f"\n# {path} (kind={kind}, mode={opts.mode}) — pipeline preview (--dry-run)"
 
