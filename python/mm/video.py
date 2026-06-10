@@ -144,6 +144,17 @@ class FrameStream:
             yield batch
 
 
+@dataclass
+class AudioResult:
+    """Result of audio extraction (kept for Whisper compatibility)."""
+
+    path: Path
+    duration_s: float
+    speed: float
+    sample_rate: int
+    channels: int
+
+
 def pyav_runnable() -> bool:
     """Check if PyAV is runnable"""
     try:

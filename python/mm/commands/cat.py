@@ -18,9 +18,9 @@ from mm.cat_utils.base_utils import (
     override_extra,
 )
 from mm.cat_utils.extract_meta import extract_meta
-from mm.utils import Format, file_kind
-
 from mm.common.audio._base import BackendLabel
+from mm.pipe import read_paths_from_stdin
+from mm.utils import Format, file_kind
 
 if TYPE_CHECKING:
     from mm.constants import BinaryFileKind
@@ -340,8 +340,6 @@ def cat_cmd(
         return
 
     paths: list[str] = []
-
-    from mm.pipe import read_paths_from_stdin
 
     stdin_paths = read_paths_from_stdin()
     if stdin_paths:
