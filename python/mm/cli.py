@@ -109,12 +109,28 @@ def _main(
         str, typer.Option("--color", help="Color output: auto, always, never")
     ] = "auto",
     version: Annotated[bool, typer.Option("--version", "-v", help="Show version and exit")] = False,
+    debug: Annotated[
+        bool,
+        typer.Option("--debug", help="Enable debug logging (Python + Rust tracing)"),
+    ] = False,
 ) -> None:
     if version:
         from mm.version import version_imprint
 
         typer.echo(f"mm {version_imprint(__version__)}")
         raise typer.Exit()
+
+    if debug:
+        import logging
+        import os
+
+        logging.basicConfig(
+            level=logging.DEBUG,
+            format="%(asctime)s %(name)s %(levelname)s %(message)s",
+            datefmt="%H:%M:%S",
+        )
+        logging.getLogger("mm").setLevel(logging.DEBUG)
+        os.environ.setdefault("RUST_LOG", "debug")
 
     if ctx.invoked_subcommand is None:
         _print_banner()
