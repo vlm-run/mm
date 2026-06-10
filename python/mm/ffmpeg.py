@@ -18,16 +18,12 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from mm.cache import memoize_file
-
-
 def ffmpeg_available() -> bool:
     try:
         subprocess.run(["ffmpeg", "-version"], capture_output=True, timeout=5)
         return True
     except (FileNotFoundError, subprocess.TimeoutExpired):
         return False
-
-
 @dataclass
 class MosaicResult:
     """Result of mosaic extraction."""
@@ -41,8 +37,6 @@ class MosaicResult:
     strategy: str = "uniform"
     elapsed_ms: float = 0.0
     timestamps: list[float] = field(default_factory=list)
-
-
 @dataclass
 class AudioResult:
     """Result of audio extraction."""
@@ -52,8 +46,6 @@ class AudioResult:
     speed: float
     sample_rate: int
     channels: int
-
-
 @memoize_file(maxsize=64)
 def probe_duration(video_path: str | Path) -> float:
     """Get video duration in seconds via ffprobe. Fast container-level read."""
@@ -76,8 +68,6 @@ def probe_duration(video_path: str | Path) -> float:
         return float(result.stdout.strip())
     except ValueError:
         return 0.0
-
-
 def extract_uniform_mosaics(
     video_path: str | Path,
     *,
@@ -210,8 +200,6 @@ def extract_uniform_mosaics(
         elapsed_ms=elapsed,
         timestamps=timestamps,
     )
-
-
 def extract_keyframe_mosaics(
     video_path: str | Path,
     *,
@@ -267,64 +255,6 @@ def extract_keyframe_mosaics(
         thumb_width=thumb_width,
         strategy="keyframe",
     )
-
-
-def extract_scene_mosaics(
-    video_path: str | Path,
-    *,
-    out_dir: str | Path | None = None,
-    threshold: float = 0.3,
-    tile_cols: int = 6,
-    tile_rows: int = 8,
-    thumb_width: int = 160,
-    max_mosaics: int = 1,
-    quality: int = 3,
-) -> MosaicResult:
-    """Scene-change based mosaic extraction.
-
-    Decodes all frames and selects those exceeding the scene change threshold.
-    Slower than keyframe-only but produces semantically better frames.
-    """
-    video_path = Path(video_path)
-    if out_dir is None:
-        out_dir = Path(tempfile.mkdtemp(prefix="mm_sc_"))
-    else:
-        out_dir = Path(out_dir)
-        out_dir.mkdir(parents=True, exist_ok=True)
-
-    stem = video_path.stem
-    out_pattern = str(out_dir / f"{stem}_scene_%d.jpg")
-
-    cmd = [
-        "ffmpeg",
-        "-y",
-        "-i",
-        str(video_path),
-        "-vf",
-        f"select='gt(scene\\,{threshold})',scale={thumb_width}:-1,tile={tile_cols}x{tile_rows}",
-        "-vsync",
-        "vfr",
-        "-frames:v",
-        str(max_mosaics),
-        "-q:v",
-        str(quality),
-        out_pattern,
-    ]
-
-    result = subprocess.run(cmd, capture_output=True, text=True, timeout=600)
-
-    mosaic_paths = sorted(out_dir.glob(f"{stem}_scene_*.jpg"))
-    kf_count = _parse_frame_count(result.stderr)
-
-    return MosaicResult(
-        mosaic_paths=mosaic_paths,
-        frame_count=kf_count,
-        tile_cols=tile_cols,
-        tile_rows=tile_rows,
-        thumb_width=thumb_width,
-        strategy="scene",
-    )
-
 
 def audio_transformer(
     media_path: str | Path,
@@ -393,8 +323,6 @@ def audio_transformer(
         sample_rate=sample_rate,
         channels=1 if mono else 2,
     )
-
-
 def extract_segment(
     video_path: str | Path,
     out_path: str | Path,
@@ -435,156 +363,6 @@ def extract_segment(
     subprocess.run(cmd, capture_output=True, check=True)
     return out_path
 
-
-def extract_frames_at_timestamps(
-    video_path: str | Path,
-    timestamps: list[float],
-    *,
-    thumb_width: int = 160,
-    out_dir: str | Path | None = None,
-    quality: int = 3,
-    blur_window: int = 10,
-    max_workers: int = 8,
-) -> list[Path]:
-    """Extract frames at specific timestamps via parallel seeking.
-
-    Each worker seeks to a timestamp and uses the thumbnail filter
-    for blur rejection. O(N) in len(timestamps), independent of
-    video length. ~100ms per frame.
-
-    Args:
-        video_path: Path to video file.
-        timestamps: List of timestamps in seconds to extract frames at.
-        thumb_width: Thumbnail width in pixels.
-        out_dir: Output directory (temp dir if None).
-        quality: JPEG quality (1=best, 31=worst). Default 3.
-        blur_window: Thumbnail filter window for blur rejection.
-        max_workers: Thread pool size for parallel extraction.
-
-    Returns:
-        Sorted list of extracted frame paths.
-    """
-    video_path = Path(video_path)
-    if out_dir is None:
-        out_dir = Path(tempfile.mkdtemp(prefix="mm_ts_"))
-    else:
-        out_dir = Path(out_dir)
-        out_dir.mkdir(parents=True, exist_ok=True)
-
-    def _seek_extract(args: tuple[int, float]) -> Path:
-        idx, ts = args
-        frame_path = out_dir / f"frame_{idx:04d}.jpg"
-        subprocess.run(
-            [
-                "ffmpeg",
-                "-y",
-                "-ss",
-                f"{ts:.3f}",
-                "-i",
-                str(video_path),
-                "-vf",
-                f"thumbnail={blur_window},scale={thumb_width}:-1",
-                "-frames:v",
-                "1",
-                "-q:v",
-                str(quality),
-                "-update",
-                "1",
-                str(frame_path),
-            ],
-            capture_output=True,
-            timeout=30,
-        )
-        return frame_path
-
-    with ThreadPoolExecutor(max_workers=max_workers) as pool:
-        list(pool.map(_seek_extract, enumerate(timestamps)))
-
-    return sorted(out_dir.glob("frame_*.jpg"))
-
-
-def tile_frames_to_mosaics(
-    frame_paths: list[Path],
-    *,
-    tile_cols: int = 4,
-    tile_rows: int = 4,
-    out_dir: str | Path | None = None,
-    stem: str = "mosaic",
-    quality: int = 3,
-) -> list[Path]:
-    """Tile extracted frames into mosaic grid JPEGs.
-
-    Groups frames into chunks of (cols * rows) and tiles each
-    chunk into a single mosaic image using ffmpeg.
-
-    Args:
-        frame_paths: Sorted list of frame JPEG paths.
-        tile_cols: Number of columns in mosaic grid.
-        tile_rows: Number of rows in mosaic grid.
-        out_dir: Output directory (temp dir if None).
-        stem: Base name for output files.
-        quality: JPEG quality (1=best, 31=worst).
-
-    Returns:
-        List of mosaic JPEG paths.
-    """
-    if not frame_paths:
-        return []
-
-    if out_dir is None:
-        out_dir = Path(tempfile.mkdtemp(prefix="mm_tile_"))
-    else:
-        out_dir = Path(out_dir)
-        out_dir.mkdir(parents=True, exist_ok=True)
-
-    frames_per_mosaic = tile_cols * tile_rows
-    mosaic_paths: list[Path] = []
-
-    for chunk_idx in range(0, len(frame_paths), frames_per_mosaic):
-        chunk = frame_paths[chunk_idx : chunk_idx + frames_per_mosaic]
-        if not chunk:
-            break
-
-        mosaic_path = out_dir / f"{stem}_{chunk_idx // frames_per_mosaic}.jpg"
-
-        # Build ffmpeg concat input
-        inputs: list[str] = []
-        filter_parts: list[str] = []
-        for i, fp in enumerate(chunk):
-            inputs.extend(["-i", str(fp)])
-            filter_parts.append(f"[{i}:v]")
-
-        # Pad last mosaic if incomplete
-        n = len(chunk)
-        total = tile_cols * tile_rows
-        if n < total:
-            # Use xstack with null padding — simpler: just use the tile filter
-            # which handles incomplete grids by leaving blank tiles
-            pass
-
-        # Use ffmpeg tile filter with concat
-        filter_str = "".join(filter_parts)
-        filter_str += f"concat=n={n}:v=1:a=0[out];[out]tile={tile_cols}x{tile_rows}"
-
-        cmd = (
-            ["ffmpeg", "-y"]
-            + inputs
-            + [
-                "-filter_complex",
-                filter_str,
-                "-q:v",
-                str(quality),
-                str(mosaic_path),
-            ]
-        )
-
-        subprocess.run(cmd, capture_output=True, timeout=60)
-        if mosaic_path.exists():
-            mosaic_paths.append(mosaic_path)
-
-    return mosaic_paths
-
-
 def _parse_frame_count(stderr: str) -> int:
     """Parse 'frame=  NNN' from ffmpeg stderr."""
     for line in reversed(stderr.splitlines()):
@@ -604,8 +382,6 @@ def _parse_frame_count(stderr: str) -> int:
                 except ValueError:
                     pass
     return 0
-
-
 def _parse_duration(stderr: str) -> float:
     """Parse 'Duration: HH:MM:SS.ms' from ffmpeg stderr."""
     for line in stderr.splitlines():

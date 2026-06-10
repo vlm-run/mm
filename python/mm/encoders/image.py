@@ -22,6 +22,7 @@ from typing import TYPE_CHECKING, Any, Iterable, Union
 
 from mm.encoders import resolve_provider, register
 from mm.encoders.base import Encoder, Message
+from mm.encoders.parts import image_part, openai_image_part, gemini_image_part, to_message
 from mm.utils import get_b64
 
 if TYPE_CHECKING:
@@ -55,35 +56,12 @@ def _open_image_with_exif(path: Union[Path, str]) -> "Image.Image":
     return img
 
 
-def _openai_image_part(b64: str, mime: str) -> dict[str, Any]:
-    """Build an OpenAI ``image_url`` content part."""
-    return {
-        "type": "image_url",
-        "image_url": {"url": f"data:{mime};base64,{b64}"},
-    }
-
-
-def _gemini_image_part(b64: str, mime: str) -> dict[str, Any]:
-    """Build a Gemini ``inline_data`` content part."""
-    return {"inline_data": {"mime_type": mime, "data": b64}}
-
-
-def _image_part(b64: str, mime: str, provider: str) -> dict[str, Any]:
-    """Build a provider-appropriate image content part.
-
-    Args:
-        b64: Base64-encoded image bytes.
-        mime: MIME type string.
-        provider: ``"openai"`` or ``"gemini"``.
-    """
-    if provider == "gemini":
-        return _gemini_image_part(b64, mime)
-    return _openai_image_part(b64, mime)
-
-
-def _to_message(parts: list[dict[str, Any]]) -> Message:
-    """Wrap content parts in a complete Message dict."""
-    return {"role": "user", "content": parts}
+# Backward-compatible aliases — downstream modules import these underscore-
+# prefixed names.  New code should import from ``mm.encoders.parts`` directly.
+_openai_image_part = openai_image_part
+_gemini_image_part = gemini_image_part
+_image_part = image_part
+_to_message = to_message
 
 
 def _encode_pil_image(

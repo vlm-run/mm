@@ -2,44 +2,30 @@
 
 from __future__ import annotations
 
-from typing import Any
-
 from mm.decorators import retry
 
-_EMBEDDINGS_PATH = "/embeddings"
 _EMBEDDING_ATTEMPTS = 2
 
 
 @retry(retries=_EMBEDDING_ATTEMPTS, delay=1, backoff=2)
 def _request_embeddings(texts: list[str]) -> list[list[float]]:
     """POST *texts* to the embeddings endpoint and return the vectors."""
-    import httpx
+    from openai import OpenAI
 
-    from mm import __version__
     from mm.profile import EMBEDDING_BASE_URL, EMBEDDING_MODEL, gateway_api_key
 
-    headers: dict[str, str] = {
-        "User-Agent": f"mm-ctx/{__version__}",
-        "Content-Type": "application/json",
-    }
-    if api_key := gateway_api_key():
-        headers["Authorization"] = f"Bearer {api_key}"
-
-    payload: dict[str, Any] = {
-        "model": EMBEDDING_MODEL,
-        "input": texts,
-        "encoding_format": "float",
-    }
-
-    response = httpx.post(
-        EMBEDDING_BASE_URL + _EMBEDDINGS_PATH,
-        json=payload,
-        headers=headers,
+    client = OpenAI(
+        base_url=EMBEDDING_BASE_URL,
+        api_key=gateway_api_key() or "unused",
         timeout=300,
     )
-    response.raise_for_status()
-    data: list[dict[str, Any]] = response.json()["data"]
-    return [list(item["embedding"]) for item in data]
+
+    response = client.embeddings.create(
+        model=EMBEDDING_MODEL,
+        input=texts,
+        encoding_format="float",
+    )
+    return [list(item.embedding) for item in response.data]
 
 
 def embed_texts(texts: list[str]) -> list[list[float]]:
