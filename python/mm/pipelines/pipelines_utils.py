@@ -42,7 +42,10 @@ def _apply_encoder_generate(spec: PipelineSpec, opts: CatOpts) -> PipelineSpec:
 
     if generate_map[opts.mode] is None:
         return dataclasses.replace(spec, generate=None)
-    _generate = dataclasses.replace(generate_map[opts.mode], **opts.generate_overrides)
+    from mm.pipelines import _coerce_generate
+
+    coerced = {k: _coerce_generate(k, v) for k, v in opts.generate_overrides.items()}
+    _generate = dataclasses.replace(generate_map[opts.mode], **coerced)
     return dataclasses.replace(spec, generate=_generate)
 
 
