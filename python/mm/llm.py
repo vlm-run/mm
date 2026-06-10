@@ -34,8 +34,6 @@ streamed_to_stdout: bool = False
 
 logger = logging.getLogger(__name__)
 
-logger = logging.getLogger(__name__)
-
 
 @dataclass
 class LlmUsage:
@@ -129,8 +127,8 @@ class LlmBackend:
 
         if content_parts:
             message_content: list[dict[str, Any]] | str = [
-                *content_parts,
                 {"type": "text", "text": prompt},
+                *content_parts,
             ]
         else:
             message_content = prompt
