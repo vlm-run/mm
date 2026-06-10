@@ -372,3 +372,144 @@ def set_key(
 
     path = update_config_key(key, value)
     output_console.print(f"Set {key} = {value}  ({path})")
+
+
+@config_app.command("doctor")
+def doctor(
+    format: Annotated[
+        Optional[BaseFormat],
+        typer.Option("--format", "-f", help="Output format: json, tsv, csv"),
+    ] = None,
+) -> None:
+    """Run environment health checks and print a diagnostic table."""
+    import platform
+    import shutil
+    import subprocess
+
+    from mm.display import resolve_format
+
+    fmt = resolve_format(format.value if format else None)
+    checks: list[dict[str, str]] = []
+
+    def _ok(name: str, detail: str) -> None:
+        checks.append({"name": name, "status": "ok", "detail": detail})
+
+    def _warn(name: str, detail: str) -> None:
+        checks.append({"name": name, "status": "warn", "detail": detail})
+
+    def _fail(name: str, detail: str) -> None:
+        checks.append({"name": name, "status": "fail", "detail": detail})
+
+    # mm version
+    from mm import __version__
+
+    _ok("mm_version", __version__)
+
+    # ffmpeg
+    if shutil.which("ffmpeg"):
+        try:
+            out = subprocess.run(
+                ["ffmpeg", "-version"], capture_output=True, text=True, timeout=5
+            ).stdout.split("\n")[0]
+            _ok("ffmpeg", out)
+        except Exception as e:
+            _warn("ffmpeg", f"found but error: {e}")
+    else:
+        _warn("ffmpeg", "not found (needed for accurate video/audio)")
+
+    # Config file
+    try:
+        from mm.config import _find_config_path
+
+        cfg_path = _find_config_path()
+        _ok("config_file", str(cfg_path)) if cfg_path.exists() else _warn(
+            "config_file", "no config file (using defaults)"
+        )
+    except Exception as e:
+        _fail("config_file", str(e))
+
+    # Database
+    try:
+        from mm.store.db import MmDatabase
+
+        db_path = MmDatabase.DB_PATH
+        _ok("database", str(db_path)) if db_path.exists() else _warn(
+            "database", f"not yet created ({db_path})"
+        )
+    except Exception as e:
+        _fail("database", str(e))
+
+    # Active profile + reachability
+    try:
+        from mm.profile import get_profile
+
+        prof = get_profile()
+        _ok("profile", f"{prof.name} -> {prof.model} @ {prof.base_url}")
+        try:
+            from openai import OpenAI
+
+            client = OpenAI(base_url=prof.base_url, api_key=prof.api_key or "unused", timeout=10)
+            client.chat.completions.create(
+                model=prof.model, messages=[{"role": "user", "content": "hi"}], max_tokens=32
+            )
+            _ok("profile_reachable", "endpoint responded")
+        except Exception as e:
+            _warn("profile_reachable", str(e)[:120])
+    except Exception as e:
+        _warn("profile", str(e))
+
+    # Optional deps
+    for mod_name, purpose in [
+        ("ctranslate2", "CTranslate2 runtime"),
+        ("faster_whisper", "local Whisper"),
+        ("lightning_whisper_mlx", "MLX Whisper (Apple Silicon)"),
+    ]:
+        try:
+            __import__(mod_name)
+            _ok(f"opt:{mod_name}", purpose)
+        except ImportError:
+            checks.append(
+                {
+                    "name": f"opt:{mod_name}",
+                    "status": "skip",
+                    "detail": f"not installed ({purpose})",
+                }
+            )
+
+    _ok("python", platform.python_version())
+
+    # Render output
+    if fmt == "json":
+        from mm.display import json_dumps
+
+        print(json_dumps(checks))
+        return
+    if fmt in ("tsv", "csv"):
+        from mm.display import emit_csv, emit_tsv
+
+        emitter = emit_tsv if fmt == "tsv" else emit_csv
+        emitter(checks, columns=["check", "status", "detail"])
+        return
+
+    from rich import box
+    from rich.table import Table
+
+    from mm.display import output_console
+
+    icons = {
+        "ok": "[green]✓[/green]",
+        "warn": "[yellow]![/yellow]",
+        "fail": "[red]✗[/red]",
+        "skip": "[dim]–[/dim]",
+    }
+    tbl = Table(title="[bold]mm config doctor[/bold]", box=box.ROUNDED, padding=(0, 1))
+    tbl.add_column("check")
+    tbl.add_column("", justify="center")
+    tbl.add_column("detail")
+    for c in checks:
+        tbl.add_row(c["name"], icons.get(c["status"], c["status"]), c["detail"])
+    output_console.print(tbl)
+
+    fails = sum(1 for c in checks if c["status"] == "fail")
+    if fails:
+        output_console.print(f"\n[red]{fails} check(s) failed.[/red]")

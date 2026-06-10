@@ -115,7 +115,7 @@ mm
 │   ├── [x] grep     — content search with context lines (like rg), --pre-index for on-demand semantic indexing
 │   ├── [x] sql      — SQLite SQL on file index, --pre-index for on-demand metadata indexing before query
 │   ├── [x] wc       — count files, size, lines (est.), tokens (est.)
-│   ├── [x] config   — extraction mode settings (show, init, set, reset-db, reset-profiles, reset)
+│   ├── [x] config   — extraction mode settings (show, init, set, reset-db, reset-profiles, reset, doctor)
 │   ├── [x] profile  — LLM profile management (list, add, update, use, remove; 3 reserved: default, ollama, gemini)
 │   ├── [x] bench    — 24-command benchmark suite (metadata×10, fast×8, accurate×6) with bits/s throughput
 │   └── [ ] context  — LLM-ready context payload builder (token budgeting)

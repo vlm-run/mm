@@ -436,3 +436,54 @@ class TestResetAll:
 
         cfg = get_mode_config("fast")
         assert cfg.whisper_model == "medium"
+
+
+class TestConfigDoctor:
+    """Tests for mm config doctor."""
+
+    def test_doctor_exits_zero(self):
+        from mm.cli import app
+        from typer.testing import CliRunner
+
+        runner = CliRunner()
+        result = runner.invoke(app, ["config", "doctor"])
+        assert result.exit_code == 0
+
+    def test_doctor_json_output(self):
+        import json
+
+        from mm.cli import app
+        from typer.testing import CliRunner
+
+        runner = CliRunner()
+        result = runner.invoke(app, ["config", "doctor", "--format", "json"])
+        assert result.exit_code == 0
+        data = json.loads(result.output)
+        assert isinstance(data, list)
+        names = [c["name"] for c in data]
+        assert "rust_extension" in names
+        assert "mm_version" in names
+        assert "python" in names
+
+    def test_doctor_tsv_output(self):
+        from mm.cli import app
+        from typer.testing import CliRunner
+
+        runner = CliRunner()
+        result = runner.invoke(app, ["config", "doctor", "--format", "tsv"])
+        assert result.exit_code == 0
+        lines = result.output.strip().split("\n")
+        assert lines[0] == "check\tstatus\tdetail"
+        assert len(lines) >= 5
+
+    def test_doctor_checks_rust_extension(self):
+        import json
+
+        from mm.cli import app
+        from typer.testing import CliRunner
+
+        runner = CliRunner()
+        result = runner.invoke(app, ["config", "doctor", "--format", "json"])
+        data = json.loads(result.output)
+        rust_check = next(c for c in data if c["name"] == "rust_extension")
+        assert rust_check["status"] == "ok"

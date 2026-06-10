@@ -21,11 +21,6 @@ if TYPE_CHECKING:
 _MB = 1024 * 1024
 
 
-# ---------------------------------------------------------------------------
-# Minimal FileMetadata stand-in
-# ---------------------------------------------------------------------------
-
-
 @dataclass
 class _Meta:
     size: int = 0
@@ -49,11 +44,6 @@ def _run(path: Path, kind: str, meta: _Meta) -> str:
         patch("mm.peek.FileMetadata.from_path", return_value=meta),
     ):
         return auto_strategy(path)
-
-
-# ---------------------------------------------------------------------------
-# VIDEO
-# ---------------------------------------------------------------------------
 
 
 class TestVideo:
@@ -96,11 +86,6 @@ class TestVideo:
         assert _run(self._path(), "video", meta) == "mosaic"
 
 
-# ---------------------------------------------------------------------------
-# AUDIO
-# ---------------------------------------------------------------------------
-
-
 class TestAudio:
     def _path(self, name: str = "track.mp3") -> Path:
         return Path(f"/fake/{name}")
@@ -138,11 +123,6 @@ class TestAudio:
         # m4a ≤300s and ≤10 MB → transcribe
         meta = _Meta(size=3 * _MB, duration_s=200.0)
         assert _run(self._path("audio.m4a"), "audio", meta) == "transcribe"
-
-
-# ---------------------------------------------------------------------------
-# IMAGE
-# ---------------------------------------------------------------------------
 
 
 class TestImage:
@@ -201,11 +181,6 @@ class TestImage:
         assert _run(self._path("photo.jpg"), "image", meta) == "resize"
 
 
-# ---------------------------------------------------------------------------
-# DOCUMENT
-# ---------------------------------------------------------------------------
-
-
 class TestDocument:
     def _path(self, name: str = "doc.pdf") -> Path:
         return Path(f"/fake/{name}")
@@ -251,11 +226,6 @@ class TestDocument:
         assert _run(self._path(), "document", meta) == "page-text"
 
 
-# ---------------------------------------------------------------------------
-# INVALID KIND
-# ---------------------------------------------------------------------------
-
-
 class TestInvalidKind:
     def test_text_kind_raises(self):
         meta = _Meta(size=1000)
@@ -266,11 +236,6 @@ class TestInvalidKind:
         meta = _Meta(size=2000)
         with pytest.raises(ValueError, match="auto_strategy only handles binary"):
             _run(Path("/fake/main.py"), "code", meta)
-
-
-# ---------------------------------------------------------------------------
-# RESOLVE AUTO STRATEGY
-# ---------------------------------------------------------------------------
 
 
 class TestResolveAutoStrategy:
