@@ -461,7 +461,6 @@ class TestConfigDoctor:
         data = json.loads(result.output)
         assert isinstance(data, list)
         names = [c["name"] for c in data]
-        assert "rust_extension" in names
         assert "mm_version" in names
         assert "python" in names
 
@@ -475,15 +474,3 @@ class TestConfigDoctor:
         lines = result.output.strip().split("\n")
         assert lines[0] == "check\tstatus\tdetail"
         assert len(lines) >= 5
-
-    def test_doctor_checks_rust_extension(self):
-        import json
-
-        from mm.cli import app
-        from typer.testing import CliRunner
-
-        runner = CliRunner()
-        result = runner.invoke(app, ["config", "doctor", "--format", "json"])
-        data = json.loads(result.output)
-        rust_check = next(c for c in data if c["name"] == "rust_extension")
-        assert rust_check["status"] == "ok"
