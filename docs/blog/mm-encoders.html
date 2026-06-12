@@ -982,8 +982,15 @@
       font-size: 13px;
       color: var(--text-muted);
     }
-    footer a { color: var(--text-muted); text-decoration: underline; }
-    footer a:hover { color: var(--text-primary); }
+
+    footer a {
+      color: var(--text-muted);
+      text-decoration: underline;
+    }
+
+    footer a:hover {
+      color: var(--text-primary);
+    }
 
     /* ── Responsive ──────────────────────────────── */
     @media (max-width: 640px) {
@@ -1020,15 +1027,15 @@
   <!-- Hero -->
   <header class="hero">
     <div class="hero-inner">
-      <div class="hero-eyebrow">Deep Dive</div>
-      <h1 class="hero-title">Multimodal file encoding<br>strategies with mm</h1>
+      <h1 class="hero-title">
+        Strategies for encoding binary files with mm-ctx
+      </h1>
       <p class="hero-subtitle">
-        How mm transforms images, video, audio, and documents into
-        VLM-ready messages — and how to choose the right encoder
-        for every file type and use case.
+        Transforming images, video, audio, and documents into VLM-ready messages, and choosing the right encoder for
+        different use cases.
       </p>
       <div class="hero-meta">
-        <span class="hero-meta-item">May 2026</span>
+        <span class="hero-meta-item">June 2026</span>
         <span class="hero-meta-sep"></span>
         <span class="hero-meta-item">12 min read</span>
         <span class="hero-tag">images</span>
@@ -1043,37 +1050,55 @@
   <div class="page-layout">
     <div class="article-wrap">
       <article>
-
-        <!-- [1] Merged intro — start with "Most LLM APIs..." fold in mm context, blockquote in middle -->
         <p>
-          Most LLM APIs accept text. Vision-capable APIs also accept images — specifically
-          base64-encoded image data or public URLs, wrapped in a structured content format.
-          But real-world files rarely arrive in that form. A 90-minute lecture is an MP4.
-          A contract is a 200-page scanned PDF. A customer support recording is an MP3.
-          mm's encoder system is the translation layer that bridges this gap — each encoder
-          knows how to transform a specific file type into one or more OpenAI-compatible
-          messages ready for any multimodal LLM.
+          Vision-Language Models (VLMs) reason over visual inputs alongside natural language, but like their text-only
+          counterparts they are fundamentally bound by a finite context window. The 256K–1M token budgets that feel
+          generous for text prove insufficient once dense visual modalities dominate: capacity is bounded not by
+          semantic
+          complexity but by raw token consumption.
         </p>
 
         <div class="bigquote">
-          <p>"Every file type has a different information density. A 10-second video clip carries
-            more context than a 10-second audio clip, which carries more than a 10-second text
-            excerpt. An encoder's job is to maximize what the model receives per API call."</p>
+          <p>Information density is modality-dependent: a 10-second video clip carries more context than 10 seconds of
+            audio, which carries more than 10 seconds of text.</p>
         </div>
 
         <p>
-          Bridging this gap naïvely — dumping raw bytes at an API — doesn't work.
-          Token budgets are finite. A 4K image sent without resizing wastes thousands of
-          tokens on resolution the model can't use. A 3-hour video can't fit in a single call.
-          A scanned PDF has no text layer at all. The right encoder determines what the model
-          actually sees — and therefore what it can understand.
+          Forwarding raw binary payloads directly to the inference endpoint is fundamentally incompatible with these
+          constraints. Consider the extremes: a 4K image, a 3-hour 12GB video, or a scanned PDF lacking a text layer.
+          Each incurs prohibitive token overhead at the model layer, so providers downsample internally, images to
+          480×480 or video to 5 FPS at 320p prior to tokenization.
+
+          <!-- The right encoder determines what the model actually sees — and therefore what it can understand. -->
+          <!-- Vision language models (VLMs) There are many different ways to encode and pass a file to a Vision Language Model -->
         </p>
 
-        <!-- ── Section: The Pipeline ── -->
-        <h2 id="pipeline">The Encode → Generate Pipeline</h2>
+        <p>
+          For images this is often tolerable, since downsampling costs little semantic fidelity. But it remains
+          architecturally wasteful: transmitting a 20MB 4K image to an endpoint that immediately rescales it to a 32KB
+          thumbnail is wasted bandwidth and added latency. This motivated our investigation into modality-aware encoding
+          applied before the inference call.
+        </p>
+
+        <!-- My writing style is above this line -->
+
+        <!-- Everything below is AI which i am trying to adapt into my style and tone -->
+
+        <!-- ── Section: mm Encoders ── -->
+        <h2 id="pipeline">Encoders</h2>
 
         <p>
-          Every mm extraction follows the same two-step pattern:
+          We formalize each such strategy as an <strong>encoder</strong>: a local, deterministic transform from a binary
+          file to one or more <em>messages</em>, the OpenAI-compatible content parts (<code>text</code>,
+          <code>image_url</code>, <code>input_audio</code>, <code>video_url</code>) any chat/completions endpoint
+          accepts.
+          Each answers one question for its modality, the most compact representation that still preserves what the
+          model needs, and bound to a single media kind.
+
+          <br><br>
+
+          The transform runs on-device, before a single token is billed, and emits independently-sendable messages
+          rather than one monolithic payload, so long inputs decompose naturally into parallel calls.
         </p>
 
         <div class="diagram-wrap">
@@ -1096,43 +1121,40 @@ graph LR
   file --> enc --> msg --> llm --> out
   style encode rx:10px,ry:10px
   style generate rx:10px,ry:10px</pre>
-          <div class="diagram-caption">The two-stage pipeline: a file is encoded into OpenAI-compatible message dicts,
-            then (optionally) sent to a VLM for generation.</div>
+          <div class="diagram-caption">A file is encoded into OpenAI-compatible messages, then sent to a VLM for
+            generation.</div>
         </div>
 
         <p>
-          <strong>Stage 1 — Encode</strong> is always local. The encoder reads the file,
-          applies media-specific preprocessing (resize, transcode, transcribe, render), and
-          yields one or more messages. No network call, no API key needed.
-        </p>
-        <p>
-          <strong>Stage 2 — Generate</strong> is optional. If the pipeline has a generate
-          step (and the encoder doesn't suppress it), each message is sent to a VLM and a
-          text response is collected. Encoders that produce structured output — like a Whisper
-          transcript — skip this stage entirely. They're <em>encode-only</em>: they run
-          locally and return text directly with no LLM involved.
+          The diagram above traces this end to end: a file reaches the encoder, which applies whatever its modality
+          calls for, to <code>resize</code> a photograph, <code>transcode</code> a clip, <code>transcribe</code> speech,
+          or <code>render</code> a document page, producing messages a VLM then reads and answers.
         </p>
 
         <div class="callout note">
           <span class="callout-icon">💡</span>
           <div class="callout-body">
             <div class="callout-title">What is a Message?</div>
-            <p>A message is an OpenAI-compatible dict:
+            <p>A message is an OpenAI-compatible dict that any OpenAI-compatible API can process:
               <code>{"role": "user", "content": [...]}</code>. The content list holds
-              typed parts — <code>text</code>, <code>image_url</code>,
-              <code>input_audio</code>, or <code>video_url</code> — that any
-              OpenAI-compatible API can process. Encoders produce these; the LLM
-              consumes them.
+              typed parts: <code>text</code>, <code>image_url</code>,
+              <code>input_audio</code>, or <code>video_url</code>.
             </p>
           </div>
         </div>
 
         <p>
-          Encoders that process long content — shots, frames, chunks — yield
-          <em>multiple</em> messages. Each gets its own LLM call and results are
-          concatenated. This keeps memory usage flat regardless of video length and
-          lets calls run in parallel across the timeline.
+          A key advantage of this design is that the number of messages adapts to the content. A light binary document
+          encodes into a single message; a long or densely packed one fans out into many, each a self-contained part
+          sized to the VLM's context window. That split is what makes thorough understanding possible: every region of
+          the input is read on its own before the parts are merged into a final output, and because the messages are
+          independent, the calls run in parallel.
         </p>
+
+        <!-- next for claude, everything from here. please note my writing style, register, tone, etc.
+        you'll remove all em-dashes, collapse and disambiguite the difference between encode and generate
+        keep the content flowing and naturally sounding like everything above. 
+        -->
 
         <div class="diagram-wrap">
           <pre class="mermaid">%%{init: {'look': 'neo', 'theme': 'neutral'}}%%
@@ -1167,7 +1189,7 @@ graph LR
   style encode rx:10px,ry:10px
   style generate rx:10px,ry:10px</pre>
           <div class="diagram-caption">Multi-chunk encoders yield N messages → N parallel LLM calls → concatenated
-            output. Memory stays flat regardless of video length.</div>
+            output.</div>
         </div>
 
         <!-- ── Section: Images ── -->
