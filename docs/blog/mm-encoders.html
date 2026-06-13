@@ -1068,9 +1068,6 @@
           constraints. Consider the extremes: a 4K image, a 3-hour 12GB video, or a scanned PDF lacking a text layer.
           Each incurs prohibitive token overhead at the model layer, so providers downsample internally, images to
           480×480 or video to 5 FPS at 320p prior to tokenization.
-
-          <!-- The right encoder determines what the model actually sees — and therefore what it can understand. -->
-          <!-- Vision language models (VLMs) There are many different ways to encode and pass a file to a Vision Language Model -->
         </p>
 
         <p>
@@ -1080,10 +1077,6 @@
           applied before the inference call.
         </p>
 
-        <!-- My writing style is above this line -->
-
-        <!-- Everything below is AI which i am trying to adapt into my style and tone -->
-
         <!-- ── Section: mm Encoders ── -->
         <h2 id="pipeline">Encoders</h2>
 
@@ -1092,8 +1085,10 @@
           file to one or more <em>messages</em>, the OpenAI-compatible content parts (<code>text</code>,
           <code>image_url</code>, <code>input_audio</code>, <code>video_url</code>) any chat/completions endpoint
           accepts.
-          Each answers one question for its modality, the most compact representation that still preserves what the
-          model needs, and bound to a single media kind.
+          Each is identified by name (e.g. <code>resize</code>, <code>mosaic</code>, <code>transcribe</code>), bound to
+          a
+          single media kind, and answers one question for its modality: what is the most compact representation that
+          still preserves what the model needs?
 
           <br><br>
 
@@ -1112,7 +1107,7 @@ graph LR
     msg("Message\nOpenAI-compatible content parts")
   end
 
-  subgraph generate ["② Generate (optional, network)"]
+  subgraph generate ["② Model (inference)"]
     direction TB
     llm("VLM\nchat / completions API")
     out("text output")
@@ -1135,7 +1130,7 @@ graph LR
           <span class="callout-icon">💡</span>
           <div class="callout-body">
             <div class="callout-title">What is a Message?</div>
-            <p>A message is an OpenAI-compatible dict that any OpenAI-compatible API can process:
+            <p>A message is an OpenAI-compatible dict that any chat/completions API can process:
               <code>{"role": "user", "content": [...]}</code>. The content list holds
               typed parts: <code>text</code>, <code>image_url</code>,
               <code>input_audio</code>, or <code>video_url</code>.
@@ -1151,26 +1146,21 @@ graph LR
           independent, the calls run in parallel.
         </p>
 
-        <!-- next for claude, everything from here. please note my writing style, register, tone, etc.
-        you'll remove all em-dashes, collapse and disambiguite the difference between encode and generate
-        keep the content flowing and naturally sounding like everything above. 
-        -->
-
         <div class="diagram-wrap">
           <pre class="mermaid">%%{init: {'look': 'neo', 'theme': 'neutral'}}%%
 graph LR
   video("🎬 video")
 
-  subgraph encode ["Encode — multi-chunk output"]
+  subgraph encode ["Encoder (multi-chunk output)"]
     s1("Chunk 1\n16 frames")
     s2("Chunk 2\n16 frames")
     s3("Chunk N\n16 frames")
   end
 
-  subgraph generate ["Generate — parallel LLM calls"]
-    g1("LLM")
-    g2("LLM")
-    g3("LLM")
+  subgraph generate ["Model (read in parallel)"]
+    g1("VLM")
+    g2("VLM")
+    g3("VLM")
   end
 
   concat("concat results")
@@ -1188,19 +1178,17 @@ graph LR
   concat --> out
   style encode rx:10px,ry:10px
   style generate rx:10px,ry:10px</pre>
-          <div class="diagram-caption">Multi-chunk encoders yield N messages → N parallel LLM calls → concatenated
-            output.</div>
+          <div class="diagram-caption">A multi-chunk encoder yields N messages that the model reads in parallel and
+            concatenates into one output.</div>
         </div>
 
         <!-- ── Section: Images ── -->
         <h2 id="images">Image Encoders</h2>
 
         <p>
-          Images are the simplest case — one file, one message, one LLM call. mm provides
-          two strategies, each optimized for different image characteristics.
+          Images are the simplest case: one file becomes one message that the model reads in a single pass. mm provides
+          two strategies, each suited to different image characteristics.
         </p>
-
-        <h3 id="image-resize"><code>resize</code> — The default strategy</h3>
 
         <div class="encoder-card">
           <div class="encoder-card-header">
@@ -1208,17 +1196,16 @@ graph LR
               <div class="encoder-card-name">resize</div>
               <div class="encoder-card-tags">
                 <span class="pill pill-image">image</span>
-                <span class="pill pill-green">fast default</span>
-                <span class="pill pill-green">accurate default</span>
+                <span class="pill pill-green">default</span>
               </div>
             </div>
           </div>
           <div class="encoder-card-body">
             <p>Fits the image into a bounding box (default 1024 px) while preserving aspect
-              ratio and EXIF orientation. Outputs a single image message — one file, one VLM call.
+              ratio and EXIF orientation. Outputs a single image message that the model reads in one pass.
               The right choice for most images.</p>
             <div class="params-grid">
-              <span class="param-name">max_width</span><span class="param-value">1024 px — maximum dimension (width or
+              <span class="param-name">max_width</span><span class="param-value">1024 px, maximum dimension (width or
                 height)</span>
             </div>
           </div>
@@ -1245,10 +1232,8 @@ graph LR
         <p>
           Use <code>resize</code> for portraits, product photos, screenshots, logos, and any
           image where content fits comfortably at 1024 px. For most real-world images,
-          this is the right choice — it's the fastest path and the cleanest input to a VLM.
+          this is the right choice, the fastest path and the cleanest input to a VLM.
         </p>
-
-        <h3 id="image-tile"><code>tile</code> — For high-detail images</h3>
 
         <div class="encoder-card">
           <div class="encoder-card-header">
@@ -1263,11 +1248,11 @@ graph LR
           </div>
           <div class="encoder-card-body">
             <p>Sends a resized overview (global context) plus NxM tile crops from the original
-              (fine detail) — all in a single message. Gives VLMs both the big picture and the
+              (fine detail), all in a single message. Gives VLMs both the big picture and the
               ability to read small text or inspect fine-grained features at full resolution.
               Falls back to overview-only when the image fits in a single tile.</p>
             <div class="params-grid">
-              <span class="param-name">max_width</span><span class="param-value">1024 px — tile size and overview
+              <span class="param-name">max_width</span><span class="param-value">1024 px, tile size and overview
                 bounding box</span>
             </div>
           </div>
@@ -1290,8 +1275,8 @@ graph LR
   exif --> tiles --> msg
   style encode rx:10px,ry:10px
   style message rx:10px,ry:10px</pre>
-          <div class="diagram-caption">tile: overview + NxM crops in one message — global context and fine detail
-            simultaneously</div>
+          <div class="diagram-caption">tile: overview plus NxM crops in one message, global context and fine detail
+            at once</div>
         </div>
 
         <div class="callout tip">
@@ -1299,7 +1284,7 @@ graph LR
           <div class="callout-body">
             <div class="callout-title">When to use tile vs resize</div>
             <p>Use <code>tile</code> for technical diagrams, architectural drawings, scanned
-              documents where text must be readable, maps, and medical imaging — anywhere that
+              documents where text must be readable, maps, and medical imaging, anywhere that
               important detail would be lost at 1024 px. Use <code>resize</code> for everything
               else: photos, icons, screenshots, illustrations.</p>
           </div>
@@ -1328,9 +1313,9 @@ mm cat diagram.png -p tile -m accurate --prompt <span class="tok-s">"Extract all
         <h2 id="video">Video Encoders</h2>
 
         <p>
-          Video is the richest — and most challenging — media type to encode. A 90-minute
+          Video is the richest and most challenging media type to encode. A 90-minute
           lecture can't fit in one message. A 30-second product clip might need both frames
-          and audio to be understood. mm provides 13 video encoding strategies across
+          and audio to be understood. mm provides 16 video encoding strategies across
           three fundamental approaches: frame-based, time-chunk-based, and native clip.
         </p>
 
@@ -1365,17 +1350,26 @@ flowchart TD
   style chunks_enc fill:#fef3c7,stroke:#f59e0b,color:#78350f
   style shots_enc fill:#fef3c7,stroke:#f59e0b,color:#78350f
   style summary fill:#f0fdf4,stroke:#86efac,color:#14532d</pre>
-          <div class="diagram-caption">Video encoder decision tree — start top-left and follow your constraints</div>
+          <div class="diagram-caption">Video encoder decision tree: start top-left and follow the constraints</div>
         </div>
 
-        <h3 id="video-mosaic"><code>mosaic</code> — The fast default</h3>
-
-        <p>
-          <code>mosaic</code> extracts representative frames using scene detection (falling
-          back to uniform sampling) and tiles them into 4×4 grids. The result is a compact
-          visual summary that fits in a small number of messages — enough for a VLM to
-          understand what happens in a clip without processing every frame.
-        </p>
+        <div class="encoder-card" id="video-mosaic">
+          <div class="encoder-card-header">
+            <div>
+              <div class="encoder-card-name">mosaic</div>
+              <div class="encoder-card-tags">
+                <span class="pill pill-video">video</span>
+                <span class="pill pill-green">default</span>
+              </div>
+            </div>
+          </div>
+          <div class="encoder-card-body">
+            <p>Extracts representative frames using scene detection (falling back to uniform
+              sampling) and tiles them into 4×4 grids. The result is a compact visual summary
+              that fits in a small number of messages, enough for a VLM to understand what
+              happens in a clip without processing every frame.</p>
+          </div>
+        </div>
 
         <div class="diagram-wrap">
           <pre class="mermaid">%%{init: {'look': 'neo', 'theme': 'neutral'}}%%
@@ -1401,10 +1395,10 @@ graph LR
                 class="dot-g"></span></div>
             <span class="code-block-lang">bash</span>
           </div>
-          <pre><code><span class="tok-c"># Fast default</span>
+          <pre><code><span class="tok-c"># Default</span>
 mm cat clip.mp4
 
-<span class="tok-c"># With spoken transcript</span>
+<span class="tok-c"># With transcript</span>
 mm cat clip.mp4 -p mosaic-w-transcript
 
 <span class="tok-c"># Denser 3×3 grid</span>
@@ -1414,15 +1408,23 @@ mm cat clip.mp4 -p mosaic --encode.strategy_opts tile_cols=3 --encode.strategy_o
 mm cat lecture.mp4 -p mosaic --encode.strategy_opts num_frames=256</code></pre>
         </div>
 
-        <h3 id="video-frames"><code>frames</code> / <code>frames-w-transcript</code> — The accurate default</h3>
-
-        <p>
-          <code>frames</code> extracts frames at a fixed rate (default 1 fps) and batches
-          them into messages of up to 16 frames each, with a time-range header per batch.
-          <code>frames-w-transcript</code> prepends a Whisper transcript as the first
-          message — giving the VLM both visual context and spoken word. This is the default
-          for <code>-m accurate</code>.
-        </p>
+        <div class="encoder-card" id="video-frames">
+          <div class="encoder-card-header">
+            <div>
+              <div class="encoder-card-name">frames / frames-w-transcript</div>
+              <div class="encoder-card-tags">
+                <span class="pill pill-video">video</span>
+              </div>
+            </div>
+          </div>
+          <div class="encoder-card-body">
+            <p>Extracts frames at a fixed rate (default 1 fps) and batches them into messages
+              of up to 16 frames each, with a time-range header per batch. The
+              <code>-w-transcript</code> variant prepends a Whisper transcript as the first
+              message, giving the VLM both visual context and spoken word.
+            </p>
+          </div>
+        </div>
 
         <div class="diagram-wrap">
           <pre class="mermaid">%%{init: {'look': 'neo', 'theme': 'neutral'}}%%
@@ -1447,15 +1449,24 @@ graph LR
             then batched frame messages</div>
         </div>
 
-        <h3 id="video-shots"><code>shots</code> / <code>shots-w-transcript</code> — Shot-boundary aware</h3>
-
-        <p>
-          Shot detection finds scene boundaries and yields one message per shot, with up to 8
-          representative frames each. Unlike <code>frames</code> which samples uniformly,
-          <code>shots</code> is content-aware — each message maps to a semantically distinct
-          scene. Ideal for films, documentaries, news broadcasts, and presentations with clear
-          slide transitions.
-        </p>
+        <div class="encoder-card" id="video-shots">
+          <div class="encoder-card-header">
+            <div>
+              <div class="encoder-card-name">shots / shots-w-transcript</div>
+              <div class="encoder-card-tags">
+                <span class="pill pill-video">video</span>
+                <span class="pill pill-blue">shot-boundary aware</span>
+              </div>
+            </div>
+          </div>
+          <div class="encoder-card-body">
+            <p>Shot detection finds scene boundaries and yields one message per shot, with up
+              to 8 representative frames each. Unlike <code>frames</code>, which samples
+              uniformly, <code>shots</code> is content-aware: each message maps to a
+              semantically distinct scene. Ideal for films, documentaries, news broadcasts,
+              and presentations with clear slide transitions.</p>
+          </div>
+        </div>
 
         <div class="diagram-wrap">
           <pre class="mermaid">%%{init: {'look': 'neo', 'theme': 'neutral'}}%%
@@ -1478,12 +1489,10 @@ graph LR
   detect --> s3 --> m3
   style encode rx:10px,ry:10px
   style message rx:10px,ry:10px</pre>
-          <div class="diagram-caption">shots: content-aware — each message is one semantically distinct scene</div>
+          <div class="diagram-caption">shots: content-aware, each message is one semantically distinct scene</div>
         </div>
 
-        <h3 id="video-chunks"><code>chunks</code> — Temporal windows for long content</h3>
-
-        <div class="encoder-card">
+        <div class="encoder-card" id="video-chunks">
           <div class="encoder-card-header">
             <div>
               <div class="encoder-card-name">chunks</div>
@@ -1498,14 +1507,14 @@ graph LR
             <p>Divides a video into overlapping time windows (default 60 s, 5 s overlap) and
               extracts 16 frames per window. Each chunk becomes a separate message with a
               time-range header. Unlike a single mosaic that compresses everything into a few
-              grids, chunks preserve temporal granularity — the VLM knows not just what
+              grids, chunks preserve temporal granularity: the VLM knows not just what
               happened but when.</p>
             <div class="params-grid">
-              <span class="param-name">chunk_duration</span><span class="param-value">60 s — length of each time
+              <span class="param-name">chunk_duration</span><span class="param-value">60 s, length of each time
                 window</span>
-              <span class="param-name">overlap</span><span class="param-value">5 s — overlap between consecutive
+              <span class="param-name">overlap</span><span class="param-value">5 s, overlap between consecutive
                 windows</span>
-              <span class="param-name">frames_per_chunk</span><span class="param-value">16 — frames extracted per
+              <span class="param-name">frames_per_chunk</span><span class="param-value">16, frames extracted per
                 chunk</span>
             </div>
           </div>
@@ -1532,8 +1541,8 @@ graph LR
   split --> c3 --> m3
   style encode rx:10px,ry:10px
   style message rx:10px,ry:10px</pre>
-          <div class="diagram-caption">chunks: overlapping time windows, each with 16 frames and a timestamp header —
-            preserves temporal context for long videos</div>
+          <div class="diagram-caption">chunks: overlapping time windows, each with 16 frames and a timestamp header,
+            preserving temporal context for long videos</div>
         </div>
 
         <div class="code-block">
@@ -1548,7 +1557,7 @@ mm cat lecture.mp4 -p chunks
 <span class="tok-c"># Longer windows for slower-paced content</span>
 mm cat lecture.mp4 -p chunks --encode.strategy_opts chunk_duration=90 --encode.strategy_opts overlap=10
 
-<span class="tok-c"># Accurate mode — LLM describes each window</span>
+<span class="tok-c"># Accurate mode: the model describes each window</span>
 mm cat lecture.mp4 -p chunks -m accurate
 
 <span class="tok-c"># Preview the resolved pipeline without running it</span>
@@ -1560,7 +1569,7 @@ mm cat lecture.mp4 -p chunks -m accurate --dry-run</code></pre>
         <div class="encoder-grid">
           <div class="enc-mini">
             <div class="enc-mini-name">keyframes</div>
-            <div class="enc-mini-desc">Extract I-frames directly from the video bitstream — no seeking loop,
+            <div class="enc-mini-desc">Extract I-frames directly from the video bitstream, no seeking loop,
               codec-aware. Fast way to get the natural edit points in a video.</div>
             <div class="enc-mini-tags"><span class="pill pill-video">video</span><span
                 class="pill pill-gray">bitstream</span></div>
@@ -1588,7 +1597,7 @@ mm cat lecture.mp4 -p chunks -m accurate --dry-run</code></pre>
           </div>
           <div class="enc-mini">
             <div class="enc-mini-name">transcript</div>
-            <div class="enc-mini-desc">Whisper transcript only — no visual frames extracted. For podcasts, lectures, or
+            <div class="enc-mini-desc">Whisper transcript only, no visual frames extracted. For podcasts, lectures, or
               any content where spoken word is all that matters.</div>
             <div class="enc-mini-tags"><span class="pill pill-video">video</span><span
                 class="pill pill-green">encode-only</span></div>
@@ -1602,7 +1611,7 @@ mm cat lecture.mp4 -p chunks -m accurate --dry-run</code></pre>
           </div>
           <div class="enc-mini">
             <div class="enc-mini-name">gemini</div>
-            <div class="enc-mini-desc">Send the entire video as a Gemini native Part. No frame extraction — the model
+            <div class="enc-mini-desc">Send the entire video as a Gemini native Part. No frame extraction; the model
               receives the raw video bytes directly.</div>
             <div class="enc-mini-tags"><span class="pill pill-video">video</span><span class="pill pill-purple">Gemini
                 only</span></div>
@@ -1620,9 +1629,8 @@ mm cat lecture.mp4 -p chunks -m accurate --dry-run</code></pre>
         <h2 id="audio">Audio Encoders</h2>
 
         <p>
-          Audio has a fundamental fork: do you want the <em>text</em> of what was said, or
-          do you want the model to understand the audio itself — speech, tone, music, ambient
-          sound? These are different questions that call for different encoders.
+          Audio has a fundamental fork: verbatim <em>transcript</em> and deep audio understanding (the speech, tone,
+          music, and ambient sound).
         </p>
 
         <div class="diagram-wrap">
@@ -1644,17 +1652,15 @@ graph TD
           <div class="diagram-caption">Audio encoder decision: encode-only transcript vs LLM audio understanding</div>
         </div>
 
-        <!-- [5] Critical distinction — no code internals -->
+        <!-- [5] Critical distinction, no code internals -->
         <div class="callout important">
           <span class="callout-icon">⚡</span>
           <div class="callout-body">
             <div class="callout-title">Critical distinction</div>
             <p>
-              <code>transcribe</code> is encode-only — it never calls an LLM in any mode.
-              It runs Whisper locally and returns a timestamped transcript as plain text.
-              Only <code>base64</code> and <code>gemini</code> make an LLM call. The default
-              <code>mm cat recording.mp3</code> uses the <code>transcribe</code> pipeline —
-              transcript only, fully offline, no API key needed.
+              <code>transcribe</code> is encode-only: it runs Whisper locally and returns a timestamped transcript as
+              plain text, with no model in the loop. <code>base64</code> and <code>gemini</code> generate model-native
+              messages.
             </p>
           </div>
         </div>
@@ -1664,7 +1670,6 @@ graph TD
             <tr>
               <th>Encoder</th>
               <th>What it sends</th>
-              <th>LLM call?</th>
               <th>Fast output</th>
               <th>Accurate output</th>
             </tr>
@@ -1673,21 +1678,18 @@ graph TD
             <tr>
               <td><code>transcribe</code></td>
               <td class="col-desc">Whisper transcript as text</td>
-              <td><span class="pill pill-gray">None</span></td>
               <td class="col-best">timestamped transcript</td>
               <td class="col-best">timestamped transcript</td>
             </tr>
             <tr>
               <td><code>base64</code></td>
               <td class="col-desc">Raw audio bytes to LLM</td>
-              <td><span class="pill pill-green">Generates</span></td>
               <td class="col-best">10-word description</td>
               <td class="col-best">full description</td>
             </tr>
             <tr>
               <td><code>gemini</code></td>
               <td class="col-desc">Audio as Gemini native Part</td>
-              <td><span class="pill pill-green">Generates</span></td>
               <td class="col-best">10-word description</td>
               <td class="col-best">full description</td>
             </tr>
@@ -1743,16 +1745,16 @@ graph LR
           <pre><code><span class="tok-c"># Default: Whisper transcript, no LLM</span>
 mm cat meeting.mp3
 
-<span class="tok-c"># LLM description — accurate (full content analysis)</span>
+<span class="tok-c"># Model description, accurate (full content analysis)</span>
 mm cat meeting.mp3 -p base64 -m accurate
 
 <span class="tok-c"># Faster transcription on Apple Silicon</span>
 mm cat meeting.mp3 -p transcribe --encode.backend mlx
 
-<span class="tok-c"># Gemini — native audio understanding</span>
+<span class="tok-c"># Gemini native audio understanding</span>
 mm --profile gemini cat meeting.mp3 -p gemini -m accurate
 
-<span class="tok-c"># Slower playback for Whisper — trades compute for accuracy</span>
+<span class="tok-c"># Slower playback for Whisper, trades compute for accuracy</span>
 mm cat meeting.mp3 -p transcribe --encode.strategy_opts audio_speed=1.0</code></pre>
         </div>
 
@@ -1761,8 +1763,8 @@ mm cat meeting.mp3 -p transcribe --encode.strategy_opts audio_speed=1.0</code></
 
         <p>
           Documents sit in an interesting middle ground: most PDFs have a text layer, but
-          many don't — scanned pages, image-heavy forms, complex visual layouts. mm provides
-          three strategies depending on what you need from the document.
+          many don't, including scanned pages, image-heavy forms, and complex visual layouts. mm provides
+          three strategies depending on what is needed from the document.
         </p>
 
         <div class="diagram-wrap">
@@ -1772,7 +1774,7 @@ flowchart TD
   doc --> Q1{{"Does the PDF have\na readable text layer?"}}
 
   Q1 -->|Yes| Q2{{"Is visual layout\nimportant?  (charts, forms, images)"}}
-  Q1 -->|"No — scanned or image-only"| rasterize("rasterize\nrender pages as images")
+  Q1 -->|"No, scanned or image-only"| rasterize("rasterize\nrender pages as images")
 
   Q2 -->|No| page_text("page-text\ntext extraction only\nfast, no rendering")
   Q2 -->|Yes| Q3{{"Need text too?"}}
@@ -1783,21 +1785,21 @@ flowchart TD
   style page_text fill:#dcfce7,stroke:#22c55e,color:#14532d
   style rasterize fill:#dbeafe,stroke:#3b82f6,color:#1e3a8a
   style rasterize_text fill:#fef3c7,stroke:#f59e0b,color:#78350f</pre>
-          <div class="diagram-caption">Document encoder selection — driven by whether the PDF has a text layer and
+          <div class="diagram-caption">Document encoder selection, driven by whether the PDF has a text layer and
             whether visual layout matters</div>
         </div>
 
         <div class="encoder-grid">
           <div class="enc-mini">
             <div class="enc-mini-name">page-text</div>
-            <div class="enc-mini-desc">Extract text per page from PDF, DOCX, and PPTX — no rendering, no images. Batches
+            <div class="enc-mini-desc">Extract text per page from PDF, DOCX, and PPTX, no rendering, no images. Batches
               up to 128 pages per message. Fast and token-efficient. Default for fast mode.</div>
             <div class="enc-mini-tags"><span class="pill pill-document">document</span><span class="pill pill-gray">fast
                 default</span></div>
           </div>
           <div class="enc-mini">
             <div class="enc-mini-name">rasterize</div>
-            <div class="enc-mini-desc">Render PDF pages as JPEG images — up to 4 pages per message with a page-range
+            <div class="enc-mini-desc">Render PDF pages as JPEG images, up to 4 pages per message with a page-range
               header. Preserves full visual layout: tables, charts, handwriting, stamps, signatures.</div>
             <div class="enc-mini-tags"><span class="pill pill-document">document</span><span
                 class="pill pill-blue">visual layout</span></div>
@@ -1811,7 +1813,7 @@ flowchart TD
           </div>
           <div class="enc-mini">
             <div class="enc-mini-name">gemini</div>
-            <div class="enc-mini-desc">Send the document as a Gemini native Part — no text extraction or rendering. For
+            <div class="enc-mini-desc">Send the document as a Gemini native Part, no text extraction or rendering. For
               Gemini models that accept PDF files directly.</div>
             <div class="enc-mini-tags"><span class="pill pill-document">document</span><span
                 class="pill pill-purple">Gemini only</span></div>
@@ -1841,12 +1843,11 @@ mm --profile gemini cat report.pdf -p gemini -m accurate</code></pre>
         </div>
 
         <!-- ── Section: Choosing ── -->
-        <h2 id="choosing">Choosing Your Encoder</h2>
+        <h2 id="choosing">Choosing an Encoder</h2>
 
         <p>
-          The right encoder depends on three factors: file type, content characteristics,
-          and whether you need LLM understanding or just a structured representation.
-          Scroll through common real-world scenarios:
+          The right encoder depends on three factors: file type, content characteristics, and the need for LLM
+          understanding or a structured representation. Scroll through common real-world scenarios:
         </p>
 
         <!-- [6] Horizontal scroll with snap -->
@@ -1856,14 +1857,14 @@ mm --profile gemini cat report.pdf -p gemini -m accurate</code></pre>
             <div class="scenario-label">📷 Images</div>
             <div class="scenario-task">Caption a product photo catalog</div>
             <div class="scenario-cmd">mm find ./products --kind image | mm cat -m accurate</div>
-            <div class="scenario-why"><code>resize</code> (default) — most product photos fit well at 1024 px</div>
+            <div class="scenario-why"><code>resize</code> (default): most product photos fit well at 1024 px</div>
           </div>
 
           <div class="scenario-card">
             <div class="scenario-label">📷 Images</div>
             <div class="scenario-task">Extract labels from a wiring diagram</div>
             <div class="scenario-cmd">mm cat wiring.png -p tile -m accurate --prompt "List all labels"</div>
-            <div class="scenario-why"><code>tile</code> — diagram text is too fine for a single resize; tile crops read
+            <div class="scenario-why"><code>tile</code>: diagram text is too fine for a single resize; tile crops read
               it at full resolution</div>
           </div>
 
@@ -1871,7 +1872,7 @@ mm --profile gemini cat report.pdf -p gemini -m accurate</code></pre>
             <div class="scenario-label">🎬 Video</div>
             <div class="scenario-task">Quick visual summary of a 30-min meeting</div>
             <div class="scenario-cmd">mm cat meeting.mp4 -p mosaic-w-transcript</div>
-            <div class="scenario-why"><code>mosaic-w-transcript</code> — visual overview + spoken content in one pass
+            <div class="scenario-why"><code>mosaic-w-transcript</code>: visual overview plus spoken content in one pass
             </div>
           </div>
 
@@ -1879,7 +1880,7 @@ mm --profile gemini cat report.pdf -p gemini -m accurate</code></pre>
             <div class="scenario-label">🎬 Video</div>
             <div class="scenario-task">Process a 2-hour lecture section by section</div>
             <div class="scenario-cmd">mm cat lecture.mp4 -p chunks -m accurate</div>
-            <div class="scenario-why"><code>chunks</code> — 60 s windows preserve temporal context that a single mosaic
+            <div class="scenario-why"><code>chunks</code>: 60 s windows preserve temporal context that a single mosaic
               loses</div>
           </div>
 
@@ -1887,7 +1888,7 @@ mm --profile gemini cat report.pdf -p gemini -m accurate</code></pre>
             <div class="scenario-label">🎬 Video</div>
             <div class="scenario-task">Index a documentary scene by scene</div>
             <div class="scenario-cmd">mm cat film.mkv -p shots -m accurate</div>
-            <div class="scenario-why"><code>shots</code> — each scene change yields a separate message + description
+            <div class="scenario-why"><code>shots</code>: each scene change yields a separate message and description
             </div>
           </div>
 
@@ -1895,7 +1896,7 @@ mm --profile gemini cat report.pdf -p gemini -m accurate</code></pre>
             <div class="scenario-label">🎵 Audio</div>
             <div class="scenario-task">Get a searchable transcript of a podcast</div>
             <div class="scenario-cmd">mm cat episode.mp3 -p transcribe</div>
-            <div class="scenario-why"><code>transcribe</code> — Whisper with timestamps, fully offline, no API needed
+            <div class="scenario-why"><code>transcribe</code>: Whisper with timestamps, fully offline, no API needed
             </div>
           </div>
 
@@ -1903,7 +1904,8 @@ mm --profile gemini cat report.pdf -p gemini -m accurate</code></pre>
             <div class="scenario-label">🎵 Audio</div>
             <div class="scenario-task">Summarize a customer support call</div>
             <div class="scenario-cmd">mm cat call.mp3 -p base64 -m accurate</div>
-            <div class="scenario-why"><code>base64</code> + accurate — model understands tone, emphasis, and content
+            <div class="scenario-why"><code>base64</code> with accurate: the model understands tone, emphasis, and
+              content
               directly</div>
           </div>
 
@@ -1911,7 +1913,7 @@ mm --profile gemini cat report.pdf -p gemini -m accurate</code></pre>
             <div class="scenario-label">📄 Documents</div>
             <div class="scenario-task">Extract line items from scanned invoices</div>
             <div class="scenario-cmd">mm cat invoice.pdf -p rasterize-text -m accurate</div>
-            <div class="scenario-why"><code>rasterize-text</code> — scanned PDF; interleaved image + text is most
+            <div class="scenario-why"><code>rasterize-text</code>: scanned PDF, interleaved image and text is most
               reliable</div>
           </div>
 
@@ -1919,8 +1921,8 @@ mm --profile gemini cat report.pdf -p gemini -m accurate</code></pre>
             <div class="scenario-label">📄 Documents</div>
             <div class="scenario-task">Analyze a 100-page contract</div>
             <div class="scenario-cmd">mm cat contract.pdf -m accurate</div>
-            <div class="scenario-why"><code>page-text</code> (default) — strong text layer; LLM structuring handles the
-              rest</div>
+            <div class="scenario-why"><code>page-text</code> (default): strong text layer, the model handles structuring
+              the rest</div>
           </div>
 
         </div>
@@ -1929,9 +1931,9 @@ mm --profile gemini cat report.pdf -p gemini -m accurate</code></pre>
         <h2 id="custom">Writing Custom Encoders</h2>
 
         <p>
-          The encoder registry is open. Drop a <code>.py</code> file in
-          <code>~/.config/mm/encoders/</code> and mm discovers it automatically at startup.
-          Two authoring styles are supported.
+          The encoder registry is open, meaning you can create custom encoders. Drop a <code>.py</code> file in
+          <code>~/.config/mm/encoders/</code> and mm automatically discovers it at startup. Two authoring styles are
+          supported.
         </p>
 
         <h3>Class-based</h3>
@@ -2033,7 +2035,7 @@ register(VideoGrayscale())</code></pre>
           <tbody>
             <tr>
               <td class="col-name">mosaic</td>
-              <td class="col-desc">Scene-aware frame grids. Fast default.</td>
+              <td class="col-desc">Scene-aware frame grids. Default.</td>
               <td class="col-param">num_frames=128, tile_cols=4</td>
               <td class="col-best">Short clips, quick overviews</td>
             </tr>
@@ -2064,7 +2066,7 @@ register(VideoGrayscale())</code></pre>
             <tr>
               <td class="col-name">shots-w-transcript</td>
               <td class="col-desc">shots + Whisper transcript.</td>
-              <td class="col-param">—</td>
+              <td class="col-param">none</td>
               <td class="col-best">Documentaries, interviews</td>
             </tr>
             <tr>
@@ -2088,7 +2090,7 @@ register(VideoGrayscale())</code></pre>
             <tr>
               <td class="col-name">clips-w-transcript</td>
               <td class="col-desc">clips + Whisper transcript.</td>
-              <td class="col-param">—</td>
+              <td class="col-param">none</td>
               <td class="col-best">Long native-video with speech</td>
             </tr>
             <tr>
@@ -2118,7 +2120,7 @@ register(VideoGrayscale())</code></pre>
             <tr>
               <td class="col-name">gemini</td>
               <td class="col-desc">Entire file as Gemini Part.</td>
-              <td class="col-param">—</td>
+              <td class="col-param">none</td>
               <td class="col-best">Gemini models, short clips</td>
             </tr>
             <tr>
@@ -2136,7 +2138,6 @@ register(VideoGrayscale())</code></pre>
             <tr>
               <th>Name</th>
               <th>Description</th>
-              <th>LLM?</th>
               <th>Best for</th>
             </tr>
           </thead>
@@ -2144,19 +2145,16 @@ register(VideoGrayscale())</code></pre>
             <tr>
               <td class="col-name">transcribe</td>
               <td class="col-desc">Whisper → timestamped transcript. Fully offline.</td>
-              <td><span class="pill pill-gray">None</span></td>
               <td class="col-best">Transcripts, search indexes, subtitles</td>
             </tr>
             <tr>
               <td class="col-name">base64</td>
               <td class="col-desc">Raw audio to LLM. Auto-splits files &gt; 120 s.</td>
-              <td><span class="pill pill-green">Generates</span></td>
               <td class="col-best">Summaries, tone analysis, Q&amp;A</td>
             </tr>
             <tr>
               <td class="col-name">gemini</td>
               <td class="col-desc">Audio as Gemini native Part. Auto-splits.</td>
-              <td><span class="pill pill-green">Generates</span></td>
               <td class="col-best">Gemini models, audio analysis</td>
             </tr>
           </tbody>
@@ -2175,7 +2173,7 @@ register(VideoGrayscale())</code></pre>
           <tbody>
             <tr>
               <td class="col-name">page-text</td>
-              <td class="col-desc">Text extraction per page. Fast default.</td>
+              <td class="col-desc">Text extraction per page. Default.</td>
               <td class="col-param">pages_per_message=128</td>
               <td class="col-best">Text-rich PDFs, contracts, reports</td>
             </tr>
@@ -2194,13 +2192,13 @@ register(VideoGrayscale())</code></pre>
             <tr>
               <td class="col-name">gemini</td>
               <td class="col-desc">Document as Gemini native Part.</td>
-              <td class="col-param">—</td>
+              <td class="col-param">none</td>
               <td class="col-best">Gemini models, PDF pass-through</td>
             </tr>
           </tbody>
         </table>
 
-        <!-- [8] CTA — single install button -->
+        <!-- [8] CTA, single install button -->
         <div class="cta-block">
           <h2>Start encoding</h2>
           <p>Install mm and run your first multimodal extraction in under a minute.</p>
@@ -2212,7 +2210,7 @@ register(VideoGrayscale())</code></pre>
   </div>
 
   <footer>
-    <p>mm · fast, multimodal context for agents · May 2026 · Powered by <a href="https://vlm.run">vlm.run</a></p>
+    <p>mm · fast, multimodal context for agents · June 2026 · Powered by <a href="https://vlm.run">vlm.run</a></p>
   </footer>
 
   <!-- Mermaid.js -->
