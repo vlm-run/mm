@@ -1028,7 +1028,7 @@
   <header class="hero">
     <div class="hero-inner">
       <h1 class="hero-title">
-        Strategies for encoding binary files with mm-ctx
+        Strategies for encoding binary files with mm
       </h1>
       <p class="hero-subtitle">
         Transforming images, video, audio, and documents into VLM-ready messages, and choosing the right encoder for
@@ -1089,9 +1089,9 @@
           a
           single media kind, and answers one question for its modality: what is the most compact representation that
           still preserves what the model needs?
+        </p>
 
-          <br><br>
-
+        <p>
           The transform runs on-device, before a single token is billed, and emits independently-sendable messages
           rather than one monolithic payload, so long inputs decompose naturally into parallel calls.
         </p>
@@ -1125,18 +1125,6 @@ graph LR
           calls for, to <code>resize</code> a photograph, <code>transcode</code> a clip, <code>transcribe</code> speech,
           or <code>render</code> a document page, producing messages a VLM then reads and answers.
         </p>
-
-        <div class="callout note">
-          <span class="callout-icon">💡</span>
-          <div class="callout-body">
-            <div class="callout-title">What is a Message?</div>
-            <p>A message is an OpenAI-compatible dict that any chat/completions API can process:
-              <code>{"role": "user", "content": [...]}</code>. The content list holds
-              typed parts: <code>text</code>, <code>image_url</code>,
-              <code>input_audio</code>, or <code>video_url</code>.
-            </p>
-          </div>
-        </div>
 
         <p>
           A key advantage of this design is that the number of messages adapts to the content. A light binary document
@@ -1316,7 +1304,7 @@ mm cat diagram.png -p tile -m accurate --prompt <span class="tok-s">"Extract all
           Video is the richest and most challenging media type to encode. A 90-minute
           lecture can't fit in one message. A 30-second product clip might need both frames
           and audio to be understood. mm provides 16 video encoding strategies across
-          three fundamental approaches: frame-based, time-chunk-based, and native clip.
+          four fundamental approaches: frame-based, time-chunk-based, native clip, and audio-only.
         </p>
 
         <div class="diagram-wrap">
@@ -1364,10 +1352,9 @@ flowchart TD
             </div>
           </div>
           <div class="encoder-card-body">
-            <p>Extracts representative frames using scene detection (falling back to uniform
-              sampling) and tiles them into 4×4 grids. The result is a compact visual summary
-              that fits in a small number of messages, enough for a VLM to understand what
-              happens in a clip without processing every frame.</p>
+            <p>Extracts representative frames using scene detection (falling back to uniform sampling) and tiles them
+              into 4×4 grids. The result is a compact visual summary that fits in a small number of messages, enough for
+              a VLM to understand what happens in a clip without processing every frame.</p>
           </div>
         </div>
 
@@ -1629,8 +1616,8 @@ mm cat lecture.mp4 -p chunks -m accurate --dry-run</code></pre>
         <h2 id="audio">Audio Encoders</h2>
 
         <p>
-          Audio has a fundamental fork: verbatim <em>transcript</em> and deep audio understanding (the speech, tone,
-          music, and ambient sound).
+          Audio has a fundamental fork: the verbatim <em>transcript</em> of what was said, or the model's understanding
+          of the audio (speech, tone, music, ambient sound).
         </p>
 
         <div class="diagram-wrap">
@@ -1649,7 +1636,7 @@ graph TD
   style transcribe fill:#dcfce7,stroke:#22c55e,color:#14532d
   style base64 fill:#dbeafe,stroke:#3b82f6,color:#1e3a8a
   style gemini fill:#ede9fe,stroke:#7c3aed,color:#4c1d95</pre>
-          <div class="diagram-caption">Audio encoder decision: encode-only transcript vs LLM audio understanding</div>
+          <div class="diagram-caption">Audio encoder decision: encode-only transcript vs audio understanding</div>
         </div>
 
         <!-- [5] Critical distinction, no code internals -->
@@ -1670,8 +1657,7 @@ graph TD
             <tr>
               <th>Encoder</th>
               <th>What it sends</th>
-              <th>Fast output</th>
-              <th>Accurate output</th>
+              <th>Output</th>
             </tr>
           </thead>
           <tbody>
@@ -1679,19 +1665,16 @@ graph TD
               <td><code>transcribe</code></td>
               <td class="col-desc">Whisper transcript as text</td>
               <td class="col-best">timestamped transcript</td>
-              <td class="col-best">timestamped transcript</td>
             </tr>
             <tr>
               <td><code>base64</code></td>
               <td class="col-desc">Raw audio bytes to LLM</td>
-              <td class="col-best">10-word description</td>
-              <td class="col-best">full description</td>
+              <td class="col-best">description</td>
             </tr>
             <tr>
               <td><code>gemini</code></td>
               <td class="col-desc">Audio as Gemini native Part</td>
-              <td class="col-best">10-word description</td>
-              <td class="col-best">full description</td>
+              <td class="col-best">description</td>
             </tr>
           </tbody>
         </table>
@@ -1794,8 +1777,8 @@ flowchart TD
             <div class="enc-mini-name">page-text</div>
             <div class="enc-mini-desc">Extract text per page from PDF, DOCX, and PPTX, no rendering, no images. Batches
               up to 128 pages per message. Fast and token-efficient. Default for fast mode.</div>
-            <div class="enc-mini-tags"><span class="pill pill-document">document</span><span class="pill pill-gray">fast
-                default</span></div>
+            <div class="enc-mini-tags"><span class="pill pill-document">document</span><span
+                class="pill pill-gray">default</span></div>
           </div>
           <div class="enc-mini">
             <div class="enc-mini-name">rasterize</div>
@@ -1847,7 +1830,7 @@ mm --profile gemini cat report.pdf -p gemini -m accurate</code></pre>
 
         <p>
           The right encoder depends on three factors: file type, content characteristics, and the need for LLM
-          understanding or a structured representation. Scroll through common real-world scenarios:
+          or a structured representation. Scroll through common real-world scenarios:
         </p>
 
         <!-- [6] Horizontal scroll with snap -->
@@ -1904,9 +1887,8 @@ mm --profile gemini cat report.pdf -p gemini -m accurate</code></pre>
             <div class="scenario-label">🎵 Audio</div>
             <div class="scenario-task">Summarize a customer support call</div>
             <div class="scenario-cmd">mm cat call.mp3 -p base64 -m accurate</div>
-            <div class="scenario-why"><code>base64</code> with accurate: the model understands tone, emphasis, and
-              content
-              directly</div>
+            <div class="scenario-why"><code>base64</code> with accurate: the model describes tone, emphasis, and
+              content directly</div>
           </div>
 
           <div class="scenario-card">
@@ -2053,7 +2035,7 @@ register(VideoGrayscale())</code></pre>
             </tr>
             <tr>
               <td class="col-name">frames-w-transcript</td>
-              <td class="col-desc">frames + Whisper. Accurate default.</td>
+              <td class="col-desc">frames + Whisper</td>
               <td class="col-param">fps=1.0, audio_speed=2.0</td>
               <td class="col-best">Lectures, presentations</td>
             </tr>
