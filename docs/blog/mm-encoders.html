@@ -1031,8 +1031,10 @@
         Strategies for encoding binary files with mm
       </h1>
       <p class="hero-subtitle">
-        Transforming images, video, audio, and documents into VLM-ready messages, and choosing the right encoder for
-        different use cases.
+        <!-- Transforming images, video, audio, and documents into VLM-ready messages, and choosing the right encoder for
+        different use cases. -->
+        <!-- Choosing the right encoder to transform images, video, audio, and documents into VLM-ready messages. -->
+        Transforming images, video, audio, and documents into VLM-ready messages for different use cases.
       </p>
       <div class="hero-meta">
         <span class="hero-meta-item">June 2026</span>
@@ -1051,11 +1053,9 @@
     <div class="article-wrap">
       <article>
         <p>
-          Vision-Language Models (VLMs) reason over visual inputs alongside natural language, but like their text-only
-          counterparts they are fundamentally bound by a finite context window. The 256K–1M token budgets that feel
-          generous for text prove insufficient once dense visual modalities dominate: capacity is bounded not by
-          semantic
-          complexity but by raw token consumption.
+          Vision Language Models (VLMs) reason over visual inputs but are fundamentally bound by a finite context
+          window. The 256K–1M token budget that feels generous for text proves insufficient once dense visual modalities
+          dominate: capacity is bounded not by semantic complexity but by raw token consumption.
         </p>
 
         <div class="bigquote">
@@ -1066,15 +1066,15 @@
         <p>
           Forwarding raw binary payloads directly to the inference endpoint is fundamentally incompatible with these
           constraints. Consider the extremes: a 4K image, a 3-hour 12GB video, or a scanned PDF lacking a text layer.
-          Each incurs prohibitive token overhead at the model layer, so providers downsample internally, images to
+          Each incurs prohibitive token overhead at the model layer, so providers downsample internally: images to
           480×480 or video to 5 FPS at 320p prior to tokenization.
         </p>
 
         <p>
-          For images this is often tolerable, since downsampling costs little semantic fidelity. But it remains
-          architecturally wasteful: transmitting a 20MB 4K image to an endpoint that immediately rescales it to a 32KB
-          thumbnail is wasted bandwidth and added latency. This motivated our investigation into modality-aware encoding
-          applied before the inference call.
+          For images, this is often tolerable, since downsampling incurs little loss of semantic fidelity. But it
+          remains architecturally wasteful: transmitting a 20MB 4K image to the inference endpoint, only to have it
+          immediately rescaled to a 32KB thumbnail, is wasted bandwidth and added latency. This motivated our
+          investigation into modality-aware encoding applied before the inference call.
         </p>
 
         <!-- ── Section: mm Encoders ── -->
@@ -1083,17 +1083,17 @@
         <p>
           We formalize each such strategy as an <strong>encoder</strong>: a local, deterministic transform from a binary
           file to one or more <em>messages</em>, the OpenAI-compatible content parts (<code>text</code>,
-          <code>image_url</code>, <code>input_audio</code>, <code>video_url</code>) any chat/completions endpoint
+          <code>image_url</code>, <code>input_audio</code>, <code>video_url</code>) that any chat/completions endpoint
           accepts.
-          Each is identified by name (e.g. <code>resize</code>, <code>mosaic</code>, <code>transcribe</code>), bound to
-          a
-          single media kind, and answers one question for its modality: what is the most compact representation that
-          still preserves what the model needs?
+          Each is identified by name (e.g., <code>resize</code>, <code>mosaic</code>, <code>transcribe</code>), bound to
+          a single media kind, and answers one question for its modality: what is the most compact representation that
+          still preserves content fidelity for the model layer?
         </p>
 
         <p>
-          The transform runs on-device, before a single token is billed, and emits independently-sendable messages
-          rather than one monolithic payload, so long inputs decompose naturally into parallel calls.
+          The transform runs on-device before a single token is billed and generates transmittable message segments
+          rather than a monolithic payload, so long or large inputs decompose naturally into smaller chunks transferred
+          over parallel calls.
         </p>
 
         <div class="diagram-wrap">
@@ -1121,18 +1121,21 @@ graph LR
         </div>
 
         <p>
-          The diagram above traces this end to end: a file reaches the encoder, which applies whatever its modality
-          calls for, to <code>resize</code> a photograph, <code>transcode</code> a clip, <code>transcribe</code> speech,
-          or <code>render</code> a document page, producing messages a VLM then reads and answers.
+          The diagram above conveys what happens end to end: a file reaches the encoder, which applies modality-aware
+          transformation, e.g., <code>resize</code> a photograph, <code>transcode</code> a clip, <code>transcribe</code>
+          speech, or <code>render</code> a document page, producing messages a VLM can process.
         </p>
 
         <p>
-          A key advantage of this design is that the number of messages adapts to the content. A light binary document
-          encodes into a single message; a long or densely packed one fans out into many, each a self-contained part
-          sized to the VLM's context window. That split is what makes thorough understanding possible: every region of
-          the input is read on its own before the parts are merged into a final output, and because the messages are
-          independent, the calls run in parallel.
+          A key advantage of this design is that the number of generated messages adapts to the content. A small binary
+          document encodes into a single message, while a large or densely packed one fans out into many messages, each
+          a self-contained part sized to the model’s context window, allowing for comprehensive understanding.
         </p>
+
+        <div class="bigquote">
+          <p>Every aspect of the input is read and processed in parallel before being merged into a final output.</p>
+        </div>
+
 
         <div class="diagram-wrap">
           <pre class="mermaid">%%{init: {'look': 'neo', 'theme': 'neutral'}}%%
@@ -1174,7 +1177,7 @@ graph LR
         <h2 id="images">Image Encoders</h2>
 
         <p>
-          Images are the simplest case: one file becomes one message that the model reads in a single pass. mm provides
+          Images are the simplest case: one file becomes a message that the model reads in a single pass. mm provides
           two strategies, each suited to different image characteristics.
         </p>
 
@@ -1183,7 +1186,6 @@ graph LR
             <div>
               <div class="encoder-card-name">resize</div>
               <div class="encoder-card-tags">
-                <span class="pill pill-image">image</span>
                 <span class="pill pill-green">default</span>
               </div>
             </div>
@@ -1218,9 +1220,9 @@ graph LR
         </div>
 
         <p>
-          Use <code>resize</code> for portraits, product photos, screenshots, logos, and any
-          image where content fits comfortably at 1024 px. For most real-world images,
-          this is the right choice, the fastest path and the cleanest input to a VLM.
+          Use <code>resize</code> for portraits, product photos, screenshots, logos, and any image where content fits
+          comfortably at 1024 px. For most real-world images, this is the right choice, the fastest path, and the
+          cleanest input to a VLM.
         </p>
 
         <div class="encoder-card">
@@ -1228,7 +1230,6 @@ graph LR
             <div>
               <div class="encoder-card-name">tile</div>
               <div class="encoder-card-tags">
-                <span class="pill pill-image">image</span>
                 <span class="pill pill-blue">high resolution</span>
                 <span class="pill pill-blue">fine detail</span>
               </div>
@@ -1240,7 +1241,7 @@ graph LR
               ability to read small text or inspect fine-grained features at full resolution.
               Falls back to overview-only when the image fits in a single tile.</p>
             <div class="params-grid">
-              <span class="param-name">max_width</span><span class="param-value">1024 px, tile size and overview
+              <span class="param-name">max_width</span><span class="param-value">1024 px, tile size, and overview
                 bounding box</span>
             </div>
           </div>
@@ -1270,9 +1271,9 @@ graph LR
         <div class="callout tip">
           <span class="callout-icon">🔍</span>
           <div class="callout-body">
-            <div class="callout-title">When to use tile vs resize</div>
+            <div class="callout-title">Tile vs Resize</div>
             <p>Use <code>tile</code> for technical diagrams, architectural drawings, scanned
-              documents where text must be readable, maps, and medical imaging, anywhere that
+              documents where text must be recognized, maps, and medical imaging, anywhere that
               important detail would be lost at 1024 px. Use <code>resize</code> for everything
               else: photos, icons, screenshots, illustrations.</p>
           </div>
@@ -1301,10 +1302,10 @@ mm cat diagram.png -p tile -m accurate --prompt <span class="tok-s">"Extract all
         <h2 id="video">Video Encoders</h2>
 
         <p>
-          Video is the richest and most challenging media type to encode. A 90-minute
-          lecture can't fit in one message. A 30-second product clip might need both frames
-          and audio to be understood. mm provides 16 video encoding strategies across
-          four fundamental approaches: frame-based, time-chunk-based, native clip, and audio-only.
+          Video is the richest and most challenging media type to encode. A 90-minute lecture can't fit in one message.
+          A 30-second product clip may need both its frames and audio characteristics to be understood. mm provides 19
+          video encoding strategies across four fundamental approaches: frame-based, time-chunk-based, native clip, and
+          audio-only.
         </p>
 
         <div class="diagram-wrap">
@@ -1341,12 +1342,21 @@ flowchart TD
           <div class="diagram-caption">Video encoder decision tree: start top-left and follow the constraints</div>
         </div>
 
+        <p>
+          In the diagram above, if the model is video-native, then frame extraction is skipped and the clip is sent
+          as-is. On the other branch, given that most models aren’t video-native, the video is reduced to images and
+          text. From there, three constraints decide the strategy. Duration sets the sampling budget: a 10-minute clip
+          can be sampled densely, a 90-minute lecture can't. Audio decides whether the encoder also transcribes the clip
+          and sends the text alongside the frames. Content type decides how frames are chosen: uniformly, per scene, or
+          as a single adaptive overview. Each leaf of the tree is one of the encoders below, and the rest of this
+          section covers them in that order, starting with <code>mosaic</code>.
+        </p>
+
         <div class="encoder-card" id="video-mosaic">
           <div class="encoder-card-header">
             <div>
               <div class="encoder-card-name">mosaic</div>
               <div class="encoder-card-tags">
-                <span class="pill pill-video">video</span>
                 <span class="pill pill-green">default</span>
               </div>
             </div>
@@ -1399,9 +1409,6 @@ mm cat lecture.mp4 -p mosaic --encode.strategy_opts num_frames=256</code></pre>
           <div class="encoder-card-header">
             <div>
               <div class="encoder-card-name">frames / frames-w-transcript</div>
-              <div class="encoder-card-tags">
-                <span class="pill pill-video">video</span>
-              </div>
             </div>
           </div>
           <div class="encoder-card-body">
@@ -1441,15 +1448,14 @@ graph LR
             <div>
               <div class="encoder-card-name">shots / shots-w-transcript</div>
               <div class="encoder-card-tags">
-                <span class="pill pill-video">video</span>
                 <span class="pill pill-blue">shot-boundary aware</span>
               </div>
             </div>
           </div>
           <div class="encoder-card-body">
-            <p>Shot detection finds scene boundaries and yields one message per shot, with up
-              to 8 representative frames each. Unlike <code>frames</code>, which samples
-              uniformly, <code>shots</code> is content-aware: each message maps to a
+            <p>Shot detection captures scene boundaries and yields one message per shot, with up
+              to 8 representative frames each. Unlike <code>frames</code>, which are sampled
+              uniformly, <code>shots</code> encoding is content-aware: each message maps to a
               semantically distinct scene. Ideal for films, documentaries, news broadcasts,
               and presentations with clear slide transitions.</p>
           </div>
@@ -1484,7 +1490,6 @@ graph LR
             <div>
               <div class="encoder-card-name">chunks</div>
               <div class="encoder-card-tags">
-                <span class="pill pill-video">video</span>
                 <span class="pill pill-blue">long-form</span>
                 <span class="pill pill-blue">temporal detail</span>
               </div>
@@ -1494,8 +1499,7 @@ graph LR
             <p>Divides a video into overlapping time windows (default 60 s, 5 s overlap) and
               extracts 16 frames per window. Each chunk becomes a separate message with a
               time-range header. Unlike a single mosaic that compresses everything into a few
-              grids, chunks preserve temporal granularity: the VLM knows not just what
-              happened but when.</p>
+              grids, chunks preserve temporal granularity: the VLM understands what happened and when.</p>
             <div class="params-grid">
               <span class="param-name">chunk_duration</span><span class="param-value">60 s, length of each time
                 window</span>
@@ -1558,57 +1562,49 @@ mm cat lecture.mp4 -p chunks -m accurate --dry-run</code></pre>
             <div class="enc-mini-name">keyframes</div>
             <div class="enc-mini-desc">Extract I-frames directly from the video bitstream, no seeking loop,
               codec-aware. Fast way to get the natural edit points in a video.</div>
-            <div class="enc-mini-tags"><span class="pill pill-video">video</span><span
-                class="pill pill-gray">bitstream</span></div>
+            <div class="enc-mini-tags"><span class="pill pill-gray">bitstream</span></div>
           </div>
           <div class="enc-mini">
             <div class="enc-mini-name">shot-mosaic</div>
             <div class="enc-mini-desc">Shot boundaries + one tiled mosaic grid per shot. Compact representation that
               still preserves the structure of scene changes.</div>
-            <div class="enc-mini-tags"><span class="pill pill-video">video</span><span
-                class="pill pill-gray">shot-aware</span></div>
+            <div class="enc-mini-tags"><span class="pill pill-gray">shot-aware</span></div>
           </div>
           <div class="enc-mini">
             <div class="enc-mini-name">summary</div>
             <div class="enc-mini-desc">Adaptive N-frame overview (default 12) spread across scene boundaries. Best for
               very long videos where a compact bird's-eye view is enough.</div>
-            <div class="enc-mini-tags"><span class="pill pill-video">video</span><span
-                class="pill pill-gray">compact</span></div>
+            <div class="enc-mini-tags"><span class="pill pill-gray">compact</span></div>
           </div>
           <div class="enc-mini">
             <div class="enc-mini-name">clips</div>
             <div class="enc-mini-desc">Send the video as base64-encoded clips for models that accept native video input.
               Videos ≤ 120 s sent whole; longer split into overlapping segments.</div>
-            <div class="enc-mini-tags"><span class="pill pill-video">video</span><span class="pill pill-purple">native
-                input</span></div>
+            <div class="enc-mini-tags"><span class="pill pill-purple">native input</span></div>
           </div>
           <div class="enc-mini">
             <div class="enc-mini-name">transcript</div>
             <div class="enc-mini-desc">Whisper transcript only, no visual frames extracted. For podcasts, lectures, or
               any content where spoken word is all that matters.</div>
-            <div class="enc-mini-tags"><span class="pill pill-video">video</span><span
-                class="pill pill-green">encode-only</span></div>
+            <div class="enc-mini-tags"><span class="pill pill-green">encode-only</span></div>
           </div>
           <div class="enc-mini">
             <div class="enc-mini-name">captions</div>
             <div class="enc-mini-desc">Extract embedded subtitle tracks (SRT/VTT/SSA). Falls back to Whisper when no
               subtitle stream is found in the container.</div>
-            <div class="enc-mini-tags"><span class="pill pill-video">video</span><span
-                class="pill pill-green">encode-only</span></div>
+            <div class="enc-mini-tags"><span class="pill pill-green">encode-only</span></div>
           </div>
           <div class="enc-mini">
             <div class="enc-mini-name">gemini</div>
             <div class="enc-mini-desc">Send the entire video as a Gemini native Part. No frame extraction; the model
               receives the raw video bytes directly.</div>
-            <div class="enc-mini-tags"><span class="pill pill-video">video</span><span class="pill pill-purple">Gemini
-                only</span></div>
+            <div class="enc-mini-tags"><span class="pill pill-purple">Gemini only</span></div>
           </div>
           <div class="enc-mini">
             <div class="enc-mini-name">gemini-chunked</div>
             <div class="enc-mini-desc">Same as <code>gemini</code> but splits long videos into overlapping segments
               first. For Gemini models with length constraints.</div>
-            <div class="enc-mini-tags"><span class="pill pill-video">video</span><span class="pill pill-purple">Gemini
-                only</span></div>
+            <div class="enc-mini-tags"><span class="pill pill-purple">Gemini only</span></div>
           </div>
         </div>
 
@@ -1681,7 +1677,7 @@ graph TD
 
         <p>
           Both <code>base64</code> and <code>gemini</code> handle long files automatically:
-          recordings longer than 120 seconds are split into overlapping chunks and
+          recordings longer than 120 seconds are split into overlapping segments and
           processed in parallel, each yielding a separate message.
         </p>
 
@@ -1747,7 +1743,7 @@ mm cat meeting.mp3 -p transcribe --encode.strategy_opts audio_speed=1.0</code></
         <p>
           Documents sit in an interesting middle ground: most PDFs have a text layer, but
           many don't, including scanned pages, image-heavy forms, and complex visual layouts. mm provides
-          three strategies depending on what is needed from the document.
+          four strategies depending on what is required from the document.
         </p>
 
         <div class="diagram-wrap">
@@ -1777,29 +1773,25 @@ flowchart TD
             <div class="enc-mini-name">page-text</div>
             <div class="enc-mini-desc">Extract text per page from PDF, DOCX, and PPTX, no rendering, no images. Batches
               up to 128 pages per message. Fast and token-efficient. Default for fast mode.</div>
-            <div class="enc-mini-tags"><span class="pill pill-document">document</span><span
-                class="pill pill-gray">default</span></div>
+            <div class="enc-mini-tags"><span class="pill pill-gray">default</span></div>
           </div>
           <div class="enc-mini">
             <div class="enc-mini-name">rasterize</div>
             <div class="enc-mini-desc">Render PDF pages as JPEG images, up to 4 pages per message with a page-range
               header. Preserves full visual layout: tables, charts, handwriting, stamps, signatures.</div>
-            <div class="enc-mini-tags"><span class="pill pill-document">document</span><span
-                class="pill pill-blue">visual layout</span></div>
+            <div class="enc-mini-tags"><span class="pill pill-blue">visual layout</span></div>
           </div>
           <div class="enc-mini">
             <div class="enc-mini-name">rasterize-text</div>
             <div class="enc-mini-desc">Rasterize pages and interleave the extracted text beneath each image. The VLM
               sees the visual layout and has an OCR-quality text fallback for every page.</div>
-            <div class="enc-mini-tags"><span class="pill pill-document">document</span><span
-                class="pill pill-blue">hybrid</span></div>
+            <div class="enc-mini-tags"><span class="pill pill-blue">hybrid</span></div>
           </div>
           <div class="enc-mini">
             <div class="enc-mini-name">gemini</div>
             <div class="enc-mini-desc">Send the document as a Gemini native Part, no text extraction or rendering. For
               Gemini models that accept PDF files directly.</div>
-            <div class="enc-mini-tags"><span class="pill pill-document">document</span><span
-                class="pill pill-purple">Gemini only</span></div>
+            <div class="enc-mini-tags"><span class="pill pill-purple">Gemini only</span></div>
           </div>
         </div>
 
@@ -1829,7 +1821,7 @@ mm --profile gemini cat report.pdf -p gemini -m accurate</code></pre>
         <h2 id="choosing">Choosing an Encoder</h2>
 
         <p>
-          The right encoder depends on three factors: file type, content characteristics, and the need for LLM
+          The right encoder depends on three factors: file type, content characteristics, and the need for an LLM
           or a structured representation. Scroll through common real-world scenarios:
         </p>
 
@@ -1879,7 +1871,7 @@ mm --profile gemini cat report.pdf -p gemini -m accurate</code></pre>
             <div class="scenario-label">🎵 Audio</div>
             <div class="scenario-task">Get a searchable transcript of a podcast</div>
             <div class="scenario-cmd">mm cat episode.mp3 -p transcribe</div>
-            <div class="scenario-why"><code>transcribe</code>: Whisper with timestamps, fully offline, no API needed
+            <div class="scenario-why"><code>transcribe</code>: OpenAI whisper with timestamps, fully offline.
             </div>
           </div>
 
@@ -1913,7 +1905,7 @@ mm --profile gemini cat report.pdf -p gemini -m accurate</code></pre>
         <h2 id="custom">Writing Custom Encoders</h2>
 
         <p>
-          The encoder registry is open, meaning you can create custom encoders. Drop a <code>.py</code> file in
+          The encoder registry is open, allowing anyone to integrate custom encoders. Drop a <code>.py</code> file in
           <code>~/.config/mm/encoders/</code> and mm automatically discovers it at startup. Two authoring styles are
           supported.
         </p>
@@ -1968,7 +1960,7 @@ register(VideoGrayscale())</code></pre>
         <div class="callout tip">
           <span class="callout-icon">🔌</span>
           <div class="callout-body">
-            <div class="callout-title">Discovery</div>
+            <div class="callout-title">Encoder discovery</div>
             <p>mm picks up any <code>.py</code> file in <code>~/.config/mm/encoders/</code>
               at startup. Run <code>mm cat --list-encoders</code> to confirm your encoder
               is registered and available via <code>-p &lt;name&gt;</code>.</p>
