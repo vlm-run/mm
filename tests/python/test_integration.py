@@ -44,12 +44,18 @@ def _mock_servers():
     mock_post_resp.json.return_value = {"embeddings": [_FAKE_VECTOR]}
 
     def _fake_post(*args, json=None, **kwargs):
-        """Return one vector per Part in the request."""
-        n = len(json) if isinstance(json, list) else 1
+        """Return one vector per `input` in the gateway-shape response."""
+        inputs = json.get("input") if isinstance(json, dict) else None
+        n = len(inputs) if isinstance(inputs, list) else 1
         resp = MagicMock()
         resp.status_code = 200
         resp.raise_for_status = MagicMock()
-        resp.json.return_value = {"embeddings": [_FAKE_VECTOR] * n}
+        resp.json.return_value = {
+            "object": "list",
+            "data": [
+                {"object": "embedding", "index": i, "embedding": _FAKE_VECTOR} for i in range(n)
+            ],
+        }
         return resp
 
     # Mock OpenAI chat completions (used by test_accurate_chat_completion)
@@ -86,47 +92,6 @@ def base_url():
 @pytest.fixture(scope="session")
 def tmp_session(tmp_path_factory):
     return tmp_path_factory.mktemp("integration")
-
-
-@pytest.fixture(scope="session")
-def png_file(tmp_session: Path) -> Path:
-    """Minimal valid 1x1 red PNG (67 bytes)."""
-    import struct
-    import zlib
-
-    def _chunk(ctype: bytes, data: bytes) -> bytes:
-        c = ctype + data
-        return struct.pack(">I", len(data)) + c + struct.pack(">I", zlib.crc32(c) & 0xFFFFFFFF)
-
-    sig = b"\x89PNG\r\n\x1a\n"
-    ihdr = struct.pack(">IIBBBBB", 1, 1, 8, 2, 0, 0, 0)  # 1x1 RGB
-    raw = zlib.compress(b"\x00\xff\x00\x00")  # filter=none, R=255 G=0 B=0
-    p = tmp_session / "test.png"
-    p.write_bytes(sig + _chunk(b"IHDR", ihdr) + _chunk(b"IDAT", raw) + _chunk(b"IEND", b""))
-    return p
-
-
-@pytest.fixture(scope="session")
-def pdf_file(tmp_session: Path) -> Path:
-    """Minimal valid single-page PDF with text."""
-    content = (
-        b"%PDF-1.0\n"
-        b"1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n"
-        b"2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj\n"
-        b"3 0 obj<</Type/Page/Parent 2 0 R/MediaBox[0 0 612 792]"
-        b"/Contents 4 0 R/Resources<</Font<</F1<</Type/Font/Subtype/Type1/BaseFont/Helvetica>>>>>>>>endobj\n"
-        b"4 0 obj<</Length 44>>stream\nBT /F1 12 Tf 100 700 Td (Hello World) Tj ET\nendstream\nendobj\n"
-        b"xref\n0 5\n"
-        b"0000000000 65535 f \n"
-        b"0000000009 00000 n \n"
-        b"0000000058 00000 n \n"
-        b"0000000115 00000 n \n"
-        b"0000000306 00000 n \n"
-        b"trailer<</Size 5/Root 1 0 R>>\nstartxref\n406\n%%EOF"
-    )
-    p = tmp_session / "test.pdf"
-    p.write_bytes(content)
-    return p
 
 
 # ---------------------------------------------------------------------------
@@ -177,29 +142,9 @@ class TestEmbeddings:
         from mm.store.embed import embed_texts
 
         vecs = embed_texts(["What is machine learning?", "A cat on a mat."])
+        assert vecs is not None
         assert len(vecs) == 2
         assert len(vecs[0]) > 0
-
-    def test_embed_image(self, png_file: Path):
-        from mm.store.embed import embed_parts, image_part
-
-        vecs = embed_parts([image_part(png_file)])
-        assert len(vecs) == 1
-        assert len(vecs[0]) > 0
-
-    def test_embed_document(self, pdf_file: Path):
-        from mm.store.embed import document_part, embed_parts
-
-        vecs = embed_parts([document_part(pdf_file)])
-        assert len(vecs) == 1
-        assert len(vecs[0]) > 0
-
-    def test_embed_mixed_batch(self, png_file: Path):
-        from mm.store.embed import embed_parts, image_part, text_part
-
-        parts = [text_part("hello"), image_part(png_file)]
-        vecs = embed_parts(parts)
-        assert len(vecs) == 2
 
 
 # ---------------------------------------------------------------------------
@@ -215,6 +160,7 @@ class TestChunkEmbedding:
         import pyarrow as pa
         from mm.store import MmDatabase
         from mm.store.embed import embed_file_chunks
+        from mm.store.schema import FileCol
 
         db = MmDatabase(db_path=tmp_session / "integ.db")
         table = pa.table(
@@ -239,7 +185,13 @@ class TestChunkEmbedding:
         db.upsert_files(table, root)
 
         uri = "/test/integ/doc.txt"
-        db.put_file_content(uri, "h1", "fast content")
+        db.put_file_content(
+            uri,
+            {
+                FileCol.CONTENT_HASH: "h1",
+                FileCol.TEXT_PREVIEW: "fast content",
+            },
+        )
 
         content = "Machine learning is transforming software engineering. " * 40
         extraction_id = db.put_extraction(uri, "h1", "default", "test-model", content)

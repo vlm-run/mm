@@ -34,6 +34,10 @@ if [ ! -d "${DATA_DIR}/mmbench-tiny" ]; then
 fi
 
 DIR="${DATA_DIR}/mmbench-tiny"
+PDF="${DIR}/BillDownload-8pg.pdf"
+IMG="${DIR}/1-vqa-car.jpg"
+VID="${DIR}/bakery.mp4"
+AUD="${DIR}/audio.mp3"
 
 FILE_COUNT="$(find "${DIR}" -type f ! -name '.DS_Store' | wc -l | tr -d ' ')"
 echo "=== mm CLI Group-1 Benchmarks (tiny) ==="
@@ -56,6 +60,25 @@ hyperfine --warmup 2 --min-runs 10 \
     "find ${DIR} -type f -exec stat ${STAT_FMT} {} +" \
   --command-name "find + file (mime)" \
     "find ${DIR} -type f -exec file --brief --mime-type {} +"
+
+# ===========================================================================
+# peek — raw per-file metadata
+# ===========================================================================
+echo ""
+echo "--- mm peek vs file/stat/ffprobe ---"
+PEEK_CMDS=(
+  --command-name "mm peek pdf"     ".venv/bin/mm peek '${PDF}' --format json"
+  --command-name "mm peek image"   ".venv/bin/mm peek '${IMG}' --format json"
+  --command-name "mm peek video"   ".venv/bin/mm peek '${VID}' --format json"
+  --command-name "mm peek audio"   ".venv/bin/mm peek '${AUD}' --format json"
+  --command-name "file (4 files)"  "file '${PDF}' '${IMG}' '${VID}' '${AUD}'"
+  --command-name "stat (4 files)"  "stat ${STAT_FMT} '${PDF}' '${IMG}' '${VID}' '${AUD}'"
+)
+if command -v ffprobe &>/dev/null; then
+  PEEK_CMDS+=(--command-name "ffprobe video" \
+    "ffprobe -v quiet -print_format json -show_format -show_streams '${VID}'")
+fi
+hyperfine --warmup 2 --min-runs 10 "${PEEK_CMDS[@]}"
 
 # ===========================================================================
 # wc — counting

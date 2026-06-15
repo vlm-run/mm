@@ -1,20 +1,22 @@
 """Gemini passthrough strategies for native multimodal input.
 
 Encodes video and document files as Gemini ``inline_data`` Part dicts,
-suitable for the Google Generative AI API.  Supports both single-shot
-passthrough and duration-based chunking for long videos.
+suitable for Gemini API. Supports both single-shot passthrough and
+duration-based chunking for long videos.
 """
 
 from __future__ import annotations
 
-import base64
 import json
 import logging
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Any, Iterable
 
 from mm.constants import guess_mime
-from mm.encoders import Message, register
+from mm.encoders import register
+from mm.encoders.base import Encoder, Message
+from mm.utils import get_b64
 
 logger = logging.getLogger(__name__)
 
@@ -29,8 +31,7 @@ def _gemini_inline_data_part(data: bytes, mime: str) -> dict[str, Any]:
     Returns:
         Dict matching the ``google.genai.types.Part`` schema.
     """
-    b64: str = base64.b64encode(data).decode()
-    return {"inline_data": {"mime_type": mime, "data": b64}}
+    return {"inline_data": {"mime_type": mime, "data": get_b64(data)}}
 
 
 def _to_gemini_message(parts: list[dict[str, Any]]) -> Message:
@@ -38,7 +39,7 @@ def _to_gemini_message(parts: list[dict[str, Any]]) -> Message:
     return {"role": "user", "content": parts}
 
 
-class GeminiVideo:
+class GeminiVideo(Encoder):
     """Pass a video file directly as a Gemini ``inline_data`` Part.
 
     Uses the Rust fast-path (``mm._mm.gemini_video_parts``) when
@@ -47,28 +48,28 @@ class GeminiVideo:
     Yields a single Message containing the entire video.
     """
 
-    name: str = "video-gemini"
-    media_types: tuple[str, ...] = ("video",)
+    name = "gemini"
+    kind = "video"
 
-    def encode(self, path: Path, **kwargs: Any) -> Iterable[Message]:
+    def encode(self, path: Path, **kwargs) -> Iterable[Message]:
         try:
             from mm._mm import gemini_video_parts
 
-            json_strs: list[str] = gemini_video_parts(str(path))
+            json_strs = gemini_video_parts(str(path))
             parts: list[dict[str, Any]] = [json.loads(s) for s in json_strs]
         except (ImportError, RuntimeError):
-            data: bytes = path.read_bytes()
-            mime: str = guess_mime(path.name)
+            data = path.read_bytes()
+            mime = guess_mime(path.name)
             parts = [_gemini_inline_data_part(data, mime)]
 
         logger.debug("gemini_video [path=%s, parts=%d]", path.name, len(parts))
         yield _to_gemini_message(parts)
 
 
-class GeminiVideoChunked:
+class GeminiVideoChunked(Encoder):
     """Chunk a video by duration and yield one Gemini Part per chunk.
 
-    Uses ``ffmpeg`` to extract time-based segments.  For videos shorter
+    Uses ``ffmpeg`` to extract time-based segments. For videos shorter
     than ``max_seconds`` the entire file is sent as a single Part.
 
     Kwargs:
@@ -76,79 +77,92 @@ class GeminiVideoChunked:
         overlap: Overlap between chunks in seconds (default 10).
     """
 
-    name: str = "video-gemini-chunked"
-    media_types: tuple[str, ...] = ("video",)
+    name = "gemini-chunked"
+    kind = "video"
 
-    def encode(self, path: Path, **kwargs: Any) -> Iterable[Message]:
-        max_seconds: int = kwargs.get("max_seconds", 120)
-        overlap: int = kwargs.get("overlap", 10)
+    def encode(self, path: Path, **kwargs) -> Iterable[Message]:
+        from mm.ffmpeg import extract_segment
+        from mm.video import probe, pyav_runnable
 
-        from mm.ffmpeg import extract_segment, ffmpeg_available, probe_duration
+        max_seconds: int = int(kwargs.get("max_seconds", 120))
+        overlap: int = int(kwargs.get("overlap", 10))
 
-        if not ffmpeg_available():
+        if not pyav_runnable():
             yield _to_gemini_message(
                 [
                     {
                         "type": "text",
-                        "text": f"[ffmpeg not available for {path.name}]",
+                        "text": f"[PyAV not runnable for {path.name}]",
                     }
                 ]
             )
             return
 
-        duration: float = probe_duration(path)
-        if duration <= max_seconds:
-            data: bytes = path.read_bytes()
-            mime: str = guess_mime(path.name)
+        info = probe(path)
+        if info.duration <= max_seconds:
+            data = path.read_bytes()
+            mime = guess_mime(path.name)
             yield _to_gemini_message([_gemini_inline_data_part(data, mime)])
             return
 
         import tempfile
 
-        step: int = max(max_seconds - overlap, 1)
+        mime = guess_mime(path.name)
+        step: float = max(max_seconds - overlap, 1)
+        segments: list[tuple[float, float]] = []
         start: float = 0.0
-        chunk_idx: int = 0
+        while start < info.duration:
+            end = min(start + max_seconds, info.duration)
+            segments.append((start, end))
+            start += step
 
         logger.debug(
-            "gemini_video_chunked [path=%s, duration=%.1fs, chunk=%ds]",
+            "gemini_video_chunked [path=%s, duration=%.1fs, chunk=%ds, segment_len=%ds]",
             path.name,
-            duration,
+            info.duration,
             max_seconds,
+            len(segments),
         )
 
-        while start < duration:
-            end: float = min(start + max_seconds, duration)
+        def _process(varg: tuple[float, float]):
+            start, end = varg
             with tempfile.NamedTemporaryFile(suffix=path.suffix, delete=False) as tmp:
                 seg_path = Path(tmp.name)
             try:
-                extract_segment(str(path), str(seg_path), start, end)
+                extract_segment(path, seg_path, start, end)
                 data = seg_path.read_bytes()
             finally:
                 seg_path.unlink(missing_ok=True)
-            mime = guess_mime(path.name)
-            yield _to_gemini_message([_gemini_inline_data_part(data, mime)])
-            start += step
-            chunk_idx += 1
+            return _to_gemini_message([_gemini_inline_data_part(data, mime)])
+
+        with ThreadPoolExecutor(max_workers=min(4, len(segments))) as pool:
+            yield from pool.map(_process, segments)
 
 
-class GeminiDocument:
+class GeminiDocument(Encoder):
     """Pass a document file directly as a Gemini ``inline_data`` Part.
 
-    Uses the Rust fast-path when available.  Yields a single Message.
+    Uses the Rust fast-path when available. Yields a single Message.
     """
 
-    name: str = "document-gemini"
-    media_types: tuple[str, ...] = ("document",)
+    name = "gemini"
+    kind = "document"
 
-    def encode(self, path: Path, **kwargs: Any) -> Iterable[Message]:
+    def encode(self, path: Path, **kwargs) -> Iterable[Message]:
+        if kwargs.get("mode", "fast") == "fast":
+            from mm.encoders.document.page_text import DocumentPageText
+
+            yield from DocumentPageText().encode(path, **kwargs)
+            return
+
         try:
             from mm._mm import gemini_document_part
 
             json_str: str = gemini_document_part(str(path))
             part: dict[str, Any] = json.loads(json_str)
         except (ImportError, RuntimeError):
-            data: bytes = path.read_bytes()
-            mime: str = guess_mime(path.name)
+            data = path.read_bytes()
+            mime = guess_mime(path.name)
             part = _gemini_inline_data_part(data, mime)
 
         logger.debug("gemini_doc [path=%s]", path.name)

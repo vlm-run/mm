@@ -1,9 +1,17 @@
 import time
 from pathlib import Path
+from typing import Any
 
-from mm.cat_utils.base_utils import CatOpts, RunResult, format_generate_verbose
+from mm.cat_utils.base_utils import (
+    CatOpts,
+    RunResult,
+    format_generate_verbose,
+    make_llm_from_spec,
+    spec_extra_body,
+)
+from mm.constants import BinaryFileKind
+from mm.encoders.base import Message
 from mm.pipelines.schema import PipelineSpec
-from mm.utils import BinaryFileKind
 
 
 def _format_pipeline_tree(encode_info: str, generate_info: str | None = None) -> str:
@@ -20,7 +28,11 @@ def _format_pipeline_tree(encode_info: str, generate_info: str | None = None) ->
     return f"[dim]{pipeline}[/dim]"
 
 
-def _format_encode_verbose(strategy: str | None, messages: list[dict], elapsed_ms: float) -> str:
+def _format_encode_verbose(
+    strategy: str | None,
+    messages: list[dict],
+    elapsed_ms: float,
+) -> str:
     """Format verbose output for the encode step."""
     from mm.display import format_time
 
@@ -69,11 +81,16 @@ def _extract_llm_parts(msg: dict) -> list[dict]:
                 idata = part["inline_data"]
                 mime = idata.get("mime_type", "")
                 b64 = idata.get("data", "")
-                if mime.startswith("video/"):
-                    continue
-                parts.append(
-                    {"type": "image_url", "image_url": {"url": f"data:{mime};base64,{b64}"}}
-                )
+                if mime.startswith("image/"):
+                    parts.append(
+                        {"type": "image_url", "image_url": {"url": f"data:{mime};base64,{b64}"}}
+                    )
+                elif mime.startswith("video/"):
+                    parts.append(
+                        {"type": "video_url", "video_url": {"url": f"data:{mime};base64,{b64}"}}
+                    )
+                else:
+                    parts.append(part)
             else:
                 parts.append(part)
     elif isinstance(content, str):
@@ -81,14 +98,34 @@ def _extract_llm_parts(msg: dict) -> list[dict]:
     return parts
 
 
-def run_encoder(path: Path, kind: BinaryFileKind, spec: PipelineSpec, opts: CatOpts) -> RunResult:
-    """Run a named encoder strategy and output JSON messages or pipe to LLM."""
+def get_encoded_messages(
+    path: Path,
+    kind: BinaryFileKind,
+    strategy: str,
+    *,
+    spec: PipelineSpec,
+    opts: CatOpts,
+) -> list[Message]:
+    """Run a named encoder and return the raw Message dicts."""
     from mm.encoders import get as get_encoder
 
+    strat = get_encoder(strategy, kind)
+    opts_kwargs = {"mode": opts.mode, "generate_model": opts.generate_overrides.get("model")}
+    encode_kwargs: dict[str, Any] = dict(spec.encode.strategy_opts or {})
+
+    if spec.encode.backend is not None:
+        encode_kwargs.setdefault("backend", spec.encode.backend)
+    if spec.encode.model is not None:
+        encode_kwargs.setdefault("model", spec.encode.model)
+    messages = list(strat.encode(path, **encode_kwargs, **opts_kwargs))
+    return messages
+
+
+def run_encoder(path: Path, kind: BinaryFileKind, spec: PipelineSpec, opts: CatOpts) -> RunResult:
+    """Run a named encoder strategy and output JSON messages or pipe to LLM."""
     assert spec.encode.strategy is not None
     t_encode = time.monotonic()
-    strat = get_encoder(spec.encode.strategy)
-    messages = list(strat.encode(path, **spec.encode.strategy_opts))
+    messages = get_encoded_messages(path, kind, spec.encode.strategy, spec=spec, opts=opts)
     encode_elapsed = (time.monotonic() - t_encode) * 1000
 
     if spec.generate is None:
@@ -109,26 +146,40 @@ def run_encoder(path: Path, kind: BinaryFileKind, spec: PipelineSpec, opts: CatO
         encode_output = _format_encode_verbose(spec.encode.strategy, messages, encode_elapsed)
         return RunResult(content=result, verbose_suffix=_format_pipeline_tree(encode_output))
 
-    from mm.llm import LlmBackend
     from mm.profile import get_active_profile_name
 
     t0 = time.monotonic()
-    llm = LlmBackend()
+    llm = make_llm_from_spec(spec)
     chunks: list[list[dict]] = []
     for msg in messages:
-        parts = _extract_llm_parts(msg)
-        if parts:
+        if parts := _extract_llm_parts(msg):
             chunks.append(parts)
 
     if not chunks:
         return RunResult(content="[No LLM-compatible content parts from encoder]")
 
     ctx = {"filename": path.name}
+    extra = spec_extra_body(spec)
+    do_stream = getattr(opts, "stream", False)
     if len(chunks) == 1:
-        result = llm.generate(kind, opts.mode, context=ctx, parts=chunks[0], pipeline_spec=spec)
+        result = llm.generate(
+            kind,
+            opts.mode,
+            context=ctx,
+            parts=chunks[0],
+            pipeline_spec=spec,
+            extra_body=extra,
+            stream=do_stream,
+        )
     else:
         result = llm.generate_chunked(
-            kind, opts.mode, context=ctx, chunks=chunks, pipeline_spec=spec
+            kind,
+            opts.mode,
+            context=ctx,
+            chunks=chunks,
+            pipeline_spec=spec,
+            extra_body=extra,
+            stream=do_stream,
         )
 
     elapsed = (time.monotonic() - t0) * 1000

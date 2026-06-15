@@ -17,6 +17,8 @@ from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from mm.cache import memoize_file
+
 
 def ffmpeg_available() -> bool:
     try:
@@ -52,6 +54,7 @@ class AudioResult:
     channels: int
 
 
+@memoize_file(maxsize=64)
 def probe_duration(video_path: str | Path) -> float:
     """Get video duration in seconds via ffprobe. Fast container-level read."""
     result = subprocess.run(
@@ -323,8 +326,8 @@ def extract_scene_mosaics(
     )
 
 
-def extract_audio(
-    video_path: str | Path,
+def audio_transformer(
+    media_path: str | Path,
     *,
     out_path: str | Path | None = None,
     speed: float = 2.0,
@@ -336,7 +339,7 @@ def extract_audio(
 
     At 2x speed, a 163s video produces 2.5MB WAV in ~0.2s (514x realtime).
     """
-    video_path = Path(video_path)
+    media_path = Path(media_path)
     if out_path is None:
         suffix = f".{fmt}"
         fd, tmp = tempfile.mkstemp(prefix="mm_audio_", suffix=suffix)
@@ -360,7 +363,6 @@ def extract_audio(
                 af_filters.append(f"atempo={remaining:.4f}")
 
     channels = "1" if mono else "2"
-
     codec_map = {"wav": "pcm_s16le", "mp3": "libmp3lame", "flac": "flac"}
     codec = codec_map.get(fmt, "pcm_s16le")
 
@@ -368,7 +370,7 @@ def extract_audio(
         "ffmpeg",
         "-y",
         "-i",
-        str(video_path),
+        str(media_path),
         "-vn",
         "-ac",
         channels,
@@ -379,10 +381,9 @@ def extract_audio(
     ]
     if af_filters:
         cmd += ["-af", ",".join(af_filters)]
+
     cmd.append(str(out_path))
-
     result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
-
     duration = _parse_duration(result.stderr)
 
     return AudioResult(

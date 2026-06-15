@@ -28,15 +28,6 @@ class PdfMosaicResult:
     text_preview: str = ""
 
 
-def pypdfium2_available() -> bool:
-    try:
-        import pypdfium2  # noqa: F401
-
-        return True
-    except ImportError:
-        return False
-
-
 def extract_pdf_mosaics(
     pdf_path: str | Path,
     *,
@@ -90,7 +81,7 @@ def extract_pdf_mosaics(
     def _render_page(idx: int) -> Image.Image:
         page = doc[idx]
         pw, _ = page.get_size()
-        scale = thumb_width / pw if pw > 0 else 1.0
+        scale: float = thumb_width / pw if pw > 0 else 1.0
         bitmap = page.render(scale=scale)
         return bitmap.to_pil()
 

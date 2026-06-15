@@ -48,33 +48,58 @@ class TestRegistryExtended:
 
         names = list_strategies()
         assert "tile" in names
-        assert "shot-frames" in names
+        # ``shots`` + ``shot-mosaic`` are the current shot-aware
+        # encoders (formerly ``shot-frames`` / ``shot-mosaic``).
+        assert "shots" in names
         assert "shot-mosaic" in names
 
     def test_shot_encoders_are_video_type(self):
         from mm.encoders import list_strategies
 
-        video_names = list_strategies(media_type="video")
-        assert "shot-frames" in video_names
+        video_names = list_strategies(kind="video")
+        assert "shots" in video_names
         assert "shot-mosaic" in video_names
 
     def test_tile_is_image_type(self):
         from mm.encoders import list_strategies
 
-        image_names = list_strategies(media_type="image")
+        image_names = list_strategies(kind="image")
         assert "tile" in image_names
 
     def test_resolve_provider_default_openai(self):
-        from mm.encoders import _resolve_provider
+        from mm.encoders import resolve_provider
 
         with patch("mm.profile.get_active_profile_name", side_effect=Exception("no config")):
-            assert _resolve_provider() == "openai"
+            assert resolve_provider() == "openai"
 
     def test_resolve_provider_gemini(self):
-        from mm.encoders import _resolve_provider
+        from mm.encoders import resolve_provider
 
-        with patch("mm.profile.get_active_profile_name", return_value="my-gemini-profile"):
-            assert _resolve_provider() == "gemini"
+        with (
+            patch("mm.profile.get_active_profile_name", return_value="my-gemini-profile"),
+            patch("mm.profile.get_profile_by_name", return_value={"model": "some-model"}),
+        ):
+            assert resolve_provider() == "gemini"
+
+    def test_resolve_provider_model_override_gemini(self):
+        """generate_model containing 'gemini' forces gemini provider regardless of profile name."""
+        from mm.encoders import resolve_provider
+
+        with (
+            patch("mm.profile.get_active_profile_name", return_value="default"),
+            patch("mm.profile.get_profile_by_name", return_value={"model": "gpt-4o"}),
+        ):
+            assert resolve_provider("gemini-2.0-flash") == "gemini"
+
+    def test_resolve_provider_model_override_non_gemini(self):
+        """Non-gemini model with non-gemini profile → openai."""
+        from mm.encoders import resolve_provider
+
+        with (
+            patch("mm.profile.get_active_profile_name", return_value="default"),
+            patch("mm.profile.get_profile_by_name", return_value={"model": "gpt-4o"}),
+        ):
+            assert resolve_provider("gpt-4o") == "openai"
 
     def test_load_strategy_file_caching(self, tmp_path):
         from mm.encoders import _LOADED_SOURCES, load_strategy_file
@@ -82,7 +107,7 @@ class TestRegistryExtended:
         strat_file = tmp_path / "cached_encoder.py"
         strat_file.write_text(
             "from mm.encoders import register_encoder\n"
-            "@register_encoder(name='test-cached-enc', media_types=('image',))\n"
+            "@register_encoder(name='test-cached-enc', kind='image')\n"
             "def test_cached(path, **kw):\n"
             "    yield {'role': 'user', 'content': []}\n"
         )
@@ -98,20 +123,6 @@ class TestRegistryExtended:
 
 
 class TestImageEncoders:
-    def test_validate_image_path_not_found(self, tmp_path):
-        from mm.encoders.image import _validate_image_path
-
-        with pytest.raises(FileNotFoundError, match="Image not found"):
-            _validate_image_path(tmp_path / "nonexistent.jpg")
-
-    def test_validate_image_path_unsupported_ext(self, tmp_path):
-        from mm.encoders.image import _validate_image_path
-
-        f = tmp_path / "test.xyz"
-        f.write_bytes(b"\x00")
-        with pytest.raises(ValueError, match="Unsupported image type"):
-            _validate_image_path(f)
-
     def test_gemini_image_part_format(self):
         from mm.encoders.image import _gemini_image_part
 
@@ -135,8 +146,8 @@ class TestImageEncoders:
         assert part["inline_data"]["data"] == "abc"
 
     def test_encode_pil_image_png_alpha(self, tmp_path):
-        from PIL import Image
         from mm.encoders.image import _encode_pil_image
+        from PIL import Image
 
         img = Image.new("RGBA", (10, 10), (255, 0, 0, 128))
         b64, mime = _encode_pil_image(img, tmp_path / "test.png")
@@ -145,8 +156,8 @@ class TestImageEncoders:
         assert decoded[:4] == b"\x89PNG"
 
     def test_encode_pil_image_jpeg_converts_grayscale(self, tmp_path):
-        from PIL import Image
         from mm.encoders.image import _encode_pil_image
+        from PIL import Image
 
         img = Image.new("L", (10, 10), 128)
         b64, mime = _encode_pil_image(img, tmp_path / "test.jpg")
@@ -164,7 +175,7 @@ class TestTileOverview:
         from mm.encoders import get
 
         img = _make_jpeg(tmp_path / "small.jpg", 100, 80)
-        strat = get("tile")
+        strat = get("tile", "image")
         messages = list(strat.encode(img, max_width=1024))
         assert len(messages) == 1
         msg = messages[0]
@@ -173,12 +184,38 @@ class TestTileOverview:
         image_parts = [p for p in content if p.get("type") == "image_url" or "inline_data" in p]
         assert len(image_parts) == 1
 
+    def test_generate_model_gemini_produces_inline_data(self, tmp_path):
+        """generate_model='gemini-flash' routes image parts to inline_data format."""
+        from mm.encoders import get
+
+        img = _make_jpeg(tmp_path / "img.jpg", 100, 80)
+        strat = get("tile", "image")
+        messages = list(strat.encode(img, max_width=1024, generate_model="gemini-2.0-flash"))
+        content = messages[0]["content"]
+        image_parts = [p for p in content if "inline_data" in p]
+        assert len(image_parts) == 1
+
+    def test_generate_model_openai_produces_image_url(self, tmp_path):
+        """generate_model='gpt-4o' routes image parts to image_url format."""
+        from mm.encoders import get
+
+        img = _make_jpeg(tmp_path / "img.jpg", 100, 80)
+        strat = get("resize", "image")
+        with (
+            patch("mm.profile.get_active_profile_name", return_value="default"),
+            patch("mm.profile.get_profile_by_name", return_value={"model": "gpt-4o"}),
+        ):
+            messages = list(strat.encode(img, max_width=1024, generate_model="gpt-4o"))
+        content = messages[0]["content"]
+        image_parts = [p for p in content if p.get("type") == "image_url"]
+        assert len(image_parts) == 1
+
     def test_large_image_overview_plus_tiles(self, tmp_path):
         """Large image yields overview + N tiles in a single message."""
         from mm.encoders import get
 
         img = _make_jpeg(tmp_path / "large.jpg", 2048, 2048)
-        strat = get("tile")
+        strat = get("tile", "image")
         messages = list(strat.encode(img, max_width=1024))
         assert len(messages) == 1
         msg = messages[0]
@@ -196,7 +233,7 @@ class TestTileOverview:
         from mm.encoders import get
 
         img = _make_jpeg(tmp_path / "huge.jpg", 4096, 4096)
-        strat = get("tile")
+        strat = get("tile", "image")
         messages = list(strat.encode(img, max_width=1024))
         assert len(messages) == 1
         content = messages[0]["content"]
@@ -211,147 +248,47 @@ class TestTileOverview:
 
 class TestVideoTimestamps:
     def test_uniform_timestamps_basic(self):
-        from mm.encoders.video import _uniform_timestamps
+        from mm.encoders.video import uniform_timestamps
 
-        ts = _uniform_timestamps(10.0, 1.0)
+        ts = uniform_timestamps(10.0, 1.0)
         assert len(ts) == 10
         assert ts[0] == pytest.approx(0.0)
         assert ts[-1] == pytest.approx(9.0)
 
     def test_uniform_timestamps_half_fps(self):
-        from mm.encoders.video import _uniform_timestamps
+        from mm.encoders.video import uniform_timestamps
 
-        ts = _uniform_timestamps(10.0, 0.5)
+        ts = uniform_timestamps(10.0, 0.5)
         assert len(ts) == 5
         assert ts[1] == pytest.approx(2.0)
 
     def test_uniform_timestamps_zero_duration(self):
-        from mm.encoders.video import _uniform_timestamps
+        from mm.encoders.video import uniform_timestamps
 
-        ts = _uniform_timestamps(0.0, 1.0)
+        ts = uniform_timestamps(0.0, 1.0)
         assert ts == []
 
     def test_uniform_timestamps_range_basic(self):
-        from mm.encoders.video import _uniform_timestamps_range
+        from mm.encoders.video import uniform_timestamps_range
 
-        ts = _uniform_timestamps_range(10.0, 20.0, 5)
+        ts = uniform_timestamps_range(10.0, 20.0, 5)
         assert len(ts) == 5
         assert ts[0] == pytest.approx(10.0)
         assert all(10.0 <= t <= 20.0 for t in ts)
 
     def test_uniform_timestamps_range_single(self):
-        from mm.encoders.video import _uniform_timestamps_range
+        from mm.encoders.video import uniform_timestamps_range
 
-        ts = _uniform_timestamps_range(5.0, 10.0, 1)
+        ts = uniform_timestamps_range(5.0, 10.0, 1)
         assert len(ts) == 1
         assert ts[0] == pytest.approx(5.0)
 
 
-class TestVideoFrameSample:
-    def test_ffmpeg_unavailable(self, tmp_path):
-        from mm.encoders import get
-
-        video = tmp_path / "test.mp4"
-        video.write_bytes(b"\x00" * 100)
-        strat = get("frame-sample")
-        with patch("mm.ffmpeg.ffmpeg_available", return_value=False):
-            messages = list(strat.encode(video))
-            assert len(messages) == 1
-            assert "ffmpeg not available" in messages[0]["content"][0]["text"]
-
-    def test_zero_duration(self, tmp_path):
-        from mm.encoders import get
-
-        video = tmp_path / "test.mp4"
-        video.write_bytes(b"\x00" * 100)
-        strat = get("frame-sample")
-        with (
-            patch("mm.ffmpeg.ffmpeg_available", return_value=True),
-            patch("mm.ffmpeg.probe_duration", return_value=0.0),
-        ):
-            messages = list(strat.encode(video))
-            assert len(messages) == 1
-            assert "Cannot determine duration" in messages[0]["content"][0]["text"]
-
-    def test_no_frames_extracted(self, tmp_path):
-        from mm.encoders import get
-
-        video = tmp_path / "test.mp4"
-        video.write_bytes(b"\x00" * 100)
-        strat = get("frame-sample")
-        with (
-            patch("mm.ffmpeg.ffmpeg_available", return_value=True),
-            patch("mm.ffmpeg.probe_duration", return_value=10.0),
-            patch("mm.ffmpeg.extract_frames_at_timestamps", return_value=[]),
-        ):
-            messages = list(strat.encode(video))
-            assert len(messages) == 1
-            assert "No frames extracted" in messages[0]["content"][0]["text"]
-
-    def test_successful_encoding(self, tmp_path):
-        from mm.encoders import get
-
-        video = tmp_path / "test.mp4"
-        video.write_bytes(b"\x00" * 100)
-        frame1 = tmp_path / "f1.jpg"
-        frame2 = tmp_path / "f2.jpg"
-        frame1.write_bytes(b"\xff\xd8\xff" + b"\x00" * 50)
-        frame2.write_bytes(b"\xff\xd8\xff" + b"\x00" * 50)
-
-        strat = get("frame-sample")
-        with (
-            patch("mm.ffmpeg.ffmpeg_available", return_value=True),
-            patch("mm.ffmpeg.probe_duration", return_value=5.0),
-            patch("mm.ffmpeg.extract_frames_at_timestamps", return_value=[frame1, frame2]),
-        ):
-            messages = list(strat.encode(video, fps=1.0, max_frames_per_message=16))
-            assert len(messages) == 1
-            msg = messages[0]
-            text_parts = [p for p in msg["content"] if p.get("type") == "text"]
-            image_parts = [p for p in msg["content"] if p.get("type") == "image_url"]
-            assert len(text_parts) == 1
-            assert "Video frames" in text_parts[0]["text"]
-            assert len(image_parts) == 2
-
-
-class TestVideoChunk:
-    def test_ffmpeg_unavailable(self, tmp_path):
-        from mm.encoders import get
-
-        video = tmp_path / "test.mp4"
-        video.write_bytes(b"\x00" * 100)
-        strat = get("video-chunk")
-        with patch("mm.ffmpeg.ffmpeg_available", return_value=False):
-            messages = list(strat.encode(video))
-            assert len(messages) == 1
-            assert "ffmpeg not available" in messages[0]["content"][0]["text"]
-
-    def test_multiple_chunks(self, tmp_path):
-        from mm.encoders import get
-
-        video = tmp_path / "test.mp4"
-        video.write_bytes(b"\x00" * 100)
-        jpeg_bytes = b"\xff\xd8\xff" + b"\x00" * 50
-        chunk_count = [0]
-
-        def make_frame(*args, **kwargs):
-            chunk_count[0] += 1
-            f = tmp_path / f"frame_{chunk_count[0]}.jpg"
-            f.write_bytes(jpeg_bytes)
-            return [f]
-
-        strat = get("video-chunk")
-        with (
-            patch("mm.ffmpeg.ffmpeg_available", return_value=True),
-            patch("mm.ffmpeg.probe_duration", return_value=120.0),
-            patch("mm.ffmpeg.extract_frames_at_timestamps", side_effect=make_frame),
-        ):
-            messages = list(strat.encode(video, chunk_duration=60, overlap=20))
-            assert len(messages) >= 2
-            for msg in messages:
-                assert msg["role"] == "user"
-                text_parts = [p for p in msg["content"] if p.get("type") == "text"]
-                assert "Video chunk" in text_parts[0]["text"]
+# NOTE: ``TestVideoFrameSample`` and ``TestVideoChunk`` were removed when the
+# old ffmpeg-CLI-driven encoders ``frame-sample`` and ``video-chunk`` were
+# replaced by the PyAV-based ``frames`` / ``chunks`` family.
+# Equivalent behaviour is exercised end-to-end in ``test_video_p0.py`` and
+# ``test_video_encoders.py`` against real video fixtures.
 
 
 # ---------------------------------------------------------------------------
@@ -365,9 +302,9 @@ class TestDocumentRasterize:
 
         doc = tmp_path / "test.pdf"
         doc.write_bytes(b"%PDF-1.4 fake")
-        strat = get("rasterize")
-        with patch("mm.encoders.document._rasterize_pages", return_value=[]):
-            messages = list(strat.encode(doc))
+        strat = get("rasterize", "document")
+        with patch("mm.encoders.document.rasterize.rasterize_pages", return_value=[]):
+            messages = list(strat.encode(doc, mode="accurate"))
             assert len(messages) == 1
             assert "No pages" in messages[0]["content"][0]["text"]
 
@@ -379,8 +316,8 @@ class TestDocumentRasterize:
         doc.write_bytes(b"%PDF-1.4 fake")
         fake_pages = [(base64.b64encode(b"\xff").decode(), "image/jpeg")] * 10
 
-        strat = get("rasterize")
-        with patch("mm.encoders.document._rasterize_pages", return_value=iter(fake_pages)):
+        strat = get("rasterize", "document")
+        with patch("mm.encoders.document.rasterize.rasterize_pages", return_value=iter(fake_pages)):
             messages = list(strat.encode(doc, pages_per_message=4))
             assert len(messages) == 3
             for msg in messages:
@@ -397,12 +334,12 @@ class TestDocumentRasterizeText:
         fake_pages = [(base64.b64encode(b"\xff").decode(), "image/jpeg")] * 2
         fake_texts = ["Page one text.", "Page two text."]
 
-        strat = get("rasterize-text")
+        strat = get("rasterize-text", "document")
         with (
-            patch("mm.encoders.document._rasterize_pages", return_value=iter(fake_pages)),
-            patch("mm.encoders.document._extract_page_texts", return_value=fake_texts),
+            patch("mm.encoders.document.rasterize.rasterize_pages", return_value=iter(fake_pages)),
+            patch("mm.encoders.document.rasterize.extract_page_texts", return_value=fake_texts),
         ):
-            messages = list(strat.encode(doc, pages_per_message=4))
+            messages = list(strat.encode(doc, mode="accurate", pages_per_message=4))
             assert len(messages) == 1
             content = messages[0]["content"]
             text_contents = [p["text"] for p in content if p.get("type") == "text"]
@@ -445,145 +382,58 @@ class TestGeminiEncoders:
         doc = tmp_path / "test.pdf"
         doc.write_bytes(b"%PDF-1.4 content here")
         strat = GeminiDocument()
-        messages = list(strat.encode(doc))
+        messages = list(strat.encode(doc, mode="accurate"))
         assert len(messages) == 1
         content = messages[0]["content"]
         assert any("inline_data" in p for p in content)
 
     def test_gemini_video_chunked_short_video(self, tmp_path):
+        # ``gemini-chunked`` calls ``mm.video.probe()`` (PyAV) — not
+        # ``mm.ffmpeg.probe_duration`` anymore.  Mock probe to short-circuit
+        # to the single-Part fast path without parsing the (fake) bytes.
         from mm.encoders import get
+        from mm.video import VideoInfo
 
         video = tmp_path / "short.mp4"
         video.write_bytes(b"\x00" * 100)
-        strat = get("video-gemini-chunked")
-        with (
-            patch("mm.ffmpeg.ffmpeg_available", return_value=True),
-            patch("mm.ffmpeg.probe_duration", return_value=30.0),
-        ):
+        info = VideoInfo(
+            path=video,
+            duration=30.0,
+            fps=24.0,
+            width=320,
+            height=240,
+            num_frames=720,
+            codec="h264",
+            has_audio=False,
+        )
+        strat = get("gemini-chunked", "video")
+        with patch("mm.video.probe", return_value=info):
             messages = list(strat.encode(video, max_seconds=120))
             assert len(messages) == 1
             assert any("inline_data" in p for p in messages[0]["content"])
 
-    def test_gemini_video_chunked_ffmpeg_unavailable(self, tmp_path):
+    def test_gemini_video_chunked_pyav_unavailable(self, tmp_path):
+        # When PyAV is unavailable the encoder yields a graceful diagnostic
+        # message rather than crashing.  Replaces the old
+        # ``ffmpeg-unavailable`` test which targeted a code path the
+        # PyAV-based encoder no longer has.
         from mm.encoders import get
 
         video = tmp_path / "test.mp4"
         video.write_bytes(b"\x00" * 100)
-        strat = get("video-gemini-chunked")
-        with patch("mm.ffmpeg.ffmpeg_available", return_value=False):
+        strat = get("gemini-chunked", "video")
+        with patch("mm.video.pyav_runnable", return_value=False):
             messages = list(strat.encode(video))
             assert len(messages) == 1
-            assert "ffmpeg not available" in messages[0]["content"][0]["text"]
+            assert "PyAV not runnable" in messages[0]["content"][0]["text"]
 
 
-# ---------------------------------------------------------------------------
-# Shot-based video encoders
-# ---------------------------------------------------------------------------
-
-
-class TestShotTimestamps:
-    def test_sample_timestamps_basic(self):
-        from mm.encoders.video.shot import _sample_timestamps_in_range
-
-        ts = _sample_timestamps_in_range(0.0, 10.0, 5)
-        assert len(ts) == 5
-        assert all(0.0 <= t <= 10.0 for t in ts)
-
-    def test_sample_timestamps_single(self):
-        from mm.encoders.video.shot import _sample_timestamps_in_range
-
-        ts = _sample_timestamps_in_range(5.0, 10.0, 1)
-        assert len(ts) == 1
-        assert ts[0] == pytest.approx(7.5)
-
-    def test_sample_timestamps_zero(self):
-        from mm.encoders.video.shot import _sample_timestamps_in_range
-
-        ts = _sample_timestamps_in_range(0.0, 10.0, 0)
-        assert ts == []
-
-    def test_sample_timestamps_zero_duration(self):
-        from mm.encoders.video.shot import _sample_timestamps_in_range
-
-        ts = _sample_timestamps_in_range(5.0, 5.0, 3)
-        assert len(ts) == 1
-        assert ts[0] == pytest.approx(5.0)
-
-
-class TestShotFrames:
-    def test_ffmpeg_unavailable(self, tmp_path):
-        from mm.encoders import get
-
-        video = tmp_path / "test.mp4"
-        video.write_bytes(b"\x00" * 100)
-        strat = get("shot-frames")
-        with patch("mm.ffmpeg.ffmpeg_available", return_value=False):
-            messages = list(strat.encode(video))
-            assert "ffmpeg not available" in messages[0]["content"][0]["text"]
-
-    def test_no_shots_detected(self, tmp_path):
-        from mm.encoders.video.shot import ShotFrames
-
-        video = tmp_path / "test.mp4"
-        video.write_bytes(b"\x00" * 100)
-        strat = ShotFrames()
-        with (
-            patch("mm.ffmpeg.ffmpeg_available", return_value=True),
-            patch("mm.encoders.video.shot._detect_shots", return_value=[]),
-        ):
-            messages = list(strat.encode(video))
-            assert "No shots detected" in messages[0]["content"][0]["text"]
-
-    def test_successful_shot_encoding(self, tmp_path):
-        from mm.encoders.video.shot import ShotFrames
-
-        video = tmp_path / "test.mp4"
-        video.write_bytes(b"\x00" * 100)
-        frame = tmp_path / "f.jpg"
-        frame.write_bytes(b"\xff\xd8\xff" + b"\x00" * 50)
-
-        strat = ShotFrames()
-        with (
-            patch("mm.ffmpeg.ffmpeg_available", return_value=True),
-            patch("mm.encoders.video.shot._detect_shots", return_value=[(0.0, 5.0), (5.0, 10.0)]),
-            patch("mm.ffmpeg.extract_frames_at_timestamps", return_value=[frame]),
-        ):
-            messages = list(strat.encode(video, max_frames_per_shot=4))
-            assert len(messages) == 2
-            for msg in messages:
-                text_parts = [p for p in msg["content"] if p.get("type") == "text"]
-                assert any("Shot" in t["text"] for t in text_parts)
-
-
-class TestShotMosaic:
-    def test_ffmpeg_unavailable(self, tmp_path):
-        from mm.encoders import get
-
-        video = tmp_path / "test.mp4"
-        video.write_bytes(b"\x00" * 100)
-        strat = get("shot-mosaic")
-        with patch("mm.ffmpeg.ffmpeg_available", return_value=False):
-            messages = list(strat.encode(video))
-            assert "ffmpeg not available" in messages[0]["content"][0]["text"]
-
-    def test_successful_mosaic(self, tmp_path):
-        from mm.encoders.video.shot import ShotMosaic
-
-        video = tmp_path / "test.mp4"
-        video.write_bytes(b"\x00" * 100)
-        frame = tmp_path / "f.jpg"
-        frame.write_bytes(b"\xff\xd8\xff" + b"\x00" * 50)
-        mosaic = tmp_path / "m.jpg"
-        mosaic.write_bytes(b"\xff\xd8\xff" + b"\x00" * 50)
-
-        strat = ShotMosaic()
-        with (
-            patch("mm.ffmpeg.ffmpeg_available", return_value=True),
-            patch("mm.encoders.video.shot._detect_shots", return_value=[(0.0, 10.0)]),
-            patch("mm.ffmpeg.extract_frames_at_timestamps", return_value=[frame]),
-            patch("mm.ffmpeg.tile_frames_to_mosaics", return_value=[mosaic]),
-        ):
-            messages = list(strat.encode(video))
-            assert len(messages) == 1
-            text_parts = [p for p in messages[0]["content"] if p.get("type") == "text"]
-            assert any("Shot" in t["text"] for t in text_parts)
+# NOTE: ``TestShotTimestamps``, ``TestShotFrames`` and ``TestShotMosaic`` were
+# removed when the ``mm.encoders.video.shot`` module was replaced by the
+# unified PyAV-based shots/mosaic stack (``shots``, ``shots-w-
+# transcript``, ``shot-mosaic``, ``shot-mosaic-w-transcript``).
+# Replacement coverage:
+#   * Shot detection / boundary sampling — ``mm.common.video.shot_detection``
+#     is exercised by ``test_video_p0.py::TestSceneDetectCache``.
+#   * Per-shot frame / mosaic encoding — covered end-to-end in
+#     ``test_video_p0.py::TestBundledShots`` against real bakery.mp4.

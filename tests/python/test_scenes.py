@@ -73,13 +73,13 @@ class TestSampleUniformTimestamps:
             assert iv == pytest.approx(intervals[0], rel=1e-6)
 
 
-class TestSceneDetectAvailability:
-    """Test graceful degradation when scenedetect is not installed."""
+class TestSceneDetectRunability:
+    """Test graceful degradation when scenedetect is not runnable."""
 
-    def test_detect_scenes_without_scenedetect(self):
+    def test_detect_scenes_when_scene_detect_not_runnable(self):
         from mm.common.video.shot_detection import detect_scenes
 
-        with patch("mm.common.video.shot_detection.scenedetect_available", return_value=False):
+        with patch("mm.common.video.shot_detection.scenedetect_runnable", return_value=False):
             result = detect_scenes("/tmp/video.mp4")
             assert result.scenes == []
             assert result.num_scenes == 0

@@ -31,16 +31,32 @@ from __future__ import annotations
 
 import json
 import sqlite3
+import threading
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from mm.store.utils import get_extraction_id, now_us
+from mm.settings import get_settings
+from mm.store.utils import fill_metadata, get_extraction_id, now_us
 
 if TYPE_CHECKING:
-    import pyarrow as pa
+    from pyarrow import Table
 
 CHUNK_SIZE = 2048
 CHUNK_OVERLAP = 100
+
+
+class _SettingsPath:
+    """Lazily expose an :class:`~mm.settings.MmSettings` path as a class attribute.
+
+    Reading it always reflects the current settings (env overrides, in-process
+    ``reset_settings``); tests may ``monkeypatch.setattr`` it to a fixed path.
+    """
+
+    def __init__(self, attr: str) -> None:
+        self._attr = attr
+
+    def __get__(self, obj: object, objtype: type | None = None) -> Path:
+        return getattr(get_settings(), self._attr)
 
 
 def _to_us(val) -> int | None:
@@ -57,42 +73,99 @@ def _to_us(val) -> int | None:
     return int(val.timestamp() * 1_000_000)
 
 
-class MmDatabase:
-    """Global SQLite database for mm."""
+def _load_vec(conn: sqlite3.Connection) -> bool:
+    """Load the sqlite-vec extension into *conn* once; return whether vec0 is usable.
 
-    DB_DIR = Path.home() / ".local" / "share" / "mm"
-    DB_PATH = DB_DIR / "mm.db"
+    Memoized per connection so the numpy/extension import is paid at most once,
+    and only when a query actually touches a ``vec0`` table.
+    """
+    loaded = getattr(conn, "_vec_loaded", None)
+    if loaded is None:
+        try:
+            import sqlite_vec
+
+            conn.enable_load_extension(True)
+            sqlite_vec.load(conn)
+            conn.enable_load_extension(False)
+            loaded = True
+        except (AttributeError, ImportError, OSError):
+            loaded = False
+        setattr(conn, "_vec_loaded", loaded)
+    return loaded
+
+
+class _VecConnection(sqlite3.Connection):
+    """Connection that loads sqlite-vec on first access to a ``vec0`` table.
+
+    Centralizes extension loading so any ``chunks_vec`` query just works —
+    callers never pre-check — while non-vector queries pay no import cost.
+    """
+
+    def execute(self, sql, parameters=(), /):
+        try:
+            return super().execute(sql, parameters)
+        except sqlite3.OperationalError as e:
+            if "vec0" in str(e) and getattr(self, "_vec_loaded", None) is None and _load_vec(self):
+                return super().execute(sql, parameters)
+            raise
+
+    def executemany(self, sql, parameters, /):
+        try:
+            return super().executemany(sql, parameters)
+        except sqlite3.OperationalError as e:
+            if "vec0" in str(e) and getattr(self, "_vec_loaded", None) is None and _load_vec(self):
+                return super().executemany(sql, parameters)
+            raise
+
+
+class MmDatabase:
+    """Global SQLite database for mm.
+
+    Defaults to :class:`~mm.settings.MmSettings`' ``db_path`` (``MM_DB_PATH``),
+    resolved at construction so ``shared_db()`` honours env overrides. Pass
+    ``db_path`` to target a specific file.
+    """
+
+    DB_DIR = _SettingsPath("data_dir")
+    DB_PATH = _SettingsPath("db_path")
 
     def __init__(self, db_path: Path | None = None):
         self._db_path = db_path or self.DB_PATH
-        self._conn: sqlite3.Connection | None = None
-        self._vec_loaded: bool = False
+        self._tls = threading.local()
+        self._schema_ready: bool = False
+        self._lock = threading.RLock()
 
     @property
     def _vec_available(self) -> bool:
-        _ = self._connect
-        return self._vec_loaded
+        return _load_vec(self._connect)
+
+    @property
+    def _conn(self) -> sqlite3.Connection | None:
+        return getattr(self._tls, "conn", None)
 
     @property
     def _connect(self) -> sqlite3.Connection:
-        if self._conn is None:
-            self._db_path.parent.mkdir(parents=True, exist_ok=True)
-            self._conn = sqlite3.connect(str(self._db_path))
-            self._conn.row_factory = sqlite3.Row
-            self._vec_loaded = False
-            try:
-                import sqlite_vec
+        conn = getattr(self._tls, "conn", None)
+        if conn is not None:
+            return conn
 
-                self._conn.enable_load_extension(True)
-                sqlite_vec.load(self._conn)
-                self._conn.enable_load_extension(False)
-                self._vec_loaded = True
-            except (AttributeError, ImportError, OSError):
-                pass
-            self._conn.execute("PRAGMA journal_mode=WAL")
-            self._conn.execute("PRAGMA foreign_keys=ON")
-            self._ensure_tables()
-        return self._conn
+        self._db_path.parent.mkdir(parents=True, exist_ok=True)
+        conn = sqlite3.connect(
+            str(self._db_path),
+            check_same_thread=False,
+            factory=_VecConnection,
+        )
+        conn.row_factory = sqlite3.Row
+        conn.execute("PRAGMA journal_mode=WAL")
+        conn.execute("PRAGMA foreign_keys=ON")
+        self._tls.conn = conn
+
+        if not self._schema_ready:
+            with self._lock:
+                if not self._schema_ready:
+                    self._ensure_tables()
+                    self._schema_ready = True
+        return conn
 
     def _ensure_tables(self) -> None:
         """Create tables, apply additive migrations, then create indexes.
@@ -135,11 +208,12 @@ class MmDatabase:
 
     def upsert_files(
         self,
-        scanner_table: pa.Table,
+        scanner_table: Table,
         root: Path,
         *,
         session_id: str | None = None,
         refs: dict[str, str] | None = None,
+        scanner: Any = None,
     ) -> int:
         """Write metadata scan results. Preserves existing content columns on re-upsert.
 
@@ -240,6 +314,19 @@ class MmDatabase:
 
         db.executemany(sql, rows)
         db.commit()
+
+        if n > 0:
+            from mm._mm import Scanner
+
+            if not scanner or not isinstance(scanner, Scanner):
+                scanner = Scanner(str(root))
+                scanner.scan()
+            uris = [row[0] for row in rows]
+            rel_paths = [paths[i] for i in range(n)]
+            for uri, rel_path in zip(uris, rel_paths):
+                fill_metadata(self, uri, Path(uri), scanner, rel_path=rel_path)
+            self._connect.commit()
+
         return int(db.execute("SELECT COUNT(*) FROM files").fetchone()[0])
 
     def get_file_by_ref(self, session_id: str, ref_id: str) -> dict[str, Any] | None:
@@ -269,7 +356,7 @@ class MmDatabase:
         return [dict(r) for r in self._connect.execute(q).fetchall()]
 
     def ensure_metadata(self, uri: str) -> None:
-        """Ensure a ``files`` row exists for *uri*, scanning via Rust if needed."""
+        """Ensure the ``files`` row for *uri*, scanning via Rust if needed."""
         if self.get_file(uri) is not None:
             return
 
@@ -286,14 +373,10 @@ class MmDatabase:
             idx = tbl["path"].to_pylist().index(p.name)
         except ValueError:
             return
-        self.upsert_files(tbl.slice(idx, 1), p.parent)
+        self.upsert_files(tbl.slice(idx, 1), p.parent, scanner=scanner)
 
     def delete_files(self, uris: list[str]) -> int:
         """Delete ``files`` rows by URI, cascading through chunks_vec manually.
-
-        FKs cascade ``files`` → ``extractions`` → ``chunks``. The ``chunks_vec``
-        virtual table has no FK support, so embeddings are cleaned up explicitly
-        before the cascade fires.
 
         Returns the number of rows deleted.
         """
@@ -321,6 +404,10 @@ class MmDatabase:
                     for chunk_batch in batch_array(chunk_ids, 500):
                         cp = ",".join("?" * len(chunk_batch))
                         db.execute(f"DELETE FROM chunks_vec WHERE chunk_id IN ({cp})", chunk_batch)
+            db.execute(
+                f"DELETE FROM chunks WHERE file_uri IN ({ph}) AND extraction_id IS NULL",
+                batch,
+            )
             cur = db.execute(f"DELETE FROM files WHERE uri IN ({ph})", batch)
             deleted += cur.rowcount or 0
         db.commit()
@@ -346,26 +433,21 @@ class MmDatabase:
             return None
         return str(row[0]) if row[0] is not None else None
 
-    def update_file_fields(self, uri: str, data: dict[str, Any]) -> None:
-        """Fill content columns for a specific file."""
+    def put_file_content(self, uri: str, data: dict[str, Any]) -> None:
+        """Store locally-extracted content (``text_preview``) for *uri*.
+        Fill content columns for a specific file.
+        """
         from mm.store.schema import FileCol
 
         self.ensure_metadata(uri)
         if self.get_file(uri) is None:
             return
 
-        data[FileCol.CONTENT_INDEXED_AT] = now_us()
+        if FileCol.TEXT_PREVIEW in data:
+            data = {**data, FileCol.CONTENT_INDEXED_AT: now_us()}
         sets = ", ".join(f"{k} = ?" for k in data)
         self._connect.execute(f"UPDATE files SET {sets} WHERE uri = ?", (*data.values(), uri))
         self._connect.commit()
-
-    def put_file_content(self, uri: str, content_hash: str, content: str) -> None:
-        """Store locally-extracted content (``text_preview``) for *uri*."""
-        from mm.store.schema import FileCol
-
-        self.update_file_fields(
-            uri, {FileCol.CONTENT_HASH: content_hash, FileCol.TEXT_PREVIEW: content}
-        )
 
     # -- Extractions --
 
@@ -500,7 +582,7 @@ class MmDatabase:
 
     def _put_chunks(
         self,
-        extraction_id: str,
+        extraction_id: str | None,
         uri: str,
         content_hash: str,
         profile: str,
@@ -508,15 +590,19 @@ class MmDatabase:
         content: str,
         mode: str,
     ) -> None:
+        """Slide a 2 KiB window over *content*; persist each chunk row."""
         now = now_us()
         step = CHUNK_SIZE - CHUNK_OVERLAP
         texts: list[str] = []
+
         for i in range(0, len(content), step):
             texts.append(content[i : i + CHUNK_SIZE])
             if i + CHUNK_SIZE >= len(content):
                 break
+
         if not texts:
             return
+
         db = self._connect
         db.executemany(
             "INSERT INTO chunks "
@@ -537,6 +623,68 @@ class MmDatabase:
             params.append(mode)
         q += " ORDER BY mode, chunk_idx"
         return [dict(r) for r in self._connect.execute(q, params).fetchall()]
+
+    def has_text_chunks(self, content_hash: str) -> bool:
+        """Return True if FK-orphan text chunks exist for *content_hash*."""
+        row = self._connect.execute(
+            "SELECT 1 FROM chunks WHERE content_hash = ? AND extraction_id IS NULL "
+            "AND mode = 'metadata' LIMIT 1",
+            (content_hash,),
+        ).fetchone()
+        return row is not None
+
+    def get_text_chunks(self, content_hash: str) -> list[dict[str, Any]]:
+        """Fetch FK-orphan chunks for *content_hash* in chunk order."""
+        rows = self._connect.execute(
+            "SELECT * FROM chunks WHERE content_hash = ? AND extraction_id IS NULL "
+            "AND mode = 'metadata' ORDER BY chunk_idx",
+            (content_hash,),
+        ).fetchall()
+        return [dict(r) for r in rows]
+
+    def put_text_chunks(
+        self,
+        *,
+        uri: str,
+        content_hash: str,
+        content: str,
+    ) -> int:
+        """Write FK-orphan text chunks.
+
+        Idempotent: prior orphan chunks for the same content hash are
+        cleared (along with their embeddings) before re-insertion.
+        Returns the number of chunks written.
+        """
+        self.ensure_metadata(uri)
+        db = self._connect
+
+        old_ids = [
+            r[0]
+            for r in db.execute(
+                "SELECT id FROM chunks WHERE content_hash = ? AND extraction_id IS NULL "
+                "AND mode = 'metadata'",
+                (content_hash,),
+            ).fetchall()
+        ]
+
+        if old_ids:
+            has_vec = db.execute(
+                "SELECT 1 FROM sqlite_master WHERE type='table' AND name='chunks_vec'"
+            ).fetchone()
+            if has_vec:
+                cp = ",".join("?" * len(old_ids))
+                db.execute(f"DELETE FROM chunks_vec WHERE chunk_id IN ({cp})", old_ids)
+            cp = ",".join("?" * len(old_ids))
+            db.execute(f"DELETE FROM chunks WHERE id IN ({cp})", old_ids)
+
+        self._put_chunks(None, uri, content_hash, "", "", content, mode="metadata")
+        return int(
+            db.execute(
+                "SELECT COUNT(*) FROM chunks WHERE content_hash = ? AND extraction_id IS NULL "
+                "AND mode = 'metadata'",
+                (content_hash,),
+            ).fetchone()[0]
+        )
 
     def get_full_content(
         self,
@@ -578,11 +726,15 @@ class MmDatabase:
     def upsert_embeddings(
         self,
         *,
-        extraction_id: str,
+        extraction_id: str | None = None,
+        chunk_ids: list[int] | None = None,
         vectors: list[list[float]],
     ) -> None:
+        """Pair *vectors* with chunk IDs and upsert into ``chunks_vec``."""
         if not vectors or not self._vec_available:
             return
+        if extraction_id is None and chunk_ids is None:
+            raise ValueError("pass exactly one of extraction_id or chunk_ids")
 
         import struct
 
@@ -590,16 +742,18 @@ class MmDatabase:
         dim = len(vectors[0])
         self._ensure_vec_table(dim)
 
-        chunks = self.get_chunks(extraction_id)
-        n = min(len(vectors), len(chunks))
+        if chunk_ids is None and extraction_id:
+            chunks = self.get_chunks(extraction_id)
+            chunk_ids = [c["id"] for c in chunks]
 
-        vec_inserts = []
-        for i in range(n):
-            chunk_id = chunks[i]["id"]
-            vec_inserts.append((chunk_id, struct.pack(f"{dim}f", *vectors[i])))
+        if not chunk_ids:
+            raise ValueError("chunk_ids couldn't be generated")
 
+        n = min(len(vectors), len(chunk_ids))
+        vec_inserts = [(chunk_ids[i], struct.pack(f"{dim}f", *vectors[i])) for i in range(n)]
         db.executemany(
-            "INSERT OR REPLACE INTO chunks_vec (chunk_id, embedding) VALUES (?, ?)", vec_inserts
+            "INSERT OR REPLACE INTO chunks_vec (chunk_id, embedding) VALUES (?, ?)",
+            vec_inserts,
         )
         db.commit()
 

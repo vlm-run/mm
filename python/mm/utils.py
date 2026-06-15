@@ -1,10 +1,20 @@
 from __future__ import annotations
 
+import base64
 import sys
 import time as _time
 from enum import Enum
 from pathlib import Path
-from typing import Callable, Literal, ParamSpec, TypeVar
+from typing import Callable, ParamSpec, TypeVar
+
+from mm.constants import (
+    AUDIO_EXTS,
+    CODE_EXTS,
+    DOCUMENT_EXTS,
+    IMAGE_EXTS,
+    VIDEO_EXTS,
+    FileKind,
+)
 
 P = ParamSpec("P")
 T = TypeVar("T")
@@ -13,13 +23,16 @@ T = TypeVar("T")
 class BaseFormat(str, Enum):
     rich = "rich"
     json = "json"
+    pretty_json = "pretty-json"
     tsv = "tsv"
     csv = "csv"
+    stdout = "stdout"
 
 
 class Format(str, Enum):
     rich = "rich"
     json = "json"
+    pretty_json = "pretty-json"
     tsv = "tsv"
     csv = "csv"
     dataset_jsonl = "dataset-jsonl"
@@ -59,52 +72,6 @@ def batch_array(arr: list[T], x: int) -> list[list[T]]:
     return [arr[i : i + x] for i in range(0, len(arr), x)]
 
 
-# ---------------------------------------------------------------------------
-# Piped-input helper
-# ---------------------------------------------------------------------------
-
-IMAGE_EXTS = frozenset({".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp", ".tiff", ".svg"})
-VIDEO_EXTS = frozenset(
-    {
-        ".mp4",
-        ".mkv",
-        ".avi",
-        ".mov",
-        ".wmv",
-        ".flv",
-        ".webm",
-        ".m4v",
-        ".mpg",
-        ".mpeg",
-        ".3gp",
-        ".ogv",
-    }
-)
-AUDIO_EXTS = frozenset({".mp3", ".wav", ".flac", ".aac", ".ogg", ".m4a", ".wma", ".opus"})
-DOCUMENT_EXTS = frozenset({".pdf", ".docx", ".pptx"})
-CODE_EXTS = frozenset(
-    {
-        ".py",
-        ".rs",
-        ".js",
-        ".ts",
-        ".go",
-        ".c",
-        ".cpp",
-        ".h",
-        ".java",
-        ".rb",
-        ".sh",
-        ".toml",
-        ".yaml",
-        ".yml",
-    }
-)
-
-BinaryFileKind = Literal["image", "video", "audio", "document"]
-FileKind = Literal["text"] | BinaryFileKind
-
-
 def file_kind(path: Path | str) -> FileKind:
     ext = Path(path).suffix.lower()
     if ext in IMAGE_EXTS:
@@ -132,3 +99,10 @@ def is_binary_content(*, kind: str, content: str | None = None) -> bool:
     return kind in ("image", "document", "video", "audio") or bool(
         content and "\x00" in content[:512]
     )
+
+
+def get_b64(v: Path | bytes) -> str:
+    """Return the base64-encoded string for a file path or raw bytes."""
+    if isinstance(v, Path):
+        return base64.b64encode(v.read_bytes()).decode()
+    return base64.b64encode(v).decode()

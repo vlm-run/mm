@@ -1,0 +1,110 @@
+site_name: mm
+site_description: Fast, multimodal context for agents.
+site_url: https://vlm-run.github.io/mm/
+repo_url: https://pypi.org/project/mm-ctx/
+repo_name: mm-ctx
+edit_uri: ""
+docs_dir: docs
+site_dir: site
+
+theme:
+  name: material
+  features:
+    - navigation.instant
+    - navigation.tracking
+    - navigation.top
+    - toc.follow
+    - content.code.copy
+    - content.code.annotate
+  palette:
+    - scheme: default
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  icon:
+    repo: fontawesome/brands/python
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - md_in_html
+  - tables
+  - footnotes
+  - toc:
+      permalink: true
+  - pymdownx.details
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+
+hooks:
+  - scripts/docs_hooks.py
+
+plugins:
+  - search
+  - mkdocstrings
+  - mkdocs-jupyter:
+      execute: false #!ENV [CI, false]
+      allow_errors: true
+      include_source: true
+      ignore_h1_titles: true
+
+nav:
+  - Home: index.md
+  - User guide: user-guide.md
+  - CLI:
+      - Overview: cli.md
+      - find: find.md
+      - wc: wc.md
+      - peek: peek.md
+      - sql: sql.md
+      - grep: grep.md
+      - cat: cat.md
+      - bench: bench.md
+      - profile: profile.md
+      - config: config.md
+  - Python API:
+      - Index: api.md
+      - mm.Context: mm-context.md
+  - Use cases: use-cases.md
+  - Encoders: encoders.md
+  - Pipelines: pipelines.md
+  - Fixtures: fixtures.md
+  - Notebooks:
+      - Cookbook (gateway): notebooks/mm_cookbook_gateway.ipynb
+      - Cookbook (local vlm): notebooks/mm_cookbook.ipynb
+      - Context API: notebooks/mm-context-api.ipynb
+      - Context visualization: notebooks/mm-context-viz.ipynb
+  - Pipeline templates:
+      - Image: spec-templates/image.md
+      - Video: spec-templates/video.md
+      - Audio: spec-templates/audio.md
+      - Document: spec-templates/document.md
+
+extra:
+  analytics:
+    provider: google
+    property: G-VHNYCGZR4V
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/vlm-run/mm
+    - icon: fontawesome/brands/python
+      link: https://pypi.org/project/mm-ctx/
+    - icon: fontawesome/brands/discord
+      link: https://discord.gg/6aqcyvPF79

@@ -12,6 +12,7 @@ from types import ModuleType
 
 _EXTRA_INSTALL_HINTS: dict[str, str] = {
     "mlx": "pip install mm-ctx[mlx]",
+    "gpu": "pip install mm-ctx[gpu]",
     "experimental": "pip install mm-ctx[experimental]",
 }
 
@@ -25,8 +26,8 @@ def try_import_or_raise(
     """Import *module_name* or raise ``ImportError`` with install guidance.
 
     Args:
-        module_name: Dotted module path, e.g. ``"google.genai.types"``.
-        extra: The ``mm`` extras key (``"gemini"``, ``"mlx"``, ``"experimental"``).
+        module_name: Dotted module path, e.g. ``"lightning_whisper_mlx"``.
+        extra: The ``mm`` extras key (``"mlx"``, ``"experimental"``).
         package: Optional pip package name shown in the error message.
             Defaults to *module_name*.
 

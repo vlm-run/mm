@@ -31,6 +31,7 @@ __all__ = [
     "PipelineSpec",
     "PipelineValidationError",
     "apply_overrides",
+    "deep_merge",
     "load",
     "load_file",
     "render_prompt",
@@ -41,7 +42,9 @@ _PIPELINES_DIR = Path(__file__).parent
 
 
 def _user_pipelines_dir() -> Path:
-    return Path.home() / ".config" / "mm" / "pipelines"
+    from mm.settings import get_settings
+
+    return get_settings().config_dir / "pipelines"
 
 
 @lru_cache(maxsize=32)
@@ -175,8 +178,34 @@ def run_pyfunc(
     return result
 
 
-def _coerce_generate(key: str, value: str) -> Any:
-    """Cast a CLI string override value to the ``Generate`` field type."""
+def _coerce_generate(key: str, value: Any) -> Any:
+    """Cast a CLI string override value to the ``Generate`` field type.
+
+    ``extra_body`` is special-cased: a string value is parsed as JSON,
+    a mapping value is taken verbatim. Anything else raises ``ValueError``.
+    """
+    if key == "extra_body":
+        if isinstance(value, dict):
+            return dict(value)
+        if isinstance(value, str):
+            import json
+
+            try:
+                parsed = json.loads(value)
+            except json.JSONDecodeError as e:
+                raise ValueError(f"--generate.extra-body must be a JSON object: {e}") from e
+            if not isinstance(parsed, dict):
+                raise ValueError(
+                    f"--generate.extra-body must decode to a JSON object, got {type(parsed).__name__}"
+                )
+            return parsed
+        raise ValueError(
+            f"--generate.extra-body must be a mapping or JSON string, got {type(value).__name__}"
+        )
+
+    if not isinstance(value, str):
+        return value
+
     try:
         hints = typing.get_type_hints(Generate)
     except Exception:
@@ -198,21 +227,41 @@ def _coerce_generate(key: str, value: str) -> Any:
     return value
 
 
-_ENCODE_TOP_LEVEL: frozenset[str] = frozenset({"strategy", "strategy_opts", "pyfunc"})
+def deep_merge(base: dict[str, Any], overlay: dict[str, Any]) -> dict[str, Any]:
+    """Return a new dict with ``overlay`` deep-merged on top of ``base``.
+
+    For overlapping keys: nested dicts are merged recursively, all other
+    values are replaced by ``overlay``. Neither input is mutated.
+    """
+    out = dict(base)
+    for k, v in overlay.items():
+        if isinstance(v, dict) and isinstance(out.get(k), dict):
+            out[k] = deep_merge(out[k], v)
+        else:
+            out[k] = v
+    return out
+
+
+_ENCODE_TOP_LEVEL: frozenset[str] = frozenset(
+    {"strategy", "strategy_opts", "pyfunc", "backend", "model"}
+)
 
 
 def apply_overrides(
     spec: PipelineSpec,
     encode_overrides: dict[str, str | dict[str, str]] | None = None,
-    generate_overrides: dict[str, str] | None = None,
+    generate_overrides: dict[str, Any] | None = None,
 ) -> PipelineSpec:
     """Return a new ``PipelineSpec`` with field-level overrides applied.
 
     Encode overrides:
-      * ``strategy``, ``strategy_opts`` and ``pyfunc`` replace the top-level fields.
-        (the encoder handles its own type coercion).
+      * ``strategy``, ``strategy_opts``, ``pyfunc`` and ``backend`` replace the
+        top-level fields (the encoder handles its own type coercion).
 
-    Generate overrides are coerced to the dataclass field type.
+    Generate overrides are coerced to the dataclass field type. The
+    ``extra_body`` override accepts a JSON string or a dict; it is
+    deep-merged on top of any pipeline-level ``extra_body`` (override
+    values win on conflicts).
     """
     if not encode_overrides and not generate_overrides:
         return spec
@@ -228,14 +277,22 @@ def apply_overrides(
             elif k in _ENCODE_TOP_LEVEL:
                 encode_section[k] = v
         encode_section["strategy_opts"] = strategy_opts
+        data["encode"] = encode_section
 
-    if generate_overrides:
-        if data.get("generate") is None:
-            data["generate"] = {"prompt": ""}
-        gen = data["generate"]
+    if generate_overrides and data.get("generate") is not None:
+        gen: dict[str, Any] = data["generate"]
         known = {f.name for f in fields(Generate)}
         for k, v in generate_overrides.items():
-            if k in known:
-                gen[k] = _coerce_generate(k, v)
+            if k not in known:
+                continue
+            coerced = _coerce_generate(k, v)
+            if k == "extra_body":
+                raw_existing = gen.get("extra_body")
+                existing: dict[str, Any] = raw_existing if isinstance(raw_existing, dict) else {}
+                overlay: dict[str, Any] = coerced if isinstance(coerced, dict) else {}
+                gen[k] = deep_merge(existing, overlay)
+            else:
+                gen[k] = coerced
+        data["generate"] = gen
 
     return PipelineSpec.from_dict(data)

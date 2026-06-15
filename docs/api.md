@@ -3,13 +3,13 @@
 `mm.Context` is the main entry point for building a multimodal prompt
 incrementally, then handing the whole thing to a VLM. This doc covers
 the public Python surface; under the hood everything runs through the
-Rust [`_mm.PyContext`](../crates/mm-python/src/refs.rs) core so memory
+Rust `_mm.PyContext` core so memory
 is compact and insert/lookup/render is sub-millisecond at 10K items.
 
 > Looking for the directory-scan surface (`Context("~/data")` +
 > `to_polars`/`sql`/`show`)? That mode is preserved unchanged — see
-> [USER_GUIDE.md](USER_GUIDE.md). This doc is about the new
-> **incremental put-based** mode.
+> [user-guide.md](user-guide.md). This doc is about the new
+> **incremental role-aware** mode.
 
 ## TL;DR
 
@@ -20,13 +20,15 @@ from PIL import Image
 
 ctx = mm.Context(session_id=mm.uuid7())          # or omit; auto-mints a UUIDv7
 
-img:  mm.Ref = ctx.put(Path("photo.jpg"))
-img2: mm.Ref = ctx.put(Image.open("x.png"),
+sys:  mm.Ref = ctx.add("You are a terse visual analyst.", role="system")
+txt:  mm.Ref = ctx.add("Summarize these assets.", role="user")
+img:  mm.Ref = ctx.add(Path("photo.jpg"), role="user")
+img2: mm.Ref = ctx.add(Image.open("x.png"), role="user",
                        metadata={"note": "product hero shot"})
-doc:  mm.Ref = ctx.put(Path("paper.pdf"),
+doc:  mm.Ref = ctx.add(Path("paper.pdf"), role="user",
                        metadata={"summary": "Attention is all you need",
                                  "tags": ["nlp", "transformer"]})
-vid:  mm.Ref = ctx.put(Path("clip.mp4"),
+vid:  mm.Ref = ctx.add(Path("clip.mp4"), role="user",
                        metadata={"scene": 3, "actor": "A"})
 
 from openai.types.chat import ChatCompletionMessageParam
@@ -35,11 +37,11 @@ from google.genai import types as genai_types
 messages_openai: list[ChatCompletionMessageParam] = ctx.to_messages(format="openai")
 messages_gemini: list[genai_types.ContentDict]    = ctx.to_messages(format="gemini")
 
-obj = ctx.get(img)                               # Path | PIL.Image | bytes | str
+obj = ctx.get(img)                               # str | Path | PIL.Image.Image
 row = mm.Context.get(f"{ctx.session_id}/{img}")  # cross-session DB lookup
 
 ctx.print_tree()                                 # T4 tree with metadata
-print(ctx.to_md(mode="fast"))                    # markdown table w/ cat content
+print(ctx.to_md(mode="metadata"))                # markdown table w/ cat content
 print(repr(ctx))                                 # markdown __repr__
 ```
 
@@ -87,17 +89,24 @@ Context(
 - **Directory-scan mode**: pass a `root` path to get the legacy
   Arrow-backed scan surface. Both modes share `session_id` + `refs`.
 
-### `ctx.put(obj, *, metadata=None) -> mm.Ref`
+### `ctx.add(obj, *, role="user", metadata=None) -> mm.Ref`
 
 Attach an item. Accepted types:
 
 | Input                | Stored as       | `get()` returns               |
 |----------------------|-----------------|-------------------------------|
+| `str`                | `ItemSource::InMemory`  | the same `str`          |
 | `pathlib.Path`       | `ItemSource::Path`      | new `pathlib.Path`      |
-| `str` (file path)    | `ItemSource::Path`      | new `pathlib.Path`      |
-| `str` (`http(s)://`) | `ItemSource::Url`       | the URL string          |
 | `PIL.Image.Image`    | `ItemSource::InMemory`  | **the exact object**    |
-| `bytes`              | `ItemSource::InMemory`  | the same `bytes`        |
+
+Strings are always treated as free-form text and inlined into
+`to_messages()`. Path-like strings and URL-looking strings are not
+resolved or fetched; use `Path("file.ext")` for on-disk files.
+
+`role` is one of `"system"`, `"developer"`, or `"user"`. Strings can use
+any role. `Path` and `PIL.Image.Image` currently require `role="user"`
+because multimodal system/developer messages are not portable across
+providers.
 
 `metadata` is a single optional JSON-serialisable `dict` holding any
 extra context you want to ride along with the item. Common keys by
@@ -105,7 +114,7 @@ convention:
 
 - `note` — short human-readable note.
 - `summary` — longer summary / caption. Used as the "pre-extracted"
-  content fallback in `to_md(mode="fast")`.
+  content fallback in `to_md(mode="metadata")`.
 - `tags` — free-form list of strings.
 - …plus anything else your pipeline needs (`{"scene": 3, "actor": "A"}`).
 
@@ -118,23 +127,24 @@ Returns the generated ref id (`<prefix>_<6 hex>`), typed as `mm.Ref`.
 #### Example
 
 ```python
-img = ctx.put(Path("photo.jpg"), metadata={"note": "hero shot"})
-doc = ctx.put(Path("paper.pdf"),
+text = ctx.add("Compare the image and document below.", role="user")
+img = ctx.add(Path("photo.jpg"), role="user", metadata={"note": "hero shot"})
+doc = ctx.add(Path("paper.pdf"), role="user",
               metadata={"summary": "Attention is all you need",
                         "tags": ["nlp", "transformer"]})
-vid = ctx.put(Path("clip.mp4"), metadata={"scene": 3})
+vid = ctx.add(Path("clip.mp4"), role="user", metadata={"scene": 3})
 ```
 
-### `ctx.get(ref) -> Path | PIL.Image.Image | bytes | str`
+### `ctx.get(ref) -> str | Path | PIL.Image.Image`
 
 Local lookup by ref. Accepts a bare ref (`"img_a1b2c3"`) or a global
 ref (`"<session_id>/<ref_id>"`); the session segment must match this
 context's `session_id`.
 
+- Free-form text returns the same `str`.
 - Path-backed items return a freshly-constructed `pathlib.Path`.
-- In-memory items return the **exact Python object** that was `put` (no
-  copy, no rehydrate — identity is preserved).
-- URL items return the URL string.
+- In-memory PIL images return the **exact Python object** that was added
+  (no copy, no rehydrate — identity is preserved).
 
 Raises `RefNotFoundError` on miss. The error message prints the full
 ref table + a "did you mean" suggestion:
@@ -145,11 +155,22 @@ RefNotFoundError: ref 'img_a1b2cZ' not found in session 019da4…. Did you mean:
 Available refs:
 Context(session=019da4…, items=3)
 
-| ref        | kind  | source                |
-|------------|-------|-----------------------|
-| img_a1b2c3 | image | /abs/path/photo.jpg   |
-| doc_d4e5f6 | doc   | /abs/path/paper.pdf   |
-| vid_7890ab | video | /abs/path/clip.mp4    |
+| ref        | role | kind  | source                |
+|------------|------|-------|-----------------------|
+| img_a1b2c3 | user | image | /abs/path/photo.jpg   |
+| doc_d4e5f6 | user | doc   | /abs/path/paper.pdf   |
+| vid_7890ab | user | video | /abs/path/clip.mp4    |
+```
+
+### `ctx.remove(ref) -> None`
+
+Remove an item by bare ref (`"img_a1b2c3"`) or matching global ref
+(`"<session_id>/<ref_id>"`). Raises `RefNotFoundError` on miss and
+`ValueError` when the global ref belongs to a different session.
+
+```python
+ref = ctx.add(Path("photo.jpg"))
+ctx.remove(ref)
 ```
 
 ### `Context.get(global_ref, *, session_id=None, db=None)` (classmethod)
@@ -162,9 +183,9 @@ Use this when you have a ref from a persisted context and no live
 `Context` instance. Replaces the (still-supported) legacy
 `Context.resolve()`.
 
-### `ctx.to_messages(format="openai", *, encoders=None) -> list[dict]`
+### `ctx.to_messages(format="openai", *, encoders=None, encoder_kwargs=None) -> list[dict]`
 
-Encode every item into a single user-turn message list, ready to drop
+Encode every item into a role-aware message list, ready to drop
 into the respective SDK call. The returned shape is a plain Python
 list of dicts, typed to match the target SDK:
 
@@ -176,43 +197,45 @@ messages_openai: list[ChatCompletionMessageParam] = ctx.to_messages(format="open
 messages_gemini: list[genai_types.ContentDict]    = ctx.to_messages(format="gemini")
 ```
 
-- `format="openai"` → `[{"role": "user", "content": [{"type": ...}, …]}]`
-  — drop directly into `client.chat.completions.create(messages=...)`.
+- `format="openai"` → one message per consecutive role run, e.g.
+  `[{"role": "system", ...}, {"role": "developer", ...}, {"role": "user", ...}]`.
 - `format="gemini"` → `[{"role": "user", "parts": [{"inline_data": …}, {"text": …}]}]`
-  — drop into `model.generate_content(contents=...)`.
+  — non-user roles are folded into labelled text parts because Gemini role semantics differ.
 
-Per-kind encoder overrides:
+Per-kind encoder overrides and per-kind encoder kwargs:
 
 ```python
 messages: list[ChatCompletionMessageParam] = ctx.to_messages(
     format="openai",
     encoders={"image": "tile", "video": "mosaic"},
+    encoder_kwargs={"document": {"pages_per_message": 8}},
 )
 ```
 
-Unspecified kinds use sensible defaults (`image-resize`,
-`video-frame-sample`, `document-rasterize`). Encoder names come from
+Unspecified kinds use sensible defaults (`resize`,
+`mosaic`, `rasterize`, `base64`). Encoder names come from
 the `mm.encoders` registry — see `--list-encoders`.
 
 User metadata is emitted as a leading text part per item
 (`[ref=<id>] note: <text>`), so VLMs see your context inline.
 
-### `ctx.to_md(mode="fast") -> str`
+### `ctx.to_md(mode="metadata") -> str`
 
-Markdown table with one row per ref: `ref | kind | source | content`.
-`mode="fast"` populates each row with the metadata-tier content
-(`files.text_preview` — produced by `extract_local`; no LLM call) for
-non-text kinds, and raw text for code/text files.
+Markdown table with one row per ref: `ref | role | kind | source | content`.
+`mode="metadata"` populates each row with the metadata-tier content
+(`files.text_preview` — produced by `extract_meta`; no LLM call) for
+non-text kinds, and raw text for code/text files. (Mirrors what the CLI's
+`mm peek` surfaces locally for binary kinds — same source data.)
 
-`mode="accurate"` is reserved for the LLM-backed pipeline and currently
-raises `NotImplementedError`.
+`mode="fast"` and `mode="accurate"` are reserved for the LLM-backed
+pipelines and currently raise `NotImplementedError`.
 
 ```python
 print(ctx.to_md())
-# | ref        | kind  | source              | content                              |
-# |------------|-------|---------------------|--------------------------------------|
-# | img_a1b2c3 | image | /abs/path/photo.jpg | 3024×4032, jpeg, EXIF: Canon EOS…    |
-# | doc_d4e5f6 | doc   | /abs/path/paper.pdf | # Title…\n## Abstract…               |
+# | ref        | role | kind  | source              | content                              |
+# |------------|------|-------|---------------------|--------------------------------------|
+# | img_a1b2c3 | user | image | /abs/path/photo.jpg | 3024×4032, jpeg, EXIF: Canon EOS…    |
+# | doc_d4e5f6 | user | doc   | /abs/path/paper.pdf | # Title…\n## Abstract…               |
 ```
 
 ### `ctx.print_tree(layout="insertion") -> None`
@@ -225,15 +248,15 @@ point.
 
 ```
 Context(session=019da4…, items=5)
-├── [1] img_a1b2c3  image  /abs/path/photo.jpg
-├── [2] img_9f0e12  image  PIL.Image(RGB, 1024×768)
+├── [1] img_a1b2c3  user  image  /abs/path/photo.jpg
+├── [2] img_9f0e12  user  image  PIL.Image(RGB, 1024×768)
 │        └─ note: "product hero shot"
-├── [3] doc_d4e5f6  document  /abs/path/paper.pdf
+├── [3] doc_d4e5f6  user  document  /abs/path/paper.pdf
 │        ├─ summary: "Attention is all you need"
 │        └─ tags: [nlp, transformer]
-├── [4] vid_7890ab  video  /abs/path/clip.mp4
+├── [4] vid_7890ab  user  video  /abs/path/clip.mp4
 │        └─ metadata: {"scene": 3, "actor": "A"}
-└── [5] img_111222  image  https://cdn.example.com/x.jpg
+└── [5] txt_111222  system  text  You are concise.
 ```
 
 Other layouts are declared in the docstring so they're discoverable,
@@ -248,14 +271,14 @@ but raise `NotImplementedError` for now:
 ### `__repr__` → markdown
 
 `repr(ctx)` returns a markdown summary: `session_id`, item count, and
-the `ref | kind | source` table. Works well in Jupyter / doc snippets
+the `ref | role | kind | source` table. Works well in Jupyter / doc snippets
 and doubles as the body of `RefNotFoundError`.
 
 ### `ctx.save()` (deferred)
 
-Not implemented for put-based contexts. Planned behaviour:
+Not implemented for role-aware contexts. Planned behaviour:
 
-- Write `(session_id, ref_id, kind, uri, content_hash, metadata)` to
+- Write `(session_id, ref_id, role, kind, uri, content_hash, metadata)` to
   the `files` table in `~/.local/share/mm/mm.db`.
 - For in-memory objects, spool to a content-addressed cache directory
   `~/.local/share/mm/blobs/<xxh3>.<ext>` and record the blob URI.
@@ -265,6 +288,34 @@ Not implemented for put-based contexts. Planned behaviour:
 
 Directory-scan `Context(root)` retains its existing `save()` (writes
 the Arrow table to the global DB).
+
+### `ctx.render_html(...) -> str`
+
+Render the context as self-contained HTML — suitable for `IPython.display.HTML()` or direct embedding. Each item is rendered with its native media view (image, video player, audio player, document pages), metadata dict, and a collapsible section showing the encoded VLM representation.
+
+```python
+from IPython.display import HTML
+HTML(ctx.render_html())
+
+# With overrides
+html = ctx.render_html(
+    max_image_width=480,
+    title="My prompt",
+    encoders={"image": "tile"},
+    encoder_kwargs={"document": {"pages_per_message": 4}},
+)
+```
+
+Raises `RuntimeError` if called on a directory-scan Context.
+
+### `mm.render_context` / `mm.render_messages` (notebook helpers)
+
+Two lazy exports from `mm.notebook`:
+
+- `mm.render_context(ctx, ...)` — same as `ctx.render_html(...)`, callable as a standalone function.
+- `mm.render_messages(messages, ...)` — renders a pre-built message list as HTML.
+
+Both are thin wrappers around the same Jinja template; prefer `ctx.render_html()` when you have a Context.
 
 ## Performance architecture
 
@@ -282,7 +333,7 @@ The hot path is Rust. Python is a thin façade.
 - **`crates/mm-python/src/refs.rs`** exposes `PyContext` and keeps
   in-memory Python objects alive in a parallel `Vec<Option<Py<PyAny>>>`
   indexed by item position. That's why `ctx.get(ref)` returns the
-  exact object the caller passed to `ctx.put` — no copy, no rehydrate.
+  exact object the caller passed to `ctx.add` — no copy, no rehydrate.
 - **Rendering** (`__repr__`, `print_tree`, `to_md` table assembly,
   `RefNotFoundError` message, "did you mean" Levenshtein search) all
   happen in Rust, so Python only pays one FFI boundary crossing to get
@@ -293,8 +344,7 @@ The hot path is Rust. Python is a thin façade.
 Per item, excluding the user's stored object:
 
 - path-backed: ~56 bytes;
-- in-memory: ~64 bytes + one `Py<PyAny>` refcount bump;
-- URL-backed: ~56 bytes.
+- in-memory text/PIL: ~64 bytes + one `Py<PyAny>` refcount bump.
 
 A 10K-item context without metadata fits in < 1 MB on the Rust side.
 
@@ -310,7 +360,7 @@ primitives.
 ```sh
 cargo bench -p mm-core --bench refs
 # Or target a group:
-cargo bench -p mm-core --bench refs -- refs/put_path
+cargo bench -p mm-core --bench refs -- refs/add_path
 cargo bench -p mm-core --bench refs -- refs/get
 cargo bench -p mm-core --bench refs -- refs/render
 cargo bench -p mm-core --bench refs -- refs/ref_not_found
@@ -323,9 +373,9 @@ Coverage:
 |------------------------------------|-------------------|-----------------------------------------------|
 | `refs/make_ref_id/{kind}`          | per-kind          | ID generation (`OsRng` + base36 encode)       |
 | `refs/uuid7`                       | —                 | `mm.uuid7()` generation latency               |
-| `refs/put_path`                    | 100 / 1K / 10K / 100K | Path-backed `put` throughput              |
-| `refs/put_inmem`                   | 1K / 10K          | In-memory (PIL / bytes) `put` throughput      |
-| `refs/put_with_metadata`           | 1K / 10K          | Same, with `note`+`summary`+`tags` populated  |
+| `refs/add_path`                    | 100 / 1K / 10K / 100K | Path-backed `add` throughput              |
+| `refs/add_inmem`                   | 1K / 10K          | In-memory (PIL) `add` throughput              |
+| `refs/add_with_metadata`           | 1K / 10K          | Same, with `note`+`summary`+`tags` populated  |
 | `refs/get_hit`                     | 1K / 10K / 100K   | `by_ref: HashMap` lookup (realistic hit)      |
 | `refs/get_miss`                    | 1K / 10K          | Miss — short-circuits before suggestion       |
 | `refs/render_tree_insertion`       | 100 / 1K / 10K    | Rust tree rendering (excludes Rich)           |
@@ -334,7 +384,7 @@ Coverage:
 | `refs/to_md_with_contents`         | 1K                | `to_md()` rendering given pre-extracted text  |
 | `refs/ref_not_found_message`       | 100 / 1K / 10K    | Full `RefNotFoundError` body (typo shape)     |
 | `refs/closest_ref_10k`             | 10K               | Levenshtein-across-all-prefix-matching-refs   |
-| `refs/mixed_put_get_render`        | 1K / 10K          | Agent-loop shape (put→get→repr→tree)          |
+| `refs/mixed_add_get_render`        | 1K / 10K          | Agent-loop shape (add→get→repr→tree)          |
 
 ### Python / pytest-benchmark — `tests/python/test_refs_api_perf.py`
 
@@ -351,7 +401,7 @@ pytest tests/python/test_refs_api_perf.py -m slow --benchmark-disable  # budgets
 Two classes of tests live here:
 
 1. `TestBench*` — `pytest-benchmark` micro-benches for
-   `put` (path / PIL / bytes / + metadata), `get` (hit / miss),
+   `add` (path / PIL / + metadata), `get` (hit / miss),
    `print_tree`, `repr`, `to_md`, `to_messages` (openai + gemini),
    `uuid7`, and `RefNotFoundError` construction.
 2. Latency-budget regression guards (`test_*_under_budget`) that fail
@@ -366,9 +416,8 @@ Two classes of tests live here:
 | `ctx.get(ref)` hit, 10K-item context | **~800ns**| ~1.2 M ops/s    |
 | `mm.uuid7()`                         | ~1.3 µs   | ~770 K ops/s    |
 | `new_session_id()`                   | ~1.3 µs   | ~770 K ops/s    |
-| `ctx.put(Path)`, amortised           | ~32 µs    | ~31 K puts/s    |
-| `ctx.put(bytes)`, amortised          | ~7 µs     | ~140 K puts/s   |
-| `ctx.put(PIL.Image)`, amortised      | ~7 µs     | ~140 K puts/s   |
+| `ctx.add(Path)`, amortised           | ~32 µs    | ~31 K adds/s    |
+| `ctx.add(PIL.Image)`, amortised      | ~7 µs     | ~140 K adds/s   |
 | `repr(ctx)` @ 10K items              | ~3 ms     | —               |
 | `ctx.print_tree()` @ 10K items       | ~930 ms\* | —               |
 | `RefNotFoundError` msg @ 10K items   | ~11 ms    | —               |
@@ -378,10 +427,10 @@ tree-string generation itself is ~5ms at 10K. Strip to raw output with
 `print(ctx._pyctx.render_tree_insertion())` if you need the faster
 path.
 
-The `ctx.put(Path)` amortised cost includes `Path.resolve()` + a stat
-to sniff the MIME; `ctx.put(bytes)` / `ctx.put(PIL.Image)` skip those
-and land inside the ~7µs PyO3-boundary budget dominated by the
-`Py<PyAny>` clone + one JSON metadata roundtrip.
+The `ctx.add(Path)` amortised cost includes `Path.resolve()` + a stat
+to sniff the MIME; `ctx.add(PIL.Image)` skips those and lands inside
+the ~7µs PyO3-boundary budget dominated by the `Py<PyAny>` clone + one
+JSON metadata roundtrip.
 
 ## Error types
 
@@ -389,8 +438,9 @@ and land inside the ~7µs PyO3-boundary budget dominated by the
   `ctx.get(ref)` on miss; message is a markdown table + suggestion.
 - **`ValueError`** — malformed global ref, mismatched session id, or
   `metadata=` containing non-JSON-serialisable keys.
-- **`TypeError`** — `put()` received an unsupported object type.
-- **`FileNotFoundError`** — `put()` received a path that doesn't exist.
+- **`TypeError`** — `add()` received something other than `str`, `Path`,
+  or `PIL.Image.Image`.
+- **`FileNotFoundError`** — `add()` received a `Path` that doesn't exist.
 - **`NotImplementedError`** — `print_tree(layout="paths"|"kind"|…)`,
   `to_md(mode="accurate")`, or `save()` on an incremental context.
 
@@ -403,8 +453,9 @@ from openai.types.chat import ChatCompletionMessageParam
 from pathlib import Path
 
 ctx = mm.Context()
-ctx.put(Path("whiteboard.jpg"), metadata={"note": "meeting notes"})
-ctx.put(Path("slides.pdf"), metadata={"summary": "Q3 plan"})
+ctx.add("Summarise the attached context.", role="system")
+ctx.add(Path("whiteboard.jpg"), role="user", metadata={"note": "meeting notes"})
+ctx.add(Path("slides.pdf"), role="user", metadata={"summary": "Q3 plan"})
 
 ctx_messages: list[ChatCompletionMessageParam] = ctx.to_messages(format="openai")
 
@@ -412,7 +463,6 @@ client = OpenAI()
 resp = client.chat.completions.create(
     model="gpt-4o",
     messages=[
-        {"role": "system", "content": "Summarise the attached context."},
         *ctx_messages,
     ],
 )
@@ -428,7 +478,8 @@ from google.genai import types as genai_types
 from pathlib import Path
 
 ctx = mm.Context()
-ctx.put(Path("clip.mp4"), metadata={"summary": "lecture on attention"})
+ctx.add("Summarise this lecture.", role="user")
+ctx.add(Path("clip.mp4"), role="user", metadata={"summary": "lecture on attention"})
 
 contents: list[genai_types.ContentDict] = ctx.to_messages(format="gemini")
 

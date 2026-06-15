@@ -1118,10 +1118,157 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b6d2cec3eae94f9f509c767b45932f1ada8350c4bdb85af2fcab4a3c14807981"
 
 [[package]]
+name = "libreoffice-pure"
+version = "0.4.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "967a914443014b89eb5d76d288ad5317b2d6a6637e826f871a568914f8f1459c"
+dependencies = [
+ "lo_app",
+ "lo_base",
+ "lo_calc",
+ "lo_core",
+ "lo_draw",
+ "lo_impress",
+ "lo_math",
+ "lo_odf",
+ "lo_uno",
+ "lo_writer",
+ "lo_zip",
+]
+
+[[package]]
 name = "linux-raw-sys"
 version = "0.12.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "32a66949e030da00e8c7d4434b251670a91556f4144941d37452769c25d58a53"
+
+[[package]]
+name = "lo_app"
+version = "0.4.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "dc6067ee04e8087f720af9b3650afd4fc3e85e5d16b6ee8382a676d6ef3680a3"
+dependencies = [
+ "lo_core",
+ "lo_lok",
+ "lo_uno",
+]
+
+[[package]]
+name = "lo_base"
+version = "0.4.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1376e4f020572642697ff1fda203faf552d30db797ce2973faeb65421d8e37f8"
+dependencies = [
+ "lo_calc",
+ "lo_core",
+ "lo_odf",
+ "lo_zip",
+]
+
+[[package]]
+name = "lo_calc"
+version = "0.4.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "352886b123f187f5c334f1a6e9189521f3cdc4aa634d947331fa99068411cc1d"
+dependencies = [
+ "lo_core",
+ "lo_odf",
+ "lo_zip",
+]
+
+[[package]]
+name = "lo_core"
+version = "0.4.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c4837913f6aef60c5fd59443d7778dbb8504539fe78b8af26f33d39c76dbac55"
+
+[[package]]
+name = "lo_draw"
+version = "0.4.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d04b7b8bf77150207a731b3ab70bc743598f0ac862e44e7616386d0a78e002ba"
+dependencies = [
+ "lo_core",
+ "lo_odf",
+ "lo_zip",
+]
+
+[[package]]
+name = "lo_impress"
+version = "0.4.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d3f37c16fa1d804de97f851958b52cc104faaece2660732ce8ecaadd22ffcb5e"
+dependencies = [
+ "lo_core",
+ "lo_odf",
+ "lo_zip",
+]
+
+[[package]]
+name = "lo_lok"
+version = "0.4.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f64fcfc886372968109c50d4199cccf7ddd838ca45a3c1d5a7b9a31466fbc8aa"
+dependencies = [
+ "lo_base",
+ "lo_calc",
+ "lo_core",
+ "lo_draw",
+ "lo_impress",
+ "lo_math",
+ "lo_uno",
+ "lo_writer",
+]
+
+[[package]]
+name = "lo_math"
+version = "0.4.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1982757c229bb5ce55225d1cff553ce4d3d3ec150dfb7a7c04056cee311518cf"
+dependencies = [
+ "lo_core",
+ "lo_zip",
+]
+
+[[package]]
+name = "lo_odf"
+version = "0.4.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f536b9d85516aafb3604e8357535883f233c0c4abdb205f7edd4d3ecae142d46"
+dependencies = [
+ "lo_core",
+ "lo_math",
+ "lo_zip",
+]
+
+[[package]]
+name = "lo_uno"
+version = "0.4.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5f61061068a1f7e7c1a7b4cbaeedeb8a4aebe8a181ff36bdfd9fba94c45519b6"
+dependencies = [
+ "lo_core",
+]
+
+[[package]]
+name = "lo_writer"
+version = "0.4.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e6ffc610258087679eee3b90dcf750f865b01ae42f3b6cc0dc1c7a8437cd07bd"
+dependencies = [
+ "lo_core",
+ "lo_odf",
+ "lo_zip",
+]
+
+[[package]]
+name = "lo_zip"
+version = "0.4.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8562d7292cb99b0cd879f2f7266e3fc95532ef0aa89e8eca611d03471ab246e1"
+dependencies = [
+ "lo_core",
+]
 
 [[package]]
 name = "log"
@@ -1200,7 +1347,7 @@ dependencies = [
 
 [[package]]
 name = "mm-core"
-version = "0.9.0"
+version = "0.13.2"
 dependencies = [
  "arrow",
  "base64",
@@ -1211,6 +1358,11 @@ dependencies = [
  "image",
  "infer",
  "kamadak-exif",
+ "libreoffice-pure",
+ "lo_calc",
+ "lo_core",
+ "lo_impress",
+ "lo_writer",
  "matroska",
  "memmap2",
  "mime_guess",
@@ -1230,7 +1382,7 @@ dependencies = [
 
 [[package]]
 name = "mm-python"
-version = "0.9.0"
+version = "0.13.2"
 dependencies = [
  "arrow",
  "compact_str",

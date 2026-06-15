@@ -13,25 +13,25 @@ def do_list_encoders() -> None:
     entries = list_encoders_detail()
 
     kind_rank = {k: i for i, k in enumerate(KIND_ORDER)}
-    entries.sort(key=lambda e: (kind_rank.get(e["media_types"][0], 99), e["prefixed_name"]))
+    entries.sort(key=lambda e: (kind_rank.get(e["kind"], 99), e["name"]))
 
-    max_name = max((len(e["prefixed_name"]) for e in entries), default=28)
+    max_name = max((len(e["name"]) for e in entries), default=28)
     name_w = max_name + 2
     lines: list[Text] = []
     prev_kind = ""
     for entry in entries:
-        cur_kind = entry["media_types"][0] if entry["media_types"] else "unknown"
+        cur_kind = entry["kind"] or "unknown"
         if cur_kind != prev_kind and prev_kind:
             lines.append(Text(""))
         prev_kind = cur_kind
 
-        prefixed = entry["prefixed_name"]
+        prefixed = f"{entry['kind']}:{entry['name']}"
         desc = entry["description"]
         params: list[tuple[str, str]] = entry["params"]
 
         line = Text(no_wrap=True, overflow="ellipsis")
-        line.append(prefixed.ljust(name_w), style="bold white")
-        line.append(desc, style="white")
+        line.append(prefixed.ljust(name_w), style="bold")
+        line.append(desc)
         lines.append(line)
 
         if params:
@@ -40,7 +40,7 @@ def do_list_encoders() -> None:
             param_parts: list[str] = []
             for pname, default in params:
                 param_parts.append(f"{pname}={default}")
-            param_line.append(", ".join(param_parts), style="green")
+            param_line.append(", ".join(param_parts))
             lines.append(param_line)
 
     body = Text("\n").join(lines)
@@ -48,7 +48,12 @@ def do_list_encoders() -> None:
     panel_w = max_line + 8
     console = Console(width=max(panel_w, 80))
     panel = Panel(
-        body, title="Encoders", title_align="left", box=box.ROUNDED, padding=(1, 2), width=panel_w
+        body,
+        title="[bold]Encoders[/bold]",
+        title_align="left",
+        box=box.ROUNDED,
+        padding=(1, 2),
+        width=panel_w,
     )
     console.print()
     console.print(panel)

@@ -1,7 +1,5 @@
 name: publish to pypi
 
-# TODO: set dependency on publish in `create-release` and `deploy-install-script` jobs once ready to publish to PyPI
-
 on:
   workflow_dispatch:
   push:
@@ -50,9 +48,12 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+      - run: python scripts/write_release_metadata.py
       - name: Build wheels
         uses: PyO3/maturin-action@v1
         with:
@@ -232,4 +233,15 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./_pages
           destination_dir: install
+          keep_files: true
+
+      # README images are served from the public Pages site because the source
+      # repo is private (raw.githubusercontent.com 404s for anonymous viewers).
+      # Published to https://vlm-run.github.io/mm/assets/<name>.png.
+      - name: Deploy README assets to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./docs/assets
+          destination_dir: assets
           keep_files: true

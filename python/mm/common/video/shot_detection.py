@@ -12,6 +12,8 @@ import time
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from mm.cache import cache_dir, memoize_file
+
 
 @dataclass
 class SceneResult:
@@ -22,8 +24,8 @@ class SceneResult:
     num_scenes: int = 0
 
 
-def scenedetect_available() -> bool:
-    """Check if scenedetect is installed."""
+def scenedetect_runnable() -> bool:
+    """Check if scenedetect is runnable."""
     from mm._bootstrap import preload_media_libs
 
     preload_media_libs()
@@ -35,6 +37,7 @@ def scenedetect_available() -> bool:
         return False
 
 
+@memoize_file(maxsize=32, path=lambda: cache_dir() / "scenes")
 def detect_scenes(
     video_path: str | Path,
     *,
@@ -42,6 +45,18 @@ def detect_scenes(
     min_scene_len: int = 15,
 ) -> SceneResult:
     """Detect scene boundaries using PySceneDetect ContentDetector.
+
+    Cached **on disk** via :func:`mm.cache.memoize_file` — keyed on
+    ``(path, mtime, size, threshold, min_scene_len)`` and persisted
+    under ``$MM_CACHE_DIR/scenes/``.  Detection takes ~3 s per video,
+    so re-running ``mm cat video.mp4 -m accurate`` (or any other
+    encoder that needs the same scene boundaries) is now near-instant
+    across CLI invocations.  mtime-aware: re-encoding the source
+    invalidates automatically.
+
+    Encoders that need the same boundaries (``mosaic``, ``shots``,
+    ``shot-mosaic``, ``summary``) share the on-disk cache.  Use
+    ``detect_scenes.cache_clear()`` to drop entries.
 
     Args:
         video_path: Path to video file.
@@ -51,28 +66,26 @@ def detect_scenes(
     Returns:
         SceneResult with list of (start_s, end_s) tuples.
     """
-    if not scenedetect_available():
+    if not scenedetect_runnable():
         return SceneResult()
 
     t0 = time.monotonic()
 
     from scenedetect import ContentDetector, SceneManager, open_video
 
-    video = open_video(str(video_path))
-    scene_manager = SceneManager()
-    scene_manager.add_detector(
-        ContentDetector(
-            threshold=threshold,
-            min_scene_len=min_scene_len,
+    try:
+        video = open_video(str(video_path))
+        scene_manager = SceneManager()
+        scene_manager.add_detector(
+            ContentDetector(threshold=threshold, min_scene_len=min_scene_len)
         )
-    )
-    scene_manager.detect_scenes(video)
-    scene_list = scene_manager.get_scene_list()
+        scene_manager.detect_scenes(video)
+        scene_list = scene_manager.get_scene_list()
+    except Exception:
+        return SceneResult()
 
     scenes = [(scene[0].get_seconds(), scene[1].get_seconds()) for scene in scene_list]
-
     elapsed = (time.monotonic() - t0) * 1000
-
     return SceneResult(
         scenes=scenes,
         elapsed_ms=round(elapsed, 1),

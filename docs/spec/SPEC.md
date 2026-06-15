@@ -67,13 +67,16 @@ mm
 │   ├── [x] Configurable via profiles: built-in default + reserved ollama + custom add/use
 │   ├── [x] think=false + reasoning_effort="none" + temperature=0.1
 │   ├── [x] Accurate-mode errors propagate directly (no silent fallback to fast mode)
-│   ├── [x] --mode fast|accurate per-modality extraction strategies
-│   ├── [x] Audio transcription via ffmpeg + whisper (2x speed, greedy beam=1)
-│   ├── [x] Whisper backend auto-select: MLX Metal GPU > CTranslate2 CPU/CUDA
+│   ├── [x] --mode fast|accurate per-modality extraction strategies (default 'fast')
+│   ├── [x] Audio transcription via ffmpeg + modular backends (2x speed, greedy beam=1)
+│   ├── [x] Transcription backend ABC with pluggable registry (mm.common.audio)
+│   ├── [x] Backend auto-select: MLX Metal GPU (10) > CTranslate2 CPU/CUDA (20) > OpenAI API (30)
+│   ├── [x] OpenAI-compatible transcription backend (/v1/audio/transcriptions, custom base_url)
+│   ├── [x] TranscriptionConfig in mm.toml (backend, base_url, api_key)
 │   ├── [x] Parallel visual + audio extraction (ThreadPoolExecutor)
 │   ├── [x] Video: mosaic (4x4 @ 1500px) + transcript → LLM markdown
 │   ├── [x] Image: fast (10 words + 5 tags) / accurate (200 words + 10 tags + objects)
-│   ├── [x] Document extraction via pypdfium2 (PDF) / python-docx (DOCX) / python-pptx (PPTX)
+│   ├── [x] Document extraction via pypdfium2 (PDF) / libreoffice-rs (DOCX/PPTX/PPTX/ODS/ODT/ODP)
 │   └── [x] Embedding generation via Gemini API (text, image, audio, video, document → chunks_vec)
 │
 ├── Python API (Context class)
@@ -89,17 +92,19 @@ mm
 │   ├── [x] info() — Rich summary panel
 │   ├── [x] save() — persist to .mm/index.parquet
 │   ├── [x] Context(session_id=...) / Context.new_session() — external session id
+│   ├── [x] add(str | Path | PIL.Image.Image, role) — role-aware refs; strings inline as text
 │   ├── [x] ref_for(path) / global_ref(path) / refs — kind-prefixed deterministic ref ids
 │   └── [x] Context.resolve("<session_id>/<ref_id>") — global cross-user lookup
 │
-├── CLI Commands (8 total: 5 core + bench + config + profile. Typer, Unix-philosophy composability)
+├── CLI Commands (9 total: 6 core + bench + config + profile. Typer, Unix-philosophy composability)
 │   ├── [x] --version/-v global flag
 │   ├── [x] find     — find/list files, tree view (--tree), schema (--schema), columns (--columns), name filter (--name, string/regex via Rust; -i/--ignore-case for case-insensitive)
+│   ├── [x] peek     — raw file metadata (dimensions / EXIF / codec / mime / hash).
 │   ├── [x] [cat](./cat.md)      — auto-detected content extraction (fast/accurate mode) → [full spec](cat.md)
 │   │   ├── [x] head/tail via -n (replaces old head/tail commands)
-│   │   ├── [x] --mode fast|accurate (pipeline-driven modal extraction)
+│   │   ├── [x] --mode fast|accurate (default 'fast');
 │   │   ├── [x] video accurate: parallel mosaic + whisper → LLM (102x realtime)
-│   │   ├── [x] audio accurate: ffmpeg 2x + whisper → LLM transcript summary
+│   │   ├── [x] audio accurate: ffmpeg 2x + whisper → transcript (no LLM; use -p base64/-p gemini for LLM description)
 │   │   ├── [x] image accurate: fast (10w+5tags) / accurate (200w+10tags+objects)
 │   │   ├── [x] document accurate: pypdfium2 PDF → text → LLM
 │   │   ├── [x] --encode.*, --generate.* namespaced flags
@@ -110,7 +115,7 @@ mm
 │   ├── [x] grep     — content search with context lines (like rg), --pre-index for on-demand semantic indexing
 │   ├── [x] sql      — SQLite SQL on file index, --pre-index for on-demand metadata indexing before query
 │   ├── [x] wc       — count files, size, lines (est.), tokens (est.)
-│   ├── [x] config   — extraction mode settings (show, init, set, reset-db, reset-profiles, reset)
+│   ├── [x] config   — extraction mode settings (show, init, set, reset-db, reset-profiles, reset, doctor)
 │   ├── [x] profile  — LLM profile management (list, add, update, use, remove; 3 reserved: default, ollama, gemini)
 │   ├── [x] bench    — 24-command benchmark suite (metadata×10, fast×8, accurate×6) with bits/s throughput
 │   └── [ ] context  — LLM-ready context payload builder (token budgeting)
@@ -154,7 +159,7 @@ mm
 │
 ├── Tests
 │   ├── Rust: 75 tests (meta, walk, detect, schema, table, code, image, video, audio, document, hash)
-│   ├── Python: 582 tests (CLI, Context API, refs/sessions, pipe, metadata/fast/accurate, config, whisper, scenes, docling, bench)
+│   ├── Python: 587 tests (CLI, Context API, refs/sessions, pipe, metadata/fast/accurate, config, transcription backends, scenes, docling, bench)
 │   ├── Criterion benchmarks: metadata_walk, metadata_index, hash_strategies, metadata_extract, find_filter
 │   ├── mm bench: 24 commands (metadata×10, fast×8, accurate×6) with bits/s throughput
 │   └── pytest-benchmark: 11 benchmarks (metadata, fast, ffmpeg, e2e)
@@ -174,7 +179,7 @@ For each modality (image, video, documents like PDFs), I’d like to have a few 
     - mode=fast -> describe the image in 10 words or less, and extract 5-keyword tags
     - mode=accurate -> describe the image in detail (200 words) + extract up to 10-keyword tags + extract up to 10-objects/people/faces/logos in the image
 - documents: (PDFs, Word documents, etc.)
-    - pypdfium2 for PDF text extraction, python-docx/python-pptx for Office formats
+    - pypdfium2 for PDF text extraction, libreoffice-rs for Office formats
     - ignore image/video/audio as we have other ways to extract metadata/semantics for them (detailed extraction is not needed)
 - audio:
     - mode=fast

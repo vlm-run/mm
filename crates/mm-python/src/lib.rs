@@ -411,11 +411,134 @@ fn gemini_document_part(path: String) -> PyResult<String> {
     mm_core::serde::gemini::document_part_json(p).map_err(pyo3::exceptions::PyRuntimeError::new_err)
 }
 
+#[pyclass]
+#[derive(Clone)]
+struct OfficeMetadata {
+    #[pyo3(get)]
+    author: String,
+    #[pyo3(get)]
+    title: String,
+    #[pyo3(get)]
+    subject: String,
+    #[pyo3(get)]
+    description: String,
+    #[pyo3(get)]
+    keywords: Vec<String>,
+    #[pyo3(get)]
+    created: String,
+    #[pyo3(get)]
+    modified: String,
+    #[pyo3(get)]
+    pages: Option<usize>,
+}
+
+#[pymethods]
+impl OfficeMetadata {
+    fn __repr__(&self) -> String {
+        let pages = self
+            .pages
+            .map(|p| p.to_string())
+            .unwrap_or_else(|| "None".to_string());
+        format!(
+            "OfficeMetadata(title={:?}, author={:?}, pages={})",
+            self.title, self.author, pages
+        )
+    }
+}
+
+#[pyclass]
+#[derive(Clone)]
+struct OfficeDoc {
+    #[pyo3(get)]
+    content: String,
+    #[pyo3(get)]
+    meta: OfficeMetadata,
+}
+
+#[pymethods]
+impl OfficeDoc {
+    fn __repr__(&self) -> String {
+        let pages = self
+            .meta
+            .pages
+            .map(|p| p.to_string())
+            .unwrap_or_else(|| "None".to_string());
+        format!(
+            "OfficeDoc(title={:?}, author={:?}, pages={}, content_len={})",
+            self.meta.title,
+            self.meta.author,
+            pages,
+            self.content.len()
+        )
+    }
+}
+
+fn meta_to_py(m: mm_core::office::OfficeMetadata) -> OfficeMetadata {
+    OfficeMetadata {
+        author: m.author,
+        title: m.title,
+        subject: m.subject,
+        description: m.description,
+        keywords: m.keywords,
+        created: m.created,
+        modified: m.modified,
+        pages: m.pages,
+    }
+}
+
+/// Extract just the content of a docx/pptx/xlsx/odt/ods/odp/doc/pdf.
+#[pyfunction]
+fn office_content(path: String) -> PyResult<String> {
+    let p = std::path::Path::new(&path);
+    mm_core::office::content(p)
+        .map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(e.to_string()))
+}
+
+/// Extract just the metadata of a docx/pptx/xlsx/odt/ods/odp/doc/pdf.
+#[pyfunction]
+fn office_metadata(path: String) -> PyResult<OfficeMetadata> {
+    let p = std::path::Path::new(&path);
+    let m = mm_core::office::metadata(p)
+        .map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(e.to_string()))?;
+    Ok(meta_to_py(m))
+}
+
+/// Parse a docx/pptx/xlsx/odt/ods/odp/doc/pdf and return content + metadata.
+#[pyfunction]
+fn office_parse_full(path: String) -> PyResult<OfficeDoc> {
+    let p = std::path::Path::new(&path);
+    let doc = mm_core::office::parse_full(p)
+        .map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(e.to_string()))?;
+    Ok(OfficeDoc {
+        content: doc.content,
+        meta: meta_to_py(doc.metadata),
+    })
+}
+
+/// Convert a supported office document to PDF and write it to `output`.
+/// Returns the output path.
+#[pyfunction]
+fn office_to_pdf(input: String, output: String) -> PyResult<String> {
+    let inp = std::path::Path::new(&input);
+    let out = std::path::Path::new(&output);
+    let p = mm_core::office::convert_to_pdf(inp, out)
+        .map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(e.to_string()))?;
+    p.to_str()
+        .map(|s| s.to_string())
+        .ok_or_else(|| pyo3::exceptions::PyRuntimeError::new_err("non-utf8 output path"))
+}
+
 #[pymodule]
 #[pyo3(name = "_mm")]
 fn mm_module(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<Scanner>()?;
     m.add_class::<MetadataResult>()?;
+    m.add_class::<OfficeDoc>()?;
+    m.add_class::<OfficeMetadata>()?;
+    m.add_function(wrap_pyfunction!(office_content, m)?)?;
+    m.add_function(wrap_pyfunction!(office_metadata, m)?)?;
+    m.add_function(wrap_pyfunction!(office_parse_full, m)?)?;
+    m.add_function(wrap_pyfunction!(office_to_pdf, m)?)?;
     m.add_function(wrap_pyfunction!(hamming_distance, m)?)?;
     m.add_function(wrap_pyfunction!(content_hash, m)?)?;
     m.add_function(wrap_pyfunction!(directory_hash, m)?)?;

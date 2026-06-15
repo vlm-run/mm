@@ -18,17 +18,18 @@
 # Output YAML feeds benchmarks/bench_universal/helpers/visualizer.py — same
 # schema as the multimodal bench, so the report works unchanged.
 #
-# Task budget (full mode, 14 tasks):
-#    9 cat  (~64%) — all --mode fast (accurate-mode cat tasks were removed
+# Task budget (full mode, 15 tasks):
+#    9 cat  (~60%) — all --mode fast (accurate-mode cat tasks were removed
 #                    on purpose: every one of them adds a per-call VLM
 #                    round-trip that dominates wall time, which caps the
 #                    measurable with/without-mm speedup. Fast mode is
 #                    where the upper bound lives.)
-#    2 grep (~14%) — both --semantic, with different queries (regex grep
+#    2 grep (~13%) — both --semantic, with different queries (regex grep
 #                    is a no-op on image dirs, since binary kinds are
 #                    skipped unless --semantic is passed)
-#    3 misc (~21%) — 1 find + 1 wc + 1 sql (wc moved into fast mode so
+#    3 misc (~20%) — 1 find + 1 wc + 1 sql (wc moved into fast mode so
 #                    the smoke test exercises a bulk-aggregate call)
+#    1 peek (~7%)  — single-image raw metadata (dims + EXIF + hash, no LLM)
 
 set -euo pipefail
 
@@ -179,6 +180,12 @@ register_tasks() {
   add_task "image_sql_hires" \
     "Find every image in this directory with width >= 1000 pixels. Show name, dimensions, and size." \
     "mm sql \"SELECT name, width, height, size FROM files WHERE kind='image' AND width >= 1000 ORDER BY width DESC\" --dir '${BENCH_DIR}' --format json"
+
+  # 15. peek — single-image raw metadata (dims + EXIF + hash).
+  add_task "image_peek_single" \
+    "Extract raw file metadata for this image: exact dimensions, format, content hash, and any EXIF (camera, capture date, GPS) — without describing the contents." \
+    "mm peek '${SAMPLE_SMALL}' --format json" \
+    "${SAMPLE_SMALL}"
 }
 
 bench_main "$@"

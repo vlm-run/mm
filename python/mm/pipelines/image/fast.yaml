@@ -11,8 +11,13 @@ generate:
     Describe this image in 10 words or less.
     Then list exactly 5 keyword tags.
 
-    [OUTPUT]
-    {{description}}
+    ## FORMAT
+    --description--
 
-    Tags: {{up to 5 keyword tags}}
+    Tags: Up to 5 keyword tags
+
+    Example:
+    A cat sitting on a windowsill.
+
+    Tags: cat, windowsill, sunlight, pet, animal
   max_tokens: 256

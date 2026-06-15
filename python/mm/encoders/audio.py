@@ -1,93 +1,215 @@
-"""Audio encoding strategies: transcription and Gemini passthrough.
+"""Audio encoding strategies: base64 passthrough, transcription, and Gemini.
 
-``AudioTranscribe`` extracts audio (via ffmpeg) and runs Whisper
-transcription, returning the transcript as a text Message.
+``AudioBase64`` base64-encodes the raw audio file as an OpenAI ``input_audio``
+part — the native way to send audio to multimodal LLMs. Generate prompts come
+from the pipeline YAML.
 
-``GeminiAudio`` passes audio files directly as Gemini ``inline_data``
-Parts, with automatic chunking for long files.
+``AudioTranscribe`` runs Whisper transcription and returns the transcript as
+text. Suppresses the LLM call via ``generate = {"fast": None, "accurate": None}``.
+
+``GeminiAudio`` passes audio directly as Gemini ``inline_data`` Parts with
+automatic chunking for long files. Generate prompts come from the pipeline YAML.
 """
 
 from __future__ import annotations
 
-import base64
 import logging
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Any, Iterable
 
-from mm.constants import guess_mime
-from mm.encoders import Message, register
+from mm.encoders import register
+from mm.encoders.base import Encoder, Message
+from mm.utils import get_b64
 
 logger = logging.getLogger(__name__)
+
+_EXT_TO_FORMAT: dict[str, str] = {
+    ".mp3": "mp3",
+    ".wav": "wav",
+    ".flac": "flac",
+    ".ogg": "ogg",
+    ".m4a": "m4a",
+    ".aac": "aac",
+    ".opus": "opus",
+    ".webm": "webm",
+}
 
 
 def _to_message(parts: list[dict[str, Any]]) -> Message:
     return {"role": "user", "content": parts}
 
 
-class AudioTranscribe:
-    """Transcribe audio via Whisper, return transcript as a text message.
+class AudioBase64(Encoder):
+    """Send the raw audio file as a base64-encoded ``input_audio`` part.
 
-    Extracts audio with ffmpeg (supports speed adjustment), then runs
-    Whisper transcription.  Returns a single Message with the full
-    transcript text plus per-segment timestamps.
+    This is the native way to pass audio to OpenAI-compatible models —
+    no transcription, no preprocessing, just the raw waveform. The
+    model receives the actual audio and can understand speech, music,
+    ambient sound, etc.
 
     Kwargs:
-        whisper_model: Whisper model size (default "medium").
-        language: Language code or "auto" for detection (default "auto").
-        audio_speed: Playback speed multiplier (default 1.0).
+        format: Audio format hint (default: inferred from file extension).
+            One of ``mp3``, ``wav``, ``flac``, ``ogg``, ``m4a``, ``aac``.
+        max_seconds: audio clip duration to encode
+        overlap: overlap between audio clips
+        mode: fast | accurate.
+        generate_model: --generate.model CLI flag.
     """
 
-    name: str = "transcribe"
-    media_types: tuple[str, ...] = ("audio",)
+    name = "base64"
+    kind = "audio"
 
     def encode(self, path: Path, **kwargs: Any) -> Iterable[Message]:
-        whisper_model: str = kwargs.get("whisper_model", "medium")
-        language: str = kwargs.get("language", "auto")
-        audio_speed: float = kwargs.get("audio_speed", 1.0)
+        from mm.ffmpeg import extract_segment, probe_duration
+        from mm.video import pyav_runnable
 
-        from mm.ffmpeg import extract_audio, ffmpeg_available
-        from mm.whisper import transcribe, whisper_available
-
-        if not ffmpeg_available():
-            yield _to_message(
-                [
-                    {
-                        "type": "text",
-                        "text": f"[ffmpeg not available for {path.name}]",
-                    }
-                ]
-            )
-            return
-
-        if not whisper_available():
-            yield _to_message(
-                [
-                    {
-                        "type": "text",
-                        "text": "[whisper not available — check your mm installation]",
-                    }
-                ]
-            )
-            return
-
-        audio_result = extract_audio(path, speed=audio_speed)
-
-        lang_kwarg: dict[str, str] = {}
-        if language != "auto":
-            lang_kwarg["language"] = language
-
-        whisper_result = transcribe(
-            audio_result.path,
-            model_size=whisper_model,
-            beam_size=5,
-            audio_speed=audio_speed,
-            **lang_kwarg,
+        fmt: str = kwargs.get(
+            "format",
+            _EXT_TO_FORMAT.get(path.suffix.lower(), "mp3"),
         )
 
-        try:
-            audio_result.path.unlink(missing_ok=True)
-        except Exception:
-            pass
+        if not pyav_runnable():
+            yield _to_message(
+                [
+                    {
+                        "type": "input_audio",
+                        "input_audio": {"data": get_b64(path), "format": fmt},
+                    },
+                ]
+            )
+            return
+
+        max_seconds: int = int(kwargs.get("max_seconds", 120))
+        overlap: int = int(kwargs.get("overlap", 10))
+        duration = probe_duration(path)
+        if duration <= max_seconds:
+            logger.debug("base64 [path=%s, duration=%.1fs, single]", path.name, duration)
+            yield _to_message(
+                [
+                    {
+                        "type": "input_audio",
+                        "input_audio": {"data": get_b64(path), "format": fmt},
+                    },
+                ]
+            )
+            return
+
+        import tempfile
+
+        step: float = max(max_seconds - overlap, 1)
+        segments: list[tuple[float, float]] = []
+        start: float = 0.0
+        while start < duration:
+            end = min(start + max_seconds, duration)
+            segments.append((start, end))
+            start += step
+
+        logger.debug(
+            "audio_base64_chunked [path=%s, duration=%.1fs, chunk=%ds, n_segments=%d]",
+            path.name,
+            duration,
+            max_seconds,
+            len(segments),
+        )
+
+        def _submit_fn(varg: tuple[float, float]) -> Message:
+            start, end = varg
+            with tempfile.NamedTemporaryFile(suffix=path.suffix, delete=False) as tmp:
+                seg_path = Path(tmp.name)
+            try:
+                extract_segment(path, seg_path, start, end)
+                seg_data = seg_path.read_bytes()
+            finally:
+                seg_path.unlink(missing_ok=True)
+
+            return _to_message(
+                [
+                    {
+                        "type": "input_audio",
+                        "input_audio": {"data": get_b64(seg_data), "format": fmt},
+                    },
+                ]
+            )
+
+        with ThreadPoolExecutor(max_workers=min(4, len(segments))) as pool:
+            yield from pool.map(_submit_fn, segments)
+
+
+class AudioTranscribe(Encoder):
+    """Transcribe audio and return the transcript as a text message.
+
+    Uses the modular transcription backend system. By default, calls
+    the VLM Run gateway's OpenAI-compatible endpoint. Override
+    ``base_url`` to point at localhost or OpenAI directly.
+
+    Kwargs:
+        model: Model name (default chosen by backend).
+        language: Language code or "auto" for detection (default "auto").
+        audio_speed: Playback speed multiplier (default 2.0).
+        backend: Transcription backend name (``"openai"``, ``"mlx"``,
+            ``"ctranslate2"``).  ``None`` for auto-detect.
+        base_url: Custom base URL for the ``openai`` backend.
+        api_key: API key for the ``openai`` backend.
+    """
+
+    name = "transcribe"
+    kind = "audio"
+    generate = {"fast": None, "accurate": None}
+
+    def encode(self, path: Path, **kwargs: Any) -> Iterable[Message]:
+        model: str | None = kwargs.get("model")
+        language: str = kwargs.get("language", "auto")
+        audio_speed: float = kwargs.get("audio_speed", 2.0)
+
+        backend: str | None = kwargs.get("backend", None)
+        base_url: str | None = kwargs.get("base_url", None)
+        api_key: str | None = kwargs.get("api_key", None)
+
+        if backend is None or base_url is None or api_key is None:
+            from mm.config import get_transcription_config
+
+            cfg = get_transcription_config()
+            backend = backend or cfg.backend
+            base_url = base_url or cfg.base_url
+            api_key = api_key or cfg.api_key
+
+        from mm.common.audio import transcribe_available, transcribe_file
+        from mm.ffmpeg import ffmpeg_available
+
+        if not ffmpeg_available() and backend != "openai":
+            yield _to_message(
+                [
+                    {
+                        "type": "text",
+                        "text": "[ffmpeg not available — required for audio extraction]",
+                    }
+                ]
+            )
+            return
+
+        if not transcribe_available():
+            yield _to_message(
+                [
+                    {
+                        "type": "text",
+                        "text": "[no transcription backend available — check your mm installation]",
+                    }
+                ]
+            )
+            return
+
+        resolved_lang = None if language == "auto" else language
+        whisper_result = transcribe_file(
+            path,
+            model=model,
+            language=resolved_lang,
+            audio_speed=audio_speed,
+            beam_size=5,
+            backend=backend,
+            base_url=base_url,
+            api_key=api_key,
+        )
 
         transcript = whisper_result.text
         if not transcript or transcript.startswith("["):
@@ -113,8 +235,8 @@ class AudioTranscribe:
                     "text": (
                         f"Transcript of {path.name}"
                         f" (lang={whisper_result.language},"
-                        f" model={whisper_model},"
-                        f" {whisper_result.elapsed_ms:.0f}ms):\n\n" + "\n".join(segment_lines)
+                        f" model={whisper_result.model_size},"
+                        f" {whisper_result.elapsed_ms / 1000:.1f}s):\n\n" + "\n".join(segment_lines)
                     ),
                 }
             )
@@ -130,14 +252,14 @@ class AudioTranscribe:
             "audio_transcribe [path=%s, words=%d, model=%s, %.0fms]",
             path.name,
             len(transcript.split()),
-            whisper_model,
+            whisper_result.model_size,
             whisper_result.elapsed_ms,
         )
         yield _to_message(parts)
 
 
-class GeminiAudio:
-    """Pass an audio file directly as a Gemini ``inline_data`` Part.
+class GeminiAudio(Encoder):
+    """Pass an audio file directly as a Gemini ``input_audio`` Part.
 
     For files longer than ``max_seconds``, splits into overlapping
     chunks via ffmpeg and yields one Message per chunk.
@@ -145,71 +267,90 @@ class GeminiAudio:
     Kwargs:
         max_seconds: Maximum chunk length in seconds (default 120).
         overlap: Overlap between chunks in seconds (default 10).
+        mode: fast | accurate.
     """
 
-    name: str = "audio-gemini"
-    media_types: tuple[str, ...] = ("audio",)
+    name = "gemini"
+    kind = "audio"
 
     def encode(self, path: Path, **kwargs: Any) -> Iterable[Message]:
-        max_seconds: int = kwargs.get("max_seconds", 120)
-        overlap: int = kwargs.get("overlap", 10)
+        from mm.ffmpeg import extract_segment, probe_duration
+        from mm.video import pyav_runnable
 
-        from mm.ffmpeg import ffmpeg_available, probe_duration
+        fmt: str = kwargs.get(
+            "format",
+            _EXT_TO_FORMAT.get(path.suffix.lower(), "mp3"),
+        )
 
-        if not ffmpeg_available():
-            data: bytes = path.read_bytes()
-            mime: str = guess_mime(path.name)
-            b64 = base64.b64encode(data).decode()
-            yield _to_message([{"inline_data": {"mime_type": mime, "data": b64}}])
+        if not pyav_runnable():
+            data = path.read_bytes()
+            yield _to_message(
+                [
+                    {
+                        "type": "input_audio",
+                        "input_audio": {"data": get_b64(data), "format": fmt},
+                    },
+                ]
+            )
             return
 
-        duration: float = probe_duration(path)
+        max_seconds: int = kwargs.get("max_seconds", 120)
+        overlap: int = kwargs.get("overlap", 10)
+        duration = probe_duration(path)
+
         if duration <= max_seconds:
             data = path.read_bytes()
-            mime = guess_mime(path.name)
-            b64 = base64.b64encode(data).decode()
             logger.debug("gemini_audio [path=%s, duration=%.1fs, single]", path.name, duration)
-            yield _to_message([{"inline_data": {"mime_type": mime, "data": b64}}])
+            yield _to_message(
+                [
+                    {
+                        "type": "input_audio",
+                        "input_audio": {"data": get_b64(data), "format": fmt},
+                    },
+                ]
+            )
             return
 
         import tempfile
 
-        from mm.ffmpeg import extract_segment
-
-        step: int = max(max_seconds - overlap, 1)
+        step: float = max(max_seconds - overlap, 1)
+        segments: list[tuple[float, float]] = []
         start: float = 0.0
-        chunk_idx: int = 0
+        while start < duration:
+            end = min(start + max_seconds, duration)
+            segments.append((start, end))
+            start += step
 
         logger.debug(
-            "gemini_audio_chunked [path=%s, duration=%.1fs, chunk=%ds]",
+            "gemini_audio_chunked [path=%s, duration=%.1fs, chunk=%ds, n_segments=%d]",
             path.name,
             duration,
             max_seconds,
+            len(segments),
         )
 
-        while start < duration:
-            end: float = min(start + max_seconds, duration)
+        def _submit_fn(varg: tuple[float, float]) -> Message:
+            start, end = varg
             with tempfile.NamedTemporaryFile(suffix=path.suffix, delete=False) as tmp:
                 seg_path = Path(tmp.name)
             try:
-                extract_segment(str(path), str(seg_path), start, end)
+                extract_segment(path, seg_path, start, end)
                 seg_data = seg_path.read_bytes()
             finally:
                 seg_path.unlink(missing_ok=True)
-            mime = guess_mime(path.name)
-            b64 = base64.b64encode(seg_data).decode()
-            yield _to_message(
+            return _to_message(
                 [
                     {
-                        "type": "text",
-                        "text": f"Audio chunk {chunk_idx + 1} ({start:.0f}s-{end:.0f}s):",
+                        "type": "input_audio",
+                        "input_audio": {"data": get_b64(seg_data), "format": fmt},
                     },
-                    {"inline_data": {"mime_type": mime, "data": b64}},
                 ]
             )
-            start += step
-            chunk_idx += 1
+
+        with ThreadPoolExecutor(max_workers=min(4, len(segments))) as pool:
+            yield from pool.map(_submit_fn, segments)
 
 
+register(AudioBase64())
 register(AudioTranscribe())
 register(GeminiAudio())

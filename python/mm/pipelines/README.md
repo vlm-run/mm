@@ -1,3 +1,3 @@
 # Pipelines
 
-See [docs/PIPELINES.md](../../../docs/PIPELINES.md) for the full pipeline and encoder reference.
+See [docs/pipelines.md](../../../docs/pipelines.md) for the full pipeline and encoder reference.

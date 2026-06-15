@@ -11,8 +11,8 @@ from typing import Literal
 
 # -- Media kind type ---------------------------------------------------------
 
-FileKind = Literal["image", "video", "audio", "document", "text"]
-"""Coarse media classification returned by ``file_kind()``."""
+BinaryFileKind = Literal["image", "video", "audio", "document"]
+FileKind = Literal["text"] | BinaryFileKind
 
 
 # -- Extension sets ----------------------------------------------------------
@@ -28,6 +28,9 @@ IMAGE_EXTS: frozenset[str] = frozenset(
         ".tiff",
         ".tif",
         ".svg",
+        ".heif",
+        ".heic",
+        ".avif",
     )
 )
 
@@ -49,19 +52,29 @@ VIDEO_EXTS: frozenset[str] = frozenset(
 )
 
 AUDIO_EXTS: frozenset[str] = frozenset(
-    (
-        ".mp3",
-        ".wav",
-        ".flac",
-        ".aac",
-        ".ogg",
-        ".m4a",
-        ".wma",
-        ".opus",
-    )
+    (".mp3", ".wav", ".flac", ".aac", ".ogg", ".m4a", ".wma", ".opus")
 )
 
-DOCUMENT_EXTS: frozenset[str] = frozenset((".pdf", ".docx", ".pptx"))
+OFFICE_EXTS: frozenset[str] = frozenset((".docx", ".odt", ".pptx", ".odp", ".xlsx", ".ods"))
+DOCUMENT_EXTS: frozenset[str] = frozenset((".pdf", ".doc", *OFFICE_EXTS))
+CODE_EXTS: frozenset[str] = frozenset(
+    (
+        ".py",
+        ".rs",
+        ".js",
+        ".ts",
+        ".go",
+        ".c",
+        ".cpp",
+        ".h",
+        ".java",
+        ".rb",
+        ".sh",
+        ".toml",
+        ".yaml",
+        ".yml",
+    )
+)
 
 
 # -- Extension → MIME mapping ------------------------------------------------
@@ -122,30 +135,3 @@ def guess_mime(path_or_ext: str, *, fallback: str = "application/octet-stream") 
     if not ext and path_or_ext.startswith("."):
         ext = path_or_ext.lower()
     return EXT_TO_MIME.get(ext, fallback)
-
-
-def file_kind(path_or_ext: str) -> FileKind:
-    """Classify a file path or extension into a media kind.
-
-    Args:
-        path_or_ext: A filename, full path, or dotted extension.
-
-    Returns:
-        One of ``"image"``, ``"video"``, ``"audio"``, ``"document"``,
-        or ``"text"``.
-    """
-    from pathlib import PurePosixPath
-
-    ext = PurePosixPath(path_or_ext).suffix.lower()
-    if not ext and path_or_ext.startswith("."):
-        ext = path_or_ext.lower()
-
-    if ext in IMAGE_EXTS:
-        return "image"
-    if ext in VIDEO_EXTS:
-        return "video"
-    if ext in AUDIO_EXTS:
-        return "audio"
-    if ext in DOCUMENT_EXTS:
-        return "document"
-    return "text"

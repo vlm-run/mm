@@ -1,62 +1,89 @@
-"""mm cat -- unified content extraction with pipeline-driven modes.
-
-Behaviour is driven by (file type × pipeline mode). Default is ``--mode fast``,
-which runs the kind's fast pipeline — that may be a pure local extraction
-(e.g. PDF text via pypdfium2, code passthrough) or a short LLM call
-(e.g. ``image/fast.yaml``). ``--mode accurate`` runs the LLM-heavy pipeline.
-
-Three content tiers flow through caching:
-  metadata  — locally-extracted file content (``files.text_preview``);
-              never an LLM call.
-  fast      — output of a fast-mode pipeline run (may include LLM output).
-  accurate  — output of an accurate-mode pipeline run.
-"""
+"""mm cat -- unified content extraction with pipeline-driven modes."""
 
 from __future__ import annotations
 
-import time
+import tempfile
 from pathlib import Path
-from typing import Annotated, Optional
+from typing import TYPE_CHECKING, Annotated, Any, Optional, cast
 
 import typer
 
-from mm.cat_utils.accurate_audio import accurate_audio
-from mm.cat_utils.accurate_image import accurate_image
-from mm.cat_utils.accurate_video import accurate_video
 from mm.cat_utils.base_utils import (
     CatOpts,
     RunResult,
     coerce_opt_value,
     collect_overrides,
-    format_footer,
-    format_generate_verbose,
+    effective_model,
     maybe_confirm_large_cat_batch,
     override_extra,
 )
-from mm.cat_utils.extract_local import extract_local
-from mm.cat_utils.run_encoder import run_encoder
-from mm.encoders.encoders_utils import do_list_encoders
+from mm.cat_utils.extract_meta import extract_meta
+from mm.common.audio._base import BackendLabel
 from mm.pipe import read_paths_from_stdin
-from mm.pipelines.pipelines_utils import (
-    do_list_pipelines,
-    do_print_pipeline,
-    load_pipeline_args,
-    resolve_pipeline,
-)
-from mm.pipelines.schema import PipelineSpec
-from mm.utils import BinaryFileKind, FileKind, Format, file_kind
+from mm.utils import Format, file_kind
+
+if TYPE_CHECKING:
+    from mm.constants import BinaryFileKind
+    from mm.pipelines.schema import PipelineSpec
 
 # Track total bytes processed for throughput calculation
 _total_bytes_processed = 0
 # Track whether the result was served from cache
-_was_cached = False
+_was_cached: bool = False
+
+
+def _is_passthrough(kind: str, ext: str, mode: str) -> bool:
+    """Return True when the file should bypass the encode→generate pipeline."""
+    from mm.constants import OFFICE_EXTS
+
+    return kind == "text" or (
+        kind == "document"
+        and (
+            (ext != ".pdf" and ext not in OFFICE_EXTS)
+            or (ext in OFFICE_EXTS and mode != "accurate")
+        )
+    )
+
+
+def _validate_extra_body_json(raw: str | None) -> str | None:
+    """Validate ``--generate.extra-body`` is a JSON object before pipeline coercion.
+
+    Returns the original string (so ``apply_overrides``'s ``_coerce_generate``
+    can parse it once); raises ``typer.Exit(1)`` with a friendly error
+    message if the string is not valid JSON or does not decode to a dict.
+    """
+    if raw is None:
+        return None
+
+    import json
+
+    try:
+        parsed = json.loads(raw)
+    except json.JSONDecodeError as e:
+        typer.echo(f"Error: --generate.extra-body must be a JSON object: {e}", err=True)
+        raise typer.Exit(1) from e
+    if not isinstance(parsed, dict):
+        typer.echo(
+            f"Error: --generate.extra-body must decode to a JSON object, "
+            f"got {type(parsed).__name__}",
+            err=True,
+        )
+        raise typer.Exit(1)
+    return raw
 
 
 def cat_cmd(
     # -- Most important options first (Typer renders in declaration order) --
     mode: Annotated[
         str,
-        typer.Option("--mode", "-m", help="Processing mode: fast or accurate [default: fast]"),
+        typer.Option(
+            "--mode",
+            "-m",
+            help=(
+                "Processing mode: fast or accurate [default: fast]. "
+                "For raw file metadata, use ``mm peek <file_path>``."
+            ),
+        ),
     ] = "fast",
     pipeline: Annotated[
         Optional[list[str]],
@@ -95,10 +122,27 @@ def cat_cmd(
     no_cache: Annotated[
         bool, typer.Option("--no-cache", help="Bypass cache, force fresh run")
     ] = False,
+    no_generate: Annotated[
+        bool,
+        typer.Option(
+            "--no-generate",
+            help=(
+                "Skip the generate (LLM) step — emit only the encoder's text "
+                "parts. Useful for snapshotting encoder behaviour and offline tests."
+            ),
+        ),
+    ] = False,
     format: Annotated[
         Optional[Format],
         typer.Option(
-            "--format", "-f", help="Output format: json, tsv, csv, dataset-jsonl, dataset-hf"
+            "--format",
+            "-f",
+            help=(
+                "Output format: json (compact in pipes / indented in TTY), "
+                "pretty-json (always indented -- ideal for piping into "
+                "markdown / docs / recordings), tsv, csv, dataset-jsonl, "
+                "dataset-hf."
+            ),
         ),
     ] = None,
     # -- Surviving encode overrides --
@@ -109,6 +153,30 @@ def cat_cmd(
     encode_pyfunc: Annotated[
         Optional[str],
         typer.Option("--encode.pyfunc", help="Custom Python transform (.py file or inline code)"),
+    ] = None,
+    encode_backend: Annotated[
+        Optional[BackendLabel],
+        typer.Option(
+            "--encode.backend",
+            help=(
+                "Transcription backend for audio/video encoding. "
+                "openai (default) — calls any OpenAI-compatible /audio/transcriptions endpoint. "
+                "mlx — Apple Metal GPU (requires mm-ctx[mlx]). "
+                "ctranslate2 — CPU int8 / CUDA float16 (requires mm-ctx[gpu]). "
+                "Encoders that have no backend concept ignore this flag."
+            ),
+        ),
+    ] = None,
+    encode_model: Annotated[
+        Optional[str],
+        typer.Option(
+            "--encode.model",
+            help=(
+                "Model used by the encoder (independent of the LLM generate model). "
+                "For audio/video transcription: e.g. nvidia/parakeet-tdt-0.6b-v3, whisper-1. "
+                "Encoders that have no model concept ignore this flag."
+            ),
+        ),
     ] = None,
     encode_strategy_opts: Annotated[
         Optional[list[str]],
@@ -122,10 +190,27 @@ def cat_cmd(
             ),
         ),
     ] = None,
-    # -- Surviving generate overrides --
-    generate_prompt: Annotated[
+    # -- Generate overrides (CLI > pipeline YAML > profile default) --
+    prompt: Annotated[
         Optional[str],
-        typer.Option("--generate.prompt", help="Override LLM prompt template"),
+        typer.Option(
+            "--prompt",
+            "--generate.prompt",
+            help="Override LLM prompt template (alias: --generate.prompt)",
+        ),
+    ] = None,
+    generate_model: Annotated[
+        Optional[str],
+        typer.Option(
+            "--model",
+            "--generate.model",
+            help=(
+                "Override the model for this call, taking precedence over the "
+                "pipeline's `generate.model` and the active profile's default "
+                "(e.g. 'moondream2', 'qwen3.5-0.8b', 'paddleocr-v5'). "
+                "Alias: --generate.model"
+            ),
+        ),
     ] = None,
     generate_max_tokens: Annotated[
         Optional[str],
@@ -139,8 +224,34 @@ def cat_cmd(
         Optional[str],
         typer.Option("--generate.json-mode", help="Override JSON mode (true/false)"),
     ] = None,
+    generate_extra_body: Annotated[
+        Optional[str],
+        typer.Option(
+            "--generate.extra-body",
+            help=(
+                "JSON object forwarded to the OpenAI SDK's `extra_body` arg, "
+                "deep-merged onto the pipeline's `generate.extra_body` (CLI keys win). "
+                "Use for provider-specific knobs like vlmrt's "
+                "method/method_params/video_fps/image_resolution."
+            ),
+        ),
+    ] = None,
     # -- Utility --
+    stream: Annotated[
+        bool, typer.Option("--stream", help="Stream LLM output token-by-token to stdout")
+    ] = False,
     verbose: Annotated[bool, typer.Option("--verbose", "-v", help="Show progress bars")] = False,
+    dry_run: Annotated[
+        bool,
+        typer.Option(
+            "--dry-run",
+            help=(
+                "Snapshot the pipeline (encode + generate) that "
+                "*would* run, without executing it. For passthrough kinds "
+                "(text, code, .docx, .pptx), emit a short header/info block."
+            ),
+        ),
+    ] = False,
     yes: Annotated[
         bool,
         typer.Option(
@@ -153,36 +264,91 @@ def cat_cmd(
     """Extract and describe file content.
 
     \b
-    Behavior auto-detects from file type. Default mode is 'fast'; '-m accurate'
-    runs the LLM-heavy pipeline. Whether 'fast' invokes an LLM is per-kind —
-    images/video have a short LLM caption stage; audio/docs/code don't.
+    Behavior auto-detects from file type. Default mode is 'fast'. For raw
+    file metadata (dimensions / EXIF / codec / mime / hash), use ``mm peek``.
 
     \b
-    Images:   fast = short VLM caption.       accurate = full VLM caption + tags.
-    Videos:   fast = mosaic → short VLM.      accurate = mosaic + transcript → VLM.
-    Audio:    fast = Whisper transcript.      accurate = transcript → LLM summary.
-    Docs:     fast = text extraction.         accurate = text → LLM summary.
-    Code:     passthrough (no LLM in either mode).
+                                fast (default)                  accurate
+    Images:                     short VLM caption               full VLM caption + tags
+    Videos:                     mosaic → short VLM              mosaic + transcript → VLM
+    Audio:                      Whisper transcript              Whisper transcript (no LLM; use -p base64/-p gemini for LLM)
+    PDFs:                       page-text extraction            text → LLM markdown
+    Non-PDF docs (.docx/.pptx): passthrough text (no LLM)       passthrough text (no LLM)
+    Code / text:                passthrough text (no LLM)       passthrough text (no LLM)
+
+    Non-PDF docs and code/text always passthrough; ``--mode`` is a no-op
+    for those kinds. Chunks are written on first sight.
 
     \b
     Examples:
-      mm cat paper.pdf                      # text extraction (fast)
-      mm cat photo.png -m accurate          # VLM description
+      mm cat main.py                        # passthrough text (kind=text)
+      mm cat notes.docx                     # passthrough text (kind=document, non-PDF)
+      mm cat paper.pdf                      # PDF page-text extraction (fast pipeline)
+      mm cat photo.png                      # short VLM caption (fast pipeline)
+      mm cat photo.png -m accurate          # full VLM description
       mm cat video.mp4 -m accurate          # mosaic → VLM
-      mm cat photo.png -p tile              # use named encoder
-      mm cat photo.png -p my-pipeline.yaml  # custom pipeline YAML
+      mm cat photo.png -p tile        # use named encoder
+      mm cat photo.png -m accurate -p my-pipeline.yaml
+                                            # custom pipeline YAML
       mm cat photo.png -m accurate --encode.strategy_opts max_width=768
                                             # override a single strategy_opts entry
+      mm cat audio.mp3 -m accurate --encode.backend mlx
+                                            # MLX transcription (Apple Silicon)
+      mm cat audio.mp3 -m accurate --encode.backend ctranslate2
+                                            # ctranslate2 transcription (CPU/GPU)
+      mm cat audio.mp3 -m accurate --encode.model whisper-1
+                                            # override transcription model
+      mm cat photo.png -m accurate --prompt "<new_prompt>"
+                                            # override the default pipeline prompt
       mm cat --print-pipeline image/accurate
                                             # inspect the pipeline YAML source
+
+    \b
+    Override surfaces (right-most layer wins on conflict):
+      profile (mm.toml)  ->  pipeline YAML (generate.*)  ->  CLI flags
+        base_url              prompt                          --prompt / --generate.prompt
+        api_key               model                           --model  / --generate.model
+        model (default)       max_tokens                      --generate.max-tokens
+                              temperature                     --generate.temperature
+                              json_mode                       --generate.json-mode
+                              extra_body (deep-merged)        --generate.extra-body
+
+    \b
+    Per-call provider/model/extra-body overrides (e.g. vlmrt deployments):
+      # Florence-2 OCR on a scanned page
+      mm --profile vlmrt cat page.png -m accurate \\
+        --model florence-2-base-ft \\
+        --generate.extra-body '{"method":"ocr"}'
+
+      # Moondream2 object detection
+      mm --profile vlmrt cat photo.jpg -m accurate \\
+        --model moondream2 \\
+        --generate.extra-body '{"method":"detect","method_params":{"object":"fish"}}'
+
+      # PaddleOCR scene-text recognition (Chinese, custom score threshold)
+      mm --profile vlmrt cat storefront.jpg -m accurate \\
+        --model paddleocr-v5 \\
+        --generate.extra-body '{"method":"ocr","method_params":{"lang":"ch","score_threshold":0.6}}'
+
+      # Qwen3.5 video summarization with frame sampling knobs
+      mm --profile vlmrt cat clip.mp4 -m accurate \\
+        --model qwen3.5-0.8b \\
+        --prompt "Summarize this clip in two sentences." \\
+        --generate.extra-body '{"video_fps":1.0,"video_max_frames":8}'
     """
     if list_pipelines:
+        from mm.pipelines.pipelines_utils import do_list_pipelines
+
         do_list_pipelines()
         return
     if list_encoders:
+        from mm.encoders.encoders_utils import do_list_encoders
+
         do_list_encoders()
         return
     if print_pipeline is not None:
+        from mm.pipelines.pipelines_utils import do_print_pipeline
+
         do_print_pipeline(print_pipeline)
         return
 
@@ -201,13 +367,18 @@ def cat_cmd(
     maybe_confirm_large_cat_batch(len(paths), assume_yes=yes)
 
     if mode not in ("fast", "accurate"):
-        typer.echo(f"Error: Unknown mode {mode!r}. Use 'fast' or 'accurate'.", err=True)
+        typer.echo(
+            f"Error: Unknown mode {mode!r}. Use 'fast' or 'accurate'. ",
+            err=True,
+        )
         raise typer.Exit(1)
 
     enc_overrides: dict[str, str | dict[str, str]] = {
         **collect_overrides(
             strategy=encode_strategy,
             pyfunc=encode_pyfunc,
+            backend=encode_backend,
+            model=encode_model,
         )
     }
     if encode_strategy_opts:
@@ -224,16 +395,22 @@ def cat_cmd(
             if isinstance(enc_overrides["strategy_opts"], dict):
                 enc_overrides["strategy_opts"][key] = coerce_opt_value(val)
 
-    gen_overrides = collect_overrides(
-        prompt=generate_prompt,
+    gen_overrides: dict[str, Any] = collect_overrides(
+        prompt=prompt,
+        model=generate_model,
         max_tokens=generate_max_tokens,
         temperature=generate_temperature,
         json_mode=generate_json_mode,
     )
+    validated_extra_body = _validate_extra_body_json(generate_extra_body)
+    if validated_extra_body is not None:
+        gen_overrides["extra_body"] = validated_extra_body
 
     # -- Load explicit pipeline/-p args (YAML files or named encoders) keyed by kind --
     pipeline_specs: dict[str, PipelineSpec] = {}
     if pipeline:
+        from mm.pipelines.pipelines_utils import load_pipeline_args
+
         pipeline_specs = load_pipeline_args(pipeline)
 
     from mm.display import resolve_format
@@ -245,11 +422,14 @@ def cat_cmd(
         output_dir=output_dir,
         mode=mode,
         no_cache=no_cache,
+        no_generate=no_generate,
         format=fmt,
         encode_overrides=enc_overrides,
         generate_overrides=gen_overrides,
         pipelines=pipeline_specs,
         verbose=verbose,
+        dry_run=dry_run,
+        stream=stream,
     )
 
     multi_file = len(paths) > 1
@@ -260,6 +440,7 @@ def cat_cmd(
     _total_bytes_processed = 0
     _was_cached = False
 
+    valid_paths: list[Path] = []
     for file_path in paths:
         p = Path(file_path)
         if not p.exists():
@@ -268,18 +449,25 @@ def cat_cmd(
 
             prune_missing(uris=[str(p.resolve())])
             continue
-
-        # Track bytes for throughput calculation
+        valid_paths.append(p)
         _total_bytes_processed += p.stat().st_size
 
+    def _process(p: Path) -> str:
         content = _extract(p, opts)
-
         if n is not None:
-            all_lines = content.splitlines()
-            content = "\n".join(all_lines[:n] if n >= 0 else all_lines[n:])
+            lines = content.splitlines()
+            content = "\n".join(lines[:n] if n >= 0 else lines[n:])
+        return content
 
-        if fmt in ("json", "dataset-jsonl", "dataset-hf"):
-            if fmt == "json":
+    def _render(p: Path, content: str) -> None:
+        nonlocal _emitted
+        if fmt in ("json", "pretty-json", "dataset-jsonl", "dataset-hf"):
+            if fmt in ("json", "pretty-json"):
+                # ``pretty-json`` shares the wire shape with ``json`` --
+                # only the serializer indentation differs (always
+                # indented vs TTY-conditional). Same {path, mode,
+                # content} envelope so downstream parsers don't have
+                # to special-case the format flag.
                 entry: dict = {"path": str(p), "mode": mode, "content": content}
             else:
                 entry = {
@@ -298,22 +486,25 @@ def cat_cmd(
                 if _emitted > 0:
                     output_console.print("\n====")
                 output_console.print(f"<{p.name}>")
-            _display_rich(p, content, mode, n)
+            _display_rich(p, content, mode, n, skip_formatting=dry_run)
             _emitted += 1
         else:
             if multi_file:
                 if _emitted > 0:
                     print("\n====")
                 print(f"<{p.name}>")
+
             _dim_prefix = "[dim]"
             lines = content.split("\n")
             plain_lines: list[str] = []
             rich_lines: list[str] = []
+
             for ln in lines:
                 if _dim_prefix in ln:
                     rich_lines.append(ln)
                 else:
                     plain_lines.append(ln)
+
             if plain_lines:
                 print("\n".join(plain_lines))
             if rich_lines:
@@ -322,7 +513,43 @@ def cat_cmd(
                 output_console.print("\n".join(rich_lines))
             _emitted += 1
 
-    if fmt in ("json", "dataset-jsonl", "dataset-hf"):
+    if valid_paths and stream:
+        for p in valid_paths:
+            if multi_file:
+                typer.echo(f"<{p.name}>", err=True)
+            try:
+                content = _process(p)
+            except Exception as exc:
+                typer.echo(f"Error processing {p}: {exc}", err=True)
+                continue
+
+            import mm.llm as _llm_mod
+
+            if _llm_mod.streamed_to_stdout:
+                # Content already written to stdout;
+                # emit the verbose suffix (pipeline tree + timing) if present.
+                parts = content.split("\n\n")
+                suffix_parts = [p for p in parts if "[dim]" in p]
+                if suffix_parts:
+                    from mm.display import output_console
+
+                    output_console.print("\n".join(suffix_parts))
+            else:
+                _render(p, content)
+    elif valid_paths:
+        from concurrent.futures import ThreadPoolExecutor
+
+        with ThreadPoolExecutor(max_workers=min(8, len(valid_paths))) as pool:
+            futures = [pool.submit(_process, p) for p in valid_paths]
+            for p, fut in zip(valid_paths, futures, strict=True):
+                try:
+                    content = fut.result()
+                except Exception as exc:
+                    typer.echo(f"Error processing {p}: {exc}", err=True)
+                    continue
+                _render(p, content)
+
+    if fmt in ("json", "pretty-json", "dataset-jsonl", "dataset-hf") and results:
         from mm.display import emit_rows
 
         emit_rows(fmt, results, output_dir=str(output_dir) if output_dir else "mm_dataset")
@@ -334,31 +561,41 @@ def cat_cmd(
 
 
 def _extract(path: Path, opts: CatOpts) -> str:
-    """Pipeline-driven extraction dispatch with unified extraction caching.
-
-    1. Auto-detect kind from file extension
-    2. Check the ``extractions`` cache (applies to both fast and accurate modes)
-    3. Resolve pipeline (explicit -p > toml override > built-in)
-    4. Apply CLI overrides
-    5. Run encode step (kind-specific metadata extraction or encoder)
-    6. If generate is not None: run LLM call
-    7. If generate is None: output encode result directly
-    8. Store content + verbose metadata in the extraction cache
-    """
+    """Pipeline-driven extraction dispatch with unified extraction caching."""
+    global _was_cached
     kind = file_kind(path)
+    ext = path.suffix.lower()
+    if opts.dry_run:
+        return _dry_run_preview(path, kind, ext, opts)
 
-    # Text-like kinds (code, config, plain text) bypass caching — they're passthrough.
-    if kind == "text":
-        return extract_local(path, kind, no_cache=opts.no_cache)
+    if _is_passthrough(kind, ext, opts.mode):
+        from mm.cat_utils.extract_meta import extract_text
 
+        assert kind in ("document", "text")
+        content, cached = extract_text(path, kind)  # type: ignore[arg-type]
+        if cached:
+            _was_cached = True
+        return content
+
+    kind = cast("BinaryFileKind", kind)
+    from mm.constants import OFFICE_EXTS
+    from mm.encoders.auto_strategy import resolve_auto_strategy
+    from mm.pipelines import apply_overrides
+    from mm.pipelines.pipelines_utils import resolve_pipeline
     from mm.profile import get_profile
-    from mm.store.db import MmDatabase
-    from mm.store.utils import get_content_hash
+    from mm.store.utils import get_content_hash, shared_db
 
-    db = MmDatabase()
+    db = shared_db()
     profile = get_profile()
-    content_hash = get_content_hash(path)
 
+    # Resolve & merge the pipeline spec exactly once so the cache key reflects
+    # the effective model and the merged extra_body — required for correct
+    # invalidation on `--model` / `--generate.extra-body` changes.
+    spec = resolve_pipeline(opts, kind)
+    spec = apply_overrides(spec, opts.encode_overrides or None, opts.generate_overrides or None)
+    spec = resolve_auto_strategy(path, spec, opts)
+
+    eff_model = effective_model(spec, profile.model)
     extra = override_extra(
         opts.encode_overrides,
         opts.generate_overrides,
@@ -366,13 +603,14 @@ def _extract(path: Path, opts: CatOpts) -> str:
     )
 
     extraction_id: str | None = None
+    content_hash = get_content_hash(path)
     if content_hash:
         from mm.store.utils import get_extraction_id
 
         extraction_id = get_extraction_id(
             content_hash,
             profile.name,
-            profile.model,
+            eff_model,
             opts.mode,
             False,
             extra=extra,
@@ -381,7 +619,6 @@ def _extract(path: Path, opts: CatOpts) -> str:
         if not opts.no_cache:
             cached = db.get_extraction(extraction_id)
             if cached is not None:
-                global _was_cached
                 _was_cached = True
                 if opts.verbose:
                     meta = db.get_extraction_metadata(extraction_id)
@@ -392,19 +629,20 @@ def _extract(path: Path, opts: CatOpts) -> str:
         else:
             db.evict_extraction(extraction_id)
 
-    # Each branch returns a RunResult carrying the rendered verbose tail
-    # (regardless of opts.verbose) so we can persist it for replay on a
-    # future cached + verbose run.
-    if opts.mode == "accurate":
-        run = _run_accurate(path, kind, opts)
+    if ext in OFFICE_EXTS and opts.mode == "accurate":
+        with tempfile.TemporaryDirectory(prefix="mm-office-") as tmpdir:
+            from mm._mm import office_to_pdf
+
+            tmp_pdf = Path(tmpdir) / f"{path.stem}.pdf"
+            office_to_pdf(str(path), str(tmp_pdf))
+            run = _run_accurate(tmp_pdf, kind, spec, opts, meta_path=path)
+    elif opts.mode == "accurate":
+        run = _run_accurate(path, kind, spec, opts)
     else:
-        run = _run_fast(path, kind, opts)
+        run = _run_fast(path, kind, spec, opts)
 
     if content_hash and run.content and not run.content.startswith("["):
-        # Ensure the file's locally-extracted content is in the files table —
-        # put_extraction reads it via get_file_content for the chunked 'fast'
-        # layer. extract_local is idempotent (cached by content_hash).
-        extract_local(path, kind)
+        extract_meta(path, kind)
         uri = str(path.resolve())
         meta = {"verbose_suffix": run.verbose_suffix} if run.verbose_suffix else None
         try:
@@ -412,7 +650,7 @@ def _extract(path: Path, opts: CatOpts) -> str:
                 uri=uri,
                 content_hash=content_hash,
                 profile=profile.name,
-                model=profile.model,
+                model=eff_model,
                 content=run.content,
                 mode=opts.mode,
                 detail=False,
@@ -421,13 +659,6 @@ def _extract(path: Path, opts: CatOpts) -> str:
             )
         except RuntimeError:
             return _format_run(run, opts.verbose)
-        if extraction_id:
-            try:
-                from mm.store.embed import embed_file_chunks
-
-                embed_file_chunks(extraction_id)
-            except Exception:
-                pass
     return _format_run(run, opts.verbose)
 
 
@@ -438,62 +669,40 @@ def _format_run(run: RunResult, verbose: bool) -> str:
     return run.content
 
 
-def _run_fast(path: Path, kind: FileKind, opts: CatOpts) -> RunResult:
-    """Fast mode: run the kind's fast pipeline.
+def _run_fast(path: Path, kind: BinaryFileKind, spec: PipelineSpec, opts: CatOpts) -> RunResult:
+    """Fast mode: run the kind's fast pipeline."""
+    from mm.cat_utils.run_encoder import run_encoder
 
-    Whether this involves an LLM depends on the YAML pipeline — e.g.
-    ``image/fast.yaml`` defines a short LLM caption stage; ``code/text``
-    passes through raw content with no LLM call. The output is tagged
-    ``mode='fast'`` in ``extractions``/``chunks``.
-    """
-    if kind == "text":
-        return RunResult(content=extract_local(path, kind, no_cache=opts.no_cache))
+    if getattr(opts, "no_generate", False):
+        import dataclasses
 
-    from mm.pipelines import apply_overrides
-
-    spec = resolve_pipeline(opts, kind)
-    spec = apply_overrides(spec, opts.encode_overrides or None, opts.generate_overrides or None)
+        spec = dataclasses.replace(spec, generate=None)
     if spec.encode.strategy:
         return run_encoder(path, kind, spec, opts)
 
-    content = extract_local(path, kind, no_cache=opts.no_cache)
-
-    if spec.generate is None:
-        return RunResult(content=content)
-
-    from mm.llm import LlmBackend
-    from mm.profile import get_active_profile_name
-
-    t0 = time.monotonic()
-    llm = LlmBackend()
-    result = llm.generate(
-        kind,
-        "fast",
-        context={"filename": path.name, "content": content[:4000]},
-        pipeline_spec=spec,
-    )
-
-    elapsed = (time.monotonic() - t0) * 1000
-    u = llm.last_usage
-    footer = format_footer(path, "fast", elapsed, u.prompt_tokens, u.completion_tokens)
-
-    profile_name = get_active_profile_name()
-    generate_output = format_generate_verbose(
-        profile_name, elapsed, u.prompt_tokens, u.completion_tokens
-    )
-    suffix = "\n\n".join([generate_output, footer])
-
-    return RunResult(content=result, verbose_suffix=suffix)
+    return RunResult(content=extract_meta(path, kind, no_cache=opts.no_cache))
 
 
-def _run_accurate(path: Path, kind: BinaryFileKind, opts: CatOpts) -> RunResult:
-    """Accurate mode: LLM-powered semantic extraction."""
-    from mm.pipelines import apply_overrides
+def _run_accurate(
+    path: Path,
+    kind: BinaryFileKind,
+    spec: PipelineSpec,
+    opts: CatOpts,
+    *,
+    meta_path: Path | None = None,
+) -> RunResult:
+    """Accurate mode: LLM-powered semantic extraction.
 
-    spec = resolve_pipeline(opts, kind)
-    spec = apply_overrides(spec, opts.encode_overrides or None, opts.generate_overrides or None)
+    ``spec`` is the merged (YAML + CLI) pipeline spec resolved by
+    ``_extract``; this function does no further override application
+    ``meta_path`` reference to the original office file
+    """
+    if getattr(opts, "no_generate", False):
+        import dataclasses
 
-    extract_local(path, kind)
+        spec = dataclasses.replace(spec, generate=None)
+
+    extract_meta(meta_path or path, kind, no_cache=opts.no_cache)
 
     return _accurate_dispatch(path, kind, spec, opts)
 
@@ -502,6 +711,10 @@ def _accurate_dispatch(
     path: Path, kind: BinaryFileKind, spec: PipelineSpec, opts: CatOpts
 ) -> RunResult:
     """Dispatch accurate-mode extraction based on file kind."""
+    from mm.cat_utils.accurate_audio import accurate_audio
+    from mm.cat_utils.accurate_image import accurate_image
+    from mm.cat_utils.accurate_video import accurate_video
+
     if kind == "image":
         return accurate_image(path, spec, opts)
     if kind == "video":
@@ -509,42 +722,16 @@ def _accurate_dispatch(
     if kind == "audio":
         return accurate_audio(path, spec, opts)
 
+    from mm.cat_utils.run_encoder import run_encoder
+
     if spec.encode.strategy:
         return run_encoder(path, kind, spec, opts)
 
-    content = extract_local(path, kind)
-    if spec.generate is None:
-        return RunResult(content=content)
-
-    from mm.llm import LlmBackend
-    from mm.profile import get_active_profile_name
-
-    t0 = time.monotonic()
-    llm = LlmBackend()
-    result = llm.generate(
-        kind,
-        "accurate",
-        context={"filename": path.name, "content": content[:4000]},
-        pipeline_spec=spec,
-    )
-    elapsed = (time.monotonic() - t0) * 1000
-    u = llm.last_usage
-
-    profile_name = get_active_profile_name()
-    generate_output = format_generate_verbose(
-        profile_name, elapsed, u.prompt_tokens, u.completion_tokens
-    )
-    footer = format_footer(path, "accurate", elapsed, u.prompt_tokens, u.completion_tokens)
-    suffix = "\n\n".join([generate_output, footer])
-
-    return RunResult(content=result, verbose_suffix=suffix)
+    return RunResult(content=extract_meta(path, kind))
 
 
 def _display_rich(
-    path: Path,
-    content: str,
-    mode: str,
-    n: int | None,
+    path: Path, content: str, mode: str, n: int | None, *, skip_formatting: bool = False
 ) -> None:
     from mm.display import output_console
 
@@ -552,32 +739,37 @@ def _display_rich(
     kind = file_kind(path)
     is_binary = kind in ("image", "document", "video", "audio") or "\x00" in content[:512]
 
-    if not is_binary and ext in (
-        "py",
-        "rs",
-        "js",
-        "ts",
-        "tsx",
-        "jsx",
-        "go",
-        "java",
-        "c",
-        "cpp",
-        "h",
-        "hpp",
-        "rb",
-        "sh",
-        "bash",
-        "zsh",
-        "yaml",
-        "yml",
-        "toml",
-        "json",
-        "md",
-        "html",
-        "css",
-        "sql",
-        "xml",
+    if (
+        not skip_formatting
+        and not is_binary
+        and ext
+        in (
+            "py",
+            "rs",
+            "js",
+            "ts",
+            "tsx",
+            "jsx",
+            "go",
+            "java",
+            "c",
+            "cpp",
+            "h",
+            "hpp",
+            "rb",
+            "sh",
+            "bash",
+            "zsh",
+            "yaml",
+            "yml",
+            "toml",
+            "json",
+            "md",
+            "html",
+            "css",
+            "sql",
+            "xml",
+        )
     ):
         from rich.syntax import Syntax
 
@@ -611,3 +803,65 @@ def _display_rich(
         output_console.print(syntax)
     else:
         output_console.print(content)
+
+
+def _dry_run_preview(path: Path, kind: str, ext: str, opts: CatOpts) -> str:
+    """Render the resolved pipeline for ``path × opts.mode`` without invoking it.
+    For passthrough kinds (``kind=text``, or non-PDF/non-office documents), emit a short header/info block.
+    """
+    from mm.constants import OFFICE_EXTS
+    from mm.display import format_size
+    from mm.encoders.auto_strategy import resolve_auto_strategy
+    from mm.pipelines import apply_overrides
+    from mm.pipelines.pipelines_utils import resolve_pipeline
+    from mm.profile import get_profile
+
+    if _is_passthrough(kind, ext, opts.mode):
+        size_str = format_size(path.stat().st_size)
+        header = f"\n# {path} (kind={kind}, mode={opts.mode}) — passthrough preview (--dry-run)"
+        info_lines = [
+            f"  ├─ size: {size_str}",
+            "  └─ passthrough: content emitted as-is \\[skipped via --dry-run]",
+        ]
+        return "\n".join(["[dim]", header, "passthrough", *info_lines, "[/dim]"])
+
+    spec = resolve_pipeline(opts, kind)
+    spec = apply_overrides(spec, opts.encode_overrides or None, opts.generate_overrides or None)
+    autoencode = spec.encode.strategy == "auto" or (
+        spec.encode.strategy is None and spec.generate is not None
+    )
+    spec = resolve_auto_strategy(path, spec, opts)
+    header = f"\n# {path} (kind={kind}, mode={opts.mode}) — pipeline preview (--dry-run)"
+
+    encode = spec.encode
+    strategy = encode.strategy or "<unspecified>"
+    strategy = f"auto → {strategy}" if autoencode else strategy
+    enc_opts = encode.strategy_opts or {}
+    enc_opts_str = (
+        ", ".join(f"{k}={v}" for k, v in sorted(enc_opts.items())) if enc_opts else "<defaults>"
+    )
+
+    if spec.generate is not None:
+        gen = spec.generate
+        lines = (gen.prompt or "").strip().splitlines()
+        first_line = lines[0] if lines else ""
+        if len(first_line) > 60:
+            first_line = first_line[:60] + "..."
+
+        prompt_part = f' · prompt="{first_line}"' if first_line else ""
+        profile = get_profile()
+        eff = gen.model or profile.model
+        gen_line = (
+            f"generate: profile={profile.name} · model={eff}{prompt_part}  [skipped via --dry-run]"
+        )
+    else:
+        gen_line = "generate: <none>  [encode-only pipeline]"
+
+    if ext in OFFICE_EXTS and opts.mode == "accurate":
+        header += " [routes through office→PDF before encode]"
+
+    middle: list[str] = [f"  ├─ encode: {strategy} · {enc_opts_str}"]
+    if encode.pyfunc:
+        middle.append(f"  ├─ pyfunc: {encode.pyfunc}")
+
+    return "\n".join(["[dim]", header, "pipeline", *middle, f"  └─ {gen_line}", "[/dim]"])

@@ -1,0 +1,62 @@
+# Audio pipeline spec — all available strategies and their options.
+#
+# Copy this file to ~/.config/mm/pipelines/audio/{mode}.yaml
+# and customise the values you need.  Omitted strategy_opts fall back
+# to their defaults.  The generate block is optional — leave it out
+# for encode-only (transcript-only) pipelines.
+
+kind: audio
+mode: fast        # fast | accurate
+
+# ── encode ──────────────────────────────────────────────────────────
+
+encode:
+
+  # ── transcribe (default) ──────────────────────────────────
+  # Transcribes audio via the modular backend system.  By default
+  # uses the VLM Run gateway (OpenAI-compatible).  Override base_url
+  # to point at localhost or OpenAI directly.
+  strategy: transcribe
+  # model: nvidia/parakeet-tdt-0.6b-v3     # encoder model (default for gateway)
+  # backend: openai                        # "openai" | "mlx" | "ctranslate2"
+  strategy_opts:
+    # language: auto                        # language code or "auto"
+    # audio_speed: 2.0                      # playback speed multiplier
+    # base_url: null                        # custom OpenAI-compatible endpoint
+    # api_key: null                         # API key for that endpoint
+
+  # ── base64 ────────────────────────────────────────────────
+  # Sends raw audio as a base64 input_audio part (no transcription).
+  # Best for models with native audio understanding.
+  # strategy: base64
+  # strategy_opts:
+  #   format: mp3             # mp3 | wav | flac | ogg | m4a | aac | opus | webm
+  #                           # default: inferred from file extension
+
+  # ── gemini ────────────────────────────────────────────────
+  # Passes audio as Gemini inline_data Part(s).  Long files are
+  # automatically chunked.
+  # strategy: gemini
+  # strategy_opts:
+  #   max_seconds: 120        # max chunk length in seconds
+  #   overlap: 10             # overlap between chunks in seconds
+
+  # Custom post-processing transform (optional).
+  # pyfunc: null
+
+# ── generate (optional — omit for encode-only) ──────────────────
+
+generate:
+  prompt: >-
+    Summarize this audio recording ({filename}) based on the transcript.
+    Provide a concise summary (~80 words) covering the main topics discussed.
+
+    Transcript:
+    {transcript}
+  max_tokens: 512
+  # model: null              # pin a specific LLM model (overrides profile)
+  # temperature: null        # sampling temperature (null = model default)
+  # json_mode: false         # request JSON-formatted response
+  # think: false             # enable extended thinking
+  # reasoning_effort: none   # none | low | medium | high
+  # extra_body: {}           # provider-specific pass-through kwargs

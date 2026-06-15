@@ -3,6 +3,11 @@ mode: fast
 
 encode:
   strategy: transcribe
+  backend: openai
+  model: nvidia/parakeet-tdt-0.6b-v3
   strategy_opts:
-    whisper_model: tiny
     audio_speed: 2.0
+
+generate:
+  prompt: "Describe this audio in 10 words or less."
+  max_tokens: 128

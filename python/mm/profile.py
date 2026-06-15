@@ -14,21 +14,21 @@ time, resolved via: CLI --profile > MM_PROFILE env > active_profile in file > ol
 
 TOML layout:
 
-    active_profile = "ollama"
+    active_profile = "gateway"
 
     [profile.ollama]
-    base_url = "http://localhost:11434"
-    model = "qwen3.5:0.8"
+    base_url = "http://localhost:11434/v1"
+    model = "gemma4:e2b"
     api_key = ""
 
-    [profile.gemini]
+    [profile.gateway]
+    base_url = "https://gateway.vlm.run/v1/openai"
+    model = "qwen/qwen3.5-0.8b"
+    api_key = ""
+
+    [profile.openrouter]
     base_url = "https://openrouter.ai/api/v1"
-    model = "google/gemini-2.5-flash-lite"
-    api_key = ""
-
-    [profile.vlmrun]
-    base_url = "https://mm-ctx.ngrok.io/v1"
-    model = "Qwen/Qwen3.5-0.8B"
+    model = "google/gemma-4-26b-a4b-it:free"
     api_key = ""
 """
 
@@ -50,37 +50,53 @@ from mm.config import (
 # ── Defaults ────────────────────────────────────────────────────────
 
 ENV_PROFILE = "MM_PROFILE"
-RESERVED_PROFILES = ("ollama", "gemini", "vlmrun")
-IMMUTABLE_PROFILES = frozenset({"vlmrun"})
-DEFAULT_PROFILE = "ollama"
+RESERVED_PROFILES = ("ollama", "gateway", "openrouter")
+IMMUTABLE_PROFILES = frozenset({"gateway"})
+DEFAULT_PROFILE = "gateway"
 
 
 OLLAMA_DEFAULTS = {
     "name": "ollama",
-    "base_url": "http://localhost:11434",
+    "base_url": "http://localhost:11434/v1",
     "api_key": "",
-    "model": "qwen3.5:0.8",
+    "model": "gemma4:e2b",
 }
 
-GEMINI_DEFAULTS = {
-    "name": "gemini",
+GATEWAY_DEFAULTS = {
+    "name": "gateway",
+    "base_url": "https://gateway.vlm.run/v1/openai",
+    "api_key": "vlmrun",
+    "model": "qwen/qwen3.5-0.8b",
+}
+
+OPENROUTER_DEFAULTS = {
+    "name": "openrouter",
     "base_url": "https://openrouter.ai/api/v1",
     "api_key": "",
-    "model": "google/gemini-2.5-flash-lite",
-}
-
-VLMRUN_DEFAULTS = {
-    "name": "vlmrun",
-    "base_url": "https://mm-ctx.ngrok.io/v1",
-    "api_key": "",
-    "model": "Qwen/Qwen3.5-0.8B",
+    "model": "google/gemma-4-26b-a4b-it:free",
 }
 
 RESERVED_DEFAULTS = {
     "ollama": OLLAMA_DEFAULTS,
-    "gemini": GEMINI_DEFAULTS,
-    "vlmrun": VLMRUN_DEFAULTS,
+    "gateway": GATEWAY_DEFAULTS,
+    "openrouter": OPENROUTER_DEFAULTS,
 }
+
+GATEWAY_BASE_URL = GATEWAY_DEFAULTS["base_url"]
+EMBEDDING_BASE_URL = os.environ.get("MM_EMBEDDING_BASE_URL", GATEWAY_BASE_URL)
+TRANSCRIPTION_BASE_URL = os.environ.get("MM_TRANSCRIPTION_BASE_URL", GATEWAY_BASE_URL)
+EMBEDDING_MODEL = os.environ.get("MM_EMBEDDING_MODEL", "qwen/qwen3-vl-embedding-2b")
+
+
+def gateway_api_key() -> str:
+    """Return the API key configured on the built-in ``gateway`` profile."""
+    try:
+        file_data = load_profile_config()
+        return str(
+            get_profile_section(file_data, "gateway").get("api_key") or GATEWAY_DEFAULTS["api_key"]
+        )
+    except Exception:
+        return GATEWAY_DEFAULTS["api_key"]
 
 
 class ProfileUpdateData(TypedDict, total=False):
@@ -102,7 +118,7 @@ class Profile:
 
 def _profiles(file_data: ConfigData) -> dict[str, ProfileData]:
     """Return the mutable profile mapping from config data."""
-    return cast(dict[str, ProfileData], file_data.setdefault("profile", {}))
+    return file_data.setdefault("profile", {})
 
 
 def get_profile_defaults(profile_name: str) -> dict[str, str]:
@@ -354,3 +370,66 @@ def get_profile() -> Profile:
         api_key=_resolve("api_key", file_data, profile_name),
         model=_resolve("model", file_data, profile_name),
     )
+
+
+def clone_profile(
+    source: str,
+    dest: str,
+    *,
+    base_url: str | None = None,
+    api_key: str | None = None,
+    model: str | None = None,
+) -> Path:
+    """Clone an existing profile into a new one, optionally overriding fields.
+
+    Copies all fields from *source* then applies any non-None overrides.
+    Returns the config file path.
+
+    Args:
+        source: Name of the profile to clone from.
+        dest: Name of the new profile to create.
+        base_url: Override the base_url field; if None, inherited from source.
+        api_key: Override the api_key field; if None, inherited from source.
+        model: Override the model field; if None, inherited from source.
+
+    Returns:
+        Path to the written config file.
+
+    Raises:
+        ValueError: If *source* doesn't exist, *dest* already exists, or
+            *dest* is an invalid profile name.
+    """
+    _validate_profile_name(dest)
+
+    file_data = load_profile_config()
+    profiles = _profiles(file_data)
+
+    # Resolve source — reserved profiles are always available even if not in
+    # the profiles dict, so fall back to their defaults.
+    if source in profiles:
+        src_section = {k: v for k, v in profiles[source].items()}
+    elif source in RESERVED_PROFILES:
+        src_section = {k: v for k, v in RESERVED_DEFAULTS[source].items() if k != "name"}
+    else:
+        raise ValueError(f"Profile '{source}' not found. Available: {', '.join(sorted(profiles))}")
+
+    if dest in profiles:
+        raise ValueError(f"Profile '{dest}' already exists. Use 'mm profile update' to modify it.")
+
+    cloned = {
+        "base_url": base_url if base_url is not None else src_section.get("base_url", ""),
+        "api_key": api_key or "",
+        "model": model if model is not None else src_section.get("model", ""),
+    }
+    profiles[dest] = cast(ProfileData, cloned)
+    return write_full_config(file_data)
+
+
+def get_profile_by_name(name: str) -> ProfileData:
+    """get a profile by the name"""
+    file_data = load_profile_config()
+    profiles = _profiles(file_data)
+    if name not in profiles:
+        raise ValueError(f"Profile '{name}' not found. Available: {', '.join(sorted(profiles))}")
+
+    return profiles[name]

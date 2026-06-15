@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
-import pyarrow as pa
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from pyarrow import Table
 
 class Scanner:
     """High-performance file scanner powered by Rust."""
@@ -16,7 +19,7 @@ class Scanner:
     ) -> None: ...
     def scan(self) -> int: ...
     def num_files(self) -> int: ...
-    def to_arrow(self) -> pa.Table: ...
+    def to_arrow(self) -> Table: ...
     def write_parquet(self, path: str) -> None: ...
     def to_json(self) -> str: ...
     def to_markdown(self) -> str: ...
@@ -120,6 +123,40 @@ def gemini_document_part(path: str) -> str:
     """Serialize document as Gemini inline_data Part JSON string."""
     ...
 
+class OfficeMetadata:
+    """Office document metadata extracted via libreoffice-pure."""
+
+    author: str
+    title: str
+    subject: str
+    description: str
+    keywords: list[str]
+    created: str
+    modified: str
+    pages: int | None
+
+class OfficeDoc:
+    """Office document content + metadata extracted via libreoffice-pure."""
+
+    content: str
+    meta: OfficeMetadata
+
+def office_content(path: str) -> str:
+    """Extract just the content of a docx/doc/odt/pdf/xlsx/ods/pptx/odp file."""
+    ...
+
+def office_metadata(path: str) -> OfficeMetadata:
+    """Extract just the metadata of a docx/doc/odt/pdf/xlsx/ods/pptx/odp file."""
+    ...
+
+def office_parse_full(path: str) -> OfficeDoc:
+    """Parse a docx/doc/odt/pdf/xlsx/ods/pptx/odp file and return content + metadata."""
+    ...
+
+def office_to_pdf(input: str, output: str) -> str:
+    """Convert a supported office document to PDF; return the output path."""
+    ...
+
 # Incremental multimodal context (Rust-backed Context core)
 
 class PyContext:
@@ -131,8 +168,9 @@ class PyContext:
     def __init__(self, session_id: str | None = None) -> None: ...
     def __len__(self) -> int: ...
     def num_items(self) -> int: ...
-    def put(
+    def add(
         self,
+        role: str,
         kind: str,
         source_kind: str,
         source_value: str,
@@ -141,6 +179,7 @@ class PyContext:
         py_obj: object | None = None,
         metadata_json: str | None = None,
     ) -> str: ...
+    def remove(self, ref_id: str) -> None: ...
     def get(self, ref_id: str) -> object: ...
     def item(self, ref_id: str) -> dict[str, object]: ...
     def items(self) -> list[dict[str, object]]: ...

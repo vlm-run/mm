@@ -11,10 +11,11 @@ from pathlib import Path
 
 import pyarrow as pa
 import pytest
-from typer.testing import CliRunner
-
 from mm.cli import app
 from mm.context import Context
+from typer.testing import CliRunner
+
+from .test_utils import write_png
 
 runner = CliRunner()
 
@@ -26,10 +27,10 @@ runner = CliRunner()
 def media_tree(tmp_path: Path) -> Path:
     """Directory with real images, fake video, code, documents, and configs."""
     # Real 1x1 PNG
-    _write_png(tmp_path / "logo.png", 1, 1)
+    write_png(tmp_path / "logo.png", 1, 1)
 
     # Real 2x3 PNG (different dimensions)
-    _write_png(tmp_path / "banner.png", 2, 3)
+    write_png(tmp_path / "banner.png", 2, 3)
 
     # Real 10x10 JPEG
     _write_jpeg(tmp_path / "photo.jpg", 10, 10)
@@ -50,35 +51,13 @@ def media_tree(tmp_path: Path) -> Path:
     # Nested structure
     sub = tmp_path / "sub" / "deep"
     sub.mkdir(parents=True)
-    _write_png(sub / "nested.png", 4, 5)
+    write_png(sub / "nested.png", 4, 5)
     (sub / "helper.py").write_text("def helper(): pass\n")
 
     # Fake video (just bytes, won't decode, but kind detection works)
     (tmp_path / "clip.mp4").write_bytes(b"\x00" * 200)
 
     return tmp_path
-
-
-def _write_png(path: Path, width: int, height: int):
-    """Create a valid PNG by constructing the binary format directly."""
-    import struct
-    import zlib
-
-    raw = b""
-    for _ in range(height):
-        raw += b"\x00" + b"\x80\x00\x40" * width
-    compressed = zlib.compress(raw)
-
-    def _chunk(ctype, data):
-        c = ctype + data
-        return struct.pack(">I", len(data)) + c + struct.pack(">I", zlib.crc32(c) & 0xFFFFFFFF)
-
-    ihdr_data = struct.pack(">IIBBBBB", width, height, 8, 2, 0, 0, 0)
-    png = b"\x89PNG\r\n\x1a\n"
-    png += _chunk(b"IHDR", ihdr_data)
-    png += _chunk(b"IDAT", compressed)
-    png += _chunk(b"IEND", b"")
-    path.write_bytes(png)
 
 
 def _write_jpeg(path: Path, width: int, height: int):
@@ -344,7 +323,7 @@ class TestExtensionMime:
 
 
 class TestDBRoundtrip:
-    def test_roundtrip_preserves_dimensions(self, media_tree: Path):
+    def test_roundtrip_preserves_dimensions(self, media_tree: Path, isolated_db: Path):
         ctx = Context(media_tree)
         ctx.save()
 
@@ -358,7 +337,7 @@ class TestDBRoundtrip:
         assert all(r["width"] is not None for r in pngs)
         assert all(r["height"] is not None for r in pngs)
 
-    def test_roundtrip_column_count(self, media_tree: Path):
+    def test_roundtrip_column_count(self, media_tree: Path, isolated_db: Path):
         ctx = Context(media_tree)
         ctx.save()
 
@@ -392,7 +371,7 @@ class TestMetadataCli:
         )
         assert result.exit_code == 0
 
-    def test_sql_dimensions_query(self, media_tree: Path):
+    def test_sql_dimensions_query(self, media_tree: Path, isolated_db: Path):
         result = runner.invoke(
             app,
             [

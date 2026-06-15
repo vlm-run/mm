@@ -26,7 +26,7 @@ else:
     sys.excepthook = _quiet_broken_pipe
 
 from mm import __version__
-from mm.commands import bench, cat, find, grep, sql, wc
+from mm.commands import bench, cat, find, grep, peek, sql, wc
 from mm.commands.config import config_app
 from mm.commands.profile import profile_app
 
@@ -89,11 +89,16 @@ app = typer.Typer(
     pretty_exceptions_enable=False,
 )
 
-_TIMED_COMMANDS = {"find", "cat", "grep", "sql", "wc"}
+_TIMED_COMMANDS = {"find", "cat", "grep", "peek", "sql", "wc"}
 _LLM_COMMANDS = {"cat", "bench"}
+_SPINNER_COMMANDS = {"cat", "sql", "grep"}
 
 
-@app.callback(invoke_without_command=True)
+@app.callback(
+    invoke_without_command=True,
+    help="Fast, multimodal context for agents.",
+    epilog=f"mm v{__version__}",
+)
 def _main(
     ctx: typer.Context,
     profile: Annotated[
@@ -104,11 +109,28 @@ def _main(
         str, typer.Option("--color", help="Color output: auto, always, never")
     ] = "auto",
     version: Annotated[bool, typer.Option("--version", "-v", help="Show version and exit")] = False,
+    debug: Annotated[
+        bool,
+        typer.Option("--debug", help="Enable debug logging (Python + Rust tracing)"),
+    ] = False,
 ) -> None:
-    """Fast, multimodal context for agents."""
     if version:
-        typer.echo(f"mm v{__version__}")
+        from mm.version import version_imprint
+
+        typer.echo(f"mm {version_imprint(__version__)}")
         raise typer.Exit()
+
+    if debug:
+        import logging
+        import os
+
+        logging.basicConfig(
+            level=logging.WARNING,
+            format="%(asctime)s %(name)s %(levelname)s %(message)s",
+            datefmt="%H:%M:%S",
+        )
+        logging.getLogger("mm").setLevel(logging.DEBUG)
+        os.environ.setdefault("RUST_LOG", "debug")
 
     if ctx.invoked_subcommand is None:
         _print_banner()
@@ -131,6 +153,11 @@ def _main(
         sys.exit = _check_exit
         atexit.register(_display_elapsed)
 
+    if cmd in _SPINNER_COMMANDS:
+        from mm.display import root_progress
+
+        root_progress()
+
     if cmd in _LLM_COMMANDS:
         from mm._logfire import cli_span
         from mm.profile import get_profile
@@ -145,6 +172,7 @@ app.command(name="bench")(bench.bench_cmd)
 app.command(name="find")(find.find_cmd)
 app.command(name="cat")(cat.cat_cmd)
 app.command(name="grep")(grep.grep_cmd)
+app.command(name="peek")(peek.peek_cmd)
 app.command(name="sql")(sql.sql_cmd)
 app.command(name="wc")(wc.wc_cmd)
 app.add_typer(config_app, name="config")

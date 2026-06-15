@@ -1,4 +1,4 @@
-"""Performance benchmarks for the put-based :class:`mm.Context` API.
+"""Performance benchmarks for the role-aware :class:`mm.Context` API.
 
 These exercise the full PyO3 boundary (Python caller → Rust core →
 Python return) and complement the pure-Rust Criterion suite at
@@ -11,7 +11,7 @@ only execute under ``make test-python-full`` / ``pytest -m slow``.
 Budgets (wall-clock) are loose enough to survive noisy CI but tight
 enough to catch accidental O(n²) regressions. Override via env vars:
 
-- ``MM_TEST_REFS_PUT_10K_MAX_S`` (default 2.0s)
+- ``MM_TEST_REFS_ADD_10K_MAX_S`` (default 2.0s)
 - ``MM_TEST_REFS_GET_HIT_MAX_US`` (default 25.0µs / op, 10k ctx)
 - ``MM_TEST_REFS_TO_MSG_10K_MAX_S`` (default 2.5s for openai @ 10k paths)
 - ``MM_TEST_REFS_TREE_10K_MAX_S`` (default 2.0s; Rich print dominates)
@@ -21,7 +21,6 @@ enough to catch accidental O(n²) regressions. Override via env vars:
 
 from __future__ import annotations
 
-import io
 import os
 import time
 from pathlib import Path
@@ -39,7 +38,7 @@ pytestmark = pytest.mark.slow
 
 @pytest.fixture(scope="module")
 def ten_image_paths(tmp_path_factory: pytest.TempPathFactory) -> list[Path]:
-    """Ten tiny PNGs. Cycled by the bench to hit the `put(Path)` path
+    """Ten tiny PNGs. Cycled by the bench to hit the `add(Path)` path
     without doing 10K disk writes in fixture setup."""
     root = tmp_path_factory.mktemp("ten_pngs")
     paths: list[Path] = []
@@ -52,19 +51,8 @@ def ten_image_paths(tmp_path_factory: pytest.TempPathFactory) -> list[Path]:
 
 @pytest.fixture(scope="module")
 def pil_image_pool() -> list[Image.Image]:
-    """Ten small PIL images (kept alive for in-memory put benches)."""
+    """Ten small PIL images (kept alive for in-memory add benches)."""
     return [Image.new("RGB", (32, 32), (i * 20 % 256, 0, 0)) for i in range(10)]
-
-
-@pytest.fixture(scope="module")
-def bytes_pool() -> list[bytes]:
-    """Ten small PNG byte blobs."""
-    blobs: list[bytes] = []
-    for i in range(10):
-        buf = io.BytesIO()
-        Image.new("RGB", (16, 16), (i * 25 % 256, 0, 0)).save(buf, format="PNG")
-        blobs.append(buf.getvalue())
-    return blobs
 
 
 def _budget_s(name: str, default: float) -> float:
@@ -74,14 +62,14 @@ def _budget_s(name: str, default: float) -> float:
 def _build_ctx(paths: list[Path], n: int) -> mm.Context:
     ctx = mm.Context()
     for i in range(n):
-        ctx.put(paths[i % len(paths)])
+        ctx.add(paths[i % len(paths)])
     return ctx
 
 
 def _build_ctx_with_meta(paths: list[Path], n: int) -> mm.Context:
     ctx = mm.Context()
     for i in range(n):
-        ctx.put(
+        ctx.add(
             paths[i % len(paths)],
             metadata={
                 "note": f"note {i}",
@@ -95,40 +83,30 @@ def _build_ctx_with_meta(paths: list[Path], n: int) -> mm.Context:
 # ── pytest-benchmark micro-benches (throughput / latency) ─────────────
 
 
-class TestBenchPut:
-    def test_put_path_1k(self, benchmark, ten_image_paths: list[Path]):
-        """Throughput of ``ctx.put(Path)`` at 1K items."""
+class TestBenchAdd:
+    def test_add_path_1k(self, benchmark, ten_image_paths: list[Path]):
+        """Throughput of ``ctx.add(Path)`` at 1K items."""
         result = benchmark(_build_ctx, ten_image_paths, 1_000)
         assert len(result.items()) == 1_000
 
-    def test_put_path_10k(self, benchmark, ten_image_paths: list[Path]):
+    def test_add_path_10k(self, benchmark, ten_image_paths: list[Path]):
         result = benchmark(_build_ctx, ten_image_paths, 10_000)
         assert len(result.items()) == 10_000
 
-    def test_put_path_with_metadata_1k(self, benchmark, ten_image_paths: list[Path]):
+    def test_add_path_with_metadata_1k(self, benchmark, ten_image_paths: list[Path]):
         """Metadata is JSON-serialised and reparsed in Rust — make sure
         adding ``note``/``summary``/``tags`` doesn't blow up throughput."""
         result = benchmark(_build_ctx_with_meta, ten_image_paths, 1_000)
         assert len(result.items()) == 1_000
 
-    def test_put_pil_1k(self, benchmark, pil_image_pool: list[Image.Image]):
+    def test_add_pil_1k(self, benchmark, pil_image_pool: list[Image.Image]):
         """In-memory PIL path — stores a ``Py<PyAny>`` + mime/byte_len.
-        Note: each put keeps a refcount on the pooled image — no copy."""
+        Note: each add keeps a refcount on the pooled image — no copy."""
 
         def build() -> mm.Context:
             ctx = mm.Context()
             for i in range(1_000):
-                ctx.put(pil_image_pool[i % len(pil_image_pool)])
-            return ctx
-
-        result = benchmark(build)
-        assert len(result.items()) == 1_000
-
-    def test_put_bytes_1k(self, benchmark, bytes_pool: list[bytes]):
-        def build() -> mm.Context:
-            ctx = mm.Context()
-            for i in range(1_000):
-                ctx.put(bytes_pool[i % len(bytes_pool)])
+                ctx.add(pil_image_pool[i % len(pil_image_pool)])
             return ctx
 
         result = benchmark(build)
@@ -238,13 +216,13 @@ class TestBenchRefNotFound:
 # ── Latency-budget regression guards (wall-clock, no benchmark fixture) ─
 
 
-def test_put_10k_under_budget(ten_image_paths: list[Path]) -> None:
-    budget = _budget_s("MM_TEST_REFS_PUT_10K_MAX_S", 2.0)
+def test_add_10k_under_budget(ten_image_paths: list[Path]) -> None:
+    budget = _budget_s("MM_TEST_REFS_ADD_10K_MAX_S", 2.0)
     t0 = time.perf_counter()
     ctx = _build_ctx(ten_image_paths, 10_000)
     elapsed = time.perf_counter() - t0
     assert len(ctx.items()) == 10_000
-    assert elapsed < budget, f"put×10k took {elapsed:.3f}s (budget {budget}s)"
+    assert elapsed < budget, f"add×10k took {elapsed:.3f}s (budget {budget}s)"
 
 
 def test_get_hit_amortised_under_budget(ten_image_paths: list[Path]) -> None:
@@ -270,7 +248,7 @@ def test_to_messages_10k_under_budget_openai(ten_image_paths: list[Path]) -> Non
     ctx = mm.Context()
     only_path = ten_image_paths[0]
     for _ in range(10_000):
-        ctx.put(only_path)
+        ctx.add(only_path)
     t0 = time.perf_counter()
     msgs = ctx.to_messages(format="openai")
     elapsed = time.perf_counter() - t0
@@ -342,5 +320,5 @@ def test_memory_footprint_10k_path_under_budget(ten_image_paths: list[Path]) -> 
     total = sum(stat.size_diff for stat in diff if stat.size_diff > 0)
     assert len(ctx.items()) == 10_000
     assert total < budget_bytes, (
-        f"Python-side alloc for 10k put was {total:,}B (budget {budget_bytes:,}B)"
+        f"Python-side alloc for 10k add was {total:,}B (budget {budget_bytes:,}B)"
     )

@@ -9,13 +9,13 @@ import pytest
 from mm.store import MmDatabase
 from mm.store.schema import (
     ChunkCol,
-    FileCol,
     ExtractionCol,
+    FileCol,
 )
 from mm.store.utils import get_extraction_id
 
 from .conftest import requires_sqlite_vec
-from .test_utils import ROOT, ensure_metadata, ensure_fast, get_hash, scanner_table
+from .test_utils import ROOT, ensure_fast, ensure_metadata, get_hash, scanner_table
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -117,7 +117,7 @@ class TestUpsertFiles:
     def test_upsert_preserves_fast_on_rescan(self, db: MmDatabase):
         ensure_metadata(db, ["doc.txt"])
         # Fill fast columns
-        db.update_file_fields(
+        db.put_file_content(
             "/test/data/doc.txt",
             {
                 FileCol.CONTENT_HASH: "abc123",
@@ -150,7 +150,7 @@ class TestUpdateFast:
     def test_update_sets_fast_fields(self, db: MmDatabase):
         uri = "/test/data/img.png"
         ensure_metadata(db, [uri], kinds=["image"])
-        db.update_file_fields(
+        db.put_file_content(
             uri,
             {
                 FileCol.CONTENT_HASH: "hash_xyz",
@@ -163,11 +163,11 @@ class TestUpdateFast:
         assert f[FileCol.CONTENT_HASH] == "hash_xyz"
         assert f[FileCol.PHASH] == "00ff00ff"
         assert f[FileCol.DIMENSIONS] == "800x600"
-        assert f[FileCol.CONTENT_INDEXED_AT] is not None
+        assert f[FileCol.CONTENT_INDEXED_AT] is None
 
     def test_update_fast_noop_for_missing_file(self, db: MmDatabase):
         # Should not raise
-        db.update_file_fields("/nonexistent", {FileCol.CONTENT_HASH: "abc"})
+        db.put_file_content("/nonexistent", {FileCol.CONTENT_HASH: "abc"})
 
 
 # ---------------------------------------------------------------------------
@@ -206,7 +206,13 @@ class TestFileContentCache:
 
     def test_put_and_get_file_content(self, db: MmDatabase):
         ensure_metadata(db, ["/test/data/doc.txt"])
-        db.put_file_content("/test/data/doc.txt", "hash_abc", "extracted text content")
+        db.put_file_content(
+            "/test/data/doc.txt",
+            {
+                FileCol.CONTENT_HASH: "hash_abc",
+                FileCol.TEXT_PREVIEW: "extracted text content",
+            },
+        )
         result = db.get_file_content("hash_abc")
         assert result == "extracted text content"
 
@@ -526,6 +532,46 @@ class TestEmbeddings:
 
 
 # ---------------------------------------------------------------------------
+# sqlite-vec extension auto-loading (centralized in _VecConnection / _load_vec)
+# ---------------------------------------------------------------------------
+
+
+def _seed_embeddings(path: Path) -> None:
+    seed = MmDatabase(db_path=path)
+    uri = "/test/data/doc.txt"
+    ensure_fast(seed, uri)
+    extraction_id = seed.put_extraction(uri, get_hash(uri), "default", "qwen", "content " * 50)
+    seed.upsert_embeddings(extraction_id=extraction_id, vectors=[[0.1, 0.2], [0.3, 0.4]])
+
+
+class TestVecAutoLoad:
+    @requires_sqlite_vec
+    def test_raw_chunks_vec_query_autoloads_on_fresh_connection(self, tmp_path: Path):
+        path = tmp_path / "test.db"
+        _seed_embeddings(path)
+
+        conn = MmDatabase(db_path=path)._connect
+        assert getattr(conn, "_vec_loaded", None) is None
+
+        count = conn.execute("SELECT COUNT(*) FROM chunks_vec").fetchone()[0]
+        assert count >= 1
+        assert getattr(conn, "_vec_loaded", None) is True
+
+    @requires_sqlite_vec
+    def test_sql_method_on_chunks_vec_autoloads(self, tmp_path: Path):
+        path = tmp_path / "test.db"
+        _seed_embeddings(path)
+
+        _, rows = MmDatabase(db_path=path).sql("SELECT COUNT(*) AS n FROM chunks_vec")
+        assert rows[0][0] >= 1
+
+    def test_vector_free_query_never_loads_extension(self, db: MmDatabase):
+        ensure_metadata(db, ["a.py"])
+        db.sql("SELECT COUNT(*) FROM chunks")
+        assert getattr(db._connect, "_vec_loaded", None) is None
+
+
+# ---------------------------------------------------------------------------
 # SQL
 # ---------------------------------------------------------------------------
 
@@ -738,7 +784,10 @@ class TestPruneMissing:
         uri = str(p)
         db.ensure_metadata(uri)
         content_hash = get_hash(p)
-        db.put_file_content(uri, content_hash, "fast content")
+
+        db.put_file_content(
+            uri, {FileCol.CONTENT_HASH: content_hash, FileCol.TEXT_PREVIEW: "fast content"}
+        )
         extraction_id = db.put_extraction(uri, content_hash, "default", "qwen", "accurate summary")
 
         assert db.get_extraction(extraction_id) is not None

@@ -21,32 +21,33 @@ from mm.config import (
 )
 from mm.profile import (
     DEFAULT_PROFILE,
-    GEMINI_DEFAULTS,
+    GATEWAY_DEFAULTS,
     OLLAMA_DEFAULTS,
+    OPENROUTER_DEFAULTS,
     PROFILE_KEYS,
     RESERVED_PROFILES,
-    VLMRUN_DEFAULTS,
     Profile,
     add_profile,
     get_active_profile_name,
     get_profile,
     get_profile_names,
     get_profile_section,
+    clone_profile,
     remove_profile,
     set_active_profile,
     update_profile,
 )
 
 # Convenience: a non-default reserved profile for "switch-to" tests
-OTHER_PROFILE = "gemini"
-OTHER_DEFAULTS = GEMINI_DEFAULTS
+OTHER_PROFILE = "openrouter"
+OTHER_DEFAULTS = OPENROUTER_DEFAULTS
 
 # Profile data as stored on disk (write_full_config only writes base_url, api_key, model).
 # RESERVED_DEFAULTS include "name" but TOML serialization drops it, so _read_config_file
 # returns dicts without "name".
 _OLLAMA_DATA = {k: v for k, v in OLLAMA_DEFAULTS.items() if k != "name"}
-_GEMINI_DATA = {k: v for k, v in GEMINI_DEFAULTS.items() if k != "name"}
-_VLMRUN_DATA = {k: v for k, v in VLMRUN_DEFAULTS.items() if k != "name"}
+_GATEWAY_DATA = {k: v for k, v in GATEWAY_DEFAULTS.items() if k != "name"}
+_OPENROUTER_DATA = {k: v for k, v in OPENROUTER_DEFAULTS.items() if k != "name"}
 
 
 def _profiles(file_data: ConfigData) -> dict[str, ProfileData]:
@@ -82,19 +83,19 @@ def _isolate_config(tmp_path: Path, monkeypatch):
 
 @pytest.fixture
 def two_profile_config(tmp_path: Path) -> Path:
-    """Write a config file with ollama + gemini profiles and return the path."""
-    toml = """\
-active_profile = "ollama"
+    """Write a config file with ollama + openrouter profiles and return the path."""
+    toml = f"""\
+active_profile = "{DEFAULT_PROFILE}"
 
 [profile.ollama]
-base_url = "http://localhost:11434"
+base_url = "{OLLAMA_DEFAULTS["base_url"]}"
 api_key = ""
-model = "qwen3.5:0.8"
+model = "{OLLAMA_DEFAULTS["model"]}"
 
-[profile.gemini]
-base_url = "https://openrouter.ai/api/v1"
+[profile.openrouter]
+base_url = "{OPENROUTER_DEFAULTS["base_url"]}"
 api_key = ""
-model = "google/gemini-2.5-flash-lite"
+model = "{OPENROUTER_DEFAULTS["model"]}"
 """
     cfg_path = tmp_path / "config.toml"
     cfg_path.write_text(toml)
@@ -140,11 +141,11 @@ class TestGetProfileSection:
         file_data = _read_config_file()
         assert get_profile_section(file_data, "nonexistent") == {}
 
-    def test_reads_gemini_profile(self, two_profile_config):
+    def test_reads_openrouter_profile(self, two_profile_config):
         file_data = _read_config_file()
-        section = get_profile_section(file_data, "gemini")
-        assert section["base_url"] == GEMINI_DEFAULTS["base_url"]
-        assert section["model"] == GEMINI_DEFAULTS["model"]
+        section = get_profile_section(file_data, "openrouter")
+        assert section["base_url"] == OPENROUTER_DEFAULTS["base_url"]
+        assert section["model"] == OPENROUTER_DEFAULTS["model"]
 
 
 # ── Profile names listing ───────────────────────────────────────────
@@ -154,8 +155,8 @@ class TestGetProfileNames:
     def test_lists_all_profiles(self, two_profile_config):
         names = get_profile_names()
         assert "ollama" in names
-        assert "gemini" in names
-        assert "vlmrun" in names
+        assert "gateway" in names
+        assert "openrouter" in names
 
     def test_empty_config_shows_all_reserved(self):
         names = get_profile_names()
@@ -168,30 +169,30 @@ class TestBuiltinNormalization:
         profile = get_profile()
         assert profile == Profile(
             name=DEFAULT_PROFILE,
-            base_url=OLLAMA_DEFAULTS["base_url"],
-            api_key=OLLAMA_DEFAULTS["api_key"],
-            model=OLLAMA_DEFAULTS["model"],
+            base_url=GATEWAY_DEFAULTS["base_url"],
+            api_key=GATEWAY_DEFAULTS["api_key"],
+            model=GATEWAY_DEFAULTS["model"],
         )
 
-    def test_missing_vlmrun_profile_is_added_with_defaults(self, tmp_path: Path):
+    def test_missing_gateway_profile_is_added_with_defaults(self, tmp_path: Path):
         (tmp_path / "config.toml").write_text(
-            """\
+            f"""\
 active_profile = "ollama"
 
 [profile.ollama]
-base_url = "http://localhost:11434"
+base_url = "{OLLAMA_DEFAULTS["base_url"]}"
 api_key = ""
-model = "qwen3.5:0.8"
+model = "{OLLAMA_DEFAULTS["model"]}"
 """
         )
 
         profile_names = get_profile_names()
-        assert "vlmrun" in profile_names
-        assert "gemini" in profile_names
+        assert "gateway" in profile_names
+        assert "openrouter" in profile_names
 
         file_data = _read_config_file()
-        assert _profiles(file_data)["vlmrun"]["base_url"] == VLMRUN_DEFAULTS["base_url"]
-        assert _profiles(file_data)["vlmrun"]["model"] == VLMRUN_DEFAULTS["model"]
+        assert _profiles(file_data)["gateway"]["base_url"] == GATEWAY_DEFAULTS["base_url"]
+        assert _profiles(file_data)["gateway"]["model"] == GATEWAY_DEFAULTS["model"]
 
     def test_all_reserved_profiles_present_after_normalization(self):
         """No config file at all — all reserved profiles are created."""
@@ -216,9 +217,9 @@ class TestProfileResolutionWithProfiles:
         profile = get_profile()
         assert profile == Profile(
             name=DEFAULT_PROFILE,
-            base_url=OLLAMA_DEFAULTS["base_url"],
-            api_key=OLLAMA_DEFAULTS["api_key"],
-            model=OLLAMA_DEFAULTS["model"],
+            base_url=GATEWAY_DEFAULTS["base_url"],
+            api_key=GATEWAY_DEFAULTS["api_key"],
+            model=GATEWAY_DEFAULTS["model"],
         )
 
     def test_switched_profile_matches_actual_profile(self, two_profile_config):
@@ -226,9 +227,9 @@ class TestProfileResolutionWithProfiles:
         profile = get_profile()
         assert profile == Profile(
             name=OTHER_PROFILE,
-            base_url=GEMINI_DEFAULTS["base_url"],
-            api_key=GEMINI_DEFAULTS["api_key"],
-            model=GEMINI_DEFAULTS["model"],
+            base_url=OPENROUTER_DEFAULTS["base_url"],
+            api_key=OPENROUTER_DEFAULTS["api_key"],
+            model=OPENROUTER_DEFAULTS["model"],
         )
 
     def test_env_profile_matches_actual_profile(self, two_profile_config, monkeypatch):
@@ -236,9 +237,9 @@ class TestProfileResolutionWithProfiles:
         profile = get_profile()
         assert profile == Profile(
             name=OTHER_PROFILE,
-            base_url=GEMINI_DEFAULTS["base_url"],
-            api_key=GEMINI_DEFAULTS["api_key"],
-            model=GEMINI_DEFAULTS["model"],
+            base_url=OPENROUTER_DEFAULTS["base_url"],
+            api_key=OPENROUTER_DEFAULTS["api_key"],
+            model=OPENROUTER_DEFAULTS["model"],
         )
 
     def test_nonexistent_profile_raises(self, two_profile_config):
@@ -257,9 +258,9 @@ class TestProfileResolutionWithProfiles:
         profile = get_profile()
         assert profile == Profile(
             name=DEFAULT_PROFILE,
-            base_url=OLLAMA_DEFAULTS["base_url"],
-            api_key=OLLAMA_DEFAULTS["api_key"],
-            model=OLLAMA_DEFAULTS["model"],
+            base_url=GATEWAY_DEFAULTS["base_url"],
+            api_key=GATEWAY_DEFAULTS["api_key"],
+            model=GATEWAY_DEFAULTS["model"],
         )
 
 
@@ -276,7 +277,7 @@ class TestAddProfile:
 
     def test_add_duplicate_raises(self, two_profile_config):
         with pytest.raises(ValueError, match="already exists"):
-            add_profile("gemini", base_url="http://dup", model="dup-m")
+            add_profile("openrouter", base_url="http://dup", model="dup-m")
 
     def test_add_requires_base_url(self, two_profile_config):
         with pytest.raises(ValueError, match="base_url is required"):
@@ -312,56 +313,56 @@ class TestAddProfile:
 
 class TestUpdateProfile:
     def test_update_single_field(self, two_profile_config):
-        update_profile("gemini", model="gemini-2.0-flash")
+        update_profile("openrouter", model="google/gemma-3-27b-it:free")
         file_data = _read_config_file()
-        assert _profiles(file_data)["gemini"]["model"] == "gemini-2.0-flash"
+        assert _profiles(file_data)["openrouter"]["model"] == "google/gemma-3-27b-it:free"
         # Other fields preserved
-        assert _profiles(file_data)["gemini"]["base_url"] == GEMINI_DEFAULTS["base_url"]
-        assert _profiles(file_data)["gemini"]["api_key"] == ""
+        assert _profiles(file_data)["openrouter"]["base_url"] == OPENROUTER_DEFAULTS["base_url"]
+        assert _profiles(file_data)["openrouter"]["api_key"] == ""
 
     def test_update_multiple_fields(self, two_profile_config):
-        update_profile("gemini", base_url="http://new-gemini:8000", model="gemini-2.0")
+        update_profile("openrouter", base_url="http://new-router:8000", model="new-model")
         file_data = _read_config_file()
-        assert _profiles(file_data)["gemini"]["base_url"] == "http://new-gemini:8000"
-        assert _profiles(file_data)["gemini"]["model"] == "gemini-2.0"
-        assert _profiles(file_data)["gemini"]["api_key"] == ""
+        assert _profiles(file_data)["openrouter"]["base_url"] == "http://new-router:8000"
+        assert _profiles(file_data)["openrouter"]["model"] == "new-model"
+        assert _profiles(file_data)["openrouter"]["api_key"] == ""
 
     def test_update_api_key(self, two_profile_config):
-        update_profile("gemini", api_key="sk-new-key")
+        update_profile("openrouter", api_key="sk-new-key")
         file_data = _read_config_file()
-        assert _profiles(file_data)["gemini"]["api_key"] == "sk-new-key"
+        assert _profiles(file_data)["openrouter"]["api_key"] == "sk-new-key"
 
     def test_update_immutable_rejected(self, two_profile_config):
         with pytest.raises(ValueError, match="cannot be modified"):
-            update_profile("vlmrun", model="other-model")
+            update_profile("gateway", model="other-model")
 
     def test_update_ollama_allowed(self, two_profile_config):
         """ollama is reserved but mutable — update should succeed."""
-        update_profile("ollama", model="qwen3.5:1.7b")
+        update_profile("ollama", model="gemma4:12b")
         file_data = _read_config_file()
-        assert _profiles(file_data)["ollama"]["model"] == "qwen3.5:1.7b"
+        assert _profiles(file_data)["ollama"]["model"] == "gemma4:12b"
 
     def test_update_all_fields(self, two_profile_config):
-        update_profile("gemini", base_url="http://x", api_key="k", model="m")
+        update_profile("openrouter", base_url="http://x", api_key="k", model="m")
         file_data = _read_config_file()
-        p = _profiles(file_data)["gemini"]
+        p = _profiles(file_data)["openrouter"]
         assert p["base_url"] == "http://x"
         assert p["api_key"] == "k"
         assert p["model"] == "m"
 
     def test_update_rejects_empty_base_url(self, two_profile_config):
         with pytest.raises(ValueError, match="base_url cannot be empty"):
-            update_profile("gemini", base_url="")
+            update_profile("openrouter", base_url="")
 
     def test_update_rejects_empty_model(self, two_profile_config):
         with pytest.raises(ValueError, match="model cannot be empty"):
-            update_profile("gemini", model="")
+            update_profile("openrouter", model="")
 
     def test_update_allows_empty_api_key(self, two_profile_config):
         """api_key can be set to empty (e.g. local Ollama needs no key)."""
-        update_profile("gemini", api_key="")
+        update_profile("openrouter", api_key="")
         file_data = _read_config_file()
-        assert _profiles(file_data)["gemini"]["api_key"] == ""
+        assert _profiles(file_data)["openrouter"]["api_key"] == ""
 
     def test_update_nonexistent_raises(self, two_profile_config):
         with pytest.raises(ValueError, match="not found"):
@@ -369,18 +370,18 @@ class TestUpdateProfile:
 
     def test_update_no_fields_raises(self, two_profile_config):
         with pytest.raises(ValueError, match="No fields to update"):
-            update_profile("gemini")
+            update_profile("openrouter")
 
     def test_update_preserves_other_profiles(self, two_profile_config):
-        update_profile("gemini", model="gemini-2.0")
+        update_profile("openrouter", model="new-model")
         file_data = _read_config_file()
         assert _profiles(file_data)["ollama"]["model"] == OLLAMA_DEFAULTS["model"]
 
     def test_update_reflects_in_profile(self, two_profile_config):
-        set_cli_overrides(profile="gemini")
-        update_profile("gemini", model="gemini-updated")
+        set_cli_overrides(profile="openrouter")
+        update_profile("openrouter", model="updated-model")
         profile = get_profile()
-        assert profile.model == "gemini-updated"
+        assert profile.model == "updated-model"
 
 
 class TestRemoveProfile:
@@ -395,13 +396,13 @@ class TestRemoveProfile:
         with pytest.raises(ValueError, match="cannot be removed"):
             remove_profile("ollama")
 
-    def test_remove_gemini_fails(self, two_profile_config):
+    def test_remove_openrouter_fails(self, two_profile_config):
         with pytest.raises(ValueError, match="cannot be removed"):
-            remove_profile("gemini")
+            remove_profile("openrouter")
 
-    def test_remove_vlmrun_fails(self, two_profile_config):
+    def test_remove_gateway_fails(self, two_profile_config):
         with pytest.raises(ValueError, match="cannot be removed"):
-            remove_profile("vlmrun")
+            remove_profile("gateway")
 
     def test_remove_active_non_reserved_raises(self, two_profile_config):
         add_profile("scratch", base_url="http://scratch", model="scratch-model")
@@ -414,36 +415,113 @@ class TestRemoveProfile:
             remove_profile("nope")
 
 
+class TestCloneProfile:
+    def test_clone_exact_copy(self, two_profile_config):
+        clone_profile("openrouter", "openrouter-copy")
+        file_data = _read_config_file()
+        src = _profiles(file_data)["openrouter"]
+        dst = _profiles(file_data)["openrouter-copy"]
+        assert dst["base_url"] == src["base_url"]
+        assert dst["model"] == src["model"]
+        assert dst["api_key"] == src["api_key"]
+
+    def test_clone_with_model_override(self, two_profile_config):
+        clone_profile("openrouter", "openrouter-fast", model="google/gemma-3-27b-it:free")
+        file_data = _read_config_file()
+        dst = _profiles(file_data)["openrouter-fast"]
+        assert dst["model"] == "google/gemma-3-27b-it:free"
+        assert dst["base_url"] == OPENROUTER_DEFAULTS["base_url"]
+
+    def test_clone_with_api_key_override(self, two_profile_config):
+        clone_profile("openrouter", "openrouter-keyed", api_key="sk-new")
+        file_data = _read_config_file()
+        dst = _profiles(file_data)["openrouter-keyed"]
+        assert dst["api_key"] == "sk-new"
+        assert dst["base_url"] == OPENROUTER_DEFAULTS["base_url"]
+        assert dst["model"] == OPENROUTER_DEFAULTS["model"]
+
+    def test_clone_with_base_url_override(self, two_profile_config):
+        clone_profile("openrouter", "openrouter-eu", base_url="https://eu.openrouter.ai/api/v1")
+        file_data = _read_config_file()
+        dst = _profiles(file_data)["openrouter-eu"]
+        assert dst["base_url"] == "https://eu.openrouter.ai/api/v1"
+        assert dst["model"] == OPENROUTER_DEFAULTS["model"]
+
+    def test_clone_with_all_overrides(self, two_profile_config):
+        clone_profile(
+            "openrouter",
+            "openrouter-full",
+            base_url="http://x",
+            api_key="k",
+            model="m",
+        )
+        file_data = _read_config_file()
+        dst = _profiles(file_data)["openrouter-full"]
+        assert dst["base_url"] == "http://x"
+        assert dst["api_key"] == "k"
+        assert dst["model"] == "m"
+
+    def test_clone_from_reserved_profile_not_in_file(self, tmp_path: Path):
+        """Clone from a reserved profile that isn't written to the config yet."""
+        clone_profile("ollama", "my-ollama")
+        file_data = _read_config_file()
+        dst = _profiles(file_data)["my-ollama"]
+        assert dst["base_url"] == OLLAMA_DEFAULTS["base_url"]
+        assert dst["model"] == OLLAMA_DEFAULTS["model"]
+
+    def test_clone_nonexistent_source_raises(self, two_profile_config):
+        with pytest.raises(ValueError, match="not found"):
+            clone_profile("nope", "copy-of-nope")
+
+    def test_clone_duplicate_dest_raises(self, two_profile_config):
+        with pytest.raises(ValueError, match="already exists"):
+            clone_profile("openrouter", "ollama")
+
+    def test_clone_invalid_dest_name_raises(self, two_profile_config):
+        with pytest.raises(ValueError, match="Invalid profile name"):
+            clone_profile("openrouter", "bad name!")
+
+    def test_clone_does_not_affect_source(self, two_profile_config):
+        clone_profile("openrouter", "openrouter-clone", model="new-model")
+        file_data = _read_config_file()
+        assert _profiles(file_data)["openrouter"]["model"] == OPENROUTER_DEFAULTS["model"]
+
+    def test_cloned_profile_is_removable(self, two_profile_config):
+        clone_profile("openrouter", "openrouter-tmp")
+        remove_profile("openrouter-tmp")
+        assert "openrouter-tmp" not in get_profile_names()
+
+
 class TestSetActiveProfile:
     def test_switch_profile(self, two_profile_config):
-        set_active_profile("gemini")
+        set_active_profile("openrouter")
         file_data = _read_config_file()
-        assert _active_profile(file_data) == "gemini"
+        assert _active_profile(file_data) == "openrouter"
 
     def test_switch_nonexistent_raises(self, two_profile_config):
         with pytest.raises(ValueError, match="not found"):
             set_active_profile("nope")
 
     def test_switch_then_get_profile(self, two_profile_config):
-        set_active_profile("gemini")
+        set_active_profile("openrouter")
         profile = get_profile()
-        assert profile.base_url == GEMINI_DEFAULTS["base_url"]
+        assert profile.base_url == OPENROUTER_DEFAULTS["base_url"]
 
 
 # ── Write with profiles ────────────────────────────────────────────
 
 
 class TestWriteFullConfigWithProfiles:
-    def test_write_preserves_default_profile_when_gemini_is_active(self, two_profile_config):
+    def test_write_preserves_default_profile_when_openrouter_is_active(self, two_profile_config):
         write_full_config(
             cast(
                 ConfigData,
                 {
-                    "active_profile": "gemini",
+                    "active_profile": "openrouter",
                     "profile": {
-                        "gemini": cast(
+                        "openrouter": cast(
                             ProfileData,
-                            {"base_url": "http://new-gemini", "api_key": "", "model": "new-model"},
+                            {"base_url": "http://new-router", "api_key": "", "model": "new-model"},
                         )
                     },
                 },
@@ -451,21 +529,21 @@ class TestWriteFullConfigWithProfiles:
         )
         file_data = _read_config_file()
         assert _profiles(file_data)["ollama"]["base_url"] == OLLAMA_DEFAULTS["base_url"]
-        assert _profiles(file_data)["gemini"]["base_url"] == "http://new-gemini"
+        assert _profiles(file_data)["openrouter"]["base_url"] == "http://new-router"
 
     def test_write_to_active_profile(self, two_profile_config):
         write_full_config(
             cast(
                 ConfigData,
                 {
-                    "active_profile": "gemini",
+                    "active_profile": "openrouter",
                     "profile": {
-                        "gemini": cast(
+                        "openrouter": cast(
                             ProfileData,
                             {
-                                "base_url": "http://updated-gemini",
+                                "base_url": "http://updated-router",
                                 "api_key": "new-key",
-                                "model": "new-gemini-model",
+                                "model": "new-router-model",
                             },
                         )
                     },
@@ -473,7 +551,7 @@ class TestWriteFullConfigWithProfiles:
             )
         )
         file_data = _read_config_file()
-        assert _profiles(file_data)["gemini"]["base_url"] == "http://updated-gemini"
+        assert _profiles(file_data)["openrouter"]["base_url"] == "http://updated-router"
 
 
 class TestWriteFullConfig:
@@ -496,7 +574,7 @@ class TestWriteFullConfig:
         assert _active_profile(reread) == DEFAULT_PROFILE
         # ollama is mutable — user values preserved after roundtrip
         assert _profiles(reread)["ollama"]["model"] == "m1"
-        assert _profiles(reread)["vlmrun"]["model"] == VLMRUN_DEFAULTS["model"]
+        assert _profiles(reread)["gateway"]["model"] == GATEWAY_DEFAULTS["model"]
         assert _profiles(reread)["other"]["model"] == "m2"
         assert _mode_whisper_model(reread, "fast") == "tiny"
 
@@ -519,7 +597,7 @@ class TestProfileCli:
         result = cli_runner.invoke(app, ["profile", "list", "--format", "tsv"])
         assert result.exit_code == 0
         assert DEFAULT_PROFILE in result.output
-        assert "gemini" in result.output
+        assert "openrouter" in result.output
         assert "ollama" in result.output
 
     def test_profile_list_json(self, runner, two_profile_config):
@@ -529,7 +607,7 @@ class TestProfileCli:
         data = json.loads(result.output)
         assert data["active"] == DEFAULT_PROFILE
         assert "ollama" in data["profiles"]
-        assert "gemini" in data["profiles"]
+        assert "openrouter" in data["profiles"]
 
     def test_profile_list_csv(self, runner, two_profile_config):
         cli_runner, app = runner
@@ -537,7 +615,7 @@ class TestProfileCli:
         assert result.exit_code == 0
         lines = result.output.strip().split("\n")
         assert lines[0] == "profile,active,base_url,model"
-        # header + 3 reserved profiles (ollama, gemini, vlmrun)
+        # header + 3 reserved profiles (ollama, gateway, openrouter)
         assert len(lines) >= 4
 
     def test_profile_add_and_list(self, runner, two_profile_config):
@@ -570,13 +648,13 @@ class TestProfileCli:
 
     def test_profile_use(self, runner, two_profile_config):
         cli_runner, app = runner
-        result = cli_runner.invoke(app, ["profile", "use", "gemini"])
+        result = cli_runner.invoke(app, ["profile", "use", "openrouter"])
         assert result.exit_code == 0
         assert "Switched" in result.output
         # Verify via profile list
         result2 = cli_runner.invoke(app, ["profile", "list", "--format", "json"])
         data = json.loads(result2.output)
-        assert data["active"] == "gemini"
+        assert data["active"] == "openrouter"
 
     def test_profile_use_nonexistent_fails(self, runner, two_profile_config):
         cli_runner, app = runner
@@ -590,16 +668,16 @@ class TestProfileCli:
     def test_profile_update_single_field(self, runner, two_profile_config):
         cli_runner, app = runner
         result = cli_runner.invoke(
-            app, ["profile", "update", "gemini", "--model", "gemini-2.0-flash"]
+            app, ["profile", "update", "openrouter", "--model", "google/gemma-3-27b-it:free"]
         )
         assert result.exit_code == 0
         plain = self._strip_ansi(result.output)
         assert "Updated" in plain
-        assert "model=gemini-2.0-flash" in plain
+        assert "model=google/gemma-3-27b-it:free" in plain
         # Verify change persisted
         result2 = cli_runner.invoke(app, ["profile", "list", "--format", "json"])
         data = json.loads(result2.output)
-        assert data["profiles"]["gemini"]["model"] == "gemini-2.0-flash"
+        assert data["profiles"]["openrouter"]["model"] == "google/gemma-3-27b-it:free"
 
     def test_profile_update_multiple_fields(self, runner, two_profile_config):
         cli_runner, app = runner
@@ -608,28 +686,30 @@ class TestProfileCli:
             [
                 "profile",
                 "update",
-                "gemini",
+                "openrouter",
                 "--model",
-                "gemini-2.0",
+                "new-model",
                 "--base-url",
                 "http://new:8000",
             ],
         )
         assert result.exit_code == 0
         plain = self._strip_ansi(result.output)
-        assert "model=gemini-2.0" in plain
+        assert "model=new-model" in plain
         assert "base_url=http://new:8000" in plain
 
     def test_profile_update_api_key_masked(self, runner, two_profile_config):
         cli_runner, app = runner
-        result = cli_runner.invoke(app, ["profile", "update", "gemini", "--api-key", "sk-secret"])
+        result = cli_runner.invoke(
+            app, ["profile", "update", "openrouter", "--api-key", "sk-secret"]
+        )
         assert result.exit_code == 0
         assert "api_key=\u2022\u2022\u2022\u2022" in result.output
         assert "sk-secret" not in result.output
 
     def test_profile_update_immutable_fails(self, runner, two_profile_config):
         cli_runner, app = runner
-        result = cli_runner.invoke(app, ["profile", "update", "vlmrun", "--model", "other"])
+        result = cli_runner.invoke(app, ["profile", "update", "gateway", "--model", "other"])
         assert result.exit_code == 1
         assert "cannot be modified" in result.output
 
@@ -640,7 +720,7 @@ class TestProfileCli:
 
     def test_profile_update_no_fields_fails(self, runner, two_profile_config):
         cli_runner, app = runner
-        result = cli_runner.invoke(app, ["profile", "update", "gemini"])
+        result = cli_runner.invoke(app, ["profile", "update", "openrouter"])
         assert result.exit_code == 1
 
     def test_profile_remove(self, runner, two_profile_config):
@@ -675,12 +755,12 @@ class TestProfileCli:
     def test_profile_flag_override(self, runner, two_profile_config):
         cli_runner, app = runner
         result = cli_runner.invoke(
-            app, ["--profile", "gemini", "profile", "list", "--format", "json"]
+            app, ["--profile", "openrouter", "profile", "list", "--format", "json"]
         )
         assert result.exit_code == 0
         data = json.loads(result.output)
-        assert data["active"] == "gemini"
-        assert data["profiles"]["gemini"]["base_url"] == GEMINI_DEFAULTS["base_url"]
+        assert data["active"] == "openrouter"
+        assert data["profiles"]["openrouter"]["base_url"] == OPENROUTER_DEFAULTS["base_url"]
 
     def test_no_top_level_base_url_flag(self, runner):
         """--base-url is no longer a top-level flag."""
@@ -757,11 +837,59 @@ class TestProfileCli:
         data = json.loads(r.output)
         assert "test-p" not in data["profiles"]
 
+    def test_profile_clone_exact_copy(self, runner, two_profile_config):
+        cli_runner, app = runner
+
+        result = cli_runner.invoke(app, ["profile", "clone", "openrouter", "openrouter-copy"])
+        assert result.exit_code == 0
+        assert "openrouter" in result.output
+        assert "openrouter-copy" in result.output
+
+        result2 = cli_runner.invoke(app, ["profile", "list", "--format", "json"])
+        data = json.loads(result2.output)
+        assert "openrouter-copy" in data["profiles"]
+        assert data["profiles"]["openrouter-copy"]["base_url"] == OPENROUTER_DEFAULTS["base_url"]
+        assert data["profiles"]["openrouter-copy"]["model"] == OPENROUTER_DEFAULTS["model"]
+
+    def test_profile_clone_with_model_override(self, runner, two_profile_config):
+        cli_runner, app = runner
+        result = cli_runner.invoke(
+            app, ["profile", "clone", "openrouter", "or-fast", "--model", "gemma-3-27b"]
+        )
+        assert result.exit_code == 0
+        plain = self._strip_ansi(result.output)
+        assert "model=gemma-3-27b" in plain
+        result2 = cli_runner.invoke(app, ["profile", "list", "--format", "json"])
+        data = json.loads(result2.output)
+        assert data["profiles"]["or-fast"]["model"] == "gemma-3-27b"
+        assert data["profiles"]["or-fast"]["base_url"] == OPENROUTER_DEFAULTS["base_url"]
+
+    def test_profile_clone_api_key_masked_in_output(self, runner, two_profile_config):
+        cli_runner, app = runner
+        result = cli_runner.invoke(
+            app, ["profile", "clone", "openrouter", "or-keyed", "--api-key", "sk-secret"]
+        )
+        assert result.exit_code == 0
+        assert "sk-secret" not in result.output
+        assert "api_key=••••" in result.output
+
+    def test_profile_clone_nonexistent_source_fails(self, runner, two_profile_config):
+        cli_runner, app = runner
+        result = cli_runner.invoke(app, ["profile", "clone", "nope", "copy"])
+        assert result.exit_code == 1
+        assert "not found" in result.output
+
+    def test_profile_clone_duplicate_dest_fails(self, runner, two_profile_config):
+        cli_runner, app = runner
+        result = cli_runner.invoke(app, ["profile", "clone", "openrouter", "ollama"])
+        assert result.exit_code == 1
+        assert "already exists" in result.output
+
     def test_profile_help_shows_all_subcommands(self, runner):
         cli_runner, app = runner
         result = cli_runner.invoke(app, ["profile", "--help"])
         assert result.exit_code == 0
-        for cmd in ("list", "use", "add", "update", "remove"):
+        for cmd in ("list", "use", "add", "update", "remove", "clone"):
             assert cmd in result.output
 
 
@@ -777,10 +905,10 @@ class TestEnvProfileCli:
         return CliRunner(), app
 
     def test_env_profile_selects_profile(self, runner, two_profile_config, monkeypatch):
-        monkeypatch.setenv("MM_PROFILE", "gemini")
+        monkeypatch.setenv("MM_PROFILE", "openrouter")
         cli_runner, app = runner
         result = cli_runner.invoke(app, ["profile", "list", "--format", "json"])
         assert result.exit_code == 0
         data = json.loads(result.output)
-        assert data["active"] == "gemini"
-        assert data["profiles"]["gemini"]["base_url"] == GEMINI_DEFAULTS["base_url"]
+        assert data["active"] == "openrouter"
+        assert data["profiles"]["openrouter"]["base_url"] == OPENROUTER_DEFAULTS["base_url"]

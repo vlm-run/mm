@@ -49,3 +49,14 @@ run_results/
 # Local exploration logs
 mm-*-output.txt
 .claude
+.agents
+
+benchmarks/results/
+mmbench/
+
+# mkdocs
+/site/
+/docs/index.md
+/docs/notebooks/
+/docs/spec-templates/
+.cache

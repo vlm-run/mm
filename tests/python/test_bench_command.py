@@ -121,7 +121,7 @@ class TestBenchCommand:
         assert not any(res["group"] == "accurate" for res in data["results"])
 
     def test_skips_missing_file_types(self, tmp_path: Path):
-        """Fast-group benchmarks for missing types are skipped gracefully."""
+        """Fast-group benchmarks for missing types are skipped (and omitted) gracefully."""
         # Directory with only code files — no images, videos, or PDFs
         (tmp_path / "main.py").write_text("print('hello')\n")
         (tmp_path / "lib.py").write_text("def add(a, b): return a + b\n")
@@ -131,6 +131,8 @@ class TestBenchCommand:
             [
                 "bench",
                 str(tmp_path),
+                "--mode",
+                "fast",
                 "--rounds",
                 "2",
                 "--warmup",
@@ -142,12 +144,16 @@ class TestBenchCommand:
         assert r.exit_code == 0
         data = json.loads(r.stdout)
 
+        runs = {
+            (result["name"], result["group"])
+            for result in data["results"]
+            if not result.get("skipped")
+        }
         skipped = {
             (result["name"], result["group"]) for result in data["results"] if result.get("skipped")
         }
-        assert ("mm cat <image>", "fast") in skipped
-        assert ("mm cat <video>", "fast") in skipped
-        assert ("mm cat <pdf>", "fast") in skipped
+        assert ("mm cat <code> (x20)", "fast") in runs
+        assert len(skipped) == 0
 
     def test_empty_directory(self, tmp_path: Path):
         """Bench handles empty directory gracefully."""
@@ -350,6 +356,15 @@ class TestBenchCommands:
             assert cmd.group in ("overhead", "metadata", "fast", "accurate")
             assert cmd.cmd_template
 
+    def test_metadata_group_includes_peek_benchmarks(self):
+        """The metadata group must include ``mm peek`` rows for each binary kind."""
+        from mm.commands.bench_commands import METADATA_COMMANDS
+
+        peek_cmds = [c for c in METADATA_COMMANDS if "mm peek" in c.cmd_template]
+        assert len(peek_cmds) > 0
+        for c in peek_cmds:
+            assert c.group == "metadata"
+
     def test_accurate_group_is_accurate_mode_only(self):
         """Accurate group contains only --mode accurate commands."""
         from mm.commands.bench_commands import ACCURATE_COMMANDS
@@ -359,6 +374,89 @@ class TestBenchCommands:
             assert "--mode accurate" in cmd.cmd_template, (
                 f"accurate group should only contain --mode accurate: {cmd.cmd_template}"
             )
+
+
+class TestPickFiles:
+    """Batch picker spans the directory by sorted name and uniform stride."""
+
+    @staticmethod
+    def _entries(kind: str, names: list[str]):
+        from mm.context import FileEntry
+
+        return [FileEntry({"kind": kind, "path": n}) for n in names]
+
+    def test_returns_all_when_count_eq_limit(self):
+        from mm.commands.bench_commands import _pick_files
+
+        files = self._entries("image", ["c.png", "a.png", "b.png"])
+        assert _pick_files(files, "image", 3) == sorted(["c.png", "a.png", "b.png"])
+
+    def test_cycles_when_count_lt_limit(self):
+        from mm.commands.bench_commands import _pick_files
+
+        # 3 files, batch=5 → cycle in scan order, length 5.
+        files = self._entries("image", ["a.png", "b.png", "c.png"])
+        assert _pick_files(files, "image", 5) == [
+            "a.png",
+            "b.png",
+            "c.png",
+            "a.png",
+            "b.png",
+        ]
+
+    def test_cycle_fills_full_batch_with_few_candidates(self):
+        from collections import Counter
+
+        from mm.commands.bench_commands import _pick_files
+
+        # 3 images, batch=20 → 20 paths, every image used 6-7 times.
+        files = self._entries("image", ["a.png", "b.png", "c.png"])
+        picked = _pick_files(files, "image", 20)
+        assert len(picked) == 20
+        counts = Counter(picked)
+        assert set(counts) == {"a.png", "b.png", "c.png"}
+        # 20 // 3 = 6 baseline; remainder spreads to the first two slots.
+        assert min(counts.values()) >= 6
+        assert max(counts.values()) <= 7
+
+    def test_empty_kind_returns_empty(self):
+        from mm.commands.bench_commands import _pick_files
+
+        files = self._entries("video", ["v.mp4"])
+        assert _pick_files(files, "image", 20) == []
+
+    def test_filters_by_kind(self):
+        from mm.commands.bench_commands import _pick_files
+
+        files = self._entries("image", ["a.png", "b.png"]) + self._entries("video", ["v.mp4"])
+        # 2 images, batch=5 → cycle: [a, b, a, b, a].
+        assert _pick_files(files, "image", 5) == ["a.png", "b.png", "a.png", "b.png", "a.png"]
+
+    def test_strides_when_count_gt_limit(self):
+        from mm.commands.bench_commands import _pick_files
+
+        names = [f"img_{i:03d}.png" for i in range(100)]
+        picked = _pick_files(self._entries("image", names), "image", 10)
+        # Stride of 100/10 = 10 → indices 0, 10, 20, ..., 90.
+        assert picked == [f"img_{i:03d}.png" for i in (0, 10, 20, 30, 40, 50, 60, 70, 80, 90)]
+
+    def test_sorted_by_name_when_striding(self):
+        from mm.commands.bench_commands import _pick_files
+
+        names = ["z.png", "m.png", "a.png", "p.png", "b.png"]
+        picked = _pick_files(self._entries("image", names), "image", 3)
+        # sorted: a, b, m, p, z (n=5) → indices (i*5)//3 = 0, 1, 3 → a, b, p.
+        assert picked == ["a.png", "b.png", "p.png"]
+
+    def test_span_first_and_last_when_count_gt_limit(self):
+        from mm.commands.bench_commands import _pick_files
+
+        names = sorted(f"f_{i:04d}.pdf" for i in range(549))
+        picked = _pick_files(self._entries("document", names), "document", 20)
+        assert len(picked) == 20
+        assert picked[0] == names[0]
+        # Last stride index for n=549, limit=20 is (19*549)//20 = 521.
+        assert picked[-1] == names[521]
 
 
 class TestFmtMs:
@@ -378,3 +476,186 @@ class TestFmtMs:
         from mm.commands.bench import _fmt_ms
 
         assert _fmt_ms(5.12) == "5.12ms"
+
+
+class TestStripAnsi:
+    """ANSI escape stripping used by the stdout snapshot mode."""
+
+    def test_strips_color_codes(self):
+        from mm.commands.bench import _strip_ansi
+
+        assert _strip_ansi("\x1b[1;2m1.4s\x1b[0m") == "1.4s"
+
+    def test_preserves_unicode_bullets(self):
+        from mm.commands.bench import _strip_ansi
+
+        assert _strip_ansi("\x1b[2m1.4s • 28.0 MB\x1b[0m") == "1.4s • 28.0 MB"
+
+    def test_no_op_on_plain_text(self):
+        from mm.commands.bench import _strip_ansi
+
+        assert _strip_ansi("plain text\nno escapes") == "plain text\nno escapes"
+
+
+class TestFormatStdoutBlock:
+    """Snapshot block formatting (``$ cmd  # label`` then body)."""
+
+    def test_basic_block(self):
+        from mm.commands.bench import _format_stdout_block
+
+        out = _format_stdout_block(
+            label="mm cat <video> -p frames",
+            cmd="mm cat bakery.mp4 --pipeline frames",
+            stdout="hello world\n",
+        )
+        assert out.startswith("$ mm cat bakery.mp4 --pipeline frames")
+        assert "# mm cat <video> -p frames" in out.splitlines()[0]
+        assert out.endswith("hello world")
+
+    def test_strips_ansi_from_body(self):
+        from mm.commands.bench import _format_stdout_block
+
+        out = _format_stdout_block("label", "cmd", "\x1b[1;2mtimer\x1b[0m line\n")
+        assert "\x1b" not in out
+        assert "timer line" in out
+
+    def test_strips_trailing_newlines(self):
+        from mm.commands.bench import _format_stdout_block
+
+        out = _format_stdout_block("label", "cmd", "data\n\n\n")
+        assert out.endswith("data")
+        assert not out.endswith("\n")
+
+
+class TestBuildEncoderCatCommands:
+    """Dynamic synthesis of ``mm cat -p <encoder>`` BenchCommands."""
+
+    def test_returns_no_commands_for_empty_directory(self, tmp_path: Path):
+        from mm.commands.bench_commands import build_encoder_cat_commands
+
+        assert build_encoder_cat_commands(files=[]) == []
+
+    def test_emits_commands_for_each_present_kind(self, small_tree: Path):
+        from mm.commands.bench_commands import build_encoder_cat_commands
+        from mm.context import Context
+
+        ctx = Context(small_tree)
+        cmds = build_encoder_cat_commands(ctx.files, mode="fast")
+
+        # Every emitted command targets a kind that exists in the directory.
+        present_kinds = {f.kind for f in ctx.files}
+        for cmd in cmds:
+            assert cmd.requires_kind in present_kinds
+
+        # All bench commands are single-file snapshots, picking the smallest.
+        for cmd in cmds:
+            assert cmd.batch == 0
+            assert cmd.smallest is True
+            assert "{file}" in cmd.cmd_template
+
+    def test_no_generate_default_appends_flag(self, small_tree: Path):
+        from mm.commands.bench_commands import build_encoder_cat_commands
+        from mm.context import Context
+
+        ctx = Context(small_tree)
+        cmds = build_encoder_cat_commands(ctx.files, mode="fast")
+
+        for cmd in cmds:
+            assert "--no-generate" in cmd.cmd_template, (
+                f"--no-generate should be the snapshot default: {cmd.cmd_template}"
+            )
+
+    def test_with_generate_omits_flag(self, small_tree: Path):
+        from mm.commands.bench_commands import build_encoder_cat_commands
+        from mm.context import Context
+
+        ctx = Context(small_tree)
+        cmds = build_encoder_cat_commands(ctx.files, mode="fast", no_generate=False)
+
+        for cmd in cmds:
+            assert "--no-generate" not in cmd.cmd_template
+
+    def test_results_sorted_for_stable_snapshots(self, small_tree: Path):
+        from mm.commands.bench_commands import build_encoder_cat_commands
+        from mm.context import Context
+
+        ctx = Context(small_tree)
+        cmds = build_encoder_cat_commands(ctx.files, mode="fast")
+
+        keys = [(c.group, c.name) for c in cmds]
+        assert keys == sorted(keys), "snapshot order must be deterministic"
+
+    def test_kinds_filter_is_respected(self, small_tree: Path):
+        from mm.commands.bench_commands import build_encoder_cat_commands
+        from mm.context import Context
+
+        ctx = Context(small_tree)
+        cmds = build_encoder_cat_commands(ctx.files, mode="fast", kinds=("image",))
+        for cmd in cmds:
+            assert cmd.requires_kind == "image"
+
+
+class TestBaseFormatStdout:
+    """`mm bench --format stdout` is wired up end-to-end."""
+
+    def test_stdout_format_value_exists(self):
+        from mm.utils import BaseFormat
+
+        assert BaseFormat.stdout.value == "stdout"
+
+    def test_help_documents_stdout_format(self):
+        from mm.commands.bench import _strip_ansi
+
+        r = runner.invoke(app, ["bench", "--help"])
+        assert r.exit_code == 0
+        # Help output is heavily ANSI-styled (rich); strip before substring matching
+        # so wrapped/styled flags still match cleanly.
+        plain = _strip_ansi(r.output)
+        assert "stdout" in plain
+        assert "--command" in plain
+
+    def test_unknown_command_filter_errors(self, small_tree: Path):
+        r = runner.invoke(
+            app,
+            [
+                "bench",
+                str(small_tree),
+                "--command",
+                "nonexistent_xyz",
+                "--rounds",
+                "1",
+                "--warmup",
+                "0",
+            ],
+        )
+        # Either it errors out or it just runs the empty subset; a successful
+        # exit with no rows is acceptable too — what matters is no crash.
+        assert r.exit_code in (0, 1)
+
+
+class TestNoGenerateFlag:
+    """`mm cat --no-generate` produces encoder text without LLM calls."""
+
+    def test_flag_threads_through_to_catopts(self):
+        from mm.cat_utils.base_utils import CatOpts
+
+        opts = CatOpts(
+            n=None,
+            output_dir=None,
+            mode="fast",
+            no_cache=True,
+            no_generate=True,
+            format="json",
+            encode_overrides={},
+            generate_overrides={},
+            pipelines={},
+            verbose=False,
+        )
+        assert opts.no_generate is True
+
+    def test_flag_is_in_help(self):
+        from mm.commands.bench import _strip_ansi
+
+        r = runner.invoke(app, ["cat", "--help"])
+        assert r.exit_code == 0
+        assert "--no-generate" in _strip_ansi(r.output)

@@ -27,6 +27,11 @@ rustdct = { workspace = true }
 symphonia = { workspace = true }
 regex = { workspace = true }
 base64 = { workspace = true }
+libreoffice-pure = { workspace = true }
+lo_core = { workspace = true }
+lo_writer = { workspace = true }
+lo_calc = { workspace = true }
+lo_impress = { workspace = true }
 
 [dev-dependencies]
 criterion = { version = "0.5", features = ["html_reports"] }

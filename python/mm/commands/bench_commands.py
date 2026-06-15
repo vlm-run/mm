@@ -11,7 +11,7 @@ ACCURATE_COMMANDS.
 from __future__ import annotations
 
 import shlex
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -36,6 +36,35 @@ class BenchCommand:
         batch:         Number of files for {files} (0 = single {file}).
         smallest:      If True, pick the smallest file of requires_kind.
         skip_reason:   Reason shown when skipped.
+        tags:          Free-form ``{key: value}`` annotations surfaced as
+                       extra columns in the rich table (and a ``tags``
+                       field in JSON output) when any row in the run
+                       declares them. The renderer collects the union of
+                       keys across all rows in first-seen order, so
+                       benchfile authors control the column ordering by
+                       defining tags in the order they want displayed.
+
+                       Two keys are first-class: ``model`` and ``task``.
+                       Both render as their own dedicated columns
+                       (``Model`` immediately after ``Group``, ``Task``
+                       immediately after ``Model``) and both are
+                       filterable via the ``--model`` / ``--task`` CLI
+                       flags. ``task`` is conventionally one of
+                       ``cap``, ``ocr``, ``det``, ``seg``, ``llm``,
+                       ``pose``, ``track``, or ``noop`` -- a closed
+                       taxonomy describing what the row exercises:
+                       captioning, OCR, detection, segmentation,
+                       text-only LLM, pose estimation, tracking, or
+                       passthrough/round-trip cost. Other tag keys
+                       still flow through to JSON output but don't
+                       participate in column rendering or filtering.
+        disabled:      When True, the row appears in the rendered table
+                       (dimmed, with ``skipped: disabled`` in the metrics
+                       column) but the harness never invokes its argv.
+                       Use to keep declarative coverage of variants whose
+                       upstream dependency is currently broken without
+                       polluting timing data; flip back to False once the
+                       deployment is healthy again.
     """
 
     name: str
@@ -45,6 +74,8 @@ class BenchCommand:
     batch: int = 0
     smallest: bool = False
     skip_reason: str = "not applicable"
+    tags: dict[str, str] = field(default_factory=dict)
+    disabled: bool = False
 
 
 # ── Resolution ─────────────────────────────────────────────────────
@@ -74,8 +105,15 @@ def _pick_smallest(files: list[FileEntry], kind: str, directory: Path) -> str | 
 
 
 def _pick_files(files: list[FileEntry], kind: str, limit: int) -> list[str]:
-    """Pick up to limit files matching kind."""
-    return [f.path for f in files if f.kind == kind][:limit]
+    """Pick exactly ``limit`` files matching ``kind``, exercising every candidate."""
+    candidates = [f.path for f in files if f.kind == kind]
+    n = len(candidates)
+    if n == 0:
+        return []
+    candidates.sort(key=lambda p: Path(p).name)
+    if n >= limit:
+        return [candidates[(i * n) // limit] for i in range(limit)]
+    return [candidates[i % n] for i in range(limit)]
 
 
 @dataclass
@@ -135,14 +173,23 @@ def resolve_command(
     cmd: BenchCommand,
     directory: Path,
     files: list[FileEntry],
-) -> tuple[list[str], int, int, MediaInfo] | None:
-    """Resolve a command template into (argv, files_count, total_bytes, media_info).
+) -> tuple[list[str], int, int, MediaInfo, list[str]] | None:
+    """Resolve a command template into ``(argv, files_count, total_bytes, media_info, data_file_paths)``.
+
+    The fifth element is the absolute paths the harness substituted
+    into ``{file}`` / ``{files}`` placeholders -- i.e. the row's
+    actual data inputs. Renderers use this to distinguish data-file
+    paths (which become ``<img>`` / ``<vid>`` / ... placeholders in
+    the displayed Base Command) from any other absolute paths the
+    template may legitimately contain (helper script paths,
+    interpreter paths, ...).
 
     Returns None if the command should be skipped (missing files).
     """
     resolved_dir = str(directory.resolve())
     template = cmd.cmd_template
     media = MediaInfo()
+    data_file_paths: list[str] = []
 
     if cmd.requires_kind is not None:
         # Check kind exists (for skip logic even on directory-level commands)
@@ -152,6 +199,7 @@ def resolve_command(
         if cmd.batch > 0 and "{files}" in template:
             picked = _pick_files(files, cmd.requires_kind, cmd.batch)
             abs_paths = [str(directory.resolve() / p) for p in picked]
+            data_file_paths = list(abs_paths)
             template = template.replace("{files}", " ".join(shlex.quote(p) for p in abs_paths))
             count = len(picked)
             total = sum(
@@ -176,6 +224,7 @@ def resolve_command(
             if not picked_one:
                 return None
             abs_path = str(directory.resolve() / picked_one)
+            data_file_paths = [abs_path]
             template = template.replace("{file}", shlex.quote(abs_path))
             count = 1
             total = (
@@ -207,7 +256,7 @@ def resolve_command(
 
     template = template.replace("{dir}", shlex.quote(resolved_dir))
     argv = shlex.split(template)
-    return argv, count, total, media
+    return argv, count, total, media, data_file_paths
 
 
 # ── Command registries ──────────────────────────────────────────────
@@ -221,46 +270,101 @@ OVERHEAD_COMMANDS: list[BenchCommand] = [
 METADATA_COMMANDS: list[BenchCommand] = [
     BenchCommand("mm find .", "metadata", "mm find {dir} --format json"),
     BenchCommand("mm find . (table)", "metadata", "mm find {dir} --format tsv"),
-    BenchCommand("mm wc .", "metadata", "mm wc {dir} --format json"),
+    BenchCommand("mm wc .", "metadata", "mm wc {dir}"),
     BenchCommand(
         "mm sql 'GROUP BY kind'",
         "metadata",
-        "mm sql 'SELECT kind, COUNT(*) as n FROM files GROUP BY kind' --dir {dir} --format json",
+        "mm sql 'SELECT kind, COUNT(*) as n FROM files GROUP BY kind' --dir {dir}",
     ),
     BenchCommand(
         "mm sql 'SUM(size) BY kind'",
         "metadata",
-        "mm sql 'SELECT kind, COUNT(*) as n, SUM(size) as total_bytes, ROUND(AVG(size)) as avg_bytes FROM files GROUP BY kind ORDER BY total_bytes DESC' --dir {dir} --format json",
+        "mm sql 'SELECT kind, COUNT(*) as n, SUM(size) as total_bytes, ROUND(AVG(size)) as avg_bytes FROM files GROUP BY kind ORDER BY total_bytes DESC' --dir {dir}",
     ),
     BenchCommand(
         "mm sql 'TOP 10 largest'",
         "metadata",
-        "mm sql 'SELECT name, kind, size FROM files ORDER BY size DESC LIMIT 10' --dir {dir} --format json",
+        "mm sql 'SELECT name, kind, size FROM files ORDER BY size DESC LIMIT 10' --dir {dir}",
     ),
     BenchCommand(
         "mm sql 'GROUP BY ext'",
         "metadata",
-        "mm sql 'SELECT ext, COUNT(*) as n, SUM(size) as total_bytes FROM files GROUP BY ext ORDER BY n DESC' --dir {dir} --format json",
+        "mm sql 'SELECT ext, COUNT(*) as n, SUM(size) as total_bytes FROM files GROUP BY ext ORDER BY n DESC' --dir {dir}",
     ),
-    BenchCommand("mm find --kind image", "metadata", "mm find {dir} --kind image --format json"),
+    BenchCommand(
+        "mm find --kind image",
+        "metadata",
+        "mm find {dir} --kind image",
+    ),
     BenchCommand(
         "mm find --kind audio",
         "metadata",
-        "mm find {dir} --kind audio --format json",
+        "mm find {dir} --kind audio",
         requires_kind="audio",
         skip_reason="no audio files",
     ),
     BenchCommand(
         "mm find --kind document",
         "metadata",
-        "mm find {dir} --kind document --format json",
+        "mm find {dir} --kind document",
         requires_kind="document",
         skip_reason="no document files",
     ),
     # Plain ``mm grep`` (no --semantic) is a regex pattern search over file
     # contents — Unix-comparable to ``grep -r``, no LLM.
     BenchCommand(
-        "mm grep /pattern/", "metadata", "mm grep 'import|include|require' {dir} --format json"
+        "mm grep /pattern/",
+        "metadata",
+        "mm grep 'import|include|require' {dir}",
+    ),
+    BenchCommand(
+        "mm grep /pattern/ --ignore-case",
+        "metadata",
+        "mm grep 'import|include|require' {dir} --ignore-case",
+    ),
+    BenchCommand(
+        "mm peek <image>",
+        "metadata",
+        "mm peek {file}",
+        requires_kind="image",
+        skip_reason="no image files",
+    ),
+    BenchCommand(
+        "mm peek <image> (x20)",
+        "metadata",
+        "mm peek {files}",
+        requires_kind="image",
+        batch=20,
+        skip_reason="no image files",
+    ),
+    BenchCommand(
+        "mm peek <video>",
+        "metadata",
+        "mm peek {file}",
+        requires_kind="video",
+        skip_reason="no video files",
+    ),
+    BenchCommand(
+        "mm peek <audio>",
+        "metadata",
+        "mm peek {file}",
+        requires_kind="audio",
+        skip_reason="no audio files",
+    ),
+    BenchCommand(
+        "mm peek <pdf>",
+        "metadata",
+        "mm peek {file}",
+        requires_kind="document",
+        skip_reason="no PDF files",
+    ),
+    BenchCommand(
+        "mm peek <code> (x20)",
+        "metadata",
+        "mm peek {files}",
+        requires_kind="code",
+        batch=20,
+        skip_reason="no code files",
     ),
 ]
 
@@ -268,7 +372,7 @@ FAST_COMMANDS: list[BenchCommand] = [
     BenchCommand(
         "mm cat <code> (x20)",
         "fast",
-        "mm cat {files} --no-cache --format json",
+        "mm cat {files} --mode fast",
         requires_kind="code",
         batch=20,
         skip_reason="no code files",
@@ -276,14 +380,14 @@ FAST_COMMANDS: list[BenchCommand] = [
     BenchCommand(
         "mm cat <image>",
         "fast",
-        "mm cat {file} --no-cache --format json",
+        "mm cat {file} --mode fast",
         requires_kind="image",
         skip_reason="no image files",
     ),
     BenchCommand(
         "mm cat <image> (x20)",
         "fast",
-        "mm cat {files} --no-cache --format json",
+        "mm cat {files} --mode fast",
         requires_kind="image",
         batch=20,
         skip_reason="no image files",
@@ -291,28 +395,28 @@ FAST_COMMANDS: list[BenchCommand] = [
     BenchCommand(
         "mm cat <audio>",
         "fast",
-        "mm cat {file} --no-cache --format json",
+        "mm cat {file} --mode fast",
         requires_kind="audio",
         skip_reason="no audio files",
     ),
     BenchCommand(
         "mm cat <video>",
         "fast",
-        "mm cat {file} --no-cache --format json",
+        "mm cat {file} --mode fast",
         requires_kind="video",
         skip_reason="no video files",
     ),
     BenchCommand(
         "mm cat <pdf>",
         "fast",
-        "mm cat {file} --no-cache --format json",
+        "mm cat {file} --mode fast",
         requires_kind="document",
         skip_reason="no PDF files",
     ),
     BenchCommand(
         "mm cat <pdf> (x10)",
         "fast",
-        "mm cat {files} --no-cache --format json",
+        "mm cat {files} --mode fast",
         requires_kind="document",
         batch=10,
         skip_reason="no PDF files",
@@ -323,14 +427,14 @@ ACCURATE_COMMANDS: list[BenchCommand] = [
     BenchCommand(
         "mm cat <image>",
         "accurate",
-        "mm cat {file} --mode accurate --no-cache --format json",
+        "mm cat {file} --mode accurate",
         requires_kind="image",
         skip_reason="no image files",
     ),
     BenchCommand(
         "mm cat <audio>",
         "accurate",
-        "mm cat {file} --mode accurate --no-cache --format json",
+        "mm cat {file} --mode accurate",
         requires_kind="audio",
         smallest=True,
         skip_reason="no audio files",
@@ -338,7 +442,7 @@ ACCURATE_COMMANDS: list[BenchCommand] = [
     BenchCommand(
         "mm cat <video>",
         "accurate",
-        "mm cat {file} --mode accurate --no-cache --format json",
+        "mm cat {file} --mode accurate",
         requires_kind="video",
         skip_reason="no video files",
     ),
@@ -347,3 +451,69 @@ ACCURATE_COMMANDS: list[BenchCommand] = [
 ALL_COMMANDS: list[BenchCommand] = (
     OVERHEAD_COMMANDS + METADATA_COMMANDS + FAST_COMMANDS + ACCURATE_COMMANDS
 )
+
+
+_DEFAULT_STDOUT_KINDS: tuple[str, ...] = ("video", "image", "audio", "document")
+
+
+def build_encoder_cat_commands(
+    files: list[FileEntry],
+    *,
+    kinds: tuple[str, ...] = _DEFAULT_STDOUT_KINDS,
+    mode: str = "fast",
+    no_generate: bool = True,
+) -> list[BenchCommand]:
+    """Synthesise one ``mm cat`` BenchCommand per registered encoder.
+
+    For each registered encoder whose ``kind`` where the directory contains at least one file of that kind,
+    emit a ``mm cat <file> -p <encoder>`` command. The encoder name is used as both
+    the bench name and the trailing ``# encoder`` comment in stdout output.
+
+    Args:
+        files: Files discovered in the bench directory (used purely to filter
+            encoders down to kinds we actually have material for).
+        kinds: Media kinds to include. Defaults to all four binary kinds.
+        mode: ``"fast"`` (default) or ``"accurate"``. Controls the LLM
+            ``--mode`` flag passed through to ``mm cat`` so the same encoder
+            can be sampled at both quality tiers.
+        no_generate: When True (default) appends ``--no-generate`` so each
+            command emits raw encoder text without invoking the LLM. The
+            resulting snapshot is deterministic, fast, and offline-friendly
+            — ideal for ``tests/stdout/cat.md``. Set to False to capture
+            full LLM-rendered output (slow; depends on profile/model).
+
+    Returns:
+        BenchCommand list ordered by ``(kind, encoder name)`` for stable
+        output across runs. Each command is single-file (``batch=0``) and
+        ``smallest=True`` so the snapshot picks the cheapest representative.
+    """
+    from mm.encoders import _REGISTRY, _ensure_discovered
+
+    _ensure_discovered()
+
+    have_kind = {k for k in kinds if any(f.kind == k for f in files)}
+    if not have_kind:
+        return []
+
+    extras = " --no-generate" if no_generate else ""
+
+    cmds: list[BenchCommand] = []
+    for encoder_name in sorted(_REGISTRY):
+        strat = _REGISTRY[encoder_name]
+        if strat.kind in have_kind:
+            cmds.append(
+                BenchCommand(
+                    name=f"mm cat <{strat.kind}> -p {encoder_name}",
+                    group=f"snapshot/{strat.kind}",
+                    cmd_template=(
+                        f"mm cat {{file}} --mode {mode} --pipeline {encoder_name}"
+                        f" --no-cache{extras} --format json"
+                    ),
+                    requires_kind=strat.kind,
+                    smallest=True,
+                    skip_reason=f"no {strat.kind} files",
+                )
+            )
+
+    cmds.sort(key=lambda c: (c.group, c.name))
+    return cmds

@@ -8,7 +8,7 @@ from time import perf_counter
 from typing import TYPE_CHECKING, Any, Literal
 
 if TYPE_CHECKING:
-    import pyarrow as pa
+    from pyarrow import Table
     from rich.console import Console
 
 
@@ -65,14 +65,6 @@ class _LazyConsole:
 console = _LazyConsole(_get_console)
 output_console = _LazyConsole(_get_output_console)
 
-KIND_STYLES: dict[str, str] = {
-    "image": "green",
-    "video": "magenta",
-    "document": "cyan",
-    "code": "yellow",
-    "other": "dim",
-}
-
 KIND_ICONS: dict[str, str] = {
     "image": "img",
     "video": "vid",
@@ -117,19 +109,23 @@ def resolve_format(fmt: str | None) -> str:
     return "tsv" if is_piped_output() else "rich"
 
 
+def _strval(v: object) -> str:
+    return "" if v is None else str(v)
+
+
 def emit_tsv(
     rows: list[dict],
     columns: list[str] | None = None,
     *,
     stderr: bool = False,
 ) -> None:
-    """Print rows as TSV with a header line."""
+    """Print rows as TSV with a header line. ``None`` cells render empty."""
     if not rows:
         return
     cols = columns or list(rows[0].keys())
     print("\t".join(cols), file=resolve_stderr(stderr))
     for row in rows:
-        print("\t".join(str(row.get(c, "")) for c in cols), file=resolve_stderr(stderr))
+        print("\t".join(_strval(row.get(c)) for c in cols), file=resolve_stderr(stderr))
 
 
 def emit_csv(
@@ -138,7 +134,7 @@ def emit_csv(
     *,
     stderr: bool = False,
 ) -> None:
-    """Print rows as CSV with a header line."""
+    """Print rows as CSV with a header line. ``None`` cells render empty."""
     import csv
     import io
 
@@ -149,7 +145,7 @@ def emit_csv(
     writer = csv.writer(buf)
     writer.writerow(cols)
     for row in rows:
-        writer.writerow(str(row.get(c, "")) for c in cols)
+        writer.writerow(_strval(row.get(c)) for c in cols)
     print(buf.getvalue(), end="", file=resolve_stderr(stderr))
 
 
@@ -160,12 +156,23 @@ def emit_rows(
     output_dir: str = "mm_dataset",
     stderr: bool = False,
 ) -> None:
-    """Unified emitter for json, dataset-jsonl, and dataset-hf formats.
+    """Unified emitter for json, pretty-json, dataset-jsonl, and dataset-hf formats.
 
-    Dispatches to the appropriate serializer based on *fmt*.
+    Dispatches to the appropriate serializer based on *fmt*. ``json``
+    is auto-pretty/-compact based on TTY detection (compact when piped);
+    ``pretty-json`` always indents with ``indent=2`` regardless of where
+    stdout points -- useful when piping into a markdown fence or
+    capturing into a recording file where line-broken JSON renders far
+    more readably than a single-line escape soup.
     """
+    import json
+
     if fmt == "json":
         print(json_dumps(rows), file=resolve_stderr(stderr))
+    elif fmt == "pretty-json":
+        print(
+            json.dumps(rows, indent=2, default=str, ensure_ascii=False), file=resolve_stderr(stderr)
+        )
     elif fmt == "dataset-jsonl":
         _emit_dataset_jsonl(rows, stderr=stderr)
     elif fmt == "dataset-hf":
@@ -250,38 +257,25 @@ def _style_cell(col: str, val: Any):
     from rich.text import Text
 
     if val is None:
-        return Text("", style="dim")
+        return Text("")
 
     if col == "size" and isinstance(val, (int, float)):
-        return Text(format_size(int(val)), style="bright_blue", justify="right")
-
-    if col == "kind":
-        style = KIND_STYLES.get(str(val), "dim")
-        return Text(str(val), style=style)
-
-    if col in ("mime", "ext"):
-        return Text(str(val), style="dim cyan")
-
-    if col == "path":
-        return Text(str(val), style="white")
-
-    if col == "name":
-        return Text(str(val), style="bold")
+        return Text(format_size(int(val)), justify="right")
 
     if col in ("depth", "line_count", "word_count", "pages"):
-        return Text(str(val), style="bright_blue", justify="right")
+        return Text(str(val), justify="right")
 
     if col == "is_binary":
-        return Text("yes" if val else "no", style="dim")
+        return Text("yes" if val else "no")
 
     if col in ("modified", "created"):
         s = str(val)
-        return Text(s[:19] if len(s) > 19 else s, style="dim")
+        return Text(s[:19] if len(s) > 19 else s)
 
     return Text(str(val))
 
 
-def autoselect_cols(table: pa.Table):
+def autoselect_cols(table: Table):
     """auto select a subset of columns to display based on terminal width, prioritizing the most useful ones."""
     import shutil
 
@@ -323,7 +317,7 @@ def autoselect_cols(table: pa.Table):
 
 
 def arrow_table_to_rich(
-    table: pa.Table,
+    table: Table,
     columns: list[str] | None = None,
     limit: int | None = None,
     title: str | None = None,
@@ -357,8 +351,7 @@ def arrow_table_to_rich(
         caption_justify="right",
         show_lines=False,
         padding=(0, 1),
-        border_style="dim",
-        header_style="bold white",
+        header_style="bold",
         box=box.ROUNDED,
     )
 
@@ -384,11 +377,9 @@ def arrow_table_to_rich(
             )
             else "left"
         )
-        style = "dim" if col in ("modified", "created") else None
         rich_table.add_column(
             col,
             justify=justify,
-            style=style,
             no_wrap=col in nowrap_cols,
             overflow="fold" if col in wrap_cols else "ellipsis",
             min_width=min_widths.get(col),
@@ -418,25 +409,24 @@ def info_panel(stats: dict[str, Any], title: str = "mm"):
     top_ext = stats.pop("Top Extensions", "")
 
     header = Text()
-    header.append(f"  {total_files}", style="bold bright_blue")
+    header.append(f"  {total_files}", style="bold")
     header.append(" files  ", style="bold")
-    header.append(f"{total_size}", style="bold bright_green")
-    header.append(f"\n  {root}\n", style="dim")
+    header.append(f"{total_size}", style="bold")
+    header.append(f"\n  {root}\n")
     parts.append(header)
 
-    parts.append(Rule(style="dim"))
+    parts.append(Rule())
 
     kind_text = Text()
     for kind_name, count in stats.items():
-        color = KIND_STYLES.get(kind_name.lower(), "white")
-        kind_text.append(f"  {kind_name:<12}", style=f"bold {color}")
-        kind_text.append(f"{count:>5}\n", style="bright_blue")
+        kind_text.append(f"  {kind_name:<12}", style="bold")
+        kind_text.append(f"{count:>5}\n")
     parts.append(kind_text)
 
-    parts.append(Rule(style="dim"))
+    parts.append(Rule())
 
     ext_text = Text()
-    ext_text.append(f"  {top_ext}", style="dim")
+    ext_text.append(f"  {top_ext}")
     parts.append(ext_text)
 
     from rich.console import Group
@@ -501,7 +491,7 @@ def display_elapsed(
 
     output_text = " \u2022 ".join(output_parts)
     output_text = f"{prefix} {output_text}" if prefix else output_text
-    output_console.print(f"[dim]{output_text}[/dim]")
+    console.print(output_text)
 
 
 def display_elapsed_wrapper(start_time: float, prefix: str | None = None):
@@ -528,3 +518,37 @@ def display_elapsed_wrapper(start_time: float, prefix: str | None = None):
             display_elapsed(start_time, total_bytes, cached, prefix=prefix)
 
     return check_exit, display_if_successful
+
+
+def root_progress():
+    if not _get_console().is_terminal:
+        return
+
+    import atexit
+
+    from rich.live import Live
+    from rich.spinner import Spinner
+
+    _real_stdout = sys.stdout
+    _live = Live(
+        Spinner("dots", style="green"),
+        console=_get_console(),
+        redirect_stdout=False,
+        transient=True,
+    )
+    _live.start()
+
+    class _StopOnWrite:
+        def write(self, s: str) -> int:
+            sys.stdout = _real_stdout
+            _live.stop()
+            return _real_stdout.write(s)
+
+        def flush(self) -> None:
+            _real_stdout.flush()
+
+        def __getattr__(self, name: str):
+            return getattr(_real_stdout, name)
+
+    sys.stdout = _StopOnWrite()
+    atexit.register(_live.stop)

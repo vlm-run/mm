@@ -142,7 +142,7 @@ def grep_cmd(
                 continue
 
             if f.kind == "document":
-                from mm.cat_utils.extract_local import _local_document
+                from mm.cat_utils.extract_meta import _local_document
 
                 content = _local_document(full_path)
             elif f.is_binary:
@@ -173,7 +173,7 @@ def grep_cmd(
             continue
 
     # FTS + semantic both query indexed chunks.
-    has_binary = any(is_binary_content(kind=f.kind) for f in files_to_search)
+    has_indexable = bool(files_to_search)
     scan_root = _directory.resolve()
     seen_chunk_keys: set[tuple[str, int]] = set()
 
@@ -210,7 +210,7 @@ def grep_cmd(
             file_counts[rel_path] = file_counts.get(rel_path, 0) + 1
 
     # FTS5 token search over indexed chunks — Silent on missing FTS5 / empty index.
-    if has_binary:
+    if has_indexable:
         from mm.fts import fts_search
 
         try:
@@ -221,7 +221,7 @@ def grep_cmd(
         except Exception:
             pass
 
-    if do_semantic and has_binary:
+    if do_semantic and has_indexable:
         from mm.semantic import build_hint_cmd, grep_semantic
 
         try:
@@ -274,12 +274,11 @@ def grep_cmd(
                 caption_justify="right",
                 show_lines=False,
                 padding=(0, 1),
-                border_style="dim",
-                header_style="bold white",
+                header_style="bold",
                 box=box.ROUNDED,
             )
-            t.add_column("file", style="white")
-            t.add_column("matches", justify="right", style="bright_blue")
+            t.add_column("file")
+            t.add_column("matches", justify="right")
             for path, cnt in sorted(file_counts.items(), key=lambda x: -x[1]):
                 t.add_row(path, str(cnt))
             output_console.print(t)
@@ -301,10 +300,10 @@ def grep_cmd(
         for m in all_matches:
             if m["path"] != current_file:
                 current_file = m["path"]
-                output_console.print(f"[bold magenta]{current_file}[/bold magenta]")
+                output_console.print(f"[bold]{current_file}[/bold]")
 
             line_text = Text()
-            line_text.append(f" {m['line_number']:>4} ", style="dim green")
+            line_text.append(f" {m['line_number']:>4} ")
 
             line = m["line"]
             parts = regex.split(line)
@@ -312,13 +311,13 @@ def grep_cmd(
             for j, part in enumerate(parts):
                 line_text.append(part)
                 if j < len(found):
-                    line_text.append(found[j], style="bold red on bright_black")
+                    line_text.append(found[j], style="bold")
             output_console.print(line_text)
 
         output_console.print()
         output_console.print(
-            f"[dim]{total_matches} match{'es' if total_matches != 1 else ''} "
-            f"in {total_files} file{'s' if total_files != 1 else ''}[/dim]"
+            f"{total_matches} match{'es' if total_matches != 1 else ''} "
+            f"in {total_files} file{'s' if total_files != 1 else ''}"
         )
     else:
         for m in all_matches:

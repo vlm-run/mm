@@ -7,7 +7,7 @@ from typing import Any
 
 import pytest
 import yaml
-from mm.pipelines import apply_overrides, load, render_prompt, run_pyfunc
+from mm.pipelines import apply_overrides, deep_merge, load, render_prompt, run_pyfunc
 from mm.pipelines.schema import Encode, Generate, PipelineSpec, PipelineValidationError
 
 ValidationError = PipelineValidationError
@@ -69,7 +69,7 @@ class TestPipelineSpecSchema:
                     "strategy_opts": {
                         "max_width": 512,
                         "transcribe": True,
-                        "whisper_model": "medium",
+                        "model": "nvidia/parakeet-tdt-0.6b-v3",
                     },
                 },
                 "generate": {
@@ -83,7 +83,7 @@ class TestPipelineSpecSchema:
         assert spec.encode.strategy == "frame-sample"
         assert spec.encode.strategy_opts["max_width"] == 512
         assert spec.encode.strategy_opts["transcribe"] is True
-        assert spec.encode.strategy_opts["whisper_model"] == "medium"
+        assert spec.encode.strategy_opts["model"] == "nvidia/parakeet-tdt-0.6b-v3"
         assert spec.generate is not None
         assert spec.generate.max_tokens == 1024
         assert spec.generate.temperature == 0.7
@@ -184,12 +184,14 @@ class TestLoad:
     def test_load_audio_fast(self):
         spec = load("audio", "fast")
         assert spec.kind == "audio"
-        assert spec.generate is None
+        assert spec.generate is not None
+        assert spec.generate.max_tokens == 128
 
     def test_load_audio_accurate(self):
         spec = load("audio", "accurate")
         assert spec.kind == "audio"
         assert spec.generate is not None
+        assert spec.generate.max_tokens == 1024
 
     def test_load_nonexistent_raises(self):
         with pytest.raises(FileNotFoundError, match="No pipeline"):
@@ -438,11 +440,185 @@ class TestApplyOverrides:
         assert result.encode.pyfunc == "my_filter.py"
 
     def test_generate_override_on_encode_only(self):
-        """Overriding generate on an encode-only spec creates the generate section."""
+        """Generate overrides are a no-op when the spec has no generate block."""
         spec = self._encode_only_spec()
         result = apply_overrides(spec, generate_overrides={"max_tokens": "512"})
-        assert result.generate is not None
-        assert result.generate.max_tokens == 512
+        assert result.generate is None
+
+
+class TestResolvePipelineStrategyParity:
+    """`--encode.strategy X` must behave like `-p X` for prompt handling."""
+
+    def _opts(self, **kw):
+        from mm.cat_utils.base_utils import CatOpts
+
+        defaults = dict(
+            n=None,
+            output_dir=None,
+            mode="fast",
+            no_cache=True,
+            no_generate=False,
+            format="json",
+            encode_overrides={},
+            generate_overrides={},
+            pipelines={},
+            verbose=False,
+            dry_run=False,
+        )
+        defaults.update(kw)
+        return CatOpts(**defaults)
+
+    def test_encode_strategy_override_preserves_prompt_like_dash_p(self):
+        """`--encode.strategy base64` keeps the YAML prompt, matching `-p base64`.
+
+        Regression: previously the prompt was derived against the base YAML
+        strategy (``transcribe``, which suppresses generate), wiping it.
+        """
+        from mm.pipelines.pipelines_utils import resolve_pipeline
+
+        # --encode.strategy base64
+        opts_flag = self._opts(encode_overrides={"strategy": "base64"})
+        flag_spec = resolve_pipeline(opts_flag, "audio")
+
+        # -p base64 (stored under "_encoder")
+        encoder_pipe = PipelineSpec(
+            kind="_encoder",
+            mode="fast",
+            encode=Encode(strategy="base64"),
+            generate=None,
+        )
+        opts_p = self._opts(pipelines={"_encoder": encoder_pipe})
+        p_spec = resolve_pipeline(opts_p, "audio")
+
+        assert flag_spec.encode.strategy == "base64"
+        assert p_spec.encode.strategy == "base64"
+        assert flag_spec.generate is not None
+        assert p_spec.generate is not None
+        assert flag_spec.generate.prompt == p_spec.generate.prompt
+        assert flag_spec.generate.prompt != ""
+
+    def test_auto_left_for_later_resolution(self):
+        """``--encode.strategy auto`` is not resolved here (no get('auto'))."""
+        from mm.pipelines.pipelines_utils import resolve_pipeline
+
+        opts = self._opts(encode_overrides={"strategy": "auto"})
+        spec = resolve_pipeline(opts, "audio")
+        # Untouched: base YAML strategy remains; auto handled by resolve_auto_strategy.
+        assert spec.encode.strategy == "transcribe"
+
+    def test_auto_defers_generate_so_prompt_survives(self):
+        """``--encode.strategy auto`` must NOT derive generate against the base strategy.
+
+        Regression: the base YAML strategy (``transcribe``) suppresses generate,
+        so deriving it here wiped the prompt before auto could pick an encoder
+        (e.g. ``base64``) that preserves it. The prompt must survive resolution.
+        """
+        from mm.pipelines.pipelines_utils import resolve_pipeline
+
+        opts = self._opts(
+            encode_overrides={"strategy": "auto"},
+            generate_overrides={"model": "some-model"},
+        )
+        spec = resolve_pipeline(opts, "audio")
+        assert spec.generate is not None
+        assert spec.generate.prompt != ""
+
+    def test_auto_resolved_to_base64_matches_explicit(self):
+        """End-to-end: auto→base64 yields the same prompt as `--encode.strategy base64`.
+
+        Mocks ``auto_strategy`` to return ``base64`` so the test stays offline.
+        """
+        from unittest.mock import patch
+
+        from mm.encoders.auto_strategy import resolve_auto_strategy
+        from mm.pipelines.pipelines_utils import resolve_pipeline
+
+        # auto path
+        opts_auto = self._opts(
+            encode_overrides={"strategy": "auto"},
+            generate_overrides={"model": "some-model"},
+        )
+        spec_auto = apply_overrides(
+            resolve_pipeline(opts_auto, "audio"),
+            opts_auto.encode_overrides,
+            opts_auto.generate_overrides,
+        )
+        with patch("mm.encoders.auto_strategy.auto_strategy", return_value="base64"):
+            spec_auto = resolve_auto_strategy(Path("/fake/audio.mp3"), spec_auto, opts_auto)
+
+        # explicit base64 path
+        opts_b64 = self._opts(
+            encode_overrides={"strategy": "base64"},
+            generate_overrides={"model": "some-model"},
+        )
+        spec_b64 = apply_overrides(
+            resolve_pipeline(opts_b64, "audio"),
+            opts_b64.encode_overrides,
+            opts_b64.generate_overrides,
+        )
+
+        assert spec_auto.encode.strategy == "base64"
+        assert spec_auto.generate is not None and spec_b64.generate is not None
+        assert spec_auto.generate.prompt == spec_b64.generate.prompt
+        assert spec_auto.generate.prompt != ""
+
+    def test_suppressing_encoder_stays_passthrough_without_overrides(self):
+        """A generate-suppressing encoder (page-text) keeps generate=None in fast mode."""
+        from mm.pipelines.pipelines_utils import resolve_pipeline
+
+        opts = self._opts()
+        spec = resolve_pipeline(opts, "document")
+        assert spec.encode.strategy == "page-text"
+        assert spec.generate is None
+
+    def test_suppressing_encoder_stays_passthrough_with_overrides(self):
+        """A ``None`` generate entry is absolute: ``--generate.*`` overrides do NOT
+        revive the LLM step.
+
+        Regression: ``--generate.model`` alone (no prompt) used to materialise an
+        empty-prompt Generate for ``transcribe``/``page-text``, feeding the
+        passthrough output to the LLM. Suppressing encoders must stay encode-only.
+        """
+        from mm.pipelines.pipelines_utils import resolve_pipeline
+
+        opts = self._opts(generate_overrides={"model": "some-model"})
+        spec = resolve_pipeline(opts, "document")
+        assert spec.encode.strategy == "page-text"
+        assert spec.generate is None
+
+    def test_transcribe_stays_passthrough_with_generate_model(self):
+        """``--encode.strategy transcribe --generate.model X`` never hits the LLM."""
+        from mm.pipelines.pipelines_utils import resolve_pipeline
+
+        opts = self._opts(
+            encode_overrides={"strategy": "transcribe"},
+            generate_overrides={"model": "some-model"},
+        )
+        spec = resolve_pipeline(opts, "audio")
+        assert spec.encode.strategy == "transcribe"
+        assert spec.generate is None
+
+    def test_auto_resolved_to_transcribe_stays_passthrough(self):
+        """auto→transcribe stays encode-only even with a ``--generate.model`` override."""
+        from unittest.mock import patch
+
+        from mm.encoders.auto_strategy import resolve_auto_strategy
+        from mm.pipelines.pipelines_utils import resolve_pipeline
+
+        opts = self._opts(
+            encode_overrides={"strategy": "auto"},
+            generate_overrides={"model": "some-model"},
+        )
+        spec = apply_overrides(
+            resolve_pipeline(opts, "audio"),
+            opts.encode_overrides,
+            opts.generate_overrides,
+        )
+        with patch("mm.encoders.auto_strategy.auto_strategy", return_value="transcribe"):
+            spec = resolve_auto_strategy(Path("/fake/audio.mp3"), spec, opts)
+
+        assert spec.encode.strategy == "transcribe"
+        assert spec.generate is None
 
 
 class TestEncodeStrategyOpts:
@@ -592,6 +768,209 @@ class TestPyfuncFileRef:
         )
         with pytest.raises(FileNotFoundError, match="pyfunc file not found"):
             run_pyfunc(spec, [], {})
+
+
+class TestDeepMerge:
+    """Tests for deep_merge — used for pipeline + CLI extra_body merging."""
+
+    def test_disjoint_keys(self):
+        assert deep_merge({"a": 1}, {"b": 2}) == {"a": 1, "b": 2}
+
+    def test_overlay_wins_on_scalars(self):
+        assert deep_merge({"a": 1, "b": 2}, {"b": 3}) == {"a": 1, "b": 3}
+
+    def test_nested_dicts_are_merged(self):
+        base = {"vlmrun": {"metadata": {"environment": "prod", "session_id": "abc"}}}
+        overlay = {"vlmrun": {"metadata": {"environment": "dev"}}}
+        merged = deep_merge(base, overlay)
+        assert merged == {"vlmrun": {"metadata": {"environment": "dev", "session_id": "abc"}}}
+
+    def test_non_dict_replaces_dict_in_overlay(self):
+        # If overlay value is not a dict, it replaces wholesale (lists, scalars).
+        merged = deep_merge({"method_params": {"object": "fish"}}, {"method_params": ["a"]})
+        assert merged == {"method_params": ["a"]}
+
+    def test_inputs_not_mutated(self):
+        base = {"a": {"b": 1}}
+        overlay = {"a": {"c": 2}}
+        deep_merge(base, overlay)
+        assert base == {"a": {"b": 1}}
+        assert overlay == {"a": {"c": 2}}
+
+
+class TestGenerateExtraBody:
+    """Schema + override behaviour for the new Generate.extra_body field."""
+
+    def test_default_is_empty_dict(self):
+        gen = Generate(prompt="hi")
+        assert gen.extra_body == {}
+
+    def test_from_dict_accepts_mapping(self):
+        spec = PipelineSpec.from_dict(
+            {
+                "kind": "image",
+                "mode": "accurate",
+                "generate": {
+                    "prompt": "Caption.",
+                    "extra_body": {
+                        "method": "caption",
+                        "method_params": {"length": "short"},
+                    },
+                },
+            }
+        )
+        assert spec.generate is not None
+        assert spec.generate.extra_body == {
+            "method": "caption",
+            "method_params": {"length": "short"},
+        }
+
+    def test_from_dict_null_extra_body_becomes_empty(self):
+        spec = PipelineSpec.from_dict(
+            {
+                "kind": "image",
+                "mode": "fast",
+                "generate": {"prompt": "p", "extra_body": None},
+            }
+        )
+        assert spec.generate is not None
+        assert spec.generate.extra_body == {}
+
+    def test_from_dict_rejects_non_mapping(self):
+        with pytest.raises(PipelineValidationError):
+            PipelineSpec.from_dict(
+                {
+                    "kind": "image",
+                    "mode": "fast",
+                    "generate": {"prompt": "p", "extra_body": ["nope"]},
+                }
+            )
+
+    def test_to_dict_round_trip(self):
+        gen = Generate(prompt="p", extra_body={"method": "ocr"})
+        assert gen.to_dict()["extra_body"] == {"method": "ocr"}
+
+    def test_apply_overrides_string_json(self):
+        spec = PipelineSpec.from_dict(
+            {"kind": "image", "mode": "fast", "generate": {"prompt": "p"}}
+        )
+        result = apply_overrides(spec, generate_overrides={"extra_body": '{"method":"detect"}'})
+        assert result.generate is not None
+        assert result.generate.extra_body == {"method": "detect"}
+
+    def test_apply_overrides_dict_value(self):
+        spec = PipelineSpec.from_dict(
+            {"kind": "image", "mode": "fast", "generate": {"prompt": "p"}}
+        )
+        result = apply_overrides(spec, generate_overrides={"extra_body": {"method": "caption"}})
+        assert result.generate is not None
+        assert result.generate.extra_body == {"method": "caption"}
+
+    def test_apply_overrides_deep_merges_with_pipeline_level(self):
+        spec = PipelineSpec.from_dict(
+            {
+                "kind": "image",
+                "mode": "fast",
+                "generate": {
+                    "prompt": "p",
+                    "extra_body": {
+                        "method": "caption",
+                        "method_params": {"length": "normal"},
+                    },
+                },
+            }
+        )
+        result = apply_overrides(
+            spec,
+            generate_overrides={
+                "extra_body": '{"method_params":{"length":"short"},"video_fps":1.0}'
+            },
+        )
+        assert result.generate is not None
+        assert result.generate.extra_body == {
+            "method": "caption",
+            "method_params": {"length": "short"},
+            "video_fps": 1.0,
+        }
+
+    def test_apply_overrides_invalid_json_raises(self):
+        spec = PipelineSpec.from_dict(
+            {"kind": "image", "mode": "fast", "generate": {"prompt": "p"}}
+        )
+        with pytest.raises(ValueError, match="JSON object"):
+            apply_overrides(spec, generate_overrides={"extra_body": "{not json}"})
+
+    def test_apply_overrides_non_object_json_raises(self):
+        spec = PipelineSpec.from_dict(
+            {"kind": "image", "mode": "fast", "generate": {"prompt": "p"}}
+        )
+        with pytest.raises(ValueError, match="JSON object"):
+            apply_overrides(spec, generate_overrides={"extra_body": "[1,2,3]"})
+
+
+class TestGenerateModel:
+    """`Generate.model` is a first-class schema field with CLI-overridable semantics."""
+
+    def test_default_is_none(self):
+        gen = Generate(prompt="p")
+        assert gen.model is None
+
+    def test_from_dict_reads_model(self):
+        spec = PipelineSpec.from_dict(
+            {
+                "kind": "image",
+                "mode": "accurate",
+                "generate": {"prompt": "describe", "model": "moondream2"},
+            }
+        )
+        assert spec.generate is not None
+        assert spec.generate.model == "moondream2"
+
+    def test_from_dict_rejects_non_string_model(self):
+        with pytest.raises(PipelineValidationError, match="generate.model"):
+            PipelineSpec.from_dict(
+                {
+                    "kind": "image",
+                    "mode": "accurate",
+                    "generate": {"prompt": "p", "model": 42},
+                }
+            )
+
+    def test_from_dict_allows_null_model(self):
+        spec = PipelineSpec.from_dict(
+            {
+                "kind": "image",
+                "mode": "accurate",
+                "generate": {"prompt": "p", "model": None},
+            }
+        )
+        assert spec.generate is not None
+        assert spec.generate.model is None
+
+    def test_to_dict_round_trip(self):
+        gen = Generate(prompt="p", model="paddleocr-v5")
+        assert gen.to_dict()["model"] == "paddleocr-v5"
+
+    def test_apply_overrides_sets_model(self):
+        spec = PipelineSpec.from_dict(
+            {"kind": "image", "mode": "fast", "generate": {"prompt": "p"}}
+        )
+        result = apply_overrides(spec, generate_overrides={"model": "qwen3.5-0.8b"})
+        assert result.generate is not None
+        assert result.generate.model == "qwen3.5-0.8b"
+
+    def test_apply_overrides_replaces_yaml_model(self):
+        """CLI override wins over YAML-pinned model (no merge — replacement)."""
+        spec = PipelineSpec.from_dict(
+            {
+                "kind": "image",
+                "mode": "accurate",
+                "generate": {"prompt": "p", "model": "yaml-pinned"},
+            }
+        )
+        result = apply_overrides(spec, generate_overrides={"model": "cli-override"})
+        assert result.generate is not None
+        assert result.generate.model == "cli-override"
 
 
 class TestTomlPipelinePaths:

@@ -1,0 +1,5 @@
+mm-ctx>=0.13.0
+fastapi>=0.136
+uvicorn[standard]>=0.46
+pydantic>=2.0
+gradio>=6.1

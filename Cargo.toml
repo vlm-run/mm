@@ -3,7 +3,7 @@ resolver = "2"
 members = ["crates/*"]
 
 [workspace.package]
-version = "0.9.0"
+version = "0.13.2"
 edition = "2024"
 license = "MIT"
 authors = ["Sudeep"]
@@ -32,3 +32,8 @@ rustdct = "0.7"
 symphonia = { version = "0.5", default-features = false, features = ["mp3", "wav", "aac", "flac", "ogg", "pcm"] }
 regex = "1"
 base64 = "0.22"
+libreoffice-pure = "0.4.7"
+lo_core = "0.4.7"
+lo_writer = "0.4.7"
+lo_calc = "0.4.7"
+lo_impress = "0.4.7"

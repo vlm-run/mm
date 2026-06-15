@@ -1,0 +1,66 @@
+name: deploy docs
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "README.md"
+      - "docs/**"
+      - "notebooks/**"
+      - "mkdocs.yml"
+      - "scripts/docs_hooks.py"
+      - ".github/workflows/docs.yml"
+    tags:
+      - "docs-v*"
+
+concurrency:
+  group: gh-pages
+  cancel-in-progress: false
+
+env:
+  CI: true
+
+jobs:
+  build-deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          lfs: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install mkdocs
+        run: |
+          pip install "mkdocs>=1.6" "mkdocs-material>=9.5" "mkdocs-jupyter>=0.25" mkdocstrings-python mm-ctx
+      - name: Build site
+        run: mkdocs build --strict
+      - name: Write /readme → / redirect
+        run: |
+          mkdir -p site/readme
+          cat > site/readme/index.html <<'EOF'
+          <!DOCTYPE html>
+          <html lang="en">
+          <head>
+            <meta charset="utf-8">
+            <title>Redirecting…</title>
+            <link rel="canonical" href="/mm/">
+            <meta http-equiv="refresh" content="0; url=/mm/">
+            <script>location.replace("/mm/" + location.hash);</script>
+          </head>
+          <body>
+            <p>Redirecting to <a href="/mm/">mm docs</a>…</p>
+          </body>
+          </html>
+          EOF
+      - name: Deploy to GitHub Pages root
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./site
+          destination_dir: .
+          keep_files: true

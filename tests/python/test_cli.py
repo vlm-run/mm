@@ -229,11 +229,12 @@ class TestCat:
         lines = r.output.strip().splitlines()
         assert len(lines) == 1
 
-    def test_json_output(self, small_tree: Path):
+    def test_json_output(self, small_tree: Path, isolated_db: Path):
         r = runner.invoke(app, ["cat", str(small_tree / "src" / "main.py"), "--format", "json"])
         assert r.exit_code == 0
-        data = json.loads(r.output)
+        data = json.loads(r.stdout)
         assert len(data) == 1
+        # Default mode is ``fast``.
         assert data[0]["mode"] == "fast"
         assert "content" in data[0]
         assert "path" in data[0]
@@ -254,7 +255,7 @@ class TestCat:
             ],
         )
         assert r.exit_code == 0
-        data = json.loads(r.output)
+        data = json.loads(r.stdout)
         assert len(data) == 2
 
     def test_dataset_jsonl(self, small_tree: Path):
@@ -726,6 +727,39 @@ class TestGrep:
             hits = fts_search(q, uri_prefix=str(tmp_path), limit=10)
             assert len(hits) == 1, f"{q!r} must match exactly chunk 0, got {len(hits)}"
             assert hits[0]["index"] == 0
+
+
+# ── peek ─────────────────────────────────────────────────────────────
+
+
+class TestPeek:
+    def test_rich_default_shows_kind(self, small_tree: Path):
+        r = runner.invoke(app, ["peek", str(small_tree / "icon.png")])
+        assert r.exit_code == 0
+        assert "icon.png" in r.output
+        assert "image" in r.output
+
+    def test_json_emits_list(self, small_tree: Path):
+        r = runner.invoke(app, ["peek", str(small_tree / "src" / "main.py"), "--format", "json"])
+        assert r.exit_code == 0
+        data = json.loads(r.output)
+        assert isinstance(data, list) and len(data) == 1
+        assert data[0]["kind"] == "text"
+
+    def test_multi_file_emits_one_row_each(self, small_tree: Path):
+        r = runner.invoke(
+            app,
+            [
+                "peek",
+                str(small_tree / "icon.png"),
+                str(small_tree / "src" / "main.py"),
+                "--format",
+                "json",
+            ],
+        )
+        assert r.exit_code == 0
+        data = json.loads(r.output)
+        assert {row["kind"] for row in data} == {"image", "text"}
 
 
 # ── sql ──────────────────────────────────────────────────────────────

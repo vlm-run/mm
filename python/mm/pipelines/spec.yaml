@@ -23,38 +23,44 @@ mode: fast # Processing mode: fast | accurate
 encode:
   # Encoder name (registered in mm's encoder registry). Accepts either
   # the bare name (`resize`) or the kind-prefixed display name
-  # (`image-resize`). Examples:
+  # (`resize`). Examples:
   #   image:    resize, tile
-  #   video:    frame-sample, frames-transcript, mosaic, video-chunk,
-  #             video-gemini, video-gemini-chunked, shot-frames, shot-mosaic
-  #   audio:    transcribe, audio-gemini
-  #   document: page-text, rasterize, rasterize-text, document-gemini
+  #   video:    frames, frames-w-transcript, mosaic,
+  #             chunks, clips, keyframes, shots,
+  #             shot-mosaic, summary, captions,
+  #             transcript, gemini, gemini-chunked
+  #   audio:    transcribe, gemini
+  #   document: page-text, rasterize, rasterize-text, gemini
   # null = use the kind-specific default.
   strategy: resize
+
+  # Encoder model name — used by audio/video transcription encoders.
+  # model: nvidia/parakeet-tdt-0.6b-v3
+
+  # Encoder backend selector (audio transcription only).
+  # backend: openai   # "openai" | "mlx" | "ctranslate2"
 
   # Encoder-specific parameters, forwarded as kwargs to encoder.encode().
   # See `mm cat --list-encoders` for every encoder's accepted fields.
   strategy_opts:
-    # Examples for image-resize / image-tile:
+    # Examples for resize / tile:
     max_width: 1024
 
-    # Examples for video-mosaic:
+    # Examples for mosaic:
     # tile_cols: 4
     # tile_rows: 4
     # thumb_width: 160
     # num_mosaics: 8
     # num_frames: 128
 
-    # Examples for video-frames-transcript:
+    # Examples for frames-w-transcript:
     # fps: 1.0
     # max_width: 1024
     # max_frames_per_message: 16
-    # whisper_model: medium
-    # audio_speed: 1.0
+    # audio_speed: 2.0
 
-    # Examples for audio-transcribe:
-    # whisper_model: medium
-    # audio_speed: 1.0
+    # Examples for transcribe:
+    # audio_speed: 2.0
 
   # Custom Python transform — file path or inline `def`.
   # Must define: def transform(parts, context) -> list[dict]
@@ -89,11 +95,11 @@ generate:
     Describe this image in 10 words or less.
     Then list exactly 5 keyword tags.
 
-    [OUTPUT]
-    ## Description
-    {{description}}
+    ## FORMAT
+    Description:
+    --description--
 
-    ## Tags
+    Tags:
     - tag1
     - tag2
     ...
