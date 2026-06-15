@@ -1,0 +1,2216 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Multimodal file encoding strategies with mm</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,300..900;1,14..32,300..700&family=JetBrains+Mono:wght@400;500&display=swap"
+    rel="stylesheet">
+
+  <style>
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    :root {
+      --text-primary: #121317;
+      --text-secondary: #45474D;
+      --text-muted: #6E7180;
+      --bg: #ffffff;
+      --bg-surface: #f7f8fa;
+      --bg-code: #0f172a;
+      --border: #e4e5e8;
+      --accent: #3279F9;
+      --accent-light: #e8f0fe;
+      --green: #1a7f37;
+      --green-bg: #dcfce7;
+      --amber: #92400e;
+      --amber-bg: #fef3c7;
+      --red: #b91c1c;
+      --red-bg: #fee2e2;
+      --purple: #7c3aed;
+      --purple-bg: #ede9fe;
+      --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      --font-mono: 'JetBrains Mono', 'Cascadia Code', ui-monospace, monospace;
+      --page-margin: 40px;
+      --content-width: 720px;
+    }
+
+    html {
+      font-size: 16px;
+      scroll-behavior: smooth;
+    }
+
+    body {
+      font-family: var(--font-sans);
+      background: var(--bg);
+      color: var(--text-primary);
+      line-height: 1.65;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ── Nav ──────────────────────────────────────── */
+    nav {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: rgba(255, 255, 255, 0.92);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      height: 60px;
+      padding: 0 var(--page-margin);
+    }
+
+    .nav-logo {
+      font-size: 17px;
+      font-weight: 700;
+      color: var(--text-primary);
+      text-decoration: none;
+      letter-spacing: -0.02em;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .nav-badge {
+      display: inline-block;
+      background: var(--text-primary);
+      color: #fff;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 2px 7px;
+      border-radius: 4px;
+      letter-spacing: 0.04em;
+    }
+
+    .nav-spacer {
+      flex: 1;
+    }
+
+    .nav-breadcrumb {
+      font-size: 13px;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .nav-breadcrumb a {
+      color: var(--text-muted);
+      text-decoration: none;
+    }
+
+    .nav-breadcrumb a:hover {
+      color: var(--text-primary);
+    }
+
+    /* ── Hero ──────────────────────────────────────── */
+    .hero {
+      background: linear-gradient(135deg, #060c1a 0%, #0f1f3d 45%, #091426 100%);
+      padding: 88px var(--page-margin) 80px;
+      display: flex;
+      justify-content: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .hero::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(ellipse 60% 50% at 70% 60%, rgba(50, 121, 249, 0.15) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    .hero-inner {
+      width: 100%;
+      max-width: var(--content-width);
+      position: relative;
+    }
+
+    .hero-eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(50, 121, 249, 0.12);
+      border: 1px solid rgba(50, 121, 249, 0.3);
+      color: #7eb3fc;
+      font-size: 12px;
+      font-weight: 600;
+      padding: 4px 12px;
+      border-radius: 20px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      margin-bottom: 24px;
+    }
+
+    .hero-eyebrow::before {
+      content: '';
+      width: 6px;
+      height: 6px;
+      background: #3279F9;
+      border-radius: 50%;
+      display: inline-block;
+    }
+
+    .hero-title {
+      font-size: clamp(32px, 4.5vw, 52px);
+      font-weight: 750;
+      color: #fff;
+      line-height: 1.1;
+      letter-spacing: -0.03em;
+      margin-bottom: 20px;
+    }
+
+    .hero-subtitle {
+      font-size: 19px;
+      font-weight: 400;
+      color: #94a3b8;
+      line-height: 1.55;
+      margin-bottom: 36px;
+    }
+
+    .hero-meta {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .hero-meta-item {
+      font-size: 13px;
+      color: #64748b;
+    }
+
+    .hero-meta-sep {
+      width: 3px;
+      height: 3px;
+      background: #475569;
+      border-radius: 50%;
+    }
+
+    .hero-tag {
+      background: rgba(255, 255, 255, 0.08);
+      color: #94a3b8;
+      font-size: 12px;
+      font-weight: 500;
+      padding: 3px 10px;
+      border-radius: 4px;
+    }
+
+    /* ── Page layout ────────────────────────────────── */
+    .page-layout {
+      display: flex;
+      justify-content: center;
+      padding: 0 var(--page-margin);
+    }
+
+    /* ── Article ─────────────────────────────────── */
+    .article-wrap {
+      width: 100%;
+      max-width: var(--content-width);
+      padding: 64px 0 96px;
+    }
+
+    article p {
+      font-size: 17px;
+      line-height: 1.75;
+      color: var(--text-primary);
+      margin-bottom: 22px;
+    }
+
+    article p:last-child {
+      margin-bottom: 0;
+    }
+
+    /* 44px padding between the border rule and the heading text */
+    article h2 {
+      font-size: 28px;
+      font-weight: 700;
+      color: var(--text-primary);
+      letter-spacing: -0.025em;
+      margin: 64px 0 18px;
+      line-height: 1.2;
+      padding-top: 44px;
+      border-top: 2px solid var(--border);
+    }
+
+    article h2:first-child {
+      margin-top: 0;
+      border-top: none;
+      padding-top: 0;
+    }
+
+    article h3 {
+      font-size: 19px;
+      font-weight: 650;
+      color: var(--text-primary);
+      letter-spacing: -0.015em;
+      margin: 36px 0 10px;
+      line-height: 1.3;
+    }
+
+    article h4 {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text-secondary);
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      margin: 32px 0 10px;
+    }
+
+    article ul,
+    article ol {
+      margin: 0 0 22px 0;
+      padding-left: 24px;
+    }
+
+    article li {
+      font-size: 17px;
+      line-height: 1.7;
+      color: var(--text-primary);
+      margin-bottom: 5px;
+    }
+
+    article ul li::marker {
+      color: var(--accent);
+    }
+
+    article strong {
+      font-weight: 650;
+    }
+
+    article a {
+      color: var(--accent);
+      text-decoration: none;
+    }
+
+    article a:hover {
+      text-decoration: underline;
+    }
+
+    article code {
+      font-family: var(--font-mono);
+      font-size: 13.5px;
+      background: #f0f4ff;
+      color: #1e3a6e;
+      padding: 1px 6px;
+      border-radius: 4px;
+      border: 1px solid #d0dcf7;
+    }
+
+    /* ── Code blocks ────────────────────────────── */
+    .code-block {
+      background: var(--bg-code);
+      border-radius: 12px;
+      overflow: hidden;
+      margin: 24px 0;
+    }
+
+    .code-block-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 16px;
+      background: rgba(255, 255, 255, 0.04);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+    }
+
+    .code-block-lang {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 500;
+      color: #4b5563;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .code-block-dots {
+      display: flex;
+      gap: 6px;
+    }
+
+    .code-block-dots span {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+    }
+
+    .dot-r {
+      background: #ef4444;
+      opacity: 0.65;
+    }
+
+    .dot-a {
+      background: #f59e0b;
+      opacity: 0.65;
+    }
+
+    .dot-g {
+      background: #22c55e;
+      opacity: 0.65;
+    }
+
+    .code-block pre {
+      padding: 20px;
+      overflow-x: auto;
+      margin: 0;
+    }
+
+    .code-block code {
+      font-family: var(--font-mono);
+      font-size: 13.5px;
+      line-height: 1.65;
+      color: #e2e8f0;
+      background: none;
+      border: none;
+      padding: 0;
+    }
+
+    .tok-c {
+      color: #4b5563;
+      font-style: italic;
+    }
+
+    .tok-s {
+      color: #86efac;
+    }
+
+    .tok-k {
+      color: #93c5fd;
+    }
+
+    .tok-f {
+      color: #fde68a;
+    }
+
+    .tok-p {
+      color: #f9a8d4;
+    }
+
+    .tok-n {
+      color: #a5f3fc;
+    }
+
+    .tok-o {
+      color: #cbd5e1;
+    }
+
+    /* ── Callouts ───────────────────────────────── */
+    .callout {
+      border-radius: 10px;
+      padding: 18px 22px;
+      margin: 24px 0;
+      display: flex;
+      gap: 14px;
+    }
+
+    .callout-icon {
+      font-size: 18px;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+
+    .callout-body {
+      flex: 1;
+    }
+
+    .callout-title {
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      margin-bottom: 5px;
+    }
+
+    .callout p {
+      font-size: 15px;
+      line-height: 1.65;
+      margin: 0;
+    }
+
+    .callout code {
+      font-size: 12.5px;
+    }
+
+    .callout.note {
+      background: var(--accent-light);
+      border: 1px solid #c7d7fc;
+    }
+
+    .callout.note .callout-title {
+      color: #1d4ed8;
+    }
+
+    .callout.note p {
+      color: #1e3a8a;
+    }
+
+    .callout.note code {
+      background: rgba(50, 121, 249, 0.1);
+      border-color: #c7d7fc;
+      color: #1d4ed8;
+    }
+
+    .callout.tip {
+      background: var(--green-bg);
+      border: 1px solid #bbf7d0;
+    }
+
+    .callout.tip .callout-title {
+      color: var(--green);
+    }
+
+    .callout.tip p {
+      color: #14532d;
+    }
+
+    .callout.tip code {
+      background: rgba(26, 127, 55, 0.1);
+      border-color: #bbf7d0;
+      color: var(--green);
+    }
+
+    .callout.warn {
+      background: var(--amber-bg);
+      border: 1px solid #fcd34d;
+    }
+
+    .callout.warn .callout-title {
+      color: #b45309;
+    }
+
+    .callout.warn p {
+      color: #78350f;
+    }
+
+    .callout.important {
+      background: var(--purple-bg);
+      border: 1px solid #c4b5fd;
+    }
+
+    .callout.important .callout-title {
+      color: var(--purple);
+    }
+
+    .callout.important p {
+      color: #4c1d95;
+    }
+
+    .callout.important code {
+      background: rgba(124, 58, 237, 0.1);
+      border-color: #c4b5fd;
+      color: var(--purple);
+    }
+
+    /* ── Blockquote ─────────────────────────────── */
+    .bigquote {
+      border-left: 4px solid var(--accent);
+      background: var(--accent-light);
+      padding: 20px 24px;
+      border-radius: 0 10px 10px 0;
+      margin: 28px 0;
+    }
+
+    .bigquote p {
+      font-size: 19px;
+      font-weight: 500;
+      color: #1e3a8a;
+      font-style: italic;
+      line-height: 1.6;
+      margin: 0;
+      letter-spacing: -0.01em;
+    }
+
+    /* ── Pills / chips ──────────────────────────── */
+    .pill {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 2px 9px;
+      border-radius: 20px;
+      letter-spacing: 0.04em;
+      white-space: nowrap;
+    }
+
+    .pill-image {
+      background: #dbeafe;
+      color: #1d4ed8;
+    }
+
+    .pill-video {
+      background: var(--purple-bg);
+      color: var(--purple);
+    }
+
+    .pill-audio {
+      background: var(--green-bg);
+      color: var(--green);
+    }
+
+    .pill-document {
+      background: var(--amber-bg);
+      color: var(--amber);
+    }
+
+    .pill-gray {
+      background: #e4e5e8;
+      color: #45474D;
+    }
+
+    .pill-green {
+      background: var(--green-bg);
+      color: var(--green);
+    }
+
+    .pill-blue {
+      background: var(--accent-light);
+      color: #1d4ed8;
+    }
+
+    .pill-purple {
+      background: var(--purple-bg);
+      color: var(--purple);
+    }
+
+    /* ── Encoder cards ──────────────────────────── */
+    .encoder-card {
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      margin: 20px 0;
+    }
+
+    .encoder-card-header {
+      padding: 16px 20px;
+      background: var(--bg-surface);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+    }
+
+    .encoder-card-name {
+      font-family: var(--font-mono);
+      font-size: 17px;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    .encoder-card-tags {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      margin-top: 6px;
+    }
+
+    .encoder-card-body {
+      padding: 16px 20px;
+    }
+
+    .encoder-card-body p {
+      font-size: 15px;
+      margin-bottom: 12px;
+      color: var(--text-secondary);
+      line-height: 1.65;
+    }
+
+    .encoder-card-body p:last-child {
+      margin-bottom: 0;
+    }
+
+    .params-grid {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 3px 14px;
+      margin-top: 10px;
+    }
+
+    .param-name {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--accent);
+    }
+
+    .param-value {
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+
+    /* ── Encoder mini grid ──────────────────────── */
+    .encoder-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 12px;
+      margin: 24px 0;
+    }
+
+    .enc-mini {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 14px 16px;
+      background: var(--bg-surface);
+    }
+
+    .enc-mini-name {
+      font-family: var(--font-mono);
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin-bottom: 4px;
+    }
+
+    .enc-mini-desc {
+      font-size: 13px;
+      color: var(--text-secondary);
+      line-height: 1.5;
+      margin-bottom: 8px;
+    }
+
+    .enc-mini-tags {
+      display: flex;
+      gap: 5px;
+      flex-wrap: wrap;
+    }
+
+    /* ── Comparison table ───────────────────────── */
+    .comp-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 24px 0;
+      font-size: 14px;
+    }
+
+    .comp-table th {
+      text-align: left;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-muted);
+      padding: 10px 14px;
+      border-bottom: 2px solid var(--border);
+    }
+
+    .comp-table td {
+      padding: 11px 14px;
+      border-bottom: 1px solid var(--border);
+      vertical-align: top;
+      line-height: 1.5;
+    }
+
+    .comp-table tr:last-child td {
+      border-bottom: none;
+    }
+
+    .comp-table tr:hover td {
+      background: var(--bg-surface);
+    }
+
+    .comp-table td:first-child {
+      font-family: var(--font-mono);
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-primary);
+      white-space: nowrap;
+    }
+
+    .comp-table .col-desc {
+      color: var(--text-secondary);
+      font-size: 13.5px;
+    }
+
+    .comp-table .col-best {
+      color: var(--text-muted);
+      font-size: 13px;
+    }
+
+    /* Mermaid diagram container — fills container width, scrolls only if SVG is intrinsically wider */
+    .diagram-wrap {
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 28px 20px 20px;
+      margin: 24px 0;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .diagram-wrap::-webkit-scrollbar {
+      height: 4px;
+    }
+
+    .diagram-wrap::-webkit-scrollbar-track {
+      background: var(--border);
+      border-radius: 2px;
+    }
+
+    .diagram-wrap::-webkit-scrollbar-thumb {
+      background: #c7d7fc;
+      border-radius: 2px;
+    }
+
+    .diagram-caption {
+      font-size: 13px;
+      color: var(--text-muted);
+      text-align: center;
+      margin-top: 14px;
+      padding-top: 14px;
+      border-top: 1px solid var(--border);
+    }
+
+    /* SVGs render at natural aspect ratio, capped to container width */
+    .mermaid {
+      display: block;
+    }
+
+    .mermaid svg {
+      display: block;
+      max-width: 100%;
+      width: auto !important;
+      height: auto !important;
+    }
+
+    /* [6] Scenario scroll — horizontal scroll snap */
+    .scenario-scroll {
+      display: flex;
+      gap: 12px;
+      overflow-x: auto;
+      scroll-snap-type: x mandatory;
+      -webkit-overflow-scrolling: touch;
+      padding-bottom: 12px;
+      margin: 24px 0;
+      /* let cards peek at the right edge to hint scrollability */
+      padding-right: 32px;
+    }
+
+    .scenario-scroll::-webkit-scrollbar {
+      height: 4px;
+    }
+
+    .scenario-scroll::-webkit-scrollbar-track {
+      background: var(--border);
+      border-radius: 2px;
+    }
+
+    .scenario-scroll::-webkit-scrollbar-thumb {
+      background: var(--accent);
+      border-radius: 2px;
+    }
+
+    .scenario-card {
+      flex-shrink: 0;
+      width: 300px;
+      scroll-snap-align: start;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px 18px;
+      background: var(--bg);
+    }
+
+    /* wider cards on bigger screens */
+    @media (min-width: 900px) {
+      .scenario-card {
+        width: 340px;
+      }
+    }
+
+    .scenario-label {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+    }
+
+    .scenario-task {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin-bottom: 12px;
+      line-height: 1.4;
+    }
+
+    .scenario-cmd {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: #e2e8f0;
+      background: #0f172a;
+      padding: 8px 12px;
+      border-radius: 6px;
+      overflow-x: auto;
+      white-space: nowrap;
+      margin-bottom: 8px;
+    }
+
+    .scenario-why {
+      font-size: 12.5px;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+
+    /* ── Quick ref tables ───────────────────────── */
+    .ref-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 24px 0;
+      font-size: 13px;
+    }
+
+    .ref-table th {
+      text-align: left;
+      font-size: 10.5px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-muted);
+      padding: 9px 12px;
+      border-bottom: 2px solid var(--border);
+      white-space: nowrap;
+    }
+
+    .ref-table td {
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--border);
+      vertical-align: top;
+      line-height: 1.5;
+    }
+
+    .ref-table tr:last-child td {
+      border-bottom: none;
+    }
+
+    .ref-table tr:hover td {
+      background: var(--bg-surface);
+    }
+
+    .ref-table .col-name {
+      font-family: var(--font-mono);
+      font-weight: 600;
+      font-size: 12.5px;
+      color: var(--text-primary);
+      white-space: nowrap;
+    }
+
+    .ref-table .col-desc {
+      color: var(--text-secondary);
+      font-size: 13px;
+    }
+
+    .ref-table .col-best {
+      color: var(--text-muted);
+      font-size: 12.5px;
+    }
+
+    .ref-table .col-param {
+      font-family: var(--font-mono);
+      font-size: 11.5px;
+      color: var(--text-muted);
+    }
+
+    /* ── CTA ─────────────────────────────────────── */
+    .cta-block {
+      background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+      border-radius: 16px;
+      padding: 48px 40px;
+      text-align: center;
+      margin-top: 64px;
+    }
+
+    .cta-block h2 {
+      color: #fff;
+      font-size: 26px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      margin: 0 0 10px;
+      border: none !important;
+      padding: 0 !important;
+    }
+
+    .cta-block p {
+      color: #94a3b8;
+      font-size: 16px;
+      margin: 0 0 28px;
+    }
+
+    .btn-install {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: #1E5ACA;
+      color: #fff;
+      font-family: var(--font-mono);
+      font-size: 15px;
+      font-weight: 600;
+      padding: 13px 28px;
+      border-radius: 8px;
+      text-decoration: none;
+      letter-spacing: -0.01em;
+      transition: background 0.15s;
+    }
+
+    .btn-install:hover {
+      background: #174fad;
+      text-decoration: none;
+    }
+
+    .btn-install::before {
+      content: '$';
+      opacity: 0.6;
+      font-size: 13px;
+    }
+
+    /* ── Footer ──────────────────────────────────── */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 32px var(--page-margin);
+      text-align: center;
+    }
+
+    footer p {
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+
+    footer a {
+      color: var(--text-muted);
+      text-decoration: underline;
+    }
+
+    footer a:hover {
+      color: var(--text-primary);
+    }
+
+    /* ── Responsive ──────────────────────────────── */
+    @media (max-width: 640px) {
+      :root {
+        --page-margin: 20px;
+      }
+
+      .hero-title {
+        font-size: 30px;
+      }
+
+      article h2 {
+        font-size: 22px;
+      }
+
+      .cta-block {
+        padding: 36px 24px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- Nav -->
+  <nav>
+    <a href="../" class="nav-logo"><span class="nav-badge">mm</span> fast, multimodal context for agents</a>
+    <div class="nav-spacer"></div>
+    <div class="nav-breadcrumb">
+      <a href="./">Blog</a> › <span>Encoders</span>
+    </div>
+  </nav>
+
+  <!-- Hero -->
+  <header class="hero">
+    <div class="hero-inner">
+      <h1 class="hero-title">
+        Strategies for encoding binary files with mm
+      </h1>
+      <p class="hero-subtitle">
+        <!-- Transforming images, video, audio, and documents into VLM-ready messages, and choosing the right encoder for
+        different use cases. -->
+        <!-- Choosing the right encoder to transform images, video, audio, and documents into VLM-ready messages. -->
+        Transforming images, video, audio, and documents into VLM-ready messages for different use cases.
+      </p>
+      <div class="hero-meta">
+        <span class="hero-meta-item">June 2026</span>
+        <span class="hero-meta-sep"></span>
+        <span class="hero-meta-item">12 min read</span>
+        <span class="hero-tag">images</span>
+        <span class="hero-tag">video</span>
+        <span class="hero-tag">audio</span>
+        <span class="hero-tag">documents</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Page layout -->
+  <div class="page-layout">
+    <div class="article-wrap">
+      <article>
+        <p>
+          Vision Language Models (VLMs) reason over visual inputs but are fundamentally bound by a finite context
+          window. The 256K–1M token budget that feels generous for text proves insufficient once dense visual modalities
+          dominate: capacity is bounded not by semantic complexity but by raw token consumption.
+        </p>
+
+        <div class="bigquote">
+          <p>Information density is modality-dependent: a 10-second video clip carries more context than 10 seconds of
+            audio, which carries more than 10 seconds of text.</p>
+        </div>
+
+        <p>
+          Forwarding raw binary payloads directly to the inference endpoint is fundamentally incompatible with these
+          constraints. Consider the extremes: a 4K image, a 3-hour 12GB video, or a scanned PDF lacking a text layer.
+          Each incurs prohibitive token overhead at the model layer, so providers downsample internally: images to
+          480×480 or video to 5 FPS at 320p prior to tokenization.
+        </p>
+
+        <p>
+          For images, this is often tolerable, since downsampling incurs little loss of semantic fidelity. But it
+          remains architecturally wasteful: transmitting a 20MB 4K image to the inference endpoint, only to have it
+          immediately rescaled to a 32KB thumbnail, is wasted bandwidth and added latency. This motivated our
+          investigation into modality-aware encoding applied before the inference call.
+        </p>
+
+        <!-- ── Section: mm Encoders ── -->
+        <h2 id="pipeline">Encoders</h2>
+
+        <p>
+          We formalize each such strategy as an <strong>encoder</strong>: a local, deterministic transform from a binary
+          file to one or more <em>messages</em>, the OpenAI-compatible content parts (<code>text</code>,
+          <code>image_url</code>, <code>input_audio</code>, <code>video_url</code>) that any chat/completions endpoint
+          accepts.
+          Each is identified by name (e.g., <code>resize</code>, <code>mosaic</code>, <code>transcribe</code>), bound to
+          a single media kind, and answers one question for its modality: what is the most compact representation that
+          still preserves content fidelity for the model layer?
+        </p>
+
+        <p>
+          The transform runs on-device before a single token is billed and generates transmittable message segments
+          rather than a monolithic payload, so long or large inputs decompose naturally into smaller chunks transferred
+          over parallel calls.
+        </p>
+
+        <div class="diagram-wrap">
+          <pre class="mermaid">%%{init: {'look': 'neo', 'theme': 'neutral'}}%%
+graph LR
+  file("📁 file\n(any type)")
+
+  subgraph encode ["① Encode (local)"]
+    direction TB
+    enc("Encoder\nkind-specific preprocessing")
+    msg("Message\nOpenAI-compatible content parts")
+  end
+
+  subgraph generate ["② Model (inference)"]
+    direction TB
+    llm("VLM\nchat / completions API")
+    out("text output")
+  end
+
+  file --> enc --> msg --> llm --> out
+  style encode rx:10px,ry:10px
+  style generate rx:10px,ry:10px</pre>
+          <div class="diagram-caption">A file is encoded into OpenAI-compatible messages, then sent to a VLM for
+            generation.</div>
+        </div>
+
+        <p>
+          The diagram above conveys what happens end to end: a file reaches the encoder, which applies modality-aware
+          transformation, e.g., <code>resize</code> a photograph, <code>transcode</code> a clip, <code>transcribe</code>
+          speech, or <code>render</code> a document page, producing messages a VLM can process.
+        </p>
+
+        <p>
+          A key advantage of this design is that the number of generated messages adapts to the content. A small binary
+          document encodes into a single message, while a large or densely packed one fans out into many messages, each
+          a self-contained part sized to the model’s context window, allowing for comprehensive understanding.
+        </p>
+
+        <div class="bigquote">
+          <p>Every aspect of the input is read and processed in parallel before being merged into a final output.</p>
+        </div>
+
+
+        <div class="diagram-wrap">
+          <pre class="mermaid">%%{init: {'look': 'neo', 'theme': 'neutral'}}%%
+graph LR
+  video("🎬 video")
+
+  subgraph encode ["Encoder (multi-chunk output)"]
+    s1("Chunk 1\n16 frames")
+    s2("Chunk 2\n16 frames")
+    s3("Chunk N\n16 frames")
+  end
+
+  subgraph generate ["Model (read in parallel)"]
+    g1("VLM")
+    g2("VLM")
+    g3("VLM")
+  end
+
+  concat("concat results")
+  out("final output")
+
+  video --> s1
+  video --> s2
+  video --> s3
+  s1 --> g1
+  s2 --> g2
+  s3 --> g3
+  g1 --> concat
+  g2 --> concat
+  g3 --> concat
+  concat --> out
+  style encode rx:10px,ry:10px
+  style generate rx:10px,ry:10px</pre>
+          <div class="diagram-caption">A multi-chunk encoder yields N messages that the model reads in parallel and
+            concatenates into one output.</div>
+        </div>
+
+        <!-- ── Section: Images ── -->
+        <h2 id="images">Image Encoders</h2>
+
+        <p>
+          Images are the simplest case: one file becomes a message that the model reads in a single pass. mm provides
+          two strategies, each suited to different image characteristics.
+        </p>
+
+        <div class="encoder-card">
+          <div class="encoder-card-header">
+            <div>
+              <div class="encoder-card-name">resize</div>
+              <div class="encoder-card-tags">
+                <span class="pill pill-green">default</span>
+              </div>
+            </div>
+          </div>
+          <div class="encoder-card-body">
+            <p>Fits the image into a bounding box (default 1024 px) while preserving aspect
+              ratio and EXIF orientation. Outputs a single image message that the model reads in one pass.
+              The right choice for most images.</p>
+            <div class="params-grid">
+              <span class="param-name">max_width</span><span class="param-value">1024 px, maximum dimension (width or
+                height)</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="diagram-wrap">
+          <pre class="mermaid">%%{init: {'look': 'neo', 'theme': 'neutral'}}%%
+graph LR
+  img("🖼️ image")
+  subgraph encode ["Encode"]
+    exif("Apply EXIF\norientation")
+    resize("Fit to ≤ 1024 px\nbounding box")
+    b64("Base64 encode")
+  end
+  subgraph message ["Message"]
+    msg("image_url part")
+  end
+  img --> exif --> resize --> b64 --> msg
+  style encode rx:10px,ry:10px
+  style message rx:10px,ry:10px</pre>
+          <div class="diagram-caption">resize: EXIF correction → fit to bounding box → single image message</div>
+        </div>
+
+        <p>
+          Use <code>resize</code> for portraits, product photos, screenshots, logos, and any image where content fits
+          comfortably at 1024 px. For most real-world images, this is the right choice, the fastest path, and the
+          cleanest input to a VLM.
+        </p>
+
+        <div class="encoder-card">
+          <div class="encoder-card-header">
+            <div>
+              <div class="encoder-card-name">tile</div>
+              <div class="encoder-card-tags">
+                <span class="pill pill-blue">high resolution</span>
+                <span class="pill pill-blue">fine detail</span>
+              </div>
+            </div>
+          </div>
+          <div class="encoder-card-body">
+            <p>Sends a resized overview (global context) plus NxM tile crops from the original
+              (fine detail), all in a single message. Gives VLMs both the big picture and the
+              ability to read small text or inspect fine-grained features at full resolution.
+              Falls back to overview-only when the image fits in a single tile.</p>
+            <div class="params-grid">
+              <span class="param-name">max_width</span><span class="param-value">1024 px, tile size, and overview
+                bounding box</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="diagram-wrap">
+          <pre class="mermaid">%%{init: {'look': 'neo', 'theme': 'neutral'}}%%
+graph LR
+  img("🖼️ image")
+  subgraph encode ["Encode"]
+    exif("Apply EXIF\norientation")
+    overview("Resize overview\nglobal context")
+    tiles("Crop NxM tiles\nfine detail")
+  end
+  subgraph message ["Message"]
+    msg("overview image\n+ N tile crops")
+  end
+  img --> exif
+  exif --> overview --> msg
+  exif --> tiles --> msg
+  style encode rx:10px,ry:10px
+  style message rx:10px,ry:10px</pre>
+          <div class="diagram-caption">tile: overview plus NxM crops in one message, global context and fine detail
+            at once</div>
+        </div>
+
+        <div class="callout tip">
+          <span class="callout-icon">🔍</span>
+          <div class="callout-body">
+            <div class="callout-title">Tile vs Resize</div>
+            <p>Use <code>tile</code> for technical diagrams, architectural drawings, scanned
+              documents where text must be recognized, maps, and medical imaging, anywhere that
+              important detail would be lost at 1024 px. Use <code>resize</code> for everything
+              else: photos, icons, screenshots, illustrations.</p>
+          </div>
+        </div>
+
+        <div class="code-block">
+          <div class="code-block-header">
+            <div class="code-block-dots"><span class="dot-r"></span><span class="dot-a"></span><span
+                class="dot-g"></span></div>
+            <span class="code-block-lang">bash</span>
+          </div>
+          <pre><code><span class="tok-c"># Default: resize (fast pipeline)</span>
+mm cat photo.jpg
+
+<span class="tok-c"># High-resolution diagram: tile strategy</span>
+mm cat blueprint.png -p tile
+
+<span class="tok-c"># Smaller tile for very large images</span>
+mm cat satellite.tiff -p tile --encode.strategy_opts max_width=768
+
+<span class="tok-c"># Custom prompt on accurate mode</span>
+mm cat diagram.png -p tile -m accurate --prompt <span class="tok-s">"Extract all labels and measurements"</span></code></pre>
+        </div>
+
+        <!-- ── Section: Video ── -->
+        <h2 id="video">Video Encoders</h2>
+
+        <p>
+          Video is the richest and most challenging media type to encode. A 90-minute lecture can't fit in one message.
+          A 30-second product clip may need both its frames and audio characteristics to be understood. mm provides 19
+          video encoding strategies across four fundamental approaches: frame-based, time-chunk-based, native clip, and
+          audio-only.
+        </p>
+
+        <div class="diagram-wrap">
+          <pre class="mermaid">%%{init: {'look': 'neo', 'theme': 'neutral'}}%%
+flowchart TD
+  video("🎬 Video file")
+
+  video --> Q1{{"Does the model\naccept video natively?"}}
+  Q1 -->|Yes| clips("clips / gemini\nnative video input")
+  Q1 -->|No| Q2{{"How long?"}}
+
+  Q2 -->|"&lt; 10 min"| Q3{{"Need audio too?"}}
+  Q2 -->|"&gt; 10 min"| Q4{{"Content type?"}}
+
+  Q3 -->|No| Q5{{"Fast or Accurate?"}}
+  Q3 -->|Yes| wt("mosaic-w-transcript\nframes-w-transcript\nshots-w-transcript")
+
+  Q5 -->|Fast| mosaic("mosaic\nscene-aware grids")
+  Q5 -->|Accurate| frames_enc("frames\nuniform fps")
+
+  Q4 -->|"Lecture / talk"| audio_only("transcript\naudio-only, no frames")
+  Q4 -->|"Long content"| chunks_enc("chunks\ntime-based windows")
+  Q4 -->|"Scene-heavy"| shots_enc("shots\nper-scene frames")
+  Q4 -->|"Compact overview"| summary("summary\nadaptive N frames")
+
+  style clips fill:#ede9fe,stroke:#7c3aed,color:#4c1d95
+  style mosaic fill:#dbeafe,stroke:#3b82f6,color:#1e3a8a
+  style frames_enc fill:#dbeafe,stroke:#3b82f6,color:#1e3a8a
+  style wt fill:#dcfce7,stroke:#22c55e,color:#14532d
+  style audio_only fill:#dcfce7,stroke:#22c55e,color:#14532d
+  style chunks_enc fill:#fef3c7,stroke:#f59e0b,color:#78350f
+  style shots_enc fill:#fef3c7,stroke:#f59e0b,color:#78350f
+  style summary fill:#f0fdf4,stroke:#86efac,color:#14532d</pre>
+          <div class="diagram-caption">Video encoder decision tree: start top-left and follow the constraints</div>
+        </div>
+
+        <p>
+          In the diagram above, if the model is video-native, then frame extraction is skipped and the clip is sent
+          as-is. On the other branch, given that most models aren’t video-native, the video is reduced to images and
+          text. From there, three constraints decide the strategy. Duration sets the sampling budget: a 10-minute clip
+          can be sampled densely, a 90-minute lecture can't. Audio decides whether the encoder also transcribes the clip
+          and sends the text alongside the frames. Content type decides how frames are chosen: uniformly, per scene, or
+          as a single adaptive overview. Each leaf of the tree is one of the encoders below, and the rest of this
+          section covers them in that order, starting with <code>mosaic</code>.
+        </p>
+
+        <div class="encoder-card" id="video-mosaic">
+          <div class="encoder-card-header">
+            <div>
+              <div class="encoder-card-name">mosaic</div>
+              <div class="encoder-card-tags">
+                <span class="pill pill-green">default</span>
+              </div>
+            </div>
+          </div>
+          <div class="encoder-card-body">
+            <p>Extracts representative frames using scene detection (falling back to uniform sampling) and tiles them
+              into 4×4 grids. The result is a compact visual summary that fits in a small number of messages, enough for
+              a VLM to understand what happens in a clip without processing every frame.</p>
+          </div>
+        </div>
+
+        <div class="diagram-wrap">
+          <pre class="mermaid">%%{init: {'look': 'neo', 'theme': 'neutral'}}%%
+graph LR
+  video("🎬 video")
+  subgraph encode ["Encode"]
+    detect("Scene detection\nor uniform sampling")
+    frames("Extract up to\n128 frames")
+    tile("Tile into 4×4\nmosaic grids")
+  end
+  subgraph message ["Message"]
+    msg("N mosaic grid images")
+  end
+  video --> detect --> frames --> tile --> msg
+  style encode rx:10px,ry:10px
+  style message rx:10px,ry:10px</pre>
+          <div class="diagram-caption">mosaic: scene-aware sampling → tiled grids → compact visual summary</div>
+        </div>
+
+        <div class="code-block">
+          <div class="code-block-header">
+            <div class="code-block-dots"><span class="dot-r"></span><span class="dot-a"></span><span
+                class="dot-g"></span></div>
+            <span class="code-block-lang">bash</span>
+          </div>
+          <pre><code><span class="tok-c"># Default</span>
+mm cat clip.mp4
+
+<span class="tok-c"># With transcript</span>
+mm cat clip.mp4 -p mosaic-w-transcript
+
+<span class="tok-c"># Denser 3×3 grid</span>
+mm cat clip.mp4 -p mosaic --encode.strategy_opts tile_cols=3 --encode.strategy_opts tile_rows=3
+
+<span class="tok-c"># More frames for long content</span>
+mm cat lecture.mp4 -p mosaic --encode.strategy_opts num_frames=256</code></pre>
+        </div>
+
+        <div class="encoder-card" id="video-frames">
+          <div class="encoder-card-header">
+            <div>
+              <div class="encoder-card-name">frames / frames-w-transcript</div>
+            </div>
+          </div>
+          <div class="encoder-card-body">
+            <p>Extracts frames at a fixed rate (default 1 fps) and batches them into messages
+              of up to 16 frames each, with a time-range header per batch. The
+              <code>-w-transcript</code> variant prepends a Whisper transcript as the first
+              message, giving the VLM both visual context and spoken word.
+            </p>
+          </div>
+        </div>
+
+        <div class="diagram-wrap">
+          <pre class="mermaid">%%{init: {'look': 'neo', 'theme': 'neutral'}}%%
+graph LR
+  video("🎬 video")
+  subgraph encode ["Encode"]
+    direction TB
+    audio("Extract audio\ntrack")
+    whisper("Whisper\ntranscription")
+    fps("Sample frames\nat 1 fps")
+    batch("Batch ≤ 16\nframes / message")
+  end
+  subgraph message ["Message"]
+    t("1: transcript text")
+    f("2..N: frame batches\nwith time headers")
+  end
+  video --> audio --> whisper --> t
+  video --> fps --> batch --> f
+  style encode rx:10px,ry:10px
+  style message rx:10px,ry:10px</pre>
+          <div class="diagram-caption">frames-w-transcript: audio and frames extracted in parallel → transcript first,
+            then batched frame messages</div>
+        </div>
+
+        <div class="encoder-card" id="video-shots">
+          <div class="encoder-card-header">
+            <div>
+              <div class="encoder-card-name">shots / shots-w-transcript</div>
+              <div class="encoder-card-tags">
+                <span class="pill pill-blue">shot-boundary aware</span>
+              </div>
+            </div>
+          </div>
+          <div class="encoder-card-body">
+            <p>Shot detection captures scene boundaries and yields one message per shot, with up
+              to 8 representative frames each. Unlike <code>frames</code>, which are sampled
+              uniformly, <code>shots</code> encoding is content-aware: each message maps to a
+              semantically distinct scene. Ideal for films, documentaries, news broadcasts,
+              and presentations with clear slide transitions.</p>
+          </div>
+        </div>
+
+        <div class="diagram-wrap">
+          <pre class="mermaid">%%{init: {'look': 'neo', 'theme': 'neutral'}}%%
+graph LR
+  video("🎬 video")
+  subgraph encode ["Encode"]
+    detect("Shot boundary\ndetection")
+    s1("Shot 1\n≤ 8 frames")
+    s2("Shot 2\n≤ 8 frames")
+    s3("Shot N\n≤ 8 frames")
+  end
+  subgraph message ["Message"]
+    m1("1: shot 1 frames")
+    m2("2: shot 2 frames")
+    m3("N: shot N frames")
+  end
+  video --> detect
+  detect --> s1 --> m1
+  detect --> s2 --> m2
+  detect --> s3 --> m3
+  style encode rx:10px,ry:10px
+  style message rx:10px,ry:10px</pre>
+          <div class="diagram-caption">shots: content-aware, each message is one semantically distinct scene</div>
+        </div>
+
+        <div class="encoder-card" id="video-chunks">
+          <div class="encoder-card-header">
+            <div>
+              <div class="encoder-card-name">chunks</div>
+              <div class="encoder-card-tags">
+                <span class="pill pill-blue">long-form</span>
+                <span class="pill pill-blue">temporal detail</span>
+              </div>
+            </div>
+          </div>
+          <div class="encoder-card-body">
+            <p>Divides a video into overlapping time windows (default 60 s, 5 s overlap) and
+              extracts 16 frames per window. Each chunk becomes a separate message with a
+              time-range header. Unlike a single mosaic that compresses everything into a few
+              grids, chunks preserve temporal granularity: the VLM understands what happened and when.</p>
+            <div class="params-grid">
+              <span class="param-name">chunk_duration</span><span class="param-value">60 s, length of each time
+                window</span>
+              <span class="param-name">overlap</span><span class="param-value">5 s, overlap between consecutive
+                windows</span>
+              <span class="param-name">frames_per_chunk</span><span class="param-value">16, frames extracted per
+                chunk</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="diagram-wrap">
+          <pre class="mermaid">%%{init: {'look': 'neo', 'theme': 'neutral'}}%%
+graph LR
+  video("🎬 video")
+  subgraph encode ["Encode"]
+    split("Split into\noverlapping windows\n60 s, overlap 5 s")
+    c1("Window 0 – 60 s\n16 frames")
+    c2("Window 55 – 115 s\n16 frames")
+    c3("Window N\n16 frames")
+  end
+  subgraph message ["Message"]
+    m1("1: time header + 16 frames")
+    m2("2: time header + 16 frames")
+    m3("N: time header + 16 frames")
+  end
+  video --> split
+  split --> c1 --> m1
+  split --> c2 --> m2
+  split --> c3 --> m3
+  style encode rx:10px,ry:10px
+  style message rx:10px,ry:10px</pre>
+          <div class="diagram-caption">chunks: overlapping time windows, each with 16 frames and a timestamp header,
+            preserving temporal context for long videos</div>
+        </div>
+
+        <div class="code-block">
+          <div class="code-block-header">
+            <div class="code-block-dots"><span class="dot-r"></span><span class="dot-a"></span><span
+                class="dot-g"></span></div>
+            <span class="code-block-lang">bash</span>
+          </div>
+          <pre><code><span class="tok-c"># 60 s windows, 5 s overlap, 16 frames per window</span>
+mm cat lecture.mp4 -p chunks
+
+<span class="tok-c"># Longer windows for slower-paced content</span>
+mm cat lecture.mp4 -p chunks --encode.strategy_opts chunk_duration=90 --encode.strategy_opts overlap=10
+
+<span class="tok-c"># Accurate mode: the model describes each window</span>
+mm cat lecture.mp4 -p chunks -m accurate
+
+<span class="tok-c"># Preview the resolved pipeline without running it</span>
+mm cat lecture.mp4 -p chunks -m accurate --dry-run</code></pre>
+        </div>
+
+        <h3 id="video-other">Other video strategies</h3>
+
+        <div class="encoder-grid">
+          <div class="enc-mini">
+            <div class="enc-mini-name">keyframes</div>
+            <div class="enc-mini-desc">Extract I-frames directly from the video bitstream, no seeking loop,
+              codec-aware. Fast way to get the natural edit points in a video.</div>
+            <div class="enc-mini-tags"><span class="pill pill-gray">bitstream</span></div>
+          </div>
+          <div class="enc-mini">
+            <div class="enc-mini-name">shot-mosaic</div>
+            <div class="enc-mini-desc">Shot boundaries + one tiled mosaic grid per shot. Compact representation that
+              still preserves the structure of scene changes.</div>
+            <div class="enc-mini-tags"><span class="pill pill-gray">shot-aware</span></div>
+          </div>
+          <div class="enc-mini">
+            <div class="enc-mini-name">summary</div>
+            <div class="enc-mini-desc">Adaptive N-frame overview (default 12) spread across scene boundaries. Best for
+              very long videos where a compact bird's-eye view is enough.</div>
+            <div class="enc-mini-tags"><span class="pill pill-gray">compact</span></div>
+          </div>
+          <div class="enc-mini">
+            <div class="enc-mini-name">clips</div>
+            <div class="enc-mini-desc">Send the video as base64-encoded clips for models that accept native video input.
+              Videos ≤ 120 s sent whole; longer split into overlapping segments.</div>
+            <div class="enc-mini-tags"><span class="pill pill-purple">native input</span></div>
+          </div>
+          <div class="enc-mini">
+            <div class="enc-mini-name">transcript</div>
+            <div class="enc-mini-desc">Whisper transcript only, no visual frames extracted. For podcasts, lectures, or
+              any content where spoken word is all that matters.</div>
+            <div class="enc-mini-tags"><span class="pill pill-green">encode-only</span></div>
+          </div>
+          <div class="enc-mini">
+            <div class="enc-mini-name">captions</div>
+            <div class="enc-mini-desc">Extract embedded subtitle tracks (SRT/VTT/SSA). Falls back to Whisper when no
+              subtitle stream is found in the container.</div>
+            <div class="enc-mini-tags"><span class="pill pill-green">encode-only</span></div>
+          </div>
+          <div class="enc-mini">
+            <div class="enc-mini-name">gemini</div>
+            <div class="enc-mini-desc">Send the entire video as a Gemini native Part. No frame extraction; the model
+              receives the raw video bytes directly.</div>
+            <div class="enc-mini-tags"><span class="pill pill-purple">Gemini only</span></div>
+          </div>
+          <div class="enc-mini">
+            <div class="enc-mini-name">gemini-chunked</div>
+            <div class="enc-mini-desc">Same as <code>gemini</code> but splits long videos into overlapping segments
+              first. For Gemini models with length constraints.</div>
+            <div class="enc-mini-tags"><span class="pill pill-purple">Gemini only</span></div>
+          </div>
+        </div>
+
+        <!-- ── Section: Audio ── -->
+        <h2 id="audio">Audio Encoders</h2>
+
+        <p>
+          Audio has a fundamental fork: the verbatim <em>transcript</em> of what was said, or the model's understanding
+          of the audio (speech, tone, music, ambient sound).
+        </p>
+
+        <div class="diagram-wrap">
+          <pre class="mermaid">%%{init: {'look': 'neo', 'theme': 'neutral'}}%%
+graph TD
+  audio("🎵 audio file")
+
+  audio --> Q{{"What do you need?"}}
+
+  Q -->|"Timestamped transcript\n(no LLM required)"| transcribe("transcribe\nWhisper → text\nencode-only")
+  Q -->|"LLM understanding\n(speech, tone, content)"| Q2{{"Which model?"}}
+
+  Q2 -->|"OpenAI-compatible"| base64("base64\naudio bytes → LLM call")
+  Q2 -->|"Gemini"| gemini("gemini\nnative audio → LLM call")
+
+  style transcribe fill:#dcfce7,stroke:#22c55e,color:#14532d
+  style base64 fill:#dbeafe,stroke:#3b82f6,color:#1e3a8a
+  style gemini fill:#ede9fe,stroke:#7c3aed,color:#4c1d95</pre>
+          <div class="diagram-caption">Audio encoder decision: encode-only transcript vs audio understanding</div>
+        </div>
+
+        <!-- [5] Critical distinction, no code internals -->
+        <div class="callout important">
+          <span class="callout-icon">⚡</span>
+          <div class="callout-body">
+            <div class="callout-title">Critical distinction</div>
+            <p>
+              <code>transcribe</code> is encode-only: it runs Whisper locally and returns a timestamped transcript as
+              plain text, with no model in the loop. <code>base64</code> and <code>gemini</code> generate model-native
+              messages.
+            </p>
+          </div>
+        </div>
+
+        <table class="comp-table">
+          <thead>
+            <tr>
+              <th>Encoder</th>
+              <th>What it sends</th>
+              <th>Output</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>transcribe</code></td>
+              <td class="col-desc">Whisper transcript as text</td>
+              <td class="col-best">timestamped transcript</td>
+            </tr>
+            <tr>
+              <td><code>base64</code></td>
+              <td class="col-desc">Raw audio bytes to LLM</td>
+              <td class="col-best">description</td>
+            </tr>
+            <tr>
+              <td><code>gemini</code></td>
+              <td class="col-desc">Audio as Gemini native Part</td>
+              <td class="col-best">description</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <p>
+          Both <code>base64</code> and <code>gemini</code> handle long files automatically:
+          recordings longer than 120 seconds are split into overlapping segments and
+          processed in parallel, each yielding a separate message.
+        </p>
+
+        <div class="diagram-wrap">
+          <pre class="mermaid">%%{init: {'look': 'neo', 'theme': 'neutral'}}%%
+graph LR
+  audio("🎵 audio")
+
+  subgraph encode_short ["Short file (≤ 120 s)"]
+    read("Read file\nbytes")
+    b64s("Base64 encode\nas input_audio")
+  end
+
+  subgraph encode_long ["Long file (> 120 s)"]
+    probe("Probe\nduration")
+    c1("Segment 1")
+    c2("Segment N")
+    b64l("Base64 encode\neach segment")
+  end
+
+  subgraph message ["Message"]
+    msg1("input_audio part")
+    msgN("N × input_audio parts")
+  end
+
+  audio --> read --> b64s --> msg1
+  audio --> probe
+  probe --> c1 --> b64l --> msgN
+  probe --> c2 --> b64l
+
+  style encode_short rx:10px,ry:10px
+  style encode_long rx:10px,ry:10px
+  style message rx:10px,ry:10px</pre>
+          <div class="diagram-caption">base64: short files sent whole; long files split into overlapping segments and
+            processed in parallel</div>
+        </div>
+
+        <div class="code-block">
+          <div class="code-block-header">
+            <div class="code-block-dots"><span class="dot-r"></span><span class="dot-a"></span><span
+                class="dot-g"></span></div>
+            <span class="code-block-lang">bash</span>
+          </div>
+          <pre><code><span class="tok-c"># Default: Whisper transcript, no LLM</span>
+mm cat meeting.mp3
+
+<span class="tok-c"># Model description, accurate (full content analysis)</span>
+mm cat meeting.mp3 -p base64 -m accurate
+
+<span class="tok-c"># Faster transcription on Apple Silicon</span>
+mm cat meeting.mp3 -p transcribe --encode.backend mlx
+
+<span class="tok-c"># Gemini native audio understanding</span>
+mm --profile gemini cat meeting.mp3 -p gemini -m accurate
+
+<span class="tok-c"># Slower playback for Whisper, trades compute for accuracy</span>
+mm cat meeting.mp3 -p transcribe --encode.strategy_opts audio_speed=1.0</code></pre>
+        </div>
+
+        <!-- ── Section: Documents ── -->
+        <h2 id="documents">Document Encoders</h2>
+
+        <p>
+          Documents sit in an interesting middle ground: most PDFs have a text layer, but
+          many don't, including scanned pages, image-heavy forms, and complex visual layouts. mm provides
+          four strategies depending on what is required from the document.
+        </p>
+
+        <div class="diagram-wrap">
+          <pre class="mermaid">%%{init: {'look': 'neo', 'theme': 'neutral'}}%%
+flowchart TD
+  doc("📄 Document")
+  doc --> Q1{{"Does the PDF have\na readable text layer?"}}
+
+  Q1 -->|Yes| Q2{{"Is visual layout\nimportant?  (charts, forms, images)"}}
+  Q1 -->|"No, scanned or image-only"| rasterize("rasterize\nrender pages as images")
+
+  Q2 -->|No| page_text("page-text\ntext extraction only\nfast, no rendering")
+  Q2 -->|Yes| Q3{{"Need text too?"}}
+
+  Q3 -->|Images only| rasterize
+  Q3 -->|Images + extracted text| rasterize_text("rasterize-text\nimage + text per page")
+
+  style page_text fill:#dcfce7,stroke:#22c55e,color:#14532d
+  style rasterize fill:#dbeafe,stroke:#3b82f6,color:#1e3a8a
+  style rasterize_text fill:#fef3c7,stroke:#f59e0b,color:#78350f</pre>
+          <div class="diagram-caption">Document encoder selection, driven by whether the PDF has a text layer and
+            whether visual layout matters</div>
+        </div>
+
+        <div class="encoder-grid">
+          <div class="enc-mini">
+            <div class="enc-mini-name">page-text</div>
+            <div class="enc-mini-desc">Extract text per page from PDF, DOCX, and PPTX, no rendering, no images. Batches
+              up to 128 pages per message. Fast and token-efficient. Default for fast mode.</div>
+            <div class="enc-mini-tags"><span class="pill pill-gray">default</span></div>
+          </div>
+          <div class="enc-mini">
+            <div class="enc-mini-name">rasterize</div>
+            <div class="enc-mini-desc">Render PDF pages as JPEG images, up to 4 pages per message with a page-range
+              header. Preserves full visual layout: tables, charts, handwriting, stamps, signatures.</div>
+            <div class="enc-mini-tags"><span class="pill pill-blue">visual layout</span></div>
+          </div>
+          <div class="enc-mini">
+            <div class="enc-mini-name">rasterize-text</div>
+            <div class="enc-mini-desc">Rasterize pages and interleave the extracted text beneath each image. The VLM
+              sees the visual layout and has an OCR-quality text fallback for every page.</div>
+            <div class="enc-mini-tags"><span class="pill pill-blue">hybrid</span></div>
+          </div>
+          <div class="enc-mini">
+            <div class="enc-mini-name">gemini</div>
+            <div class="enc-mini-desc">Send the document as a Gemini native Part, no text extraction or rendering. For
+              Gemini models that accept PDF files directly.</div>
+            <div class="enc-mini-tags"><span class="pill pill-purple">Gemini only</span></div>
+          </div>
+        </div>
+
+        <div class="code-block">
+          <div class="code-block-header">
+            <div class="code-block-dots"><span class="dot-r"></span><span class="dot-a"></span><span
+                class="dot-g"></span></div>
+            <span class="code-block-lang">bash</span>
+          </div>
+          <pre><code><span class="tok-c"># Fast: text extraction, no rendering</span>
+mm cat report.pdf
+
+<span class="tok-c"># Accurate: LLM-structured markdown output</span>
+mm cat report.pdf -m accurate
+
+<span class="tok-c"># Scanned PDF: rasterize pages as images</span>
+mm cat scanned.pdf -p rasterize -m accurate
+
+<span class="tok-c"># Complex layout: image + extracted text per page (hybrid)</span>
+mm cat invoice.pdf -p rasterize-text -m accurate
+
+<span class="tok-c"># Gemini native PDF understanding</span>
+mm --profile gemini cat report.pdf -p gemini -m accurate</code></pre>
+        </div>
+
+        <!-- ── Section: Choosing ── -->
+        <h2 id="choosing">Choosing an Encoder</h2>
+
+        <p>
+          The right encoder depends on three factors: file type, content characteristics, and the need for an LLM
+          or a structured representation. Scroll through common real-world scenarios:
+        </p>
+
+        <!-- [6] Horizontal scroll with snap -->
+        <div class="scenario-scroll">
+
+          <div class="scenario-card">
+            <div class="scenario-label">📷 Images</div>
+            <div class="scenario-task">Caption a product photo catalog</div>
+            <div class="scenario-cmd">mm find ./products --kind image | mm cat -m accurate</div>
+            <div class="scenario-why"><code>resize</code> (default): most product photos fit well at 1024 px</div>
+          </div>
+
+          <div class="scenario-card">
+            <div class="scenario-label">📷 Images</div>
+            <div class="scenario-task">Extract labels from a wiring diagram</div>
+            <div class="scenario-cmd">mm cat wiring.png -p tile -m accurate --prompt "List all labels"</div>
+            <div class="scenario-why"><code>tile</code>: diagram text is too fine for a single resize; tile crops read
+              it at full resolution</div>
+          </div>
+
+          <div class="scenario-card">
+            <div class="scenario-label">🎬 Video</div>
+            <div class="scenario-task">Quick visual summary of a 30-min meeting</div>
+            <div class="scenario-cmd">mm cat meeting.mp4 -p mosaic-w-transcript</div>
+            <div class="scenario-why"><code>mosaic-w-transcript</code>: visual overview plus spoken content in one pass
+            </div>
+          </div>
+
+          <div class="scenario-card">
+            <div class="scenario-label">🎬 Video</div>
+            <div class="scenario-task">Process a 2-hour lecture section by section</div>
+            <div class="scenario-cmd">mm cat lecture.mp4 -p chunks -m accurate</div>
+            <div class="scenario-why"><code>chunks</code>: 60 s windows preserve temporal context that a single mosaic
+              loses</div>
+          </div>
+
+          <div class="scenario-card">
+            <div class="scenario-label">🎬 Video</div>
+            <div class="scenario-task">Index a documentary scene by scene</div>
+            <div class="scenario-cmd">mm cat film.mkv -p shots -m accurate</div>
+            <div class="scenario-why"><code>shots</code>: each scene change yields a separate message and description
+            </div>
+          </div>
+
+          <div class="scenario-card">
+            <div class="scenario-label">🎵 Audio</div>
+            <div class="scenario-task">Get a searchable transcript of a podcast</div>
+            <div class="scenario-cmd">mm cat episode.mp3 -p transcribe</div>
+            <div class="scenario-why"><code>transcribe</code>: OpenAI whisper with timestamps, fully offline.
+            </div>
+          </div>
+
+          <div class="scenario-card">
+            <div class="scenario-label">🎵 Audio</div>
+            <div class="scenario-task">Summarize a customer support call</div>
+            <div class="scenario-cmd">mm cat call.mp3 -p base64 -m accurate</div>
+            <div class="scenario-why"><code>base64</code> with accurate: the model describes tone, emphasis, and
+              content directly</div>
+          </div>
+
+          <div class="scenario-card">
+            <div class="scenario-label">📄 Documents</div>
+            <div class="scenario-task">Extract line items from scanned invoices</div>
+            <div class="scenario-cmd">mm cat invoice.pdf -p rasterize-text -m accurate</div>
+            <div class="scenario-why"><code>rasterize-text</code>: scanned PDF, interleaved image and text is most
+              reliable</div>
+          </div>
+
+          <div class="scenario-card">
+            <div class="scenario-label">📄 Documents</div>
+            <div class="scenario-task">Analyze a 100-page contract</div>
+            <div class="scenario-cmd">mm cat contract.pdf -m accurate</div>
+            <div class="scenario-why"><code>page-text</code> (default): strong text layer, the model handles structuring
+              the rest</div>
+          </div>
+
+        </div>
+
+        <!-- ── Section: Custom Encoders ── -->
+        <h2 id="custom">Writing Custom Encoders</h2>
+
+        <p>
+          The encoder registry is open, allowing anyone to integrate custom encoders. Drop a <code>.py</code> file in
+          <code>~/.config/mm/encoders/</code> and mm automatically discovers it at startup. Two authoring styles are
+          supported.
+        </p>
+
+        <h3>Class-based</h3>
+
+        <div class="code-block">
+          <div class="code-block-header">
+            <div class="code-block-dots"><span class="dot-r"></span><span class="dot-a"></span><span
+                class="dot-g"></span></div>
+            <span class="code-block-lang">python</span>
+          </div>
+          <pre><code><span class="tok-k">from</span> pathlib <span class="tok-k">import</span> Path
+<span class="tok-k">from</span> typing <span class="tok-k">import</span> Any, Iterable
+<span class="tok-k">from</span> mm.encoders <span class="tok-k">import</span> register
+<span class="tok-k">from</span> mm.encoders.base <span class="tok-k">import</span> Encoder, Message
+
+<span class="tok-k">class</span> <span class="tok-f">VideoGrayscale</span>(Encoder):
+    <span class="tok-s">"""Encode video as grayscale frame thumbnails."""</span>
+    name = <span class="tok-s">"grayscale"</span>
+    kind = <span class="tok-s">"video"</span>
+
+    <span class="tok-k">def</span> <span class="tok-f">encode</span>(<span class="tok-p">self</span>, path: Path, **kwargs: Any) -> Iterable[Message]:
+        max_width: int = kwargs.get(<span class="tok-s">"max_width"</span>, <span class="tok-p">512</span>)
+        <span class="tok-c"># extract frames, convert to grayscale, base64-encode</span>
+        <span class="tok-k">yield</span> {<span class="tok-s">"role"</span>: <span class="tok-s">"user"</span>, <span class="tok-s">"content"</span>: [
+            {<span class="tok-s">"type"</span>: <span class="tok-s">"text"</span>, <span class="tok-s">"text"</span>: <span class="tok-s">f"Grayscale frames from {path.name}"</span>}
+        ]}
+
+register(VideoGrayscale())</code></pre>
+        </div>
+
+        <h3>Function-based</h3>
+
+        <div class="code-block">
+          <div class="code-block-header">
+            <div class="code-block-dots"><span class="dot-r"></span><span class="dot-a"></span><span
+                class="dot-g"></span></div>
+            <span class="code-block-lang">python</span>
+          </div>
+          <pre><code><span class="tok-k">from</span> pathlib <span class="tok-k">import</span> Path
+<span class="tok-k">from</span> mm.encoders <span class="tok-k">import</span> register_encoder
+
+<span class="tok-o">@</span>register_encoder(name=<span class="tok-s">"ocr-fallback"</span>, kind=<span class="tok-s">"image"</span>)
+<span class="tok-k">def</span> <span class="tok-f">ocr_fallback</span>(path: Path, **kw):
+    <span class="tok-s">"""Run pytesseract OCR and return extracted text."""</span>
+    <span class="tok-k">import</span> pytesseract
+    text = pytesseract.image_to_string(str(path))
+    <span class="tok-k">yield</span> {<span class="tok-s">"role"</span>: <span class="tok-s">"user"</span>, <span class="tok-s">"content"</span>: [{<span class="tok-s">"type"</span>: <span class="tok-s">"text"</span>, <span class="tok-s">"text"</span>: text}]}</code></pre>
+        </div>
+
+        <div class="callout tip">
+          <span class="callout-icon">🔌</span>
+          <div class="callout-body">
+            <div class="callout-title">Encoder discovery</div>
+            <p>mm picks up any <code>.py</code> file in <code>~/.config/mm/encoders/</code>
+              at startup. Run <code>mm cat --list-encoders</code> to confirm your encoder
+              is registered and available via <code>-p &lt;name&gt;</code>.</p>
+          </div>
+        </div>
+
+        <!-- ── Section: Quick Reference ── -->
+        <h2 id="reference">Quick Reference</h2>
+
+        <h4>Image</h4>
+        <table class="ref-table">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Description</th>
+              <th>Key params</th>
+              <th>Best for</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="col-name">resize</td>
+              <td class="col-desc">Fit to bounding box, EXIF-corrected. Default.</td>
+              <td class="col-param">max_width=1024</td>
+              <td class="col-best">Photos, screenshots, icons</td>
+            </tr>
+            <tr>
+              <td class="col-name">tile</td>
+              <td class="col-desc">Overview + NxM tile crops in one message.</td>
+              <td class="col-param">max_width=1024</td>
+              <td class="col-best">Diagrams, maps, scans, fine text</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <h4>Video</h4>
+        <table class="ref-table">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Description</th>
+              <th>Key params</th>
+              <th>Best for</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="col-name">mosaic</td>
+              <td class="col-desc">Scene-aware frame grids. Default.</td>
+              <td class="col-param">num_frames=128, tile_cols=4</td>
+              <td class="col-best">Short clips, quick overviews</td>
+            </tr>
+            <tr>
+              <td class="col-name">mosaic-w-transcript</td>
+              <td class="col-desc">mosaic + Whisper transcript.</td>
+              <td class="col-param">audio_speed=2.0</td>
+              <td class="col-best">Meetings, demos with narration</td>
+            </tr>
+            <tr>
+              <td class="col-name">frames</td>
+              <td class="col-desc">Uniform fps extraction, batched ≤ 16/msg.</td>
+              <td class="col-param">fps=1.0</td>
+              <td class="col-best">Precise temporal sampling</td>
+            </tr>
+            <tr>
+              <td class="col-name">frames-w-transcript</td>
+              <td class="col-desc">frames + Whisper</td>
+              <td class="col-param">fps=1.0, audio_speed=2.0</td>
+              <td class="col-best">Lectures, presentations</td>
+            </tr>
+            <tr>
+              <td class="col-name">shots</td>
+              <td class="col-desc">One message per shot, ≤ 8 frames each.</td>
+              <td class="col-param">threshold=27.0</td>
+              <td class="col-best">Films, news, scene-indexed archives</td>
+            </tr>
+            <tr>
+              <td class="col-name">shots-w-transcript</td>
+              <td class="col-desc">shots + Whisper transcript.</td>
+              <td class="col-param">none</td>
+              <td class="col-best">Documentaries, interviews</td>
+            </tr>
+            <tr>
+              <td class="col-name">shot-mosaic</td>
+              <td class="col-desc">One mosaic grid per shot.</td>
+              <td class="col-param">threshold=27.0, tile_cols=4</td>
+              <td class="col-best">Scene-indexed archives</td>
+            </tr>
+            <tr>
+              <td class="col-name">chunks</td>
+              <td class="col-desc">Overlapping 60 s windows, 16 frames each.</td>
+              <td class="col-param">chunk_duration=60, overlap=5</td>
+              <td class="col-best">Long-form lectures, webinars</td>
+            </tr>
+            <tr>
+              <td class="col-name">clips</td>
+              <td class="col-desc">Base64 video clips for native input models.</td>
+              <td class="col-param">duration=120, overlap=10</td>
+              <td class="col-best">Models with video_url support</td>
+            </tr>
+            <tr>
+              <td class="col-name">clips-w-transcript</td>
+              <td class="col-desc">clips + Whisper transcript.</td>
+              <td class="col-param">none</td>
+              <td class="col-best">Long native-video with speech</td>
+            </tr>
+            <tr>
+              <td class="col-name">keyframes</td>
+              <td class="col-desc">I-frames from bitstream, no seeking loop.</td>
+              <td class="col-param">max_keyframes=None</td>
+              <td class="col-best">Broadcast video, fast index</td>
+            </tr>
+            <tr>
+              <td class="col-name">summary</td>
+              <td class="col-desc">Adaptive N-frame overview, scene-aware.</td>
+              <td class="col-param">num_frames=12</td>
+              <td class="col-best">Very long content, compact index</td>
+            </tr>
+            <tr>
+              <td class="col-name">transcript</td>
+              <td class="col-desc">Whisper audio-only (encode-only).</td>
+              <td class="col-param">audio_speed=2.0</td>
+              <td class="col-best">Podcasts, audio-first content</td>
+            </tr>
+            <tr>
+              <td class="col-name">captions</td>
+              <td class="col-desc">Embedded subtitles + Whisper fallback (encode-only).</td>
+              <td class="col-param">subtitle_stream=0</td>
+              <td class="col-best">Films, captioned videos</td>
+            </tr>
+            <tr>
+              <td class="col-name">gemini</td>
+              <td class="col-desc">Entire file as Gemini Part.</td>
+              <td class="col-param">none</td>
+              <td class="col-best">Gemini models, short clips</td>
+            </tr>
+            <tr>
+              <td class="col-name">gemini-chunked</td>
+              <td class="col-desc">Gemini chunked into overlapping segments.</td>
+              <td class="col-param">max_seconds=120, overlap=10</td>
+              <td class="col-best">Gemini models, long videos</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <h4>Audio</h4>
+        <table class="ref-table">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Description</th>
+              <th>Best for</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="col-name">transcribe</td>
+              <td class="col-desc">Whisper → timestamped transcript. Fully offline.</td>
+              <td class="col-best">Transcripts, search indexes, subtitles</td>
+            </tr>
+            <tr>
+              <td class="col-name">base64</td>
+              <td class="col-desc">Raw audio to LLM. Auto-splits files &gt; 120 s.</td>
+              <td class="col-best">Summaries, tone analysis, Q&amp;A</td>
+            </tr>
+            <tr>
+              <td class="col-name">gemini</td>
+              <td class="col-desc">Audio as Gemini native Part. Auto-splits.</td>
+              <td class="col-best">Gemini models, audio analysis</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <h4>Document</h4>
+        <table class="ref-table">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Description</th>
+              <th>Key params</th>
+              <th>Best for</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="col-name">page-text</td>
+              <td class="col-desc">Text extraction per page. Default.</td>
+              <td class="col-param">pages_per_message=128</td>
+              <td class="col-best">Text-rich PDFs, contracts, reports</td>
+            </tr>
+            <tr>
+              <td class="col-name">rasterize</td>
+              <td class="col-desc">Pages as JPEG images, 4 per message.</td>
+              <td class="col-param">pages_per_message=4</td>
+              <td class="col-best">Scanned PDFs, forms, visual layouts</td>
+            </tr>
+            <tr>
+              <td class="col-name">rasterize-text</td>
+              <td class="col-desc">JPEG + interleaved text per page. Hybrid.</td>
+              <td class="col-param">pages_per_message=4</td>
+              <td class="col-best">Invoices, mixed-content docs</td>
+            </tr>
+            <tr>
+              <td class="col-name">gemini</td>
+              <td class="col-desc">Document as Gemini native Part.</td>
+              <td class="col-param">none</td>
+              <td class="col-best">Gemini models, PDF pass-through</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <!-- [8] CTA, single install button -->
+        <div class="cta-block">
+          <h2>Start encoding</h2>
+          <p>Install mm and run your first multimodal extraction in under a minute.</p>
+          <a href="https://pypi.org/project/mm-ctx" class="btn-install">pip install mm-ctx</a>
+        </div>
+
+      </article>
+    </div>
+  </div>
+
+  <footer>
+    <p>mm · fast, multimodal context for agents · June 2026 · Powered by <a href="https://vlm.run">vlm.run</a></p>
+  </footer>
+
+  <!-- Mermaid.js -->
+  <script type="module">
+    import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: 'neutral',
+      look: 'neo',
+      fontFamily: 'Inter, sans-serif',
+      fontSize: 15,
+      flowchart: { curve: 'basis', padding: 24, useMaxWidth: true },
+      sequence: { useMaxWidth: true },
+      gantt: { useMaxWidth: true },
+      themeVariables: {
+        primaryColor: '#e8f0fe',
+        primaryTextColor: '#121317',
+        primaryBorderColor: '#c7d7fc',
+        lineColor: '#6E7180',
+        secondaryColor: '#f7f8fa',
+        tertiaryColor: '#f0fdf4',
+        fontSize: '15px',
+      }
+    });
+  </script>
+
+</body>
+
+</html>
