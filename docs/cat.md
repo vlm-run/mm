@@ -444,6 +444,19 @@ mm cat photo.png --no-generate
 mm cat photo.png -p tile --no-generate
 ```
 
+### Pipeline inspection (dry run)
+
+```bash
+# show the resolved pipeline without executing it
+mm cat photo.png --dry-run
+
+# inspect accurate mode pipeline
+mm cat video.mp4 -m accurate --dry-run
+
+# preview with overrides applied
+mm cat audio.mp3 -m accurate --encode.backend mlx --dry-run
+```
+
 ## Per-provider / per-model overrides with `--generate.extra-body`
 
 The `--generate.extra-body` flag accepts a JSON object forwarded to the OpenAI SDK's `extra_body` parameter. This enables provider-specific capabilities:
