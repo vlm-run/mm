@@ -507,11 +507,15 @@ class Context:
 
         import os.path as _osp
 
-        common = (
-            Path(_osp.commonpath([it["source_value"] for it in path_items]))
-            if len(path_items) > 1
-            else (Path(path_items[0]["source_value"]).parent if path_items else None)
-        )
+        try:
+            common = (
+                Path(_osp.commonpath([it["source_value"] for it in path_items]))
+                if len(path_items) > 1
+                else (Path(path_items[0]["source_value"]).parent if path_items else None)
+            )
+        except ValueError:
+            # Paths share no common root (e.g. different Windows drives).
+            common = None
         if common is not None and common.is_file():
             common = common.parent
 
@@ -521,7 +525,10 @@ class Context:
             key = str(directory)
             if key in dir_nodes:
                 return dir_nodes[key]
-            if common is not None and (directory == common or common not in directory.parents):
+            at_root = directory.parent == directory
+            if at_root or (
+                common is not None and (directory == common or common not in directory.parents)
+            ):
                 node = tree.add(Text(f"{directory}/", style="bold"))
             else:
                 node = _dir_branch(directory.parent).add(Text(f"{directory.name}/", style="bold"))

@@ -132,6 +132,7 @@ def grep_cmd(
         files=files_to_search,
         root=_directory,
         regex=regex,
+        ignore_case=ignore_case,
         context_lines=context_lines,
         count=count,
         kind=kind,
