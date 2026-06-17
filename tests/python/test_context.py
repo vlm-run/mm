@@ -116,9 +116,9 @@ def test_grep_pattern(small_tree: Path):
     from mm.context import Context
 
     ctx = Context(small_tree)
-    matches = ctx.grep("hello", kind="code")
-    assert len(matches) > 0
-    assert all("hello" in m["line"] for m in matches)
+    result = ctx.grep("hello", kind="code")
+    assert result.total_matches > 0
+    assert all("hello" in m.line for m in result.matches)
 
 
 def test_save_db(small_tree: Path, isolated_db: Path):

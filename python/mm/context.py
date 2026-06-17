@@ -40,11 +40,13 @@ from mm.refs import Ref, new_session_id, uuid7
 from mm.store.db import MmDatabase
 
 if TYPE_CHECKING:
+    import re
+
     from PIL import Image as PILImage
 
     from mm.cat_utils.base_utils import CatOpts
     from mm.peek import FileMetadata
-    from mm.results import WcStats
+    from mm.results import GrepResult, WcStats
 
 
 _FormatLiteral = Literal["openai", "gemini"]
@@ -923,23 +925,75 @@ class Context:
         strat = get_encoder(strategy, kind)
         return list(strat.encode(full_path, **kwargs))
 
-    def grep(self, pattern: str, *, kind: str | None = None) -> list[dict[str, Any]]:
-        """Search for a pattern across scanned files."""
+    def grep(
+        self,
+        pattern: str,
+        *,
+        kind: str | None = None,
+        ext: str | None = None,
+        ignore_case: bool = False,
+        context_lines: int = 0,
+        count: bool = False,
+        semantic: bool = False,
+        pre_index: bool = False,
+        files: "list[FileEntry] | None" = None,
+        regex: "re.Pattern[str] | None" = None,
+        stdin_paths: list[str] | None = None,
+        quiet: bool = True,
+    ) -> "GrepResult":
+        """Search file contents (text, document, FTS, and semantic).
+
+        Source of truth for ``mm grep``. Scans text/document files line by
+        line and merges full-text and (optionally) semantic chunk hits.
+
+        Args:
+            pattern: Regular expression source.
+            kind: Optional kind filter (single or comma-separated).
+            ext: Optional extension filter.
+            ignore_case: Force case-insensitive matching (otherwise
+                smart-case applies).
+            context_lines: Lines of context around each match (``grep -C``).
+            count: Produce per-file counts only (no line matches).
+            semantic: Also run a semantic (vector) search over chunks.
+            pre_index: Index unindexed files before semantic search.
+            files: Pre-collected files to scan (dependency injection from the
+                CLI, which dedupes directory + piped paths). When ``None``,
+                this context's files are used, filtered by ``kind``/``ext``.
+            regex: Pre-compiled pattern (DI from the CLI fast path).
+            stdin_paths: Raw piped paths forwarded to semantic search.
+            quiet: Suppress semantic-search progress messages.
+
+        Returns:
+            A :class:`~mm.results.GrepResult`.
+        """
         self._require_table("grep")
-        import re
+        assert self.root is not None
+        from mm.search import search_content
 
-        matches: list[dict[str, Any]] = []
-        target = self.filter(kind=kind) if kind else self
+        if files is None:
+            target = self
+            if kind:
+                target = target.filter(kind=kind)
+            if ext:
+                target = target.filter(ext=ext)
+            files = [f for f in target.files if not f.path.startswith(".")]
 
-        for f in target.files:
-            try:
-                content = self.cat(f.path)
-                for i, line in enumerate(content.splitlines(), 1):
-                    if re.search(pattern, line):
-                        matches.append({"path": f.path, "line_number": i, "line": line})
-            except Exception:
-                continue
-        return matches
+        return search_content(
+            pattern,
+            files=files,
+            root=self.root,
+            regex=regex,
+            ignore_case=ignore_case,
+            context_lines=context_lines,
+            count=count,
+            kind=kind,
+            ext=ext,
+            semantic=semantic,
+            pre_index=pre_index,
+            no_ignore=self._no_ignore,
+            stdin_paths=stdin_paths,
+            quiet=quiet,
+        )
 
     def show(
         self,

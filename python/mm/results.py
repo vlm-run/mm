@@ -75,15 +75,19 @@ class GrepMatch:
         line_number: 1-based line number of the match.
         line: The full matching line (newline stripped).
         kind: File kind of the matched file, when known.
+        context: Surrounding lines when context was requested (``grep -C``).
     """
 
     path: str
     line_number: int
     line: str
     kind: str | None = None
+    context: list[str] | None = None
 
     def to_dict(self) -> dict[str, Any]:
-        d = {"path": self.path, "line_number": self.line_number, "line": self.line}
+        d: dict[str, Any] = {"path": self.path, "line_number": self.line_number, "line": self.line}
+        if self.context is not None:
+            d["context"] = self.context
         if self.kind is not None:
             d["kind"] = self.kind
         return d
@@ -102,6 +106,43 @@ class GrepFileCount:
         if self.kind is not None:
             d["kind"] = self.kind
         return d
+
+
+@dataclass
+class GrepResult:
+    """Aggregate result of a ``Context.grep`` search.
+
+    Bundles the flat list of line matches with the per-file match counts so
+    the CLI can render either ``--count`` summaries or full match listings
+    without recomputing anything.
+
+    Attributes:
+        matches: Ordered line matches (empty when ``count=True``).
+        file_counts: Mapping of file path to its number of matches, in
+            insertion order (directory scan first, then chunk hits).
+    """
+
+    matches: list[GrepMatch] = field(default_factory=list)
+    file_counts: dict[str, int] = field(default_factory=dict)
+
+    @property
+    def has_matches(self) -> bool:
+        """Whether any file matched (drives the grep exit code)."""
+        return bool(self.file_counts)
+
+    @property
+    def total_matches(self) -> int:
+        return len(self.matches)
+
+    @property
+    def total_files(self) -> int:
+        return len(self.file_counts)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "matches": [m.to_dict() for m in self.matches],
+            "file_counts": self.file_counts,
+        }
 
 
 @dataclass
