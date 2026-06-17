@@ -245,24 +245,7 @@ def _query_dicts_as_files(rows: list[dict[str, Any]], query: str) -> tuple[list[
 def _list_tables(fmt: str) -> None:
     from mm.store.db import MmDatabase
 
-    db = MmDatabase()
-    counts = {}
-    for name in ("extractions", "chunks"):
-        row = db._connect.execute(f"SELECT COUNT(*) FROM {name}").fetchone()
-        counts[name] = row[0] if row else 0
-
-    rows = [
-        {"table": "files", "source": "scan + SQLite", "stored": "ephemeral"},
-    ]
-    for name in ("extractions", "chunks"):
-        n = counts.get(name, 0)
-        rows.append(
-            {
-                "table": name,
-                "source": "SQLite",
-                "stored": f"{n} rows" if n else "empty",
-            }
-        )
+    rows = MmDatabase().list_tables()
 
     if fmt in ("json", "dataset-jsonl", "dataset-hf"):
         from mm.display import emit_rows

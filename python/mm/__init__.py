@@ -24,6 +24,13 @@ __all__ = [
     # Config / profile (read)
     "get_full_config",
     "get_profile",
+    # Storage introspection (storage-agnostic; persistence is caller-owned)
+    "list_tables",
+    # Typed result objects (library ↔ surface contract)
+    "WcStats",
+    "GrepMatch",
+    "GrepResult",
+    "CatResult",
 ]
 __version__ = version("mm-ctx")
 
@@ -41,6 +48,11 @@ _LAZY_IMPORTS = {
     "print_pipeline": ("mm.pipelines.pipelines_utils", "print_pipeline"),
     "get_full_config": ("mm.config", "get_full_config"),
     "get_profile": ("mm.profile", "get_profile"),
+    "list_tables": ("mm.store", "list_tables"),
+    "WcStats": ("mm.results", "WcStats"),
+    "GrepMatch": ("mm.results", "GrepMatch"),
+    "GrepResult": ("mm.results", "GrepResult"),
+    "CatResult": ("mm.results", "CatResult"),
 }
 
 

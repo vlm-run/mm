@@ -854,6 +854,25 @@ class MmDatabase:
         columns = [desc[0] for desc in cursor.description] if cursor.description else []
         return columns, cursor.fetchall()
 
+    def list_tables(self) -> list[dict[str, str]]:
+        """Describe the queryable tables and their stored row counts.
+
+        Source of truth for ``mm sql --list-tables``. The ``files`` table is
+        scan-backed (ephemeral), while ``extractions`` and ``chunks`` live in
+        this store.
+
+        Returns:
+            One dict per table with ``table``, ``source``, and ``stored`` keys.
+        """
+        rows = [{"table": "files", "source": "scan + SQLite", "stored": "ephemeral"}]
+        for name in ("extractions", "chunks"):
+            row = self._connect.execute(f"SELECT COUNT(*) FROM {name}").fetchone()
+            n = row[0] if row else 0
+            rows.append(
+                {"table": name, "source": "SQLite", "stored": f"{n} rows" if n else "empty"}
+            )
+        return rows
+
     # -- Indexes --
 
     def ensure_indexes(self) -> None:
