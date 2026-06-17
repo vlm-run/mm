@@ -79,7 +79,6 @@ class TestRegistry:
         assert "rasterize-text" in names
         assert "gemini" in names
         assert "gemini-chunked" in names
-        assert "gemini" in names
         assert len(names) >= 9
 
     def test_list_strategies_by_image(self):
