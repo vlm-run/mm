@@ -162,7 +162,7 @@ Returns an error if the named profile does not exist.
 
 ## mm profile clone
 
-Clone an existing profile, optionally overriding individual fields. All fields are copied from the source profile; any option provided on the command line overwrites the corresponding field in the clone.
+Clone an existing profile, optionally overriding individual fields. `base_url` and `model` are copied from the source profile; `api_key` defaults to `''` unless explicitly provided via `--api-key`. Any option provided on the command line overwrites the corresponding field in the clone.
 
 ```bash
 mm profile clone SRC DEST [--base-url URL] [--model MODEL] [--api-key KEY]
@@ -174,12 +174,12 @@ mm profile clone SRC DEST [--base-url URL] [--model MODEL] [--api-key KEY]
 |------|-------|-------------|
 | `--base-url URL` | `-b` | Override base URL in the clone |
 | `--model MODEL` | `-m` | Override model name in the clone |
-| `--api-key KEY` | `-k` | Override API key in the clone (defaults to `''` if not provided) |
+| `--api-key KEY` | `-k` | Set API key in the clone (defaults to `''` if not provided; does **not** inherit from source) |
 
 **Examples:**
 
 ```bash
-# Exact copy
+# Copy base_url + model (api_key defaults to '')
 mm profile clone ollama my-ollama
 
 # Clone with a different model
