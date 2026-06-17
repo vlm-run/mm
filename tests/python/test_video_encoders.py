@@ -1,10 +1,4 @@
-"""Tests for mm.encoders.video registration.
-
-Verifies all video encoders are correctly registered and resolve via get().
-
-Frame.encode_jpeg() coverage lives in test_video_reader.py (TestFrame) and
-test_video_p0.py (TestJpegSubsampling).
-"""
+"""Tests for mm.encoders.video registration."""
 
 from __future__ import annotations
 
