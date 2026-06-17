@@ -14,6 +14,16 @@ __all__ = [
     "render_context",
     "render_messages",
     "uuid7",
+    # Metadata inspection (peek)
+    "FileMetadata",
+    # Encoder / pipeline introspection
+    "list_strategies",
+    "list_encoders_detail",
+    "list_pipelines",
+    "print_pipeline",
+    # Config / profile (read)
+    "get_full_config",
+    "get_profile",
 ]
 __version__ = version("mm-ctx")
 
@@ -24,6 +34,13 @@ _LAZY_IMPORTS = {
     "render_context": ("mm.notebook", "render_context"),
     "render_messages": ("mm.notebook", "render_messages"),
     "uuid7": ("mm.refs", "uuid7"),
+    "FileMetadata": ("mm.peek", "FileMetadata"),
+    "list_strategies": ("mm.encoders", "list_strategies"),
+    "list_encoders_detail": ("mm.encoders", "list_encoders_detail"),
+    "list_pipelines": ("mm.pipelines.pipelines_utils", "list_pipelines"),
+    "print_pipeline": ("mm.pipelines.pipelines_utils", "print_pipeline"),
+    "get_full_config": ("mm.config", "get_full_config"),
+    "get_profile": ("mm.profile", "get_profile"),
 }
 
 

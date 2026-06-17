@@ -42,6 +42,9 @@ from mm.store.db import MmDatabase
 if TYPE_CHECKING:
     from PIL import Image as PILImage
 
+    from mm.peek import FileMetadata
+    from mm.results import WcStats
+
 
 _FormatLiteral = Literal["openai", "gemini"]
 _RoleLiteral = Literal["system", "developer", "user"]
@@ -750,6 +753,54 @@ class Context:
             columns = [c for c in table.column_names if c != "session_id"]
         rich_table = arrow_table_to_rich(table, columns=columns, limit=limit)
         output_console.print(rich_table)
+
+    def wc(self, *, kind: str | None = None) -> "WcStats":
+        """Compute file/line/token/size aggregates (directory-scan mode).
+
+        Source of truth for ``mm wc``. Reuses this context's already-built
+        Rust scanner so no extra scan is performed.
+
+        Args:
+            kind: Optional kind filter (single or comma-separated, e.g.
+                ``"image,document"``).
+
+        Returns:
+            A :class:`~mm.results.WcStats` with totals and a ``by_kind``
+            breakdown.
+        """
+        self._require_table("wc")
+        from mm.stats import compute_wc
+
+        assert self.root is not None
+        return compute_wc(self.root, kind=kind, scanner=self._scanner)
+
+    def peek(self, path: str | Path) -> "FileMetadata":
+        """Return locally-extracted file metadata for a single file.
+
+        Source of truth for ``mm peek``. Reads dimensions / EXIF / codec /
+        duration / mime / hash directly from the file without touching the
+        SQLite store. In directory-scan mode a relative ``path`` is resolved
+        against the context root; absolute paths are used as-is.
+
+        Args:
+            path: File to inspect. Relative paths resolve against
+                ``self.root`` when this is a directory-scan context.
+
+        Returns:
+            A :class:`~mm.peek.FileMetadata` dataclass with all
+            kind-specific fields (unset fields are ``None``).
+
+        Raises:
+            FileNotFoundError: If the resolved file does not exist.
+        """
+        from mm.peek import FileMetadata
+
+        p = Path(path)
+        if not p.is_absolute() and self.root is not None:
+            p = self.root / p
+        if not p.exists():
+            raise FileNotFoundError(f"{path} not found")
+        return FileMetadata.from_path(p)
 
     def info(self) -> None:
         """Display summary statistics as a Rich panel (directory-scan mode)."""

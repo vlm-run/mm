@@ -173,13 +173,14 @@ def load_pipeline_args(pipeline_args: list[str]) -> dict[str, PipelineSpec]:
     return specs
 
 
-def do_list_pipelines() -> None:
-    """Print a Rich panel of all built-in and user-override pipelines."""
+def list_pipelines() -> list[dict[str, Any]]:
+    """Return all built-in and user-override pipelines as structured data.
+
+    Library-facing introspection counterpart to :func:`do_list_pipelines`
+    (which renders the same data as a Rich panel). Each entry contains
+    ``path``, ``kind``, ``mode``, ``encoder``, and ``params``.
+    """
     import yaml as _yaml
-    from rich import box
-    from rich.console import Console
-    from rich.panel import Panel
-    from rich.text import Text
 
     from mm.settings import get_settings
 
@@ -221,6 +222,55 @@ def do_list_pipelines() -> None:
     kind_rank = {k: i for i, k in enumerate(KIND_ORDER)}
     mode_rank = {"fast": 0, "accurate": 1}
     rows.sort(key=lambda r: (kind_rank.get(r[1], 99), mode_rank.get(r[2], 99), r[0]))
+
+    return [
+        {"path": path, "kind": kind, "mode": mode, "encoder": encoder, "params": params}
+        for path, kind, mode, encoder, params in rows
+    ]
+
+
+def print_pipeline(pipeline_ref: str) -> str:
+    """Return the raw YAML source of a ``<kind>/<mode>`` pipeline.
+
+    Library-facing introspection counterpart to :func:`do_print_pipeline`
+    (which prints the result). The leading ``# <path>`` comment locates
+    the source file.
+
+    Raises:
+        ValueError: If ``pipeline_ref`` is malformed or the file is missing.
+    """
+    kind, _, mode = pipeline_ref.partition("/")
+    if not mode or kind not in KIND_ORDER or mode not in ("fast", "accurate"):
+        raise ValueError(
+            f"pipeline ref expects '<kind>/<mode>' "
+            f"(kind in {list(KIND_ORDER)}, mode in ['fast', 'accurate']). Got: {pipeline_ref!r}"
+        )
+
+    from mm.config import get_pipeline_path
+    from mm.pipelines import _PIPELINES_DIR, _user_pipelines_dir
+
+    toml_path_str = get_pipeline_path(kind, mode)
+    if toml_path_str and Path(toml_path_str).is_file():
+        src = Path(toml_path_str)
+    else:
+        rel = f"{kind}/{mode}.yaml"
+        user_path = _user_pipelines_dir() / rel
+        src = user_path if user_path.is_file() else _PIPELINES_DIR / rel
+
+    if not src.is_file():
+        raise ValueError(f"pipeline file not found: {src}")
+
+    return f"# {src}\n{src.read_text().rstrip()}"
+
+
+def do_list_pipelines() -> None:
+    """Print a Rich panel of all built-in and user-override pipelines."""
+    from rich import box
+    from rich.console import Console
+    from rich.panel import Panel
+    from rich.text import Text
+
+    rows = [(e["path"], e["kind"], e["mode"], e["encoder"], e["params"]) for e in list_pipelines()]
 
     home = str(Path.home())
     display_rows: list[tuple[str, str, str, str, dict[str, Any]]] = []
@@ -274,29 +324,10 @@ def do_list_pipelines() -> None:
 
 def do_print_pipeline(pipeline_ref: str) -> None:
     """Print the raw YAML source of a ``<kind>/<mode>`` pipeline and exit"""
-    kind, _, mode = pipeline_ref.partition("/")
-    if not mode or kind not in KIND_ORDER or mode not in ("fast", "accurate"):
-        typer.echo(
-            f"Error: --print-pipeline expects '<kind>/<mode>' "
-            f"(kind in {list(KIND_ORDER)}, mode in ['fast', 'accurate']). Got: {pipeline_ref!r}",
-            err=True,
-        )
-        raise typer.Exit(1)
+    try:
+        src = print_pipeline(pipeline_ref)
+    except ValueError as e:
+        typer.echo(f"Error: {e}", err=True)
+        raise typer.Exit(1) from e
 
-    from mm.config import get_pipeline_path
-    from mm.pipelines import _PIPELINES_DIR, _user_pipelines_dir
-
-    toml_path_str = get_pipeline_path(kind, mode)
-    if toml_path_str and Path(toml_path_str).is_file():
-        src = Path(toml_path_str)
-    else:
-        rel = f"{kind}/{mode}.yaml"
-        user_path = _user_pipelines_dir() / rel
-        src = user_path if user_path.is_file() else _PIPELINES_DIR / rel
-
-    if not src.is_file():
-        typer.echo(f"Error: pipeline file not found: {src}", err=True)
-        raise typer.Exit(1)
-
-    typer.echo(f"# {src}")
-    typer.echo(src.read_text().rstrip())
+    typer.echo(src)
