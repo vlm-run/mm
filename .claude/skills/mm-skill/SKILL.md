@@ -500,7 +500,7 @@ mm profile add NAME    --base-url URL --model NAME [--api-key KEY]
 mm profile update NAME [--base-url URL] [--api-key KEY] [--model NAME]
 mm profile use NAME                                  # switch active
 mm profile remove NAME                               # cannot remove active
-mm profile clone SRC DEST [--base-url] [--api-key] [--model]  # clone + override
+mm profile clone SRC DEST [--base-url URL] [--api-key KEY] [--model MODEL]  # clone + override
 ```
 
 Per-command selection:
