@@ -6,7 +6,7 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 from mm.cat_utils.base_utils import CatMode, CatOpts, RunResult
-from mm.commands.cat import _extract
+from mm.cat_utils.extract import extract
 from mm.utils import DOCUMENT_EXTS, file_kind
 
 
@@ -97,7 +97,7 @@ class TestExtractDispatch:
     def test_fast_text(self, tmp_path):
         f = tmp_path / "test.txt"
         f.write_text("hello world")
-        result = _extract(f, _make_opts("fast"))
+        result = extract(f, _make_opts("fast")).content
         assert "hello world" in result
 
     def test_text_short_circuits_pipeline(self, tmp_path, isolated_db):
@@ -105,11 +105,11 @@ class TestExtractDispatch:
         f = tmp_path / "test.txt"
         f.write_text("hello world")
         with (
-            patch("mm.commands.cat._run_fast") as fast_mock,
-            patch("mm.commands.cat._run_accurate") as accurate_mock,
+            patch("mm.cat_utils.extract.run_fast") as fast_mock,
+            patch("mm.cat_utils.extract.run_accurate") as accurate_mock,
         ):
             for mode in ("fast", "accurate"):
-                result = _extract(f, _make_opts(mode))
+                result = extract(f, _make_opts(mode)).content
                 assert "hello world" in result
         fast_mock.assert_not_called()
         accurate_mock.assert_not_called()
@@ -125,10 +125,10 @@ class TestExtractDispatch:
                 "mm.cat_utils.extract_meta.extract_meta",
                 return_value="docx body text",
             ),
-            patch("mm.commands.cat._run_fast") as fast_mock,
-            patch("mm.commands.cat._run_accurate") as accurate_mock,
+            patch("mm.cat_utils.extract.run_fast") as fast_mock,
+            patch("mm.cat_utils.extract.run_accurate") as accurate_mock,
         ):
-            result = _extract(f, _make_opts("fast"))
+            result = extract(f, _make_opts("fast")).content
             assert result == "docx body text"
         fast_mock.assert_not_called()
         accurate_mock.assert_not_called()
@@ -160,10 +160,10 @@ class TestExtractDispatch:
             cm3,
             cm4,
             patch("mm._mm.office_to_pdf", side_effect=_fake_to_pdf),
-            patch("mm.commands.cat._run_accurate", side_effect=_capture_run) as accurate_mock,
-            patch("mm.commands.cat._run_fast") as fast_mock,
+            patch("mm.cat_utils.extract.run_accurate", side_effect=_capture_run) as accurate_mock,
+            patch("mm.cat_utils.extract.run_fast") as fast_mock,
         ):
-            result = _extract(f, _make_opts("accurate"))
+            result = extract(f, _make_opts("accurate")).content
             assert result == "structured markdown"
         fast_mock.assert_not_called()
         accurate_mock.assert_called_once()
@@ -177,10 +177,10 @@ class TestExtractDispatch:
         f = tmp_path / "test.jpg"
         f.write_bytes(b"\xff\xd8\xff" + b"\x00" * 100)
         cm1, cm2, cm3, cm4 = _mock_cache_miss()
-        with cm1, cm2, cm3, cm4, patch("mm.commands.cat._run_fast") as mock:
+        with cm1, cm2, cm3, cm4, patch("mm.cat_utils.extract.run_fast") as mock:
             mock.return_value = RunResult(content="mocked fast result")
             opts = _make_opts("fast")
-            result = _extract(f, opts)
+            result = extract(f, opts).content
             # _extract now resolves+merges the pipeline once and forwards it.
             assert mock.call_count == 1
             args, kwargs = mock.call_args
@@ -196,10 +196,10 @@ class TestExtractDispatch:
         f = tmp_path / "test.jpg"
         f.write_bytes(b"\xff\xd8\xff" + b"\x00" * 100)
         cm1, cm2, cm3, cm4 = _mock_cache_miss()
-        with cm1, cm2, cm3, cm4, patch("mm.commands.cat._run_accurate") as mock:
+        with cm1, cm2, cm3, cm4, patch("mm.cat_utils.extract.run_accurate") as mock:
             mock.return_value = RunResult(content="mocked accurate result")
             opts = _make_opts("accurate")
-            result = _extract(f, opts)
+            result = extract(f, opts).content
             assert mock.call_count == 1
             args, _ = mock.call_args
             assert args[0] == f
@@ -214,10 +214,10 @@ class TestExtractDispatch:
         f = tmp_path / "test.pdf"
         f.write_bytes(b"%PDF-1.4 fake")
         cm1, cm2, cm3, cm4 = _mock_cache_miss()
-        with cm1, cm2, cm3, cm4, patch("mm.commands.cat._run_accurate") as mock:
+        with cm1, cm2, cm3, cm4, patch("mm.cat_utils.extract.run_accurate") as mock:
             mock.return_value = RunResult(content="summary of document")
             opts = _make_opts("accurate")
-            result = _extract(f, opts)
+            result = extract(f, opts).content
             assert mock.call_count == 1
             args, _ = mock.call_args
             assert args[0] == f
@@ -257,17 +257,17 @@ class TestVerboseCacheReplay:
             return RunResult(content="cached body", verbose_suffix=suffix)
 
         # Cold run with verbose=False → populates cache + metadata.
-        with patch("mm.commands.cat._run_fast", side_effect=fake_run_fast):
-            cold = _extract(f, _make_opts("fast", verbose=False))
+        with patch("mm.cat_utils.extract.run_fast", side_effect=fake_run_fast):
+            cold = extract(f, _make_opts("fast", verbose=False)).content
         assert cold == "cached body"
         assert run_call_count["n"] == 1
 
         # Warm run with verbose=True → cache hit, suffix replayed, no re-run.
         with patch(
-            "mm.commands.cat._run_fast",
+            "mm.cat_utils.extract.run_fast",
             side_effect=AssertionError("should not be called on cache hit"),
         ):
-            warm = _extract(f, _make_opts("fast", verbose=True))
+            warm = extract(f, _make_opts("fast", verbose=True)).content
         assert warm == f"cached body\n\n{suffix}"
         assert run_call_count["n"] == 1
 
@@ -282,13 +282,13 @@ class TestVerboseCacheReplay:
         def fake_run_fast(_path, _kind, _spec, _opts):
             return RunResult(content="cached body", verbose_suffix=suffix)
 
-        with patch("mm.commands.cat._run_fast", side_effect=fake_run_fast):
-            _extract(f, _make_opts("fast", verbose=True))
+        with patch("mm.cat_utils.extract.run_fast", side_effect=fake_run_fast):
+            extract(f, _make_opts("fast", verbose=True))
 
         # Even though metadata was stored, a verbose=False reader gets only content.
         with patch(
-            "mm.commands.cat._run_fast",
+            "mm.cat_utils.extract.run_fast",
             side_effect=AssertionError("should not be called on cache hit"),
         ):
-            warm = _extract(f, _make_opts("fast", verbose=False))
+            warm = extract(f, _make_opts("fast", verbose=False)).content
         assert warm == "cached body"

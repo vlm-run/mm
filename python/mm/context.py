@@ -42,6 +42,7 @@ from mm.store.db import MmDatabase
 if TYPE_CHECKING:
     from PIL import Image as PILImage
 
+    from mm.cat_utils.base_utils import CatOpts
     from mm.peek import FileMetadata
     from mm.results import WcStats
 
@@ -399,23 +400,19 @@ class Context:
         Args:
             mode: ``"metadata"`` populates each row with the metadata-tier content
                 (``files.text_preview`` produced by ``extract_meta``; no LLM call).
-                ``"fast"`` runs light LLM extraction (requires a
-                configured profile; not wired yet — currently raises
-                ``NotImplementedError``).
-                ``"accurate"`` runs the LLM-backed path (requires a
-                configured profile; not wired yet — currently raises
-                ``NotImplementedError``).
+                ``"fast"`` runs the light pipeline extraction and ``"accurate"``
+                runs the LLM-backed pipeline (both require a configured
+                profile). Both route through
+                :func:`mm.cat_utils.extract.extract`.
 
         Returns:
             Markdown table (headers: ref | kind | source | content).
         """
         self._require_pyctx("to_md")
-        if mode in ("fast", "accurate"):
-            raise NotImplementedError(
-                f"to_md(mode={mode!r}) is not implemented yet. "
-                "Use mode='metadata' for the metadata-tier content."
-            )
-        contents = self._collect_metadata_contents()
+        if mode == "metadata":
+            contents = self._collect_metadata_contents()
+        else:
+            contents = self._collect_pipeline_contents(mode)
         return self._pyctx.to_md_table(contents)
 
     def print_tree(self, layout: _TreeLayout = "insertion") -> None:
@@ -436,17 +433,107 @@ class Context:
                   [TODO]
 
         Raises:
-            NotImplementedError: For any non-``"insertion"`` layout.
+            ValueError: If ``layout`` is not one of the supported layouts.
         """
         self._require_pyctx("print_tree")
-        if layout != "insertion":
-            raise NotImplementedError(
-                f"print_tree(layout={layout!r}) is not implemented yet. "
-                "Only layout='insertion' is available in this release."
-            )
         from mm.display import output_console
 
-        output_console.print(self._pyctx.render_tree_insertion())
+        if layout == "insertion":
+            output_console.print(self._pyctx.render_tree_insertion())
+            return
+        if layout not in ("paths", "kind", "flat", "hybrid"):
+            raise ValueError(
+                f"print_tree(layout={layout!r}) is invalid. Choose from "
+                "'insertion', 'paths', 'kind', 'flat', 'hybrid'."
+            )
+        output_console.print(self._build_tree_view(layout))
+
+    def _build_tree_view(self, layout: _TreeLayout) -> Any:
+        """Build a ``rich.Tree`` for the given non-insertion layout."""
+        from rich.text import Text
+        from rich.tree import Tree
+
+        items = list(self._pyctx.items())
+        root_label = Text()
+        root_label.append("Context", style="bold")
+        root_label.append(f"  {len(items)} items", style="dim")
+        tree = Tree(root_label)
+
+        def _leaf(item: dict[str, Any], *, with_meta: bool) -> Text:
+            label = Text()
+            src_kind = item["source_kind"]
+            if src_kind == "path":
+                label.append(Path(item["source_value"]).name)
+            elif item["kind"] == "text":
+                preview = (item.get("desc") or item.get("source_value") or "").strip()
+                label.append((preview[:60] + "…") if len(preview) > 60 else preview or "(text)")
+            else:
+                label.append(str(item.get("source_value") or item["kind"]))
+            label.append(f"  {item['ref_id']}", style="dim")
+            if with_meta and item.get("metadata"):
+                label.append(f"  {item['metadata']}", style="dim italic")
+            return label
+
+        if layout == "flat":
+            for item in items:
+                line = Text()
+                line.append(f"{item['ref_id']}", style="bold")
+                line.append(f"  [{item['kind']}] ", style="dim")
+                src = (
+                    Path(item["source_value"]).name
+                    if item["source_kind"] == "path"
+                    else str(item.get("desc") or item.get("source_value") or "")
+                )
+                line.append(src[:80])
+                tree.add(line)
+            return tree
+
+        if layout == "kind":
+            by_kind: dict[str, list[dict[str, Any]]] = {}
+            for item in items:
+                by_kind.setdefault(item["kind"], []).append(item)
+            for kind in sorted(by_kind):
+                branch = tree.add(Text(f"{kind} ({len(by_kind[kind])})", style="bold"))
+                for item in by_kind[kind]:
+                    branch.add(_leaf(item, with_meta=False))
+            return tree
+
+        # "paths" and "hybrid": directory hierarchy for path items.
+        with_meta = layout == "hybrid"
+        path_items = [it for it in items if it["source_kind"] == "path"]
+        inline_items = [it for it in items if it["source_kind"] != "path"]
+
+        import os.path as _osp
+
+        common = (
+            Path(_osp.commonpath([it["source_value"] for it in path_items]))
+            if len(path_items) > 1
+            else (Path(path_items[0]["source_value"]).parent if path_items else None)
+        )
+        if common is not None and common.is_file():
+            common = common.parent
+
+        dir_nodes: dict[str, Any] = {}
+
+        def _dir_branch(directory: Path) -> Any:
+            key = str(directory)
+            if key in dir_nodes:
+                return dir_nodes[key]
+            if common is not None and (directory == common or common not in directory.parents):
+                node = tree.add(Text(f"{directory}/", style="bold"))
+            else:
+                node = _dir_branch(directory.parent).add(Text(f"{directory.name}/", style="bold"))
+            dir_nodes[key] = node
+            return node
+
+        for item in path_items:
+            p = Path(item["source_value"])
+            _dir_branch(p.parent).add(_leaf(item, with_meta=with_meta))
+        if inline_items:
+            inline = tree.add(Text("(inline)", style="dim"))
+            for item in inline_items:
+                inline.add(_leaf(item, with_meta=with_meta))
+        return tree
 
     # ── Unified get (instance + classmethod hybrid) ───────────────────
 
@@ -616,8 +703,35 @@ class Context:
         min_size: str | int | None = None,
         max_size: str | int | None = None,
         modified_after: str | None = None,
+        name: str | None = None,
+        ignore_case: bool = False,
+        depth: int | None = None,
+        sort: str | None = None,
+        reverse: bool = False,
+        limit: int | None = None,
     ) -> Context:
-        """Return a new directory-scan Context with filtered rows."""
+        """Return a new directory-scan Context with filtered/sorted rows.
+
+        Source of truth for ``mm find``'s row selection. All predicates
+        compose; an unfiltered call returns ``self`` unchanged.
+
+        Args:
+            kind: Kind filter (single or comma-separated, e.g. ``"image,document"``).
+            ext: Extension filter — a comma-separated string or list (``".pdf"``).
+            min_size: Minimum size; ``int`` bytes or human string (``"1mb"``).
+            max_size: Maximum size; ``int`` bytes or human string.
+            modified_after: Reserved for future mtime filtering.
+            name: Filter by file name. Tried as a regex first, falling back
+                to a case-(in)sensitive substring match.
+            ignore_case: Case-insensitive ``name`` matching.
+            depth: Maximum directory depth (0 = top-level).
+            sort: Column to sort by (e.g. ``"size"``, ``"name"``).
+            reverse: Sort descending when ``True``.
+            limit: Keep at most this many rows (applied last).
+
+        Returns:
+            A new directory-scan :class:`Context` over the filtered table.
+        """
         self._require_table("filter")
         conditions: list[str] = []
 
@@ -638,14 +752,28 @@ class Context:
         if max_size is not None:
             size_bytes = _parse_size(max_size) if isinstance(max_size, str) else max_size
             conditions.append(f"size <= {size_bytes}")
+        if depth is not None:
+            conditions.append(f"depth <= {depth}")
 
-        if not conditions:
+        if not conditions and name is None and not sort and limit is None:
             return self
 
         from mm.query import query_arrow_table
 
-        where_clause = " AND ".join(conditions)
-        filtered = query_arrow_table(self._table, f"SELECT * FROM files WHERE {where_clause}")
+        filtered = self._table
+        if conditions:
+            where_clause = " AND ".join(conditions)
+            filtered = query_arrow_table(filtered, f"SELECT * FROM files WHERE {where_clause}")
+
+        if name is not None:
+            filtered = self._filter_by_name(filtered, name, ignore_case)
+
+        if sort:
+            order = "DESC" if reverse else "ASC"
+            filtered = query_arrow_table(filtered, f"SELECT * FROM files ORDER BY {sort} {order}")
+
+        if limit is not None and limit < filtered.num_rows:
+            filtered = filtered.slice(0, limit)
 
         new_ctx = object.__new__(Context)
         new_ctx.root = self.root
@@ -661,18 +789,94 @@ class Context:
         new_ctx._pyctx = None
         return new_ctx
 
-    def cat(self, path: str, *, no_cache: bool = False) -> str:
-        """Read locally-extracted (metadata-tier) content of a file (directory-scan mode)."""
-        self._require_table("cat")
-        assert self.root is not None
-        full_path = self.root / path
-        from mm.cat_utils.extract_meta import extract_meta
-        from mm.utils import file_kind
+    def cat(
+        self,
+        path: str,
+        *,
+        mode: Literal["metadata", "fast", "accurate"] = "metadata",
+        no_cache: bool = False,
+        no_generate: bool = False,
+        opts: "CatOpts | None" = None,
+    ) -> str:
+        """Extract a file's content (directory-scan mode).
 
-        kind = file_kind(full_path)
-        if kind == "text":
-            return full_path.read_text(errors="replace")
-        return extract_meta(full_path, kind, no_cache=no_cache)
+        Source of truth for ``mm cat``. The ``metadata`` mode returns the
+        locally-extracted (no-LLM) content; ``fast`` and ``accurate`` run
+        the full pipeline-driven extraction via
+        :func:`mm.cat_utils.extract.extract`.
+
+        Args:
+            path: Relative path within the context root (or absolute).
+            mode: ``"metadata"`` (default, no LLM), ``"fast"``, or
+                ``"accurate"``.
+            no_cache: Bypass the extraction cache and recompute.
+            no_generate: Skip the LLM ``generate`` step (encode-only).
+            opts: Pre-built :class:`~mm.cat_utils.base_utils.CatOpts` to use
+                verbatim (dependency injection from the CLI fast path). When
+                ``None``, a default is constructed from the other arguments.
+
+        Returns:
+            The extracted content as a string.
+        """
+        self._require_table("cat")
+        full_path = Path(path)
+        if not full_path.is_absolute() and self.root is not None:
+            full_path = self.root / path
+
+        if mode == "metadata" and opts is None:
+            from mm.cat_utils.extract_meta import extract_meta
+            from mm.utils import file_kind
+
+            kind = file_kind(full_path)
+            if kind == "text":
+                return full_path.read_text(errors="replace")
+            return extract_meta(full_path, kind, no_cache=no_cache)
+
+        from mm.cat_utils.extract import extract as _extract
+
+        if opts is None:
+            opts = self._default_cat_opts(mode=mode, no_cache=no_cache, no_generate=no_generate)
+        return _extract(full_path, opts).content
+
+    @staticmethod
+    def _default_cat_opts(
+        *,
+        mode: str = "fast",
+        no_cache: bool = False,
+        no_generate: bool = False,
+    ) -> "CatOpts":
+        """Build a default :class:`CatOpts` for library-driven extraction."""
+        from mm.cat_utils.base_utils import CatOpts
+
+        return CatOpts(
+            n=None,
+            output_dir=None,
+            mode=mode,
+            no_cache=no_cache,
+            no_generate=no_generate,
+            format="rich",
+            encode_overrides={},
+            generate_overrides={},
+            pipelines={},
+            verbose=False,
+            dry_run=False,
+            stream=False,
+        )
+
+    @staticmethod
+    def _filter_by_name(table: Any, name: str, ignore_case: bool) -> Any:
+        """Filter an Arrow table by file name (regex first, substring fallback)."""
+        import re as re_mod
+
+        flags = re_mod.IGNORECASE if ignore_case else 0
+        names = table.column("name").to_pylist()
+        try:
+            pattern = re_mod.compile(name, flags)
+            mask = [bool(pattern.search(str(n))) for n in names]
+        except re_mod.error:
+            needle = name.lower()
+            mask = [needle in str(n).lower() for n in names]
+        return table.filter(mask)
 
     def head(self, path: str, *, n: int = 10) -> str:
         content = self.cat(path)
@@ -926,6 +1130,27 @@ class Context:
                     out[ref_id] = f"[extract failed: {exc}]"
             # in-memory / url items fall through to the metadata fallback
             # handled by the Rust-side to_md_with_contents.
+        return out
+
+    def _collect_pipeline_contents(self, mode: str) -> dict[str, str]:
+        """Extract pipeline-driven (fast/accurate) content for every item."""
+        from mm.cat_utils.extract import extract
+
+        opts = self._default_cat_opts(mode=mode)
+        out: dict[str, str] = {}
+        for item in self._pyctx.items():
+            ref_id = item["ref_id"]
+            if item["source_kind"] == "in_memory" and item["kind"] == "text":
+                out[ref_id] = item.get("desc") or ""
+                continue
+            if item["source_kind"] == "path":
+                p = Path(item["source_value"])
+                if not p.exists():
+                    continue
+                try:
+                    out[ref_id] = extract(p, opts).content
+                except Exception as exc:  # noqa: BLE001
+                    out[ref_id] = f"[extract failed: {exc}]"
         return out
 
     def _require_pyctx(self, method: str) -> None:

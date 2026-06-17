@@ -249,23 +249,21 @@ def _find_table(
 
     from mm.context import Context
 
+    # The library owns all row selection (filter / name / depth / sort).
     ctx = Context(directory, no_ignore=no_ignore, session_id=session)
-    if kind or ext or min_size or max_size:
-        ctx = ctx.filter(kind=kind, ext=ext, min_size=min_size, max_size=max_size)
+    ctx = ctx.filter(
+        kind=kind,
+        ext=ext,
+        min_size=min_size,
+        max_size=max_size,
+        name=name,
+        ignore_case=ignore_case,
+        depth=depth,
+        sort=sort,
+        reverse=reverse,
+    )
 
     table = ctx.to_arrow(refs=refs)
-
-    if name:
-        import re as re_mod
-
-        flags = re_mod.IGNORECASE if ignore_case else 0
-        try:
-            pattern = re_mod.compile(name, flags)
-            mask = [bool(pattern.search(str(n))) for n in table.column("name").to_pylist()]
-        except re_mod.error:
-            lower = name.lower()
-            mask = [lower in str(n).lower() for n in table.column("name").to_pylist()]
-        table = table.filter(mask)
 
     if stdin_paths:
         from mm.pipe import resolve_piped_paths
@@ -275,17 +273,6 @@ def _find_table(
         root = Path(directory).resolve()
         mask = [str(root / p) in stdin_set for p in table.column("path").to_pylist()]
         table = table.filter(mask)
-
-    if depth is not None:
-        from mm.query import query_arrow_table
-
-        table = query_arrow_table(table, f"SELECT * FROM files WHERE depth <= {depth}")
-
-    if sort:
-        from mm.query import query_arrow_table
-
-        order = "DESC" if reverse else "ASC"
-        table = query_arrow_table(table, f"SELECT * FROM files ORDER BY {sort} {order}")
 
     cols = columns.split(",") if columns else None
 
