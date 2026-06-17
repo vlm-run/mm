@@ -495,15 +495,22 @@ class TestTypingHelpers:
         assert isinstance(ref, str)
 
 
-# ── save() stub ───────────────────────────────────────────────────────
+# ── persistence (decoupled) ────────────────────────────────────────────
 
 
-class TestSaveStub:
-    def test_save_role_aware_raises(self, tiny_png: Path):
+class TestPersistence:
+    def test_save_role_aware_raises_and_points_to_export(self, tiny_png: Path):
         ctx = mm.Context()
         ctx.add(tiny_png)
-        with pytest.raises(NotImplementedError, match="not implemented"):
+        with pytest.raises(NotImplementedError, match="to_records"):
             ctx.save()
+
+    def test_to_records_exports_role_aware_items(self, tiny_png: Path):
+        ctx = mm.Context()
+        ref = ctx.add(tiny_png, role="user")
+        records = ctx.to_records()
+        assert [r["ref_id"] for r in records] == [ref]
+        assert records[0]["role"] == "user"
 
 
 # ── remove() ───────────────────────────────────────────────────────────

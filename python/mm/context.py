@@ -601,32 +601,50 @@ class Context:
 
     # ── Persistence (deferred for role-aware) ─────────────────────────
 
+    def to_records(self, *, refs: bool = False) -> list[dict[str, Any]]:
+        """Export the context as plain dict records (storage-agnostic).
+
+        This is the persistence-decoupling entry point: the library never
+        writes to a database. ``to_records`` hands you the data so *you*
+        decide the storage backend (SQLite, Postgres, object storage, a
+        JSONL file, ...). Pair it with :meth:`items` blob access for any
+        in-memory objects you need to spool out.
+
+        Args:
+            refs: Directory-scan only — append ``session_id``/``ref_id``
+                columns to each record.
+
+        Returns:
+            One dict per file (directory-scan) or per ref (incremental,
+            same fields as :meth:`items`).
+        """
+        if self._pyctx is not None:
+            return [dict(item) for item in self._pyctx.items()]
+        self._require_table("to_records")
+        table = self._table_with_refs() if refs else self._table
+        return table.to_pylist()
+
     def save(self) -> None:
-        """Persist the context.
+        """Persist a directory-scan context to mm's own SQLite store.
 
-        For directory-scan contexts, writes the Arrow table to the
-        global mm DB (existing behaviour).
+        This is the **mm CLI's** persistence workflow, not a library
+        mandate: it targets the default mm database
+        (:class:`~mm.store.db.MmDatabase`). Persistence is deliberately
+        decoupled from the core library — to write to a different backend,
+        export with :meth:`to_records` and write the records yourself.
 
-        For incremental role-aware contexts, this is **not implemented
-        yet**. Planned behaviour:
-
-            - Write ``(session_id, ref_id, kind, uri, content_hash, metadata)``
-              to the ``files`` table in the mm DB (``MmSettings.db_path``).
-            - For in-memory objects, spool to the content-addressed blob
-              store (``MmSettings.blobs_dir``, ``<blobs_dir>/<xxh3>.<ext>``)
-              and record the blob URI.
-            - Make ``Context.get("<session>/<ref>")`` resolve via the DB
-              across processes.
-            - Idempotent on repeat calls for the same
-              ``(session_id, ref_id)``.
+        For incremental role-aware contexts there is no built-in DB writer
+        by design; use :meth:`to_records` and persist with your own client.
 
         Raises:
-            NotImplementedError: For incremental role-aware contexts.
+            NotImplementedError: For incremental role-aware contexts. Use
+                :meth:`to_records` for storage-agnostic export instead.
         """
         if self._pyctx is not None:
             raise NotImplementedError(
-                "Context.save() is not implemented for incremental role-aware contexts yet. "
-                "See Context.save docstring for the planned behaviour."
+                "Context.save() does not persist incremental role-aware contexts: "
+                "persistence is decoupled from the library. Use Context.to_records() "
+                "to export records and write them with your own storage client."
             )
         refs = self._materialize_refs() if self._session_id else None
         assert self.root is not None
