@@ -15,6 +15,7 @@ mm profile SUBCOMMAND [OPTIONS]
 | `list` | List all configured profiles |
 | `add NAME` | Add a new profile |
 | `update NAME` | Update one or more fields of an existing profile |
+| `clone SRC DEST` | Clone a profile, optionally overriding individual fields |
 | `use NAME` | Switch the active profile |
 | `remove NAME` | Remove a profile |
 
@@ -158,6 +159,40 @@ mm profile use gemini
 ```
 
 Returns an error if the named profile does not exist.
+
+## mm profile clone
+
+Clone an existing profile, optionally overriding individual fields. All fields are copied from the source profile; any option provided on the command line overwrites the corresponding field in the clone.
+
+```bash
+mm profile clone SRC DEST [--base-url URL] [--model MODEL] [--api-key KEY]
+```
+
+**Options:**
+
+| Flag | Short | Description |
+|------|-------|-------------|
+| `--base-url URL` | `-b` | Override base URL in the clone |
+| `--model MODEL` | `-m` | Override model name in the clone |
+| `--api-key KEY` | `-k` | Override API key in the clone (defaults to `''` if not provided) |
+
+**Examples:**
+
+```bash
+# Exact copy
+mm profile clone ollama my-ollama
+
+# Clone with a different model
+mm profile clone ollama my-ollama --model qwen3-vl:8b
+
+# Clone with a different API key
+mm profile clone openai openai-dev --api-key sk-dev-...
+
+# Clone with multiple overrides
+mm profile clone openai openai-eu --model qwen3-vl:8b --base-url https://eu.openai.com/v1
+```
+
+Returns an error if the source profile does not exist or the destination name is already taken.
 
 ## mm profile remove
 
