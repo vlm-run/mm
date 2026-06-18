@@ -47,7 +47,7 @@ web/
 run_results/
 
 # Secrets
-*.env.*
+*.env*
 
 # Local exploration logs
 mm-*-output.txt

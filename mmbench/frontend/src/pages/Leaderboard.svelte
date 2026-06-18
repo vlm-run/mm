@@ -30,6 +30,28 @@
   $effect(() => { selP; if (ready) localStorage.setItem(LS.p, JSON.stringify(selP)) })
 
   const rows = $derived(lb.filter((r) => selA.includes(r.assistant) && selP.includes(r.profile)))
+
+  let sortKey = $state('with_mm'), sortDir = $state('desc')
+  const sortVal = (r, k) =>
+    k === 'without_mm' ? r.without_mm.correctness
+    : k === 'with_mm' ? r.with_mm.correctness
+    : k === 'lift' ? r.lift
+    : k === 'speedup' ? r.speedup
+    : k === 'pass' ? (r.with_mm.n ? r.with_mm.passes / r.with_mm.n : null)
+    : null
+  const setSort = (k) => { if (sortKey === k) sortDir = sortDir === 'desc' ? 'asc' : 'desc'; else { sortKey = k; sortDir = 'desc' } }
+  const caret = (k) => (sortKey === k ? (sortDir === 'desc' ? '▼' : '▲') : '')
+  const sortedRows = $derived.by(() => {
+    const arr = [...rows]
+    arr.sort((a, b) => {
+      const va = sortVal(a, sortKey), vb = sortVal(b, sortKey)
+      if (va == null && vb == null) return 0
+      if (va == null) return 1
+      if (vb == null) return -1
+      return sortDir === 'desc' ? vb - va : va - vb
+    })
+    return arr
+  })
   const cell = (r) => `${r.assistant}\\${r.profile}`
   const key = (s) => `${s.assistant}\\${s.profile}`
   const num = (v, s = '') => (v == null ? '–' : v + s)
@@ -86,7 +108,7 @@
   <p class="mt-1 text-slate-400">Fast, multimodal context for agents &mdash; evaluated.</p>
   <p class="mt-3 text-slate-300 max-w-3xl leading-relaxed">
     mmbench measures whether the <code class="text-blue-300">mm</code> CLI makes AI agent
-    harnesses (Claude Code, Codex, Gemini, opencode, &hellip;) more capable and faster, by
+    harnesses (Claude Code, Codex, Gemini, openclaw, &hellip;) more capable and faster, by
     running them on 20 hard, multi-turn tasks &mdash; retrieval, organization, and artifact
     creation &mdash; over nested folders of mixed media: images, video, audio, and PDFs. Each
     row is one <span class="text-slate-100">assistant / mm-profile</span> cell, averaged over its runs.
@@ -139,19 +161,19 @@
             <th class="text-left p-3 w-8">#</th>
             <th class="text-left p-3">Assistant</th>
             <th class="text-left p-3">mm Profile</th>
-            <th class="text-right p-3">Without %</th>
-            <th class="text-right p-3">With %</th>
-            <th class="p-3"><span class="flex items-center justify-end gap-1">Lift<InfoTip text="With-mm minus without-mm correctness, in percentage points. Positive means mm helped; negative means it hurt." /></span></th>
-            <th class="p-3"><span class="flex items-center justify-end gap-1">Speedup<InfoTip text="Without-mm wall-clock time divided by with-mm time. Above 1× means the agent finished faster with mm." /></span></th>
+            <th class="p-3"><span class="flex items-center justify-end gap-1"><button type="button" onclick={() => setSort('without_mm')} class="inline-flex items-center gap-1 cursor-pointer select-none hover:text-slate-200">Without %<span class="w-2 text-[10px]">{caret('without_mm')}</span></button></span></th>
+            <th class="p-3"><span class="flex items-center justify-end gap-1"><button type="button" onclick={() => setSort('with_mm')} class="inline-flex items-center gap-1 cursor-pointer select-none hover:text-slate-200">With %<span class="w-2 text-[10px]">{caret('with_mm')}</span></button></span></th>
+            <th class="p-3"><span class="flex items-center justify-end gap-1"><button type="button" onclick={() => setSort('lift')} class="inline-flex items-center gap-1 cursor-pointer select-none hover:text-slate-200">Lift<span class="w-2 text-[10px]">{caret('lift')}</span></button><InfoTip text="With-mm minus without-mm correctness, in percentage points. Positive means mm helped; negative means it hurt." /></span></th>
+            <th class="p-3"><span class="flex items-center justify-end gap-1"><button type="button" onclick={() => setSort('speedup')} class="inline-flex items-center gap-1 cursor-pointer select-none hover:text-slate-200">Speedup<span class="w-2 text-[10px]">{caret('speedup')}</span></button><InfoTip text="Without-mm wall-clock time divided by with-mm time. Above 1× means the agent finished faster with mm." /></span></th>
             <th class="text-right p-3">Runs</th>
-            <th class="p-3"><span class="flex items-center justify-end gap-1">Pass (with mm)<InfoTip text="Of the agent's with-mm case runs, how many scored at least 60% correctness (passes / total)." /></span></th>
+            <th class="p-3"><span class="flex items-center justify-end gap-1"><button type="button" onclick={() => setSort('pass')} class="inline-flex items-center gap-1 cursor-pointer select-none hover:text-slate-200">Pass (with mm)<span class="w-2 text-[10px]">{caret('pass')}</span></button><InfoTip text="Of the agent's with-mm case runs, how many scored at least 60% correctness (passes / total)." /></span></th>
             <th class="text-right p-3">Sessions</th>
           </tr>
         </thead>
         <tbody>
-          {#each rows as r (cell(r))}
+          {#each sortedRows as r, i (cell(r))}
             <tr class="border-t border-slate-800 hover:bg-slate-800/60 cursor-pointer" onclick={() => (window.location.hash = href(r))}>
-              <td class="p-3 text-slate-500 font-mono">{r.rank}</td>
+              <td class="p-3 text-slate-500 font-mono">{i + 1}</td>
               <td class="p-3 text-blue-400 font-medium">{r.assistant}</td>
               <td class="p-3">
                 <div class="text-slate-300">{r.profile}</div>
