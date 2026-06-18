@@ -169,12 +169,19 @@ def _scan_files(
                 content = full_path.read_text(errors="replace")
             lines = content.splitlines()
 
+            # Key matches on a root-relative path so direct line hits and
+            # relativized chunk hits collapse onto the same file entry.
+            try:
+                display_path = str(full_path.relative_to(root.resolve()))
+            except ValueError:
+                display_path = f.path
+
             file_match_count = 0
             for i, line in enumerate(lines):
                 if regex.search(line):
                     file_match_count += 1
                     if not count:
-                        match = GrepMatch(path=f.path, line_number=i + 1, line=line)
+                        match = GrepMatch(path=display_path, line_number=i + 1, line=line)
                         if context_lines > 0:
                             start = max(0, i - context_lines)
                             end = min(len(lines), i + context_lines + 1)
@@ -182,7 +189,7 @@ def _scan_files(
                         result.matches.append(match)
 
             if file_match_count > 0:
-                result.file_counts[f.path] = file_match_count
+                result.file_counts[display_path] = file_match_count
         except Exception:  # noqa: BLE001
             continue
 
