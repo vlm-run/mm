@@ -2,26 +2,41 @@
   import { onMount } from 'svelte'
   import MultiSelect from 'svelte-multiselect'
   import Chart from '../components/Chart.svelte'
+  import InfoTip from '../components/InfoTip.svelte'
   import { fetchLeaderboard, fetchSessions } from '../api.js'
 
   let lb = $state([]), sessions = $state([])
   let assistants = $state([]), profiles = $state([])
   let selA = $state([]), selP = $state([])
+  let howto = $state(null)
+  let ready = $state(false)
+  const LS = { a: 'mmbench.selA', p: 'mmbench.selP' }
+  const loadSel = (key, opts) => {
+    try { const s = JSON.parse(localStorage.getItem(key)); if (Array.isArray(s)) return s.filter((x) => opts.includes(x)) } catch {}
+    return [...opts]
+  }
 
   onMount(async () => {
     lb = await fetchLeaderboard()
     sessions = await fetchSessions()
     assistants = [...new Set(lb.map((r) => r.assistant))].sort()
     profiles = [...new Set(lb.map((r) => r.profile))].sort()
-    selA = [...assistants]; selP = [...profiles]
+    selA = loadSel(LS.a, assistants)
+    selP = loadSel(LS.p, profiles)
+    ready = true
   })
 
+  $effect(() => { selA; if (ready) localStorage.setItem(LS.a, JSON.stringify(selA)) })
+  $effect(() => { selP; if (ready) localStorage.setItem(LS.p, JSON.stringify(selP)) })
+
   const rows = $derived(lb.filter((r) => selA.includes(r.assistant) && selP.includes(r.profile)))
-  const cell = (r) => `${r.assistant}/${r.profile}`
+  const cell = (r) => `${r.assistant}\\${r.profile}`
+  const key = (s) => `${s.assistant}\\${s.profile}`
   const num = (v, s = '') => (v == null ? '–' : v + s)
   const href = (r) => `#/cell/${encodeURIComponent(r.assistant)}/${encodeURIComponent(r.profile)}`
   const PAL = ['#60a5fa', '#34d399', '#fbbf24', '#c084fc', '#f87171', '#22d3ee', '#f472b6', '#a3e635']
-  const ax = { ticks: { color: '#94a3b8' }, grid: { color: '#1e293b' } }
+  const tick = { color: '#94a3b8' }
+  const grid = { color: '#1e293b' }
 
   const barData = $derived({
     labels: rows.map(cell),
@@ -30,48 +45,70 @@
       { label: 'With mm', data: rows.map((r) => r.with_mm.correctness), backgroundColor: '#60a5fa' },
     ],
   })
-  const barOpts = { scales: { x: ax, y: { ...ax, beginAtZero: true, max: 100 } }, plugins: { legend: { labels: { color: '#cbd5e1' } } } }
+  const barOpts = {
+    scales: {
+      x: { ticks: { ...tick, maxRotation: 90, minRotation: 0, autoSkip: false }, grid },
+      y: { ticks: tick, grid, beginAtZero: true, max: 100 },
+    },
+    plugins: { legend: { labels: { color: '#cbd5e1' } } },
+  }
 
   const trendData = $derived.by(() => {
     const keep = sessions.filter((s) => selA.includes(s.assistant) && selP.includes(s.profile))
     const byKey = {}
-    keep.forEach((s) => { (byKey[`${s.assistant}/${s.profile}`] ||= []).push(s) })
-    return { datasets: Object.entries(byKey).map(([k, arr], i) => ({ label: k, data: arr.map((s) => ({ x: s.started_at, y: s.with_mm_correctness })), borderColor: PAL[i % PAL.length], backgroundColor: PAL[i % PAL.length], tension: 0.25 })) }
+    keep.forEach((s) => { (byKey[key(s)] ||= []).push(s) })
+    return { datasets: Object.entries(byKey).map(([k, arr], i) => ({ label: k, data: arr.map((s) => ({ x: s.started_at, y: s.with_mm_correctness })), borderColor: PAL[i % PAL.length], backgroundColor: PAL[i % PAL.length], pointRadius: 4, pointHoverRadius: 6, tension: 0.25 })) }
   })
-  const trendOpts = { scales: { x: { ...ax, type: 'category' }, y: { ...ax, beginAtZero: true, max: 100 } }, plugins: { legend: { labels: { color: '#cbd5e1' } } } }
+  const trendOpts = {
+    layout: { padding: { top: 8 } },
+    scales: {
+      x: {
+        type: 'category',
+        ticks: {
+          ...tick,
+          maxRotation: 0,
+          autoSkip: true,
+          callback: function (v) {
+            const l = this.getLabelForValue(v)
+            return typeof l === 'string' ? l.slice(5, 16).replace('T', ' ') : l
+          },
+        },
+        grid,
+      },
+      y: { ticks: tick, grid, beginAtZero: true, max: 105 },
+    },
+    plugins: { legend: { labels: { color: '#cbd5e1' } } },
+  }
 </script>
 
-<section class="mb-8">
-  <div class="rounded-2xl border border-slate-800 bg-gradient-to-br from-blue-950/40 to-slate-900 p-8">
-    <h1 class="text-3xl font-bold tracking-tight">Does <span class="text-blue-400">mm</span> make agents better?</h1>
-    <p class="mt-1 text-slate-400">Fast, multimodal context for agents &mdash; measured, not asserted.</p>
-    <p class="mt-4 text-slate-300 max-w-3xl leading-relaxed">
-      mmbench runs AI agent harnesses on hard, multi-turn tasks over real multimodal
-      directories (images, video, audio, PDFs) and measures whether the <code class="text-blue-300">mm</code>
-      CLI makes them more capable and faster.
-    </p>
-  </div>
-  <div class="grid md:grid-cols-2 gap-4 mt-4">
-    <div class="rounded-xl border border-slate-800 bg-slate-900 p-5">
-      <h2 class="text-xs font-semibold uppercase tracking-widest text-slate-400">What is mmbench</h2>
-      <p class="mt-2 text-sm text-slate-300 leading-relaxed">
-        A benchmark of agent harnesses (Claude Code, Codex, Gemini, opencode, &hellip;) on
-        20 difficult, action-based tasks &mdash; retrieval, organization, and artifact
-        creation &mdash; over nested folders of mixed media. Each cell is one
-        <span class="text-slate-100">assistant / mm-profile</span> pair, averaged over its runs.
-      </p>
-    </div>
-    <div class="rounded-xl border border-slate-800 bg-slate-900 p-5">
-      <h2 class="text-xs font-semibold uppercase tracking-widest text-slate-400">How it works</h2>
-      <ol class="mt-2 text-sm text-slate-300 leading-relaxed list-decimal list-inside space-y-1">
-        <li>Every task runs in an isolated sandbox copy of the dataset.</li>
-        <li><b>Without mm</b>: the agent has only its native tools. <b>With mm</b>: <code class="text-blue-300">mm</code> on PATH + a one-page primer.</li>
-        <li>Scored on correctness (deterministic checks + an LLM judge) and wall-clock speed.</li>
-        <li><b>Lift</b> = with&minus;without correctness; <b>speedup</b> = without&divide;with time.</li>
-      </ol>
-    </div>
-  </div>
+<section class="mb-6">
+  <h1 class="text-3xl font-bold tracking-tight">Does <span class="text-blue-400">mm</span> make agents better?</h1>
+  <p class="mt-1 text-slate-400">Fast, multimodal context for agents &mdash; evaluated.</p>
+  <p class="mt-3 text-slate-300 max-w-3xl leading-relaxed">
+    mmbench measures whether the <code class="text-blue-300">mm</code> CLI makes AI agent
+    harnesses (Claude Code, Codex, Gemini, opencode, &hellip;) more capable and faster, by
+    running them on 20 hard, multi-turn tasks &mdash; retrieval, organization, and artifact
+    creation &mdash; over nested folders of mixed media: images, video, audio, and PDFs. Each
+    row is one <span class="text-slate-100">assistant / mm-profile</span> cell, averaged over its runs.
+  </p>
+  <button type="button" onclick={() => howto?.showModal()}
+    class="mt-3 text-sm px-3 py-1.5 rounded-lg border border-slate-700 text-slate-300 hover:bg-slate-800">How it works</button>
 </section>
+
+<dialog bind:this={howto} class="rounded-2xl border border-slate-700 bg-slate-900 text-slate-200 p-0 max-w-lg backdrop:bg-black/60">
+  <div class="p-6">
+    <h2 class="text-lg font-semibold">How mmbench works</h2>
+    <ol class="mt-3 text-sm text-slate-300 leading-relaxed list-decimal list-inside space-y-2">
+      <li>Every task runs in an isolated sandbox copy of the dataset.</li>
+      <li><b>Without mm</b>: the agent has only its native tools. <b>With mm</b>: <code class="text-blue-300">mm</code> on PATH + a one-page primer.</li>
+      <li>Scored on correctness (deterministic checks + an LLM judge) and wall-clock speed.</li>
+      <li><b>Lift</b> = with&minus;without correctness; <b>speedup</b> = without&divide;with time.</li>
+    </ol>
+    <div class="mt-5 text-right">
+      <button type="button" onclick={() => howto.close()} class="text-sm px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white">Close</button>
+    </div>
+  </div>
+</dialog>
 
 <section class="mb-4 flex flex-wrap gap-3 items-end">
   <div class="min-w-56">
@@ -104,10 +141,10 @@
             <th class="text-left p-3">mm Profile</th>
             <th class="text-right p-3">Without %</th>
             <th class="text-right p-3">With %</th>
-            <th class="text-right p-3">Lift</th>
-            <th class="text-right p-3">Speedup</th>
+            <th class="p-3"><span class="flex items-center justify-end gap-1">Lift<InfoTip text="With-mm minus without-mm correctness, in percentage points. Positive means mm helped; negative means it hurt." /></span></th>
+            <th class="p-3"><span class="flex items-center justify-end gap-1">Speedup<InfoTip text="Without-mm wall-clock time divided by with-mm time. Above 1× means the agent finished faster with mm." /></span></th>
             <th class="text-right p-3">Runs</th>
-            <th class="text-right p-3">Pass (with mm)</th>
+            <th class="p-3"><span class="flex items-center justify-end gap-1">Pass (with mm)<InfoTip text="Of the agent's with-mm case runs, how many scored at least 60% correctness (passes / total)." /></span></th>
             <th class="text-right p-3">Sessions</th>
           </tr>
         </thead>
@@ -137,12 +174,12 @@
 </section>
 
 <section class="grid lg:grid-cols-2 gap-4">
-  <div class="rounded-xl border border-slate-800 bg-slate-900 p-4">
+  <div class="rounded-xl border border-slate-800 bg-slate-900 p-4 min-w-0">
     <h2 class="text-xs font-semibold uppercase tracking-widest text-slate-400 mb-3">Correctness: without vs with mm</h2>
-    <div class="h-72"><Chart type="bar" data={barData} options={barOpts} /></div>
+    <div class="relative h-72 w-full"><Chart type="bar" data={barData} options={barOpts} /></div>
   </div>
-  <div class="rounded-xl border border-slate-800 bg-slate-900 p-4">
+  <div class="rounded-xl border border-slate-800 bg-slate-900 p-4 min-w-0">
     <h2 class="text-xs font-semibold uppercase tracking-widest text-slate-400 mb-3">With-mm correctness over time</h2>
-    <div class="h-72"><Chart type="line" data={trendData} options={trendOpts} /></div>
+    <div class="relative h-72 w-full"><Chart type="line" data={trendData} options={trendOpts} /></div>
   </div>
 </section>
