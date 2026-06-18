@@ -40,7 +40,8 @@
     : k === 'pass' ? (r.with_mm.n ? r.with_mm.passes / r.with_mm.n : null)
     : null
   const setSort = (k) => { if (sortKey === k) sortDir = sortDir === 'desc' ? 'asc' : 'desc'; else { sortKey = k; sortDir = 'desc' } }
-  const caret = (k) => (sortKey === k ? (sortDir === 'desc' ? '▼' : '▲') : '')
+  const caret = (k) => (sortKey === k ? (sortDir === 'desc' ? '▼' : '▲') : '↕')
+  const caretCls = (k) => (sortKey === k ? 'text-blue-400' : 'text-slate-600')
   const sortedRows = $derived.by(() => {
     const arr = [...rows]
     arr.sort((a, b) => {
@@ -161,12 +162,12 @@
             <th class="text-left p-3 w-8">#</th>
             <th class="text-left p-3">Assistant</th>
             <th class="text-left p-3">mm Profile</th>
-            <th class="p-3"><span class="flex items-center justify-end gap-1"><button type="button" onclick={() => setSort('without_mm')} class="inline-flex items-center gap-1 cursor-pointer select-none hover:text-slate-200">Without %<span class="w-2 text-[10px]">{caret('without_mm')}</span></button></span></th>
-            <th class="p-3"><span class="flex items-center justify-end gap-1"><button type="button" onclick={() => setSort('with_mm')} class="inline-flex items-center gap-1 cursor-pointer select-none hover:text-slate-200">With %<span class="w-2 text-[10px]">{caret('with_mm')}</span></button></span></th>
-            <th class="p-3"><span class="flex items-center justify-end gap-1"><button type="button" onclick={() => setSort('lift')} class="inline-flex items-center gap-1 cursor-pointer select-none hover:text-slate-200">Lift<span class="w-2 text-[10px]">{caret('lift')}</span></button><InfoTip text="With-mm minus without-mm correctness, in percentage points. Positive means mm helped; negative means it hurt." /></span></th>
-            <th class="p-3"><span class="flex items-center justify-end gap-1"><button type="button" onclick={() => setSort('speedup')} class="inline-flex items-center gap-1 cursor-pointer select-none hover:text-slate-200">Speedup<span class="w-2 text-[10px]">{caret('speedup')}</span></button><InfoTip text="Without-mm wall-clock time divided by with-mm time. Above 1× means the agent finished faster with mm." /></span></th>
+            <th class="p-3"><span class="flex items-center justify-end gap-1"><button type="button" onclick={() => setSort('without_mm')} class="inline-flex items-center gap-1 cursor-pointer select-none hover:text-slate-200">Without %<span class="w-3 text-[10px] {caretCls('without_mm')}">{caret('without_mm')}</span></button></span></th>
+            <th class="p-3"><span class="flex items-center justify-end gap-1"><button type="button" onclick={() => setSort('with_mm')} class="inline-flex items-center gap-1 cursor-pointer select-none hover:text-slate-200">With %<span class="w-3 text-[10px] {caretCls('with_mm')}">{caret('with_mm')}</span></button></span></th>
+            <th class="p-3"><span class="flex items-center justify-end gap-1"><button type="button" onclick={() => setSort('lift')} class="inline-flex items-center gap-1 cursor-pointer select-none hover:text-slate-200">Lift<span class="w-3 text-[10px] {caretCls('lift')}">{caret('lift')}</span></button><InfoTip text="With-mm minus without-mm correctness, in percentage points. Positive means mm helped; negative means it hurt." /></span></th>
+            <th class="p-3"><span class="flex items-center justify-end gap-1"><button type="button" onclick={() => setSort('speedup')} class="inline-flex items-center gap-1 cursor-pointer select-none hover:text-slate-200">Speedup<span class="w-3 text-[10px] {caretCls('speedup')}">{caret('speedup')}</span></button><InfoTip text="Without-mm wall-clock time divided by with-mm time. Above 1× means the agent finished faster with mm." /></span></th>
             <th class="text-right p-3">Runs</th>
-            <th class="p-3"><span class="flex items-center justify-end gap-1"><button type="button" onclick={() => setSort('pass')} class="inline-flex items-center gap-1 cursor-pointer select-none hover:text-slate-200">Pass (with mm)<span class="w-2 text-[10px]">{caret('pass')}</span></button><InfoTip text="Of the agent's with-mm case runs, how many scored at least 60% correctness (passes / total)." /></span></th>
+            <th class="p-3"><span class="flex items-center justify-end gap-1"><button type="button" onclick={() => setSort('pass')} class="inline-flex items-center gap-1 cursor-pointer select-none hover:text-slate-200">Pass (with mm)<span class="w-3 text-[10px] {caretCls('pass')}">{caret('pass')}</span></button><InfoTip text="Of the agent's with-mm case runs, how many scored at least 60% correctness (passes / total)." /></span></th>
             <th class="text-right p-3">Sessions</th>
           </tr>
         </thead>
