@@ -113,9 +113,9 @@
         </thead>
         <tbody>
           {#each rows as r (cell(r))}
-            <tr class="border-t border-slate-800 hover:bg-slate-900/60">
+            <tr class="border-t border-slate-800 hover:bg-slate-800/60 cursor-pointer" onclick={() => (window.location.hash = href(r))}>
               <td class="p-3 text-slate-500 font-mono">{r.rank}</td>
-              <td class="p-3"><a href={href(r)} class="text-slate-100 font-medium hover:text-blue-400 no-underline">{r.assistant}</a></td>
+              <td class="p-3 text-blue-400 font-medium">{r.assistant}</td>
               <td class="p-3">
                 <div class="text-slate-300">{r.profile}</div>
                 <div class="text-xs text-slate-500 font-mono">{r.model || ''}</div>

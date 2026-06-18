@@ -21,7 +21,7 @@
         <thead class="bg-slate-900 text-slate-400"><tr>
           <th class="text-left p-3">Case</th><th class="text-left p-3">Type</th>
           <th class="text-right p-3">Without %</th><th class="text-right p-3">With %</th>
-          <th class="text-left p-3">mm used</th>
+          <th class="text-left p-3">mm cmds used</th>
         </tr></thead>
         <tbody>
           {#each d.cases as c (c.case_id)}

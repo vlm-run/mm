@@ -52,8 +52,8 @@
         </tr></thead>
         <tbody>
           {#each d.sessions as s (s.session_id)}
-            <tr class="border-t border-slate-800 hover:bg-slate-900/60">
-              <td class="p-3"><a href={`#/session/${s.session_id}`} class="text-blue-400 font-mono no-underline hover:underline">{short(s.session_id)}</a></td>
+            <tr class="border-t border-slate-800 hover:bg-slate-800/60 cursor-pointer" onclick={() => (window.location.hash = `#/session/${s.session_id}`)}>
+              <td class="p-3 text-blue-400 font-mono">{short(s.session_id)}</td>
               <td class="p-3 text-slate-400 font-mono text-xs">{s.started_at}</td>
               <td class="p-3 text-right font-mono text-slate-400">{s.n_runs}</td>
               <td class="p-3 text-right font-mono">{num(s.without_mm.correctness)}</td>
