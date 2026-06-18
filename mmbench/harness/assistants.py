@@ -9,9 +9,9 @@ Both arms get the same task prompt and run with the agent's autonomy flag so too
 use does not stall on an interactive permission gate. The only intended
 difference is mm availability, enforced by a PATH shim:
 
-  - baseline:  ``mm`` resolves to a stub that exits 127 ("command not found"), so
+  - without_mm:  ``mm`` resolves to a stub that exits 127 ("command not found"), so
                the agent genuinely has no mm.
-  - treatment: ``mm`` resolves to a logging shim that records every invocation to
+  - with_mm: ``mm`` resolves to a logging shim that records every invocation to
                ``$MMBENCH_MM_LOG`` then execs the real mm. mm-grounding is read
                from that log (reliable and agent-agnostic), and the prompt is
                prefixed with the mm primer. ``MM_PROFILE`` selects mm's backend
@@ -61,7 +61,7 @@ class AssistantResult:
         elapsed_s: wall-clock seconds.
         exit_code: process exit code (None if it timed out).
         timed_out: whether the invocation hit the timeout.
-        mm_commands_used: mm subcommands the agent actually ran (treatment only),
+        mm_commands_used: mm subcommands the agent actually ran (with_mm only),
             from the PATH-shim log; reliable, not a transcript heuristic.
     """
 
@@ -91,10 +91,10 @@ class Assistant:
         return shutil.which(self.name) is not None
 
     def build_prompt(self, case: EvalCase, arm: str, input_path: Path, primer: str) -> str:
-        """Assemble the prompt; treatment prepends the mm primer. Same task both arms."""
+        """Assemble the prompt; with_mm prepends the mm primer. Same task both arms."""
         kind = "directory" if input_path.is_dir() else "file"
         body = f"The input {kind} is at: {input_path}\n\n{case.prompt.strip()}\n"
-        return f"{primer.strip()}\n\n---\n\n{body}" if arm == "treatment" else body
+        return f"{primer.strip()}\n\n---\n\n{body}" if arm == "with_mm" else body
 
     def build_argv(self, prompt: str) -> list[str]:
         """argv for a non-interactive run; prompt is the final positional argument."""
@@ -116,14 +116,14 @@ class Assistant:
         with _mm_shim(arm) as (shim_dir, mm_log):
             env = self._env(arm, shim_dir, mm_log, profile_name)
             out = _exec(self.build_argv(prompt), cwd, env, timeout_s)
-            used = _read_mm_log(mm_log) if arm == "treatment" else []
+            used = _read_mm_log(mm_log) if arm == "with_mm" else []
         return AssistantResult(mm_commands_used=used, **out)
 
     def _env(self, arm: str, shim_dir: Path, mm_log: Path, profile_name: str | None) -> dict:
         env = os.environ.copy()
         env["PATH"] = f"{shim_dir}{os.pathsep}{env.get('PATH', '')}"
         env["MMBENCH_MM_LOG"] = str(mm_log)
-        if arm == "treatment":
+        if arm == "with_mm":
             if profile_name:
                 env["MM_PROFILE"] = profile_name
             env["XDG_DATA_HOME"] = str(shim_dir / "xdg")  # isolate mm's index per run
@@ -132,11 +132,11 @@ class Assistant:
     def probe_autonomy(self, timeout_s: int = 90) -> tuple[bool, str]:
         """Verify the agent runs a shell tool non-interactively. Returns (ok, detail)."""
         token = uuid.uuid4().hex
-        with _mm_shim("baseline") as (shim_dir, mm_log):
+        with _mm_shim("without_mm") as (shim_dir, mm_log):
             probe_file = shim_dir / "autonomy_probe.txt"
             probe_file.write_text(token)
             prompt = f"Run this shell command and report only its output: cat {probe_file}"
-            env = self._env("baseline", shim_dir, mm_log, None)
+            env = self._env("without_mm", shim_dir, mm_log, None)
             out = _exec(self.build_argv(prompt), shim_dir, env, timeout_s)
         if out["timed_out"]:
             return False, f"timed out after {timeout_s}s"
@@ -175,8 +175,8 @@ def _exec(argv: list[str], cwd: Path, env: dict, timeout_s: int) -> dict:
 
 
 class _mm_shim:
-    """Context manager: a temp bin dir whose ``mm`` is a stub (baseline) or a
-    logging shim over the real mm (treatment). Yields (shim_dir, mm_log)."""
+    """Context manager: a temp bin dir whose ``mm`` is a stub (without_mm) or a
+    logging shim over the real mm (with_mm). Yields (shim_dir, mm_log)."""
 
     def __init__(self, arm: str) -> None:
         self.arm = arm
@@ -188,10 +188,10 @@ class _mm_shim:
         mm_log = d / "mm.log"
         mm_log.touch()
         shim = d / "mm"
-        if self.arm == "treatment":
+        if self.arm == "with_mm":
             real = shutil.which("mm")
             if real is None:
-                raise RuntimeError("mm not found on PATH; treatment arm cannot run")
+                raise RuntimeError("mm not found on PATH; with_mm arm cannot run")
             shim.write_text(
                 f'#!/bin/sh\nprintf \'%s\\n\' "$*" >> "$MMBENCH_MM_LOG"\nexec "{real}" "$@"\n'
             )
@@ -206,7 +206,7 @@ class _mm_shim:
 
 
 def _read_mm_log(mm_log: Path) -> list[str]:
-    """Distinct mm subcommands recorded by the treatment shim, in first-seen order."""
+    """Distinct mm subcommands recorded by the with_mm shim, in first-seen order."""
     seen: list[str] = []
     for line in mm_log.read_text().splitlines():
         parts = line.split()

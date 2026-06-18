@@ -5,8 +5,8 @@ it more capable and faster at real-world multimodal directory tasks?
 
 Each task runs twice per agent, in its own disposable sandbox copy of a dataset:
 
-- **baseline**: the agent has only its native tools.
-- **treatment**: the agent also has `mm` on PATH + a one-page primer.
+- **without_mm**: the agent has only its native tools.
+- **with_mm**: the agent also has `mm` on PATH + a one-page primer.
 
 Both are scored on correctness (deterministic checks + LLM judge) and speed; the
 headline is the **lift**. See `DESIGN.md` for the full design.
@@ -26,7 +26,8 @@ mmbench/
 │   ├── grader.py        # checks[] + LLM judge -> correctness
 │   ├── store.py         # SQLite results store
 │   └── run.py           # orchestrator + CLI
-└── app/                 # FastAPI + SQLite dashboard
+├── app/                 # FastAPI JSON API + built SPA (app/static)
+└── frontend/            # Svelte + Tailwind + Vite dashboard source (builds into app/static)
 ```
 
 Datasets, sandboxes, and the results DB live under `benchmarks/data/`
@@ -53,10 +54,14 @@ uv run python -m mmbench.harness.run --assistants claude,codex,gemini,opencode -
 #    aborts on any failure (no silent fallbacks).
 uv run python -m mmbench.harness.run --assistants claude --profiles gateway
 
-# 2. View the dashboard (filter by assistant/profile to compare any subset)
+# 2. View the dashboard (ranked leaderboard, multiselect filters, drill into
+#    assistant/profile -> sessions/runs -> cases). Serves the prebuilt SPA.
 uv run python -m mmbench.app.app        # http://localhost:9095
 
-# (optional) build/rebuild the fixture explicitly
+# (optional) rebuild the dashboard after editing mmbench/frontend:
+cd mmbench/frontend && npm install && npm run build   # -> mmbench/app/static
+
+# (optional) build/rebuild the dataset fixture explicitly
 uv run python mmbench/dataset/build_fixture.py
 ```
 
@@ -80,7 +85,7 @@ ls mmbench/cases/   # list case ids
 | Flag | Default | Meaning |
 |---|---|---|
 | `--assistants` | `claude` | comma list from `claude,codex,gemini,opencode,qwen,openclaw` (preflight gates whichever you select; uninstalled/unauthed ones fail fast) |
-| `--profiles` | `gateway` | comma list of `mm profile` names (the treatment arm's mm backend) |
+| `--profiles` | `gateway` | comma list of `mm profile` names (the with_mm arm's mm backend) |
 | `--cases` | all 20 | comma list of case ids |
 | `--runs` | `1` | repetitions per cell (`3`+ for variance; dashboard shows mean±std) |
 | `--timeout` | `360` | per-agent cap, seconds (keep ≥300; mm's video/PDF paths are slow) |
@@ -92,15 +97,15 @@ ls mmbench/cases/   # list case ids
 | `--skip-preflight` | off | bypass preflight (not advised) |
 
 The **judge** is fixed (no profile): OpenRouter + `google/gemini-3.1-flash-lite`,
-key from `MMBENCH_JUDGE_API_KEY`  (override model/url via `MMBENCH_JUDGE_MODEL` / `MMBENCH_JUDGE_BASE_URL`). Profiles only set the treatment
-arm's mm backend; the baseline arm never touches mm.
+key from `MMBENCH_JUDGE_API_KEY`  (override model/url via `MMBENCH_JUDGE_MODEL` / `MMBENCH_JUDGE_BASE_URL`). Profiles only set the with_mm
+arm's mm backend; the without_mm arm never touches mm.
 
 ## Cases
 
 20 difficult, multi-turn, action-based cases across the three archetypes
 (10 retrieval, 6 artifact, 4 organization), grounded in the real content of the
 fixture (catalogued with `mm` itself). They span a 15-page paper (deep-PDF QA),
-invoices in PDF and image form, a video the baseline cannot watch, OCR at scale
+invoices in PDF and image form, a video the without_mm cannot watch, OCR at scale
 (one container photo among 150+), floor-plan vs not-floor-plan classification,
 structured invoice/JSON extraction, and content-based folder organization. Each
 names the file(s) / writes the artifact / leaves the tree in a state the grader
@@ -116,7 +121,7 @@ checks deterministically, plus an LLM-judge pass.
   preflight will catch it for whoever has it.
 - mm-grounding (which `mm` commands the agent ran) is captured by a PATH-shimmed
   `mm` that logs every invocation; the same shim makes `mm` "command not found"
-  in the baseline arm, so the baseline is mm-free by construction.
+  in the without_mm arm, so the without_mm is mm-free by construction.
 - The fixture is built only from the three reproducible sources. The keynote
   video in mmbench-mini is corrupt and the audio assets contain no speech, so the
   current suite leans on deep PDF, video, and scale-image tasks for mm's lift.

@@ -10,21 +10,21 @@ Give an agent harness (claude, codex, gemini, openclaw, opencode, qwen) a hard,
 real-world task over a directory tree of mixed media (photos, video, audio, PDFs,
 docs) spread across subfolders. Run it twice, each in its own isolated copy:
 
-- **baseline arm**: the agent has only its native tools.
-- **treatment arm**: the agent additionally has `mm` on PATH plus a one-page
+- **without_mm arm**: the agent has only its native tools.
+- **with_mm arm**: the agent additionally has `mm` on PATH plus a one-page
   usage primer.
 
 Score both on **correctness** (against fixed ground truth, including the final
 state of the filesystem) and **speed** (wall-clock to job done). The headline
-number is the **lift**: `correctness(treatment) - correctness(baseline)` and
-`speedup = time(baseline) / time(treatment)`.
+number is the **lift**: `correctness(with_mm) - correctness(without_mm)` and
+`speedup = time(without_mm) / time(with_mm)`.
 
 This borrows the Next.js `AGENTS.md` framing (with-doc vs without-doc) and a
 scoring/storage rigor, but the **tasks are mm's own**: real multimodal directory work, not orion-style perception probes.
 
 ### The tasks: agentic, real-world, action-based
 
-The treatment arm is **agentic**: we hand the agent the task + `mm` + the primer
+The with_mm arm is **agentic**: we hand the agent the task + `mm` + the primer
 and let it decide which commands to run. We never pick the `mm` command for it,
 and there is no pre-piped arm. Tasks mirror how an agent uses mm in the wild
 (see `docs/use-cases.md`), in three archetypes:
@@ -40,7 +40,7 @@ and there is no pre-piped arm. Tasks mirror how an agent uses mm in the wild
   "Build a spreadsheet of every invoice's vendor, date, and total". **Writes**
   an artifact; graded on the artifact's contents vs ground truth.
 
-mm's value concentrates where the baseline is weak: scale (hundreds of files),
+mm's value concentrates where the without_mm is weak: scale (hundreds of files),
 and modalities the agent cannot read natively (video, audio, deep PDF). Single-file
 image tasks are poor discriminators (the agent's own image-read tool matches mm),
 so the suite avoids them and weights speed alongside correctness.
@@ -51,8 +51,8 @@ so the suite avoids them and weights speed alongside correctness.
 - **Profile**: a profile is an `mm profile`, uniquely identified by
   `(base_url, model)`, that mm uses for accurate-mode extraction. It is
   independent of the agent's own model (they may coincide). Profiles are
-  selectable; default `['gateway']`. The **baseline arm never touches mm**, so a
-  profile only affects the treatment arm.
+  selectable; default `['gateway']`. The **without_mm arm never touches mm**, so a
+  profile only affects the with_mm arm.
 - **Sandbox per run**: every cell runs in an isolated, tagged copy of the
   dataset so mutating tasks cannot contaminate each other. The grader inspects
   this sandbox after the run. (Granularity + copy strategy: see Sandbox.)
@@ -71,7 +71,7 @@ product of the selected `--assistants` and `--profiles`, so:
 - `--assistants claude,gemini --profiles gateway,my-profile` -> 4 cells.
 
 Each cell is one **session**; its inner loop is `for case: for arm in
-[baseline, treatment]: run -> grade -> persist`. The dashboard filters by
+[without_mm, with_mm]: run -> grade -> persist`. The dashboard filters by
 assistant and profile, so any N x N subset can be compared. Sessions accumulate
 over time for trend/regression analysis. (There is no "mode A/B" concept; that
 is just the product's shape.)
@@ -131,11 +131,11 @@ Three persisted signals per `(case, arm, assistant, profile)`:
    filesystem state / written artifacts) and an **LLM-judge** (0-5 against
    `judge_objective`, grounded to `ground_truth`). 50/50 blend.
 2. **Speed (seconds)**: wall-clock to job done, per arm.
-3. **mm-grounding (treatment only)**: which `mm` commands the agent actually
+3. **mm-grounding (with_mm only)**: which `mm` commands the agent actually
    ran. Captured reliably via a PATH-shimmed `mm` that logs every invocation
    (agent-agnostic; no transcript parsing). Separates "mm helped" from "mm was
-   available but ignored", and powers a coverage report. In the baseline arm the
-   same shim makes `mm` resolve to "command not found", so the baseline is mm-free
+   available but ignored", and powers a coverage report. In the without_mm arm the
+   same shim makes `mm` resolve to "command not found", so the without_mm is mm-free
    by construction.
 
 Plus `task_completion` (task finished at all) and a failure-mode flag
@@ -155,9 +155,12 @@ Headline per cell: `correctness_lift`, `speedup`, `mm_adoption_rate`.
   `case_results(case_id, arm, correctness, checkpoint_score, judge_score,
   speed_s, task_completion, mm_used, mm_commands_used, failure_mode,
   final_output, transcript)`.
-- **Dashboard**: FastAPI + SQLite + Svelte SPA. Views: leaderboard (assistants ranked by correctness, with the with/without lift as the hero stat), per-assistant
-  drilldown, per-case comparison (baseline vs treatment, all assistants),
-  profile comparison (Mode A), trends over time with regression flags.
+- **Dashboard**: FastAPI JSON API + a Svelte/Tailwind/Vite SPA (source in
+  `mmbench/frontend`, built into `app/static`; Chart.js + svelte-multiselect).
+  Leaderboard is **averaged over all of a cell's sessions** and ranked, with
+  with/without lift as the hero stat; `svelte-multiselect` chips filter
+  assistants/profiles. Drill-down: cell -> per-session trend + runs -> per-case
+  results (incl. which mm commands ran).
 
 ## Dataset
 
@@ -201,7 +204,7 @@ organization. Component layout: see `README.md`.
   low), report mean + std, treat the *lift* as the signal not the absolute.
 - **LLM-judge drift**: pin the judge model; keep deterministic checkpoints
   dominant on objective cases; spot-audit.
-- **Unfair baseline**: keep prompts tool-agnostic so the baseline is honest (no
+- **Unfair without_mm**: keep prompts tool-agnostic so the without_mm is honest (no
   leaking the mm command).
 - **mm side-effects**: mm writes a global SQLite (`~/.local/share/mm/mm.db`) and
   `--pre-index` mutates state. Isolate mm's `XDG_DATA_HOME` / config per run so

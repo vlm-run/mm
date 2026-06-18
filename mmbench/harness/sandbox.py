@@ -10,7 +10,7 @@ Sandboxes are therefore safe to delete at will.
 Example:
     >>> mgr = SandboxManager()
     >>> with mgr.materialize(fixture, assistant="claude", profile="gateway",
-    ...                       case_id="find-floor-plans", arm="treatment",
+    ...                       case_id="find-floor-plans", arm="with_mm",
     ...                       run_index=0) as sb:
     ...     run_agent_in(sb.path)
     ...     grade(sb.path)

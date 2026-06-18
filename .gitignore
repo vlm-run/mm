@@ -23,6 +23,9 @@ benchmarks/**/*/run_results
 htmlcov/
 .coverage
 
+# mmbench dashboard frontend (source tracked; deps + built bundle are generated)
+mmbench/frontend/node_modules/
+
 # mm cache
 .mm/
 

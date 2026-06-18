@@ -88,7 +88,7 @@ class EvalCase:
         archetype: ``retrieval`` | ``organization`` | ``artifact``.
         modality: media kinds the task touches.
         dataset: subtree path under the datasets root (e.g. ``mmbench-agent``).
-        mm_commands: mm surfaces a good treatment solution exercises (coverage).
+        mm_commands: mm surfaces a good with_mm solution exercises (coverage).
         difficulty: ``easy`` | ``medium`` | ``hard``.
         prompt: the task, given verbatim to both arms.
         ground_truth: the frozen, checkable answer.

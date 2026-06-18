@@ -1,5 +1,6 @@
-"""Dashboard: FastAPI + a self-contained HTML page (static/index.html) over the
-JSON API. ``MMBENCH_DB`` overrides the results DB.
+"""Dashboard: FastAPI JSON API + the built Svelte SPA (static/). Source is in
+mmbench/frontend (Svelte + Tailwind + Vite, built into static/). ``MMBENCH_DB``
+overrides the results DB.
 
     uv run python -m mmbench.app.app   # http://localhost:9095
 """
@@ -10,7 +11,7 @@ import os
 from pathlib import Path
 
 from fastapi import FastAPI
-from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 
 from . import db
 
@@ -25,14 +26,14 @@ def api_leaderboard() -> list[dict]:
     return db.leaderboard(DB_PATH)
 
 
-@app.get("/api/cases")
-def api_cases() -> list[dict]:
-    return db.case_breakdown(DB_PATH)
-
-
 @app.get("/api/sessions")
 def api_sessions() -> list[dict]:
     return db.sessions(DB_PATH)
+
+
+@app.get("/api/cell")
+def api_cell(assistant: str, profile: str) -> dict:
+    return db.cell_detail(assistant, profile, DB_PATH)
 
 
 @app.get("/api/session/{session_id}")
@@ -40,9 +41,10 @@ def api_session(session_id: str) -> dict:
     return db.session_detail(session_id, DB_PATH)
 
 
-@app.get("/")
-def index() -> FileResponse:
-    return FileResponse(STATIC / "index.html")
+# Built SPA (index.html + assets); html=True serves index.html for SPA routes.
+# Mounted last so /api/* wins. Absent until `npm run build` in mmbench/frontend.
+if STATIC.exists():
+    app.mount("/", StaticFiles(directory=str(STATIC), html=True), name="static")
 
 
 def main() -> None:

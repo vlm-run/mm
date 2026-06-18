@@ -1,18 +1,20 @@
 """Dashboard read-side aggregations over the SQLite store.
 
-Hero metric: lift (treatment - baseline correctness) + speedup. Leaderboard uses
-the latest session per (assistant, profile) that has data; ``sessions`` is the
-full history for trends. Voided runs delete their own rows, so only surviving runs
-aggregate.
+Hero metric: lift (with_mm - without_mm correctness) + speedup, **averaged over all
+of a cell's sessions** (a cell = one assistant/profile pair). Drill-down:
+leaderboard -> cell detail (per-session trend + runs) -> session detail (per-case
+results). Voided runs delete their own rows, so only surviving runs aggregate.
 """
 
 from __future__ import annotations
 
+import json
 import sqlite3
 from pathlib import Path
 from statistics import mean, pstdev
 
 DEFAULT_DB_PATH = Path(__file__).resolve().parents[2] / "benchmarks" / "data" / "mmbench.db"
+PASS_THRESHOLD = 60.0  # a case (case, arm, run) counts as a pass at >= this correctness
 
 
 def _connect(db_path: Path) -> sqlite3.Connection:
@@ -21,133 +23,114 @@ def _connect(db_path: Path) -> sqlite3.Connection:
     return conn
 
 
-def _latest_sessions(conn: sqlite3.Connection) -> list[sqlite3.Row]:
-    """The most recent session per (assistant, profile) that has results.
-
-    Voided runs delete their own rows, so a session shows only the data from its
-    surviving (completed) runs; a session left with no data is skipped.
-    """
-    rows = conn.execute(
-        "SELECT s.* FROM sessions s WHERE EXISTS "
-        "(SELECT 1 FROM case_results c WHERE c.session_id = s.session_id) "
-        "ORDER BY s.started_at"
-    ).fetchall()
-    latest: dict[tuple[str, str], sqlite3.Row] = {}
-    for r in rows:
-        latest[(r["assistant"], r["profile_name"])] = r
-    return list(latest.values())
-
-
-def _arm_stats(conn: sqlite3.Connection, session_id: str, arm: str) -> dict:
-    """Mean correctness/speed and counts for one arm of a session."""
-    rows = conn.execute(
-        "SELECT correctness, speed_s, task_completion, mm_used FROM case_results "
-        "WHERE session_id = ? AND arm = ?",
-        (session_id, arm),
-    ).fetchall()
+def _arm_stats(rows: list[sqlite3.Row]) -> dict:
+    """Aggregate a list of case_results rows for a single arm."""
     corr = [r["correctness"] for r in rows if r["correctness"] is not None]
     spd = [r["speed_s"] for r in rows if r["speed_s"] is not None]
-    mm_used = [r["mm_used"] for r in rows if r["mm_used"] is not None]
+    mm = [r["mm_used"] for r in rows if r["mm_used"] is not None]
     return {
         "n": len(rows),
+        "passes": sum(1 for c in corr if c >= PASS_THRESHOLD),
         "correctness": round(mean(corr), 1) if corr else None,
         "correctness_std": round(pstdev(corr), 1) if len(corr) > 1 else 0.0,
         "speed_s": round(mean(spd), 1) if spd else None,
-        "speed_std": round(pstdev(spd), 1) if len(spd) > 1 else 0.0,
         "completion": round(mean([r["task_completion"] or 0 for r in rows]), 2) if rows else None,
-        "mm_adoption": round(mean(mm_used), 2) if mm_used else None,
+        "mm_adoption": round(mean(mm), 2) if mm else None,
     }
 
 
+def _lift_speedup(without: dict, with_: dict) -> tuple[float | None, float | None]:
+    lift = (
+        round(with_["correctness"] - without["correctness"], 1)
+        if without["correctness"] is not None and with_["correctness"] is not None
+        else None
+    )
+    speedup = (
+        round(without["speed_s"] / with_["speed_s"], 2)
+        if without["speed_s"] and with_["speed_s"]
+        else None
+    )
+    return lift, speedup
+
+
+def _cell_model(conn: sqlite3.Connection, assistant: str, profile: str) -> tuple[str, str]:
+    """The (model, base_url) from the cell's most recent session."""
+    r = conn.execute(
+        "SELECT model, base_url FROM sessions WHERE assistant = ? AND profile_name = ? "
+        "ORDER BY started_at DESC LIMIT 1",
+        (assistant, profile),
+    ).fetchone()
+    return (r["model"] if r else "", r["base_url"] if r else "") if r else ("", "")
+
+
 def leaderboard(db_path: Path = DEFAULT_DB_PATH) -> list[dict]:
-    """One row per (assistant, profile): baseline vs treatment, lift, speedup."""
+    """Ranked rows, one per (assistant, profile), averaged over ALL their sessions."""
     conn = _connect(db_path)
     try:
+        cells = conn.execute(
+            "SELECT assistant, profile_name, COUNT(DISTINCT session_id) AS n_sessions "
+            "FROM case_results GROUP BY assistant, profile_name"
+        ).fetchall()
         out = []
-        for s in _latest_sessions(conn):
-            base = _arm_stats(conn, s["session_id"], "baseline")
-            treat = _arm_stats(conn, s["session_id"], "treatment")
-            lift = (
-                round(treat["correctness"] - base["correctness"], 1)
-                if base["correctness"] is not None and treat["correctness"] is not None
-                else None
-            )
-            speedup = (
-                round(base["speed_s"] / treat["speed_s"], 2)
-                if base["speed_s"] and treat["speed_s"]
-                else None
-            )
+        for c in cells:
+            a, p = c["assistant"], c["profile_name"]
+            rows = conn.execute(
+                "SELECT arm, correctness, speed_s, task_completion, mm_used "
+                "FROM case_results WHERE assistant = ? AND profile_name = ?",
+                (a, p),
+            ).fetchall()
+            without = _arm_stats([r for r in rows if r["arm"] == "without_mm"])
+            with_ = _arm_stats([r for r in rows if r["arm"] == "with_mm"])
+            lift, speedup = _lift_speedup(without, with_)
+            model, base_url = _cell_model(conn, a, p)
+            n_runs = conn.execute(
+                "SELECT COUNT(DISTINCT run_id) FROM case_results WHERE assistant = ? AND profile_name = ?",
+                (a, p),
+            ).fetchone()[0]
             out.append(
                 {
-                    "assistant": s["assistant"],
-                    "profile": s["profile_name"],
-                    "model": s["model"],
-                    "session_id": s["session_id"],
-                    "started_at": s["started_at"],
-                    "baseline": base,
-                    "treatment": treat,
+                    "assistant": a,
+                    "profile": p,
+                    "model": model,
+                    "base_url": base_url,
+                    "n_sessions": c["n_sessions"],
+                    "n_runs": n_runs,
+                    "without_mm": without,
+                    "with_mm": with_,
                     "lift": lift,
                     "speedup": speedup,
                 }
             )
-        out.sort(key=lambda r: r["treatment"]["correctness"] or -1, reverse=True)
+        out.sort(key=lambda r: (r["with_mm"]["correctness"] or -1), reverse=True)
+        for i, r in enumerate(out, 1):
+            r["rank"] = i
         return out
-    finally:
-        conn.close()
-
-
-def case_breakdown(db_path: Path = DEFAULT_DB_PATH) -> list[dict]:
-    """Per case x assistant: baseline vs treatment correctness (latest sessions)."""
-    conn = _connect(db_path)
-    try:
-        sessions = _latest_sessions(conn)
-        rows: list[dict] = []
-        for s in sessions:
-            for cr in conn.execute(
-                "SELECT case_id, title, archetype, arm, correctness, speed_s, mm_used "
-                "FROM case_results WHERE session_id = ?",
-                (s["session_id"],),
-            ).fetchall():
-                rows.append(
-                    {
-                        "assistant": s["assistant"],
-                        "profile": s["profile_name"],
-                        "case_id": cr["case_id"],
-                        "title": cr["title"],
-                        "archetype": cr["archetype"],
-                        "arm": cr["arm"],
-                        "correctness": cr["correctness"],
-                        "speed_s": cr["speed_s"],
-                        "mm_used": cr["mm_used"],
-                    }
-                )
-        return rows
     finally:
         conn.close()
 
 
 def sessions(db_path: Path = DEFAULT_DB_PATH) -> list[dict]:
-    """Every session with its treatment correctness, oldest first (for trends)."""
+    """Per (cell, session) with_mm correctness over time, for the trend chart."""
     conn = _connect(db_path)
     try:
         out = []
-        q = (
-            "SELECT s.* FROM sessions s WHERE EXISTS "
-            "(SELECT 1 FROM case_results c WHERE c.session_id = s.session_id) "
+        srows = conn.execute(
+            "SELECT s.session_id, s.assistant, s.profile_name, s.started_at FROM sessions s "
+            "WHERE EXISTS (SELECT 1 FROM case_results c WHERE c.session_id = s.session_id) "
             "ORDER BY s.started_at"
-        )
-        for s in conn.execute(q).fetchall():
-            treat = _arm_stats(conn, s["session_id"], "treatment")
-            base = _arm_stats(conn, s["session_id"], "baseline")
+        ).fetchall()
+        for s in srows:
+            with_rows = conn.execute(
+                "SELECT correctness, speed_s, task_completion, mm_used FROM case_results "
+                "WHERE session_id = ? AND arm = 'with_mm'",
+                (s["session_id"],),
+            ).fetchall()
             out.append(
                 {
-                    "session_id": s["session_id"],
                     "assistant": s["assistant"],
                     "profile": s["profile_name"],
                     "started_at": s["started_at"],
-                    "status": s["status"],
-                    "treatment_correctness": treat["correctness"],
-                    "baseline_correctness": base["correctness"],
+                    "with_mm_correctness": _arm_stats(with_rows)["correctness"],
                 }
             )
         return out
@@ -155,29 +138,108 @@ def sessions(db_path: Path = DEFAULT_DB_PATH) -> list[dict]:
         conn.close()
 
 
+def cell_detail(assistant: str, profile: str, db_path: Path = DEFAULT_DB_PATH) -> dict:
+    """One cell's overall scores + a per-session breakdown (drill target)."""
+    conn = _connect(db_path)
+    try:
+        srows = conn.execute(
+            "SELECT s.session_id, s.started_at, s.model, s.base_url FROM sessions s "
+            "WHERE s.assistant = ? AND s.profile_name = ? "
+            "AND EXISTS (SELECT 1 FROM case_results c WHERE c.session_id = s.session_id) "
+            "ORDER BY s.started_at DESC",
+            (assistant, profile),
+        ).fetchall()
+        per_session = []
+        for s in srows:
+            rows = conn.execute(
+                "SELECT arm, correctness, speed_s, task_completion, mm_used, run_id "
+                "FROM case_results WHERE session_id = ?",
+                (s["session_id"],),
+            ).fetchall()
+            without = _arm_stats([r for r in rows if r["arm"] == "without_mm"])
+            with_ = _arm_stats([r for r in rows if r["arm"] == "with_mm"])
+            lift, speedup = _lift_speedup(without, with_)
+            per_session.append(
+                {
+                    "session_id": s["session_id"],
+                    "started_at": s["started_at"],
+                    "n_runs": len({r["run_id"] for r in rows}),
+                    "without_mm": without,
+                    "with_mm": with_,
+                    "lift": lift,
+                    "speedup": speedup,
+                }
+            )
+        allrows = conn.execute(
+            "SELECT arm, correctness, speed_s, task_completion, mm_used "
+            "FROM case_results WHERE assistant = ? AND profile_name = ?",
+            (assistant, profile),
+        ).fetchall()
+        without = _arm_stats([r for r in allrows if r["arm"] == "without_mm"])
+        with_ = _arm_stats([r for r in allrows if r["arm"] == "with_mm"])
+        lift, speedup = _lift_speedup(without, with_)
+        model, base_url = _cell_model(conn, assistant, profile)
+        return {
+            "assistant": assistant,
+            "profile": profile,
+            "model": model,
+            "base_url": base_url,
+            "overall": {"without_mm": without, "with_mm": with_, "lift": lift, "speedup": speedup},
+            "sessions": per_session,
+        }
+    finally:
+        conn.close()
+
+
 def session_detail(session_id: str, db_path: Path = DEFAULT_DB_PATH) -> dict:
-    """All case results for one session, paired baseline vs treatment per case."""
+    """One session: its runs + per-case results (with_mm vs without_mm)."""
     conn = _connect(db_path)
     try:
         s = conn.execute("SELECT * FROM sessions WHERE session_id = ?", (session_id,)).fetchone()
         if s is None:
             return {}
+        runs = [
+            dict(r)
+            for r in conn.execute(
+                "SELECT run_id, run_index, elapsed_s FROM runs WHERE session_id = ? ORDER BY run_index",
+                (session_id,),
+            ).fetchall()
+        ]
         cells = conn.execute(
-            "SELECT case_id, title, archetype, difficulty, arm, correctness, "
-            "checkpoint_score, judge_score, speed_s, task_completion, mm_used, "
-            "mm_commands_used_json, failure_mode, final_output "
+            "SELECT case_id, title, archetype, difficulty, arm, correctness, judge_score, "
+            "speed_s, task_completion, mm_used, mm_commands_used_json, failure_mode "
             "FROM case_results WHERE session_id = ? ORDER BY case_id, arm",
             (session_id,),
         ).fetchall()
         by_case: dict[str, dict] = {}
         for c in cells:
-            entry = by_case.setdefault(
+            e = by_case.setdefault(
                 c["case_id"],
-                {"case_id": c["case_id"], "title": c["title"], "archetype": c["archetype"]},
+                {
+                    "case_id": c["case_id"],
+                    "title": c["title"],
+                    "archetype": c["archetype"],
+                    "difficulty": c["difficulty"],
+                },
             )
-            entry[c["arm"]] = dict(c)
+            e[c["arm"]] = {
+                "correctness": c["correctness"],
+                "judge_score": c["judge_score"],
+                "speed_s": c["speed_s"],
+                "mm_used": c["mm_used"],
+                "mm_commands": json.loads(c["mm_commands_used_json"] or "[]"),
+                "failure_mode": c["failure_mode"],
+            }
         return {
-            "session": dict(s),
+            "session": {
+                "session_id": session_id,
+                "assistant": s["assistant"],
+                "profile": s["profile_name"],
+                "model": s["model"],
+                "base_url": s["base_url"],
+                "started_at": s["started_at"],
+            },
+            "runs": runs,
             "cases": list(by_case.values()),
         }
     finally:

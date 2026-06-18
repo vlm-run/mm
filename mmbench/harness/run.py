@@ -3,12 +3,12 @@
 The unit of work is an ``(assistant, profile)`` cell. A run takes the cartesian
 product of ``--assistants`` and ``--profiles`` and benchmarks each cell as one
 **session**; within a session each run executes every case under both arms
-(baseline, treatment) in its own disposable sandbox, grades, and persists. So
+(without_mm, with_mm) in its own disposable sandbox, grades, and persists. So
 ``--assistants a,b --profiles p,q`` runs a/p, a/q, b/p, b/q. The dashboard then
 filters/compares any subset of cells.
 
-The treatment arm uses the session's profile (``MM_PROFILE``) as mm's backend;
-the baseline arm has no mm at all (PATH shim).
+The with_mm arm uses the session's profile (``MM_PROFILE``) as mm's backend;
+the without_mm arm has no mm at all (PATH shim).
 
 Usage:
     uv run python -m mmbench.harness.run --assistants claude --profiles gateway
@@ -29,7 +29,7 @@ from .sandbox import SandboxManager
 from .store import CaseResult, MmBenchStore
 
 DATASETS_ROOT = Path(__file__).resolve().parents[2] / "benchmarks" / "data"
-ARMS = ("baseline", "treatment")
+ARMS = ("without_mm", "with_mm")
 
 
 def _profile_meta(profile_name: str) -> tuple[str | None, str | None]:
@@ -187,9 +187,7 @@ class Orchestrator:
                         judge_score=grade.judge_score,
                         speed_s=round(result.elapsed_s, 2),
                         task_completion=grade.task_completion,
-                        mm_used=(1 if result.mm_commands_used else 0)
-                        if arm == "treatment"
-                        else None,
+                        mm_used=(1 if result.mm_commands_used else 0) if arm == "with_mm" else None,
                         mm_commands_used=result.mm_commands_used,
                         failure_mode=grade.failure_mode,
                         final_output=result.final_output,

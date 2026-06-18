@@ -5,7 +5,7 @@ Checks, in order:
   2. Assistants: each is installed AND passes a live autonomy probe (it must run
      a shell tool non-interactively).
   3. Profiles: each mm profile resolves and its chat endpoint answers a 1-token
-     ping (this is the backend the treatment arm uses).
+     ping (this is the backend the with_mm arm uses).
   4. Judge: if enabled, the fixed judge endpoint answers a 1-token ping.
 
 No silent fallbacks: a failure aborts the run with a precise reason.

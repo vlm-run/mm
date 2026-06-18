@@ -30,7 +30,7 @@ from pathlib import Path
 
 DEFAULT_DB_PATH = Path(__file__).resolve().parents[2] / "benchmarks" / "data" / "mmbench.db"
 
-ARMS = ("baseline", "treatment")
+ARMS = ("without_mm", "with_mm")
 
 FAILURE_MODES = (
     "api_error",
