@@ -1,0 +1,24 @@
+id: floorplan-room-report
+title: Read room counts off the dimensioned floor plan into a report
+archetype: artifact
+modality: [image]
+dataset: mmbench-agent/Documents/plans
+mm_commands: [cat, find]
+difficulty: hard
+prompt: |
+  Exactly one floor plan in this folder labels each room with its name and area.
+  Find that dimensioned floor plan, then write a plain-text file named rooms.txt
+  at the top level of this folder stating how many bedrooms and how many bathrooms
+  the house has, one per line as 'bedrooms: N' and 'bathrooms: N'.
+ground_truth:
+  file: DSC_0502.png
+  bedrooms: 4
+  bathrooms: 2
+checks:
+  - { kind: artifact_exists, path: rooms.txt, weight: 1 }
+  - { kind: artifact_contains, path: rooms.txt, value: "4", weight: 1 }
+  - { kind: artifact_contains, path: rooms.txt, value: "2", weight: 1 }
+judge_objective: |
+  rooms.txt reports 4 bedrooms and 2 bathrooms, read from the dimensioned floor
+  plan (DSC_0502.png). Penalize counts taken from a different, unlabeled floor
+  plan or wrong numbers.

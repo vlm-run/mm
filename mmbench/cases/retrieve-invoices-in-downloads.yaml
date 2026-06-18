@@ -1,0 +1,22 @@
+id: retrieve-invoices-in-downloads
+title: Find every invoice in a mixed folder, across PDF and image formats
+archetype: retrieval
+modality: [pdf, image]
+dataset: mmbench-agent/Downloads
+mm_commands: [grep, cat, find]
+difficulty: hard
+prompt: |
+  This is a messy Downloads folder with files of several kinds and opaque names.
+  Find every file that is an invoice, regardless of whether it is a PDF or an
+  image, and list the path of each. Report how many invoices you found.
+ground_truth:
+  invoices: [Downloads/invoices/scan_4471.pdf, Downloads/IMG_2235.jpg]
+  count: 2
+checks:
+  - { kind: names_file, path: scan_4471.pdf, weight: 2 }
+  - { kind: names_file, path: IMG_2235.jpg, weight: 2 }
+  - { kind: contains_number, value: "2", weight: 1 }
+judge_objective: |
+  The response finds both invoices: the PDF scan_4471.pdf and the image
+  IMG_2235.jpg, and states there are two. Penalize missing the image invoice
+  (the hard one, since it requires reading image content) or counting non-invoices.

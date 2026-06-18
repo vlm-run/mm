@@ -1,0 +1,24 @@
+id: retrieve-truck-container-id
+title: Find the shipping-container photo at scale and read its container ID
+archetype: retrieval
+modality: [image]
+dataset: mmbench-agent/Photos
+mm_commands: [grep, cat]
+difficulty: hard
+prompt: |
+  Among the photos in this directory tree, exactly one shows the rear of an
+  intermodal shipping container with a visible carrier logo and container number.
+  Find that photo, give its file path, and report the container number printed
+  on it.
+ground_truth:
+  file: Photos/library/IMG_1006.png
+  carrier: J.B. Hunt
+  container_no: JBHU 282862
+checks:
+  - { kind: names_file, path: IMG_1006.png, weight: 2 }
+  - { kind: contains_text, value: "JBHU 282862", weight: 2 }
+  - { kind: contains_text, value: "J.B. Hunt", weight: 1 }
+judge_objective: |
+  The response identifies IMG_1006.png as the container photo and reports the
+  container number JBHU 282862 (J.B. Hunt carrier). Penalize naming the wrong
+  file or a wrong/garbled container number.

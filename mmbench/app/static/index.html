@@ -1,0 +1,192 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>mmbench</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.0/dist/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #0f1115; --surface: #171a21; --border: #262a33; --text: #e6e9ef;
+    --muted: #9aa3b2; --accent: #5b8cff; --good: #3fb950; --bad: #f85149;
+    --mono: ui-monospace, "SF Mono", Menlo, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--sans); }
+  header { padding: 24px 32px; border-bottom: 1px solid var(--border); }
+  h1 { margin: 0; font-size: 20px; letter-spacing: -0.01em; }
+  .sub { color: var(--muted); font-size: 13px; margin-top: 4px; }
+  main { padding: 24px 32px; max-width: 1100px; }
+  section { margin-bottom: 36px; }
+  h2 { font-size: 14px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--border); }
+  th { color: var(--muted); font-weight: 600; }
+  td.num, th.num { text-align: right; font-family: var(--mono); }
+  .pill { padding: 1px 7px; border-radius: 999px; font-size: 11px; font-family: var(--mono); }
+  .up { color: var(--good); } .down { color: var(--bad); }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 16px 18px; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+  canvas { max-height: 320px; }
+  .muted { color: var(--muted); }
+  .empty { color: var(--muted); padding: 40px 0; text-align: center; }
+  code { font-family: var(--mono); color: var(--accent); }
+  .filters { display: flex; flex-wrap: wrap; gap: 18px; margin-bottom: 20px; }
+  .fgroup { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .flabel { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); }
+  .chip { padding: 3px 10px; border-radius: 999px; font-size: 12px; font-family: var(--mono);
+          border: 1px solid var(--border); background: transparent; color: var(--muted); cursor: pointer; }
+  .chip.on { color: var(--text); border-color: var(--accent); background: rgba(91,140,255,0.12); }
+</style>
+</head>
+<body>
+<header>
+  <h1>mmbench &mdash; agents with vs without mm</h1>
+  <div class="sub">Correctness lift and speedup from giving an agent the <code>mm</code> CLI on real multimodal directory tasks. Each row is an <b>assistant/profile</b> cell; filter to compare any subset.</div>
+</header>
+<main>
+  <div class="filters" id="filters"></div>
+
+  <section>
+    <h2>Leaderboard</h2>
+    <div id="leaderboard"></div>
+  </section>
+
+  <section class="grid">
+    <div class="card">
+      <h2>Correctness: baseline vs treatment</h2>
+      <canvas id="liftChart"></canvas>
+    </div>
+    <div class="card">
+      <h2>Treatment correctness over time</h2>
+      <canvas id="trendChart"></canvas>
+    </div>
+  </section>
+
+  <section>
+    <h2>Per-case breakdown</h2>
+    <div id="cases"></div>
+  </section>
+</main>
+
+<script>
+const fmt = (v, s = "") => (v === null || v === undefined ? '<span class="muted">&ndash;</span>' : v + s);
+const liftPill = (v) =>
+  v === null || v === undefined ? fmt(null)
+  : `<span class="pill ${v >= 0 ? 'up' : 'down'}">${v >= 0 ? '+' : ''}${v}</span>`;
+const cell = (r) => `${r.assistant}/${r.profile}`;
+
+async function getJSON(p) { const r = await fetch(p); return r.json(); }
+
+let LB = [], CASES = [], SESSIONS = [];
+const ON = { assistant: new Set(), profile: new Set() };
+const charts = {};
+
+function keep(r) { return ON.assistant.has(r.assistant) && ON.profile.has(r.profile); }
+
+function renderFilters() {
+  const A = [...new Set(LB.map(r => r.assistant))].sort();
+  const P = [...new Set(LB.map(r => r.profile))].sort();
+  A.forEach(a => ON.assistant.add(a));
+  P.forEach(p => ON.profile.add(p));
+  const group = (label, items, kind) =>
+    `<div class="fgroup"><span class="flabel">${label}</span>` +
+    items.map(x => `<button class="chip on" data-kind="${kind}" data-val="${x}">${x}</button>`).join('') +
+    `</div>`;
+  const el = document.getElementById('filters');
+  el.innerHTML = group('Assistant', A, 'assistant') + group('Profile', P, 'profile');
+  el.querySelectorAll('.chip').forEach(c => c.addEventListener('click', () => {
+    const { kind, val } = c.dataset;
+    if (ON[kind].has(val)) { ON[kind].delete(val); c.classList.remove('on'); }
+    else { ON[kind].add(val); c.classList.add('on'); }
+    renderAll();
+  }));
+}
+
+function renderLeaderboard(rows) {
+  const el = document.getElementById('leaderboard');
+  if (!rows.length) { el.innerHTML = '<div class="empty">No cells selected (or no runs yet).</div>'; return; }
+  const head = `<tr><th>Assistant</th><th>Profile</th>
+    <th class="num">Baseline %</th><th class="num">Treatment %</th><th class="num">Lift</th>
+    <th class="num">Speedup</th><th class="num">mm use</th><th class="num">Cases</th></tr>`;
+  const std = (s) => (s && s > 0 ? `<span class="muted"> ±${s}</span>` : '');
+  const body = rows.map(r => `<tr>
+    <td><b>${r.assistant}</b></td><td class="muted">${r.profile}</td>
+    <td class="num">${fmt(r.baseline.correctness)}${std(r.baseline.correctness_std)}</td>
+    <td class="num">${fmt(r.treatment.correctness)}${std(r.treatment.correctness_std)}</td>
+    <td class="num">${liftPill(r.lift)}</td>
+    <td class="num">${fmt(r.speedup, '×')}</td>
+    <td class="num">${r.treatment.mm_adoption === null ? fmt(null) : Math.round(r.treatment.mm_adoption * 100) + '%'}</td>
+    <td class="num">${r.treatment.n}</td></tr>`).join('');
+  el.innerHTML = `<table>${head}${body}</table>`;
+}
+
+function drawLift(rows) {
+  charts.lift?.destroy();
+  charts.lift = new Chart(document.getElementById('liftChart'), {
+    type: 'bar',
+    data: { labels: rows.map(cell), datasets: [
+      { label: 'Baseline', data: rows.map(r => r.baseline.correctness), backgroundColor: '#6b7280' },
+      { label: 'Treatment (mm)', data: rows.map(r => r.treatment.correctness), backgroundColor: '#5b8cff' },
+    ]},
+    options: { responsive: true, scales: { y: { beginAtZero: true, max: 100 } },
+      plugins: { legend: { labels: { color: '#9aa3b2' } } } },
+  });
+}
+
+function drawTrend(sessions) {
+  charts.trend?.destroy();
+  const byKey = {};
+  sessions.forEach(s => { (byKey[`${s.assistant}/${s.profile}`] ||= []).push(s); });
+  const palette = ['#5b8cff', '#3fb950', '#f0883e', '#bc8cff', '#f85149', '#36c5f0'];
+  const datasets = Object.entries(byKey).map(([k, arr], i) => ({
+    label: k, borderColor: palette[i % palette.length], backgroundColor: palette[i % palette.length],
+    data: arr.map(s => ({ x: s.started_at, y: s.treatment_correctness })), tension: 0.25,
+  }));
+  charts.trend = new Chart(document.getElementById('trendChart'), {
+    type: 'line', data: { datasets },
+    options: { responsive: true,
+      scales: { x: { type: 'category', ticks: { color: '#9aa3b2', maxRotation: 0 } },
+                y: { beginAtZero: true, max: 100 } },
+      plugins: { legend: { labels: { color: '#9aa3b2' } } } },
+  });
+}
+
+function renderCases(rows) {
+  const el = document.getElementById('cases');
+  if (!rows.length) { el.innerHTML = '<div class="empty">No case results for the selected cells.</div>'; return; }
+  const groups = {};
+  rows.forEach(r => {
+    const g = (groups[`${cell(r)} · ${r.case_id}`] ||= { who: cell(r), case_id: r.case_id, archetype: r.archetype });
+    g[r.arm] = r;
+  });
+  const head = `<tr><th>Assistant/Profile</th><th>Case</th><th>Type</th>
+    <th class="num">Baseline %</th><th class="num">Treatment %</th><th class="num">mm</th></tr>`;
+  const body = Object.values(groups).map(g => `<tr>
+    <td class="muted">${g.who}</td><td>${g.case_id}</td>
+    <td><span class="pill">${g.archetype || ''}</span></td>
+    <td class="num">${fmt(g.baseline ? g.baseline.correctness : null)}</td>
+    <td class="num">${fmt(g.treatment ? g.treatment.correctness : null)}</td>
+    <td class="num">${g.treatment && g.treatment.mm_used ? '✓' : ''}</td></tr>`).join('');
+  el.innerHTML = `<table>${head}${body}</table>`;
+}
+
+function renderAll() {
+  const lb = LB.filter(keep);
+  renderLeaderboard(lb);
+  drawLift(lb);
+  drawTrend(SESSIONS.filter(keep));
+  renderCases(CASES.filter(keep));
+}
+
+(async function () {
+  [LB, CASES, SESSIONS] = await Promise.all([
+    getJSON('/api/leaderboard'), getJSON('/api/cases'), getJSON('/api/sessions'),
+  ]);
+  renderFilters();
+  renderAll();
+})();
+</script>
+</body>
+</html>

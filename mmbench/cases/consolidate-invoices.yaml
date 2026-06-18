@@ -1,0 +1,25 @@
+id: consolidate-invoices
+title: Move every invoice in a mixed folder into the invoices subfolder
+archetype: organization
+modality: [pdf, image]
+dataset: mmbench-agent/Downloads
+mm_commands: [cat, grep, find]
+difficulty: hard
+prompt: |
+  This Downloads folder already has an invoices/ subfolder, but at least one
+  invoice is still loose in the top level (and it may be an image, not a PDF).
+  Find every invoice that is not already inside invoices/ and move it there.
+  Leave all non-invoice files where they are.
+ground_truth:
+  moves:
+    Downloads/IMG_2235.jpg: Downloads/invoices/IMG_2235.jpg
+  untouched: [Downloads/IMG_2231.jpg, Downloads/rec_0042.mp3]
+checks:
+  - { kind: path_exists, path: invoices/IMG_2235.jpg, weight: 2 }
+  - { kind: path_absent, path: IMG_2235.jpg, weight: 1 }
+  - { kind: path_exists, path: IMG_2231.jpg, weight: 1 }
+judge_objective: |
+  The Google invoice image (IMG_2235.jpg) is moved into invoices/, while the
+  non-invoice files (the car photo IMG_2231.jpg, the audio, the other photos)
+  stay in the Downloads top level. Penalize moving a non-invoice or missing the
+  image invoice.

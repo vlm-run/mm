@@ -1,0 +1,31 @@
+id: downloads-inventory-csv
+title: Inventory the loose files in a folder by media kind into a CSV
+archetype: artifact
+modality: [mixed]
+dataset: mmbench-agent/Downloads
+mm_commands: [find, peek, wc]
+difficulty: medium
+prompt: |
+  Produce a CSV named downloads_inventory.csv at the top level of this folder
+  listing every file that sits directly in the folder (ignore files inside
+  subfolders). Use the header 'file,kind' where kind is one of image, audio,
+  video, or document. One row per file.
+ground_truth:
+  files:
+    - { file: IMG_2231.jpg, kind: image }
+    - { file: IMG_2232.jpg, kind: image }
+    - { file: IMG_2233.png, kind: image }
+    - { file: IMG_2234.jpg, kind: image }
+    - { file: IMG_2235.jpg, kind: image }
+    - { file: rec_0042.mp3, kind: audio }
+  count: 6
+checks:
+  - { kind: artifact_exists, path: downloads_inventory.csv, weight: 1 }
+  - { kind: artifact_row_count, path: downloads_inventory.csv, count: 6, weight: 2 }
+  - { kind: artifact_contains, path: downloads_inventory.csv, value: "rec_0042.mp3", weight: 1 }
+  - { kind: artifact_contains, path: downloads_inventory.csv, value: "audio", weight: 1 }
+judge_objective: |
+  downloads_inventory.csv lists the six loose files (five images IMG_2231-2235
+  and the audio rec_0042.mp3) with correct kinds, and does NOT include files from
+  the invoices/ subfolder. Penalize wrong kinds, missing files, or including
+  subfolder contents.

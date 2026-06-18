@@ -1,0 +1,23 @@
+id: retrieve-vlm-benchmark-models
+title: Find the benchmark-results table and read model names off it
+archetype: retrieval
+modality: [image]
+dataset: mmbench-agent/Documents/financial
+mm_commands: [cat, grep]
+difficulty: hard
+prompt: |
+  One image in this folder is a results table comparing AI model performance on
+  benchmarks. Find it, give its filename, and list at least two of the competing
+  model names that appear in the table (besides the table's own model).
+ground_truth:
+  file: DSC_0604.jpg
+  models: [Gemini 1.5 Pro, GPT-4o, Claude-3.5 Sonnet, Molmo, InternVL2.5]
+checks:
+  - { kind: names_file, path: DSC_0604.jpg, weight: 2 }
+  - { kind: contains_text, value: "GPT-4o", weight: 1 }
+  - { kind: contains_text, value: "Claude", weight: 1 }
+judge_objective: |
+  The response identifies DSC_0604.jpg as the benchmark table and names at least
+  two competing models that actually appear (e.g. Gemini 1.5 Pro, GPT-4o,
+  Claude-3.5 Sonnet, Molmo, InternVL2.5). Penalize the wrong file or hallucinated
+  model names.

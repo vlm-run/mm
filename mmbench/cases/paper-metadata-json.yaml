@@ -1,0 +1,23 @@
+id: paper-metadata-json
+title: Extract structured metadata from a research paper into JSON
+archetype: artifact
+modality: [pdf]
+dataset: mmbench-agent/Documents
+mm_commands: [cat, grep, find]
+difficulty: hard
+prompt: |
+  Find the research paper in this document tree and write a JSON file named
+  paper.json at the top level of this folder with exactly these keys: "title"
+  (the paper's title) and "bleu_en_de" (the BLEU score it reports on the WMT 2014
+  English-to-German translation task, as a number).
+ground_truth:
+  title: Attention Is All You Need
+  bleu_en_de: 28.4
+checks:
+  - { kind: artifact_exists, path: paper.json, weight: 1 }
+  - { kind: artifact_contains, path: paper.json, value: "Attention Is All You Need", weight: 2 }
+  - { kind: artifact_contains, path: paper.json, value: "28.4", weight: 2 }
+judge_objective: |
+  paper.json exists and contains the title "Attention Is All You Need" and the
+  English-to-German BLEU score 28.4. Penalize a wrong title or BLEU value, or
+  malformed JSON.

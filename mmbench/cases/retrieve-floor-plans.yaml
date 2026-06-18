@@ -1,0 +1,27 @@
+id: retrieve-floor-plans
+title: Locate the architectural floor plans, excluding other technical drawings
+archetype: retrieval
+modality: [image]
+dataset: mmbench-agent/Documents/plans
+mm_commands: [grep, cat, find]
+difficulty: hard
+prompt: |
+  This folder holds several technical drawings. Identify which ones are
+  architectural floor plans (a building's rooms and layout seen from above) and
+  list the filename of every floor plan. Exclude anything that is not a floor
+  plan, such as an HVAC symbol legend or a document/page layout.
+ground_truth:
+  floor_plans: [DSC_0501.png, DSC_0502.png, DSC_0503.jpg, DSC_0504.avif, DSC_0505.jpg, DSC_0506.gif]
+  not_floor_plans: [DSC_0507.webp, DSC_0508.jpg]
+checks:
+  - { kind: names_file, path: DSC_0501.png, weight: 1 }
+  - { kind: names_file, path: DSC_0502.png, weight: 1 }
+  - { kind: names_file, path: DSC_0503.jpg, weight: 1 }
+  - { kind: names_file, path: DSC_0504.avif, weight: 1 }
+  - { kind: names_file, path: DSC_0505.jpg, weight: 1 }
+  - { kind: names_file, path: DSC_0506.gif, weight: 1 }
+judge_objective: |
+  The response lists exactly the six floor-plan files (DSC_0501.png, DSC_0502.png,
+  DSC_0503.jpg, DSC_0504.avif, DSC_0505.jpg, DSC_0506.gif) and excludes the HVAC
+  symbol sheet (DSC_0507.webp) and the page layout (DSC_0508.jpg). Penalize both
+  missed floor plans and false positives.

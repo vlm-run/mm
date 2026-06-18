@@ -1,0 +1,22 @@
+id: retrieve-paper-bleu
+title: Find the research paper and extract a specific result from deep in it
+archetype: retrieval
+modality: [pdf]
+dataset: mmbench-agent/Documents
+mm_commands: [cat, grep, find]
+difficulty: hard
+prompt: |
+  One file in this document tree is a machine-learning research paper. Find it,
+  report its exact title, and state the BLEU score its model achieves on the
+  WMT 2014 English-to-German translation task.
+ground_truth:
+  file: Documents/papers/paper_attn.pdf
+  title: Attention Is All You Need
+  bleu_en_de: 28.4
+checks:
+  - { kind: contains_text, value: "Attention Is All You Need", weight: 2 }
+  - { kind: contains_number, value: "28.4", weight: 2 }
+judge_objective: |
+  The response identifies the paper as "Attention Is All You Need" and reports
+  the English-to-German BLEU score of 28.4. Penalize a wrong title or a wrong
+  BLEU number (e.g. reporting the English-to-French 41.8 instead).

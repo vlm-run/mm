@@ -1,0 +1,23 @@
+id: retrieve-aerial-facility
+title: Find the one aerial photo of a desert facility among many photos
+archetype: retrieval
+modality: [image]
+dataset: mmbench-agent/Photos
+mm_commands: [grep, cat]
+difficulty: hard
+prompt: |
+  Somewhere among the photos in this tree is a single overhead aerial / satellite
+  shot of a facility in a desert, with an airstrip and at least one aircraft
+  visible. Find that photo and give its file path. Describe in one sentence what
+  it shows.
+ground_truth:
+  file: Photos/library/IMG_1007.jpg
+  content: aerial view of a desert facility with a runway and aircraft
+checks:
+  - { kind: names_file, path: IMG_1007.jpg, weight: 2 }
+  - { kind: contains_text, value: "desert", weight: 1 }
+  - { kind: contains_text, value: "aerial", weight: 1 }
+judge_objective: |
+  The response identifies IMG_1007.jpg as the aerial desert-facility photo (with
+  runway/aircraft). Penalize naming a different photo or describing the wrong
+  scene.

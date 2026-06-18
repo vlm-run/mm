@@ -103,6 +103,8 @@ dev = [
     "pre-commit>=4.0",
     "maturin>=1.7",
     "logfire>=3.0",
+    "fastapi>=0.110",
+    "uvicorn>=0.29",
 ]
 docs = [
     "mkdocs>=1.6",
