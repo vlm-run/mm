@@ -5,13 +5,15 @@
   let route = $state("home");
   let params = $state({});
   function parse() {
-    const path = (window.location.hash.slice(1) || "/").split("?")[0];
+    const [path, qs] = (window.location.hash.slice(1) || "/").split("?");
+    const query = new URLSearchParams(qs || "");
     const seg = path.split("/").filter(Boolean);
     if (seg[0] === "cell") {
       route = "cell";
       params = {
         assistant: decodeURIComponent(seg[1] || ""),
         profile: decodeURIComponent(seg[2] || ""),
+        open: query.get("open") || "",
       };
     } else {
       route = "home";
@@ -36,7 +38,11 @@
 </header>
 <main class="px-8 py-6 max-w-6xl mx-auto">
   {#if route === "cell"}
-    <CellDetail assistant={params.assistant} profile={params.profile} />
+    <CellDetail
+      assistant={params.assistant}
+      profile={params.profile}
+      open={params.open}
+    />
   {:else}
     <Leaderboard />
   {/if}

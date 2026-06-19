@@ -4,20 +4,35 @@
   import Chart from "../components/Chart.svelte";
   import { fetchCell, fetchSession } from "../api.js";
 
-  let { assistant, profile } = $props();
+  let { assistant, profile, open = "" } = $props();
   let d = $state(null);
-  let open = $state({});
   let detail = $state({});
+  const requested = new Set();
+  const openSet = $derived(
+    new Set(open ? open.split(",").filter(Boolean) : []),
+  );
   onMount(async () => {
     d = await fetchCell(assistant, profile);
   });
 
-  async function toggle(sid) {
-    open[sid] = !open[sid];
-    if (open[sid] && !detail[sid]) {
-      detail[sid] = { loading: true };
-      detail[sid] = await fetchSession(sid);
+  // URL is the source of truth: load each open session's cases once.
+  $effect(() => {
+    for (const sid of openSet) {
+      if (!requested.has(sid)) {
+        requested.add(sid);
+        detail[sid] = { loading: true };
+        fetchSession(sid).then((sd) => {
+          detail[sid] = sd;
+        });
+      }
     }
+  });
+
+  function toggle(sid) {
+    const next = new Set(openSet);
+    next.has(sid) ? next.delete(sid) : next.add(sid);
+    const qs = next.size ? `?open=${[...next].join(",")}` : "";
+    window.location.hash = `#/cell/${encodeURIComponent(assistant)}/${encodeURIComponent(profile)}${qs}`;
   }
 
   const num = (v, s = "") => (v == null ? "–" : v + s);
@@ -104,9 +119,9 @@
               <td class="p-3 text-blue-400 font-mono">
                 <span class="inline-flex items-center gap-2">
                   <span
-                    class="text-slate-500 text-[10px] inline-block transition-transform duration-200 {open[
-                      s.session_id
-                    ]
+                    class="text-slate-500 text-[10px] inline-block transition-transform duration-200 {openSet.has(
+                      s.session_id,
+                    )
                       ? 'rotate-90'
                       : ''}">▶</span
                   >{short(s.session_id)}
@@ -130,7 +145,7 @@
                 >{s.lift == null ? "–" : (s.lift >= 0 ? "+" : "") + s.lift}</td
               >
             </tr>
-            {#if open[s.session_id]}
+            {#if openSet.has(s.session_id)}
               <tr>
                 <td colspan="6" class="p-0 border-t border-slate-800">
                   <div transition:slide={{ duration: 200 }} class="bg-slate-950">
