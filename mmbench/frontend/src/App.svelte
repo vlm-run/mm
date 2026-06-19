@@ -1,7 +1,6 @@
 <script>
   import Leaderboard from "./pages/Leaderboard.svelte";
   import CellDetail from "./pages/CellDetail.svelte";
-  import SessionDetail from "./pages/SessionDetail.svelte";
 
   let route = $state("home");
   let params = $state({});
@@ -14,9 +13,6 @@
         assistant: decodeURIComponent(seg[1] || ""),
         profile: decodeURIComponent(seg[2] || ""),
       };
-    } else if (seg[0] === "session") {
-      route = "session";
-      params = { id: decodeURIComponent(seg[1] || "") };
     } else {
       route = "home";
       params = {};
@@ -41,8 +37,6 @@
 <main class="px-8 py-6 max-w-6xl mx-auto">
   {#if route === "cell"}
     <CellDetail assistant={params.assistant} profile={params.profile} />
-  {:else if route === "session"}
-    <SessionDetail id={params.id} />
   {:else}
     <Leaderboard />
   {/if}

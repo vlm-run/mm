@@ -1,13 +1,24 @@
 <script>
   import { onMount } from "svelte";
+  import { slide } from "svelte/transition";
   import Chart from "../components/Chart.svelte";
-  import { fetchCell } from "../api.js";
+  import { fetchCell, fetchSession } from "../api.js";
 
   let { assistant, profile } = $props();
   let d = $state(null);
+  let open = $state({});
+  let detail = $state({});
   onMount(async () => {
     d = await fetchCell(assistant, profile);
   });
+
+  async function toggle(sid) {
+    open[sid] = !open[sid];
+    if (open[sid] && !detail[sid]) {
+      detail[sid] = { loading: true };
+      detail[sid] = await fetchSession(sid);
+    }
+  }
 
   const num = (v, s = "") => (v == null ? "–" : v + s);
   const ax = { ticks: { color: "#94a3b8" }, grid: { color: "#1e293b" } };
@@ -88,10 +99,19 @@
           {#each d.sessions as s (s.session_id)}
             <tr
               class="border-t border-slate-800 hover:bg-slate-800/60 cursor-pointer"
-              onclick={() =>
-                (window.location.hash = `#/session/${s.session_id}`)}
+              onclick={() => toggle(s.session_id)}
             >
-              <td class="p-3 text-blue-400 font-mono">{short(s.session_id)}</td>
+              <td class="p-3 text-blue-400 font-mono">
+                <span class="inline-flex items-center gap-2">
+                  <span
+                    class="text-slate-500 text-[10px] inline-block transition-transform duration-200 {open[
+                      s.session_id
+                    ]
+                      ? 'rotate-90'
+                      : ''}">▶</span
+                  >{short(s.session_id)}
+                </span>
+              </td>
               <td class="p-3 text-slate-400 font-mono text-xs"
                 >{s.started_at}</td
               >
@@ -110,10 +130,68 @@
                 >{s.lift == null ? "–" : (s.lift >= 0 ? "+" : "") + s.lift}</td
               >
             </tr>
+            {#if open[s.session_id]}
+              <tr>
+                <td colspan="6" class="p-0 border-t border-slate-800">
+                  <div transition:slide={{ duration: 200 }} class="bg-slate-950">
+                    {#if detail[s.session_id]?.loading || !detail[s.session_id]}
+                      <div class="p-4 text-xs text-slate-500">Loading cases…</div>
+                    {:else}
+                      <table class="w-full text-sm">
+                        <thead class="text-slate-500">
+                          <tr>
+                            <th class="text-left py-2 pl-10 pr-3 font-medium">Case</th>
+                            <th class="text-left py-2 px-3 font-medium">Type</th>
+                            <th class="text-right py-2 px-3 font-medium">Without %</th>
+                            <th class="text-right py-2 px-3 font-medium">With %</th>
+                            <th class="text-left py-2 px-3 font-medium">mm cmds used</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {#each detail[s.session_id].cases as c (c.case_id)}
+                            <tr class="border-t border-slate-800/60 align-top">
+                              <td class="py-2 pl-10 pr-3">
+                                <div class="text-slate-200">{c.case_id}</div>
+                                <div class="text-xs text-slate-600">{c.difficulty}</div>
+                              </td>
+                              <td class="py-2 px-3">
+                                <span
+                                  class="text-xs px-2 py-0.5 rounded-full border border-slate-700 text-slate-400"
+                                  >{c.archetype}</span
+                                >
+                              </td>
+                              <td class="py-2 px-3 text-right font-mono"
+                                >{num(c.without_mm?.correctness)}</td
+                              >
+                              <td class="py-2 px-3 text-right font-mono"
+                                >{num(c.with_mm?.correctness)}</td
+                              >
+                              <td class="py-2 px-3 text-xs font-mono text-slate-400"
+                                >{(c.with_mm?.mm_commands || []).join(", ") ||
+                                  "–"}</td
+                              >
+                            </tr>
+                          {/each}
+                        </tbody>
+                      </table>
+                    {/if}
+                  </div>
+                </td>
+              </tr>
+            {/if}
           {/each}
         </tbody>
       </table>
     </div>
+    <p class="mt-3 text-xs leading-relaxed text-slate-500 max-w-4xl">
+      <span class="text-slate-400">Table.</span> Each row is one session, a single
+      benchmark pass over all cases for this cell.
+      <span class="text-slate-400">Without %</span> and
+      <span class="text-slate-400">With %</span> are the session's mean correctness
+      with the agent's native tools versus with mm, and
+      <span class="text-slate-400">Lift</span> is their difference in percentage
+      points (positive favors mm). Click a row to expand its per-case breakdown.
+    </p>
   </section>
 
   <section class="mt-6 rounded-xl border border-slate-800 bg-slate-900 p-4">
