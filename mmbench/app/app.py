@@ -46,6 +46,11 @@ def api_session(session_id: str) -> dict:
     return db.session_detail(session_id, DB_PATH)
 
 
+@app.get("/api/transcript")
+def api_transcript(session: str, case: str) -> dict:
+    return db.case_transcript(session, case, DB_PATH)
+
+
 # Built SPA (index.html + assets); html=True serves index.html for SPA routes.
 # Mounted last so /api/* wins. Absent until `npm run build` in mmbench/frontend.
 if STATIC.exists():

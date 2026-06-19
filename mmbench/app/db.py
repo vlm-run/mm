@@ -179,6 +179,38 @@ def case_breakdown(db_path: Path = DEFAULT_DB_PATH) -> dict:
         conn.close()
 
 
+def case_transcript(session_id: str, case_id: str, db_path: Path = DEFAULT_DB_PATH) -> dict:
+    """Stored transcript + final answer (latest run per arm) for one case in a session.
+
+    Returns ``{session_id, case_id, without_mm, with_mm}`` where each arm is
+    ``{transcript, final_output}`` or ``None`` if that arm has no recorded run.
+    """
+    conn = _connect(db_path)
+    try:
+        out: dict = {
+            "session_id": session_id,
+            "case_id": case_id,
+            "without_mm": None,
+            "with_mm": None,
+        }
+        for arm in ("without_mm", "with_mm"):
+            r = conn.execute(
+                "SELECT cr.transcript_json AS transcript, cr.final_output AS final_output "
+                "FROM case_results cr JOIN runs r ON r.run_id = cr.run_id "
+                "WHERE cr.session_id = ? AND cr.case_id = ? AND cr.arm = ? "
+                "ORDER BY r.run_index DESC LIMIT 1",
+                (session_id, case_id, arm),
+            ).fetchone()
+            if r:
+                out[arm] = {
+                    "transcript": r["transcript"] or "",
+                    "final_output": r["final_output"] or "",
+                }
+        return out
+    finally:
+        conn.close()
+
+
 def _cell_cases(conn: sqlite3.Connection, assistant: str, profile: str) -> list[dict]:
     """Per-case mean correctness (both arms) for one cell, across all its sessions/runs."""
     rows = conn.execute(

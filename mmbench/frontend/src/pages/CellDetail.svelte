@@ -2,7 +2,7 @@
   import { onMount } from "svelte";
   import { slide } from "svelte/transition";
   import Chart from "../components/Chart.svelte";
-  import { fetchCell, fetchSession } from "../api.js";
+  import { fetchCell, fetchSession, fetchTranscript } from "../api.js";
 
   let { assistant, profile, open = "" } = $props();
   let d = $state(null);
@@ -63,6 +63,24 @@
   };
   const perCaseH = $derived(Math.max(260, (d?.cases?.length ?? 0) * 30));
   const short = (id) => id.slice(0, 8);
+
+  let txDialog = $state(null);
+  let tx = $state(null);
+  let txCase = $state("");
+  let txArm = $state("with_mm");
+  let txLoading = $state(false);
+
+  async function openTx(sid, cid) {
+    txCase = cid;
+    tx = null;
+    txArm = "with_mm";
+    txLoading = true;
+    txDialog.showModal();
+    const data = await fetchTranscript(sid, cid);
+    if (!data.with_mm && data.without_mm) txArm = "without_mm";
+    tx = data;
+    txLoading = false;
+  }
 </script>
 
 <a href="#/" class="text-sm text-slate-400 hover:text-blue-400 no-underline"
@@ -148,18 +166,34 @@
             {#if openSet.has(s.session_id)}
               <tr>
                 <td colspan="6" class="p-0 border-t border-slate-800">
-                  <div transition:slide={{ duration: 200 }} class="bg-slate-950">
+                  <div
+                    transition:slide={{ duration: 200 }}
+                    class="bg-slate-950"
+                  >
                     {#if detail[s.session_id]?.loading || !detail[s.session_id]}
-                      <div class="p-4 text-xs text-slate-500">Loading cases…</div>
+                      <div class="p-4 text-xs text-slate-500">
+                        Loading cases…
+                      </div>
                     {:else}
                       <table class="w-full text-sm">
                         <thead class="text-slate-500">
                           <tr>
-                            <th class="text-left py-2 pl-10 pr-3 font-medium">Case</th>
-                            <th class="text-left py-2 px-3 font-medium">Type</th>
-                            <th class="text-right py-2 px-3 font-medium">Without %</th>
-                            <th class="text-right py-2 px-3 font-medium">With %</th>
-                            <th class="text-left py-2 px-3 font-medium">mm cmds used</th>
+                            <th class="text-left py-2 pl-10 pr-3 font-medium"
+                              >Case</th
+                            >
+                            <!-- <th class="text-left py-2 px-3 font-medium">Type</th> -->
+                            <th class="text-left py-2 px-3 font-medium"
+                              >Without %</th
+                            >
+                            <th class="text-left py-2 px-3 font-medium"
+                              >With %</th
+                            >
+                            <th class="text-left py-2 px-3 font-medium"
+                              >mm cmds used</th
+                            >
+                            <th class="text-right py-2 px-3 font-medium">
+                              Transcript
+                            </th>
                           </tr>
                         </thead>
                         <tbody>
@@ -167,24 +201,41 @@
                             <tr class="border-t border-slate-800/60 align-top">
                               <td class="py-2 pl-10 pr-3">
                                 <div class="text-slate-200">{c.case_id}</div>
-                                <div class="text-xs text-slate-600">{c.difficulty}</div>
-                              </td>
-                              <td class="py-2 px-3">
-                                <span
-                                  class="text-xs px-2 py-0.5 rounded-full border border-slate-700 text-slate-400"
-                                  >{c.archetype}</span
+                                <div
+                                  class="flex gap-x-2 text-xs text-slate-600 items-center"
                                 >
+                                  <span>
+                                    {c.archetype}
+                                  </span>
+                                  <span>
+                                    |
+                                    <!-- · -->
+                                  </span>
+                                  <span>
+                                    {c.difficulty}
+                                  </span>
+                                </div>
                               </td>
-                              <td class="py-2 px-3 text-right font-mono"
+                              <td class="py-2 px-3 text-left font-mono"
                                 >{num(c.without_mm?.correctness)}</td
                               >
-                              <td class="py-2 px-3 text-right font-mono"
+                              <td class="py-2 px-3 text-left font-mono"
                                 >{num(c.with_mm?.correctness)}</td
                               >
-                              <td class="py-2 px-3 text-xs font-mono text-slate-400"
+                              <td
+                                class="py-2 px-3 text-xs font-mono text-slate-400"
                                 >{(c.with_mm?.mm_commands || []).join(", ") ||
                                   "–"}</td
                               >
+                              <td class="py-2 px-3 text-right">
+                                <button
+                                  type="button"
+                                  onclick={() =>
+                                    openTx(s.session_id, c.case_id)}
+                                  class="text-xs text-blue-400 hover:text-blue-300"
+                                  >view</button
+                                >
+                              </td>
                             </tr>
                           {/each}
                         </tbody>
@@ -199,11 +250,11 @@
       </table>
     </div>
     <p class="mt-3 text-xs leading-relaxed text-slate-500 max-w-4xl">
-      <span class="text-slate-400">Table.</span> Each row is one session, a single
-      benchmark pass over all cases for this cell.
+      <span class="text-slate-400">Table.</span> Each row is one session, a
+      single benchmark pass over all cases for this cell.
       <span class="text-slate-400">Without %</span> and
-      <span class="text-slate-400">With %</span> are the session's mean correctness
-      with the agent's native tools versus with mm, and
+      <span class="text-slate-400">With %</span> are the session's mean
+      correctness with the agent's native tools versus with mm, and
       <span class="text-slate-400">Lift</span> is their difference in percentage
       points (positive favors mm). Click a row to expand its per-case breakdown.
     </p>
@@ -231,6 +282,51 @@
       </div>
     {/if}
   </section>
+
+  <dialog
+    bind:this={txDialog}
+    class="rounded-2xl border border-slate-700 bg-slate-900 text-slate-200 p-0 w-[min(90vw,56rem)] max-w-none backdrop:bg-black/60"
+  >
+    <div class="flex flex-col" style="max-height: 82vh">
+      <div
+        class="flex items-center justify-between gap-3 px-5 py-3 border-b border-slate-800"
+      >
+        <div class="font-mono text-sm text-slate-300 truncate">{txCase}</div>
+        <div class="flex items-center gap-2 shrink-0">
+          <div
+            class="inline-flex rounded-lg border border-slate-700 overflow-hidden text-xs"
+          >
+            {#each [["without_mm", "Without mm"], ["with_mm", "With mm"]] as [k, lbl]}
+              <button
+                type="button"
+                onclick={() => (txArm = k)}
+                class="px-3 py-1 {txArm === k
+                  ? 'bg-blue-600 text-white'
+                  : 'text-slate-300 hover:bg-slate-800'}">{lbl}</button
+              >
+            {/each}
+          </div>
+          <button
+            type="button"
+            onclick={() => txDialog.close()}
+            class="text-slate-400 hover:text-slate-100 text-sm px-2">✕</button
+          >
+        </div>
+      </div>
+      <div class="overflow-auto p-5">
+        {#if txLoading}
+          <div class="text-slate-500 text-sm">Loading transcript…</div>
+        {:else if tx?.[txArm]}
+          <pre
+            class="whitespace-pre-wrap break-words font-mono text-xs leading-relaxed text-slate-200 select-text">{tx[
+              txArm
+            ].transcript || "(empty)"}</pre>
+        {:else}
+          <div class="text-slate-500 text-sm">No transcript for this arm.</div>
+        {/if}
+      </div>
+    </div>
+  </dialog>
 {:else}
   <div class="text-slate-500 py-10">Loading…</div>
 {/if}
