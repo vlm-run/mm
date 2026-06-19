@@ -16,30 +16,31 @@ headline is the **lift**. See `DESIGN.md` for the full design.
 ```
 mmbench/
 ├── DESIGN.md            # design, decisions, findings
-├── cases/               # eval cases (declarative YAML)
-├── dataset/
-│   └── build_fixture.py # assembles the nested mmbench-agent fixture
 ├── harness/
-│   ├── cases.py         # typed case model + loader/validator
+│   ├── cases.py         # typed case model + loader (reads data/cases.jsonl)
 │   ├── sandbox.py       # per-run disposable working copies
 │   ├── assistants.py    # agent-CLI adapters (claude, codex, gemini, ...)
 │   ├── grader.py        # checks[] + LLM judge -> correctness
 │   ├── store.py         # SQLite results store
-│   └── run.py           # orchestrator + CLI
+│   └── run.py           # orchestrator + CLI (downloads the dataset on first run)
 ├── app/                 # FastAPI JSON API + built SPA (app/static)
-└── frontend/            # Svelte + Tailwind + Vite dashboard source (builds into app/static)
+├── frontend/            # Svelte + Tailwind + Vite dashboard source (builds into app/static)
+└── data/                # downloaded dataset (corpus + cases.jsonl) + DB + sandboxes — gitignored
 ```
 
-Datasets, sandboxes, and the results DB live under `benchmarks/data/`
-(gitignored).
+The dataset is the corpus (`mmbench-agent/`) plus the cases (`cases.jsonl`). It
+lives on the Hugging Face Hub at `huggingface.co/datasets/vlm-run/mmbench`
+(private). The harness downloads it into `mmbench/data/` (gitignored) on first
+run and reuses the local copy thereafter; HF auth (`hf auth login`) is required.
 
 ## Usage
 
 **Prereqs:** an agent CLI installed + authed (claude / codex / gemini / opencode
 verified; qwen needs its key), the `gateway` mm profile reachable (`mm profile
-list`), and `MMBENCH_JUDGE_API_KEY` for the judge. The
-fixture **auto-builds** on first run. Preflight checks all of this and aborts on
-any failure.
+list`), `MMBENCH_JUDGE_API_KEY` (or `OPENROUTER_API_KEY`) for the judge, and
+`hf auth login` (the dataset is private). The dataset **auto-downloads** to
+`mmbench/data/` on first run; preflight then checks agents/profiles/judge and
+aborts on any failure.
 
 All commands run from the repo root with the package on the path:
 
@@ -49,9 +50,8 @@ cd <repo root>
 # 0. Check your setup is live (pings each assistant/profile/judge, then exits):
 uv run python -m mmbench.harness.run --assistants claude,codex,gemini,opencode --check
 
-# 1. Run the benchmark. On first run the fixture auto-builds; preflight then
-#    verifies fixture + each agent's autonomy + each profile + the judge, and
-#    aborts on any failure (no silent fallbacks).
+# 1. Run the benchmark. On first run the dataset downloads from HF; preflight then
+#    verifies each agent's autonomy + each profile + the judge (no silent fallbacks).
 uv run python -m mmbench.harness.run --assistants claude --profiles gateway
 
 # 2. View the dashboard (ranked leaderboard, multiselect filters, drill into
@@ -60,9 +60,6 @@ uv run python -m mmbench.app.app        # http://localhost:9095
 
 # (optional) rebuild the dashboard after editing mmbench/frontend:
 cd mmbench/frontend && npm install && npm run build   # -> mmbench/app/static
-
-# (optional) build/rebuild the dataset fixture explicitly
-uv run python mmbench/dataset/build_fixture.py
 ```
 
 The unit of work is an **(assistant, profile) cell**. A run is the cartesian
@@ -77,7 +74,7 @@ uv run python -m mmbench.harness.run --assistants claude,gemini --profiles gatew
 # subset of cases + resume an interrupted pass:
 uv run python -m mmbench.harness.run --cases retrieve-video-product,invoices-to-csv --resume
 
-ls mmbench/cases/   # list case ids
+cut -d'"' -f4 mmbench/data/cases.jsonl   # list case ids (after first download)
 ```
 
 ### Flags (`-m mmbench.harness.run`)
@@ -92,7 +89,7 @@ ls mmbench/cases/   # list case ids
 | `--no-judge` | off | score on deterministic checks only |
 | `--resume` | off | reuse latest session per cell, skip completed cells |
 | `--keep-sandboxes` | off | keep per-run working copies |
-| `--db` | `benchmarks/data/mmbench.db` | results SQLite path |
+| `--db` | `mmbench/data/mmbench.db` | results SQLite path |
 | `--check` | off | ping the selected assistants/profiles/judge and exit (no run); non-zero exit if any fails |
 | `--skip-preflight` | off | bypass preflight (not advised) |
 

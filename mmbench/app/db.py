@@ -13,7 +13,7 @@ import sqlite3
 from pathlib import Path
 from statistics import mean, pstdev
 
-DEFAULT_DB_PATH = Path(__file__).resolve().parents[2] / "benchmarks" / "data" / "mmbench.db"
+DEFAULT_DB_PATH = Path(__file__).resolve().parents[1] / "data" / "mmbench.db"
 PASS_THRESHOLD = 60.0  # a case (case, arm, run) counts as a pass at >= this correctness
 
 

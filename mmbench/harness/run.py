@@ -28,7 +28,8 @@ from .preflight import preflight
 from .sandbox import SandboxManager
 from .store import CaseResult, MmBenchStore
 
-DATASETS_ROOT = Path(__file__).resolve().parents[2] / "benchmarks" / "data"
+DATASETS_ROOT = Path(__file__).resolve().parents[1] / "data"  # mmbench/data (gitignored)
+HF_DATASET = "vlm-run/mmbench"
 ARMS = ("without_mm", "with_mm")
 
 
@@ -207,15 +208,19 @@ def _csv(value: str) -> list[str]:
     return [v.strip() for v in value.split(",") if v.strip()]
 
 
-def ensure_fixture() -> None:
-    """Build the mmbench-agent fixture if absent (downloads sources as needed)."""
-    from ..dataset.build_fixture import FIXTURE, build
+def ensure_dataset() -> None:
+    """Download the mmbench dataset (corpus + cases) from HF into mmbench/data/.
 
-    if FIXTURE.exists():
+    On first run, pull ``vlm-run/mmbench`` and store it package-relative; skip if
+    already present. Requires HF auth (the repo is currently private).
+    """
+    if (DATASETS_ROOT / "cases.jsonl").exists() and (DATASETS_ROOT / "mmbench-agent").is_dir():
         return
-    print(f"fixture missing; building {FIXTURE.name} (downloads sources if needed)...")
-    m = build()
-    print(f"  built {m['file_count']} files")
+    print(f"dataset missing; downloading {HF_DATASET} -> {DATASETS_ROOT} ...")
+    from huggingface_hub import snapshot_download
+
+    snapshot_download(repo_id=HF_DATASET, repo_type="dataset", local_dir=str(DATASETS_ROOT))
+    print("  done")
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -240,14 +245,14 @@ def main(argv: list[str] | None = None) -> None:
     )
     args = ap.parse_args(argv)
 
+    ensure_dataset()  # download corpus + cases from HF on first run
+
     all_cases = {c.id: c for c in load_cases()}
     selected = _csv(args.cases) or list(all_cases)
     missing = [c for c in selected if c not in all_cases]
     if missing:
         ap.error(f"unknown case ids: {missing}; available: {sorted(all_cases)}")
     cases = [all_cases[c] for c in selected]
-
-    ensure_fixture()
 
     assistants, profiles = _csv(args.assistants), _csv(args.profiles)
     use_judge = not args.no_judge

@@ -28,7 +28,7 @@ from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 
-DEFAULT_DB_PATH = Path(__file__).resolve().parents[2] / "benchmarks" / "data" / "mmbench.db"
+DEFAULT_DB_PATH = Path(__file__).resolve().parents[1] / "data" / "mmbench.db"
 
 ARMS = ("without_mm", "with_mm")
 

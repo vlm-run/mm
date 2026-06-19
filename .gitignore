@@ -62,3 +62,7 @@ benchmarks/results/
 /docs/notebooks/
 /docs/spec-templates/
 .cache
+
+# mmbench: producer is local-only; consumer data (downloaded dataset + db + sandboxes)
+mmbench-producer/
+mmbench/data/

@@ -19,18 +19,18 @@ Example:
     >>> cases = load_cases()
     >>> cases[0].archetype
     'retrieval'
-    >>> cases[0].resolve_dataset(Path("benchmarks/data")).name
+    >>> cases[0].resolve_dataset(Path("mmbench/data")).name
     'mmbench-agent'
 """
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass, field
 from pathlib import Path
 
-import yaml
-
-CASES_DIR = Path(__file__).resolve().parent.parent / "cases"
+# Cases ship inside the HF dataset; the harness downloads it to mmbench/data/.
+CASES_FILE = Path(__file__).resolve().parents[1] / "data" / "cases.jsonl"
 
 ARCHETYPES = ("retrieval", "organization", "artifact")
 DIFFICULTIES = ("easy", "medium", "hard")
@@ -155,20 +155,23 @@ class EvalCase:
         return cls(**raw)
 
 
-def load_cases(cases_dir: Path = CASES_DIR) -> list[EvalCase]:
-    """Load and validate every ``*.yaml`` case, sorted by id.
+def load_cases(cases_file: Path = CASES_FILE) -> list[EvalCase]:
+    """Load and validate cases from the downloaded ``cases.jsonl``, sorted by id.
 
     Raises:
+        FileNotFoundError: if the dataset has not been downloaded yet.
         ValueError: on a malformed case or a duplicate id.
     """
+    if not cases_file.exists():
+        raise FileNotFoundError(f"{cases_file} missing; run the benchmark to download the dataset")
     cases: list[EvalCase] = []
     seen: set[str] = set()
-    for path in sorted(cases_dir.glob("*.yaml")):
-        with open(path) as f:
-            data = yaml.safe_load(f)
-        case = EvalCase.from_dict(data)
+    for line in cases_file.read_text().splitlines():
+        if not line.strip():
+            continue
+        case = EvalCase.from_dict(json.loads(line))
         if case.id in seen:
-            raise ValueError(f"duplicate case id {case.id!r} in {path.name}")
+            raise ValueError(f"duplicate case id {case.id!r}")
         seen.add(case.id)
         cases.append(case)
-    return cases
+    return sorted(cases, key=lambda c: c.id)

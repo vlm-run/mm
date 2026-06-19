@@ -164,13 +164,15 @@ Headline per cell: `correctness_lift`, `speedup`, `mm_adoption_rate`.
 
 ## Dataset
 
-The real-world archetypes need a frozen, **nested multimodal fixture** that the
-flat `mmbench-tiny` / `mmbench-mini` sets do not provide: subfolders, hundreds of
-files, photos with real EXIF (camera/date/GPS) and near-duplicates, invoices and
-contracts as PDFs, audio and video, plus deliberate "distractors" so retrieval
-is non-trivial. Each task pins a subtree of this fixture as its `dataset`. The
-fixture is versioned and downloaded once (gitignored), like the other bench
-datasets.
+A frozen, **nested multimodal fixture** (`mmbench-agent/`) plus the cases
+(`cases.jsonl`); each case pins a subtree of the fixture as its `dataset`. It
+lives on the Hugging Face Hub at `vlm-run/mmbench` (private).
+
+The harness fetches it on first run: `ensure_dataset()` downloads the repo into
+`mmbench/data/` (gitignored) and loads the corpus and cases from there, reusing
+the local copy on later runs. HF auth (`hf auth login`) is required. Everything
+the harness produces (the dataset, the results DB, sandboxes) stays under
+`mmbench/data/`.
 
 ## Status
 

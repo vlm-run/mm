@@ -24,7 +24,7 @@ import shutil
 from dataclasses import dataclass
 from pathlib import Path
 
-DEFAULT_SANDBOX_ROOT = Path(__file__).resolve().parents[2] / "benchmarks" / "data" / "_sandboxes"
+DEFAULT_SANDBOX_ROOT = Path(__file__).resolve().parents[1] / "data" / "_sandboxes"
 
 _SAFE = re.compile(r"[^A-Za-z0-9._-]+")
 
@@ -66,7 +66,7 @@ class SandboxManager:
 
     Args:
         root: base directory under which sandboxes are created. Defaults under
-            ``benchmarks/data/`` which is gitignored.
+            ``mmbench/data/`` which is gitignored.
     """
 
     def __init__(self, root: Path = DEFAULT_SANDBOX_ROOT) -> None:

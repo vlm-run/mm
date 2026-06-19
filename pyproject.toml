@@ -105,6 +105,7 @@ dev = [
     "logfire>=3.0",
     "fastapi>=0.110",
     "uvicorn>=0.29",
+    "huggingface-hub>=0.25",
 ]
 docs = [
     "mkdocs>=1.6",
