@@ -27,7 +27,9 @@ import os
 import shutil
 import stat
 import subprocess
+import sys
 import tempfile
+import threading
 import time
 import uuid
 from dataclasses import dataclass, field
@@ -109,13 +111,18 @@ class Assistant:
         primer: str,
         profile_name: str | None = None,
         timeout_s: int = DEFAULT_TIMEOUT_S,
+        stream: bool = False,
     ) -> AssistantResult:
-        """Invoke the agent on one (case, arm), returning answer + timing + grounding."""
+        """Invoke the agent on one (case, arm), returning answer + timing + grounding.
+
+        When ``stream`` is set, the agent's stdout/stderr are also teed to this
+        process's terminal live; the captured result is identical either way.
+        """
         prompt = self.build_prompt(case, arm, input_path, primer)
         cwd = input_path if input_path.is_dir() else input_path.parent
         with _mm_shim(arm) as (shim_dir, mm_log):
             env = self._env(arm, shim_dir, mm_log, profile_name)
-            out = _exec(self.build_argv(prompt), cwd, env, timeout_s)
+            out = _exec(self.build_argv(prompt), cwd, env, timeout_s, stream=stream)
             used = _read_mm_log(mm_log) if arm == "with_mm" else []
         return AssistantResult(mm_commands_used=used, **out)
 
@@ -145,24 +152,31 @@ class Assistant:
         return False, f"did not execute the tool (exit {out['exit_code']})"
 
 
-def _exec(argv: list[str], cwd: Path, env: dict, timeout_s: int) -> dict:
-    """Run argv, capturing stdout/stderr/timing. Never raises on agent failure."""
+def _exec(argv: list[str], cwd: Path, env: dict, timeout_s: int, *, stream: bool = False) -> dict:
+    """Run argv, capturing stdout/stderr/timing. Never raises on agent failure.
+
+    With ``stream``, output is teed to this process's terminal as it arrives while
+    still being captured in full; the returned dict is identical to the buffered path.
+    """
     t0 = time.perf_counter()
-    try:
-        p = subprocess.run(
-            argv,
-            cwd=str(cwd),
-            env=env,
-            capture_output=True,
-            text=True,
-            timeout=timeout_s,
-            stdin=subprocess.DEVNULL,
-        )
-        stdout, stderr, code, timed_out = p.stdout, p.stderr, p.returncode, False
-    except subprocess.TimeoutExpired as e:
-        stdout = (e.stdout.decode() if isinstance(e.stdout, bytes) else e.stdout) or ""
-        stderr = (e.stderr.decode() if isinstance(e.stderr, bytes) else e.stderr) or ""
-        code, timed_out = None, True
+    if stream:
+        stdout, stderr, code, timed_out = _exec_streaming(argv, cwd, env, timeout_s)
+    else:
+        try:
+            p = subprocess.run(
+                argv,
+                cwd=str(cwd),
+                env=env,
+                capture_output=True,
+                text=True,
+                timeout=timeout_s,
+                stdin=subprocess.DEVNULL,
+            )
+            stdout, stderr, code, timed_out = p.stdout, p.stderr, p.returncode, False
+        except subprocess.TimeoutExpired as e:
+            stdout = (e.stdout.decode() if isinstance(e.stdout, bytes) else e.stdout) or ""
+            stderr = (e.stderr.decode() if isinstance(e.stderr, bytes) else e.stderr) or ""
+            code, timed_out = None, True
     elapsed = time.perf_counter() - t0
     transcript = (stdout + ("\n[stderr]\n" + stderr if stderr else "")).strip()
     return {
@@ -172,6 +186,54 @@ def _exec(argv: list[str], cwd: Path, env: dict, timeout_s: int) -> dict:
         "exit_code": code,
         "timed_out": timed_out,
     }
+
+
+def _exec_streaming(
+    argv: list[str], cwd: Path, env: dict, timeout_s: int
+) -> tuple[str, str, int | None, bool]:
+    """Run argv, teeing stdout->stdout and stderr->stderr live while capturing both.
+
+    Returns ``(stdout, stderr, exit_code, timed_out)``. stdout and stderr stay
+    separate (reader thread per stream) so ``final_output`` is unaffected by tee.
+    """
+    p = subprocess.Popen(
+        argv,
+        cwd=str(cwd),
+        env=env,
+        text=True,
+        bufsize=1,
+        stdin=subprocess.DEVNULL,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+    out_buf: list[str] = []
+    err_buf: list[str] = []
+    write_lock = threading.Lock()
+
+    def _pump(pipe, buf, sink) -> None:
+        for line in iter(pipe.readline, ""):
+            buf.append(line)
+            with write_lock:
+                sink.write(line)
+                sink.flush()
+        pipe.close()
+
+    threads = [
+        threading.Thread(target=_pump, args=(p.stdout, out_buf, sys.stdout), daemon=True),
+        threading.Thread(target=_pump, args=(p.stderr, err_buf, sys.stderr), daemon=True),
+    ]
+    for t in threads:
+        t.start()
+    timed_out = False
+    try:
+        code = p.wait(timeout=timeout_s)
+    except subprocess.TimeoutExpired:
+        p.kill()
+        code, timed_out = None, True
+        p.wait()
+    for t in threads:
+        t.join()
+    return "".join(out_buf), "".join(err_buf), code, timed_out
 
 
 class _mm_shim:

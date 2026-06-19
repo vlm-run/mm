@@ -2,7 +2,15 @@
   import { onMount } from "svelte";
   import { slide } from "svelte/transition";
   import Chart from "../components/Chart.svelte";
-  import { fetchCell, fetchSession, fetchTranscript } from "../api.js";
+  import ArtifactView from "../components/ArtifactView.svelte";
+  import {
+    fetchCell,
+    fetchSession,
+    fetchTranscript,
+    fetchCaseSpec,
+    fetchArtifacts,
+    artifactUrl,
+  } from "../api.js";
 
   let { assistant, profile, open = "" } = $props();
   let d = $state(null);
@@ -66,21 +74,52 @@
 
   let txDialog = $state(null);
   let tx = $state(null);
+  let txSession = $state("");
   let txCase = $state("");
   let txArm = $state("with_mm");
+  let txTab = $state("transcript");
   let txLoading = $state(false);
+  let spec = $state(null);
+  let arts = $state([]);
+  let artsLoading = $state(false);
 
   async function openTx(sid, cid) {
+    txSession = sid;
     txCase = cid;
-    tx = null;
     txArm = "with_mm";
+    txTab = "transcript";
+    tx = null;
+    spec = null;
+    arts = [];
     txLoading = true;
     txDialog.showModal();
-    const data = await fetchTranscript(sid, cid);
+    const [data, sp] = await Promise.all([
+      fetchTranscript(sid, cid),
+      fetchCaseSpec(cid),
+    ]);
     if (!data.with_mm && data.without_mm) txArm = "without_mm";
     tx = data;
+    spec = sp;
     txLoading = false;
+    loadArtifacts();
   }
+
+  function setArm(k) {
+    txArm = k;
+    loadArtifacts();
+  }
+
+  async function loadArtifacts() {
+    artsLoading = true;
+    arts = await fetchArtifacts(txSession, txCase, txArm);
+    artsLoading = false;
+  }
+
+  const specRest = $derived.by(() => {
+    if (!spec) return "";
+    const { prompt, ...rest } = spec;
+    return JSON.stringify(rest, null, 2);
+  });
 </script>
 
 <a href="#/" class="text-sm text-slate-400 hover:text-blue-400 no-underline"
@@ -287,25 +326,40 @@
     bind:this={txDialog}
     class="rounded-2xl border border-slate-700 bg-slate-900 text-slate-200 p-0 w-[min(90vw,56rem)] max-w-none backdrop:bg-black/60"
   >
-    <div class="flex flex-col" style="max-height: 82vh">
+    <div class="flex flex-col" style="min-height: 42vh; max-height: 82vh">
       <div
         class="flex items-center justify-between gap-3 px-5 py-3 border-b border-slate-800"
       >
-        <div class="font-mono text-sm text-slate-300 truncate">{txCase}</div>
-        <div class="flex items-center gap-2 shrink-0">
-          <div
-            class="inline-flex rounded-lg border border-slate-700 overflow-hidden text-xs"
-          >
-            {#each [["without_mm", "Without mm"], ["with_mm", "With mm"]] as [k, lbl]}
+        <div class="flex items-center gap-4 min-w-0">
+          <div class="font-mono text-sm text-slate-300 truncate">{txCase}</div>
+          <div class="inline-flex gap-1 text-xs">
+            {#each [["transcript", "Result"], ["spec", "Case spec"], ["artifact", "Artifact"]] as [k, lbl]}
               <button
                 type="button"
-                onclick={() => (txArm = k)}
-                class="px-3 py-1 {txArm === k
-                  ? 'bg-blue-600 text-white'
-                  : 'text-slate-300 hover:bg-slate-800'}">{lbl}</button
+                onclick={() => (txTab = k)}
+                class="px-2.5 py-1 rounded-md {txTab === k
+                  ? 'bg-slate-800 text-slate-100'
+                  : 'text-slate-400 hover:text-slate-200'}">{lbl}</button
               >
             {/each}
           </div>
+        </div>
+        <div class="flex items-center gap-2 shrink-0">
+          {#if txTab !== "spec"}
+            <div
+              class="inline-flex rounded-lg border border-slate-700 overflow-hidden text-xs"
+            >
+              {#each [["without_mm", "Without mm"], ["with_mm", "With mm"]] as [k, lbl]}
+                <button
+                  type="button"
+                  onclick={() => setArm(k)}
+                  class="px-3 py-1 {txArm === k
+                    ? 'bg-blue-600 text-white'
+                    : 'text-slate-300 hover:bg-slate-800'}">{lbl}</button
+                >
+              {/each}
+            </div>
+          {/if}
           <button
             type="button"
             onclick={() => txDialog.close()}
@@ -314,15 +368,61 @@
         </div>
       </div>
       <div class="overflow-auto p-5">
-        {#if txLoading}
-          <div class="text-slate-500 text-sm">Loading transcript…</div>
-        {:else if tx?.[txArm]}
-          <pre
-            class="whitespace-pre-wrap break-words font-mono text-xs leading-relaxed text-slate-200 select-text">{tx[
-              txArm
-            ].transcript || "(empty)"}</pre>
+        {#if txTab === "transcript"}
+          {#if txLoading}
+            <div class="text-slate-500 text-sm">Loading transcript…</div>
+          {:else if tx?.[txArm]}
+            <pre
+              class="whitespace-pre-wrap break-words font-mono text-xs leading-relaxed text-slate-200 select-text">{tx[
+                txArm
+              ].transcript || "(empty)"}</pre>
+          {:else}
+            <div class="text-slate-500 text-sm">
+              No transcript for this arm.
+            </div>
+          {/if}
+        {:else if txTab === "spec"}
+          {#if !spec}
+            <div class="text-slate-500 text-sm">Loading case spec…</div>
+          {:else}
+            <div class="space-y-4">
+              <div>
+                <div
+                  class="text-xs uppercase tracking-widest text-slate-500 mb-1"
+                >
+                  Prompt
+                </div>
+                <pre
+                  class="whitespace-pre-wrap break-words font-mono text-xs leading-relaxed text-slate-200 select-text">{spec.prompt ||
+                    "(none)"}</pre>
+              </div>
+              <div>
+                <div
+                  class="text-xs uppercase tracking-widest text-slate-500 mb-1"
+                >
+                  Spec
+                </div>
+                <pre
+                  class="whitespace-pre-wrap break-words font-mono text-xs leading-relaxed text-slate-300 select-text">{specRest}</pre>
+              </div>
+            </div>
+          {/if}
+        {:else if artsLoading}
+          <div class="text-slate-500 text-sm">Loading artifacts…</div>
+        {:else if !arts.length}
+          <div class="text-slate-500 h-[22vh] flex items-center text-sm">
+            No artifact captured for this arm (only runs after artifact capture
+            was added are stored, and only for artifact-creation cases).
+          </div>
         {:else}
-          <div class="text-slate-500 text-sm">No transcript for this arm.</div>
+          <div class="space-y-4">
+            {#each arts as a (a)}
+              <ArtifactView
+                url={artifactUrl(txSession, txCase, txArm, a)}
+                name={a}
+              />
+            {/each}
+          </div>
         {/if}
       </div>
     </div>

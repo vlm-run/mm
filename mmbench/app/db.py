@@ -13,7 +13,10 @@ import sqlite3
 from pathlib import Path
 from statistics import mean, pstdev
 
-DEFAULT_DB_PATH = Path(__file__).resolve().parents[1] / "data" / "mmbench.db"
+DATA_DIR = Path(__file__).resolve().parents[1] / "data"
+DEFAULT_DB_PATH = DATA_DIR / "mmbench.db"
+CASES_FILE = DATA_DIR / "cases.jsonl"
+ARTIFACTS_DIR = DATA_DIR / "_artifacts"
 PASS_THRESHOLD = 60.0  # a case (case, arm, run) counts as a pass at >= this correctness
 
 
@@ -177,6 +180,41 @@ def case_breakdown(db_path: Path = DEFAULT_DB_PATH) -> dict:
         }
     finally:
         conn.close()
+
+
+def case_spec(case_id: str, cases_file: Path = CASES_FILE) -> dict:
+    """The raw case definition (prompt, ground truth, checks, ...) from cases.jsonl."""
+    if not cases_file.exists():
+        return {}
+    for line in cases_file.read_text().splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        spec = json.loads(line)
+        if spec.get("id") == case_id:
+            return spec
+    return {}
+
+
+def artifacts(
+    session_id: str, case_id: str, arm: str, artifacts_dir: Path = ARTIFACTS_DIR
+) -> list[str]:
+    """Relative paths of the files the agent wrote for one (session, case, arm)."""
+    root = artifacts_dir / session_id / case_id / arm
+    if not root.is_dir():
+        return []
+    return sorted(str(p.relative_to(root)) for p in root.rglob("*") if p.is_file())
+
+
+def artifact_path(
+    session_id: str, case_id: str, arm: str, rel: str, artifacts_dir: Path = ARTIFACTS_DIR
+) -> Path | None:
+    """Resolve a stored artifact file, guarding against path traversal. None if absent."""
+    root = (artifacts_dir / session_id / case_id / arm).resolve()
+    target = (root / rel).resolve()
+    if root in target.parents and target.is_file():
+        return target
+    return None
 
 
 def case_transcript(session_id: str, case_id: str, db_path: Path = DEFAULT_DB_PATH) -> dict:

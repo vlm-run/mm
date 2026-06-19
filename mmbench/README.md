@@ -88,6 +88,7 @@ cut -d'"' -f4 mmbench/data/cases.jsonl   # list case ids (after first download)
 | `--timeout` | `360` | per-agent cap, seconds (keep ≥300; mm's video/PDF paths are slow) |
 | `--no-judge` | off | score on deterministic checks only |
 | `--resume` | off | reuse latest session per cell, skip completed cells |
+| `--stream` | off | tee each agent's live stdout/stderr to the terminal as it runs (capture/grading unaffected) |
 | `--keep-sandboxes` | off | keep per-run working copies |
 | `--db` | `mmbench/data/mmbench.db` | results SQLite path |
 | `--check` | off | ping the selected assistants/profiles/judge and exit (no run); non-zero exit if any fails |

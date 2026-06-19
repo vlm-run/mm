@@ -11,3 +11,10 @@ export const fetchCell = (a, p) => get(`/cell?assistant=${encodeURIComponent(a)}
 export const fetchSession = (id) => get(`/session/${encodeURIComponent(id)}`)
 export const fetchTranscript = (session, c) =>
   get(`/transcript?session=${encodeURIComponent(session)}&case=${encodeURIComponent(c)}`)
+export const fetchCaseSpec = (c) => get(`/case-spec?case=${encodeURIComponent(c)}`)
+export const fetchArtifacts = (session, c, arm) =>
+  get(
+    `/artifacts?session=${encodeURIComponent(session)}&case=${encodeURIComponent(c)}&arm=${encodeURIComponent(arm)}`,
+  )
+export const artifactUrl = (session, c, arm, path) =>
+  `${BASE}/artifact-file?session=${encodeURIComponent(session)}&case=${encodeURIComponent(c)}&arm=${encodeURIComponent(arm)}&path=${encodeURIComponent(path)}`

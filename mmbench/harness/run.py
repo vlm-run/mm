@@ -18,6 +18,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import shutil
 import time
 from pathlib import Path
 
@@ -29,8 +30,10 @@ from .sandbox import SandboxManager
 from .store import CaseResult, MmBenchStore
 
 DATASETS_ROOT = Path(__file__).resolve().parents[1] / "data"  # mmbench/data (gitignored)
+ARTIFACTS_ROOT = DATASETS_ROOT / "_artifacts"  # persisted agent-written files for UI review
 HF_DATASET = "vlm-run/mmbench"
 ARMS = ("without_mm", "with_mm")
+ARTIFACT_KINDS = ("artifact_exists", "artifact_contains", "artifact_row_count")
 
 
 def _profile_meta(profile_name: str) -> tuple[str | None, str | None]:
@@ -52,6 +55,25 @@ def _profile_meta(profile_name: str) -> tuple[str | None, str | None]:
                 os.environ["MM_PROFILE"] = prev
     except Exception:
         return None, None
+
+
+def _persist_artifacts(case: EvalCase, sandbox_path: Path, session_id: str, arm: str) -> None:
+    """Copy the files an agent wrote (named by artifact_* checks) out of the sandbox.
+
+    Sandboxes are disposed after grading, so the artifact bytes are saved under
+    ``ARTIFACTS_ROOT/<session>/<case>/<arm>/`` for later review in the dashboard.
+    The latest run for a (session, case, arm) overwrites earlier ones.
+    """
+    rels = {c.params["path"] for c in case.checks if c.kind in ARTIFACT_KINDS}
+    if not rels:
+        return
+    dest_root = ARTIFACTS_ROOT / session_id / case.id / arm
+    for rel in rels:
+        src = sandbox_path / rel
+        if src.is_file():
+            dest = dest_root / rel
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(src, dest)
 
 
 class Orchestrator:
@@ -80,6 +102,7 @@ class Orchestrator:
         grader: Grader,
         keep_sandboxes: bool = False,
         resume: bool = False,
+        stream: bool = False,
     ) -> None:
         self.assistants = assistants
         self.profiles = profiles
@@ -91,6 +114,7 @@ class Orchestrator:
         self.sandboxes = SandboxManager()
         self.keep_sandboxes = keep_sandboxes
         self.resume = resume
+        self.stream = stream
         self.primer = PRIMER_PATH.read_text()
 
     def run(self) -> None:
@@ -162,6 +186,8 @@ class Orchestrator:
                 run_index=run_index,
                 keep=self.keep_sandboxes,
             )
+            if self.stream:
+                print(f"\n┌─ {adapter.name}/{profile_name} · {case.id} · {arm} " + "─" * 24)
             try:
                 result = adapter.run(
                     case,
@@ -170,6 +196,7 @@ class Orchestrator:
                     primer=self.primer,
                     profile_name=profile_name,
                     timeout_s=self.timeout_s,
+                    stream=self.stream,
                 )
                 grade = self.grader.grade(case, result, sandbox.path)
                 self.store.record_case_result(
@@ -195,6 +222,7 @@ class Orchestrator:
                         transcript=result.transcript,
                     ),
                 )
+                _persist_artifacts(case, sandbox.path, sid, arm)
                 print(
                     f"  {case.id:32} {arm:9} correctness={grade.correctness:6.1f} "
                     f"speed={result.elapsed_s:5.0f}s mm={result.mm_commands_used or '-'}"
@@ -236,6 +264,9 @@ def main(argv: list[str] | None = None) -> None:
     ap.add_argument("--keep-sandboxes", action="store_true", help="retain sandboxes for review")
     ap.add_argument(
         "--resume", action="store_true", help="reuse latest session, skip completed cells"
+    )
+    ap.add_argument(
+        "--stream", action="store_true", help="tee each agent's live output to the terminal"
     )
     ap.add_argument(
         "--skip-preflight", action="store_true", help="skip preflight checks (not advised)"
@@ -284,6 +315,7 @@ def main(argv: list[str] | None = None) -> None:
         grader=grader,
         keep_sandboxes=args.keep_sandboxes,
         resume=args.resume,
+        stream=args.stream,
     )
     print(
         f"\nmmbench: {len(assistants)}x{len(profiles)} cells {assistants}x{profiles} "
