@@ -231,9 +231,13 @@ def case_transcript(session_id: str, case_id: str, db_path: Path = DEFAULT_DB_PA
             "without_mm": None,
             "with_mm": None,
         }
+        have_log = any(
+            row["name"] == "mm_log" for row in conn.execute("PRAGMA table_info(case_results)")
+        )
+        log_col = "cr.mm_log AS mm_log" if have_log else "'' AS mm_log"
         for arm in ("without_mm", "with_mm"):
             r = conn.execute(
-                "SELECT cr.transcript_json AS transcript, cr.final_output AS final_output "
+                f"SELECT cr.transcript_json AS transcript, cr.final_output AS final_output, {log_col} "
                 "FROM case_results cr JOIN runs r ON r.run_id = cr.run_id "
                 "WHERE cr.session_id = ? AND cr.case_id = ? AND cr.arm = ? "
                 "ORDER BY r.run_index DESC LIMIT 1",
@@ -243,6 +247,7 @@ def case_transcript(session_id: str, case_id: str, db_path: Path = DEFAULT_DB_PA
                 out[arm] = {
                     "transcript": r["transcript"] or "",
                     "final_output": r["final_output"] or "",
+                    "mm_log": r["mm_log"] or "",
                 }
         return out
     finally:

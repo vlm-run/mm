@@ -83,6 +83,7 @@ CREATE TABLE IF NOT EXISTS case_results (
     failure_mode          TEXT,
     final_output          TEXT,
     transcript_json       TEXT,
+    mm_log                TEXT,
     created_at            TEXT NOT NULL,
     PRIMARY KEY (run_id, case_id, arm)
 );
@@ -127,6 +128,7 @@ class CaseResult:
     failure_mode: str | None = None
     final_output: str = ""
     transcript: str = ""
+    mm_log: str = ""
 
     def __post_init__(self) -> None:
         if self.arm not in ARMS:
@@ -152,7 +154,14 @@ class MmBenchStore:
         self.conn.row_factory = sqlite3.Row
         self.conn.execute("PRAGMA foreign_keys = ON")
         self.conn.executescript(_SCHEMA)
+        self._migrate()
         self.conn.commit()
+
+    def _migrate(self) -> None:
+        """Idempotent column adds for DBs created before a column existed."""
+        have = {r["name"] for r in self.conn.execute("PRAGMA table_info(case_results)")}
+        if "mm_log" not in have:
+            self.conn.execute("ALTER TABLE case_results ADD COLUMN mm_log TEXT")
 
     def start_session(
         self,
@@ -218,8 +227,8 @@ class MmBenchStore:
             "difficulty, archetype, modality_json, mm_commands_json, arm, "
             "correctness, checkpoint_score, judge_score, speed_s, "
             "task_completion, mm_used, mm_commands_used_json, failure_mode, "
-            "final_output, transcript_json, created_at) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            "final_output, transcript_json, mm_log, created_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (
                 run_id,
                 session_id,
@@ -242,6 +251,7 @@ class MmBenchStore:
                 row["failure_mode"],
                 row["final_output"],
                 row["transcript"],
+                row["mm_log"],
                 _now(),
             ),
         )

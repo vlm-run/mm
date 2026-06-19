@@ -65,6 +65,8 @@ class AssistantResult:
         timed_out: whether the invocation hit the timeout.
         mm_commands_used: mm subcommands the agent actually ran (with_mm only),
             from the PATH-shim log; reliable, not a transcript heuristic.
+        mm_log: the full ordered mm invocation log (every ``mm ...`` line with its
+            flags and args), as recorded by the shim; empty in the without_mm arm.
     """
 
     final_output: str
@@ -73,6 +75,7 @@ class AssistantResult:
     exit_code: int | None
     timed_out: bool = False
     mm_commands_used: list[str] = field(default_factory=list)
+    mm_log: str = ""
 
 
 class Assistant:
@@ -124,7 +127,8 @@ class Assistant:
             env = self._env(arm, shim_dir, mm_log, profile_name)
             out = _exec(self.build_argv(prompt), cwd, env, timeout_s, stream=stream)
             used = _read_mm_log(mm_log) if arm == "with_mm" else []
-        return AssistantResult(mm_commands_used=used, **out)
+            log_text = _read_mm_log_full(mm_log) if arm == "with_mm" else ""
+        return AssistantResult(mm_commands_used=used, mm_log=log_text, **out)
 
     def _env(self, arm: str, shim_dir: Path, mm_log: Path, profile_name: str | None) -> dict:
         env = os.environ.copy()
@@ -275,3 +279,8 @@ def _read_mm_log(mm_log: Path) -> list[str]:
         if parts and parts[0] in MM_COMMANDS and parts[0] not in seen:
             seen.append(parts[0])
     return seen
+
+
+def _read_mm_log_full(mm_log: Path) -> str:
+    """The full ordered mm invocation log: every recorded ``mm ...`` line, verbatim."""
+    return "\n".join(line for line in mm_log.read_text().splitlines() if line.strip())

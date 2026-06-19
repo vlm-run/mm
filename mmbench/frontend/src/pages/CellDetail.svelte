@@ -120,6 +120,15 @@
     const { prompt, ...rest } = spec;
     return JSON.stringify(rest, null, 2);
   });
+
+  const mmLogDisplay = (s) =>
+    s && s.trim()
+      ? s
+          .trim()
+          .split("\n")
+          .map((l) => `mm ${l}`)
+          .join("\n")
+      : "";
 </script>
 
 <a href="#/" class="text-sm text-slate-400 hover:text-blue-400 no-underline"
@@ -333,7 +342,7 @@
         <div class="flex items-center gap-4 min-w-0">
           <div class="font-mono text-sm text-slate-300 truncate">{txCase}</div>
           <div class="inline-flex gap-1 text-xs">
-            {#each [["transcript", "Result"], ["spec", "Case spec"], ["artifact", "Artifact"]] as [k, lbl]}
+            {#each [["transcript", "Result"], ["spec", "Case spec"], ["artifact", "Artifact"], ["log", "Log"]] as [k, lbl]}
               <button
                 type="button"
                 onclick={() => (txTab = k)}
@@ -407,21 +416,39 @@
               </div>
             </div>
           {/if}
-        {:else if artsLoading}
-          <div class="text-slate-500 text-sm">Loading artifacts…</div>
-        {:else if !arts.length}
+        {:else if txTab === "artifact"}
+          {#if artsLoading}
+            <div class="text-slate-500 text-sm">Loading artifacts…</div>
+          {:else if !arts.length}
+            <div class="text-slate-500 h-[22vh] flex items-center text-sm">
+              No artifact captured for this arm (only runs after artifact
+              capture was added are stored, and only for artifact-creation
+              cases).
+            </div>
+          {:else}
+            <div class="space-y-4">
+              {#each arts as a (a)}
+                <ArtifactView
+                  url={artifactUrl(txSession, txCase, txArm, a)}
+                  name={a}
+                />
+              {/each}
+            </div>
+          {/if}
+        {:else if txLoading}
+          <div class="text-slate-500 text-sm">Loading log…</div>
+        {:else if txArm === "without_mm"}
           <div class="text-slate-500 h-[22vh] flex items-center text-sm">
-            No artifact captured for this arm (only runs after artifact capture
-            was added are stored, and only for artifact-creation cases).
+            No mm calls: mm is unavailable in the without-mm arm.
           </div>
+        {:else if mmLogDisplay(tx?.[txArm]?.mm_log)}
+          <pre
+            class="whitespace-pre-wrap break-words font-mono text-xs leading-relaxed text-slate-200 select-text">{mmLogDisplay(
+              tx[txArm].mm_log,
+            )}</pre>
         {:else}
-          <div class="space-y-4">
-            {#each arts as a (a)}
-              <ArtifactView
-                url={artifactUrl(txSession, txCase, txArm, a)}
-                name={a}
-              />
-            {/each}
+          <div class="text-slate-500 h-[22vh] flex items-center text-sm">
+            Log is either empty or the agent ran no mm commands.
           </div>
         {/if}
       </div>

@@ -220,6 +220,7 @@ class Orchestrator:
                         failure_mode=grade.failure_mode,
                         final_output=result.final_output,
                         transcript=result.transcript,
+                        mm_log=result.mm_log,
                     ),
                 )
                 _persist_artifacts(case, sandbox.path, sid, arm)
