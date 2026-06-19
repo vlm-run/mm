@@ -31,6 +31,11 @@ def api_sessions() -> list[dict]:
     return db.sessions(DB_PATH)
 
 
+@app.get("/api/case-breakdown")
+def api_case_breakdown() -> dict:
+    return db.case_breakdown(DB_PATH)
+
+
 @app.get("/api/cell")
 def api_cell(assistant: str, profile: str) -> dict:
     return db.cell_detail(assistant, profile, DB_PATH)

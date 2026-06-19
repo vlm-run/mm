@@ -9,15 +9,23 @@
 
   const num = (v, s = '') => (v == null ? '–' : v + s)
   const ax = { ticks: { color: '#94a3b8' }, grid: { color: '#1e293b' } }
-  const trend = $derived.by(() => {
-    if (!d) return { datasets: [] }
-    const chrono = [...d.sessions].reverse()
-    return { labels: chrono.map((_, i) => `#${i + 1}`), datasets: [
-      { label: 'Without mm', data: chrono.map((s) => s.without_mm.correctness), borderColor: '#64748b', backgroundColor: '#64748b', tension: 0.25 },
-      { label: 'With mm', data: chrono.map((s) => s.with_mm.correctness), borderColor: '#60a5fa', backgroundColor: '#60a5fa', tension: 0.25 },
-    ] }
+
+  const perCase = $derived.by(() => {
+    if (!d?.cases) return { labels: [], datasets: [] }
+    return {
+      labels: d.cases.map((c) => c.case_id),
+      datasets: [
+        { label: 'Without mm', data: d.cases.map((c) => c.without_mm), backgroundColor: '#64748b' },
+        { label: 'With mm', data: d.cases.map((c) => c.with_mm), backgroundColor: '#60a5fa' },
+      ],
+    }
   })
-  const trendOpts = { scales: { x: ax, y: { ...ax, beginAtZero: true, max: 100 } }, plugins: { legend: { labels: { color: '#cbd5e1' } } } }
+  const perCaseOpts = {
+    indexAxis: 'y',
+    scales: { x: { ...ax, beginAtZero: true, max: 100 }, y: ax },
+    plugins: { legend: { labels: { color: '#cbd5e1' } } },
+  }
+  const perCaseH = $derived(Math.max(260, (d?.cases?.length ?? 0) * 30))
   const short = (id) => id.slice(0, 8)
 </script>
 
@@ -37,8 +45,18 @@
   </div>
 
   <section class="mt-6 rounded-xl border border-slate-800 bg-slate-900 p-4">
-    <h2 class="text-xs font-semibold uppercase tracking-widest text-slate-400 mb-3">Correctness over sessions</h2>
-    <div class="h-64"><Chart type="line" data={trend} options={trendOpts} /></div>
+    <h2 class="text-xs font-semibold uppercase tracking-widest text-slate-400 mb-3">Correctness per case (all sessions)</h2>
+    {#if d.cases?.length}
+      <div class="relative w-full" style="height: {perCaseH}px">
+        <Chart type="bar" data={perCase} options={perCaseOpts} />
+      </div>
+      <p class="mt-3 text-xs leading-relaxed text-slate-500 max-w-4xl">
+        Mean correctness per case for this cell, without vs with mm, averaged over every run across all
+        {d.sessions.length} session{d.sessions.length === 1 ? '' : 's'}. The gap between the two bars is mm's per-case lift.
+      </p>
+    {:else}
+      <div class="text-slate-500 py-10 text-center text-sm">No case results yet.</div>
+    {/if}
   </section>
 
   <section class="mt-6">

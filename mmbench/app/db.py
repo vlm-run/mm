@@ -101,7 +101,7 @@ def leaderboard(db_path: Path = DEFAULT_DB_PATH) -> list[dict]:
                     "speedup": speedup,
                 }
             )
-        out.sort(key=lambda r: (r["with_mm"]["correctness"] or -1), reverse=True)
+        out.sort(key=lambda r: r["with_mm"]["correctness"] or -1, reverse=True)
         for i, r in enumerate(out, 1):
             r["rank"] = i
         return out
@@ -136,6 +136,79 @@ def sessions(db_path: Path = DEFAULT_DB_PATH) -> list[dict]:
         return out
     finally:
         conn.close()
+
+
+def case_breakdown(db_path: Path = DEFAULT_DB_PATH) -> dict:
+    """Per (cell, case) mean correctness, for the cross-case comparison figure.
+
+    Returns ``{"cases": [{case_id, title, archetype}], "rows": [{assistant,
+    profile, case_id, without_mm, with_mm, n}]}`` averaged over all sessions/runs.
+    """
+    conn = _connect(db_path)
+    try:
+        rows = conn.execute(
+            "SELECT assistant, profile_name, case_id, title, archetype, arm, "
+            "AVG(correctness) AS corr, COUNT(*) AS n "
+            "FROM case_results GROUP BY assistant, profile_name, case_id, arm"
+        ).fetchall()
+        cells: dict[tuple[str, str, str], dict] = {}
+        cases: dict[str, dict] = {}
+        for r in rows:
+            cases.setdefault(
+                r["case_id"],
+                {"case_id": r["case_id"], "title": r["title"], "archetype": r["archetype"]},
+            )
+            e = cells.setdefault(
+                (r["assistant"], r["profile_name"], r["case_id"]),
+                {
+                    "assistant": r["assistant"],
+                    "profile": r["profile_name"],
+                    "case_id": r["case_id"],
+                    "without_mm": None,
+                    "with_mm": None,
+                    "n": 0,
+                },
+            )
+            e[r["arm"]] = round(r["corr"], 1) if r["corr"] is not None else None
+            e["n"] += r["n"]
+        return {
+            "cases": sorted(cases.values(), key=lambda c: c["case_id"]),
+            "rows": list(cells.values()),
+        }
+    finally:
+        conn.close()
+
+
+def _cell_cases(conn: sqlite3.Connection, assistant: str, profile: str) -> list[dict]:
+    """Per-case mean correctness (both arms) for one cell, across all its sessions/runs."""
+    rows = conn.execute(
+        "SELECT case_id, title, archetype, arm, AVG(correctness) AS corr, COUNT(*) AS n "
+        "FROM case_results WHERE assistant = ? AND profile_name = ? GROUP BY case_id, arm",
+        (assistant, profile),
+    ).fetchall()
+    by_case: dict[str, dict] = {}
+    for r in rows:
+        e = by_case.setdefault(
+            r["case_id"],
+            {
+                "case_id": r["case_id"],
+                "title": r["title"],
+                "archetype": r["archetype"],
+                "without_mm": None,
+                "with_mm": None,
+                "n": 0,
+            },
+        )
+        e[r["arm"]] = round(r["corr"], 1) if r["corr"] is not None else None
+        e["n"] += r["n"]
+    out = sorted(by_case.values(), key=lambda c: c["case_id"])
+    for c in out:
+        c["lift"] = (
+            round(c["with_mm"] - c["without_mm"], 1)
+            if c["without_mm"] is not None and c["with_mm"] is not None
+            else None
+        )
+    return out
 
 
 def cell_detail(assistant: str, profile: str, db_path: Path = DEFAULT_DB_PATH) -> dict:
@@ -185,6 +258,7 @@ def cell_detail(assistant: str, profile: str, db_path: Path = DEFAULT_DB_PATH) -
             "model": model,
             "base_url": base_url,
             "overall": {"without_mm": without, "with_mm": with_, "lift": lift, "speedup": speedup},
+            "cases": _cell_cases(conn, assistant, profile),
             "sessions": per_session,
         }
     finally:
