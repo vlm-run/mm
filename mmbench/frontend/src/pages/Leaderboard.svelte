@@ -16,13 +16,13 @@
     selCases = $state([]);
   let howto = $state(null);
   let ready = $state(false);
-  const LS = { a: "mmbench.selA", p: "mmbench.selP", c: "mmbench.selCases" };
-  const loadSel = (key, opts) => {
+  const LS = { a: "mmbench.selA", p: "mmbench.selP", c: "mmbench.selCases.v2" };
+  const loadSel = (key, opts, dflt = opts) => {
     try {
       const s = JSON.parse(localStorage.getItem(key));
       if (Array.isArray(s)) return s.filter((x) => opts.includes(x));
     } catch {}
-    return [...opts];
+    return [...dflt];
   };
 
   onMount(async () => {
@@ -34,7 +34,7 @@
     caseIds = cb.cases.map((c) => c.case_id);
     selA = loadSel(LS.a, assistants);
     selP = loadSel(LS.p, profiles);
-    selCases = loadSel(LS.c, caseIds);
+    selCases = loadSel(LS.c, caseIds, caseIds.slice(0, 8));
     ready = true;
   });
 
@@ -165,6 +165,7 @@
       x: {
         type: "linear",
         min: 1,
+        offset: true,
         title: { display: true, text: "Session #", color: "#94a3b8" },
         ticks: { ...tick, stepSize: 1, precision: 0 },
         grid,
@@ -484,8 +485,8 @@
         --sms-text-color="#e2e8f0"
         --sms-border="1px solid #334155"
         --sms-border-radius="0.5rem"
-        --sms-selected-bg="#1e3a8a"
-        --sms-selected-text-color="#dbeafe"
+        --sms-selected-bg="#334155"
+        --sms-selected-text-color="#cbd5e1"
         --sms-options-bg="#0f172a"
         --sms-li-active-bg="#1e293b"
         --sms-remove-btn-hover-color="#f87171"
