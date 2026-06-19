@@ -219,7 +219,7 @@ class Orchestrator:
                         mm_commands_used=result.mm_commands_used,
                         failure_mode=grade.failure_mode,
                         final_output=result.final_output,
-                        transcript=result.transcript,
+                        stderr=result.stderr,
                         mm_log=result.mm_log,
                     ),
                 )

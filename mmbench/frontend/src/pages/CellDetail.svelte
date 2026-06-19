@@ -121,14 +121,13 @@
     return JSON.stringify(rest, null, 2);
   });
 
-  const mmLogDisplay = (s) =>
-    s && s.trim()
-      ? s
-          .trim()
-          .split("\n")
-          .map((l) => `mm ${l}`)
-          .join("\n")
-      : "";
+  function parseLog(s) {
+    return (s && s.trim() ? s.trim().split("\n") : []).map((line) => {
+      const p = line.split("\t"); // <exit_code>\t<duration_s>\t<args>
+      return { code: p[0], dur: p[1], args: p.slice(2).join("\t") };
+    });
+  }
+  const logEntries = $derived(parseLog(tx?.[txArm]?.mm_log));
 </script>
 
 <a href="#/" class="text-sm text-slate-400 hover:text-blue-400 no-underline"
@@ -213,10 +212,10 @@
             </tr>
             {#if openSet.has(s.session_id)}
               <tr>
-                <td colspan="6" class="p-0 border-t border-slate-800">
+                <td colspan="6" class="p-0">
                   <div
                     transition:slide={{ duration: 200 }}
-                    class="bg-slate-950"
+                    class="m-3 rounded-lg border border-slate-700 bg-slate-950 shadow-lg shadow-black/40 overflow-hidden"
                   >
                     {#if detail[s.session_id]?.loading || !detail[s.session_id]}
                       <div class="p-4 text-xs text-slate-500">
@@ -240,7 +239,7 @@
                               >mm cmds used</th
                             >
                             <th class="text-right py-2 px-3 font-medium">
-                              Transcript
+                              Output
                             </th>
                           </tr>
                         </thead>
@@ -342,7 +341,7 @@
         <div class="flex items-center gap-4 min-w-0">
           <div class="font-mono text-sm text-slate-300 truncate">{txCase}</div>
           <div class="inline-flex gap-1 text-xs">
-            {#each [["transcript", "Result"], ["spec", "Case spec"], ["artifact", "Artifact"], ["log", "Log"]] as [k, lbl]}
+            {#each [["transcript", "Result"], ["log", "Logs"], ["artifact", "Artifact"], ["spec", "Case spec"]] as [k, lbl]}
               <button
                 type="button"
                 onclick={() => (txTab = k)}
@@ -379,16 +378,14 @@
       <div class="overflow-auto p-5">
         {#if txTab === "transcript"}
           {#if txLoading}
-            <div class="text-slate-500 text-sm">Loading transcript…</div>
+            <div class="text-slate-500 text-sm">Loading result…</div>
           {:else if tx?.[txArm]}
             <pre
               class="whitespace-pre-wrap break-words font-mono text-xs leading-relaxed text-slate-200 select-text">{tx[
                 txArm
-              ].transcript || "(empty)"}</pre>
+              ].final_output || "(empty)"}</pre>
           {:else}
-            <div class="text-slate-500 text-sm">
-              No transcript for this arm.
-            </div>
+            <div class="text-slate-500 text-sm">No result for this arm.</div>
           {/if}
         {:else if txTab === "spec"}
           {#if !spec}
@@ -421,9 +418,7 @@
             <div class="text-slate-500 text-sm">Loading artifacts…</div>
           {:else if !arts.length}
             <div class="text-slate-500 h-[22vh] flex items-center text-sm">
-              No artifact captured for this arm (only runs after artifact
-              capture was added are stored, and only for artifact-creation
-              cases).
+              No artifact for this arm.
             </div>
           {:else}
             <div class="space-y-4">
@@ -436,19 +431,53 @@
             </div>
           {/if}
         {:else if txLoading}
-          <div class="text-slate-500 text-sm">Loading log…</div>
-        {:else if txArm === "without_mm"}
-          <div class="text-slate-500 h-[22vh] flex items-center text-sm">
-            No mm calls: mm is unavailable in the without-mm arm.
-          </div>
-        {:else if mmLogDisplay(tx?.[txArm]?.mm_log)}
-          <pre
-            class="whitespace-pre-wrap break-words font-mono text-xs leading-relaxed text-slate-200 select-text">{mmLogDisplay(
-              tx[txArm].mm_log,
-            )}</pre>
+          <div class="text-slate-500 text-sm">Loading logs…</div>
         {:else}
-          <div class="text-slate-500 h-[22vh] flex items-center text-sm">
-            Log is either empty or the agent ran no mm commands.
+          <div class="space-y-5">
+            <div>
+              <div
+                class="text-xs uppercase tracking-widest text-slate-500 mb-2"
+              >
+                mm commands used ({txArm === "without_mm" ? 0 : logEntries.length})
+              </div>
+              {#if txArm === "without_mm"}
+                <div class="text-slate-600 text-xs">
+                  mm is unavailable in the without-mm arm.
+                </div>
+              {:else if logEntries.length}
+                <div class="space-y-2 font-mono text-xs">
+                  {#each logEntries as e, i (i)}
+                    <div>
+                      <div class="text-slate-200 break-all">mm {e.args}</div>
+                      <div
+                        class={e.code === "0"
+                          ? "text-slate-500"
+                          : "text-red-400"}
+                      >
+                        exit {e.code} · {e.dur}s
+                      </div>
+                    </div>
+                  {/each}
+                </div>
+              {:else}
+                <div class="text-slate-600 text-xs">(none)</div>
+              {/if}
+            </div>
+            <div>
+              <div
+                class="text-xs uppercase tracking-widest text-slate-500 mb-2"
+              >
+                stderr
+              </div>
+              {#if tx?.[txArm]?.stderr?.trim()}
+                <pre
+                  class="whitespace-pre-wrap break-words font-mono text-xs leading-relaxed text-slate-300 select-text">{tx[
+                    txArm
+                  ].stderr}</pre>
+              {:else}
+                <div class="text-slate-600 text-xs">(none)</div>
+              {/if}
+            </div>
           </div>
         {/if}
       </div>

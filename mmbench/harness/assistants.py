@@ -11,11 +11,13 @@ difference is mm availability, enforced by a PATH shim:
 
   - without_mm:  ``mm`` resolves to a stub that exits 127 ("command not found"), so
                the agent genuinely has no mm.
-  - with_mm: ``mm`` resolves to a logging shim that records every invocation to
-               ``$MMBENCH_MM_LOG`` then execs the real mm. mm-grounding is read
-               from that log (reliable and agent-agnostic), and the prompt is
-               prefixed with the mm primer. ``MM_PROFILE`` selects mm's backend
-               and a temp ``XDG_DATA_HOME`` isolates mm's index per run.
+  - with_mm: ``mm`` resolves to a logging shim that runs the real mm (passing its
+               output and exit status straight through) and records each call to
+               ``$MMBENCH_MM_LOG`` with its exit code, duration, and args.
+               mm-grounding is read from that log (reliable and agent-agnostic),
+               and the prompt is prefixed with the mm primer. ``MM_PROFILE``
+               selects mm's backend; temp ``MM_DATA_DIR`` and ``MM_CACHE_DIR``
+               isolate mm's DB and on-disk cache per run (no cross-run/session leak).
 
 Autonomy is verified per agent via ``probe_autonomy`` (used by preflight): the
 agent must non-interactively execute a shell command and echo a sentinel.
@@ -59,7 +61,7 @@ class AssistantResult:
 
     Attributes:
         final_output: the agent's stdout (its answer in non-interactive mode).
-        transcript: stdout + stderr, for postmortem.
+        stderr: the agent's stderr, for postmortem.
         elapsed_s: wall-clock seconds.
         exit_code: process exit code (None if it timed out).
         timed_out: whether the invocation hit the timeout.
@@ -70,7 +72,7 @@ class AssistantResult:
     """
 
     final_output: str
-    transcript: str
+    stderr: str
     elapsed_s: float
     exit_code: int | None
     timed_out: bool = False
@@ -137,7 +139,11 @@ class Assistant:
         if arm == "with_mm":
             if profile_name:
                 env["MM_PROFILE"] = profile_name
-            env["XDG_DATA_HOME"] = str(shim_dir / "xdg")  # isolate mm's index per run
+            # Isolate mm's storage AND on-disk cache per run so neither the DB nor
+            # the memoize cache (transcripts, shot detection, ...) leaks across
+            # runs or sessions. Config is left shared so the profile still resolves.
+            env["MM_DATA_DIR"] = str(shim_dir / "mm-data")
+            env["MM_CACHE_DIR"] = str(shim_dir / "mm-cache")
         return env
 
     def probe_autonomy(self, timeout_s: int = 90) -> tuple[bool, str]:
@@ -151,7 +157,7 @@ class Assistant:
             out = _exec(self.build_argv(prompt), shim_dir, env, timeout_s)
         if out["timed_out"]:
             return False, f"timed out after {timeout_s}s"
-        if token in out["final_output"] or token in out["transcript"]:
+        if token in out["final_output"] or token in out["stderr"]:
             return True, "ok"
         return False, f"did not execute the tool (exit {out['exit_code']})"
 
@@ -182,10 +188,9 @@ def _exec(argv: list[str], cwd: Path, env: dict, timeout_s: int, *, stream: bool
             stderr = (e.stderr.decode() if isinstance(e.stderr, bytes) else e.stderr) or ""
             code, timed_out = None, True
     elapsed = time.perf_counter() - t0
-    transcript = (stdout + ("\n[stderr]\n" + stderr if stderr else "")).strip()
     return {
         "final_output": stdout.strip(),
-        "transcript": transcript,
+        "stderr": stderr.strip(),
         "elapsed_s": elapsed,
         "exit_code": code,
         "timed_out": timed_out,
@@ -258,8 +263,16 @@ class _mm_shim:
             real = shutil.which("mm")
             if real is None:
                 raise RuntimeError("mm not found on PATH; with_mm arm cannot run")
+            # Run (not exec) real mm so we can record exit code + duration; mm's
+            # stdout/stderr and exit status pass straight through to the agent.
             shim.write_text(
-                f'#!/bin/sh\nprintf \'%s\\n\' "$*" >> "$MMBENCH_MM_LOG"\nexec "{real}" "$@"\n'
+                "#!/bin/sh\n"
+                "start=$(date +%s)\n"
+                f'"{real}" "$@"\n'
+                "code=$?\n"
+                "end=$(date +%s)\n"
+                'printf \'%s\\t%s\\t%s\\n\' "$code" "$((end - start))" "$*" >> "$MMBENCH_MM_LOG"\n'
+                "exit $code\n"
             )
         else:
             shim.write_text('#!/bin/sh\necho "mm: command not found" >&2\nexit 127\n')
@@ -275,7 +288,8 @@ def _read_mm_log(mm_log: Path) -> list[str]:
     """Distinct mm subcommands recorded by the with_mm shim, in first-seen order."""
     seen: list[str] = []
     for line in mm_log.read_text().splitlines():
-        parts = line.split()
+        args = line.split("\t")[-1]  # log line is <code>\t<duration>\t<args>
+        parts = args.split()
         if parts and parts[0] in MM_COMMANDS and parts[0] not in seen:
             seen.append(parts[0])
     return seen

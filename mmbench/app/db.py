@@ -218,10 +218,10 @@ def artifact_path(
 
 
 def case_transcript(session_id: str, case_id: str, db_path: Path = DEFAULT_DB_PATH) -> dict:
-    """Stored transcript + final answer (latest run per arm) for one case in a session.
+    """Stored stdout, stderr, and mm log (latest run per arm) for one case in a session.
 
     Returns ``{session_id, case_id, without_mm, with_mm}`` where each arm is
-    ``{transcript, final_output}`` or ``None`` if that arm has no recorded run.
+    ``{final_output, stderr, mm_log}`` or ``None`` if that arm has no recorded run.
     """
     conn = _connect(db_path)
     try:
@@ -231,13 +231,9 @@ def case_transcript(session_id: str, case_id: str, db_path: Path = DEFAULT_DB_PA
             "without_mm": None,
             "with_mm": None,
         }
-        have_log = any(
-            row["name"] == "mm_log" for row in conn.execute("PRAGMA table_info(case_results)")
-        )
-        log_col = "cr.mm_log AS mm_log" if have_log else "'' AS mm_log"
         for arm in ("without_mm", "with_mm"):
             r = conn.execute(
-                f"SELECT cr.transcript_json AS transcript, cr.final_output AS final_output, {log_col} "
+                "SELECT cr.final_output AS final_output, cr.stderr AS stderr, cr.mm_log AS mm_log "
                 "FROM case_results cr JOIN runs r ON r.run_id = cr.run_id "
                 "WHERE cr.session_id = ? AND cr.case_id = ? AND cr.arm = ? "
                 "ORDER BY r.run_index DESC LIMIT 1",
@@ -245,8 +241,8 @@ def case_transcript(session_id: str, case_id: str, db_path: Path = DEFAULT_DB_PA
             ).fetchone()
             if r:
                 out[arm] = {
-                    "transcript": r["transcript"] or "",
                     "final_output": r["final_output"] or "",
+                    "stderr": r["stderr"] or "",
                     "mm_log": r["mm_log"] or "",
                 }
         return out
