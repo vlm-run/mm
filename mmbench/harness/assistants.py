@@ -40,7 +40,7 @@ from pathlib import Path
 from .cases import EvalCase
 
 PRIMER_PATH = Path(__file__).resolve().parent / "primer.md"
-DEFAULT_TIMEOUT_S = 360
+DEFAULT_TIMEOUT_S = 600  # global cap; per-case timeout_s (360-600) is honored under it
 MM_COMMANDS = ("find", "peek", "wc", "sql", "grep", "cat")
 
 _REGISTRY: dict[str, list[str]] = {

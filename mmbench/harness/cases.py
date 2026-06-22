@@ -94,6 +94,8 @@ class EvalCase:
         ground_truth: the frozen, checkable answer.
         checks: deterministic partial-credit checks.
         judge_objective: rubric string scored 0-5 by the LLM judge.
+        timeout_s: per-case wall-clock cap (360-600s); the suite is uniformly hard
+            and multi-step, so each case gets enough room to complete.
     """
 
     id: str
@@ -107,12 +109,15 @@ class EvalCase:
     ground_truth: dict
     checks: list[Check] = field(default_factory=list)
     judge_objective: str = ""
+    timeout_s: int = 600
 
     def __post_init__(self) -> None:
         if self.archetype not in ARCHETYPES:
             raise ValueError(f"{self.id}: archetype {self.archetype!r} invalid")
         if self.difficulty not in DIFFICULTIES:
             raise ValueError(f"{self.id}: difficulty {self.difficulty!r} invalid")
+        if not (360 <= self.timeout_s <= 600):
+            raise ValueError(f"{self.id}: timeout_s {self.timeout_s} out of [360, 600]")
         bad_mod = set(self.modality) - set(MODALITIES)
         if bad_mod:
             raise ValueError(f"{self.id}: unknown modality {bad_mod}")

@@ -85,7 +85,7 @@ cut -d'"' -f4 mmbench/data/cases.jsonl   # list case ids (after first download)
 | `--profiles` | `gateway` | comma list of `mm profile` names (the with_mm arm's mm backend) |
 | `--cases` | all 20 | comma list of case ids |
 | `--runs` | `1` | repetitions per cell (`3`+ for variance; dashboard shows mean±std) |
-| `--timeout` | `360` | per-agent cap, seconds (keep ≥300; mm's video/PDF paths are slow) |
+| `--timeout` | `600` | global per-agent cap, seconds (hard ceiling; each case sets its own `timeout_s` in 360-600 under this) |
 | `--no-judge` | off | score on deterministic checks only |
 | `--resume` | off | reuse latest session per cell, skip completed cells |
 | `--stream` | off | tee each agent's live stdout/stderr to the terminal as it runs (capture/grading unaffected) |

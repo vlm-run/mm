@@ -195,7 +195,7 @@ class Orchestrator:
                     input_path=sandbox.path,
                     primer=self.primer,
                     profile_name=profile_name,
-                    timeout_s=self.timeout_s,
+                    timeout_s=min(case.timeout_s, self.timeout_s),
                     stream=self.stream,
                 )
                 grade = self.grader.grade(case, result, sandbox.path)
