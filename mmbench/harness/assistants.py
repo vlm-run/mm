@@ -50,6 +50,8 @@ _REGISTRY: dict[str, list[str]] = {
     "qwen": ["qwen", "--yolo", "-p"],
     "opencode": ["opencode", "run"],
     "openclaw": ["openclaw", "agent"],
+    "hermes": ["hermes", "--yolo", "-z"],
+    "pi": ["pi", "--no-session", "-p"],
 }
 
 SUPPORTED = tuple(_REGISTRY)

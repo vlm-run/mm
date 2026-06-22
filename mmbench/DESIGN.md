@@ -229,8 +229,7 @@ organization. Component layout: see `README.md`.
   flag so the only difference is mm availability. Wired and verified live by
   preflight (it must non-interactively echo a sentinel): claude
   `--dangerously-skip-permissions`, codex `exec --dangerously-bypass-approvals-and-sandbox`,
-  gemini/qwen `--yolo`, opencode `run`, openclaw `-p`. Verified working on this
-  machine: claude, codex, gemini, opencode. qwen is wired but fails preflight here
-  with a 401 (no key in this env); openclaw is wired but not installed here so its
-  autonomy flag is unverified. Either way preflight gates them: it refuses to run
-  an unreachable/unauthenticated agent rather than scoring noise.
+  gemini/qwen `--yolo`, opencode `run`, openclaw `agent`, hermes `--yolo -z` (one-shot,
+  approvals auto-bypassed), pi `--no-session -p` (non-interactive, ephemeral session).
+  Preflight gates each one live: it refuses to run an unreachable/unauthenticated
+  agent rather than scoring noise.

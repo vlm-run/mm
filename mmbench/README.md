@@ -81,7 +81,7 @@ cut -d'"' -f4 mmbench/data/cases.jsonl   # list case ids (after first download)
 
 | Flag | Default | Meaning |
 |---|---|---|
-| `--assistants` | `claude` | comma list from `claude,codex,gemini,opencode,qwen,openclaw` (preflight gates whichever you select; uninstalled/unauthed ones fail fast) |
+| `--assistants` | `claude` | comma list from `claude,codex,gemini,opencode,qwen,openclaw,hermes,pi` (preflight gates whichever you select; uninstalled/unauthed ones fail fast) |
 | `--profiles` | `gateway` | comma list of `mm profile` names (the with_mm arm's mm backend) |
 | `--cases` | all 20 | comma list of case ids |
 | `--runs` | `1` | repetitions per cell (`3`+ for variance; dashboard shows mean±std) |
