@@ -348,7 +348,7 @@ def update_config_key(key: str, value: str) -> Path:
             file_data["transcription"] = {}
         tx = file_data["transcription"]
         if fld == "backend":
-            tx["backend"] = cast(BackendLabel, value)
+            tx["backend"] = value
         elif fld == "base_url":
             tx["base_url"] = value
         elif fld == "api_key":

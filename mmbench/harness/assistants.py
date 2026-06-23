@@ -151,7 +151,10 @@ class Assistant:
         """Parse raw agent stdout into extracted text + token usage via AgentOutputParser."""
         parser = AgentOutputParser()
         if self.name == "hermes":
-            return parser.hermes(stdout, cwd=cwd)
+            sid = parser._hermes_latest_session(cwd)
+            if sid is None:
+                return AgentOutput(final_output=stdout.strip())
+            return parser.hermes(stdout, session_id=sid, cwd=cwd)
         return getattr(parser, self.name)(stdout)
 
     def _env(self, arm: str, shim_dir: Path, mm_log: Path, profile_name: str | None) -> dict:

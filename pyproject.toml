@@ -174,3 +174,12 @@ python-version = "3.11"
 # Start with warnings for gradual adoption
 possibly-missing-attribute = "warn"
 unresolved-import = "warn"
+
+[tool.ty.analysis]
+allowed-unresolved-imports = [
+    "mlx.**",
+    "faster_whisper",
+    "lightning_whisper_mlx",
+    "ctranslate2",
+    "datasets",
+]
