@@ -16,7 +16,7 @@
     selCases = $state([]);
   let howto = $state(null);
   let ready = $state(false);
-  const LS = { a: "mmbench.selA", p: "mmbench.selP", c: "mmbench.selCases.v2" };
+  const LS = { a: "mmbench.selA", p: "mmbench.selP", c: "mmbench.selCases.v3" };
   const loadSel = (key, opts, dflt = opts) => {
     try {
       const s = JSON.parse(localStorage.getItem(key));
@@ -70,7 +70,9 @@
               ? r.with_mm.n
                 ? r.with_mm.passes / r.with_mm.n
                 : null
-              : null;
+              : k === "tokens"
+                ? r.with_mm.token_total
+                : null;
   const setSort = (k) => {
     if (sortKey === k) sortDir = sortDir === "desc" ? "asc" : "desc";
     else {
@@ -95,6 +97,8 @@
   const cell = (r) => `${r.assistant}\\${r.profile}`;
   const key = (s) => `${s.assistant}\\${s.profile}`;
   const num = (v, s = "") => (v == null ? "–" : v + s);
+  const fmtTokens = (v) =>
+    v == null ? "–" : v >= 1e6 ? (v / 1e6).toFixed(1) + "M" : v >= 1e3 ? (v / 1e3).toFixed(1) + "k" : String(v);
   const href = (r) =>
     `#/cell/${encodeURIComponent(r.assistant)}/${encodeURIComponent(r.profile)}`;
   const PAL = [
@@ -109,6 +113,10 @@
   ];
   const tick = { color: "#94a3b8" };
   const grid = { color: "#1e293b" };
+  const fade = (hex, a) => {
+    const n = parseInt(hex.slice(1), 16);
+    return `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, ${a})`;
+  };
 
   const barData = $derived({
     labels: rows.map(cell),
@@ -175,29 +183,58 @@
     plugins: { legend: { labels: { color: "#cbd5e1" } } },
   };
 
-  const cmpData = $derived.by(() => {
-    const byKey = {};
+  const cmpMap = $derived.by(() => {
+    const m = {};
     cb.rows.forEach((r) => {
-      byKey[`${r.assistant}\\${r.profile}\\${r.case_id}`] = r;
+      m[`${r.assistant}\\${r.profile}\\${r.case_id}`] = r;
     });
-    return {
-      labels: selCases,
-      datasets: rows.map((r, i) => ({
+    return m;
+  });
+  const cmpData = $derived.by(() => {
+    const datasets = [];
+    rows.forEach((r, i) => {
+      const col = PAL[i % PAL.length];
+      const stack = cell(r);
+      const at = (key) =>
+        selCases.map((cid) => {
+          const m = cmpMap[`${r.assistant}\\${r.profile}\\${cid}`];
+          return m ? m[key] : null;
+        });
+      datasets.push({
+        label: `${cell(r)} (w/o)`,
+        data: at("without_mm"),
+        backgroundColor: fade(col, 0.28),
+        stack,
+        order: 0,
+        barPercentage: 0.92,
+        categoryPercentage: 0.78,
+      });
+      datasets.push({
         label: cell(r),
-        data: selCases.map((cid) => {
-          const m = byKey[`${r.assistant}\\${r.profile}\\${cid}`];
-          return m ? m.with_mm : null;
-        }),
-        backgroundColor: PAL[i % PAL.length],
-      })),
-    };
+        data: at("with_mm"),
+        backgroundColor: col,
+        stack,
+        order: 1,
+        barPercentage: 0.5,
+        categoryPercentage: 0.78,
+      });
+    });
+    return { labels: selCases, datasets };
   });
   const cmpOpts = {
     scales: {
-      x: { ticks: { ...tick, maxRotation: 90, minRotation: 45, autoSkip: false }, grid },
-      y: { ticks: tick, grid, beginAtZero: true, max: 100 },
+      x: {
+        stacked: false,
+        ticks: { ...tick, maxRotation: 90, minRotation: 45, autoSkip: false },
+        grid,
+      },
+      y: { stacked: false, ticks: tick, grid, beginAtZero: true, max: 100 },
     },
-    plugins: { legend: { labels: { color: "#cbd5e1" } } },
+    plugins: {
+      legend: {
+        labels: { color: "#cbd5e1", filter: (i) => i.datasetIndex % 2 === 1 },
+      },
+    },
   };
 </script>
 
@@ -262,35 +299,39 @@
 <section class="mb-4 flex flex-wrap gap-3 items-end">
   <div class="min-w-56">
     <div class="text-xs text-slate-400 mb-1">Assistants</div>
-    <MultiSelect
-      bind:selected={selA}
-      options={assistants}
-      --sms-bg="#0f172a"
-      --sms-text-color="#e2e8f0"
-      --sms-border="1px solid #334155"
-      --sms-border-radius="0.5rem"
-      --sms-selected-bg="#1e3a8a"
-      --sms-selected-text-color="#dbeafe"
-      --sms-options-bg="#0f172a"
-      --sms-li-active-bg="#1e293b"
-      --sms-remove-btn-hover-color="#f87171"
-    />
+    {#if assistants.length}
+      <MultiSelect
+        bind:selected={selA}
+        options={assistants}
+        --sms-bg="#0f172a"
+        --sms-text-color="#e2e8f0"
+        --sms-border="1px solid #334155"
+        --sms-border-radius="0.5rem"
+        --sms-selected-bg="#1e3a8a"
+        --sms-selected-text-color="#dbeafe"
+        --sms-options-bg="#0f172a"
+        --sms-li-active-bg="#1e293b"
+        --sms-remove-btn-hover-color="#f87171"
+      />
+    {/if}
   </div>
   <div class="min-w-56">
     <div class="text-xs text-slate-400 mb-1">mm Profiles</div>
-    <MultiSelect
-      bind:selected={selP}
-      options={profiles}
-      --sms-bg="#0f172a"
-      --sms-text-color="#e2e8f0"
-      --sms-border="1px solid #334155"
-      --sms-border-radius="0.5rem"
-      --sms-selected-bg="#1e3a8a"
-      --sms-selected-text-color="#dbeafe"
-      --sms-options-bg="#0f172a"
-      --sms-li-active-bg="#1e293b"
-      --sms-remove-btn-hover-color="#f87171"
-    />
+    {#if profiles.length}
+      <MultiSelect
+        bind:selected={selP}
+        options={profiles}
+        --sms-bg="#0f172a"
+        --sms-text-color="#e2e8f0"
+        --sms-border="1px solid #334155"
+        --sms-border-radius="0.5rem"
+        --sms-selected-bg="#1e3a8a"
+        --sms-selected-text-color="#dbeafe"
+        --sms-options-bg="#0f172a"
+        --sms-li-active-bg="#1e293b"
+        --sms-remove-btn-hover-color="#f87171"
+      />
+    {/if}
   </div>
 </section>
 
@@ -371,12 +412,27 @@
                   type="button"
                   onclick={() => setSort("pass")}
                   class="inline-flex items-center gap-1 cursor-pointer select-none hover:text-slate-200"
-                  >Pass (with mm)<span
+                  >Pass (mm)<span
                     class="w-2 text-[10px] {caretCls('pass')}"
                     >{caret("pass")}</span
                   ></button
                 ><InfoTip
                   text="Of the agent's with-mm case runs, how many scored at least 60% correctness (passes / total)."
+                /></span
+              ></th
+            >
+            <th class="p-3"
+              ><span class="flex items-center justify-end gap-1"
+                ><button
+                  type="button"
+                  onclick={() => setSort("tokens")}
+                  class="inline-flex items-center gap-1 cursor-pointer select-none hover:text-slate-200"
+                  >Toks (w/wo)<span
+                    class="w-2 text-[10px] {caretCls('tokens')}"
+                    >{caret("tokens")}</span
+                  ></button
+                ><InfoTip
+                  text="Mean total tokens (input + output + reasoning) per case run, with mm / without mm. Sorted by with-mm; a lower number means the agent used less context to achieve its result."
                 /></span
               ></th
             >
@@ -417,6 +473,13 @@
               <td class="p-3 text-right font-mono"
                 >{r.with_mm.passes}/{r.with_mm.n}</td
               >
+              <td class="p-3 text-right font-mono"
+                ><span class="text-slate-300"
+                  >{fmtTokens(r.with_mm.token_total)}</span
+                ><span class="text-slate-500"
+                  >/{fmtTokens(r.without_mm.token_total)}</span
+                ></td
+              >
               <td class="p-3 text-right font-mono text-slate-400"
                 >{r.n_sessions}</td
               >
@@ -439,8 +502,10 @@
       in percentage points; positive means mm helped.
       <span class="text-slate-400">Speedup</span> is without-mm wall-clock time divided
       by with-mm time, so above 1× means the agent finished faster with mm.
-      <span class="text-slate-400">Pass (with mm)</span> is the share of with-mm case
+      <span class="text-slate-400">Pass (mm)</span> is the share of with-mm case
       runs scoring at least 60% correctness.
+      <span class="text-slate-400">Toks (w/wo)</span> is the mean total tokens
+      (input + output + reasoning) per case run, with mm / without mm.
       <span class="text-slate-400">Sessions</span> and
       <span class="text-slate-400">Runs</span> report how many benchmark passes back
       each average. Rows are sortable; click any row to drill into a cell.
@@ -474,38 +539,98 @@
 <section class="mt-4 rounded-xl border border-slate-800 bg-slate-900 p-4 min-w-0">
   <div class="flex flex-wrap items-end justify-between gap-3 mb-3">
     <h2 class="text-xs font-semibold uppercase tracking-widest text-slate-400">
-      With-mm correctness per case
+      Correctness per case
     </h2>
     <div class="min-w-72">
       <div class="text-xs text-slate-400 mb-1">Cases</div>
-      <MultiSelect
-        bind:selected={selCases}
-        options={caseIds}
-        --sms-bg="#0f172a"
-        --sms-text-color="#e2e8f0"
-        --sms-border="1px solid #334155"
-        --sms-border-radius="0.5rem"
-        --sms-selected-bg="#334155"
-        --sms-selected-text-color="#cbd5e1"
-        --sms-options-bg="#0f172a"
-        --sms-li-active-bg="#1e293b"
-        --sms-remove-btn-hover-color="#f87171"
-      />
+      {#if caseIds.length}
+        <MultiSelect
+          bind:selected={selCases}
+          options={caseIds}
+          --sms-bg="#0f172a"
+          --sms-text-color="#e2e8f0"
+          --sms-border="1px solid #334155"
+          --sms-border-radius="0.5rem"
+          --sms-selected-bg="#334155"
+          --sms-selected-text-color="#cbd5e1"
+          --sms-options-bg="#0f172a"
+          --sms-li-active-bg="#1e293b"
+          --sms-remove-btn-hover-color="#f87171"
+        />
+      {/if}
     </div>
   </div>
-  {#if !rows.length || !selCases.length}
+  {#if !rows.length}
     <div class="text-slate-500 py-10 text-center text-sm">
-      Select at least one cell (filters above) and one case.
+      Select at least one cell (filters above).
     </div>
   {:else}
-    <div class="relative h-96 w-full">
-      <Chart type="bar" data={cmpData} options={cmpOpts} />
+    {#if selCases.length}
+      <div class="relative h-96 w-full">
+        <Chart type="bar" data={cmpData} options={cmpOpts} />
+      </div>
+      <p class="mt-3 text-xs leading-relaxed text-slate-500 max-w-4xl">
+        <span class="text-slate-400">Figure.</span> Mean correctness per case for each
+        selected cell, averaged over all sessions and runs. Each column shows two
+        values for the same cell: the solid bar is
+        <span class="text-slate-300">with mm</span>, the faint bar behind it is
+        <span class="text-slate-300">without mm</span> (native tools only), so the
+        gap between them is mm's per-case lift. Cells come from the assistant /
+        mm-profile filters above; pick the cases to chart with the selector.
+      </p>
+    {:else}
+      <div class="text-slate-500 py-10 text-center text-sm">
+        Select cases above to chart them. The full table is below.
+      </div>
+    {/if}
+
+    <div class="mt-5 overflow-x-auto rounded-xl border border-slate-800">
+      <table class="w-full text-sm border-separate border-spacing-0">
+        <thead class="bg-slate-900 text-slate-400">
+          <tr>
+            <th
+              class="text-left p-3 sticky left-0 z-10 bg-slate-900 border-b border-slate-800"
+              >Case</th
+            >
+            {#each rows as r (cell(r))}
+              <th class="p-3 text-right whitespace-nowrap border-b border-slate-800">
+                <div class="text-slate-300">{r.assistant}</div>
+                <div class="text-xs text-slate-500 font-mono">{r.profile}</div>
+              </th>
+            {/each}
+          </tr>
+        </thead>
+        <tbody>
+          {#each caseIds as cid (cid)}
+            <tr class="hover:bg-slate-800/40">
+              <td
+                class="p-3 font-mono text-slate-300 whitespace-nowrap sticky left-0 z-10 bg-slate-950 border-t border-slate-800"
+                >{cid}</td
+              >
+              {#each rows as r (cell(r))}
+                {@const m = cmpMap[`${r.assistant}\\${r.profile}\\${cid}`]}
+                <td class="p-3 text-right font-mono border-t border-slate-800">
+                  {#if m && (m.with_mm != null || m.without_mm != null)}
+                    <span class="text-slate-100">{num(m.with_mm)}</span><span
+                      class="text-slate-500">/{num(m.without_mm)}</span
+                    >
+                  {:else}
+                    <span class="text-slate-500">–</span>
+                  {/if}
+                </td>
+              {/each}
+            </tr>
+          {/each}
+        </tbody>
+      </table>
     </div>
     <p class="mt-3 text-xs leading-relaxed text-slate-500 max-w-4xl">
-      <span class="text-slate-400">Figure.</span> Mean with-mm correctness per case
-      for each selected cell, averaged over all sessions and runs. Cells come from
-      the assistant / mm-profile filters above; pick the cases to compare with the
-      selector. Use it to see where mm helps or fails across the suite.
+      <span class="text-slate-400">Table 2.</span> Per-case correctness for
+      <span class="text-slate-300">all {caseIds.length} cases</span> (independent of
+      the chart's case selector), in
+      <span class="text-slate-300">with mm / without mm</span> form (e.g. 85/79),
+      cases down the rows and assistant / mm-profile cells across the columns.
+      Scroll horizontally to compare more cells.
     </p>
   {/if}
 </section>

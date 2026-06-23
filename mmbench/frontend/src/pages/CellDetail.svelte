@@ -44,6 +44,14 @@
   }
 
   const num = (v, s = "") => (v == null ? "–" : v + s);
+  const fmtTokens = (v) =>
+    v == null
+      ? "–"
+      : v >= 1e6
+        ? (v / 1e6).toFixed(1) + "M"
+        : v >= 1e3
+          ? (v / 1e3).toFixed(1) + "k"
+          : String(v);
   const ax = { ticks: { color: "#94a3b8" }, grid: { color: "#1e293b" } };
 
   const perCase = $derived.by(() => {
@@ -143,13 +151,21 @@
     {d.base_url || ""}
   </div>
 
-  <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mt-5">
-    {#each [["Without mm", d.overall.without_mm.correctness, ""], ["With mm", d.overall.with_mm.correctness, ""], ["Lift", d.overall.lift, ""], ["Speedup", d.overall.speedup, "×"]] as [label, val, suf]}
+  <div class="grid grid-cols-2 md:grid-cols-5 gap-3 mt-5">
+    {#each [["Without mm", d.overall.without_mm.correctness, ""], ["With mm", d.overall.with_mm.correctness, ""], ["Lift", d.overall.lift, ""], ["Speedup", d.overall.speedup, "×"], ["Tokens (w/wo)", null, ""]] as [label, val, suf]}
       <div class="rounded-xl border border-slate-800 bg-slate-900 p-4">
         <div class="text-xs uppercase tracking-widest text-slate-400">
           {label}
         </div>
-        <div class="text-2xl font-semibold mt-1 font-mono">{num(val, suf)}</div>
+        <div
+          class="font-semibold mt-1 font-mono"
+          class:text-2xl={label != "Tokens (w/wo)"}
+          class:text-xl={label == "Tokens (w/wo)"}
+        >
+          {label.startsWith("Tokens")
+            ? `${fmtTokens(d.overall.with_mm.token_sum)} / ${fmtTokens(d.overall.without_mm.token_sum)}`
+            : num(val, suf)}
+        </div>
       </div>
     {/each}
   </div>
@@ -172,7 +188,7 @@
             >
             <th class="text-right p-3">With %</th><th class="text-right p-3"
               >Lift</th
-            >
+            ><th class="text-right p-3">Toks (w/wo)</th>
           </tr></thead
         >
         <tbody>
@@ -209,10 +225,17 @@
                   : 'text-red-400'}"
                 >{s.lift == null ? "–" : (s.lift >= 0 ? "+" : "") + s.lift}</td
               >
+              <td class="p-3 text-right font-mono"
+                ><span class="text-slate-300"
+                  >{fmtTokens(s.with_mm?.token_total)}</span
+                ><span class="text-slate-500"
+                  >/{fmtTokens(s.without_mm?.token_total)}</span
+                ></td
+              >
             </tr>
             {#if openSet.has(s.session_id)}
               <tr>
-                <td colspan="6" class="p-0">
+                <td colspan="7" class="p-0">
                   <div
                     transition:slide={{ duration: 200 }}
                     class="m-3 rounded-lg border border-slate-700 bg-slate-950 shadow-lg shadow-black/40 overflow-hidden"
@@ -234,6 +257,9 @@
                             >
                             <th class="text-left py-2 px-3 font-medium"
                               >With %</th
+                            >
+                            <th class="text-left py-2 px-3 font-medium"
+                              >Toks (w/wo)</th
                             >
                             <th class="text-left py-2 px-3 font-medium"
                               >mm cmds used</th
@@ -269,6 +295,13 @@
                               <td class="py-2 px-3 text-left font-mono"
                                 >{num(c.with_mm?.correctness)}</td
                               >
+                              <td class="py-2 px-3 text-xs font-mono">
+                                <span class="text-slate-300"
+                                  >{fmtTokens(c.with_mm?.token_total)}</span
+                                ><span class="text-slate-500"
+                                  >/{fmtTokens(c.without_mm?.token_total)}</span
+                                >
+                              </td>
                               <td
                                 class="py-2 px-3 text-xs font-mono text-slate-400"
                                 >{(c.with_mm?.mm_commands || []).join(", ") ||
@@ -434,11 +467,49 @@
           <div class="text-slate-500 text-sm">Loading logs…</div>
         {:else}
           <div class="space-y-5">
+            {#if tx?.[txArm]?.token_total != null}
+              <div>
+                <div
+                  class="text-xs uppercase tracking-widest text-slate-500 mb-2"
+                >
+                  Tokens used
+                </div>
+                <div class="flex flex-wrap gap-3 text-xs">
+                  <div
+                    class="rounded-lg border border-slate-800 bg-slate-950 px-3 py-2"
+                  >
+                    <span class="text-slate-500">Total</span>
+                    <span class="ml-2 font-mono text-slate-200"
+                      >{fmtTokens(tx[txArm].token_total)}</span
+                    >
+                  </div>
+                  {#if tx[txArm].token_usage}
+                    {#each [["input_tokens", "Input"], ["output_tokens", "Output"], ["cache_read", "Cache read"], ["cache_write", "Cache write"], ["cost_usd", "Cost"]] as [k, lbl]}
+                      {#if tx[txArm].token_usage[k]}
+                        <div
+                          class="rounded-lg border border-slate-800 bg-slate-950 px-3 py-2"
+                        >
+                          <span class="text-slate-500">{lbl}</span>
+                          <span class="ml-2 font-mono text-slate-200"
+                            >{k === "cost_usd"
+                              ? "$" +
+                                Number(tx[txArm].token_usage[k]).toFixed(4)
+                              : fmtTokens(tx[txArm].token_usage[k])}</span
+                          >
+                        </div>
+                      {/if}
+                    {/each}
+                  {/if}
+                </div>
+              </div>
+            {/if}
             <div>
               <div
                 class="text-xs uppercase tracking-widest text-slate-500 mb-2"
               >
-                mm commands used ({txArm === "without_mm" ? 0 : logEntries.length})
+                mm commands used ({txArm === "without_mm"
+                  ? 0
+                  : logEntries.length})
               </div>
               {#if txArm === "without_mm"}
                 <div class="text-slate-600 text-xs">

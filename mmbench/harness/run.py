@@ -221,6 +221,8 @@ class Orchestrator:
                         final_output=result.final_output,
                         stderr=result.stderr,
                         mm_log=result.mm_log,
+                        token_total=result.token_usage.total_tokens if result.token_usage else None,
+                        token_usage_json=result.token_usage.to_json() if result.token_usage else "",
                     ),
                 )
                 _persist_artifacts(case, sandbox.path, sid, arm)

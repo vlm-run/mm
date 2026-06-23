@@ -37,6 +37,7 @@ import uuid
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from .agent_output import AgentOutput, AgentOutputParser, TokenUsage
 from .cases import EvalCase
 
 PRIMER_PATH = Path(__file__).resolve().parent / "primer.md"
@@ -44,14 +45,14 @@ DEFAULT_TIMEOUT_S = 600  # global cap; per-case timeout_s (360-600) is honored u
 MM_COMMANDS = ("find", "peek", "wc", "sql", "grep", "cat")
 
 _REGISTRY: dict[str, list[str]] = {
-    "claude": ["claude", "--dangerously-skip-permissions", "-p"],
-    "codex": ["codex", "exec", "--dangerously-bypass-approvals-and-sandbox"],
-    "gemini": ["gemini", "--yolo", "-p"],
-    "qwen": ["qwen", "--yolo", "-p"],
-    "opencode": ["opencode", "run"],
-    "openclaw": ["openclaw", "agent"],
+    "claude": ["claude", "--dangerously-skip-permissions", "--output-format", "json", "-p"],
+    "codex": ["codex", "exec", "--dangerously-bypass-approvals-and-sandbox", "--json"],
+    "gemini": ["gemini", "--yolo", "-o", "json", "-p"],
+    "qwen": ["qwen", "--yolo", "-o", "json", "-p"],
+    "opencode": ["opencode", "run", "--dangerously-skip-permissions", "--format", "json"],
+    "openclaw": ["openclaw", "agent", "--local", "--json"],
     "hermes": ["hermes", "--yolo", "-z"],
-    "pi": ["pi", "--no-session", "-p"],
+    "pi": ["pi", "--no-session", "--mode", "json", "-p"],
 }
 
 SUPPORTED = tuple(_REGISTRY)
@@ -80,6 +81,7 @@ class AssistantResult:
     timed_out: bool = False
     mm_commands_used: list[str] = field(default_factory=list)
     mm_log: str = ""
+    token_usage: TokenUsage | None = None
 
 
 class Assistant:
@@ -106,7 +108,15 @@ class Assistant:
         return f"{primer.strip()}\n\n---\n\n{body}" if arm == "with_mm" else body
 
     def build_argv(self, prompt: str) -> list[str]:
-        """argv for a non-interactive run; prompt is the final positional argument."""
+        """argv for a non-interactive run; prompt is the final positional argument.
+
+        openclaw is the only agent that needs a session selector: it gets a unique
+        per-run session key so no agent state leaks across cases or runs, and the
+        prompt is passed via ``-m`` (still the final argument).
+        """
+        if self.name == "openclaw":
+            key = f"agent:main:mmbench-{uuid.uuid4().hex}"
+            return [*self.cmd, "--session-key", key, "-m", prompt]
         return [*self.cmd, prompt]
 
     def run(
@@ -132,7 +142,17 @@ class Assistant:
             out = _exec(self.build_argv(prompt), cwd, env, timeout_s, stream=stream)
             used = _read_mm_log(mm_log) if arm == "with_mm" else []
             log_text = _read_mm_log_full(mm_log) if arm == "with_mm" else ""
+        parsed = self._parse_output(out["final_output"], cwd=str(cwd))
+        out["final_output"] = parsed.final_output
+        out["token_usage"] = parsed.token_usage
         return AssistantResult(mm_commands_used=used, mm_log=log_text, **out)
+
+    def _parse_output(self, stdout: str, *, cwd: str | None = None) -> AgentOutput:
+        """Parse raw agent stdout into extracted text + token usage via AgentOutputParser."""
+        parser = AgentOutputParser()
+        if self.name == "hermes":
+            return parser.hermes(stdout, cwd=cwd)
+        return getattr(parser, self.name)(stdout)
 
     def _env(self, arm: str, shim_dir: Path, mm_log: Path, profile_name: str | None) -> dict:
         env = os.environ.copy()
@@ -159,7 +179,8 @@ class Assistant:
             out = _exec(self.build_argv(prompt), shim_dir, env, timeout_s)
         if out["timed_out"]:
             return False, f"timed out after {timeout_s}s"
-        if token in out["final_output"] or token in out["stderr"]:
+        parsed = self._parse_output(out["final_output"], cwd=str(shim_dir))
+        if token in parsed.final_output or token in out["stderr"]:
             return True, "ok"
         return False, f"did not execute the tool (exit {out['exit_code']})"
 

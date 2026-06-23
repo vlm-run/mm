@@ -31,6 +31,7 @@ def _arm_stats(rows: list[sqlite3.Row]) -> dict:
     corr = [r["correctness"] for r in rows if r["correctness"] is not None]
     spd = [r["speed_s"] for r in rows if r["speed_s"] is not None]
     mm = [r["mm_used"] for r in rows if r["mm_used"] is not None]
+    tok = [r["token_total"] for r in rows if r["token_total"] is not None]
     return {
         "n": len(rows),
         "passes": sum(1 for c in corr if c >= PASS_THRESHOLD),
@@ -39,6 +40,8 @@ def _arm_stats(rows: list[sqlite3.Row]) -> dict:
         "speed_s": round(mean(spd), 1) if spd else None,
         "completion": round(mean([r["task_completion"] or 0 for r in rows]), 2) if rows else None,
         "mm_adoption": round(mean(mm), 2) if mm else None,
+        "token_total": round(mean(tok)) if tok else None,
+        "token_sum": sum(tok) if tok else None,
     }
 
 
@@ -78,7 +81,7 @@ def leaderboard(db_path: Path = DEFAULT_DB_PATH) -> list[dict]:
         for c in cells:
             a, p = c["assistant"], c["profile_name"]
             rows = conn.execute(
-                "SELECT arm, correctness, speed_s, task_completion, mm_used "
+                "SELECT arm, correctness, speed_s, task_completion, mm_used, token_total "
                 "FROM case_results WHERE assistant = ? AND profile_name = ?",
                 (a, p),
             ).fetchall()
@@ -124,8 +127,8 @@ def sessions(db_path: Path = DEFAULT_DB_PATH) -> list[dict]:
         ).fetchall()
         for s in srows:
             with_rows = conn.execute(
-                "SELECT correctness, speed_s, task_completion, mm_used FROM case_results "
-                "WHERE session_id = ? AND arm = 'with_mm'",
+                "SELECT correctness, speed_s, task_completion, mm_used, token_total "
+                "FROM case_results WHERE session_id = ? AND arm = 'with_mm'",
                 (s["session_id"],),
             ).fetchall()
             out.append(
@@ -221,7 +224,8 @@ def case_transcript(session_id: str, case_id: str, db_path: Path = DEFAULT_DB_PA
     """Stored stdout, stderr, and mm log (latest run per arm) for one case in a session.
 
     Returns ``{session_id, case_id, without_mm, with_mm}`` where each arm is
-    ``{final_output, stderr, mm_log}`` or ``None`` if that arm has no recorded run.
+    ``{final_output, stderr, mm_log, token_total, token_usage}`` or ``None`` if
+    that arm has no recorded run.
     """
     conn = _connect(db_path)
     try:
@@ -233,7 +237,9 @@ def case_transcript(session_id: str, case_id: str, db_path: Path = DEFAULT_DB_PA
         }
         for arm in ("without_mm", "with_mm"):
             r = conn.execute(
-                "SELECT cr.final_output AS final_output, cr.stderr AS stderr, cr.mm_log AS mm_log "
+                "SELECT cr.final_output AS final_output, cr.stderr AS stderr, "
+                "cr.mm_log AS mm_log, cr.token_total AS token_total, "
+                "cr.token_usage_json AS token_usage_json "
                 "FROM case_results cr JOIN runs r ON r.run_id = cr.run_id "
                 "WHERE cr.session_id = ? AND cr.case_id = ? AND cr.arm = ? "
                 "ORDER BY r.run_index DESC LIMIT 1",
@@ -244,6 +250,8 @@ def case_transcript(session_id: str, case_id: str, db_path: Path = DEFAULT_DB_PA
                     "final_output": r["final_output"] or "",
                     "stderr": r["stderr"] or "",
                     "mm_log": r["mm_log"] or "",
+                    "token_total": r["token_total"],
+                    "token_usage": json.loads(r["token_usage_json"] or "null"),
                 }
         return out
     finally:
@@ -296,7 +304,7 @@ def cell_detail(assistant: str, profile: str, db_path: Path = DEFAULT_DB_PATH) -
         per_session = []
         for s in srows:
             rows = conn.execute(
-                "SELECT arm, correctness, speed_s, task_completion, mm_used, run_id "
+                "SELECT arm, correctness, speed_s, task_completion, mm_used, token_total, run_id "
                 "FROM case_results WHERE session_id = ?",
                 (s["session_id"],),
             ).fetchall()
@@ -315,7 +323,7 @@ def cell_detail(assistant: str, profile: str, db_path: Path = DEFAULT_DB_PATH) -
                 }
             )
         allrows = conn.execute(
-            "SELECT arm, correctness, speed_s, task_completion, mm_used "
+            "SELECT arm, correctness, speed_s, task_completion, mm_used, token_total "
             "FROM case_results WHERE assistant = ? AND profile_name = ?",
             (assistant, profile),
         ).fetchall()
@@ -352,7 +360,8 @@ def session_detail(session_id: str, db_path: Path = DEFAULT_DB_PATH) -> dict:
         ]
         cells = conn.execute(
             "SELECT case_id, title, archetype, difficulty, arm, correctness, judge_score, "
-            "speed_s, task_completion, mm_used, mm_commands_used_json, failure_mode "
+            "speed_s, task_completion, mm_used, mm_commands_used_json, failure_mode, "
+            "token_total, token_usage_json "
             "FROM case_results WHERE session_id = ? ORDER BY case_id, arm",
             (session_id,),
         ).fetchall()
@@ -374,6 +383,8 @@ def session_detail(session_id: str, db_path: Path = DEFAULT_DB_PATH) -> dict:
                 "mm_used": c["mm_used"],
                 "mm_commands": json.loads(c["mm_commands_used_json"] or "[]"),
                 "failure_mode": c["failure_mode"],
+                "token_total": c["token_total"],
+                "token_usage": json.loads(c["token_usage_json"] or "null"),
             }
         return {
             "session": {

@@ -114,9 +114,10 @@ checks deterministically, plus an LLM-judge pass.
 - Agent CLIs run with autonomy flags so non-interactive tool use does not stall;
   preflight verifies each agent live. Verified working: claude
   (`--dangerously-skip-permissions`), codex (`exec --dangerously-bypass-approvals-and-sandbox`),
-  gemini/qwen (`--yolo`), opencode (`run`). qwen needs a valid API key. openclaw
-  (`-p`) is wired but not installed here, so its autonomy flag is unverified;
-  preflight will catch it for whoever has it.
+  gemini/qwen (`--yolo`), opencode (`run --dangerously-skip-permissions`), openclaw
+  (`agent --local` with a unique per-run session key), hermes (`--yolo`), pi
+  (`--no-session`). qwen needs a valid API key. Preflight gates whichever agents
+  you select and fails fast on any that are uninstalled or unauthed.
 - mm-grounding (which `mm` commands the agent ran) is captured by a PATH-shimmed
   `mm` that logs every invocation; the same shim makes `mm` "command not found"
   in the without_mm arm, so the without_mm is mm-free by construction.
