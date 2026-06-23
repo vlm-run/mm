@@ -36,8 +36,9 @@ run and reuses the local copy thereafter; HF auth (`hf auth login`) is required.
 ## Usage
 
 **Prereqs:** an agent CLI installed + authed (claude / codex / gemini / opencode
-verified; qwen needs its key), the `gateway` mm profile reachable (`mm profile
-list`), `MMBENCH_JUDGE_API_KEY` (or `OPENROUTER_API_KEY`) for the judge, and
+verified; qwen needs its key), an mm backend for the with_mm arm (the `gateway`
+profile reachable via `mm profile list`, or an on-the-fly one via `--profile.*`),
+`MMBENCH_JUDGE_API_KEY` (or `OPENROUTER_API_KEY` or `--judge.api-key`) for the judge, and
 `hf auth login` (the dataset is private). The dataset **auto-downloads** to
 `mmbench/data/` on first run; preflight then checks agents/profiles/judge and
 aborts on any failure.
@@ -74,6 +75,12 @@ uv run python -m mmbench.harness.run --assistants claude,gemini --profiles gatew
 # subset of cases + resume an interrupted pass:
 uv run python -m mmbench.harness.run --cases retrieve-video-product,invoices-to-csv --resume
 
+# on-the-fly backend + a custom judge, all on the CLI:
+uv run python -m mmbench.harness.run --assistants claude \
+    --profile.model google/gemini-3.1-flash-lite \
+    --profile.base-url https://openrouter.ai/api/v1 --profile.api-key sk-... \
+    --judge.model openai/gpt-5 --judge.base-url https://openrouter.ai/api/v1 --judge.api-key sk-...
+
 cut -d'"' -f4 mmbench/data/cases.jsonl   # list case ids (after first download)
 ```
 
@@ -83,10 +90,12 @@ cut -d'"' -f4 mmbench/data/cases.jsonl   # list case ids (after first download)
 |---|---|---|
 | `--assistants` | `claude` | comma list from `claude,codex,gemini,opencode,qwen,openclaw,hermes,pi` (preflight gates whichever you select; uninstalled/unauthed ones fail fast) |
 | `--profiles` | `gateway` | comma list of `mm profile` names (the with_mm arm's mm backend) |
+| `--profile.model` / `--profile.base-url` / `--profile.api-key` | – | on-the-fly with_mm backend, materialized into a throwaway mm config; the user's global config is untouched. When set it becomes the default profile, and named `--profiles` are used only if explicitly listed. All three flags are required together (the api-key value may be empty) |
 | `--cases` | all 20 | comma list of case ids |
 | `--runs` | `1` | repetitions per cell (`3`+ for variance; dashboard shows mean±std) |
 | `--timeout` | `600` | global per-agent cap, seconds (hard ceiling; each case sets its own `timeout_s` in 360-600 under this) |
 | `--no-judge` | off | score on deterministic checks only |
+| `--judge.model` / `--judge.base-url` / `--judge.api-key` | `google/gemini-3.1-flash-lite` / OpenRouter / env | override the LLM judge endpoint per-run; all three required together (api-key value may be empty). Without them the judge resolves from `MMBENCH_JUDGE_*` env, then defaults. Preflight pings the judge and aborts if it can't connect |
 | `--resume` | off | reuse latest session per cell, skip completed cells |
 | `--stream` | off | tee each agent's live stdout/stderr to the terminal as it runs (capture/grading unaffected) |
 | `--keep-sandboxes` | off | keep per-run working copies |
@@ -94,9 +103,12 @@ cut -d'"' -f4 mmbench/data/cases.jsonl   # list case ids (after first download)
 | `--check` | off | ping the selected assistants/profiles/judge and exit (no run); non-zero exit if any fails |
 | `--skip-preflight` | off | bypass preflight (not advised) |
 
-The **judge** is fixed (no profile): OpenRouter + `google/gemini-3.1-flash-lite`,
-key from `MMBENCH_JUDGE_API_KEY`  (override model/url via `MMBENCH_JUDGE_MODEL` / `MMBENCH_JUDGE_BASE_URL`). Profiles only set the with_mm
-arm's mm backend; the without_mm arm never touches mm.
+The **judge** uses its own endpoint: by default OpenRouter +
+`google/gemini-3.1-flash-lite`, key from `MMBENCH_JUDGE_API_KEY` (or
+`OPENROUTER_API_KEY`, since the default endpoint is OpenRouter). Override per-run by
+passing all three of `--judge.model` / `--judge.base-url` / `--judge.api-key` (the
+api-key value may be empty for keyless local providers); Preflight pings the judge and aborts the run if it cannot connect.
+Profiles only set the with_mm arm's mm backend; the without_mm arm never touches mm.
 
 ## Cases
 

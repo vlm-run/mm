@@ -13,6 +13,10 @@ the without_mm arm has no mm at all (PATH shim).
 Usage:
     uv run python -m mmbench.harness.run --assistants claude --profiles gateway
     uv run python -m mmbench.harness.run --assistants claude,codex --profiles gateway,orion-2
+    # pluggable, on-the-fly backend:
+    uv run python -m mmbench.harness.run --assistants claude \
+        --profile.model google/gemini-3.1-flash-lite \
+        --profile.base-url https://openrouter.ai/api/v1 --profile.api-key sk-...
 """
 
 from __future__ import annotations
@@ -24,8 +28,9 @@ from pathlib import Path
 
 from .assistants import DEFAULT_TIMEOUT_S, PRIMER_PATH, SUPPORTED, Assistant
 from .cases import EvalCase, load_cases
-from .grader import Grader, JudgeError
+from .grader import Grader, JudgeConfig, JudgeError
 from .preflight import preflight
+from .profiles import ProfileSpec, materialize_adhoc
 from .sandbox import SandboxManager
 from .store import CaseResult, MmBenchStore
 
@@ -81,7 +86,7 @@ class Orchestrator:
 
     Args:
         assistants: assistant names to sweep.
-        profiles: mm profile names to sweep.
+        profiles: profile specs to sweep (named mm profiles and/or one ad-hoc).
         cases: cases to run.
         runs: repetitions per cell (variance control).
         timeout_s: per-agent hard cap.
@@ -94,7 +99,7 @@ class Orchestrator:
         self,
         *,
         assistants: list[str],
-        profiles: list[str],
+        profiles: list[ProfileSpec],
         cases: list[EvalCase],
         runs: int,
         timeout_s: int,
@@ -124,11 +129,14 @@ class Orchestrator:
             if not adapter.is_installed():
                 print(f"skip {assistant_name}: not installed")
                 continue
-            for profile_name in self.profiles:
-                self._run_session(adapter, profile_name)
+            for profile in self.profiles:
+                self._run_session(adapter, profile)
 
-    def _run_session(self, adapter: Assistant, profile_name: str) -> None:
-        base_url, model = _profile_meta(profile_name)
+    def _run_session(self, adapter: Assistant, profile: ProfileSpec) -> None:
+        profile_name = profile.name
+        base_url, model = (
+            (profile.base_url, profile.model) if profile.is_adhoc else _profile_meta(profile_name)
+        )
         done: set[tuple[str, str]] = set()
         sid = self.store.latest_session_id(adapter.name, profile_name) if self.resume else None
         if sid:
@@ -151,7 +159,7 @@ class Orchestrator:
             t0 = time.perf_counter()
             try:
                 for case in self.cases:
-                    self._run_case(adapter, profile_name, case, sid, rid, run_index, done)
+                    self._run_case(adapter, profile, case, sid, rid, run_index, done)
             except JudgeError as e:
                 # Judge unreachable mid-run: void just this run (drop its rows) so it cannot leave a gap.
                 self.store.void_run(rid)
@@ -165,13 +173,14 @@ class Orchestrator:
     def _run_case(
         self,
         adapter: Assistant,
-        profile_name: str,
+        profile: ProfileSpec,
         case: EvalCase,
         sid: str,
         rid: str,
         run_index: int,
         done: set[tuple[str, str]],
     ) -> None:
+        profile_name = profile.name
         source = case.resolve_dataset(DATASETS_ROOT)  # preflight already verified
         for arm in ARMS:
             if (case.id, arm) in done:
@@ -195,6 +204,7 @@ class Orchestrator:
                     input_path=sandbox.path,
                     primer=self.primer,
                     profile_name=profile_name,
+                    config_dir=profile.config_dir,
                     timeout_s=min(case.timeout_s, self.timeout_s),
                     stream=self.stream,
                 )
@@ -254,11 +264,96 @@ def ensure_dataset() -> None:
     print("  done")
 
 
+def _resolve_profiles(ap: argparse.ArgumentParser, args: argparse.Namespace) -> list[ProfileSpec]:
+    """Build the profile specs to sweep, honoring on-the-fly ``--profile.*`` overrides.
+
+    Precedence: an ad-hoc profile (any ``--profile.*`` set) becomes the default
+    backend and runs first; named ``--profiles`` run alongside it only when
+    explicitly listed. Without ``--profile.*``, named ``--profiles`` apply,
+    falling back to ``gateway``.
+    """
+    named = _csv(args.profiles)
+    fields = (args.profile_model, args.profile_base_url, args.profile_api_key)
+    if all(v is None for v in fields):
+        return [ProfileSpec(name=n) for n in (named or ["gateway"])]
+    if any(v is None for v in fields):
+        ap.error(
+            "--profile.model, --profile.base-url and --profile.api-key are all required for an "
+            "on-the-fly profile (the api-key value may be empty)"
+        )
+    adhoc = materialize_adhoc(
+        model=args.profile_model,
+        base_url=args.profile_base_url,
+        api_key=args.profile_api_key,
+    )
+    return [adhoc, *(ProfileSpec(name=n) for n in named)]
+
+
+def _resolve_judge(ap: argparse.ArgumentParser, args: argparse.Namespace) -> JudgeConfig:
+    """Resolve the judge endpoint: an all-or-nothing ``--judge.*`` triple, else env.
+
+    Overriding the judge on the CLI requires all three of ``--judge.model``,
+    ``--judge.base-url`` and ``--judge.api-key`` (the api-key value may be empty);
+    otherwise the judge resolves from ``MMBENCH_JUDGE_*`` env and built-in defaults.
+    """
+    fields = (args.judge_model, args.judge_base_url, args.judge_api_key)
+    if all(v is None for v in fields):
+        return JudgeConfig.resolve()
+    if any(v is None for v in fields):
+        ap.error(
+            "--judge.model, --judge.base-url and --judge.api-key are all required to override the "
+            "judge (the api-key value may be empty)"
+        )
+    return JudgeConfig(
+        model=args.judge_model, base_url=args.judge_base_url, api_key=args.judge_api_key
+    )
+
+
 def main(argv: list[str] | None = None) -> None:
     """CLI entry point."""
     ap = argparse.ArgumentParser(description="Run the mmbench agent benchmark.")
     ap.add_argument("--assistants", default="claude", help=f"comma-separated; from {SUPPORTED}")
-    ap.add_argument("--profiles", default="gateway", help="comma-separated mm profile names")
+    ap.add_argument(
+        "--profiles",
+        default="",
+        help="comma-separated mm profile names (default: gateway, unless --profile.* is set)",
+    )
+    ap.add_argument(
+        "--profile.model",
+        dest="profile_model",
+        default=None,
+        help="on-the-fly profile model (required with the other --profile.* flags)",
+    )
+    ap.add_argument(
+        "--profile.base-url",
+        dest="profile_base_url",
+        default=None,
+        help="on-the-fly profile base URL (required with the other --profile.* flags)",
+    )
+    ap.add_argument(
+        "--profile.api-key",
+        dest="profile_api_key",
+        default=None,
+        help="on-the-fly profile API key (required with the other --profile.* flags; may be empty)",
+    )
+    ap.add_argument(
+        "--judge.model",
+        dest="judge_model",
+        default=None,
+        help="judge model (overrides MMBENCH_JUDGE_MODEL; default google/gemini-3.1-flash-lite)",
+    )
+    ap.add_argument(
+        "--judge.base-url",
+        dest="judge_base_url",
+        default=None,
+        help="judge base URL (overrides MMBENCH_JUDGE_BASE_URL; default OpenRouter)",
+    )
+    ap.add_argument(
+        "--judge.api-key",
+        dest="judge_api_key",
+        default=None,
+        help="judge API key (overrides MMBENCH_JUDGE_API_KEY / OPENROUTER_API_KEY)",
+    )
     ap.add_argument("--cases", default="", help="comma-separated case ids (default: all)")
     ap.add_argument("--runs", type=int, default=1, help="repetitions per cell")
     ap.add_argument("--timeout", type=int, default=DEFAULT_TIMEOUT_S, help="per-agent seconds")
@@ -288,45 +383,56 @@ def main(argv: list[str] | None = None) -> None:
         ap.error(f"unknown case ids: {missing}; available: {sorted(all_cases)}")
     cases = [all_cases[c] for c in selected]
 
-    assistants, profiles = _csv(args.assistants), _csv(args.profiles)
+    assistants = _csv(args.assistants)
+    profiles = _resolve_profiles(ap, args)
     use_judge = not args.no_judge
+    judge = _resolve_judge(ap, args)
 
-    if args.check or not args.skip_preflight:
-        print("preflight:")
-        report = preflight(
+    try:
+        if args.check or not args.skip_preflight:
+            print("preflight:")
+            report = preflight(
+                assistants=assistants,
+                profiles=profiles,
+                cases=cases,
+                datasets_root=DATASETS_ROOT,
+                use_judge=use_judge,
+                judge=judge,
+            )
+            print("\n".join(report.lines))
+            if args.check:
+                raise SystemExit(0 if report.ok else 1)
+            if not report.ok:
+                raise SystemExit(
+                    "preflight failed; aborting (fix the above or pass --skip-preflight)"
+                )
+
+        store = MmBenchStore(args.db) if args.db else MmBenchStore()
+        grader = Grader(use_judge=use_judge, judge=judge)
+        orch = Orchestrator(
             assistants=assistants,
             profiles=profiles,
             cases=cases,
-            datasets_root=DATASETS_ROOT,
-            use_judge=use_judge,
+            runs=args.runs,
+            timeout_s=args.timeout,
+            store=store,
+            grader=grader,
+            keep_sandboxes=args.keep_sandboxes,
+            resume=args.resume,
+            stream=args.stream,
         )
-        print("\n".join(report.lines))
-        if args.check:
-            raise SystemExit(0 if report.ok else 1)
-        if not report.ok:
-            raise SystemExit("preflight failed; aborting (fix the above or pass --skip-preflight)")
-
-    store = MmBenchStore(args.db) if args.db else MmBenchStore()
-    grader = Grader(use_judge=use_judge)
-    orch = Orchestrator(
-        assistants=assistants,
-        profiles=profiles,
-        cases=cases,
-        runs=args.runs,
-        timeout_s=args.timeout,
-        store=store,
-        grader=grader,
-        keep_sandboxes=args.keep_sandboxes,
-        resume=args.resume,
-        stream=args.stream,
-    )
-    print(
-        f"\nmmbench: {len(assistants)}x{len(profiles)} cells {assistants}x{profiles} "
-        f"cases={len(cases)} runs={args.runs} judge={'off' if args.no_judge else 'on'}"
-    )
-    orch.run()
-    store.close()
-    print("\ndone. results in SQLite.")
+        names = [p.name for p in profiles]
+        print(
+            f"\nmmbench: {len(assistants)}x{len(profiles)} cells {assistants}x{names} "
+            f"cases={len(cases)} runs={args.runs} judge={'off' if args.no_judge else 'on'}"
+        )
+        orch.run()
+        store.close()
+        print("\ndone. results in SQLite.")
+    finally:
+        for p in profiles:
+            if p.config_dir:
+                shutil.rmtree(p.config_dir, ignore_errors=True)
 
 
 if __name__ == "__main__":

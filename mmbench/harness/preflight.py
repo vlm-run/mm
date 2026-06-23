@@ -18,7 +18,8 @@ from pathlib import Path
 
 from .assistants import Assistant
 from .cases import EvalCase
-from .grader import ping_judge, ping_profile
+from .grader import JudgeConfig, ping_adhoc, ping_judge, ping_profile
+from .profiles import ProfileSpec
 
 
 @dataclass
@@ -38,10 +39,11 @@ class PreflightReport:
 def preflight(
     *,
     assistants: list[str],
-    profiles: list[str],
+    profiles: list[ProfileSpec],
     cases: list[EvalCase],
     datasets_root: Path,
     use_judge: bool,
+    judge: JudgeConfig | None = None,
     autonomy_timeout_s: int = 90,
 ) -> PreflightReport:
     """Run every check and return the report. Does not raise."""
@@ -67,11 +69,14 @@ def preflight(
         r.add(ok, f"assistant: {name} (autonomy)", detail)
 
     for p in profiles:
-        ok, detail = ping_profile(p)
-        r.add(ok, f"profile: {p}", detail)
+        if p.is_adhoc:
+            ok, detail = ping_adhoc(p.base_url or "", p.model or "", p.api_key or "")
+        else:
+            ok, detail = ping_profile(p.name)
+        r.add(ok, f"profile: {p.name}", detail)
 
     if use_judge:
-        ok, detail = ping_judge()
+        ok, detail = ping_judge(judge or JudgeConfig.resolve())
         r.add(ok, "judge", detail)
 
     return r

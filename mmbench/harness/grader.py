@@ -13,8 +13,9 @@ Correctness is a 50/50 blend of:
     call that errors mid-run is retried up to ``JUDGE_RETRIES`` times; if it still
     fails it raises :class:`JudgeError` and the caller voids the run.
 
-Override the judge model/endpoint with ``MMBENCH_JUDGE_MODEL`` /
-``MMBENCH_JUDGE_BASE_URL`` if needed.
+Override the judge model/endpoint/key with ``--judge.model`` / ``--judge.base-url``
+/ ``--judge.api-key`` (or ``MMBENCH_JUDGE_MODEL`` / ``MMBENCH_JUDGE_BASE_URL`` /
+``MMBENCH_JUDGE_API_KEY``); see :class:`JudgeConfig`.
 
 Example:
     >>> g = Grader()
@@ -36,7 +37,31 @@ from .cases import Check, EvalCase
 JUDGE_RETRIES = 3
 JUDGE_BASE_URL = os.environ.get("MMBENCH_JUDGE_BASE_URL", "https://openrouter.ai/api/v1")
 JUDGE_MODEL = os.environ.get("MMBENCH_JUDGE_MODEL", "google/gemini-3.1-flash-lite")
-JUDGE_API_KEY = os.environ.get("MMBENCH_JUDGE_API_KEY") or os.environ["OPENROUTER_API_KEY"]
+
+
+@dataclass(frozen=True)
+class JudgeConfig:
+    """The LLM judge's endpoint (model, base_url, api_key).
+
+    Resolution per field: ``--judge.*`` flag > ``MMBENCH_JUDGE_*`` env > built-in
+    default.
+    """
+
+    model: str = JUDGE_MODEL
+    base_url: str = JUDGE_BASE_URL
+    api_key: str = ""
+
+    @classmethod
+    def resolve(cls) -> JudgeConfig:
+        """Build from ``MMBENCH_JUDGE_*`` env, falling back to built-in defaults"""
+        return cls(
+            model=JUDGE_MODEL,
+            base_url=JUDGE_BASE_URL,
+            api_key=os.environ.get("MMBENCH_JUDGE_API_KEY")
+            or os.environ.get("OPENROUTER_API_KEY")
+            or "",
+        )
+
 
 _JUDGE_SYSTEM = (
     "You are a strict evaluator. Score how well the model response satisfies the "
@@ -50,27 +75,21 @@ class JudgeError(RuntimeError):
     """The LLM judge could not produce a score after retries."""
 
 
-def judge_client() -> tuple:
-    """Build the judge's OpenAI client + model from env (no mm profile).
-
-    Key is read live from ``MMBENCH_JUDGE_API_KEY``;
-    raises :class:`JudgeError` if neither is set.
-    """
+def judge_client(cfg: JudgeConfig) -> tuple:
+    """Build the judge's OpenAI client + model from a :class:`JudgeConfig`."""
     from openai import OpenAI
 
-    return OpenAI(base_url=JUDGE_BASE_URL, api_key=JUDGE_API_KEY), JUDGE_MODEL
+    return OpenAI(base_url=cfg.base_url, api_key=cfg.api_key), cfg.model
 
 
-def ping_judge() -> tuple[bool, str]:
+def ping_judge(cfg: JudgeConfig) -> tuple[bool, str]:
     """Confirm the judge endpoint is reachable with a 1-token call."""
     try:
-        client, model = judge_client()
-        client.chat.completions.create(
-            model=model, messages=[{"role": "user", "content": "ping"}], max_tokens=1, temperature=0
-        )
-        return True, f"{model} @ {JUDGE_BASE_URL}"
+        client, model = judge_client(cfg)
     except Exception as e:
-        return False, f"{type(e).__name__}: {str(e)[:160]}"
+        return False, str(e)
+    ok, detail = _ping(client, model)
+    return ok, (f"{model} @ {cfg.base_url}" if ok else detail)
 
 
 def _norm_text(s: str) -> str:
@@ -110,10 +129,12 @@ class Grader:
 
     Args:
         use_judge: whether to call the LLM judge at all (``--no-judge`` -> False).
+        judge: the judge endpoint; defaults to :meth:`JudgeConfig.resolve` (env).
     """
 
-    def __init__(self, use_judge: bool = True) -> None:
+    def __init__(self, use_judge: bool = True, judge: JudgeConfig | None = None) -> None:
         self.use_judge = use_judge
+        self.judge = judge or JudgeConfig.resolve()
 
     def grade(self, case: EvalCase, result: AssistantResult, sandbox_path: Path) -> GradeResult:
         """Grade one run. ``sandbox_path`` is the agent's final working tree."""
@@ -167,7 +188,7 @@ class Grader:
         :class:`JudgeError` (no fallback): the caller nullifies the run rather
         than leave it with a mix of judged and checks-only cells.
         """
-        client, model = judge_client()
+        client, model = judge_client(self.judge)
         user = (
             f"Evaluation objective:\n{case.judge_objective}\n\n"
             f"Ground truth:\n{case.ground_truth}\n\n"
@@ -218,12 +239,8 @@ def client_for(profile_name: str | None):
     return client, profile.model
 
 
-def ping_profile(profile_name: str | None) -> tuple[bool, str]:
-    """Confirm a profile's chat endpoint is reachable with a 1-token call."""
-    try:
-        client, model = client_for(profile_name)
-    except Exception as e:
-        return False, str(e)
+def _ping(client, model: str) -> tuple[bool, str]:
+    """1-token reachability probe against an already-built client."""
     try:
         client.chat.completions.create(
             model=model,
@@ -234,6 +251,26 @@ def ping_profile(profile_name: str | None) -> tuple[bool, str]:
         return True, "ok"
     except Exception as e:
         return False, f"{type(e).__name__}: {str(e)[:160]}"
+
+
+def ping_profile(profile_name: str | None) -> tuple[bool, str]:
+    """Confirm a profile's chat endpoint is reachable with a 1-token call."""
+    try:
+        client, model = client_for(profile_name)
+    except Exception as e:
+        return False, str(e)
+    return _ping(client, model)
+
+
+def ping_adhoc(base_url: str, model: str, api_key: str = "") -> tuple[bool, str]:
+    """Confirm an on-the-fly (model, base_url, api_key) chat endpoint is reachable."""
+    from openai import OpenAI
+
+    try:
+        client = OpenAI(base_url=base_url.rstrip("/"), api_key=api_key or "noop")
+    except Exception as e:
+        return False, str(e)
+    return _ping(client, model)
 
 
 def _clamp_score(text: str) -> int | None:

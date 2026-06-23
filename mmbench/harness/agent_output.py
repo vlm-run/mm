@@ -1,15 +1,11 @@
 """Per-harness output parser: extracts the agent's text answer + token usage.
 
-Each agent CLI emits its answer and token usage in a different shape. This
-module is a black box: feed it the raw stdout (or, for hermes, a session id)
-and get back a normalized :class:`AgentOutput` with the answer text and
-optional :class:`TokenUsage`.
-
-Works in both text mode (current) and JSON mode (for token capture):
-  - Text mode: stdout is the agent's plain-text answer. Returns
-    ``AgentOutput(final_output=stdout.strip(), token_usage=None)``.
-  - JSON mode: stdout is the agent's JSON event stream/object. Extracts both
-    the answer text and token usage from the JSON.
+Each agent CLI emits its answer and token usage in a different JSON shape.
+This module normalizes them into a single :class:`AgentOutput` with the
+extracted text answer and optional :class:`TokenUsage`. Hermes is the
+exception — it has no JSON mode, so the answer is the stripped stdout and
+token usage is fetched post-run from the session store via
+``hermes sessions export``.
 
 Example:
     >>> parser = AgentOutputParser()
@@ -58,16 +54,17 @@ class AgentOutput:
 class AgentOutputParser:
     """Parse agent stdout into a normalized :class:`AgentOutput`.
 
-    Seven harnesses can emit JSON (answer + tokens inline); :meth:`hermes` is
-    the exception (no JSON mode, so tokens are fetched post-run via
-    ``hermes sessions export`` when a session_id is provided). Each method is
-    robust to both text-mode and JSON-mode stdout: non-JSON input returns the
-    stripped text with no token usage, so the parser works today (text mode)
-    and when the harness is switched to JSON mode.
+    Seven harnesses emit JSON with the answer text and token usage inline.
+    :meth:`hermes` is the exception: the answer is plain-text stdout and
+    token usage is fetched from the session store via ``hermes sessions
+    export``, requiring a session_id. ``token_usage`` is ``None`` when a
+    harness doesn't report usage or the JSON is malformed.
     """
 
-    def __init__(self, hermes_timeout_s: int = 30) -> None:
-        self._hermes_timeout_s = hermes_timeout_s
+    _hermes_timeout_s: int = 30
+
+    def __init__(self):
+        pass
 
     def claude(self, stdout: str) -> AgentOutput:
         """claude -p --output-format json: single object; ``result`` is the answer, ``usage`` has tokens."""
@@ -274,46 +271,36 @@ class AgentOutputParser:
             else None,
         )
 
-    def hermes(
-        self, stdout: str, session_id: str | None = None, cwd: str | None = None
-    ) -> AgentOutput:
-        """hermes -z: plain-text answer on stdout (no JSON mode); tokens fetched post-run.
-
-        hermes has no JSON output mode, so the answer is always the stripped stdout.
-        Token usage is fetched from the session store via ``hermes sessions export``.
-        If ``session_id`` is not provided, the most recent session is auto-discovered
-        via ``hermes sessions list`` (safe for sequential runs).
+    def hermes(self, stdout: str, session_id: str, cwd: str | None = None) -> AgentOutput:
+        """hermes -z: plain-text answer on stdout; tokens fetched from the session store.
 
         Args:
             stdout: the agent's plain-text stdout (the answer).
-            session_id: if provided, fetches usage for this session; otherwise
-                auto-discovers the most recent session.
-            cwd: working directory for the export/list subprocesses.
+            session_id: the hermes session id to fetch token usage for.
+            cwd: working directory for the export subprocess.
         """
         final_output = stdout.strip()
         usage = None
-        sid = session_id or self._hermes_latest_session(cwd)
-        if sid:
-            try:
-                r = subprocess.run(
-                    ["hermes", "sessions", "export", "-", "--session-id", sid],
-                    capture_output=True,
-                    text=True,
-                    timeout=self._hermes_timeout_s,
-                    cwd=cwd,
-                )
-                if r.returncode == 0:
-                    d = self._load_json(r.stdout)
-                    if isinstance(d, dict):
-                        inp, out = d.get("input_tokens", 0), d.get("output_tokens", 0)
-                        usage = TokenUsage(
-                            input_tokens=inp,
-                            output_tokens=out,
-                            total_tokens=inp + out,
-                            cost_usd=d.get("estimated_cost_usd", 0.0) or 0.0,
-                        )
-            except (subprocess.SubprocessError, FileNotFoundError, OSError):
-                pass
+        try:
+            r = subprocess.run(
+                ["hermes", "sessions", "export", "-", "--session-id", session_id],
+                capture_output=True,
+                text=True,
+                timeout=self._hermes_timeout_s,
+                cwd=cwd,
+            )
+            if r.returncode == 0:
+                d = self._load_json(r.stdout)
+                if isinstance(d, dict):
+                    inp, out = d.get("input_tokens", 0), d.get("output_tokens", 0)
+                    usage = TokenUsage(
+                        input_tokens=inp,
+                        output_tokens=out,
+                        total_tokens=inp + out,
+                        cost_usd=d.get("estimated_cost_usd", 0.0) or 0.0,
+                    )
+        except (subprocess.SubprocessError, FileNotFoundError, OSError):
+            pass
         return AgentOutput(final_output=final_output, token_usage=usage)
 
     def _hermes_latest_session(self, cwd: str | None = None) -> str | None:
