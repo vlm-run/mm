@@ -127,6 +127,7 @@ class Assistant:
         input_path: Path,
         primer: str,
         profile_name: str | None = None,
+        config_dir: str | None = None,
         timeout_s: int = DEFAULT_TIMEOUT_S,
         stream: bool = False,
     ) -> AssistantResult:
@@ -134,11 +135,12 @@ class Assistant:
 
         When ``stream`` is set, the agent's stdout/stderr are also teed to this
         process's terminal live; the captured result is identical either way.
+        ``config_dir`` (ad-hoc profiles) overrides ``MM_CONFIG_DIR`` for the agent.
         """
         prompt = self.build_prompt(case, arm, input_path, primer)
         cwd = input_path if input_path.is_dir() else input_path.parent
         with _mm_shim(arm) as (shim_dir, mm_log):
-            env = self._env(arm, shim_dir, mm_log, profile_name)
+            env = self._env(arm, shim_dir, mm_log, profile_name, config_dir)
             out = _exec(self.build_argv(prompt), cwd, env, timeout_s, stream=stream)
             used = _read_mm_log(mm_log) if arm == "with_mm" else []
             log_text = _read_mm_log_full(mm_log) if arm == "with_mm" else ""
@@ -157,13 +159,25 @@ class Assistant:
             return parser.hermes(stdout, session_id=sid, cwd=cwd)
         return getattr(parser, self.name)(stdout)
 
-    def _env(self, arm: str, shim_dir: Path, mm_log: Path, profile_name: str | None) -> dict:
+    def _env(
+        self,
+        arm: str,
+        shim_dir: Path,
+        mm_log: Path,
+        profile_name: str | None,
+        config_dir: str | None = None,
+    ) -> dict:
         env = os.environ.copy()
         env["PATH"] = f"{shim_dir}{os.pathsep}{env.get('PATH', '')}"
         env["MMBENCH_MM_LOG"] = str(mm_log)
         if arm == "with_mm":
             if profile_name:
                 env["MM_PROFILE"] = profile_name
+            # Ad-hoc profiles live in a throwaway config dir; point mm at it so the
+            # backend resolves without a global profile. Named profiles leave this
+            # unset and resolve from the user's real mm config.
+            if config_dir:
+                env["MM_CONFIG_DIR"] = config_dir
             # Isolate mm's storage AND on-disk cache per run so neither the DB nor
             # the memoize cache (transcripts, shot detection, ...) leaks across
             # runs or sessions. Config is left shared so the profile still resolves.
