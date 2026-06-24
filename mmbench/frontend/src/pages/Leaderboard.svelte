@@ -3,7 +3,11 @@
   import MultiSelect from "svelte-multiselect";
   import Chart from "../components/Chart.svelte";
   import InfoTip from "../components/InfoTip.svelte";
-  import { fetchLeaderboard, fetchSessions, fetchCaseBreakdown } from "../api.js";
+  import {
+    fetchLeaderboard,
+    fetchSessions,
+    fetchCaseBreakdown,
+  } from "../api.js";
 
   let lb = $state([]),
     sessions = $state([]),
@@ -98,7 +102,13 @@
   const key = (s) => `${s.assistant}\\${s.profile}`;
   const num = (v, s = "") => (v == null ? "–" : v + s);
   const fmtTokens = (v) =>
-    v == null ? "–" : v >= 1e6 ? (v / 1e6).toFixed(1) + "M" : v >= 1e3 ? (v / 1e3).toFixed(1) + "k" : String(v);
+    v == null
+      ? "–"
+      : v >= 1e6
+        ? (v / 1e6).toFixed(1) + "M"
+        : v >= 1e3
+          ? (v / 1e3).toFixed(1) + "k"
+          : String(v);
   const href = (r) =>
     `#/cell/${encodeURIComponent(r.assistant)}/${encodeURIComponent(r.profile)}`;
   const BRIGHT = "text-slate-100";
@@ -110,9 +120,11 @@
         ? [DIM, BRIGHT]
         : wo == null
           ? [BRIGHT, DIM]
-          : w >= wo
-            ? [BRIGHT, DIM]
-            : [DIM, BRIGHT];
+          : w === wo
+            ? [DIM, DIM]
+            : w > wo
+              ? [BRIGHT, DIM]
+              : [DIM, BRIGHT];
   const tokClass = (w, wo) =>
     w == null && wo == null
       ? [DIM, DIM]
@@ -158,7 +170,13 @@
   const barOpts = {
     scales: {
       x: {
-        ticks: { ...tick, maxRotation: 90, minRotation: 0, autoSkip: false },
+        ticks: {
+          ...tick,
+          maxRotation: 90,
+          minRotation: 45,
+          autoSkip: false,
+          align: "center",
+        },
         grid,
       },
       y: { ticks: tick, grid, beginAtZero: true, max: 100 },
@@ -216,7 +234,6 @@
     const datasets = [];
     rows.forEach((r, i) => {
       const col = PAL[i % PAL.length];
-      const stack = cell(r);
       const at = (key) =>
         selCases.map((cid) => {
           const m = cmpMap[`${r.assistant}\\${r.profile}\\${cid}`];
@@ -226,19 +243,11 @@
         label: `${cell(r)} (w/o)`,
         data: at("without_mm"),
         backgroundColor: fade(col, 0.28),
-        stack,
-        order: 0,
-        barPercentage: 1.0,
-        categoryPercentage: 0.94,
       });
       datasets.push({
         label: cell(r),
         data: at("with_mm"),
         backgroundColor: col,
-        stack,
-        order: 1,
-        barPercentage: 0.6,
-        categoryPercentage: 0.94,
       });
     });
     return { labels: selCases, datasets };
@@ -246,11 +255,10 @@
   const cmpOpts = {
     scales: {
       x: {
-        stacked: false,
         ticks: { ...tick, maxRotation: 90, minRotation: 45, autoSkip: false },
         grid,
       },
-      y: { stacked: false, ticks: tick, grid, beginAtZero: true, max: 100 },
+      y: { ticks: tick, grid, beginAtZero: true, max: 100 },
     },
     plugins: {
       legend: {
@@ -434,8 +442,7 @@
                   type="button"
                   onclick={() => setSort("pass")}
                   class="inline-flex items-center gap-1 cursor-pointer select-none hover:text-slate-200"
-                  >Pass (mm)<span
-                    class="w-2 text-[10px] {caretCls('pass')}"
+                  >Pass (mm)<span class="w-2 text-[10px] {caretCls('pass')}"
                     >{caret("pass")}</span
                   ></button
                 ><InfoTip
@@ -449,8 +456,7 @@
                   type="button"
                   onclick={() => setSort("tokens")}
                   class="inline-flex items-center gap-1 cursor-pointer select-none hover:text-slate-200"
-                  >Toks (w/wo)<span
-                    class="w-2 text-[10px] {caretCls('tokens')}"
+                  >Toks (w/wo)<span class="w-2 text-[10px] {caretCls('tokens')}"
                     >{caret("tokens")}</span
                   ></button
                 ><InfoTip
@@ -496,9 +502,16 @@
                 >{r.with_mm.passes}/{r.with_mm.n}</td
               >
               <td class="p-3 text-right font-mono"
-                ><span class={tokClass(r.with_mm.token_total, r.without_mm.token_total)[0]}>{fmtTokens(r.with_mm.token_total)}</span
-                ><span class={tokClass(r.with_mm.token_total, r.without_mm.token_total)[1]}
-                  >/{fmtTokens(r.without_mm.token_total)}</span
+                ><span
+                  class={tokClass(
+                    r.with_mm.token_total,
+                    r.without_mm.token_total,
+                  )[0]}>{fmtTokens(r.with_mm.token_total)}</span
+                ><span
+                  class={tokClass(
+                    r.with_mm.token_total,
+                    r.without_mm.token_total,
+                  )[1]}>/{fmtTokens(r.without_mm.token_total)}</span
                 ></td
               >
               <td class="p-3 text-right font-mono text-slate-400"
@@ -515,14 +528,16 @@
       <span class="text-slate-400">Table 1.</span> Each row is one
       <span class="text-slate-400">assistant / mm-profile</span> cell.
       <span class="text-slate-400">Without %</span> and
-      <span class="text-slate-400">With %</span> are mean correctness (0 to 100, a
-      50/50 blend of deterministic checks and an LLM judge) for the agent running
-      with only its native tools versus with the <code class="text-blue-300">mm</code
-      > CLI on PATH, averaged over every case, run, and session.
-      <span class="text-slate-400">Lift</span> is the difference (With minus Without)
-      in percentage points; positive means mm helped.
-      <span class="text-slate-400">Speedup</span> is without-mm wall-clock time divided
-      by with-mm time, so above 1× means the agent finished faster with mm.
+      <span class="text-slate-400">With %</span> are mean correctness (0 to 100,
+      a 50/50 blend of deterministic checks and an LLM judge) for the agent
+      running with only its native tools versus with the
+      <code class="text-blue-300">mm</code>
+      CLI on PATH, averaged over every case, run, and session.
+      <span class="text-slate-400">Lift</span> is the difference (With minus
+      Without) in percentage points; positive means mm helped.
+      <span class="text-slate-400">Speedup</span> is without-mm wall-clock time
+      divided by with-mm time, so above 1× means the agent finished faster with
+      mm.
       <span class="text-slate-400">Pass (mm)</span> is the share of with-mm case
       runs scoring at least 60% correctness.
       <span class="text-slate-400">Toks (w/wo)</span> is the mean total tokens
@@ -557,7 +572,9 @@
   </div>
 </section>
 
-<section class="mt-4 rounded-xl border border-slate-800 bg-slate-900 p-4 min-w-0">
+<section
+  class="mt-4 rounded-xl border border-slate-800 bg-slate-900 p-4 min-w-0"
+>
   <div class="flex flex-wrap items-end justify-between gap-3 mb-3">
     <h2 class="text-xs font-semibold uppercase tracking-widest text-slate-400">
       Correctness per case
@@ -591,13 +608,13 @@
         <Chart type="bar" data={cmpData} options={cmpOpts} />
       </div>
       <p class="mt-3 text-xs leading-relaxed text-slate-500 max-w-4xl">
-        <span class="text-slate-400">Figure.</span> Mean correctness per case for each
-        selected cell, averaged over all sessions and runs. Each column shows two
-        values for the same cell: the solid bar is
-        <span class="text-slate-300">with mm</span>, the faint bar behind it is
+        <span class="text-slate-400">Figure.</span> Mean correctness per case
+        for each selected cell, averaged over all sessions and runs. Each column
+        shows two bars for the same cell: the solid bar is
+        <span class="text-slate-300">with mm</span>, the faded bar beside it is
         <span class="text-slate-300">without mm</span> (native tools only), so the
-        gap between them is mm's per-case lift. Cells come from the assistant /
-        mm-profile filters above; pick the cases to chart with the selector.
+        gap between them is mm's per-case lift. Cells come from the assistant / mm-profile
+        filters above; pick the cases to chart with the selector.
       </p>
     {:else}
       <div class="text-slate-500 py-10 text-center text-sm">
@@ -614,7 +631,9 @@
               >Case</th
             >
             {#each rows as r (cell(r))}
-              <th class="p-3 text-right whitespace-nowrap border-b border-slate-800">
+              <th
+                class="p-3 text-right whitespace-nowrap border-b border-slate-800"
+              >
                 <div class="text-slate-300">{r.assistant}</div>
                 <div class="text-xs text-slate-500 font-mono">{r.profile}</div>
               </th>
@@ -633,8 +652,8 @@
                 <td class="p-3 text-right font-mono border-t border-slate-800">
                   {#if m && (m.with_mm != null || m.without_mm != null)}
                     {@const [wc, woc] = cmpClass(m.with_mm, m.without_mm)}
-                    <span class={wc}>{num(m.with_mm)}</span><span
-                      class={woc}>/{num(m.without_mm)}</span
+                    <span class={wc}>{num(m.with_mm)}</span><span class={woc}
+                      >/{num(m.without_mm)}</span
                     >
                   {:else}
                     <span class="text-slate-500">–</span>
@@ -648,11 +667,11 @@
     </div>
     <p class="mt-3 text-xs leading-relaxed text-slate-500 max-w-4xl">
       <span class="text-slate-400">Table 2.</span> Per-case correctness for
-      <span class="text-slate-300">all {caseIds.length} cases</span> (independent of
-      the chart's case selector), in
+      <span class="text-slate-300">all {caseIds.length} cases</span>
+      (independent of the chart's case selector), in
       <span class="text-slate-300">with mm / without mm</span> form (e.g. 85/79),
-      cases down the rows and assistant / mm-profile cells across the columns.
-      Scroll horizontally to compare more cells.
+      cases down the rows and assistant / mm-profile cells across the columns. Scroll
+      horizontally to compare more cells.
     </p>
   {/if}
 </section>
