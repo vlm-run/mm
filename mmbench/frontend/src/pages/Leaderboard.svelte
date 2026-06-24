@@ -101,6 +101,28 @@
     v == null ? "–" : v >= 1e6 ? (v / 1e6).toFixed(1) + "M" : v >= 1e3 ? (v / 1e3).toFixed(1) + "k" : String(v);
   const href = (r) =>
     `#/cell/${encodeURIComponent(r.assistant)}/${encodeURIComponent(r.profile)}`;
+  const BRIGHT = "text-slate-100";
+  const DIM = "text-slate-500";
+  const cmpClass = (w, wo) =>
+    w == null && wo == null
+      ? [DIM, DIM]
+      : w == null
+        ? [DIM, BRIGHT]
+        : wo == null
+          ? [BRIGHT, DIM]
+          : w >= wo
+            ? [BRIGHT, DIM]
+            : [DIM, BRIGHT];
+  const tokClass = (w, wo) =>
+    w == null && wo == null
+      ? [DIM, DIM]
+      : w == null
+        ? [DIM, BRIGHT]
+        : wo == null
+          ? [BRIGHT, DIM]
+          : w <= wo
+            ? [BRIGHT, DIM]
+            : [DIM, BRIGHT];
   const PAL = [
     "#60a5fa",
     "#34d399",
@@ -206,8 +228,8 @@
         backgroundColor: fade(col, 0.28),
         stack,
         order: 0,
-        barPercentage: 0.92,
-        categoryPercentage: 0.78,
+        barPercentage: 1.0,
+        categoryPercentage: 0.94,
       });
       datasets.push({
         label: cell(r),
@@ -215,8 +237,8 @@
         backgroundColor: col,
         stack,
         order: 1,
-        barPercentage: 0.5,
-        categoryPercentage: 0.78,
+        barPercentage: 0.6,
+        categoryPercentage: 0.94,
       });
     });
     return { labels: selCases, datasets };
@@ -474,9 +496,8 @@
                 >{r.with_mm.passes}/{r.with_mm.n}</td
               >
               <td class="p-3 text-right font-mono"
-                ><span class="text-slate-300"
-                  >{fmtTokens(r.with_mm.token_total)}</span
-                ><span class="text-slate-500"
+                ><span class={tokClass(r.with_mm.token_total, r.without_mm.token_total)[0]}>{fmtTokens(r.with_mm.token_total)}</span
+                ><span class={tokClass(r.with_mm.token_total, r.without_mm.token_total)[1]}
                   >/{fmtTokens(r.without_mm.token_total)}</span
                 ></td
               >
@@ -611,8 +632,9 @@
                 {@const m = cmpMap[`${r.assistant}\\${r.profile}\\${cid}`]}
                 <td class="p-3 text-right font-mono border-t border-slate-800">
                   {#if m && (m.with_mm != null || m.without_mm != null)}
-                    <span class="text-slate-100">{num(m.with_mm)}</span><span
-                      class="text-slate-500">/{num(m.without_mm)}</span
+                    {@const [wc, woc] = cmpClass(m.with_mm, m.without_mm)}
+                    <span class={wc}>{num(m.with_mm)}</span><span
+                      class={woc}>/{num(m.without_mm)}</span
                     >
                   {:else}
                     <span class="text-slate-500">–</span>

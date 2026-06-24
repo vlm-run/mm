@@ -53,6 +53,18 @@
           ? (v / 1e3).toFixed(1) + "k"
           : String(v);
   const ax = { ticks: { color: "#94a3b8" }, grid: { color: "#1e293b" } };
+  const BRIGHT = "text-slate-100";
+  const DIM = "text-slate-500";
+  const tokClass = (w, wo) =>
+    w == null && wo == null
+      ? [DIM, DIM]
+      : w == null
+        ? [DIM, BRIGHT]
+        : wo == null
+          ? [BRIGHT, DIM]
+          : w <= wo
+            ? [BRIGHT, DIM]
+            : [DIM, BRIGHT];
 
   const perCase = $derived.by(() => {
     if (!d?.cases) return { labels: [], datasets: [] };
@@ -152,22 +164,24 @@
   </div>
 
   <div class="grid grid-cols-2 md:grid-cols-5 gap-3 mt-5">
-    {#each [["Without mm", d.overall.without_mm.correctness, ""], ["With mm", d.overall.with_mm.correctness, ""], ["Lift", d.overall.lift, ""], ["Speedup", d.overall.speedup, "×"], ["Tokens (w/wo)", null, ""]] as [label, val, suf]}
+    {#each [["Without mm", d.overall.without_mm.correctness, ""], ["With mm", d.overall.with_mm.correctness, ""], ["Lift", d.overall.lift, ""], ["Speedup", d.overall.speedup, "×"]] as [label, val, suf]}
       <div class="rounded-xl border border-slate-800 bg-slate-900 p-4">
         <div class="text-xs uppercase tracking-widest text-slate-400">
           {label}
         </div>
-        <div
-          class="font-semibold mt-1 font-mono"
-          class:text-2xl={label != "Tokens (w/wo)"}
-          class:text-xl={label == "Tokens (w/wo)"}
-        >
-          {label.startsWith("Tokens")
-            ? `${fmtTokens(d.overall.with_mm.token_sum)} / ${fmtTokens(d.overall.without_mm.token_sum)}`
-            : num(val, suf)}
+        <div class="text-2xl font-semibold mt-1 font-mono">
+          {num(val, suf)}
         </div>
       </div>
     {/each}
+    <div class="rounded-xl border border-slate-800 bg-slate-900 p-4">
+      <div class="text-xs uppercase tracking-widest text-slate-400">
+        Tokens (w/wo)
+      </div>
+      <div class="text-xl font-semibold mt-1 font-mono">
+        <span class={tokClass(d.overall.with_mm.token_sum, d.overall.without_mm.token_sum)[0]}>{fmtTokens(d.overall.with_mm.token_sum)}</span><span class={tokClass(d.overall.with_mm.token_sum, d.overall.without_mm.token_sum)[1]}> / {fmtTokens(d.overall.without_mm.token_sum)}</span>
+      </div>
+    </div>
   </div>
 
   <section class="mt-6">
@@ -226,9 +240,9 @@
                 >{s.lift == null ? "–" : (s.lift >= 0 ? "+" : "") + s.lift}</td
               >
               <td class="p-3 text-right font-mono"
-                ><span class="text-slate-300"
+                ><span class={tokClass(s.with_mm?.token_total, s.without_mm?.token_total)[0]}
                   >{fmtTokens(s.with_mm?.token_total)}</span
-                ><span class="text-slate-500"
+                ><span class={tokClass(s.with_mm?.token_total, s.without_mm?.token_total)[1]}
                   >/{fmtTokens(s.without_mm?.token_total)}</span
                 ></td
               >
@@ -296,9 +310,9 @@
                                 >{num(c.with_mm?.correctness)}</td
                               >
                               <td class="py-2 px-3 text-xs font-mono">
-                                <span class="text-slate-300"
+                                <span class={tokClass(c.with_mm?.token_total, c.without_mm?.token_total)[0]}
                                   >{fmtTokens(c.with_mm?.token_total)}</span
-                                ><span class="text-slate-500"
+                                ><span class={tokClass(c.with_mm?.token_total, c.without_mm?.token_total)[1]}
                                   >/{fmtTokens(c.without_mm?.token_total)}</span
                                 >
                               </td>
