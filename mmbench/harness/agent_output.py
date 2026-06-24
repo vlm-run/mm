@@ -319,7 +319,12 @@ class AgentOutputParser:
             return None
         for line in r.stdout.splitlines():
             line = line.strip()
-            if not line or line.startswith("Title") or line.startswith("─"):
+            if (
+                not line
+                or line.startswith("Title")
+                or line.startswith("Preview")
+                or line.startswith("─")
+            ):
                 continue
             parts = line.split()
             if parts:
