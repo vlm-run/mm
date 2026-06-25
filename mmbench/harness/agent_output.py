@@ -28,7 +28,9 @@ class TokenUsage:
     """Normalized token usage across all supported harnesses.
 
     Fields default to 0 when a harness doesn't report them. ``total_tokens``
-    is the headline number (input + output + reasoning where reported).
+    is the headline number: every token bucket the model actually processed,
+    counted once — uncached input + output (reasoning is already inside output
+    for the harnesses that report it that way) + cache read + cache write.
     """
 
     input_tokens: int = 0
@@ -67,20 +69,28 @@ class AgentOutputParser:
         pass
 
     def claude(self, stdout: str) -> AgentOutput:
-        """claude -p --output-format json: single object; ``result`` is the answer, ``usage`` has tokens."""
+        """claude -p --output-format json: single object; ``result`` is the answer, ``usage`` has tokens.
+
+        ``usage.input_tokens`` is the *uncached* remainder only; cache reads and
+        cache writes are reported separately and dominate a multi-turn agentic
+        session. The headline total must add them back, or it collapses to a tiny
+        number (the symptom the leaderboard showed for Claude).
+        """
         d = self._load_json(stdout)
         if not isinstance(d, dict):
             return AgentOutput(final_output=stdout.strip())
         u = d.get("usage") or {}
         inp, out = u.get("input_tokens", 0), u.get("output_tokens", 0)
+        cache_read = u.get("cache_read_input_tokens", 0)
+        cache_write = u.get("cache_creation_input_tokens", 0)
         return AgentOutput(
             final_output=str(d.get("result", "") or ""),
             token_usage=TokenUsage(
                 input_tokens=inp,
                 output_tokens=out,
-                total_tokens=inp + out,
-                cache_read=u.get("cache_read_input_tokens", 0),
-                cache_write=u.get("cache_creation_input_tokens", 0),
+                total_tokens=inp + out + cache_read + cache_write,
+                cache_read=cache_read,
+                cache_write=cache_write,
                 cost_usd=d.get("total_cost_usd", 0.0) or 0.0,
             ),
         )
@@ -246,7 +256,12 @@ class AgentOutputParser:
         )
 
     def openclaw(self, stdout: str) -> AgentOutput:
-        """openclaw agent --local --json: object with ``payloads[].text`` (answer) + ``meta.agentMeta.usage`` (tokens)."""
+        """openclaw agent --local --json: object with ``payloads[].text`` (answer) + ``meta.agentMeta.usage`` (tokens).
+
+        ``usage.total`` is not the cumulative processed total — it has been
+        observed below ``input + output`` and excludes cache entirely — so it is
+        recomputed from the component buckets like the Claude harness.
+        """
         d = self._load_json(stdout)
         if not isinstance(d, dict):
             return AgentOutput(final_output=stdout.strip())
@@ -258,14 +273,16 @@ class AgentOutputParser:
         u = (meta.get("agentMeta") or {}).get("usage")
         inp = u.get("input", 0) if isinstance(u, dict) else 0
         out = u.get("output", 0) if isinstance(u, dict) else 0
+        cache_read = u.get("cacheRead", 0) if isinstance(u, dict) else 0
+        cache_write = u.get("cacheWrite", 0) if isinstance(u, dict) else 0
         return AgentOutput(
             final_output=text,
             token_usage=TokenUsage(
                 input_tokens=inp,
                 output_tokens=out,
-                total_tokens=u.get("total", 0) or (inp + out),
-                cache_read=u.get("cacheRead", 0),
-                cache_write=u.get("cacheWrite", 0),
+                total_tokens=inp + out + cache_read + cache_write,
+                cache_read=cache_read,
+                cache_write=cache_write,
             )
             if isinstance(u, dict)
             else None,
