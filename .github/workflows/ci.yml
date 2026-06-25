@@ -65,13 +65,16 @@ jobs:
 
   lint:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.11"]
     steps:
       - uses: actions/checkout@v6
         with:
           lfs: true
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: ${{ matrix.python-version }}
       - uses: astral-sh/setup-uv@v4
         with:
           enable-cache: true
