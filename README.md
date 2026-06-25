@@ -62,7 +62,9 @@ irm https://vlm-run.github.io/mm/install/install.ps1 | iex
 | `mm-ctx[gpu]` | Linux/Windows GPU hosts | `ctranslate2/faster-whisper` first, then OpenAI compatible transcription endpoints (`/audio/transcriptions`) |
 | `mm-ctx` default / CPU | Standard installs | OpenAI compatible transcription endpoints (`/audio/transcriptions`) |
 
-`mm` defaults to OpenAI compatible endpoints for audio transcription. You can override this by specifying a local backend.
+`mm` defaults to OpenAI-compatible endpoints (`/audio/transcriptions`) for audio transcription.
+With the `mlx` extra on Apple Silicon, MLX is tried first; with `gpu`, ctranslate2/faster-whisper is tried first.
+Override explicitly with `--encode.backend`:
 
 ```bash
 # mlx on Apple Silicon
@@ -70,6 +72,9 @@ $ mm cat audio.mp3 --encode.backend mlx
 
 # ctranslate2
 $ mm cat audio.mp3 --encode.backend ctranslate2
+
+# force OpenAI-compatible endpoint
+$ mm cat audio.mp3 --encode.backend openai
 ```
 
 ## CLI
@@ -214,6 +219,8 @@ mm.Context              # the one class you use
 mm.Ref                  # Annotated[str, "mm.Ref"] typed alias for ref ids
 mm.RefNotFoundError     # KeyError subclass raised by ctx.get on miss
 mm.uuid7()              # UUIDv7 helper (time-ordered default session_id)
+mm.render_context(ctx)  # Rich HTML rendering for notebooks (source-aware)
+mm.render_messages(msgs)# Lightweight HTML rendering for any message list
 ```
 
 ### Build a prompt
@@ -341,10 +348,10 @@ The skill exposes mm's capabilities to any tool that supports the skills protoco
 | `sql`   | SQL on `files` / `extractions` / `chunks` (auto-routed) | `-d` / `--dir`, `--pre-index`, `--list-tables`, `-f` / `--format` |
 | `wc`    | Count files, bytes, lines (est.), tokens (est.) | `-k` / `--kind`, `--by-kind`, `-f` / `--format` |
 | `bench` | Benchmark suite with statistical analysis | `-r` / `--rounds`, `-w` / `--warmup`, `-m` / `--mode metadata`/`fast`/`accurate`/`all`, `-c` / `--command`, `-g` / `--group`, `--model`, `--task`, `-b` / `--bench-file`, `--dry-run`, `--host-info`, `--with-generate`, `--timeout`, `-f` / `--format` (incl. `stdout`) |
-| `config` | Configuration | `show`, `init [-f]`, `set <key> <value>`, `reset-db [-y]`, `reset-profiles [-y]`, `reset [-y]`, `doctor [--format]` |
-| `profile` | LLM provider profiles | `list [-f FORMAT]`, `add NAME -b URL -m MODEL [-k KEY]`, `update NAME [-b/-k/-m]`, `use NAME`, `remove NAME` |
+| `config` | Configuration & diagnostics | `show`, `init [-f]`, `set <key> <value>`, `reset-db [-y]`, `reset-profiles [-y]`, `reset [-y]`, `doctor [--format]` |
+| `profile` | LLM provider profiles | `list [-f FORMAT]`, `add NAME -b URL -m MODEL [-k KEY]`, `update NAME [-b/-k/-m]`, `use NAME`, `remove NAME`, `clone SRC DEST [-b/-k/-m]` |
 
-Top-level: `mm [-p / --profile NAME] [--color auto/always/never] [-v / --version] <command>`.
+Top-level: `mm [-p / --profile NAME] [--color auto/always/never] [--debug] [-v / --version] <command>`.
 
 ### find — locate/list, tree, and schema
 
@@ -705,6 +712,9 @@ mm profile use openai
 
 # Update a field on an existing profile
 mm profile update openai --model gpt-4o-mini --api-key sk-new-key
+
+# Clone a profile, optionally overriding fields
+mm profile clone ollama my-ollama --model qwen3-vl:8b
 
 # Remove a profile (cannot remove the active one)
 mm profile remove openai

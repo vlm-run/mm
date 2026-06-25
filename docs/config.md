@@ -18,6 +18,7 @@ mm config SUBCOMMAND [OPTIONS]
 | `reset-db` | Delete all mm databases and caches |
 | `reset-profiles` | Restore all profiles to built-in defaults |
 | `reset` | Reset everything: databases and profiles |
+| `doctor` | Run environment health checks and print diagnostics |
 
 ## mm config show
 
@@ -166,6 +167,23 @@ mm config reset --yes    # skip all confirmation prompts
 | Flag | Short | Description |
 |------|-------|-------------|
 | `--yes` | `-y` | Skip the confirmation prompt |
+
+## mm config doctor
+
+Run environment health checks and print a diagnostic table. Checks mm version, ffmpeg availability, config file, database, active profile reachability, and optional dependencies.
+
+```bash
+mm config doctor
+mm config doctor --format json
+```
+
+**Options:**
+
+| Flag | Description |
+|------|-------------|
+| `--format FORMAT` | Output format: `rich` (default), `json`, `tsv`, `csv` |
+
+Checked items: `mm_version`, `ffmpeg`, `config_file`, `database`, `profile` (name + model + base_url), `profile_reachable` (1-token probe), optional deps (`ctranslate2`, `faster_whisper`, `lightning_whisper_mlx`).
 
 ## Configuration file
 

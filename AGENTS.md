@@ -117,7 +117,7 @@ mm/
 ├── python/mm/              # Python package source
 │   ├── __init__.py             # Public API re-exports
 │   ├── _mm.pyi            # Type stubs for Rust bindings
-│   ├── cli.py                  # Typer app — registers 6 commands + config
+│   ├── cli.py                  # Typer app — registers 7 commands + config + profile
 │   ├── context.py              # Context class (main Python API)
 │   ├── config.py               # LLM provider config (~/.mm/config.toml)
 │   ├── llm.py                  # LLM backend (OpenAI SDK, accurate mode)
@@ -128,6 +128,14 @@ mm/
 │   ├── pdf.py                  # PDF page mosaic extraction (pypdfium2 + Pillow)
 │   ├── ffmpeg.py               # ffmpeg wrappers (keyframe mosaics, audio/video segment extraction)
 │   ├── video.py                # Video metadata helpers
+│   ├── cat_utils/              # cat command helpers (accurate-mode encoders, extract_meta, base_utils)
+│   ├── notebook.py             # Notebook rendering (render_context, render_messages)
+│   ├── refs.py                 # Ref type, RefNotFoundError, uuid7
+│   ├── refs_messages.py        # Ref → message rendering
+│   ├── fts.py                  # FTS search (backed by SQLite FTS5)
+│   ├── semantic.py             # Semantic (vector) search
+│   ├── cache.py                # L2 result cache
+│   ├── sysinfo.py              # Host system info collection
 │   ├── common/                 # Shared utilities
 │   │   └── video/
 │   │       └── shot_detection.py  # PySceneDetect wrapper (detect_scenes, sample_*)
@@ -175,8 +183,8 @@ mm/
 │       ├── sql.py              # mm sql (all tables via SQLite)
 │       ├── wc.py               # mm wc (--by-kind)
 │       ├── bench.py            # mm bench (benchmark suite)
-│       ├── config.py           # mm config (show, init, set, reset-db, doctor)
-│       └── profile.py          # mm profile (list, add, update, use, remove)
+│       ├── config.py           # mm config (show, init, set, reset-db, reset-profiles, reset, doctor)
+│       └── profile.py          # mm profile (list, add, update, use, remove, clone)
 ├── tests/
 │   └── python/                 # pytest suite
 │       ├── conftest.py
@@ -227,6 +235,15 @@ uv run mm <command> [args]
 
 ## CLI commands (9 total)
 
+### Top-level flags
+
+| Flag | Purpose |
+|------|---------|
+| `--profile NAME` / `-p` | Override active profile for this invocation (`MM_PROFILE` env also works). |
+| `--color MODE` | `auto` (default), `always`, `never`. |
+| `--debug` | Enable debug logging (Python `mm` logger + Rust `RUST_LOG=debug` tracing). |
+| `--version` / `-v` | Print version and exit. |
+
 | Command   | Purpose | Key flags |
 |-----------|---------|-----------|
 | `find`    | Find/list files, tree view, schema | `--name`, `-i` (ignore case), `--kind`, `--ext`, `--min-size`, `--max-size`, `--sort`, `--columns`, `--tree`, `--depth`, `--schema`, `--limit`, `--no-ignore`, `--format` |
@@ -236,8 +253,8 @@ uv run mm <command> [args]
 | `sql`     | SQL on files, results, and chunks | `--dir`, `--format`, `--list-tables` |
 | `wc`      | Count files, size, lines (est.), tokens (est.) | `--kind`, `--by-kind`, `--format` |
 | `bench`   | Benchmark suite | `--format`, `--rounds` |
-| `config`  | Extraction mode settings | `show`, `init`, `set`, `reset-db`, `reset-profiles`, `reset`, `doctor` |
-| `profile` | Manage LLM provider profiles | `list`, `add`, `update`, `use`, `remove`, `--format` |
+| `config`  | Configuration & diagnostics | `show`, `init`, `set`, `reset-db`, `reset-profiles`, `reset`, `doctor` |
+| `profile` | Manage LLM provider profiles | `list`, `add`, `update`, `use`, `remove`, `clone`, `--format` |
 
 ### Consolidated commands
 
@@ -249,7 +266,7 @@ The following commands were merged into the core commands:
 - `audio` → `cat audio.mp3` (Whisper transcript; use `-p base64` or `-p gemini` for LLM description)
 - `ls` / `tree` / `describe` → `find` with `--tree`, `--schema`, `--columns`
 - `info` → `wc` (default summary panel)
-- `cat -m metadata` → `peek` (raw file metadata)
+- `cat -m metadata` (former metadata mode) → `peek` (raw file metadata, now a separate command)
 
 ### find modes
 
@@ -295,7 +312,9 @@ Use `mm find <dir> --schema` to see all available columns, their Arrow types, de
 
 Use `mm sql --list-tables` to see available tables and row counts.
 
-Columns (`files`): `uri`, `name`, `stem`, `ext`, `size`, `modified`, `created`, `mime`, `kind`, `is_binary`, `depth`, `parent`, `width`, `height`.
+Columns (`files` via `mm find`): `path`, `name`, `stem`, `ext`, `size`, `modified`, `created`, `mime`, `kind`, `is_binary`, `depth`, `parent`, `width`, `height`.
+
+Columns (`files` in SQLite / `mm sql`): same but primary key is `uri` (absolute path); `mm find` shows relative `path`.
 
 `kind` values: `image`, `video`, `document`, `code`, `audio`, `data`, `config`, `text`, `other`.
 
@@ -379,6 +398,8 @@ mm profile add openrouter --base-url https://openrouter.ai/api/v1 --model vlm-1
 mm profile update openrouter --model qwen3-vl:8b              # update a field
 mm profile use openrouter                                      # switch active profile
 mm profile list                                            # list all profiles
+mm profile clone ollama my-ollama --model qwen3-vl:8b         # clone + override fields
+mm profile remove openai                                      # cannot remove active
 
 # Per-command profile selection
 mm --profile openrouter cat photo.png -m accurate
