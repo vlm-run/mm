@@ -40,9 +40,9 @@ repos:
       - id: debug-statements
       - id: detect-private-key
       - id: end-of-file-fixer
-        exclude: \.ipynb$
+        exclude: '\.ipynb$|^mmbench/app/static/'
       - id: trailing-whitespace
-        exclude: \.ipynb$
+        exclude: '\.ipynb$|^mmbench/app/static/'
       - id: check-added-large-files
         args: ["--maxkb=100"]
         exclude: ^tests/
