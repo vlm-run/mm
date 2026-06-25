@@ -224,8 +224,9 @@ def case_transcript(session_id: str, case_id: str, db_path: Path = DEFAULT_DB_PA
     """Stored stdout, stderr, and mm log (latest run per arm) for one case in a session.
 
     Returns ``{session_id, case_id, without_mm, with_mm}`` where each arm is
-    ``{final_output, stderr, mm_log, token_total, token_usage}`` or ``None`` if
-    that arm has no recorded run.
+    ``{final_output, stderr, mm_log, token_total, token_usage, mm_tokens}`` or
+    ``None`` if that arm has no recorded run. ``mm_tokens`` is mm's own LLM token
+    usage across the run's ``mm cat`` calls (0 in the without_mm arm).
     """
     conn = _connect(db_path)
     try:
@@ -239,7 +240,8 @@ def case_transcript(session_id: str, case_id: str, db_path: Path = DEFAULT_DB_PA
             r = conn.execute(
                 "SELECT cr.final_output AS final_output, cr.stderr AS stderr, "
                 "cr.mm_log AS mm_log, cr.token_total AS token_total, "
-                "cr.token_usage_json AS token_usage_json "
+                "cr.token_usage_json AS token_usage_json, "
+                "cr.mm_token_total AS mm_token_total "
                 "FROM case_results cr JOIN runs r ON r.run_id = cr.run_id "
                 "WHERE cr.session_id = ? AND cr.case_id = ? AND cr.arm = ? "
                 "ORDER BY r.run_index DESC LIMIT 1",
@@ -252,6 +254,7 @@ def case_transcript(session_id: str, case_id: str, db_path: Path = DEFAULT_DB_PA
                     "mm_log": r["mm_log"] or "",
                     "token_total": r["token_total"],
                     "token_usage": json.loads(r["token_usage_json"] or "null"),
+                    "mm_tokens": r["mm_token_total"] or 0,
                 }
         return out
     finally:

@@ -517,10 +517,27 @@
                 </div>
               </div>
             {/if}
+            {#if txArm !== "without_mm" && tx?.[txArm]?.mm_tokens}
+              <div>
+                <div
+                  class="text-xs uppercase tracking-widest text-slate-500 mb-2"
+                >
+                  mm cat tokens
+                </div>
+                <div class="flex flex-wrap gap-3 text-xs">
+                  <div
+                    class="rounded-lg border border-slate-800 bg-slate-950 px-3 py-2"
+                  >
+                    <span class="text-slate-500">Total</span>
+                    <span class="ml-2 font-mono text-slate-200"
+                      >{fmtTokens(tx[txArm].mm_tokens)}</span
+                    >
+                  </div>
+                </div>
+              </div>
+            {/if}
             <div>
-              <div
-                class="text-xs uppercase tracking-widest text-slate-500 mb-2"
-              >
+              <div class="text-xs uppercase tracking-widest text-slate-500 mb-2">
                 mm commands used ({txArm === "without_mm"
                   ? 0
                   : logEntries.length})
