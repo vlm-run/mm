@@ -13,8 +13,8 @@
 | [`cat`](cat.md) | Extract and describe file content — pipeline-driven, LLM-capable |
 | [`sql`](sql.md) | SQL queries over file metadata, extractions, and chunks |
 | [`bench`](bench.md) | Benchmark all subcommands with statistical analysis |
-| [`profile`](profile.md) | Manage LLM provider profiles (base_url, api_key, model) |
-| [`config`](config.md) | View and set extraction mode configuration |
+| [`profile`](profile.md) | Manage LLM provider profiles: list, add, update, use, remove, clone |
+| [`config`](config.md) | Configuration & diagnostics: show, init, set, reset-db, reset-profiles, reset, doctor |
 
 ## Global flags
 
@@ -24,12 +24,14 @@ These flags are accepted before any subcommand.
 |------|-------------|---------|
 | `--profile / -p NAME` | Use a specific named profile for this invocation | Active profile |
 | `--color auto\|always\|never` | Control ANSI color output | `auto` |
+| `--debug` | Enable debug logging (Python `mm` logger + Rust `RUST_LOG=debug` tracing) | off |
 | `--version / -v` | Print version and exit | — |
 
 ```bash
 mm --version
 mm --profile openai cat photo.png -m accurate
 mm --color never find ~/data --format tsv
+mm --debug cat photo.png -m accurate                # debug logging
 ```
 
 Profile resolution order: `--profile` flag > `MM_PROFILE` env var > `active_profile` in config > `"ollama"`.
@@ -112,7 +114,7 @@ mm sql --list-tables
 
 | Table | Source | Notes |
 |-------|--------|-------|
-| `files` | Directory scan + SQLite | Ephemeral in-memory; re-scanned per query |
+| `files` | Directory scan + SQLite | Persistent store; reconciled against disk on each query |
 | `extractions` | SQLite | LLM-generated summaries from `mm cat` |
 | `chunks` | SQLite | Chunked content + embeddings; `mode` ∈ `metadata`, `fast`, `accurate` |
 
