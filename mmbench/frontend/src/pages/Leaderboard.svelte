@@ -358,12 +358,12 @@
         <code class="text-blue-300">mm</code> on PATH + a one-page primer.
       </li>
       <li>
-        Scored on correctness (deterministic checks + an LLM judge) and
-        wall-clock speed.
+        Scored on correctness (deterministic checks + an LLM judge), wall-clock
+        speed, and token usage (input + output + reasoning, including cache).
       </li>
       <li>
         <b>Lift</b> = with&minus;without correctness; <b>speedup</b> = without&divide;with
-        time.
+        time. Paired values read <b>without mm / with mm</b>.
       </li>
     </ol>
     <div class="mt-5 text-right">
