@@ -233,7 +233,12 @@ class Orchestrator:
                         mm_log=result.mm_log,
                         token_total=result.token_usage.total_tokens if result.token_usage else None,
                         token_usage_json=result.token_usage.to_json() if result.token_usage else "",
-                        mm_token_total=result.mm_token_total,
+                        mm_token_total=(
+                            result.mm_token_usage.total_tokens if result.mm_token_usage else None
+                        ),
+                        mm_token_usage_json=(
+                            result.mm_token_usage.to_json() if result.mm_token_usage else ""
+                        ),
                     ),
                 )
                 _persist_artifacts(case, sandbox.path, sid, arm)

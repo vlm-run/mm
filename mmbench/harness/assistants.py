@@ -75,8 +75,8 @@ class AssistantResult:
             from the PATH-shim log; reliable, not a transcript heuristic.
         mm_log: the full ordered mm invocation log (every ``mm ...`` line with its
             flags and args), as recorded by the shim; empty in the without_mm arm.
-        mm_token_total: mm's own LLM token usage (prompt + completion) summed across
-            this run's ``mm cat`` extractions; 0 in the without_mm arm.
+        mm_token_usage: mm's own LLM token usage (input/output/total) summed across
+            this run's ``mm cat`` extractions; None in the without_mm arm.
     """
 
     final_output: str
@@ -87,7 +87,7 @@ class AssistantResult:
     mm_commands_used: list[str] = field(default_factory=list)
     mm_log: str = ""
     token_usage: TokenUsage | None = None
-    mm_token_total: int = 0
+    mm_token_usage: TokenUsage | None = None
 
 
 class Assistant:
@@ -152,14 +152,16 @@ class Assistant:
             log_text = _read_mm_log_full(mm_log) if arm == "with_mm" else ""
             # mm's own token spend lives in its run-isolated cache (MM_DATA_DIR set
             # by _env). Read it post-run — no extra mm call, no agent-runtime impact.
-            mm_tokens = (
-                _read_mm_token_total(Path(env["MM_DATA_DIR"]) / "mm.db") if arm == "with_mm" else 0
+            mm_usage = (
+                _read_mm_token_usage(Path(env["MM_DATA_DIR"]) / "mm.db")
+                if arm == "with_mm"
+                else None
             )
         parsed = self._parse_output(out["final_output"], cwd=str(cwd))
         out["final_output"] = parsed.final_output
         out["token_usage"] = parsed.token_usage
         return AssistantResult(
-            mm_commands_used=used, mm_log=log_text, mm_token_total=mm_tokens, **out
+            mm_commands_used=used, mm_log=log_text, mm_token_usage=mm_usage, **out
         )
 
     def _parse_output(self, stdout: str, *, cwd: str | None = None) -> AgentOutput:
@@ -351,16 +353,16 @@ def _read_mm_log(mm_log: Path) -> list[str]:
 _VERBOSE_TOKENS = re.compile(r"(\d+)→(\d+)\s*tokens")
 
 
-def _read_mm_token_total(db_path: Path) -> int:
-    """Sum mm's own LLM token usage (prompt + completion) from the run's mm cache.
+def _read_mm_token_usage(db_path: Path) -> TokenUsage | None:
+    """Sum mm's own LLM prompt/completion tokens from the run's mm cache.
 
     mm persists its verbose pipeline tail — which carries ``prompt→completion
     tokens`` — into ``extractions.metadata``. Reading it recovers mm's token spend
     without a second ``mm`` invocation, so the agent's measured runtime is
-    unaffected. Returns 0 when the cache is absent or held no LLM-backed cat.
+    unaffected. Returns ``None`` when the cache is absent or held no LLM-backed cat.
     """
     if not db_path.exists():
-        return 0
+        return None
     try:
         conn = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True)
         try:
@@ -370,8 +372,8 @@ def _read_mm_token_total(db_path: Path) -> int:
         finally:
             conn.close()
     except sqlite3.Error:
-        return 0
-    total = 0
+        return None
+    prompt = completion = 0
     for (meta_json,) in rows:
         try:
             suffix = (json.loads(meta_json) or {}).get("verbose_suffix") or ""
@@ -379,8 +381,13 @@ def _read_mm_token_total(db_path: Path) -> int:
             continue
         m = _VERBOSE_TOKENS.search(suffix)
         if m:
-            total += int(m.group(1)) + int(m.group(2))
-    return total
+            prompt += int(m.group(1))
+            completion += int(m.group(2))
+    if not (prompt or completion):
+        return None
+    return TokenUsage(
+        input_tokens=prompt, output_tokens=completion, total_tokens=prompt + completion
+    )
 
 
 def _read_mm_log_full(mm_log: Path) -> str:

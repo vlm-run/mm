@@ -87,6 +87,7 @@ CREATE TABLE IF NOT EXISTS case_results (
     token_total           INTEGER,
     token_usage_json      TEXT,
     mm_token_total        INTEGER,
+    mm_token_usage_json   TEXT,
     created_at            TEXT NOT NULL,
     PRIMARY KEY (run_id, case_id, arm)
 );
@@ -134,7 +135,8 @@ class CaseResult:
     mm_log: str = ""
     token_total: int | None = None
     token_usage_json: str = ""
-    mm_token_total: int = 0
+    mm_token_total: int | None = None
+    mm_token_usage_json: str = ""
 
     def __post_init__(self) -> None:
         if self.arm not in ARMS:
@@ -227,8 +229,8 @@ class MmBenchStore:
             "correctness, checkpoint_score, judge_score, speed_s, "
             "task_completion, mm_used, mm_commands_used_json, failure_mode, "
             "final_output, stderr, mm_log, token_total, token_usage_json, "
-            "mm_token_total, created_at) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            "mm_token_total, mm_token_usage_json, created_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (
                 run_id,
                 session_id,
@@ -255,6 +257,7 @@ class MmBenchStore:
                 row["token_total"],
                 row["token_usage_json"],
                 row["mm_token_total"],
+                row["mm_token_usage_json"],
                 _now(),
             ),
         )

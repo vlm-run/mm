@@ -184,6 +184,57 @@
     plugins: { legend: { labels: { color: "#cbd5e1" } } },
   };
 
+  // Token-usage leaderboard: least-utilized first. Each cell is one horizontal
+  // bar carrying both arms — with mm as the solid inner bar, without mm as the
+  // faded outer bar (same hue, different opacity), so they overlay on one track.
+  const tokenRows = $derived(
+    [...rows].sort(
+      (a, b) =>
+        (a.with_mm.token_sum ?? Infinity) - (b.with_mm.token_sum ?? Infinity),
+    ),
+  );
+  const tokenData = $derived({
+    labels: tokenRows.map(cell),
+    datasets: [
+      {
+        label: "Without mm",
+        data: tokenRows.map((r) => r.without_mm.token_sum),
+        backgroundColor: fade("#60a5fa", 0.3),
+        barPercentage: 0.9,
+        categoryPercentage: 0.82,
+        grouped: false,
+      },
+      {
+        label: "With mm",
+        data: tokenRows.map((r) => r.with_mm.token_sum),
+        backgroundColor: fade("#60a5fa", 0.9),
+        barPercentage: 0.5,
+        categoryPercentage: 0.82,
+        grouped: false,
+      },
+    ],
+  });
+  const tokenOpts = {
+    indexAxis: "y",
+    scales: {
+      x: {
+        ticks: { ...tick, callback: (v) => fmtTokens(v) },
+        grid,
+        beginAtZero: true,
+      },
+      y: { ticks: tick, grid },
+    },
+    plugins: {
+      legend: { labels: { color: "#cbd5e1" } },
+      tooltip: {
+        callbacks: {
+          label: (ctx) => `${ctx.dataset.label}: ${fmtTokens(ctx.parsed.x)}`,
+        },
+      },
+    },
+  };
+  const tokenH = $derived(Math.max(220, tokenRows.length * 38));
+
   const trendData = $derived.by(() => {
     const keep = sessions.filter(
       (s) => selA.includes(s.assistant) && selP.includes(s.profile),
@@ -456,11 +507,11 @@
                   type="button"
                   onclick={() => setSort("tokens")}
                   class="inline-flex items-center gap-1 cursor-pointer select-none hover:text-slate-200"
-                  >Toks (w/wo)<span class="w-2 text-[10px] {caretCls('tokens')}"
+                  >Toks (wo/w)<span class="w-2 text-[10px] {caretCls('tokens')}"
                     >{caret("tokens")}</span
                   ></button
                 ><InfoTip
-                  text="Mean total tokens (input + output + reasoning) per case run, with mm / without mm. Sorted by with-mm; a lower number means the agent used less context to achieve its result."
+                  text="Mean total tokens (input + output + reasoning) per case run, without mm / with mm. Sorted by with-mm; a lower number means the agent used less context to achieve its result."
                 /></span
               ></th
             >
@@ -504,14 +555,14 @@
               <td class="p-3 text-right font-mono"
                 ><span
                   class={tokClass(
-                    r.with_mm.token_total,
                     r.without_mm.token_total,
-                  )[0]}>{fmtTokens(r.with_mm.token_total)}</span
+                    r.with_mm.token_total,
+                  )[0]}>{fmtTokens(r.without_mm.token_total)}</span
                 ><span
                   class={tokClass(
-                    r.with_mm.token_total,
                     r.without_mm.token_total,
-                  )[1]}>/{fmtTokens(r.without_mm.token_total)}</span
+                    r.with_mm.token_total,
+                  )[1]}>/{fmtTokens(r.with_mm.token_total)}</span
                 ></td
               >
               <td class="p-3 text-right font-mono text-slate-400"
@@ -540,8 +591,8 @@
       mm.
       <span class="text-slate-400">Pass (mm)</span> is the share of with-mm case
       runs scoring at least 60% correctness.
-      <span class="text-slate-400">Toks (w/wo)</span> is the mean total tokens
-      (input + output + reasoning) per case run, with mm / without mm.
+      <span class="text-slate-400">Toks (wo/w)</span> is the mean total tokens
+      (input + output + reasoning) per case run, without mm / with mm.
       <span class="text-slate-400">Sessions</span> and
       <span class="text-slate-400">Runs</span> report how many benchmark passes back
       each average. Rows are sortable; click any row to drill into a cell.
@@ -570,6 +621,29 @@
       <Chart type="line" data={trendData} options={trendOpts} />
     </div>
   </div>
+</section>
+
+<section
+  class="mt-4 rounded-xl border border-slate-800 bg-slate-900 p-4 min-w-0"
+>
+  <h2 class="text-xs font-semibold uppercase tracking-widest text-slate-400 mb-3">
+    Token usage: without vs with mm
+  </h2>
+  {#if tokenRows.length}
+    <div class="relative w-full" style="height: {tokenH}px">
+      <Chart type="bar" data={tokenData} options={tokenOpts} />
+    </div>
+    <p class="mt-3 text-xs leading-relaxed text-slate-500 max-w-4xl">
+      <span class="text-slate-400">Figure.</span> Mean total tokens per case run
+      for each cell, ranked least-utilized first. Each cell is one bar: the faded
+      outer bar is <span class="text-slate-300">without mm</span> (native tools
+      only), the solid inner bar is <span class="text-slate-300">with mm</span>.
+    </p>
+  {:else}
+    <div class="text-slate-500 py-10 text-center text-sm">
+      Select at least one cell (filters above).
+    </div>
+  {/if}
 </section>
 
 <section
@@ -610,9 +684,9 @@
       <p class="mt-3 text-xs leading-relaxed text-slate-500 max-w-4xl">
         <span class="text-slate-400">Figure.</span> Mean correctness per case
         for each selected cell, averaged over all sessions and runs. Each column
-        shows two bars for the same cell: the solid bar is
-        <span class="text-slate-300">with mm</span>, the faded bar beside it is
-        <span class="text-slate-300">without mm</span> (native tools only), so the
+        shows two bars for the same cell: the faded bar is
+        <span class="text-slate-300">without mm</span> (native tools only), the
+        solid bar beside it is <span class="text-slate-300">with mm</span>, so the
         gap between them is mm's per-case lift. Cells come from the assistant / mm-profile
         filters above; pick the cases to chart with the selector.
       </p>
@@ -651,9 +725,9 @@
                 {@const m = cmpMap[`${r.assistant}\\${r.profile}\\${cid}`]}
                 <td class="p-3 text-right font-mono border-t border-slate-800">
                   {#if m && (m.with_mm != null || m.without_mm != null)}
-                    {@const [wc, woc] = cmpClass(m.with_mm, m.without_mm)}
-                    <span class={wc}>{num(m.with_mm)}</span><span class={woc}
-                      >/{num(m.without_mm)}</span
+                    {@const [woc, wc] = cmpClass(m.without_mm, m.with_mm)}
+                    <span class={woc}>{num(m.without_mm)}</span><span class={wc}
+                      >/{num(m.with_mm)}</span
                     >
                   {:else}
                     <span class="text-slate-500">–</span>
@@ -669,7 +743,7 @@
       <span class="text-slate-400">Table 2.</span> Per-case correctness for
       <span class="text-slate-300">all {caseIds.length} cases</span>
       (independent of the chart's case selector), in
-      <span class="text-slate-300">with mm / without mm</span> form (e.g. 85/79),
+      <span class="text-slate-300">without mm / with mm</span> form (e.g. 79/85),
       cases down the rows and assistant / mm-profile cells across the columns. Scroll
       horizontally to compare more cells.
     </p>

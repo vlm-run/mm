@@ -34,7 +34,7 @@
     class="text-lg font-semibold tracking-tight text-slate-100 no-underline"
     >mmbench</a
   >
-  <span class="text-slate-500 text-sm ml-2">agents w/wo mm</span>
+  <span class="text-slate-500 text-sm ml-2">agents wo/w mm</span>
 </header>
 <main class="px-8 py-6 max-w-6xl mx-auto">
   {#if route === "cell"}

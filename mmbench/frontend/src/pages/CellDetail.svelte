@@ -176,10 +176,10 @@
     {/each}
     <div class="rounded-xl border border-slate-800 bg-slate-900 p-4">
       <div class="text-xs uppercase tracking-widest text-slate-400">
-        Tokens (w/wo)
+        Tokens (wo/w)
       </div>
       <div class="text-xl font-semibold mt-1 font-mono">
-        <span class={tokClass(d.overall.with_mm.token_sum, d.overall.without_mm.token_sum)[0]}>{fmtTokens(d.overall.with_mm.token_sum)}</span><span class={tokClass(d.overall.with_mm.token_sum, d.overall.without_mm.token_sum)[1]}> / {fmtTokens(d.overall.without_mm.token_sum)}</span>
+        <span class={tokClass(d.overall.without_mm.token_sum, d.overall.with_mm.token_sum)[0]}>{fmtTokens(d.overall.without_mm.token_sum)}</span><span class={tokClass(d.overall.without_mm.token_sum, d.overall.with_mm.token_sum)[1]}> / {fmtTokens(d.overall.with_mm.token_sum)}</span>
       </div>
     </div>
   </div>
@@ -202,7 +202,7 @@
             >
             <th class="text-right p-3">With %</th><th class="text-right p-3"
               >Lift</th
-            ><th class="text-right p-3">Toks (w/wo)</th>
+            ><th class="text-right p-3">Toks (wo/w)</th>
           </tr></thead
         >
         <tbody>
@@ -240,10 +240,10 @@
                 >{s.lift == null ? "–" : (s.lift >= 0 ? "+" : "") + s.lift}</td
               >
               <td class="p-3 text-right font-mono"
-                ><span class={tokClass(s.with_mm?.token_total, s.without_mm?.token_total)[0]}
-                  >{fmtTokens(s.with_mm?.token_total)}</span
-                ><span class={tokClass(s.with_mm?.token_total, s.without_mm?.token_total)[1]}
-                  >/{fmtTokens(s.without_mm?.token_total)}</span
+                ><span class={tokClass(s.without_mm?.token_total, s.with_mm?.token_total)[0]}
+                  >{fmtTokens(s.without_mm?.token_total)}</span
+                ><span class={tokClass(s.without_mm?.token_total, s.with_mm?.token_total)[1]}
+                  >/{fmtTokens(s.with_mm?.token_total)}</span
                 ></td
               >
             </tr>
@@ -273,7 +273,7 @@
                               >With %</th
                             >
                             <th class="text-left py-2 px-3 font-medium"
-                              >Toks (w/wo)</th
+                              >Toks (wo/w)</th
                             >
                             <th class="text-left py-2 px-3 font-medium"
                               >mm cmds used</th
@@ -310,10 +310,10 @@
                                 >{num(c.with_mm?.correctness)}</td
                               >
                               <td class="py-2 px-3 text-xs font-mono">
-                                <span class={tokClass(c.with_mm?.token_total, c.without_mm?.token_total)[0]}
-                                  >{fmtTokens(c.with_mm?.token_total)}</span
-                                ><span class={tokClass(c.with_mm?.token_total, c.without_mm?.token_total)[1]}
-                                  >/{fmtTokens(c.without_mm?.token_total)}</span
+                                <span class={tokClass(c.without_mm?.token_total, c.with_mm?.token_total)[0]}
+                                  >{fmtTokens(c.without_mm?.token_total)}</span
+                                ><span class={tokClass(c.without_mm?.token_total, c.with_mm?.token_total)[1]}
+                                  >/{fmtTokens(c.with_mm?.token_total)}</span
                                 >
                               </td>
                               <td
@@ -517,7 +517,7 @@
                 </div>
               </div>
             {/if}
-            {#if txArm !== "without_mm" && tx?.[txArm]?.mm_tokens}
+            {#if txArm !== "without_mm" && tx?.[txArm]?.mm_token_total != null}
               <div>
                 <div
                   class="text-xs uppercase tracking-widest text-slate-500 mb-2"
@@ -530,9 +530,23 @@
                   >
                     <span class="text-slate-500">Total</span>
                     <span class="ml-2 font-mono text-slate-200"
-                      >{fmtTokens(tx[txArm].mm_tokens)}</span
+                      >{fmtTokens(tx[txArm].mm_token_total)}</span
                     >
                   </div>
+                  {#if tx[txArm].mm_token_usage}
+                    {#each [["input_tokens", "Input"], ["output_tokens", "Output"]] as [k, lbl]}
+                      {#if tx[txArm].mm_token_usage[k]}
+                        <div
+                          class="rounded-lg border border-slate-800 bg-slate-950 px-3 py-2"
+                        >
+                          <span class="text-slate-500">{lbl}</span>
+                          <span class="ml-2 font-mono text-slate-200"
+                            >{fmtTokens(tx[txArm].mm_token_usage[k])}</span
+                          >
+                        </div>
+                      {/if}
+                    {/each}
+                  {/if}
                 </div>
               </div>
             {/if}
