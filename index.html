@@ -2337,12 +2337,17 @@ middle; padding-right: 5px;"><br>
 </tr>
 </tbody>
 </table>
-<p><code>mm</code> defaults to OpenAI compatible endpoints for audio transcription. You can override this by specifying a local backend.</p>
+<p><code>mm</code> defaults to OpenAI-compatible endpoints (<code>/audio/transcriptions</code>) for audio transcription.
+With the <code>mlx</code> extra on Apple Silicon, MLX is tried first; with <code>gpu</code>, ctranslate2/faster-whisper is tried first.
+Override explicitly with <code>--encode.backend</code>:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="c1"># mlx on Apple Silicon</span>
 <a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>$<span class="w"> </span>mm<span class="w"> </span>cat<span class="w"> </span>audio.mp3<span class="w"> </span>--encode.backend<span class="w"> </span>mlx
 <a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>
 <a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="c1"># ctranslate2</span>
 <a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>$<span class="w"> </span>mm<span class="w"> </span>cat<span class="w"> </span>audio.mp3<span class="w"> </span>--encode.backend<span class="w"> </span>ctranslate2
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="c1"># force OpenAI-compatible endpoint</span>
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>$<span class="w"> </span>mm<span class="w"> </span>cat<span class="w"> </span>audio.mp3<span class="w"> </span>--encode.backend<span class="w"> </span>openai
 </code></pre></div>
 <h2 id="cli">CLI<a class="headerlink" href="#cli" title="Permanent link">&para;</a></h2>
 <p>Commands that mirror familiar Unix tools but operate on multimodal semantics.
@@ -2452,6 +2457,8 @@ Indexing is implicit — every command auto-builds a metadata index on first use
 <a id="__codelineno-17-3" name="__codelineno-17-3" href="#__codelineno-17-3"></a><span class="n">mm</span><span class="o">.</span><span class="n">Ref</span>                  <span class="c1"># Annotated[str, &quot;mm.Ref&quot;] typed alias for ref ids</span>
 <a id="__codelineno-17-4" name="__codelineno-17-4" href="#__codelineno-17-4"></a><span class="n">mm</span><span class="o">.</span><span class="n">RefNotFoundError</span>     <span class="c1"># KeyError subclass raised by ctx.get on miss</span>
 <a id="__codelineno-17-5" name="__codelineno-17-5" href="#__codelineno-17-5"></a><span class="n">mm</span><span class="o">.</span><span class="n">uuid7</span><span class="p">()</span>              <span class="c1"># UUIDv7 helper (time-ordered default session_id)</span>
+<a id="__codelineno-17-6" name="__codelineno-17-6" href="#__codelineno-17-6"></a><span class="n">mm</span><span class="o">.</span><span class="n">render_context</span><span class="p">(</span><span class="n">ctx</span><span class="p">)</span>  <span class="c1"># Rich HTML rendering for notebooks (source-aware)</span>
+<a id="__codelineno-17-7" name="__codelineno-17-7" href="#__codelineno-17-7"></a><span class="n">mm</span><span class="o">.</span><span class="n">render_messages</span><span class="p">(</span><span class="n">msgs</span><span class="p">)</span><span class="c1"># Lightweight HTML rendering for any message list</span>
 </code></pre></div>
 <h3 id="build-a-prompt">Build a prompt<a class="headerlink" href="#build-a-prompt" title="Permanent link">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">mm</span>
@@ -2578,17 +2585,17 @@ Indexing is implicit — every command auto-builds a metadata index on first use
 </tr>
 <tr>
 <td><code>config</code></td>
-<td>Configuration</td>
+<td>Configuration &amp; diagnostics</td>
 <td><code>show</code>, <code>init [-f]</code>, <code>set &lt;key&gt; &lt;value&gt;</code>, <code>reset-db [-y]</code>, <code>reset-profiles [-y]</code>, <code>reset [-y]</code>, <code>doctor [--format]</code></td>
 </tr>
 <tr>
 <td><code>profile</code></td>
 <td>LLM provider profiles</td>
-<td><code>list [-f FORMAT]</code>, <code>add NAME -b URL -m MODEL [-k KEY]</code>, <code>update NAME [-b/-k/-m]</code>, <code>use NAME</code>, <code>remove NAME</code></td>
+<td><code>list [-f FORMAT]</code>, <code>add NAME -b URL -m MODEL [-k KEY]</code>, <code>update NAME [-b/-k/-m]</code>, <code>use NAME</code>, <code>remove NAME</code>, <code>clone SRC DEST [-b/-k/-m]</code></td>
 </tr>
 </tbody>
 </table>
-<p>Top-level: <code>mm [-p / --profile NAME] [--color auto/always/never] [-v / --version] &lt;command&gt;</code>.</p>
+<p>Top-level: <code>mm [-p / --profile NAME] [--color auto/always/never] [--debug] [-v / --version] &lt;command&gt;</code>.</p>
 <h3 id="find-locatelist-tree-and-schema">find — locate/list, tree, and schema<a class="headerlink" href="#find-locatelist-tree-and-schema" title="Permanent link">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-27-1" name="__codelineno-27-1" href="#__codelineno-27-1"></a>mm<span class="w"> </span>find<span class="w"> </span>~/data<span class="w"> </span>--kind<span class="w"> </span>image<span class="w">                               </span><span class="c1"># all images</span>
 <a id="__codelineno-27-2" name="__codelineno-27-2" href="#__codelineno-27-2"></a>mm<span class="w"> </span>find<span class="w"> </span>~/data<span class="w"> </span>--kind<span class="w"> </span>video<span class="w"> </span>--sort<span class="w"> </span>size<span class="w"> </span>--reverse<span class="w">         </span><span class="c1"># videos by size</span>
@@ -3010,8 +3017,11 @@ input for fast/accurate pipelines) is Rust-native (~60ms / 700 files).</p>
 <a id="__codelineno-43-14" name="__codelineno-43-14" href="#__codelineno-43-14"></a><span class="c1"># Update a field on an existing profile</span>
 <a id="__codelineno-43-15" name="__codelineno-43-15" href="#__codelineno-43-15"></a>mm<span class="w"> </span>profile<span class="w"> </span>update<span class="w"> </span>openai<span class="w"> </span>--model<span class="w"> </span>gpt-4o-mini<span class="w"> </span>--api-key<span class="w"> </span>sk-new-key
 <a id="__codelineno-43-16" name="__codelineno-43-16" href="#__codelineno-43-16"></a>
-<a id="__codelineno-43-17" name="__codelineno-43-17" href="#__codelineno-43-17"></a><span class="c1"># Remove a profile (cannot remove the active one)</span>
-<a id="__codelineno-43-18" name="__codelineno-43-18" href="#__codelineno-43-18"></a>mm<span class="w"> </span>profile<span class="w"> </span>remove<span class="w"> </span>openai
+<a id="__codelineno-43-17" name="__codelineno-43-17" href="#__codelineno-43-17"></a><span class="c1"># Clone a profile, optionally overriding fields</span>
+<a id="__codelineno-43-18" name="__codelineno-43-18" href="#__codelineno-43-18"></a>mm<span class="w"> </span>profile<span class="w"> </span>clone<span class="w"> </span>ollama<span class="w"> </span>my-ollama<span class="w"> </span>--model<span class="w"> </span>qwen3-vl:8b
+<a id="__codelineno-43-19" name="__codelineno-43-19" href="#__codelineno-43-19"></a>
+<a id="__codelineno-43-20" name="__codelineno-43-20" href="#__codelineno-43-20"></a><span class="c1"># Remove a profile (cannot remove the active one)</span>
+<a id="__codelineno-43-21" name="__codelineno-43-21" href="#__codelineno-43-21"></a>mm<span class="w"> </span>profile<span class="w"> </span>remove<span class="w"> </span>openai
 </code></pre></div>
 <h3 id="selecting-a-profile-per-command">Selecting a profile per-command<a class="headerlink" href="#selecting-a-profile-per-command" title="Permanent link">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-44-1" name="__codelineno-44-1" href="#__codelineno-44-1"></a><span class="c1"># --profile flag (one-off override, does not change active profile)</span>

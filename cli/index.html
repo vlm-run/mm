@@ -1512,11 +1512,11 @@
 </tr>
 <tr>
 <td><a href="../profile/"><code>profile</code></a></td>
-<td>Manage LLM provider profiles (base_url, api_key, model)</td>
+<td>Manage LLM provider profiles: list, add, update, use, remove, clone</td>
 </tr>
 <tr>
 <td><a href="../config/"><code>config</code></a></td>
-<td>View and set extraction mode configuration</td>
+<td>Configuration &amp; diagnostics: show, init, set, reset-db, reset-profiles, reset, doctor</td>
 </tr>
 </tbody>
 </table>
@@ -1542,6 +1542,11 @@
 <td><code>auto</code></td>
 </tr>
 <tr>
+<td><code>--debug</code></td>
+<td>Enable debug logging (Python <code>mm</code> logger + Rust <code>RUST_LOG=debug</code> tracing)</td>
+<td>off</td>
+</tr>
+<tr>
 <td><code>--version / -v</code></td>
 <td>Print version and exit</td>
 <td>—</td>
@@ -1551,6 +1556,7 @@
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>mm<span class="w"> </span>--version
 <a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>mm<span class="w"> </span>--profile<span class="w"> </span>openai<span class="w"> </span>cat<span class="w"> </span>photo.png<span class="w"> </span>-m<span class="w"> </span>accurate
 <a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>mm<span class="w"> </span>--color<span class="w"> </span>never<span class="w"> </span>find<span class="w"> </span>~/data<span class="w"> </span>--format<span class="w"> </span>tsv
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>mm<span class="w"> </span>--debug<span class="w"> </span>cat<span class="w"> </span>photo.png<span class="w"> </span>-m<span class="w"> </span>accurate<span class="w">                </span><span class="c1"># debug logging</span>
 </code></pre></div>
 <p>Profile resolution order: <code>--profile</code> flag &gt; <code>MM_PROFILE</code> env var &gt; <code>active_profile</code> in config &gt; <code>"ollama"</code>.</p>
 <h2 id="output-formats">Output formats<a class="headerlink" href="#output-formats" title="Permanent link">&para;</a></h2>
@@ -1694,7 +1700,7 @@
 <tr>
 <td><code>files</code></td>
 <td>Directory scan + SQLite</td>
-<td>Ephemeral in-memory; re-scanned per query</td>
+<td>Persistent store; reconciled against disk on each query</td>
 </tr>
 <tr>
 <td><code>extractions</code></td>
