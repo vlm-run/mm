@@ -41,19 +41,21 @@ irm https://vlm-run.github.io/mm/install/install.ps1 | iex               # Windo
 | `mm-ctx` on a CUDA GPU runtime | Linux/Windows GPU hosts | `ctranslate2/faster-whisper` first, then OpenAI `/audio/transcriptions` |
 | `mm-ctx` default / CPU | Portable local installs | `ctranslate2/faster-whisper` on CPU, then OpenAI `/audio/transcriptions` |
 
-For audio transcription, `mm` prefers the fastest local backend available in this order:
-MLX on Apple Silicon, ctranslate2/faster-whisper, then OpenAI transcription endpoint.
+`mm` defaults to OpenAI-compatible endpoints (`/audio/transcriptions`) for audio transcription.
+With the `mlx` extra on Apple Silicon, MLX is tried first; with `gpu`, ctranslate2/faster-whisper is tried first.
+Override explicitly with `--encode.backend mlx|ctranslate2|openai`.
 
 ## Top-level flags
 
 ```
-mm [--profile NAME | -p] [--color auto|always|never] [--version | -v] <command> ...
+mm [--profile NAME | -p] [--color auto|always|never] [--debug] [--version | -v] <command> ...
 ```
 
 | Flag | Purpose |
 |------|---------|
 | `--profile NAME` / `-p` | Override active profile for this invocation (`MM_PROFILE` env also works). |
 | `--color MODE` | `auto` (default), `always`, `never`. |
+| `--debug` | Enable debug logging (Python `mm` logger + Rust `RUST_LOG=debug` tracing). |
 | `--version` / `-v` | Print version and exit. |
 
 ## Commands
@@ -67,8 +69,8 @@ mm [--profile NAME | -p] [--color auto|always|never] [--version | -v] <command> 
 | `sql` | SQL on `files`, `extractions`, `chunks` tables. |
 | `wc` | Count files, bytes, lines (est.), tokens (est.). |
 | `bench` | Benchmark suite with statistical analysis. |
-| `config` | Configuration: `show`, `init`, `set`, `reset-db`, `reset-profiles`, `reset`, `doctor`. |
-| `profile` | LLM provider profiles: `list`, `add`, `update`, `use`, `remove`. |
+| `config` | Configuration & diagnostics: `show`, `init`, `set`, `reset-db`, `reset-profiles`, `reset`, `doctor`. |
+| `profile` | LLM provider profiles: `list`, `add`, `update`, `use`, `remove`, `clone`. |
 
 ## Quick workflow
 
@@ -116,7 +118,9 @@ mm find ~/data --schema --format json            # schema → JSON
 mm find ~/data --no-ignore                       # include gitignored
 ```
 
-`files` columns: `path`, `name`, `stem`, `ext`, `size`, `modified`, `created`, `mime`, `kind`, `is_binary`, `depth`, `parent`, `width`, `height`.
+`files` columns (`mm find`): `path`, `name`, `stem`, `ext`, `size`, `modified`, `created`, `mime`, `kind`, `is_binary`, `depth`, `parent`, `width`, `height`.
+
+`files` columns (`mm sql`): same schema but primary key is `uri` (absolute path); `mm find` shows relative `path`.
 
 ## peek — raw file metadata
 
@@ -496,6 +500,7 @@ mm profile add NAME    --base-url URL --model NAME [--api-key KEY]
 mm profile update NAME [--base-url URL] [--api-key KEY] [--model NAME]
 mm profile use NAME                                  # switch active
 mm profile remove NAME                               # cannot remove active
+mm profile clone SRC DEST [--base-url URL] [--api-key KEY] [--model MODEL]  # clone + override
 ```
 
 Per-command selection:
