@@ -335,6 +335,9 @@ class LlmBackend:
             response_stream = self.client.chat.completions.create(**kwargs)
             collected: list[str] = []
             for chunk in response_stream:
+                if hasattr(chunk, "error") and chunk.error:
+                    error_msg = getattr(chunk.error, "message", "Unknown stream error")
+                    raise RuntimeError(f"Error occured mid-streaming: {error_msg}")
                 if chunk.usage is not None:
                     usage = LlmUsage(
                         prompt_tokens=chunk.usage.prompt_tokens or 0,
@@ -345,6 +348,8 @@ class LlmBackend:
                     self._local.last_usage = usage
                 if not chunk.choices:
                     continue
+                if getattr(chunk.choices[0], "finish_reason", None) == "error":
+                    raise RuntimeError("Stream terminated abruptly with error")
                 delta = chunk.choices[0].delta
                 token = delta.content or ""
                 if token:
