@@ -499,11 +499,13 @@ class TestTypingHelpers:
 
 
 class TestPersistence:
-    def test_save_role_aware_raises_and_points_to_export(self, tiny_png: Path):
-        ctx = mm.Context()
-        ctx.add(tiny_png)
-        with pytest.raises(NotImplementedError, match="to_records"):
-            ctx.save()
+    def test_context_has_no_save_method(self):
+        """Persistence is decoupled: the library never writes to a DB.
+
+        ``Context`` exports storage-agnostic records via ``to_records`` and
+        the caller owns the storage backend, so there is no ``save``.
+        """
+        assert not hasattr(mm.Context, "save")
 
     def test_to_records_exports_role_aware_items(self, tiny_png: Path):
         ctx = mm.Context()

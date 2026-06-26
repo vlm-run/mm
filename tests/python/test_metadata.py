@@ -323,12 +323,12 @@ class TestExtensionMime:
 
 
 class TestDBRoundtrip:
-    def test_roundtrip_preserves_dimensions(self, media_tree: Path, isolated_db: Path):
+    def test_roundtrip_preserves_dimensions(self, media_tree: Path, isolated_db: Path, persist_ctx):
         ctx = Context(media_tree)
-        ctx.save()
+        db = persist_ctx(ctx)
 
         root_str = str(media_tree.resolve()).replace("'", "''")
-        rows = ctx.db.get_files(where=f"uri LIKE '{root_str}%'")
+        rows = db.get_files(where=f"uri LIKE '{root_str}%'")
         assert len(rows) > 0
         assert "width" in rows[0]
         assert "height" in rows[0]
@@ -337,12 +337,12 @@ class TestDBRoundtrip:
         assert all(r["width"] is not None for r in pngs)
         assert all(r["height"] is not None for r in pngs)
 
-    def test_roundtrip_column_count(self, media_tree: Path, isolated_db: Path):
+    def test_roundtrip_column_count(self, media_tree: Path, isolated_db: Path, persist_ctx):
         ctx = Context(media_tree)
-        ctx.save()
+        db = persist_ctx(ctx)
 
         root_str = str(media_tree.resolve()).replace("'", "''")
-        rows = ctx.db.get_files(where=f"uri LIKE '{root_str}%'")
+        rows = db.get_files(where=f"uri LIKE '{root_str}%'")
         # 14 metadata + 18 fast + 2 session/ref + 2 tracking = 36 columns in DB
         assert len(rows[0].keys()) == 36
 

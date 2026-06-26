@@ -8,7 +8,7 @@ Covers:
 * ``GlobalRef`` parsing + round-trip
 * Uniqueness within a session (collision-free across many files)
 * Schema migration is idempotent on existing databases
-* End-to-end Context.save -> Context.resolve round-trip
+* Caller-owned persistence round-trip (``to_records`` -> ``db.upsert_records`` -> ``db.resolve``)
 * Opt-in ``refs=True`` surfacing on ``to_arrow`` / ``to_polars`` / ``show``
 """
 
@@ -192,15 +192,28 @@ class TestContextSession:
         b = Context(small_tree, session_id="no-save-2").ref_for("src/main.py")
         assert a != b
 
-    def test_refs_recovered_from_db(self, small_tree: Path, isolated_db: Path):
-        """After save(), a new Context with the same session_id reuses refs from the DB."""
+    def test_refs_persisted_and_resolvable_via_store(
+        self, small_tree: Path, isolated_db: Path, persist_ctx
+    ):
+        """The library mints refs in-memory; the caller owns cross-run stability.
+
+        A fresh Context no longer recovers refs from the DB — it draws
+        independent in-memory refs. Stable refs across runs are achieved by
+        the caller persisting ``to_records(refs=True)`` and resolving them
+        back through the store.
+        """
         sid = "stable-sess"
         first = Context(small_tree, session_id=sid)
-        first.save()
         original = first.refs
+        db = persist_ctx(first)
 
+        # A new Context draws independent in-memory refs (no DB recovery)...
         second = Context(small_tree, session_id=sid)
-        assert second.refs == original
+        assert second.refs != original
+
+        # ...but the persisted refs remain resolvable through the store.
+        for gref in original.values():
+            assert db.resolve(gref) is not None
 
     def test_global_ref_format(self, small_tree: Path):
         sid = "sess-1"
@@ -288,71 +301,77 @@ class TestOptInColumns:
         assert ctx.to_arrow(refs=True) is ctx.to_arrow()
 
 
-# ── DB persistence + resolver round-trip ──────────────────────────────
+# ── Caller-owned persistence + resolver round-trip ────────────────────
 
 
 class TestResolver:
-    def test_save_persists_session_and_ref(self, small_tree: Path, isolated_db: Path):
-        ctx = Context(small_tree, session_id="sess-roundtrip")
-        ctx.save()
+    """The library exports records; the caller persists/resolves via the store.
 
-        db = MmDatabase()
+    These exercise the mm CLI's own persistence workflow
+    (``to_records(refs=True)`` -> ``db.upsert_records`` -> ``db.resolve``),
+    modeled by the ``persist_ctx`` fixture. The library ``Context`` no
+    longer owns ``save``/``resolve``.
+    """
+
+    def test_persist_writes_session_and_ref(self, small_tree: Path, isolated_db: Path, persist_ctx):
+        ctx = Context(small_tree, session_id="sess-roundtrip")
+        db = persist_ctx(ctx)
+
         rows = db.list_session_files("sess-roundtrip")
         assert len(rows) == ctx.num_files
         for r in rows:
             assert r["session_id"] == "sess-roundtrip"
             assert is_valid_ref_id(r["ref_id"])
 
-    def test_resolve_global_ref(self, small_tree: Path, isolated_db: Path):
+    def test_resolve_global_ref(self, small_tree: Path, isolated_db: Path, persist_ctx):
         ctx = Context(small_tree, session_id="sess-r")
-        ctx.save()
+        db = persist_ctx(ctx)
 
         gref = ctx.global_ref("src/main.py")
-        row = Context.resolve(gref)
+        row = db.resolve(gref)
         assert row is not None
         assert row["session_id"] == "sess-r"
         assert row["uri"].endswith("src/main.py")
 
-    def test_resolve_unknown_returns_none(self, small_tree: Path, isolated_db: Path):
+    def test_resolve_unknown_returns_none(self, small_tree: Path, isolated_db: Path, persist_ctx):
         ctx = Context(small_tree, session_id="sess-r")
-        ctx.save()
+        db = persist_ctx(ctx)
 
-        row = Context.resolve("sess-r/img_deadbe")
+        row = db.resolve("sess-r/img_deadbe")
         assert row is None
 
     def test_resolve_validates_format(self, isolated_db: Path):
         with pytest.raises(ValueError):
-            Context.resolve("not-a-ref")
+            MmDatabase().resolve("not-a-ref")
 
-    def test_save_without_session_leaves_session_null(self, small_tree: Path, isolated_db: Path):
+    def test_persist_without_session_leaves_session_null(
+        self, small_tree: Path, isolated_db: Path, persist_ctx
+    ):
         ctx = Context(small_tree)
-        ctx.save()
-        db = MmDatabase()
+        db = persist_ctx(ctx)
         rows = db.get_files()
         assert all(r["session_id"] is None and r["ref_id"] is None for r in rows)
 
-    def test_resave_same_session_is_idempotent(self, small_tree: Path, isolated_db: Path):
-        ctx = Context(small_tree, session_id="sess-x")
-        ctx.save()
-        db = MmDatabase()
+    def test_repersist_same_session_is_idempotent(
+        self, small_tree: Path, isolated_db: Path, persist_ctx
+    ):
+        db = persist_ctx(Context(small_tree, session_id="sess-x"))
         before = {r["uri"]: r["ref_id"] for r in db.list_session_files("sess-x")}
 
-        ctx2 = Context(small_tree, session_id="sess-x")
-        ctx2.save()
+        persist_ctx(Context(small_tree, session_id="sess-x"), db)
         after = {r["uri"]: r["ref_id"] for r in db.list_session_files("sess-x")}
         assert before == after
 
-    def test_retag_to_new_session(self, small_tree: Path, isolated_db: Path):
-        Context(small_tree, session_id="sess-old").save()
-        Context(small_tree, session_id="sess-new").save()
+    def test_retag_to_new_session(self, small_tree: Path, isolated_db: Path, persist_ctx):
+        db = persist_ctx(Context(small_tree, session_id="sess-old"))
+        persist_ctx(Context(small_tree, session_id="sess-new"), db)
 
-        db = MmDatabase()
         old_rows = db.list_session_files("sess-old")
         new_rows = db.list_session_files("sess-new")
         assert old_rows == []
         assert len(new_rows) > 0
 
-    def test_two_contexts_share_session(self, tmp_path: Path, isolated_db: Path):
+    def test_two_contexts_share_session(self, tmp_path: Path, isolated_db: Path, persist_ctx):
         root_a = tmp_path / "a"
         root_b = tmp_path / "b"
         root_a.mkdir()
@@ -361,10 +380,9 @@ class TestResolver:
         (root_b / "y.py").write_text("b")
 
         sid = "shared-session"
-        Context(root_a, session_id=sid).save()
-        Context(root_b, session_id=sid).save()
+        db = persist_ctx(Context(root_a, session_id=sid))
+        persist_ctx(Context(root_b, session_id=sid), db)
 
-        db = MmDatabase()
         rows = db.list_session_files(sid)
         uris = {r["uri"] for r in rows}
         assert any(u.endswith("/x.py") for u in uris)

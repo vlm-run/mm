@@ -116,10 +116,12 @@ def _query_files(query: str, directory: Path, fmt: str, *, pre_index: bool = Fal
     resolved = directory.resolve()
     prefix = str(resolved)
     ctx = Context(directory)
-    if pre_index:
-        ctx.save()
-
     db = MmDatabase()
+    if pre_index:
+        # The CLI owns its persistence: export records from the library
+        # and write them to mm's SQLite store.
+        assert ctx.root is not None
+        db.upsert_records(ctx.to_records(), root=ctx.root)
 
     # Reconcile: drop rows under *prefix* whose files no longer exist on disk.
     # Uses the directory walk as a hint so only stale candidates get stat'd.

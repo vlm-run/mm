@@ -37,7 +37,6 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, Literal, cast
 
 from mm.refs import Ref, new_session_id, uuid7
-from mm.store.db import MmDatabase
 
 if TYPE_CHECKING:
     import re
@@ -52,41 +51,6 @@ if TYPE_CHECKING:
 _FormatLiteral = Literal["openai", "gemini"]
 _RoleLiteral = Literal["system", "developer", "user"]
 _TreeLayout = Literal["insertion", "paths", "kind", "flat", "hybrid"]
-
-
-class _HybridGet:
-    """Descriptor that makes ``Context.get`` work as both instance and classmethod.
-
-    * ``ctx.get(ref)`` → calls :meth:`Context._get_instance` (returns the
-      stored object / Path for role-aware contexts, or the DB row
-      for directory-scan contexts).
-    * ``Context.get(global_ref, session_id=..., db=...)`` → calls
-      :meth:`Context._classmethod_get` (cross-session DB resolver;
-      replaces the old ``Context.resolve``).
-    """
-
-    def __get__(self, obj: Any, cls: type) -> Any:
-        if obj is None:
-            resolver = cast(Any, cls)._classmethod_get
-
-            def class_get(
-                ref: str,
-                *,
-                session_id: str | None = None,
-                db: Any = None,
-            ) -> Any:
-                return resolver(ref, default_session=session_id, db=db)
-
-            class_get.__name__ = "get"
-            class_get.__doc__ = (
-                "Cross-session DB resolver. Parses ``<session_id>/<ref_id>`` "
-                "(or accepts a bare ref + ``session_id=...``) and returns "
-                "the ``files`` row dict from the mm DB, or ``None`` on miss. "
-                "Use the instance form ``ctx.get(ref)`` when you already "
-                "have a Context."
-            )
-            return class_get
-        return obj._get_instance
 
 
 class FileEntry:
@@ -189,8 +153,11 @@ class Context:
         Directory-scan (legacy)::
 
             ctx = Context("~/data", session_id="my-session")
-            ctx.save()
-            row = Context.get("my-session/" + ctx.ref_for("photo.jpg"))
+            # The library exports records; the caller owns persistence.
+            from mm.store.db import MmDatabase
+            db = MmDatabase()
+            db.upsert_records(ctx.to_records(refs=True), root=ctx.root)
+            row = db.resolve("my-session/" + ctx.ref_for("photo.jpg"))
     """
 
     def __init__(
@@ -205,7 +172,6 @@ class Context:
     ):
         self._llm_base_url = llm_base_url
         self._llm_api_key = llm_api_key
-        self._db: MmDatabase | None = None
 
         if root is None:
             # Incremental role-aware mode.
@@ -254,13 +220,6 @@ class Context:
     def session_id(self) -> str | None:
         """External session id attached to this context, if any."""
         return self._session_id
-
-    @property
-    def db(self) -> MmDatabase:
-        """Lazy-initialized global database connection."""
-        if self._db is None:
-            self._db = MmDatabase()
-        return self._db
 
     @property
     def num_files(self) -> int:
@@ -544,69 +503,37 @@ class Context:
                 inline.add(_leaf(item, with_meta=with_meta))
         return tree
 
-    # ── Unified get (instance + classmethod hybrid) ───────────────────
+    # ── Unified get (in-memory, role-aware) ───────────────────────────
 
-    get = _HybridGet()  # type: ignore[assignment]  # descriptor assigned below
+    def get(self, ref_id: str) -> Any:
+        """Look up an item by ref id (incremental role-aware mode).
 
-    def _get_instance(self, ref_id: str) -> Any:
-        """Instance ``ctx.get(ref)`` — local lookup.
+        Returns the ``str``, ``Path``, or ``PIL.Image.Image`` stored at
+        ``ref_id``. Accepts either a bare ref id or a
+        ``<session_id>/<ref_id>`` global ref matching this context's
+        session.
 
-        - Incremental mode: returns the ``str``, ``Path``, or
-          ``PIL.Image.Image`` stored at ``ref_id``.
-        - Directory-scan mode: returns the DB row for the global ref.
+        Persistence and cross-session lookups are the caller's
+        responsibility — the library never reads a database. Export with
+        :meth:`to_records` and resolve through your own store (e.g.
+        ``mm.store.db.MmDatabase().resolve(ref)``).
 
         Raises:
-            RefNotFoundError: Bare ref id not found in the context.
+            RefNotFoundError: Ref id not found in the context.
             ValueError: Malformed global ref or mismatched session id.
+            RuntimeError: Called on a directory-scan context.
         """
-        bare = _strip_session_prefix(ref_id, self._session_id)
-        if self._pyctx is not None:
-            return self._pyctx.get(bare)
-        return Context._classmethod_get(
-            f"{self._session_id}/{bare}" if self._session_id else bare,
-            default_session=self._session_id,
-            db=self._db,
-        )
-
-    @classmethod
-    def _classmethod_get(
-        cls,
-        ref: str,
-        *,
-        default_session: str | None = None,
-        db: MmDatabase | None = None,
-    ) -> dict[str, Any] | None:
-        """Cross-session DB resolver for persisted contexts."""
-        from mm.refs import GlobalRef
-
-        if "/" in ref:
-            parsed = GlobalRef.parse(ref)
-            sid, rid = parsed.session_id, parsed.ref_id
-        elif default_session is not None:
-            sid, rid = default_session, ref
-        else:
-            raise ValueError(
-                f"ambiguous ref {ref!r}: pass a global '<session_id>/<ref_id>' "
-                "or supply session_id=..."
+        if self._pyctx is None:
+            raise RuntimeError(
+                "Context.get() resolves in-memory role-aware refs only. "
+                "Directory-scan persistence and cross-session lookups are the "
+                "caller's responsibility: export with Context.to_records() and "
+                "resolve via your own store (e.g. MmDatabase().resolve(ref))."
             )
-        if db is None:
-            db = MmDatabase()
-        return db.get_file_by_ref(sid, rid)
+        bare = _strip_session_prefix(ref_id, self._session_id)
+        return self._pyctx.get(bare)
 
-    @staticmethod
-    def resolve(
-        global_ref: str,
-        *,
-        db: MmDatabase | None = None,
-    ) -> dict[str, Any] | None:
-        """Legacy DB resolver kept for backward compatibility.
-
-        New code should prefer :meth:`get` (instance for local lookup,
-        classmethod for cross-session DB lookup).
-        """
-        return Context._classmethod_get(global_ref, db=db)
-
-    # ── Persistence (deferred for role-aware) ─────────────────────────
+    # ── Persistence export (storage-agnostic) ─────────────────────────
 
     def to_records(self, *, refs: bool = False) -> list[dict[str, Any]]:
         """Export the context as plain dict records (storage-agnostic).
@@ -630,38 +557,6 @@ class Context:
         self._require_table("to_records")
         table = self._table_with_refs() if refs else self._table
         return table.to_pylist()
-
-    def save(self) -> None:
-        """Persist a directory-scan context to mm's own SQLite store.
-
-        This is the **mm CLI's** persistence workflow, not a library
-        mandate: it targets the default mm database
-        (:class:`~mm.store.db.MmDatabase`). Persistence is deliberately
-        decoupled from the core library — to write to a different backend,
-        export with :meth:`to_records` and write the records yourself.
-
-        For incremental role-aware contexts there is no built-in DB writer
-        by design; use :meth:`to_records` and persist with your own client.
-
-        Raises:
-            NotImplementedError: For incremental role-aware contexts. Use
-                :meth:`to_records` for storage-agnostic export instead.
-        """
-        if self._pyctx is not None:
-            raise NotImplementedError(
-                "Context.save() does not persist incremental role-aware contexts: "
-                "persistence is decoupled from the library. Use Context.to_records() "
-                "to export records and write them with your own storage client."
-            )
-        refs = self._materialize_refs() if self._session_id else None
-        assert self.root is not None
-        self.db.upsert_files(
-            self._table,
-            self.root,
-            session_id=self._session_id,
-            refs=refs,
-            scanner=self._scanner,
-        )
 
     # ── Directory-scan API (preserved) ────────────────────────────────
 
@@ -808,7 +703,6 @@ class Context:
         new_ctx._llm_api_key = self._llm_api_key
         new_ctx._scanner = self._scanner
         new_ctx._table = filtered
-        new_ctx._db = self._db
         new_ctx._no_ignore = self._no_ignore
         new_ctx._session_id = self._session_id
         new_ctx._refs_cache = None
@@ -1127,32 +1021,21 @@ class Context:
         return self._session_id
 
     def _materialize_refs(self) -> dict[str, str]:
-        """Build-or-return cached ``{path: ref_id}`` (directory-scan mode)."""
+        """Build-or-return cached ``{path: ref_id}`` (directory-scan mode).
+
+        Ref ids are minted in-memory and cached for the lifetime of this
+        context; the library never reads a database. Cross-run/cross-process
+        ref stability is the persistence layer's concern — mm's SQLite store,
+        for example, preserves a row's ``ref_id`` on re-upsert.
+        """
         if self._refs_cache is not None:
             return self._refs_cache
-        session_id = self._require_session()
+        self._require_session()
         from mm.refs import make_ref_id
 
         paths = self._table.column("path").to_pylist()
         kinds = self._table.column("kind").to_pylist()
-
-        existing: dict[str, str] = {}
-        if self._db is not None or MmDatabase.DB_PATH.exists():
-            try:
-                rows = self.db.list_session_files(session_id)
-                assert self.root is not None
-                root_s = f"{self.root}/"
-                for r in rows:
-                    uri = str(r.get("uri") or "")
-                    ref = r.get("ref_id")
-                    if ref and uri.startswith(root_s):
-                        existing[uri[len(root_s) :]] = str(ref)
-            except Exception:
-                existing = {}
-
-        out: dict[str, str] = {}
-        for p, k in zip(paths, kinds):
-            out[p] = existing.get(p) or make_ref_id(k or "other")
+        out: dict[str, str] = {p: make_ref_id(k or "other") for p, k in zip(paths, kinds)}
         self._refs_cache = out
         return out
 

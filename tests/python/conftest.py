@@ -130,6 +130,27 @@ def isolated_db(tmp_path_factory: pytest.TempPathFactory, monkeypatch: pytest.Mo
 
 
 @pytest.fixture
+def persist_ctx():
+    """Caller-owned persistence: write a Context's records to ``MmDatabase``.
+
+    The library never writes to a database — it exports records via
+    ``Context.to_records`` and the caller owns the storage backend. This
+    fixture models the mm CLI's own workflow (export + ``upsert_records``)
+    so tests can exercise the persisted round-trip without coupling the
+    library to a DB.
+    """
+    from mm.store.db import MmDatabase
+
+    def _persist(ctx, db: MmDatabase | None = None) -> MmDatabase:
+        db = db or MmDatabase()
+        assert ctx.root is not None
+        db.upsert_records(ctx.to_records(refs=True), root=ctx.root)
+        return db
+
+    return _persist
+
+
+@pytest.fixture
 def small_tree(tmp_path: Path) -> Path:
     """Create a small directory tree with mixed file types."""
     (tmp_path / "src").mkdir()
