@@ -118,8 +118,6 @@ def _query_files(query: str, directory: Path, fmt: str, *, pre_index: bool = Fal
     ctx = Context(directory)
     db = MmDatabase()
     if pre_index:
-        # The CLI owns its persistence: export records from the library
-        # and write them to mm's SQLite store.
         assert ctx.root is not None
         db.upsert_records(ctx.to_records(), root=ctx.root)
 

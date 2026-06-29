@@ -1,4 +1,4 @@
-"""mm grep -- content search across files (presentation surface)."""
+"""mm grep -- content search across files."""
 
 from __future__ import annotations
 

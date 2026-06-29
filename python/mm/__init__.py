@@ -14,19 +14,13 @@ __all__ = [
     "render_context",
     "render_messages",
     "uuid7",
-    # Metadata inspection (peek)
     "FileMetadata",
-    # Encoder / pipeline introspection
     "list_strategies",
     "list_encoders_detail",
     "list_pipelines",
     "print_pipeline",
-    # Config / profile (read)
     "get_full_config",
     "get_profile",
-    # Storage introspection (storage-agnostic; persistence is caller-owned)
-    "list_tables",
-    # Typed result objects (library ↔ surface contract)
     "WcStats",
     "GrepMatch",
     "GrepResult",
@@ -48,7 +42,6 @@ _LAZY_IMPORTS = {
     "print_pipeline": ("mm.pipelines.pipelines_utils", "print_pipeline"),
     "get_full_config": ("mm.config", "get_full_config"),
     "get_profile": ("mm.profile", "get_profile"),
-    "list_tables": ("mm.store", "list_tables"),
     "WcStats": ("mm.results", "WcStats"),
     "GrepMatch": ("mm.results", "GrepMatch"),
     "GrepResult": ("mm.results", "GrepResult"),

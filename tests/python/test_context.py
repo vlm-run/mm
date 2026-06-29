@@ -125,7 +125,6 @@ def test_save_db(small_tree: Path, isolated_db: Path, persist_ctx):
     from mm.context import Context
 
     ctx = Context(small_tree)
-    # Persistence is the caller's job: export records, then write them.
     db = persist_ctx(ctx)
     # Verify data is in SQLite (filter to this test's root)
     root_str = str(small_tree.resolve()).replace("'", "''")

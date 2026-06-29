@@ -204,8 +204,8 @@ class TestContextSession:
         """
         sid = "stable-sess"
         first = Context(small_tree, session_id=sid)
-        original = first.refs
         db = persist_ctx(first)
+        original = first.refs
 
         # A new Context draws independent in-memory refs (no DB recovery)...
         second = Context(small_tree, session_id=sid)
