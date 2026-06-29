@@ -19,9 +19,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
 import mm
+import pytest
 from mm.context import Context
 from mm.results import CatResult, GrepMatch, GrepResult, WcStats
 
@@ -189,7 +188,7 @@ def test_result_types_serialize() -> None:
 
 
 def test_mode_guard_raises_clearly(small_tree: Path) -> None:
-    """Calling a role-aware method on a directory-scan context fails loudly."""
+    """Calling a role-aware method on a directory-scan context fails."""
     ctx = Context(small_tree)
     with pytest.raises(RuntimeError, match="incremental role-aware"):
         ctx.items()
