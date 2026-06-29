@@ -90,11 +90,11 @@ mm
 │   ├── [x] grep(pattern, kind) — regex search across file contents
 │   ├── [x] show(limit, columns) — Rich table display
 │   ├── [x] info() — Rich summary panel
-│   ├── [x] save() — persist to .mm/index.parquet
+│   ├── [x] to_records() — storage-agnostic export (persistence is caller-owned; no save())
 │   ├── [x] Context(session_id=...) / Context.new_session() — external session id
 │   ├── [x] add(str | Path | PIL.Image.Image, role) — role-aware refs; strings inline as text
 │   ├── [x] ref_for(path) / global_ref(path) / refs — kind-prefixed deterministic ref ids
-│   └── [x] Context.resolve("<session_id>/<ref_id>") — global cross-user lookup
+│   └── [x] MmDatabase().resolve("<session_id>/<ref_id>") — caller-owned cross-session lookup (Context.resolve/get-classmethod removed)
 │
 ├── CLI Commands (9 total: 6 core + bench + config + profile. Typer, Unix-philosophy composability)
 │   ├── [x] --version/-v global flag

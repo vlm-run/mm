@@ -270,11 +270,15 @@ Unspecified kinds fall back to sensible defaults (`resize`, `mosaic`, `rasterize
 ### Round-trip and resolve
 
 ```python
-obj: str | Path | Image.Image = ctx.get(img)            # instance: returns the stored object
-row: dict | None = mm.Context.get(f"{ctx.session_id}/{img}")  # classmethod: cross-session DB lookup
+obj: str | Path | Image.Image = ctx.get(img)          # returns the stored object (in-memory)
+
+# Cross-session resolution is caller-owned — the library never reads a DB.
+# Query whatever store you exported records to; the mm CLI's store offers a resolver:
+from mm.store.db import MmDatabase
+row: dict | None = MmDatabase().resolve(f"{ctx.session_id}/{img}")
 ```
 
-Instance `ctx.get(ref)` returns the exact Python object you added — identity is preserved for in-memory items (no copy, no rehydrate). Classmethod `mm.Context.get("<session>/<ref>")` resolves against the global `~/.local/share/mm/mm.db` when you only have a ref string and no live `Context`.
+Instance `ctx.get(ref)` returns the exact Python object you added — identity is preserved for in-memory items (no copy, no rehydrate). For a ref string with no live `Context`, resolve it through your own store (the library exports records via `ctx.to_records()` and never reads a database itself).
 
 Missed a ref? `ctx.get("img_a1b2cZ")` raises `mm.RefNotFoundError` (a `KeyError` subclass) with a Levenshtein-based "did you mean" and the full context table inline — agent-friendly by default.
 
@@ -299,7 +303,7 @@ Context(session=019da4…, items=4)
          └─ actor: "A"
 ```
 
-`Context("~/data")` continues to support the directory-scan surface (`to_polars`, `to_pandas`, `to_arrow`, `sql`, `show`, `info`). See [`docs/api.md`](docs/api.md) for the full spec — `print_tree` layouts, cross-session resolution, and the deferred `save()` API.
+`Context("~/data")` continues to support the directory-scan surface (`to_polars`, `to_pandas`, `to_arrow`, `sql`, `show`, `info`). See [`docs/api.md`](docs/api.md) for the full spec — `print_tree` layouts, caller-owned cross-session resolution, and storage-agnostic export via `to_records()`.
 
 ## Integrations
 

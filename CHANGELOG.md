@@ -59,6 +59,9 @@
 - `sysinfo.py` — system capability detection (ffmpeg, GPU, optional deps)
 - `scenes.py` — PySceneDetect wrapper with uniform scene sampling
 - 271 Python tests (44 new for modal extraction)
+- Typed library result types in `mm.results`, re-exported from `mm`: `WcStats`, `GrepMatch`, `GrepResult`, `CatResult` (plus `FileMetadata`). Each has `to_dict()` for serialization.
+- `Context.to_records()` — storage-agnostic export (one dict per file/item, `session_id`/`ref_id` when `refs=True`); the persistence-decoupling entry point.
+- `test_library_surface.py` — CI guard asserting the public library surface stays fully implemented (no `NotImplementedError`), importable, and callable in both `Context` modes.
 
 ### Changed
 - Mosaic resolution: 160px → 375px per tile (1500px wide mosaic)
@@ -66,3 +69,7 @@
 - `--json` flag → `--format json|tsv|csv` across all commands
 - `whisper_transcription_ms` → `audio_transcription_ms` in timing output
 - File kind `"pdf"` → `"document"` (includes DOCX, PPTX)
+- **Library is now the source of truth; the CLI is a thin presentation surface.** All core computation lives in the library (`mm.stats.compute_wc`, `mm.peek.FileMetadata`, `mm.cat_utils.extract.extract`, `mm.search.search_content`, `Context.filter`/`print_tree` layouts); each command parses options → resolves stdin → calls the library → renders. Hot paths preserve perf via dependency injection (callers pass pre-built `scanner=`/`files=`/`regex=`).
+- **Persistence is decoupled from the library.** `Context` has no `save()` method and no database awareness; callers export via `Context.to_records()` and own their storage backend. The mm CLI writes to its SQLite store via `MmDatabase().upsert_records(...)` as one such caller.
+- `Context.resolve()` / the cross-session `Context.get(...)` classmethod were removed. `Context.get(ref)` now resolves in-memory role-aware refs only; cross-session lookup is caller-owned (e.g. `MmDatabase().resolve("<session>/<ref>")`).
+- `Context.grep` now uses smart-case matching (shares the CLI's single code path); pass a precompiled `regex=` or include an uppercase char to force case-sensitive.

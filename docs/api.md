@@ -37,8 +37,7 @@ from google.genai import types as genai_types
 messages_openai: list[ChatCompletionMessageParam] = ctx.to_messages(format="openai")
 messages_gemini: list[genai_types.ContentDict]    = ctx.to_messages(format="gemini")
 
-obj = ctx.get(img)                               # str | Path | PIL.Image.Image
-row = mm.Context.get(f"{ctx.session_id}/{img}")  # cross-session DB lookup
+obj = ctx.get(img)                               # str | Path | PIL.Image.Image (in-memory)
 
 ctx.print_tree()                                 # T4 tree with metadata
 print(ctx.to_md(mode="metadata"))                # markdown table w/ cat content
@@ -173,15 +172,19 @@ ref = ctx.add(Path("photo.jpg"))
 ctx.remove(ref)
 ```
 
-### `Context.get(global_ref, *, session_id=None, db=None)` (classmethod)
+### Cross-session resolution is caller-owned
 
-Cross-session resolver. Parses a `"<session>/<ref>"` global ref (or
-accepts a bare ref + `session_id=...`) and returns the `files` row dict
-from the global `~/.local/share/mm/mm.db`, or `None` on miss.
+`ctx.get(ref)` resolves **in-memory** role-aware refs only; the library
+never reads a database. To resolve a ref from a persisted context when you
+have no live `Context`, query whatever store you exported records to. The
+mm CLI's own store offers a resolver:
 
-Use this when you have a ref from a persisted context and no live
-`Context` instance. Replaces the (still-supported) legacy
-`Context.resolve()`.
+```python
+from mm.store.db import MmDatabase
+row = MmDatabase().resolve(f"{session_id}/{ref_id}")  # files row dict, or None
+```
+
+See ["Persistence is caller-owned"](#persistence-is-caller-owned-no-ctxsave) below.
 
 ### `ctx.to_messages(format="openai", *, encoders=None, encoder_kwargs=None) -> list[dict]`
 
