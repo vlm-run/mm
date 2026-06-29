@@ -9,9 +9,9 @@ Covers:
 - ``RefNotFoundError`` message + "did you mean" suggestions
 - ``to_messages(format=...)`` for both formats
 - ``to_md(mode="metadata")`` table
-- ``print_tree(layout="insertion")`` rendering
-- ``NotImplementedError`` for non-``insertion`` layouts + for
-  :meth:`Context.save` on role-aware contexts
+- ``print_tree`` rendering across all layouts; unknown layout raises
+  ``ValueError``
+- persistence is caller-owned: ``Context`` exposes no ``save`` method
 - ``__repr__`` markdown smoke test
 - :func:`mm.uuid7` shape
 - ``mm.Ref`` typing alias is a ``str`` at runtime
