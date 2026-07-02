@@ -25,6 +25,7 @@ from openai import OpenAI
 from openai.types.chat import ChatCompletion
 
 from mm.constants import BinaryFileKind
+from mm.errors import ChatCompletionError, from_openai_error
 from mm.pipelines.schema import PipelineSpec
 from mm.utils import get_b64
 
@@ -193,15 +194,18 @@ class LlmBackend:
         lock = threading.Lock()
 
         def _call(i: int, parts: list[dict[str, Any]]) -> None:
-            result = self.generate(
-                kind,
-                mode,
-                context=context,
-                parts=parts,
-                pipeline_spec=pipeline_spec,
-                extra_body=extra_body,
-                stream=stream,
-            )
+            try:
+                result = self.generate(
+                    kind,
+                    mode,
+                    context=context,
+                    parts=parts,
+                    pipeline_spec=pipeline_spec,
+                    extra_body=extra_body,
+                    stream=stream,
+                )
+            except ChatCompletionError as exc:
+                result = f"[LLM error {exc.status_code}: {exc.message}]"
             results[i] = result
             usage = getattr(self._local, "last_usage", LlmUsage())
             with lock:
@@ -311,8 +315,7 @@ class LlmBackend:
                 return _extract_answer_from_thinking(reasoning.strip())
             return ""
         except Exception as e:
-            logger.debug("LLM error %s", e)
-            return f"[LLM error: {e}]"
+            raise _convert_exception(e) from e
 
     def _chat_stream(self, kwargs: dict[str, Any]) -> str:
         """Streaming variant of ``_chat`` — writes tokens to stdout as they arrive.
@@ -380,8 +383,7 @@ class LlmBackend:
                 sys.stdout.flush()
             return text
         except Exception as e:
-            logger.debug("LLM streaming error %s", e)
-            return f"[LLM error: {e}]"
+            raise _convert_exception(e) from e
 
 
 def image_part(path: Path, *, mime: str | None = None) -> dict[str, Any]:
@@ -405,3 +407,21 @@ def _extract_answer_from_thinking(thinking: str) -> str:
         last = re.sub(r"^(?:So|Answer|Result|Summary)[:\s]+", "", last, flags=re.IGNORECASE)
         return last.strip()
     return thinking.strip()
+
+
+def _convert_exception(exc: Exception) -> ChatCompletionError:
+    """Convert any exception from a chat completions call into a :class:`ChatCompletionError`.
+
+    * ``openai.APIStatusError`` subclasses carry an HTTP status code and are
+      mapped to the matching :mod:`mm.errors` subclass (400 → ``BadRequestError``,
+      404 → ``NotFoundError``, etc.).
+    * ``openai.APIConnectionError`` / ``APITimeoutError`` become a generic
+      ``ChatCompletionError`` with ``status_code=0``.
+    * All other exceptions are wrapped with ``status_code=0``.
+    """
+    from openai import APIStatusError
+
+    logger.debug("LLM error %s", exc)
+    if isinstance(exc, APIStatusError):
+        return from_openai_error(exc)
+    return ChatCompletionError(0, str(exc))

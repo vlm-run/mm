@@ -4,7 +4,9 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
 
+import pytest
 
+from mm.errors import ChatCompletionError
 from mm.llm import LlmUsage, _extract_answer_from_thinking, image_part
 
 
@@ -127,12 +129,50 @@ class TestLlmBackendChat:
         result = backend._chat([{"role": "user", "content": "test"}])
         assert "dog on a hill" in result
 
-    def test_chat_error_returns_error_string(self):
+    def test_chat_error_raises_chat_completion_error(self):
         backend, client = self._make_backend()
         client.chat.completions.create.side_effect = RuntimeError("Connection refused")
-        result = backend._chat([{"role": "user", "content": "test"}])
-        assert result.startswith("[LLM error:")
-        assert "Connection refused" in result
+        with pytest.raises(ChatCompletionError) as exc_info:
+            backend._chat([{"role": "user", "content": "test"}])
+        assert "Connection refused" in exc_info.value.message
+
+    def test_chat_api_status_error_preserves_status_code(self):
+        backend, client = self._make_backend()
+        from openai import BadRequestError as OAIBadRequest
+
+        mock_resp = MagicMock()
+        mock_resp.status_code = 400
+        mock_resp.request = MagicMock()
+        mock_resp.headers = {}
+        client.chat.completions.create.side_effect = OAIBadRequest(
+            message="invalid image URL",
+            response=mock_resp,
+            body={"error": {"message": "invalid image URL"}},
+        )
+        with pytest.raises(ChatCompletionError) as exc_info:
+            backend._chat([{"role": "user", "content": "test"}])
+        assert exc_info.value.status_code == 400
+        assert "invalid image URL" in exc_info.value.message
+
+    def test_chat_404_error_is_not_found(self):
+        backend, client = self._make_backend()
+        from openai import NotFoundError as OAINotFound
+
+        mock_resp = MagicMock()
+        mock_resp.status_code = 404
+        mock_resp.request = MagicMock()
+        mock_resp.headers = {}
+        client.chat.completions.create.side_effect = OAINotFound(
+            message="model not found",
+            response=mock_resp,
+            body={"error": {"message": "model 'bad-model' not found"}},
+        )
+        with pytest.raises(ChatCompletionError) as exc_info:
+            backend._chat([{"role": "user", "content": "test"}])
+        assert exc_info.value.status_code == 404
+        from mm.errors import NotFoundError
+
+        assert isinstance(exc_info.value, NotFoundError)
 
     def test_chat_json_mode(self):
         backend, client = self._make_backend()

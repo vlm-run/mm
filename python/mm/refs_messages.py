@@ -9,11 +9,15 @@ encoders; this module is the narrow bridge.
 
 from __future__ import annotations
 
+import logging
 import tempfile
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Iterable, Literal
+from urllib.parse import urlparse
 
 from mm.cache import memoize_file
+
+logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
     from mm.context import Context
@@ -114,6 +118,7 @@ def _parts_for_item(
         return
 
     if src_kind == "url" and kind == "image" and format == "openai":
+        _validate_image_url(src_value)
         yield {"type": "image_url", "image_url": {"url": src_value}}
         return
 
@@ -148,6 +153,47 @@ def _build_metadata_text(ref_id: str, meta: dict[str, Any]) -> str:
     if extras:
         bits.append("(" + ", ".join(extras) + ")")
     return " ".join(bits)
+
+
+def _validate_image_url(url: str) -> None:
+    """Validate that *url* is a well-formed HTTP(S) URL pointing to image content.
+
+    Performs a lightweight HEAD request (2 s timeout) and checks the
+    ``Content-Type`` header. Raises :class:`~mm.errors.ImageURLError` on
+    any failure so the caller gets a 400-level error with a clear message
+    instead of an opaque 500 from the downstream gateway.
+    """
+    from mm.errors import ImageURLError
+
+    parsed = urlparse(url)
+    if parsed.scheme not in ("http", "https"):
+        raise ImageURLError(url, f"unsupported scheme {parsed.scheme!r}; expected http or https")
+    if not parsed.netloc:
+        raise ImageURLError(url, "missing host")
+
+    try:
+        import httpx
+
+        resp = httpx.head(url, timeout=2.0, follow_redirects=True)
+    except Exception as exc:
+        raise ImageURLError(url, f"fetch failed: {exc}") from exc
+
+    if resp.status_code == 404:
+        raise ImageURLError(url, "URL returned 404 Not Found")
+    if resp.status_code == 403:
+        raise ImageURLError(url, "URL returned 403 Forbidden")
+    if resp.status_code == 401:
+        raise ImageURLError(url, "URL returned 401 Unauthorized")
+    if resp.status_code >= 400:
+        raise ImageURLError(url, f"URL returned HTTP {resp.status_code}")
+
+    content_type = resp.headers.get("content-type", "")
+    if content_type and not content_type.startswith("image/"):
+        raise ImageURLError(
+            url,
+            f"expected an image content type, got {content_type!r}",
+        )
+    logger.debug("image URL validated: %s [%s]", url, content_type)
 
 
 def _read_text_or_placeholder(src_kind: str, src_value: str) -> str:

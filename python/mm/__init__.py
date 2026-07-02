@@ -8,7 +8,9 @@ if not _os.environ.get("LOGFIRE_TOKEN"):
 from importlib.metadata import version
 
 __all__ = [
+    "ChatCompletionError",
     "Context",
+    "ImageURLError",
     "Ref",
     "RefNotFoundError",
     "render_context",
@@ -18,7 +20,9 @@ __all__ = [
 __version__ = version("mm-ctx")
 
 _LAZY_IMPORTS = {
+    "ChatCompletionError": ("mm.errors", "ChatCompletionError"),
     "Context": ("mm.context", "Context"),
+    "ImageURLError": ("mm.errors", "ImageURLError"),
     "Ref": ("mm.refs", "Ref"),
     "RefNotFoundError": ("mm.refs", "RefNotFoundError"),
     "render_context": ("mm.notebook", "render_context"),
