@@ -2,118 +2,118 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
     <url>
          <loc>https://vlm-run.github.io/mm/</loc>
-         <lastmod>2026-06-25</lastmod>
+         <lastmod>2026-07-05</lastmod>
     </url>
     <url>
          <loc>https://vlm-run.github.io/mm/api/</loc>
-         <lastmod>2026-06-25</lastmod>
+         <lastmod>2026-07-05</lastmod>
     </url>
     <url>
          <loc>https://vlm-run.github.io/mm/bench/</loc>
-         <lastmod>2026-06-25</lastmod>
+         <lastmod>2026-07-05</lastmod>
     </url>
     <url>
          <loc>https://vlm-run.github.io/mm/cat/</loc>
-         <lastmod>2026-06-25</lastmod>
+         <lastmod>2026-07-05</lastmod>
     </url>
     <url>
          <loc>https://vlm-run.github.io/mm/cli/</loc>
-         <lastmod>2026-06-25</lastmod>
+         <lastmod>2026-07-05</lastmod>
     </url>
     <url>
          <loc>https://vlm-run.github.io/mm/config/</loc>
-         <lastmod>2026-06-25</lastmod>
+         <lastmod>2026-07-05</lastmod>
     </url>
     <url>
          <loc>https://vlm-run.github.io/mm/encoders/</loc>
-         <lastmod>2026-06-25</lastmod>
+         <lastmod>2026-07-05</lastmod>
     </url>
     <url>
          <loc>https://vlm-run.github.io/mm/find/</loc>
-         <lastmod>2026-06-25</lastmod>
+         <lastmod>2026-07-05</lastmod>
     </url>
     <url>
          <loc>https://vlm-run.github.io/mm/fixtures/</loc>
-         <lastmod>2026-06-25</lastmod>
+         <lastmod>2026-07-05</lastmod>
     </url>
     <url>
          <loc>https://vlm-run.github.io/mm/grep/</loc>
-         <lastmod>2026-06-25</lastmod>
+         <lastmod>2026-07-05</lastmod>
     </url>
     <url>
          <loc>https://vlm-run.github.io/mm/mm-context/</loc>
-         <lastmod>2026-06-25</lastmod>
+         <lastmod>2026-07-05</lastmod>
     </url>
     <url>
          <loc>https://vlm-run.github.io/mm/peek/</loc>
-         <lastmod>2026-06-25</lastmod>
+         <lastmod>2026-07-05</lastmod>
     </url>
     <url>
          <loc>https://vlm-run.github.io/mm/pipelines/</loc>
-         <lastmod>2026-06-25</lastmod>
+         <lastmod>2026-07-05</lastmod>
     </url>
     <url>
          <loc>https://vlm-run.github.io/mm/profile/</loc>
-         <lastmod>2026-06-25</lastmod>
+         <lastmod>2026-07-05</lastmod>
     </url>
     <url>
          <loc>https://vlm-run.github.io/mm/road-map/</loc>
-         <lastmod>2026-06-25</lastmod>
+         <lastmod>2026-07-05</lastmod>
     </url>
     <url>
          <loc>https://vlm-run.github.io/mm/sql/</loc>
-         <lastmod>2026-06-25</lastmod>
+         <lastmod>2026-07-05</lastmod>
     </url>
     <url>
          <loc>https://vlm-run.github.io/mm/use-cases/</loc>
-         <lastmod>2026-06-25</lastmod>
+         <lastmod>2026-07-05</lastmod>
     </url>
     <url>
          <loc>https://vlm-run.github.io/mm/user-guide/</loc>
-         <lastmod>2026-06-25</lastmod>
+         <lastmod>2026-07-05</lastmod>
     </url>
     <url>
          <loc>https://vlm-run.github.io/mm/wc/</loc>
-         <lastmod>2026-06-25</lastmod>
+         <lastmod>2026-07-05</lastmod>
     </url>
     <url>
          <loc>https://vlm-run.github.io/mm/notebooks/mm-context-api/</loc>
-         <lastmod>2026-06-25</lastmod>
+         <lastmod>2026-07-05</lastmod>
     </url>
     <url>
          <loc>https://vlm-run.github.io/mm/notebooks/mm-context-viz/</loc>
-         <lastmod>2026-06-25</lastmod>
+         <lastmod>2026-07-05</lastmod>
     </url>
     <url>
          <loc>https://vlm-run.github.io/mm/notebooks/mm_cookbook/</loc>
-         <lastmod>2026-06-25</lastmod>
+         <lastmod>2026-07-05</lastmod>
     </url>
     <url>
          <loc>https://vlm-run.github.io/mm/notebooks/mm_cookbook_gateway/</loc>
-         <lastmod>2026-06-25</lastmod>
+         <lastmod>2026-07-05</lastmod>
     </url>
     <url>
          <loc>https://vlm-run.github.io/mm/spec/SPEC/</loc>
-         <lastmod>2026-06-25</lastmod>
+         <lastmod>2026-07-05</lastmod>
     </url>
     <url>
          <loc>https://vlm-run.github.io/mm/spec/cli-use/</loc>
-         <lastmod>2026-06-25</lastmod>
+         <lastmod>2026-07-05</lastmod>
     </url>
     <url>
          <loc>https://vlm-run.github.io/mm/spec-templates/audio/</loc>
-         <lastmod>2026-06-25</lastmod>
+         <lastmod>2026-07-05</lastmod>
     </url>
     <url>
          <loc>https://vlm-run.github.io/mm/spec-templates/document/</loc>
-         <lastmod>2026-06-25</lastmod>
+         <lastmod>2026-07-05</lastmod>
     </url>
     <url>
          <loc>https://vlm-run.github.io/mm/spec-templates/image/</loc>
-         <lastmod>2026-06-25</lastmod>
+         <lastmod>2026-07-05</lastmod>
     </url>
     <url>
          <loc>https://vlm-run.github.io/mm/spec-templates/video/</loc>
-         <lastmod>2026-06-25</lastmod>
+         <lastmod>2026-07-05</lastmod>
     </url>
 </urlset>

@@ -3005,7 +3005,7 @@ input for fast/accurate pipelines) is Rust-native (~60ms / 700 files).</p>
 <a id="__codelineno-43-2" name="__codelineno-43-2" href="#__codelineno-43-2"></a>mm<span class="w"> </span>profile<span class="w"> </span>add<span class="w"> </span>openai<span class="w"> </span>--base-url<span class="w"> </span>https://api.openai.com/v1<span class="w"> </span>--api-key<span class="w"> </span>sk-...<span class="w"> </span>--model<span class="w"> </span>gpt-4o
 <a id="__codelineno-43-3" name="__codelineno-43-3" href="#__codelineno-43-3"></a>mm<span class="w"> </span>profile<span class="w"> </span>add<span class="w"> </span>openrouter<span class="w"> </span>--base-url<span class="w"> </span>https://openrouter.ai/api/v1<span class="w"> </span>--model<span class="w"> </span>qwen/qwen3.5-27b
 <a id="__codelineno-43-4" name="__codelineno-43-4" href="#__codelineno-43-4"></a>
-<a id="__codelineno-43-5" name="__codelineno-43-5" href="#__codelineno-43-5"></a><span class="c1"># Update reserved profiles (ollama, gemini, vlmrun)</span>
+<a id="__codelineno-43-5" name="__codelineno-43-5" href="#__codelineno-43-5"></a><span class="c1"># Update reserved profiles (ollama, gateway, openrouter)</span>
 <a id="__codelineno-43-6" name="__codelineno-43-6" href="#__codelineno-43-6"></a>mm<span class="w"> </span>profile<span class="w"> </span>update<span class="w"> </span>ollama<span class="w"> </span>--base-url<span class="w"> </span>http://localhost:11434<span class="w"> </span>--model<span class="w"> </span>qwen3.5:9B
 <a id="__codelineno-43-7" name="__codelineno-43-7" href="#__codelineno-43-7"></a>
 <a id="__codelineno-43-8" name="__codelineno-43-8" href="#__codelineno-43-8"></a><span class="c1"># List all profiles (● = active)</span>
@@ -3049,9 +3049,9 @@ input for fast/accurate pipelines) is Rust-native (~60ms / 700 files).</p>
 <a id="__codelineno-46-11" name="__codelineno-46-11" href="#__codelineno-46-11"></a><span class="n">api_key</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;&lt;OPENROUTER_API_KEY&gt;&quot;</span>
 <a id="__codelineno-46-12" name="__codelineno-46-12" href="#__codelineno-46-12"></a><span class="n">model</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;google/gemini-2.5-flash-lite&quot;</span>
 <a id="__codelineno-46-13" name="__codelineno-46-13" href="#__codelineno-46-13"></a>
-<a id="__codelineno-46-14" name="__codelineno-46-14" href="#__codelineno-46-14"></a><span class="k">[profile.vlmrun]</span>
-<a id="__codelineno-46-15" name="__codelineno-46-15" href="#__codelineno-46-15"></a><span class="n">base_url</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;https://api.vlm.run/v1/openai&quot;</span>
-<a id="__codelineno-46-16" name="__codelineno-46-16" href="#__codelineno-46-16"></a><span class="n">api_key</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;&lt;VLMRUN_API_KEY&gt;&quot;</span>
+<a id="__codelineno-46-14" name="__codelineno-46-14" href="#__codelineno-46-14"></a><span class="k">[profile.gateway]</span>
+<a id="__codelineno-46-15" name="__codelineno-46-15" href="#__codelineno-46-15"></a><span class="n">base_url</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;https://gateway.vlm.run/v1/openai&quot;</span>
+<a id="__codelineno-46-16" name="__codelineno-46-16" href="#__codelineno-46-16"></a><span class="n">api_key</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;&quot;</span>
 <a id="__codelineno-46-17" name="__codelineno-46-17" href="#__codelineno-46-17"></a><span class="n">model</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;Qwen/Qwen3.5-0.8B&quot;</span>
 </code></pre></div>
 <h2 id="license">License<a class="headerlink" href="#license" title="Permanent link">&para;</a></h2>
