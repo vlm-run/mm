@@ -1,5 +1,5 @@
 {
-  "video": "/Users/sudeep/data/mmbench-tiny/bakery.mp4",
+  "video": "/Users/user/data/mmbench-tiny/bakery.mp4",
   "rounds": 2,
   "warmup": true,
   "cold": false,

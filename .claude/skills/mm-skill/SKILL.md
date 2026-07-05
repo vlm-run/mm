@@ -492,7 +492,7 @@ mm config doctor --format json                       # machine-readable output
 
 ## profile — LLM provider profiles
 
-Stored in `~/.config/mm/mm.toml`. Reserved profiles: `ollama`, `gemini`, `vlmrun`.
+Stored in `~/.config/mm/mm.toml`. Reserved profiles: `ollama`, `gateway`, `openrouter`.
 
 ```bash
 mm profile list [-f FORMAT]                          # ● = active
