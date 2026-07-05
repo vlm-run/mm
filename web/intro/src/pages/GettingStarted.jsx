@@ -130,8 +130,8 @@ export default function GettingStarted() {
           <P>
             mm uses profiles to store provider credentials. There are 3 reserved
             profiles: <InlineCode>ollama</InlineCode>,{" "}
-            <InlineCode>gemini</InlineCode>, and{" "}
-            <InlineCode>vlmrun</InlineCode>.
+            <InlineCode>gateway</InlineCode>, and{" "}
+            <InlineCode>openrouter</InlineCode>.
           </P>
           <Code>
             <span className="comment"># Use an existing reserved profile</span>

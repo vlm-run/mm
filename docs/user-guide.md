@@ -42,7 +42,7 @@ mm requires access to a VLM on a live server for accurate-mode (LLM-powered) ope
 
 ### Profile setup
 
-mm uses profiles to store provider credentials. There are 3 reserved profiles: `ollama`, `gemini`, and `vlmrun`.
+mm uses profiles to store provider credentials. There are 3 reserved profiles: `ollama`, `gateway`, and `openrouter`.
 
 You can populate a reserved profile or create a new one:
 
