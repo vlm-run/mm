@@ -1,10 +1,10 @@
 # vlmgw benchmark — 2026-05-01
 
-Run: `mm bench ~/data/mmbench-tiny -b benchmarks/vlmgw_bench_commands.py` (rounds=3, warmup=1) against the vlmgw gateway (`https://26bd-12-30-39-214.ngrok-free.app/v1/openai/`).
+Run: `mm bench ~/data/mmbench-tiny -b benchmarks/vlmgw_bench_commands.py` (rounds=3, warmup=1) against the vlmgw gateway (`https://<redacted>.ngrok-free.app/v1/openai/`).
 
 Every row uses `--mode fast --no-cache --format json` as the base command; per-row overrides live in **Extra Args** (`--prompt`, `--generate.extra-body`, `--encode.strategy_opts`).
 
-Host: `Sudeeps-M3-Max.local` · Apple M3 Max (16 threads) · macOS 14.6 · Python 3.12.9 · mm v0.10.0.
+Host: `dev-macbook.local` · Apple M3 Max (16 threads) · macOS 14.6 · Python 3.12.9 · mm v0.10.0.
 
 ---
 

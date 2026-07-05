@@ -6,7 +6,7 @@ members = ["crates/*"]
 version = "0.13.2"
 edition = "2024"
 license = "MIT"
-authors = ["Sudeep"]
+authors = ["VLM Run <support@vlm.run>"]
 
 [workspace.dependencies]
 pyo3 = { version = "0.26", features = ["extension-module", "generate-import-lib"] }

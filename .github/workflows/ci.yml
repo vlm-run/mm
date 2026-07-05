@@ -224,8 +224,8 @@ jobs:
             exit 0
           fi
 
-          git config --global user.email "sudeep@vlm.run"
-          git config --global user.name "Sudeep Pillai"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config --global user.name "github-actions[bot]"
 
           echo "Creating tag ${TAG}"
           git tag "${TAG}" -m "Release ${TAG}"

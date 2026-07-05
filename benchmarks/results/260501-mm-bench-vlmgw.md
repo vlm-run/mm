@@ -2,8 +2,8 @@
 
 Run: `mm bench` against `/Users/user/data/mmbench-tiny` (rounds=3, warmup=1, 9 files / 43.1 MB, wall=1025.52s).
 Benchfile: `benchmarks/vlmgw_bench_commands.py`.
-Host: `Sudeeps-M3-Max.local` · Apple M3 Max (16 threads) · macOS 14.6 · Python 3.12.9 · mm v0.10.0.
-Profile: `vlmgw` (`https://26bd-12-30-39-214.ngrok-free.app/v1/openai/`, default model `qwen/qwen3.5-0.8b`).
+Host: `dev-macbook.local` · Apple M3 Max (16 threads) · macOS 14.6 · Python 3.12.9 · mm v0.10.0.
+Profile: `vlmgw` (`https://<redacted>.ngrok-free.app/v1/openai/`, default model `qwen/qwen3.5-0.8b`).
 
 ---
 
