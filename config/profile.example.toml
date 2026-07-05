@@ -18,7 +18,7 @@ active_profile = "default"
 
 [profile.default]
 # Managed default profile (remote)
-base_url = "https://mm-ctx.ngrok.io/v1"
+base_url = "https://gateway.vlm.run/v1/openai"
 api_key = ""
 model = "Qwen/Qwen3.5-0.8B"
 

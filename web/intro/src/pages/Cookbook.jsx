@@ -59,7 +59,7 @@ image     422683     dogs.jpg
       },
       {
         cmd: "mm find ~/data/mmbench-tiny/ --tree --depth 1",
-        output: `/Users/sudeep/data/mmbench-tiny  (9 files, 43.1 MB)
+        output: `/Users/user/data/mmbench-tiny  (9 files, 43.1 MB)
 ├── 1-vqa-car.jpg            [38.2 KB]
 ├── BillDownload-8pg.pdf     [340.8 KB]
 ├── audio_health_check.wav   [28.5 KB]
@@ -217,10 +217,10 @@ chunks      SQLite         empty`,
     examples: [
       {
         cmd: "mm profile list",
-        output: `profile  active  base_url                       model
-gemini           https://openrouter.ai/api/v1   google/gemini-2.5-flash-lite
-ollama   ✓       http://localhost:11434         gemma4:e2b
-vlmrun           https://mm-ctx.ngrok.io/v1     Qwen/Qwen3.5-0.8B`,
+        output: `profile  active  base_url                           model
+gemini           https://openrouter.ai/api/v1       google/gemini-2.5-flash-lite
+ollama   ✓       http://localhost:11434             gemma4:e2b
+gateway          https://gateway.vlm.run/v1/openai  Qwen/Qwen3.5-0.8B`,
       },
       {
         cmd: "mm config show",
