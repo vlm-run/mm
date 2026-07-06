@@ -29,7 +29,7 @@ encode:
   #             chunked, clips, keyframes, shots,
   #             shot-mosaic, summary, captions,
   #             transcript, native, gemini-native, gemini-chunked
-  #   audio:    transcribe, gemini
+  #   audio:    transcribe, native, gemini-native
   #   document: page-text, rasterize, rasterize-text, gemini-native
   # null = use the kind-specific default.
   strategy: resize

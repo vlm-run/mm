@@ -643,7 +643,7 @@ graph LR
 
 ### Audio
 
-#### `base64`
+#### `native`
 
 Send the raw audio file as a base64-encoded `input_audio` part. Default for Python `Context.to_messages()`. For files longer than `max_seconds`, splits into overlapping chunks via ffmpeg and yields one Message per chunk. **Parameters:** `format=auto, max_seconds=120, overlap=10`
 
@@ -706,7 +706,7 @@ graph LR
 
 ---
 
-#### `gemini`
+#### `gemini-native`
 
 Pass the audio file as a base64-encoded `input_audio` part (OpenAI format), with automatic chunking for files longer than `max_seconds`. Each chunk yielded as a separate Message. **Parameters:** `max_seconds=120, overlap=10`
 

@@ -59,7 +59,7 @@ def _apply_encode_strategy_override(spec: PipelineSpec, opts: CatOpts) -> Pipeli
 
     This mirrors ``-p <encoder>`` so the *chosen* encoder — not the base YAML
     strategy — governs prompt handling in :func:`_apply_encoder_generate`.
-    Without this, for e.g., ``--encode.strategy base64`` would run generate resolution
+    Without this, for e.g., ``--encode.strategy native`` would run generate resolution
     against the YAML's ``transcribe`` (which suppresses generate), wiping the
     prompt. ``"auto"`` is left untouched for :func:`resolve_auto_strategy`.
     """
@@ -120,7 +120,7 @@ def resolve_pipeline(opts: CatOpts, kind: str) -> PipelineSpec:
         # Defer generate derivation: the real encoder is chosen later by
         # resolve_auto_strategy, which applies *that* encoder's generate map.
         # Deriving it now (against the base YAML strategy) would wrongly wipe
-        # the prompt before auto picks an encoder that keeps it (e.g. base64).
+        # the prompt before auto picks an encoder that keeps it (e.g. native).
         return spec
     return _apply_encoder_generate(spec, opts)
 

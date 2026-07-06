@@ -20,7 +20,7 @@ for all three tiers.
 
 **Audio**
 - *Short compressed* : duration ≤ 5 min **and** size ≤ 10 MB   → ``transcribe``
-- *All other cases*   : ``base64``
+- *All other cases*   : ``native``
 
 **Image**
 - *Standard* : size ≤ 10 MB, ≤ 1080p, normal aspect ratio → ``resize``
@@ -147,7 +147,7 @@ def auto_strategy(path: Path) -> str:
         duration = meta.duration_s or 0.0
         if duration <= 300 and meta.size <= 10 * _MB:
             return "transcribe"
-        return "base64"
+        return "native"
 
     if kind == "image":
         size = meta.size
