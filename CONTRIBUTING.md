@@ -30,6 +30,9 @@ uv pip install -e ".[dev]"
 # Build the Rust extension
 make develop
 
+# or run it directly
+uv run maturin develop --release
+
 # Install pre-commit hooks (also run automatically by `make develop`)
 uv run pre-commit install --install-hooks
 ```
