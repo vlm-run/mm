@@ -61,9 +61,9 @@ class VideoClips(Encoder):
             )
             return
 
-        clip_duration: int = kwargs.get("chunk_duration", DEFAULT_CLIP_DURATION)
+        clip_duration: int = int(kwargs.get("chunk_duration", DEFAULT_CLIP_DURATION))
         max_size_mb: float | None = kwargs.get("max_size_mb", None)
-        overlap: int = kwargs.get("overlap", DEFAULT_OVERLAP)
+        overlap: int = int(kwargs.get("overlap", DEFAULT_OVERLAP))
         video_duration = probe(path).duration
 
         if video_duration <= 0:

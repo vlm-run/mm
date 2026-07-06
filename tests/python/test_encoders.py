@@ -60,6 +60,19 @@ class TestRegistryExtended:
         assert "shots" in video_names
         assert "shot-mosaic" in video_names
 
+    def test_default_encoders_resolve(self):
+        """Every OPENAI_DEFAULT_ENCODERS mapping must name a registered encoder.
+
+        Guards against a rename leaving a stale default (e.g. audio's old
+        ``base64`` → ``native``), which would break ``Context.encode`` and
+        silently drop content in ``build_messages``.
+        """
+        from mm.encoders import get
+        from mm.refs_messages import OPENAI_DEFAULT_ENCODERS
+
+        for kind, name in OPENAI_DEFAULT_ENCODERS.items():
+            assert get(name, kind) is not None, f"{kind} default {name!r} is unregistered"
+
     def test_tile_is_image_type(self):
         from mm.encoders import list_strategies
 

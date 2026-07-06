@@ -286,7 +286,7 @@ class GeminiAudio(Encoder):
             return
 
         chunk_duration: int = int(kwargs.get("chunk_duration", 120))
-        overlap: int = kwargs.get("overlap", 10)
+        overlap: int = int(kwargs.get("overlap", 10))
         duration = probe_duration(path)
 
         if duration <= chunk_duration:
