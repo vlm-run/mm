@@ -8,7 +8,7 @@
 # Switch with:  mm profile use <name>
 # Per-command:  mm --profile openrouter cat photo.png -m accurate
 # Env var:      MM_PROFILE=ollama mm cat photo.png -m accurate
-active_profile = "default"
+active_profile = "gateway"
 
 # ── Profiles (LLM API configs) ─────────────────────────────────────
 # Each profile has: base_url, api_key, model
@@ -16,9 +16,9 @@ active_profile = "default"
 # Add new:      mm profile add <name> --base-url <url> --model <model>
 # Update:       mm profile update <name> --api-key <key>
 
-[profile.default]
+[profile.gateway]
 # Managed default profile (remote)
-base_url = "https://mm-ctx.ngrok.io/v1"
+base_url = "https://gateway.vlm.run/v1/openai"
 api_key = ""
 model = "Qwen/Qwen3.5-0.8B"
 

@@ -705,7 +705,7 @@ Each profile stores `base_url`, `api_key`, and `model`. You can have as many as 
 mm profile add openai --base-url https://api.openai.com/v1 --api-key sk-... --model gpt-4o
 mm profile add openrouter --base-url https://openrouter.ai/api/v1 --model qwen/qwen3.5-27b
 
-# Update reserved profiles (ollama, gemini, vlmrun)
+# Update reserved profiles (ollama, gateway, openrouter)
 mm profile update ollama --base-url http://localhost:11434 --model qwen3.5:9B
 
 # List all profiles (● = active)
@@ -760,9 +760,9 @@ base_url = "https://openrouter.ai/api/v1"
 api_key = "<OPENROUTER_API_KEY>"
 model = "google/gemini-2.5-flash-lite"
 
-[profile.vlmrun]
-base_url = "https://api.vlm.run/v1/openai"
-api_key = "<VLMRUN_API_KEY>"
+[profile.gateway]
+base_url = "https://gateway.vlm.run/v1/openai"
+api_key = ""
 model = "Qwen/Qwen3.5-0.8B"
 ```
 
