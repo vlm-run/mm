@@ -136,6 +136,21 @@ The pre-commit config enforces:
 - **nbstripout** — strips notebook outputs before commit
 - Standard hooks (trailing whitespace, end-of-file, merge conflicts, large files)
 
+## AI Disclosure
+
+We encourage using AI coding assistants (Claude, Copilot, Cursor, Devin, etc.). They make contributors faster and are part of how `mm` itself is built. What we require is that a human understands and vouches for every line before it becomes a PR.
+
+Before opening an AI-assisted PR:
+
+- **Review every change yourself.** You are accountable for the code, not the tool.
+- **Verify, don't trust.** Run the tests, lints, and the actual code paths you touched. Confirm the change does what its description claims. AI output can be confidently wrong.
+- **Keep it in scope.** Strip speculative features, unnecessary fallbacks, and unrelated refactors that assistants tend to add.
+- **Own the design.** Be able to explain *why* the change is written the way it is, and how it fits the Rust-core / Python-shell architecture.
+
+If a PR was written with AI assistance, say so in the PR description. Disclosing AI assistance is welcome and never counts against you; an AI-written PR opened without that disclosure will be closed. Shipping unverified code will also get a PR closed.
+
+The goal of this policy is to preserve codebase hygiene and maintainability, and to prevent abuse.
+
 ## Submitting a Pull Request
 
 1. **Ensure tests pass**: `make test`
