@@ -359,7 +359,7 @@ graph LR
 
 ---
 
-#### `chunks`
+#### `chunked`
 
 Split into overlapping time-based chunks, extract frames per chunk. One message per chunk with time range header. **Parameters:** `chunk_duration=60, overlap=5, max_width=1024, frames_per_chunk=16`
 
@@ -559,7 +559,32 @@ graph LR
 
 ---
 
-#### `gemini`
+#### `native`
+
+Send the entire video file as a base64 `video_url` data URL. No probing, chunking, or frame extraction.
+
+```mermaid
+%%{init: {'look': 'neo'} }%%
+graph LR
+  video("🎬 video")
+
+  subgraph encode ["Encode"]
+    read("Read file bytes")
+    b64("Base64 encode\nvideo_url data URL")
+  end
+
+  subgraph message ["Message"]
+    msg("video_url")
+  end
+
+  video --> read --> b64 --> msg
+  style encode rx:10px,ry:10px
+  style message rx:10px,ry:10px
+```
+
+---
+
+#### `gemini-native`
 
 Gemini native `inline_data` passthrough. Sends the entire video file. Rust fast-path with Python fallback.
 
@@ -802,7 +827,7 @@ graph LR
 
 ---
 
-#### `gemini`
+#### `gemini-native`
 
 Gemini native `inline_data` passthrough. Sends the entire document file. Rust fast-path with Python fallback.
 

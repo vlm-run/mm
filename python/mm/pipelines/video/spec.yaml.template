@@ -58,9 +58,9 @@ encode:
   #   language: auto
   #   audio_speed: 2.0
 
-  # ── chunks ──────────────────────────────────────────────────────
+  # ── chunked ────────────────────────────────────────────────────
   # Overlapping time-based chunks with extracted frames per chunk.
-  # strategy: chunks
+  # strategy: chunked
   # strategy_opts:
   #   chunk_duration: 60              # seconds per chunk
   #   overlap: 5                      # overlap between chunks (s)
@@ -179,10 +179,15 @@ encode:
   #   language: auto
   #   audio_speed: 2.0
 
-  # ── gemini ──────────────────────────────────────────────────────
+  # ── native ──────────────────────────────────────────────────────
+  # Base64-encode the entire video as a video_url data URL.
+  # No strategy_opts — the raw file is sent as-is.
+  # strategy: native
+
+  # ── gemini-native ───────────────────────────────────────────────
   # Pass the video directly as a Gemini inline_data Part.
   # No strategy_opts — the raw file is sent as-is.
-  # strategy: gemini
+  # strategy: gemini-native
 
   # ── gemini-chunked ──────────────────────────────────────────────
   # Duration-based chunking for Gemini inline_data.

@@ -147,13 +147,14 @@ mm/
 │   │   │   ├── __init__.py     # (empty — encoders self-register on import)
 │   │   │   ├── page_text.py    # page-text (text extraction per page)
 │   │   │   └── rasterize.py    # rasterize, rasterize-text (pypdfium2)
-│   │   ├── gemini.py           # gemini, gemini-chunked (Gemini inline_data)
+│   │   ├── gemini.py           # gemini-native, gemini-chunked (Gemini inline_data)
 │   │   ├── image.py            # resize, tile
 │   │   └── video/              # Video encoders
 │   │       ├── __init__.py     # uniform_timestamps, uniform_timestamps_range helpers
 │   │       ├── captions.py     # captions
-│   │       ├── chunks.py       # chunks (overlapping time-based chunks)
+│   │       ├── chunks.py       # chunked (overlapping time-based chunks)
 │   │       ├── clips.py        # clips, clips-w-transcript (base64 video clips)
+│   │       ├── native.py       # native (base64 video_url passthrough)
 │   │       ├── frames.py       # frames, frames-w-transcript
 │   │       ├── keyframes.py    # keyframes, keyframes-w-transcript
 │   │       ├── mosaic.py       # mosaic, mosaic-w-transcript

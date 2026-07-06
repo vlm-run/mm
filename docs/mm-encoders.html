@@ -1543,16 +1543,16 @@ graph LR
             <span class="code-block-lang">bash</span>
           </div>
           <pre><code><span class="tok-c"># 60 s windows, 5 s overlap, 16 frames per window</span>
-mm cat lecture.mp4 -p chunks
+mm cat lecture.mp4 -p chunked
 
 <span class="tok-c"># Longer windows for slower-paced content</span>
-mm cat lecture.mp4 -p chunks --encode.strategy_opts chunk_duration=90 --encode.strategy_opts overlap=10
+mm cat lecture.mp4 -p chunked --encode.strategy_opts chunk_duration=90 --encode.strategy_opts overlap=10
 
 <span class="tok-c"># Accurate mode: the model describes each window</span>
-mm cat lecture.mp4 -p chunks -m accurate
+mm cat lecture.mp4 -p chunked -m accurate
 
 <span class="tok-c"># Preview the resolved pipeline without running it</span>
-mm cat lecture.mp4 -p chunks -m accurate --dry-run</code></pre>
+mm cat lecture.mp4 -p chunked -m accurate --dry-run</code></pre>
         </div>
 
         <h3 id="video-other">Other video strategies</h3>
@@ -1583,6 +1583,12 @@ mm cat lecture.mp4 -p chunks -m accurate --dry-run</code></pre>
             <div class="enc-mini-tags"><span class="pill pill-purple">native input</span></div>
           </div>
           <div class="enc-mini">
+            <div class="enc-mini-name">native</div>
+            <div class="enc-mini-desc">Send the entire video as a base64 video_url data URL. No probing,
+              chunking, or frame extraction.</div>
+            <div class="enc-mini-tags"><span class="pill pill-purple">native input</span></div>
+          </div>
+          <div class="enc-mini">
             <div class="enc-mini-name">transcript</div>
             <div class="enc-mini-desc">Whisper transcript only, no visual frames extracted. For podcasts, lectures, or
               any content where spoken word is all that matters.</div>
@@ -1595,14 +1601,14 @@ mm cat lecture.mp4 -p chunks -m accurate --dry-run</code></pre>
             <div class="enc-mini-tags"><span class="pill pill-green">encode-only</span></div>
           </div>
           <div class="enc-mini">
-            <div class="enc-mini-name">gemini</div>
+            <div class="enc-mini-name">gemini-native</div>
             <div class="enc-mini-desc">Send the entire video as a Gemini native Part. No frame extraction; the model
               receives the raw video bytes directly.</div>
             <div class="enc-mini-tags"><span class="pill pill-purple">Gemini only</span></div>
           </div>
           <div class="enc-mini">
             <div class="enc-mini-name">gemini-chunked</div>
-            <div class="enc-mini-desc">Same as <code>gemini</code> but splits long videos into overlapping segments
+            <div class="enc-mini-desc">Same as <code>gemini-native</code> but splits long videos into overlapping segments
               first. For Gemini models with length constraints.</div>
             <div class="enc-mini-tags"><span class="pill pill-purple">Gemini only</span></div>
           </div>
@@ -1650,6 +1656,12 @@ graph TD
 
         <table class="comp-table">
           <thead>
+            <tr>
+              <td class="col-name">native</td>
+              <td class="col-desc">Entire file as base64 video_url.</td>
+              <td class="col-param">none</td>
+              <td class="col-best">OpenAI-compatible video-native models</td>
+            </tr>
             <tr>
               <th>Encoder</th>
               <th>What it sends</th>
@@ -1788,7 +1800,7 @@ flowchart TD
             <div class="enc-mini-tags"><span class="pill pill-blue">hybrid</span></div>
           </div>
           <div class="enc-mini">
-            <div class="enc-mini-name">gemini</div>
+            <div class="enc-mini-name">gemini-native</div>
             <div class="enc-mini-desc">Send the document as a Gemini native Part, no text extraction or rendering. For
               Gemini models that accept PDF files directly.</div>
             <div class="enc-mini-tags"><span class="pill pill-purple">Gemini only</span></div>
@@ -1814,7 +1826,7 @@ mm cat scanned.pdf -p rasterize -m accurate
 mm cat invoice.pdf -p rasterize-text -m accurate
 
 <span class="tok-c"># Gemini native PDF understanding</span>
-mm --profile gemini cat report.pdf -p gemini -m accurate</code></pre>
+mm --profile gemini cat report.pdf -p gemini-native -m accurate</code></pre>
         </div>
 
         <!-- ── Section: Choosing ── -->
@@ -1854,8 +1866,8 @@ mm --profile gemini cat report.pdf -p gemini -m accurate</code></pre>
           <div class="scenario-card">
             <div class="scenario-label">🎬 Video</div>
             <div class="scenario-task">Process a 2-hour lecture section by section</div>
-            <div class="scenario-cmd">mm cat lecture.mp4 -p chunks -m accurate</div>
-            <div class="scenario-why"><code>chunks</code>: 60 s windows preserve temporal context that a single mosaic
+            <div class="scenario-cmd">mm cat lecture.mp4 -p chunked -m accurate</div>
+            <div class="scenario-why"><code>chunked</code>: 60 s windows preserve temporal context that a single mosaic
               loses</div>
           </div>
 
@@ -2092,7 +2104,7 @@ register(VideoGrayscale())</code></pre>
               <td class="col-best">Films, captioned videos</td>
             </tr>
             <tr>
-              <td class="col-name">gemini</td>
+              <td class="col-name">gemini-native</td>
               <td class="col-desc">Entire file as Gemini Part.</td>
               <td class="col-param">none</td>
               <td class="col-best">Gemini models, short clips</td>

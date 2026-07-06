@@ -286,7 +286,7 @@ class TestVideoTimestamps:
 
 # NOTE: ``TestVideoFrameSample`` and ``TestVideoChunk`` were removed when the
 # old ffmpeg-CLI-driven encoders ``frame-sample`` and ``video-chunk`` were
-# replaced by the PyAV-based ``frames`` / ``chunks`` family.
+# replaced by the PyAV-based ``frames`` / ``chunked`` family.
 # Equivalent behaviour is exercised end-to-end in ``test_video_p0.py`` and
 # ``test_video_encoders.py`` against real video fixtures.
 
@@ -426,6 +426,23 @@ class TestGeminiEncoders:
             messages = list(strat.encode(video))
             assert len(messages) == 1
             assert "PyAV not runnable" in messages[0]["content"][0]["text"]
+
+
+class TestNativeVideoEncoder:
+    def test_native_video_passthrough(self, tmp_path):
+        from mm.encoders import get
+
+        video = tmp_path / "test.mp4"
+        video.write_bytes(b"\x00\x00\x00\x18ftypmp4" + b"\x00" * 64)
+        strat = get("native", "video")
+        messages = list(strat.encode(video))
+        assert len(messages) == 1
+        content = messages[0]["content"]
+        assert len(content) == 1
+        part = content[0]
+        assert part["type"] == "video_url"
+        url = part["video_url"]["url"]
+        assert url.startswith("data:video/mp4;base64,")
 
 
 # NOTE: ``TestShotTimestamps``, ``TestShotFrames`` and ``TestShotMosaic`` were

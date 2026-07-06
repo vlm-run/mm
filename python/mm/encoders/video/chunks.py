@@ -35,7 +35,7 @@ class VideoChunk(Encoder):
         generate_model: --generate.model CLI flag
     """
 
-    name = "chunks"
+    name = "chunked"
     kind = "video"
 
     def encode(self, path: Path, **kwargs: Any) -> Iterable[Message]:
