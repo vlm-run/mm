@@ -1,4 +1,4 @@
-"""Audio encoding strategies: base64 passthrough, transcription, and Gemini.
+"""Audio encoding strategies: native passthrough, transcription, and Gemini.
 
 ``AudioBase64`` base64-encodes the raw audio file as an OpenAI ``input_audio``
 part — the native way to send audio to multimodal LLMs. Generate prompts come
@@ -18,8 +18,10 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Any, Iterable
 
+from mm.constants import guess_mime
 from mm.encoders import register
 from mm.encoders.base import Encoder, Message
+from mm.encoders.gemini import _gemini_inline_data_part, _to_gemini_message
 from mm.utils import get_b64
 
 logger = logging.getLogger(__name__)
@@ -51,13 +53,13 @@ class AudioBase64(Encoder):
     Kwargs:
         format: Audio format hint (default: inferred from file extension).
             One of ``mp3``, ``wav``, ``flac``, ``ogg``, ``m4a``, ``aac``.
-        max_seconds: audio clip duration to encode
+        chunk_duration: audio clip duration to encode
         overlap: overlap between audio clips
         mode: fast | accurate.
         generate_model: --generate.model CLI flag.
     """
 
-    name = "base64"
+    name = "native"
     kind = "audio"
 
     def encode(self, path: Path, **kwargs: Any) -> Iterable[Message]:
@@ -80,11 +82,11 @@ class AudioBase64(Encoder):
             )
             return
 
-        max_seconds: int = int(kwargs.get("max_seconds", 120))
+        chunk_duration: int = int(kwargs.get("chunk_duration", 120))
         overlap: int = int(kwargs.get("overlap", 10))
         duration = probe_duration(path)
-        if duration <= max_seconds:
-            logger.debug("base64 [path=%s, duration=%.1fs, single]", path.name, duration)
+        if duration <= chunk_duration:
+            logger.debug("audio_native [path=%s, duration=%.1fs, single]", path.name, duration)
             yield _to_message(
                 [
                     {
@@ -97,19 +99,19 @@ class AudioBase64(Encoder):
 
         import tempfile
 
-        step: float = max(max_seconds - overlap, 1)
+        step: float = max(chunk_duration - overlap, 1)
         segments: list[tuple[float, float]] = []
         start: float = 0.0
         while start < duration:
-            end = min(start + max_seconds, duration)
+            end = min(start + chunk_duration, duration)
             segments.append((start, end))
             start += step
 
         logger.debug(
-            "audio_base64_chunked [path=%s, duration=%.1fs, chunk=%ds, n_segments=%d]",
+            "audio_native_chunked [path=%s, duration=%.1fs, chunk=%ds, n_segments=%d]",
             path.name,
             duration,
-            max_seconds,
+            chunk_duration,
             len(segments),
         )
 
@@ -153,7 +155,7 @@ class AudioTranscribe(Encoder):
         api_key: API key for the ``openai`` backend.
     """
 
-    name = "transcribe"
+    name = "transcript"
     kind = "audio"
     generate = {"fast": None, "accurate": None}
 
@@ -259,73 +261,59 @@ class AudioTranscribe(Encoder):
 
 
 class GeminiAudio(Encoder):
-    """Pass an audio file directly as a Gemini ``input_audio`` Part.
+    """Pass an audio file directly as a Gemini ``inline_data`` Part.
 
-    For files longer than ``max_seconds``, splits into overlapping
+    For files longer than ``chunk_duration``, splits into overlapping
     chunks via ffmpeg and yields one Message per chunk.
 
     Kwargs:
-        max_seconds: Maximum chunk length in seconds (default 120).
+        chunk_duration: Maximum chunk length in seconds (default 120).
         overlap: Overlap between chunks in seconds (default 10).
         mode: fast | accurate.
     """
 
-    name = "gemini"
+    name = "gemini-native"
     kind = "audio"
 
     def encode(self, path: Path, **kwargs: Any) -> Iterable[Message]:
         from mm.ffmpeg import extract_segment, probe_duration
         from mm.video import pyav_runnable
 
-        fmt: str = kwargs.get(
-            "format",
-            _EXT_TO_FORMAT.get(path.suffix.lower(), "mp3"),
-        )
-
         if not pyav_runnable():
             data = path.read_bytes()
-            yield _to_message(
-                [
-                    {
-                        "type": "input_audio",
-                        "input_audio": {"data": get_b64(data), "format": fmt},
-                    },
-                ]
-            )
+            mime = guess_mime(path.name)
+            yield _to_gemini_message([_gemini_inline_data_part(data, mime)])
             return
 
-        max_seconds: int = kwargs.get("max_seconds", 120)
+        chunk_duration: int = int(kwargs.get("chunk_duration", 120))
         overlap: int = kwargs.get("overlap", 10)
         duration = probe_duration(path)
 
-        if duration <= max_seconds:
+        if duration <= chunk_duration:
             data = path.read_bytes()
-            logger.debug("gemini_audio [path=%s, duration=%.1fs, single]", path.name, duration)
-            yield _to_message(
-                [
-                    {
-                        "type": "input_audio",
-                        "input_audio": {"data": get_b64(data), "format": fmt},
-                    },
-                ]
+            mime = guess_mime(path.name)
+            logger.debug(
+                "audio_gemini_native [path=%s, duration=%.1fs, single]", path.name, duration
             )
+            yield _to_gemini_message([_gemini_inline_data_part(data, mime)])
             return
 
         import tempfile
 
-        step: float = max(max_seconds - overlap, 1)
+        mime = guess_mime(path.name)
+        step: float = max(chunk_duration - overlap, 1)
         segments: list[tuple[float, float]] = []
         start: float = 0.0
         while start < duration:
-            end = min(start + max_seconds, duration)
+            end = min(start + chunk_duration, duration)
             segments.append((start, end))
             start += step
 
         logger.debug(
-            "gemini_audio_chunked [path=%s, duration=%.1fs, chunk=%ds, n_segments=%d]",
+            "audio_gemini_native_chunked [path=%s, duration=%.1fs, chunk=%ds, n_segments=%d]",
             path.name,
             duration,
-            max_seconds,
+            chunk_duration,
             len(segments),
         )
 
@@ -338,14 +326,7 @@ class GeminiAudio(Encoder):
                 seg_data = seg_path.read_bytes()
             finally:
                 seg_path.unlink(missing_ok=True)
-            return _to_message(
-                [
-                    {
-                        "type": "input_audio",
-                        "input_audio": {"data": get_b64(seg_data), "format": fmt},
-                    },
-                ]
-            )
+            return _to_gemini_message([_gemini_inline_data_part(seg_data, mime)])
 
         with ThreadPoolExecutor(max_workers=min(4, len(segments))) as pool:
             yield from pool.map(_submit_fn, segments)

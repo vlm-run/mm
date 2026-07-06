@@ -77,11 +77,17 @@ class TestRegistry:
         assert "chunked" in names
         assert "rasterize" in names
         assert "rasterize-text" in names
-        assert "gemini" in names
+        assert "native" in names
+        assert "transcript" in names
         assert "gemini-native" in names
         assert "gemini-chunked" in names
-        assert "native" in names
-        assert len(names) >= 9
+        assert len(names) >= 10
+
+    def test_list_strategies_by_audio(self):
+        from mm.encoders import list_strategies
+
+        names = list_strategies(kind="audio")
+        assert sorted(names) == ["gemini-native", "native", "transcript"]
 
     def test_list_strategies_by_image(self):
         from mm.encoders import list_strategies

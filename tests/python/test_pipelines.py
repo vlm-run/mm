@@ -469,29 +469,29 @@ class TestResolvePipelineStrategyParity:
         return CatOpts(**defaults)
 
     def test_encode_strategy_override_preserves_prompt_like_dash_p(self):
-        """`--encode.strategy base64` keeps the YAML prompt, matching `-p base64`.
+        """`--encode.strategy native` keeps the YAML prompt, matching `-p native`.
 
         Regression: previously the prompt was derived against the base YAML
-        strategy (``transcribe``, which suppresses generate), wiping it.
+        strategy (``transcript``, which suppresses generate), wiping it.
         """
         from mm.pipelines.pipelines_utils import resolve_pipeline
 
-        # --encode.strategy base64
-        opts_flag = self._opts(encode_overrides={"strategy": "base64"})
+        # --encode.strategy native
+        opts_flag = self._opts(encode_overrides={"strategy": "native"})
         flag_spec = resolve_pipeline(opts_flag, "audio")
 
-        # -p base64 (stored under "_encoder")
+        # -p native (stored under "_encoder")
         encoder_pipe = PipelineSpec(
             kind="_encoder",
             mode="fast",
-            encode=Encode(strategy="base64"),
+            encode=Encode(strategy="native"),
             generate=None,
         )
         opts_p = self._opts(pipelines={"_encoder": encoder_pipe})
         p_spec = resolve_pipeline(opts_p, "audio")
 
-        assert flag_spec.encode.strategy == "base64"
-        assert p_spec.encode.strategy == "base64"
+        assert flag_spec.encode.strategy == "native"
+        assert p_spec.encode.strategy == "native"
         assert flag_spec.generate is not None
         assert p_spec.generate is not None
         assert flag_spec.generate.prompt == p_spec.generate.prompt
@@ -504,14 +504,14 @@ class TestResolvePipelineStrategyParity:
         opts = self._opts(encode_overrides={"strategy": "auto"})
         spec = resolve_pipeline(opts, "audio")
         # Untouched: base YAML strategy remains; auto handled by resolve_auto_strategy.
-        assert spec.encode.strategy == "transcribe"
+        assert spec.encode.strategy == "transcript"
 
     def test_auto_defers_generate_so_prompt_survives(self):
         """``--encode.strategy auto`` must NOT derive generate against the base strategy.
 
-        Regression: the base YAML strategy (``transcribe``) suppresses generate,
+        Regression: the base YAML strategy (``transcript``) suppresses generate,
         so deriving it here wiped the prompt before auto could pick an encoder
-        (e.g. ``base64``) that preserves it. The prompt must survive resolution.
+        (e.g. ``native``) that preserves it. The prompt must survive resolution.
         """
         from mm.pipelines.pipelines_utils import resolve_pipeline
 
@@ -523,10 +523,10 @@ class TestResolvePipelineStrategyParity:
         assert spec.generate is not None
         assert spec.generate.prompt != ""
 
-    def test_auto_resolved_to_base64_matches_explicit(self):
-        """End-to-end: auto→base64 yields the same prompt as `--encode.strategy base64`.
+    def test_auto_resolved_to_native_matches_explicit(self):
+        """End-to-end: auto→native yields the same prompt as `--encode.strategy native`.
 
-        Mocks ``auto_strategy`` to return ``base64`` so the test stays offline.
+        Mocks ``auto_strategy`` to return ``native`` so the test stays offline.
         """
         from unittest.mock import patch
 
@@ -543,23 +543,23 @@ class TestResolvePipelineStrategyParity:
             opts_auto.encode_overrides,
             opts_auto.generate_overrides,
         )
-        with patch("mm.encoders.auto_strategy.auto_strategy", return_value="base64"):
+        with patch("mm.encoders.auto_strategy.auto_strategy", return_value="native"):
             spec_auto = resolve_auto_strategy(Path("/fake/audio.mp3"), spec_auto, opts_auto)
 
-        # explicit base64 path
-        opts_b64 = self._opts(
-            encode_overrides={"strategy": "base64"},
+        # explicit native path
+        opts_native = self._opts(
+            encode_overrides={"strategy": "native"},
             generate_overrides={"model": "some-model"},
         )
-        spec_b64 = apply_overrides(
-            resolve_pipeline(opts_b64, "audio"),
-            opts_b64.encode_overrides,
-            opts_b64.generate_overrides,
+        spec_native = apply_overrides(
+            resolve_pipeline(opts_native, "audio"),
+            opts_native.encode_overrides,
+            opts_native.generate_overrides,
         )
 
-        assert spec_auto.encode.strategy == "base64"
-        assert spec_auto.generate is not None and spec_b64.generate is not None
-        assert spec_auto.generate.prompt == spec_b64.generate.prompt
+        assert spec_auto.encode.strategy == "native"
+        assert spec_auto.generate is not None and spec_native.generate is not None
+        assert spec_auto.generate.prompt == spec_native.generate.prompt
         assert spec_auto.generate.prompt != ""
 
     def test_suppressing_encoder_stays_passthrough_without_overrides(self):
@@ -576,7 +576,7 @@ class TestResolvePipelineStrategyParity:
         revive the LLM step.
 
         Regression: ``--generate.model`` alone (no prompt) used to materialise an
-        empty-prompt Generate for ``transcribe``/``page-text``, feeding the
+        empty-prompt Generate for ``transcript``/``page-text``, feeding the
         passthrough output to the LLM. Suppressing encoders must stay encode-only.
         """
         from mm.pipelines.pipelines_utils import resolve_pipeline
@@ -586,20 +586,20 @@ class TestResolvePipelineStrategyParity:
         assert spec.encode.strategy == "page-text"
         assert spec.generate is None
 
-    def test_transcribe_stays_passthrough_with_generate_model(self):
-        """``--encode.strategy transcribe --generate.model X`` never hits the LLM."""
+    def test_transcript_stays_passthrough_with_generate_model(self):
+        """``--encode.strategy transcript --generate.model X`` never hits the LLM."""
         from mm.pipelines.pipelines_utils import resolve_pipeline
 
         opts = self._opts(
-            encode_overrides={"strategy": "transcribe"},
+            encode_overrides={"strategy": "transcript"},
             generate_overrides={"model": "some-model"},
         )
         spec = resolve_pipeline(opts, "audio")
-        assert spec.encode.strategy == "transcribe"
+        assert spec.encode.strategy == "transcript"
         assert spec.generate is None
 
-    def test_auto_resolved_to_transcribe_stays_passthrough(self):
-        """auto→transcribe stays encode-only even with a ``--generate.model`` override."""
+    def test_auto_resolved_to_transcript_stays_passthrough(self):
+        """auto→transcript stays encode-only even with a ``--generate.model`` override."""
         from unittest.mock import patch
 
         from mm.encoders.auto_strategy import resolve_auto_strategy
@@ -614,10 +614,10 @@ class TestResolvePipelineStrategyParity:
             opts.encode_overrides,
             opts.generate_overrides,
         )
-        with patch("mm.encoders.auto_strategy.auto_strategy", return_value="transcribe"):
+        with patch("mm.encoders.auto_strategy.auto_strategy", return_value="transcript"):
             spec = resolve_auto_strategy(Path("/fake/audio.mp3"), spec, opts)
 
-        assert spec.encode.strategy == "transcribe"
+        assert spec.encode.strategy == "transcript"
         assert spec.generate is None
 
 

@@ -90,39 +90,39 @@ class TestAudio:
     def _path(self, name: str = "track.mp3") -> Path:
         return Path(f"/fake/{name}")
 
-    def test_short_small_mp3_gives_transcribe(self):
-        # ≤300s and ≤10 MB → transcribe
+    def test_short_small_mp3_gives_transcript(self):
+        # ≤300s and ≤10 MB → transcript
         meta = _Meta(size=2 * _MB, duration_s=60.0)
-        assert _run(self._path("track.mp3"), "audio", meta) == "transcribe"
+        assert _run(self._path("track.mp3"), "audio", meta) == "transcript"
 
-    def test_long_mp3_gives_base64(self):
-        # >300s → base64
+    def test_long_mp3_gives_native(self):
+        # >300s → native
         meta = _Meta(size=6 * _MB, duration_s=700.0)
-        assert _run(self._path("track.mp3"), "audio", meta) == "base64"
+        assert _run(self._path("track.mp3"), "audio", meta) == "native"
 
-    def test_at_duration_boundary_gives_transcribe(self):
-        # Exactly 300s, 6 MB → both conditions met → transcribe
+    def test_at_duration_boundary_gives_transcript(self):
+        # Exactly 300s, 6 MB → both conditions met → transcript
         meta = _Meta(size=6 * _MB, duration_s=300.0)
-        assert _run(self._path("track.mp3"), "audio", meta) == "transcribe"
+        assert _run(self._path("track.mp3"), "audio", meta) == "transcript"
 
-    def test_short_small_wav_gives_transcribe(self):
-        # ≤300s and ≤10 MB → transcribe (lossless has no special threshold)
+    def test_short_small_wav_gives_transcript(self):
+        # ≤300s and ≤10 MB → transcript (lossless has no special threshold)
         meta = _Meta(size=5 * _MB, duration_s=60.0)
-        assert _run(self._path("clip.wav"), "audio", meta) == "transcribe"
+        assert _run(self._path("clip.wav"), "audio", meta) == "transcript"
 
-    def test_oversize_wav_gives_base64(self):
-        # >10 MB → base64 regardless of duration
+    def test_oversize_wav_gives_native(self):
+        # >10 MB → native regardless of duration
         meta = _Meta(size=11 * _MB, duration_s=200.0)
-        assert _run(self._path("clip.wav"), "audio", meta) == "base64"
+        assert _run(self._path("clip.wav"), "audio", meta) == "native"
 
-    def test_short_flac_gives_transcribe(self):
+    def test_short_flac_gives_transcript(self):
         meta = _Meta(size=4 * _MB, duration_s=100.0)
-        assert _run(self._path("song.flac"), "audio", meta) == "transcribe"
+        assert _run(self._path("song.flac"), "audio", meta) == "transcript"
 
-    def test_short_m4a_gives_transcribe(self):
-        # m4a ≤300s and ≤10 MB → transcribe
+    def test_short_m4a_gives_transcript(self):
+        # m4a ≤300s and ≤10 MB → transcript
         meta = _Meta(size=3 * _MB, duration_s=200.0)
-        assert _run(self._path("audio.m4a"), "audio", meta) == "transcribe"
+        assert _run(self._path("audio.m4a"), "audio", meta) == "transcript"
 
 
 class TestImage:

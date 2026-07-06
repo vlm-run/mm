@@ -2,7 +2,7 @@ kind: audio
 mode: fast
 
 encode:
-  strategy: transcribe
+  strategy: transcript
   backend: openai
   model: nvidia/parakeet-tdt-0.6b-v3
   strategy_opts:

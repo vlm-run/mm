@@ -1085,7 +1085,7 @@
           file to one or more <em>messages</em>, the OpenAI-compatible content parts (<code>text</code>,
           <code>image_url</code>, <code>input_audio</code>, <code>video_url</code>) that any chat/completions endpoint
           accepts.
-          Each is identified by name (e.g., <code>resize</code>, <code>mosaic</code>, <code>transcribe</code>), bound to
+          Each is identified by name (e.g., <code>resize</code>, <code>mosaic</code>, <code>transcript</code>), bound to
           a single media kind, and answers one question for its modality: what is the most compact representation that
           still preserves content fidelity for the model layer?
         </p>
@@ -1122,7 +1122,7 @@ graph LR
 
         <p>
           The diagram above conveys what happens end to end: a file reaches the encoder, which applies modality-aware
-          transformation, e.g., <code>resize</code> a photograph, <code>transcode</code> a clip, <code>transcribe</code>
+          transformation, e.g., <code>resize</code> a photograph, <code>transcode</code> a clip, <code>transcript</code>
           speech, or <code>render</code> a document page, producing messages a VLM can process.
         </p>
 
@@ -1314,7 +1314,7 @@ flowchart TD
   video("🎬 Video file")
 
   video --> Q1{{"Does the model\naccept video natively?"}}
-  Q1 -->|Yes| clips("clips / gemini\nnative video input")
+  Q1 -->|Yes| clips("clips / gemini-native\nnative video input")
   Q1 -->|No| Q2{{"How long?"}}
 
   Q2 -->|"&lt; 10 min"| Q3{{"Need audio too?"}}
@@ -1644,15 +1644,15 @@ graph TD
 
   audio --> Q{{"What do you need?"}}
 
-  Q -->|"Timestamped transcript\n(no LLM required)"| transcribe("transcribe\nWhisper → text\nencode-only")
+  Q -->|"Timestamped transcript\n(no LLM required)"| transcript("transcript\nWhisper → text\nencode-only")
   Q -->|"LLM understanding\n(speech, tone, content)"| Q2{{"Which model?"}}
 
-  Q2 -->|"OpenAI-compatible"| base64("base64\naudio bytes → LLM call")
-  Q2 -->|"Gemini"| gemini("gemini\nnative audio → LLM call")
+  Q2 -->|"OpenAI-compatible"| native("native\naudio bytes → LLM call")
+  Q2 -->|"Gemini"| gemini_native("gemini-native\nGemini inline_data → LLM call")
 
-  style transcribe fill:#dcfce7,stroke:#22c55e,color:#14532d
-  style base64 fill:#dbeafe,stroke:#3b82f6,color:#1e3a8a
-  style gemini fill:#ede9fe,stroke:#7c3aed,color:#4c1d95</pre>
+  style transcript fill:#dcfce7,stroke:#22c55e,color:#14532d
+  style native fill:#dbeafe,stroke:#3b82f6,color:#1e3a8a
+  style gemini_native fill:#ede9fe,stroke:#7c3aed,color:#4c1d95</pre>
           <div class="diagram-caption">Audio encoder decision: encode-only transcript vs audio understanding</div>
         </div>
 
@@ -1662,8 +1662,8 @@ graph TD
           <div class="callout-body">
             <div class="callout-title">Critical distinction</div>
             <p>
-              <code>transcribe</code> is encode-only: it runs Whisper locally and returns a timestamped transcript as
-              plain text, with no model in the loop. <code>base64</code> and <code>gemini</code> generate model-native
+              <code>transcript</code> is encode-only: it runs Whisper locally and returns a timestamped transcript as
+              plain text, with no model in the loop. <code>native</code> and <code>gemini-native</code> generate model-native
               messages.
             </p>
           </div>
@@ -1679,25 +1679,25 @@ graph TD
           </thead>
           <tbody>
             <tr>
-              <td><code>transcribe</code></td>
+              <td><code>transcript</code></td>
               <td class="col-desc">Whisper transcript as text</td>
               <td class="col-best">timestamped transcript</td>
             </tr>
             <tr>
-              <td><code>base64</code></td>
+              <td><code>native</code></td>
               <td class="col-desc">Raw audio bytes to LLM</td>
               <td class="col-best">description</td>
             </tr>
             <tr>
-              <td><code>gemini</code></td>
-              <td class="col-desc">Audio as Gemini native Part</td>
+              <td><code>gemini-native</code></td>
+              <td class="col-desc">Audio as Gemini inline_data Part</td>
               <td class="col-best">description</td>
             </tr>
           </tbody>
         </table>
 
         <p>
-          Both <code>base64</code> and <code>gemini</code> handle long files automatically:
+          Both <code>native</code> and <code>gemini-native</code> handle long files automatically:
           recordings longer than 120 seconds are split into overlapping segments and
           processed in parallel, each yielding a separate message.
         </p>
@@ -1732,7 +1732,7 @@ graph LR
   style encode_short rx:10px,ry:10px
   style encode_long rx:10px,ry:10px
   style message rx:10px,ry:10px</pre>
-          <div class="diagram-caption">base64: short files sent whole; long files split into overlapping segments and
+          <div class="diagram-caption">native: short files sent whole; long files split into overlapping segments and
             processed in parallel</div>
         </div>
 
@@ -1746,16 +1746,16 @@ graph LR
 mm cat meeting.mp3
 
 <span class="tok-c"># Model description, accurate (full content analysis)</span>
-mm cat meeting.mp3 -p base64 -m accurate
+mm cat meeting.mp3 -p native -m accurate
 
 <span class="tok-c"># Faster transcription on Apple Silicon</span>
-mm cat meeting.mp3 -p transcribe --encode.backend mlx
+mm cat meeting.mp3 -p transcript --encode.backend mlx
 
 <span class="tok-c"># Gemini native audio understanding</span>
-mm --profile gemini cat meeting.mp3 -p gemini -m accurate
+mm --profile gemini cat meeting.mp3 -p gemini-native -m accurate
 
 <span class="tok-c"># Slower playback for Whisper, trades compute for accuracy</span>
-mm cat meeting.mp3 -p transcribe --encode.strategy_opts audio_speed=1.0</code></pre>
+mm cat meeting.mp3 -p transcript --encode.strategy_opts audio_speed=1.0</code></pre>
         </div>
 
         <!-- ── Section: Documents ── -->
@@ -1891,16 +1891,16 @@ mm --profile gemini cat report.pdf -p gemini-native -m accurate</code></pre>
           <div class="scenario-card">
             <div class="scenario-label">🎵 Audio</div>
             <div class="scenario-task">Get a searchable transcript of a podcast</div>
-            <div class="scenario-cmd">mm cat episode.mp3 -p transcribe</div>
-            <div class="scenario-why"><code>transcribe</code>: OpenAI whisper with timestamps, fully offline.
+            <div class="scenario-cmd">mm cat episode.mp3 -p transcript</div>
+            <div class="scenario-why"><code>transcript</code>: OpenAI whisper with timestamps, fully offline.
             </div>
           </div>
 
           <div class="scenario-card">
             <div class="scenario-label">🎵 Audio</div>
             <div class="scenario-task">Summarize a customer support call</div>
-            <div class="scenario-cmd">mm cat call.mp3 -p base64 -m accurate</div>
-            <div class="scenario-why"><code>base64</code> with accurate: the model describes tone, emphasis, and
+            <div class="scenario-cmd">mm cat call.mp3 -p native -m accurate</div>
+            <div class="scenario-why"><code>native</code> with accurate: the model describes tone, emphasis, and
               content directly</div>
           </div>
 
@@ -2079,7 +2079,7 @@ register(VideoGrayscale())</code></pre>
             <tr>
               <td class="col-name">clips</td>
               <td class="col-desc">Base64 video clips for native input models.</td>
-              <td class="col-param">duration=120, overlap=10</td>
+              <td class="col-param">chunk_duration=120, overlap=10</td>
               <td class="col-best">Models with video_url support</td>
             </tr>
             <tr>
@@ -2127,7 +2127,7 @@ register(VideoGrayscale())</code></pre>
             <tr>
               <td class="col-name">gemini-chunked</td>
               <td class="col-desc">Gemini chunked into overlapping segments.</td>
-              <td class="col-param">max_seconds=120, overlap=10</td>
+              <td class="col-param">chunk_duration=120, overlap=10</td>
               <td class="col-best">Gemini models, long videos</td>
             </tr>
           </tbody>
@@ -2144,17 +2144,17 @@ register(VideoGrayscale())</code></pre>
           </thead>
           <tbody>
             <tr>
-              <td class="col-name">transcribe</td>
+              <td class="col-name">transcript</td>
               <td class="col-desc">Whisper → timestamped transcript. Fully offline.</td>
               <td class="col-best">Transcripts, search indexes, subtitles</td>
             </tr>
             <tr>
-              <td class="col-name">base64</td>
+              <td class="col-name">native</td>
               <td class="col-desc">Raw audio to LLM. Auto-splits files &gt; 120 s.</td>
               <td class="col-best">Summaries, tone analysis, Q&amp;A</td>
             </tr>
             <tr>
-              <td class="col-name">gemini</td>
+              <td class="col-name">gemini-native</td>
               <td class="col-desc">Audio as Gemini native Part. Auto-splits.</td>
               <td class="col-best">Gemini models, audio analysis</td>
             </tr>
@@ -2191,8 +2191,8 @@ register(VideoGrayscale())</code></pre>
               <td class="col-best">Invoices, mixed-content docs</td>
             </tr>
             <tr>
-              <td class="col-name">gemini</td>
-              <td class="col-desc">Document as Gemini native Part.</td>
+              <td class="col-name">gemini-native</td>
+              <td class="col-desc">Document as Gemini inline_data Part.</td>
               <td class="col-param">none</td>
               <td class="col-best">Gemini models, PDF pass-through</td>
             </tr>

@@ -142,7 +142,7 @@ mm/
 │   ├── encoders/               # Media encoders (file → VLM-ready Messages)
 │   │   ├── __init__.py         # Registry, register_encoder, get(name, kind)
 │   │   ├── base.py             # Encoder ABC + Message type
-│   │   ├── audio.py            # base64, transcribe, gemini
+│   │   ├── audio.py            # native, transcript, gemini-native
 │   │   ├── document/
 │   │   │   ├── __init__.py     # (empty — encoders self-register on import)
 │   │   │   ├── page_text.py    # page-text (text extraction per page)
@@ -264,7 +264,7 @@ The following commands were merged into the core commands:
 - `head` / `tail` → `cat -n 10` (head) / `cat -n -10` (tail)
 - `keyframes` → `cat video.mp4 -m accurate` (auto-generates mosaic)
 - `pages` → `cat document.pdf` (auto-extracts text)
-- `audio` → `cat audio.mp3` (Whisper transcript; use `-p base64` or `-p gemini` for LLM description)
+- `audio` → `cat audio.mp3` (Whisper transcript; use `-p native` or `-p gemini-native` for LLM description)
 - `ls` / `tree` / `describe` → `find` with `--tree`, `--schema`, `--columns`
 - `info` → `wc` (default summary panel)
 - `cat -m metadata` (former metadata mode) → `peek` (raw file metadata, now a separate command)
@@ -296,7 +296,7 @@ The following commands were merged into the core commands:
 - `mm cat file -n 20` — first 20 lines (head)
 - `mm cat file -n -20` — last 20 lines (tail)
 - `mm cat file -m fast` — kind's fast pipeline (image/video: short LLM caption; PDF: page-text via pypdfium2; audio: Whisper transcript (no LLM); code/text/docx/pptx: passthrough)
-- `mm cat file -m accurate` — LLM-generated caption/description (image/video/PDF); audio: Whisper transcript only unless using `-p base64` or `-p gemini`; passthrough for code/text/docx/pptx
+- `mm cat file -m accurate` — LLM-generated caption/description (image/video/PDF); audio: Whisper transcript only unless using `-p native` or `-p gemini-native`; passthrough for code/text/docx/pptx
 - `mm cat video.mp4 -m accurate` — auto-generates keyframe mosaic → LLM description
 - `mm cat photo.png -p resize` — encode with named encoder
 - `mm cat photo.png -m accurate -p my-pipeline.yaml` — custom pipeline YAML
@@ -344,7 +344,7 @@ Columns (`files` in SQLite / `mm sql`): same but primary key is `uri` (absolute 
   kinds; passthrough handled directly by `cat_utils/extract_meta.py::extract_text`.
 - **cat accurate**: LLM-powered descriptions via OpenAI-compatible
   API. Images → VLM caption. Videos → mosaic → VLM description.
-  Audio → Whisper transcript only (default `transcribe` encoder suppresses LLM; use `-p base64` or `-p gemini` for LLM description). PDFs → page-text → LLM markdown
+  Audio → Whisper transcript only (default `transcript` encoder suppresses LLM; use `-p native` or `-p gemini-native` for LLM description). PDFs → page-text → LLM markdown
   structuring. Non-PDF documents and `kind=text` ignore mode and
   follow the same passthrough flow as fast. Requires a configured
   profile (`mm profile add/update`). Pipeline-driven via

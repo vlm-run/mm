@@ -72,7 +72,7 @@ encode:
   # models with native video input support.
   # strategy: clips
   # strategy_opts:
-  #   duration: 120                   # clip length in seconds (120 = default chunk size)
+  #   chunk_duration: 120             # clip length in seconds (120 = default chunk size)
   #   overlap: 10                     # overlap between clips in seconds
   #   max_size_mb: null               # skip chunks exceeding this size (MB)
 
@@ -80,7 +80,7 @@ encode:
   # Same as clips with Whisper transcript prepended.
   # strategy: clips-w-transcript
   # strategy_opts:
-  #   duration: 120
+  #   chunk_duration: 120
   #   overlap: 10
   #   max_size_mb: null
   #   language: auto
@@ -193,7 +193,7 @@ encode:
   # Duration-based chunking for Gemini inline_data.
   # strategy: gemini-chunked
   # strategy_opts:
-  #   max_seconds: 120                # max chunk length (s)
+  #   chunk_duration: 120             # max chunk length (s)
   #   overlap: 10                     # overlap between chunks (s)
 
   # Custom post-processing transform (optional).

@@ -393,7 +393,7 @@ graph LR
 
 #### `clips`
 
-Base64-encode video clips. Videos ≤ `duration` seconds are sent whole; longer videos are split into overlapping `duration`-second chunks. Each clip sent as a `video_url` base64 part — useful for models with native video input. **Parameters:** `duration=120, overlap=10, max_size_mb=None`
+Base64-encode video clips. Videos ≤ `chunk_duration` seconds are sent whole; longer videos are split into overlapping `chunk_duration`-second chunks. Each clip sent as a `video_url` base64 part — useful for models with native video input. **Parameters:** `chunk_duration=120, overlap=10, max_size_mb=None`
 
 ```mermaid
 %%{init: {'look': 'neo'} }%%
@@ -422,7 +422,7 @@ graph LR
 
 #### `clips-w-transcript`
 
-`clips` + Whisper transcript prepended as the first message. **Parameters:** `duration=120, overlap=10, max_size_mb=None, model=None, language=auto, audio_speed=2.0`
+`clips` + Whisper transcript prepended as the first message. **Parameters:** `chunk_duration=120, overlap=10, max_size_mb=None, model=None, language=auto, audio_speed=2.0`
 
 ```mermaid
 %%{init: {'look': 'neo'} }%%
@@ -611,7 +611,7 @@ graph LR
 
 #### `gemini-chunked`
 
-Gemini passthrough with duration-based chunking via ffmpeg. Each chunk as a separate Gemini Part. **Parameters:** `max_seconds=120, overlap=10`
+Gemini passthrough with duration-based chunking via ffmpeg. Each chunk as a separate Gemini Part. **Parameters:** `chunk_duration=120, overlap=10`
 
 ```mermaid
 %%{init: {'look': 'neo'} }%%
@@ -643,9 +643,9 @@ graph LR
 
 ### Audio
 
-#### `base64`
+#### `native`
 
-Send the raw audio file as a base64-encoded `input_audio` part. Default for Python `Context.to_messages()`. For files longer than `max_seconds`, splits into overlapping chunks via ffmpeg and yields one Message per chunk. **Parameters:** `format=auto, max_seconds=120, overlap=10`
+Send the raw audio file as a base64-encoded `input_audio` part. Default for Python `Context.to_messages()`. For files longer than `chunk_duration`, splits into overlapping chunks via ffmpeg and yields one Message per chunk. **Parameters:** `format=auto, chunk_duration=120, overlap=10`
 
 ```mermaid
 %%{init: {'look': 'neo'} }%%
@@ -680,7 +680,7 @@ graph LR
 
 ---
 
-#### `transcribe`
+#### `transcript`
 
 Extract audio via ffmpeg, transcribe with Whisper (lightning-whisper-mlx / faster-whisper). Returns timestamped transcript as a text message. **Parameters:** `model=None, language=auto, audio_speed=2.0, backend=None, base_url=None, api_key=None`
 
@@ -706,9 +706,9 @@ graph LR
 
 ---
 
-#### `gemini`
+#### `gemini-native`
 
-Pass the audio file as a base64-encoded `input_audio` part (OpenAI format), with automatic chunking for files longer than `max_seconds`. Each chunk yielded as a separate Message. **Parameters:** `max_seconds=120, overlap=10`
+Pass the audio file as a Gemini `inline_data` part, with automatic chunking for files longer than `chunk_duration`. Each chunk yielded as a separate Message. **Parameters:** `chunk_duration=120, overlap=10`
 
 ```mermaid
 %%{init: {'look': 'neo'} }%%

@@ -37,7 +37,7 @@ class Encode:
         def transform(parts: list[dict], context: dict) -> list[dict]
 
     ``backend`` is an optional encoder-specific backend selector (e.g.
-    ``"mlx"``|``"ctranslate2"``|``"openai"`` for ``transcribe``).
+    ``"mlx"``|``"ctranslate2"``|``"openai"`` for ``transcript``).
     Encoders that don't have a backend concept ignore it.
 
     ``model`` is an optional encoder-level model name (e.g.

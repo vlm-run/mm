@@ -86,8 +86,8 @@ def get(name: str, kind: str) -> MessageStrategy:
     Args:
         name: Encoder name (e.g. ``"mosaic"``, ``"resize"``).
         kind: Media kind. Required when ``name`` is shared across kinds
-            (e.g. ``"gemini"`` exists for audio, while ``"gemini-native"``
-            covers video and document).
+            (e.g. ``"native"``, ``"transcript"``, and ``"gemini-native"``
+            are shared across media kinds).
 
     Raises:
         KeyError: If no encoder matches.
@@ -327,7 +327,7 @@ def _project_encoders_dir() -> Path | None:
     """Return the encoders package directory for auto-discovery.
 
     Only subdirectories (image/, video/) are scanned — top-level
-    modules (document.py, gemini.py) are imported by _register_builtins.
+    modules (audio.py, document.py, gemini.py) are imported by _register_builtins.
     """
     d = Path(__file__).resolve().parent
     return d if d.is_dir() else None

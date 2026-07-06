@@ -1,4 +1,4 @@
-"""Tests for mm.encoders — registry, discovery, video/document/gemini encoders, tile."""
+"""Tests for mm.encoders — registry, discovery, video/document/gemini/audio encoders, tile."""
 
 from __future__ import annotations
 
@@ -408,7 +408,7 @@ class TestGeminiEncoders:
         )
         strat = get("gemini-chunked", "video")
         with patch("mm.video.probe", return_value=info):
-            messages = list(strat.encode(video, max_seconds=120))
+            messages = list(strat.encode(video, chunk_duration=120))
             assert len(messages) == 1
             assert any("inline_data" in p for p in messages[0]["content"])
 
@@ -443,6 +443,40 @@ class TestNativeVideoEncoder:
         assert part["type"] == "video_url"
         url = part["video_url"]["url"]
         assert url.startswith("data:video/mp4;base64,")
+
+
+class TestAudioEncoders:
+    def test_native_audio_passthrough(self, tmp_path):
+        from mm.encoders import get
+
+        audio = tmp_path / "test.mp3"
+        audio.write_bytes(b"ID3" + b"\x00" * 32)
+        strat = get("native", "audio")
+        with patch("mm.video.pyav_runnable", return_value=False):
+            messages = list(strat.encode(audio))
+        assert len(messages) == 1
+        content = messages[0]["content"]
+        assert len(content) == 1
+        part = content[0]
+        assert part["type"] == "input_audio"
+        assert part["input_audio"]["format"] == "mp3"
+        assert part["input_audio"]["data"]
+
+    def test_gemini_native_audio_inline_data(self, tmp_path):
+        from mm.encoders import get
+
+        audio = tmp_path / "test.mp3"
+        audio.write_bytes(b"ID3" + b"\x00" * 32)
+        strat = get("gemini-native", "audio")
+        with patch("mm.video.pyav_runnable", return_value=False):
+            messages = list(strat.encode(audio))
+        assert len(messages) == 1
+        content = messages[0]["content"]
+        assert len(content) == 1
+        part = content[0]
+        assert "inline_data" in part
+        assert part["inline_data"]["mime_type"] == "audio/mpeg"
+        assert part["inline_data"]["data"]
 
 
 # NOTE: ``TestShotTimestamps``, ``TestShotFrames`` and ``TestShotMosaic`` were

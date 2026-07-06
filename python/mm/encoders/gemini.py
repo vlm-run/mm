@@ -70,10 +70,10 @@ class GeminiVideoChunked(Encoder):
     """Chunk a video by duration and yield one Gemini Part per chunk.
 
     Uses ``ffmpeg`` to extract time-based segments. For videos shorter
-    than ``max_seconds`` the entire file is sent as a single Part.
+    than ``chunk_duration`` the entire file is sent as a single Part.
 
     Kwargs:
-        max_seconds: Maximum chunk length in seconds (default 120).
+        chunk_duration: Maximum chunk length in seconds (default 120).
         overlap: Overlap between chunks in seconds (default 10).
     """
 
@@ -84,7 +84,7 @@ class GeminiVideoChunked(Encoder):
         from mm.ffmpeg import extract_segment
         from mm.video import probe, pyav_runnable
 
-        max_seconds: int = int(kwargs.get("max_seconds", 120))
+        chunk_duration: int = int(kwargs.get("chunk_duration", 120))
         overlap: int = int(kwargs.get("overlap", 10))
 
         if not pyav_runnable():
@@ -99,7 +99,7 @@ class GeminiVideoChunked(Encoder):
             return
 
         info = probe(path)
-        if info.duration <= max_seconds:
+        if info.duration <= chunk_duration:
             data = path.read_bytes()
             mime = guess_mime(path.name)
             yield _to_gemini_message([_gemini_inline_data_part(data, mime)])
@@ -108,11 +108,11 @@ class GeminiVideoChunked(Encoder):
         import tempfile
 
         mime = guess_mime(path.name)
-        step: float = max(max_seconds - overlap, 1)
+        step: float = max(chunk_duration - overlap, 1)
         segments: list[tuple[float, float]] = []
         start: float = 0.0
         while start < info.duration:
-            end = min(start + max_seconds, info.duration)
+            end = min(start + chunk_duration, info.duration)
             segments.append((start, end))
             start += step
 
@@ -120,7 +120,7 @@ class GeminiVideoChunked(Encoder):
             "gemini_video_chunked [path=%s, duration=%.1fs, chunk=%ds, segment_len=%ds]",
             path.name,
             info.duration,
-            max_seconds,
+            chunk_duration,
             len(segments),
         )
 

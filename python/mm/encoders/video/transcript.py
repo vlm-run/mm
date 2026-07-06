@@ -20,7 +20,7 @@ from mm.encoders.video._transcript import transcript_messages
 class VideoTranscript(Encoder):
     """Transcribe audio from a video file, return transcript only.
 
-    Equivalent to the ``transcribe`` encoder but registered for the
+    Equivalent to the ``transcript`` encoder but registered for the
     ``video`` kind. No visual frames are extracted.
 
     Kwargs:

@@ -35,13 +35,13 @@ DEFAULT_OVERLAP = 10
 class VideoClips(Encoder):
     """Base64-encode video clips of uniform duration.
 
-    When ``duration`` is 0, -1, or not provided the video is clipped using
+    When ``chunk_duration`` is 0, -1, or not provided the video is clipped using
     the default clip duration and each one processed as base64-encoded clip.
-    Otherwise the video is split into chunks of ``duration`` seconds and each
+    Otherwise the video is split into chunks of ``chunk_duration`` seconds and each
     is processed separately.
 
     Kwargs:
-        duration: Clip length in seconds (default 120).
+        chunk_duration: Clip length in seconds (default 120).
         overlap: Overlap between clips in seconds (default 10).
         max_size_mb: Skip chunks exceeding this size in MB (default None).
         mode: fast | accurate
@@ -61,7 +61,7 @@ class VideoClips(Encoder):
             )
             return
 
-        clip_duration: int = kwargs.get("duration", DEFAULT_CLIP_DURATION)
+        clip_duration: int = kwargs.get("chunk_duration", DEFAULT_CLIP_DURATION)
         max_size_mb: float | None = kwargs.get("max_size_mb", None)
         overlap: int = kwargs.get("overlap", DEFAULT_OVERLAP)
         video_duration = probe(path).duration

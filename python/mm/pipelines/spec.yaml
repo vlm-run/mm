@@ -29,7 +29,7 @@ encode:
   #             chunked, clips, keyframes, shots,
   #             shot-mosaic, summary, captions,
   #             transcript, native, gemini-native, gemini-chunked
-  #   audio:    transcribe, gemini
+  #   audio:    native, transcript, gemini-native
   #   document: page-text, rasterize, rasterize-text, gemini-native
   # null = use the kind-specific default.
   strategy: resize
@@ -59,7 +59,7 @@ encode:
     # max_frames_per_message: 16
     # audio_speed: 2.0
 
-    # Examples for transcribe:
+    # Examples for transcript:
     # audio_speed: 2.0
 
   # Custom Python transform — file path or inline `def`.

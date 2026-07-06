@@ -9,7 +9,7 @@ Usage:
     uv run python scripts/test_encoders.py --model gemini-2.5-pro
     uv run python scripts/test_encoders.py --concurrency 4
     uv run python scripts/test_encoders.py --verbose
-    uv run python scripts/test_encoders.py --kind audio --encoder transcribe --mode fast
+    uv run python scripts/test_encoders.py --kind audio --encoder transcript --mode fast
 """
 
 from __future__ import annotations
@@ -53,7 +53,7 @@ SAMPLE_FILES: dict[str, Path] = {
 }
 
 ENCODERS: dict[str, list[str]] = {
-    "audio": ["base64", "gemini", "transcribe"],
+    "audio": ["transcript", "native", "gemini-native"],
     "document": ["gemini-native", "page-text", "rasterize", "rasterize-text"],
     "image": ["resize", "tile"],
     "video": [
