@@ -1327,7 +1327,7 @@ flowchart TD
   Q5 -->|Accurate| frames_enc("frames\nuniform fps")
 
   Q4 -->|"Lecture / talk"| audio_only("transcript\naudio-only, no frames")
-  Q4 -->|"Long content"| chunks_enc("chunks\ntime-based windows")
+  Q4 -->|"Long content"| chunked_enc("chunked\ntime-based windows")
   Q4 -->|"Scene-heavy"| shots_enc("shots\nper-scene frames")
   Q4 -->|"Compact overview"| summary("summary\nadaptive N frames")
 
@@ -1336,7 +1336,7 @@ flowchart TD
   style frames_enc fill:#dbeafe,stroke:#3b82f6,color:#1e3a8a
   style wt fill:#dcfce7,stroke:#22c55e,color:#14532d
   style audio_only fill:#dcfce7,stroke:#22c55e,color:#14532d
-  style chunks_enc fill:#fef3c7,stroke:#f59e0b,color:#78350f
+  style chunked_enc fill:#fef3c7,stroke:#f59e0b,color:#78350f
   style shots_enc fill:#fef3c7,stroke:#f59e0b,color:#78350f
   style summary fill:#f0fdf4,stroke:#86efac,color:#14532d</pre>
           <div class="diagram-caption">Video encoder decision tree: start top-left and follow the constraints</div>
@@ -1485,10 +1485,10 @@ graph LR
           <div class="diagram-caption">shots: content-aware, each message is one semantically distinct scene</div>
         </div>
 
-        <div class="encoder-card" id="video-chunks">
+        <div class="encoder-card" id="video-chunked">
           <div class="encoder-card-header">
             <div>
-              <div class="encoder-card-name">chunks</div>
+              <div class="encoder-card-name">chunked</div>
               <div class="encoder-card-tags">
                 <span class="pill pill-blue">long-form</span>
                 <span class="pill pill-blue">temporal detail</span>
@@ -1499,7 +1499,7 @@ graph LR
             <p>Divides a video into overlapping time windows (default 60 s, 5 s overlap) and
               extracts 16 frames per window. Each chunk becomes a separate message with a
               time-range header. Unlike a single mosaic that compresses everything into a few
-              grids, chunks preserve temporal granularity: the VLM understands what happened and when.</p>
+              grids, chunked encoding preserves temporal granularity: the VLM understands what happened and when.</p>
             <div class="params-grid">
               <span class="param-name">chunk_duration</span><span class="param-value">60 s, length of each time
                 window</span>
@@ -1532,7 +1532,7 @@ graph LR
   split --> c3 --> m3
   style encode rx:10px,ry:10px
   style message rx:10px,ry:10px</pre>
-          <div class="diagram-caption">chunks: overlapping time windows, each with 16 frames and a timestamp header,
+          <div class="diagram-caption">chunked: overlapping time windows, each with 16 frames and a timestamp header,
             preserving temporal context for long videos</div>
         </div>
 
@@ -1553,6 +1553,21 @@ mm cat lecture.mp4 -p chunked -m accurate
 
 <span class="tok-c"># Preview the resolved pipeline without running it</span>
 mm cat lecture.mp4 -p chunked -m accurate --dry-run</code></pre>
+        </div>
+
+        <div class="encoder-card" id="video-native">
+          <div class="encoder-card-header">
+            <div>
+              <div class="encoder-card-name">native</div>
+              <div class="encoder-card-tags">
+                <span class="pill pill-purple">native input</span>
+              </div>
+            </div>
+          </div>
+          <div class="encoder-card-body">
+            <p>Sends the entire video as a single base64 <code>video_url</code> data URL. No probing, chunking, or
+              frame extraction. Use when the model accepts native video input directly.</p>
+          </div>
         </div>
 
         <h3 id="video-other">Other video strategies</h3>
@@ -1656,12 +1671,6 @@ graph TD
 
         <table class="comp-table">
           <thead>
-            <tr>
-              <td class="col-name">native</td>
-              <td class="col-desc">Entire file as base64 video_url.</td>
-              <td class="col-param">none</td>
-              <td class="col-best">OpenAI-compatible video-native models</td>
-            </tr>
             <tr>
               <th>Encoder</th>
               <th>What it sends</th>
@@ -2062,7 +2071,7 @@ register(VideoGrayscale())</code></pre>
               <td class="col-best">Scene-indexed archives</td>
             </tr>
             <tr>
-              <td class="col-name">chunks</td>
+              <td class="col-name">chunked</td>
               <td class="col-desc">Overlapping 60 s windows, 16 frames each.</td>
               <td class="col-param">chunk_duration=60, overlap=5</td>
               <td class="col-best">Long-form lectures, webinars</td>
@@ -2102,6 +2111,12 @@ register(VideoGrayscale())</code></pre>
               <td class="col-desc">Embedded subtitles + Whisper fallback (encode-only).</td>
               <td class="col-param">subtitle_stream=0</td>
               <td class="col-best">Films, captioned videos</td>
+            </tr>
+            <tr>
+              <td class="col-name">native</td>
+              <td class="col-desc">Entire file as base64 video_url.</td>
+              <td class="col-param">none</td>
+              <td class="col-best">OpenAI-compatible video-native models</td>
             </tr>
             <tr>
               <td class="col-name">gemini-native</td>
