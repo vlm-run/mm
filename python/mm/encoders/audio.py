@@ -7,7 +7,7 @@ from the pipeline YAML.
 ``AudioTranscribe`` runs Whisper transcription and returns the transcript as
 text. Suppresses the LLM call via ``generate = {"fast": None, "accurate": None}``.
 
-``GeminiAudio`` passes audio directly as OpenAI ``input_audio`` Parts with
+``GeminiAudio`` passes audio directly as Gemini ``inline_data`` Parts with
 automatic chunking for long files. Generate prompts come from the pipeline YAML.
 """
 
