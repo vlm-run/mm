@@ -643,7 +643,7 @@ graph LR
 
 ### Audio
 
-#### `native`
+#### `base64`
 
 Send the raw audio file as a base64-encoded `input_audio` part. Default for Python `Context.to_messages()`. For files longer than `max_seconds`, splits into overlapping chunks via ffmpeg and yields one Message per chunk. **Parameters:** `format=auto, max_seconds=120, overlap=10`
 

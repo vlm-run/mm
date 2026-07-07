@@ -39,7 +39,7 @@ Office documents are passthrough in fast mode but go through the LLM pipeline in
 | **Images**                | Short VLM caption                         | Full VLM description + tags             |
 | **Videos**                | Frame mosaic → short VLM description      | Mosaic + transcript → VLM description   |
 | **Audio** (default: `transcribe`) | Whisper transcript         | Whisper transcript             |
-| **Audio** (`-p native`)   | 10-word description  | Detailed LLM description |
+| **Audio** (`-p base64`)   | 10-word description  | Detailed LLM description |
 | **Audio** (`-p gemini-native`)   | 10-word description               | Detailed LLM description        |
 | **PDFs**                  | Page-text extraction (pypdfium2)          | Text → LLM markdown structuring         |
 | **Office docs** (.docx/.pptx/.xlsx/.odt/.odp/.ods) | Passthrough text (no LLM) | Office → PDF conversion → LLM markdown  |
@@ -73,7 +73,7 @@ Multi-file: `mm cat a.mp4 b.mp4 -y` runs each video sequentially; the same **≥
 | Encoder | `transcribe` (whisper medium, 2.0×) | `transcribe` (whisper medium, 2.0×) |
 | Output | Whisper transcript | Whisper transcript |
 | LLM call | None — `transcribe` suppresses generate | None — `transcribe` suppresses generate |
-| For LLM output | Use `-p native` (10-word description, 128 tok) | Use `-p native` or `-p gemini-native` (full description, 1024 tok) |
+| For LLM output | Use `-p base64` (10-word description, 128 tok) | Use `-p base64` or `-p gemini-native` (full description, 1024 tok) |
 
 **Transcription backends** (auto-detected by priority, override via --encode.backend or `mm config set transcription.backend`):
 
@@ -95,7 +95,7 @@ Multi-file: `mm cat a.mp4 b.mp4 -y` runs each video sequentially; the same **≥
 
 | Name | Description |
 |---|---|
-| `native` | (default in `to_messages`) Raw base64-encoded audio for native VLM input |
+| `base64` | (default in `to_messages`) Raw base64-encoded audio for native VLM input |
 | `transcribe` | Whisper transcript as text, supports `backend`/`base_url`/`api_key` kwargs |
 | `gemini-native` | Pass audio file as a base64-encoded `input_audio` part |
 

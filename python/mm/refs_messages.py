@@ -23,7 +23,7 @@ OPENAI_DEFAULT_ENCODERS: dict[str, str] = {
     "image": "resize",
     "video": "mosaic",
     "document": "rasterize",
-    "audio": "native",
+    "audio": "base64",
 }
 
 

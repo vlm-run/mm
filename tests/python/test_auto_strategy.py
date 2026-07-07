@@ -95,10 +95,10 @@ class TestAudio:
         meta = _Meta(size=2 * _MB, duration_s=60.0)
         assert _run(self._path("track.mp3"), "audio", meta) == "transcribe"
 
-    def test_long_mp3_gives_native(self):
-        # >300s → native
+    def test_long_mp3_gives_base64(self):
+        # >300s → base64
         meta = _Meta(size=6 * _MB, duration_s=700.0)
-        assert _run(self._path("track.mp3"), "audio", meta) == "native"
+        assert _run(self._path("track.mp3"), "audio", meta) == "base64"
 
     def test_at_duration_boundary_gives_transcribe(self):
         # Exactly 300s, 6 MB → both conditions met → transcribe
@@ -110,10 +110,10 @@ class TestAudio:
         meta = _Meta(size=5 * _MB, duration_s=60.0)
         assert _run(self._path("clip.wav"), "audio", meta) == "transcribe"
 
-    def test_oversize_wav_gives_native(self):
-        # >10 MB → native regardless of duration
+    def test_oversize_wav_gives_base64(self):
+        # >10 MB → base64 regardless of duration
         meta = _Meta(size=11 * _MB, duration_s=200.0)
-        assert _run(self._path("clip.wav"), "audio", meta) == "native"
+        assert _run(self._path("clip.wav"), "audio", meta) == "base64"
 
     def test_short_flac_gives_transcribe(self):
         meta = _Meta(size=4 * _MB, duration_s=100.0)

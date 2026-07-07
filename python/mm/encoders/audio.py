@@ -1,4 +1,4 @@
-"""Audio encoding strategies: native passthrough, transcription, and Gemini.
+"""Audio encoding strategies: base64 passthrough, transcription, and Gemini.
 
 ``AudioBase64`` base64-encodes the raw audio file as an OpenAI ``input_audio``
 part — the native way to send audio to multimodal LLMs. Generate prompts come
@@ -57,7 +57,7 @@ class AudioBase64(Encoder):
         generate_model: --generate.model CLI flag.
     """
 
-    name = "native"
+    name = "base64"
     kind = "audio"
 
     def encode(self, path: Path, **kwargs: Any) -> Iterable[Message]:
@@ -84,7 +84,7 @@ class AudioBase64(Encoder):
         overlap: int = int(kwargs.get("overlap", 10))
         duration = probe_duration(path)
         if duration <= max_seconds:
-            logger.debug("native [path=%s, duration=%.1fs, single]", path.name, duration)
+            logger.debug("base64 [path=%s, duration=%.1fs, single]", path.name, duration)
             yield _to_message(
                 [
                     {
@@ -106,7 +106,7 @@ class AudioBase64(Encoder):
             start += step
 
         logger.debug(
-            "audio_native_chunked [path=%s, duration=%.1fs, chunk=%ds, n_segments=%d]",
+            "audio_base64_chunked [path=%s, duration=%.1fs, chunk=%ds, n_segments=%d]",
             path.name,
             duration,
             max_seconds,

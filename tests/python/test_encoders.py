@@ -128,7 +128,7 @@ class TestRegistryExtended:
             "image": ("resize", True),
             "video": ("mosaic", True),
             "document": ("rasterize", True),
-            "audio": ("native", True),
+            "audio": ("base64", True),
         }
 
 
@@ -185,13 +185,13 @@ class TestAudioEncoders:
 
         assert sorted(list_strategies(kind="audio")) == ["gemini-native", "native", "transcribe"]
 
-    def test_audio_native_and_gemini_native_emit_input_audio(self, tmp_path):
+    def test_audio_base64_and_gemini_native_emit_input_audio(self, tmp_path):
         from mm.encoders import get
 
         audio = tmp_path / "sample.mp3"
         audio.write_bytes(b"ID3" + b"\x00" * 32)
 
-        for name in ("native", "gemini-native"):
+        for name in ("base64", "gemini-native"):
             strat = get(name, "audio")
             with patch("mm.video.pyav_runnable", return_value=False):
                 messages = list(strat.encode(audio))

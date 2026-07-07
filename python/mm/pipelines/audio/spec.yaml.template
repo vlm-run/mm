@@ -25,10 +25,10 @@ encode:
     # base_url: null                        # custom OpenAI-compatible endpoint
     # api_key: null                         # API key for that endpoint
 
-  # ── native ────────────────────────────────────────────────
+  # ── base64 ────────────────────────────────────────────────
   # Sends raw audio as a base64 input_audio part (no transcription).
   # Best for models with native audio understanding.
-  # strategy: native
+  # strategy: base64
   # strategy_opts:
   #   format: mp3             # mp3 | wav | flac | ogg | m4a | aac | opus | webm
   #                           # default: inferred from file extension
