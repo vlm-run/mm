@@ -53,7 +53,7 @@ SAMPLE_FILES: dict[str, Path] = {
 }
 
 ENCODERS: dict[str, list[str]] = {
-    "audio": ["base64", "gemini-native", "transcribe"],
+    "audio": ["native", "gemini-native", "transcribe"],
     "document": ["gemini-native", "page-text", "rasterize", "rasterize-text"],
     "image": ["resize", "tile"],
     "video": [

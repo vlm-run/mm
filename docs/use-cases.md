@@ -2,7 +2,7 @@
 
 53 scenarios that leverage mm's multimodal awareness, Rust-speed metadata extraction, token estimation, and semantic search. Each maps to existing CLI commands.
 
-> **Note on `mm peek` vs `mm cat`:** `mm peek` returns local file metadata (image dims/EXIF/hash, video resolution/duration/codecs, audio metadata, mime, content hash). `mm cat` extracts content: PDF text, raw text/code passthrough, or a short LLM caption (`-m fast`) / LLM-heavy description (`-m accurate`) for image/video/PDF; audio returns a Whisper transcript by default (use `-p base64` or `-p gemini-native` for LLM description). Examples below that need an LLM make the mode explicit.
+> **Note on `mm peek` vs `mm cat`:** `mm peek` returns local file metadata (image dims/EXIF/hash, video resolution/duration/codecs, audio metadata, mime, content hash). `mm cat` extracts content: PDF text, raw text/code passthrough, or a short LLM caption (`-m fast`) / LLM-heavy description (`-m accurate`) for image/video/PDF; audio returns a Whisper transcript by default (use `-p native` or `-p gemini-native` for LLM description). Examples below that need an LLM make the mode explicit.
 
 ---
 
@@ -229,7 +229,7 @@ Audio files over 80 seconds exceed Gemini's single-part embedding limit. `mm sql
 
 <details><summary>40. Summarize a meeting recording</summary>
 
-`mm cat meeting.mp3 -p base64 -m accurate` runs the full pipeline: audio extraction and transcription or LLM summarization. The default `transcribe` encoder is encode-only — use `-p base64` or `-p gemini-native` for LLM description.
+`mm cat meeting.mp3 -p native -m accurate` runs the full pipeline: audio extraction and transcription or LLM summarization. The default `transcribe` encoder is encode-only — use `-p native` or `-p gemini-native` for LLM description.
 </details>
 
 <details><summary>41. Assess a field recording SD card</summary>

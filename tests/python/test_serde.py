@@ -115,7 +115,7 @@ class TestRegistry:
         from mm.encoders import list_strategies
 
         names = list_strategies(kind="audio")
-        assert sorted(names) == ["gemini-native", "base64", "transcribe"]
+        assert sorted(names) == ["gemini-native", "native", "transcribe"]
 
     def test_get_unknown_strategy_raises(self):
         from mm.encoders import get

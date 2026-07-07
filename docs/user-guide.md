@@ -146,7 +146,7 @@ mm cat video.mp4               # mosaic → short VLM description (fast pipeline
 # --mode accurate: LLM-heavy pipeline for image/video/PDF (requires a configured profile).
 mm cat image.jpg -m accurate   # LLM-powered caption + tags + objects
 mm cat video.mp4 -m accurate   # keyframe mosaic → LLM description
-mm cat audio.mp3 -m accurate   # Whisper transcript only (use -p base64 or -p gemini-native for LLM description)
+mm cat audio.mp3 -m accurate   # Whisper transcript only (use -p native or -p gemini-native for LLM description)
 mm cat report.pdf -m accurate  # text → LLM markdown structuring
 
 # --stream: stream LLM tokens to stdout as they arrive (takes precedence over --format)
