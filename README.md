@@ -762,6 +762,10 @@ api_key = ""
 model = "Qwen/Qwen3.5-0.8B"
 ```
 
+## Contributing
+
+We welcome and value any contributions and collaborations. Please check out [Contributing to mm-ctx](CONTRIBUTING.md) for how to get involved.
+
 ## License
 
 MIT
