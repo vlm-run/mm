@@ -21,7 +21,7 @@ from mm.utils import get_b64
 logger = logging.getLogger(__name__)
 
 
-class NativeVideo(Encoder):
+class VideoNative(Encoder):
     """Pass a video file directly as a base64 ``video_url`` part.
 
     The OpenAI-compatible counterpart to ``gemini-native``: yields a single
@@ -47,4 +47,4 @@ class NativeVideo(Encoder):
         )
 
 
-register(NativeVideo())
+register(VideoNative())

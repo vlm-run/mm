@@ -467,7 +467,7 @@ class TestGeminiEncoders:
             assert "PyAV not runnable" in messages[0]["content"][0]["text"]
 
 
-class TestNativeVideoEncoder:
+class TestVideoNativeEncoder:
     def test_native_video_passthrough(self, tmp_path):
         from mm.encoders import get
 
