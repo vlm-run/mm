@@ -298,6 +298,7 @@ class TestRustParity:
         assert "mime" in result
         assert "width" in result
         assert "height" in result
+        assert isinstance(result["width"], int)
         assert result["width"] <= 1024
         assert result["mime"] in ("image/jpeg", "image/png")
 

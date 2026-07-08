@@ -28,11 +28,11 @@ from mm.profile import (
     RESERVED_PROFILES,
     Profile,
     add_profile,
+    clone_profile,
     get_active_profile_name,
     get_profile,
     get_profile_names,
     get_profile_section,
-    clone_profile,
     remove_profile,
     set_active_profile,
     update_profile,
@@ -51,16 +51,16 @@ _OPENROUTER_DATA = {k: v for k, v in OPENROUTER_DEFAULTS.items() if k != "name"}
 
 
 def _profiles(file_data: ConfigData) -> dict[str, ProfileData]:
-    return cast(dict[str, ProfileData], file_data.get("profile", {}))
+    return file_data.get("profile", {})
 
 
 def _active_profile(file_data: ConfigData) -> str:
-    return cast(str, file_data.get("active_profile", DEFAULT_PROFILE))
+    return file_data.get("active_profile", DEFAULT_PROFILE)
 
 
 def _mode_whisper_model(file_data: ConfigData, mode_name: str) -> str:
     mode_data = file_data.get("mode", {})
-    return cast(str, mode_data.get(mode_name, {}).get("whisper_model", ""))
+    return mode_data.get(mode_name, {}).get("whisper_model", "")
 
 
 # ── Fixtures ────────────────────────────────────────────────────────

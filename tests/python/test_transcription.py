@@ -220,7 +220,7 @@ class TestDetectWithOverrides:
         be = detect_backend(name="openai", base_url="http://localhost:9999/v1")
         assert be is not None
         assert be.name == "openai"
-        assert be._base_url == "http://localhost:9999/v1"
+        assert getattr(be, "_base_url") == "http://localhost:9999/v1"
 
 
 class TestTranscribeNoBackend:

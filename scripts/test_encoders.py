@@ -99,7 +99,7 @@ class Result:
     elapsed: float
     stdout: str
     stderr: str
-    cmd: list[str] = None  # type: ignore[assignment]
+    cmd: list[str] | None = None
 
     @property
     def ok(self) -> bool:

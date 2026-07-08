@@ -1767,7 +1767,9 @@ class TestExtractCatContent:
             '[{"path":"/abs/img.jpg","mode":"fast",'
             '"content":"{\\"<CAPTION>\\": \\"a green car\\"}"}]'
         )
-        body, lang = _extract_cat_content(envelope)
+        v = _extract_cat_content(envelope)
+        assert v is not None
+        body, lang = v
         assert lang == "json"
         # Multi-line output, indented -- not the original escaped soup.
         assert "\n" in body
@@ -1785,7 +1787,9 @@ class TestExtractCatContent:
             '[{"path":"/abs/img.jpg","mode":"fast",'
             '"content":"A vintage car parked beside a yellow building."}]'
         )
-        body, lang = _extract_cat_content(envelope)
+        v = _extract_cat_content(envelope)
+        assert v is not None
+        body, lang = v
         assert lang == "text"
         assert body == "A vintage car parked beside a yellow building."
 
@@ -1803,7 +1807,9 @@ class TestExtractCatContent:
             '[{"path":"/abs/img.jpg","mode":"fast","content":"caption"}]\n'
             "1.7s \u2022 38.2 KB \u2022 22.9 KB/s\n"
         )
-        body, lang = _extract_cat_content(envelope)
+        v = _extract_cat_content(envelope)
+        assert v is not None
+        body, lang = v
         assert lang == "text"
         assert body == "caption"
         # The footer separator and units must not survive into the body.
@@ -1820,7 +1826,9 @@ class TestExtractCatContent:
             '[{"path":"/a/img1.jpg","mode":"fast","content":"first"},'
             ' {"path":"/a/img2.jpg","mode":"fast","content":"second"}]'
         )
-        body, lang = _extract_cat_content(envelope)
+        v = _extract_cat_content(envelope)
+        assert v is not None
+        body, lang = v
         assert lang == "json"
         parsed = json.loads(body)
         assert parsed == ["first", "second"]
@@ -1838,7 +1846,9 @@ class TestExtractCatContent:
             '"content":"{\\"caption\\": \\"first\\"}"},'
             ' {"path":"/a/img2.jpg","mode":"fast","content":"second"}]'
         )
-        body, lang = _extract_cat_content(envelope)
+        v = _extract_cat_content(envelope)
+        assert v is not None
+        body, lang = v
         assert lang == "json"
         parsed = json.loads(body)
         # First entry's content was a parseable JSON string -> dict.
