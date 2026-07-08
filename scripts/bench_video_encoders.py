@@ -35,7 +35,10 @@ VIDEO_ENCODERS: list[str] = [
     "summary-w-transcript",
     "clips",
     "clips-w-transcript",
-    "chunks",
+    "gemini-native",
+    "gemini-chunked",
+    "native",
+    "chunked",
     "captions",
     "transcript",
 ]

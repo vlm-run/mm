@@ -634,7 +634,7 @@ class TestMimeFromExt:
         assert _mime_from_ext(".xyz") == "application/octet-stream"
 
 
-class TestRenderNativeVideo:
+class TestRenderVideoNative:
     def _write_fake_mp4(self, path, size: int = 1024) -> None:
         # Minimal bytes — enough to be embedded; PyAV will fail and that's fine,
         # we still exercise the embed path.

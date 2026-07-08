@@ -86,7 +86,7 @@ def get(name: str, kind: str) -> MessageStrategy:
     Args:
         name: Encoder name (e.g. ``"mosaic"``, ``"resize"``).
         kind: Media kind. Required when ``name`` is shared across kinds
-            (e.g. ``"gemini"`` exists for audio, video, and document).
+            (e.g. ``"gemini-native"`` exists for audio, video, and document).
 
     Raises:
         KeyError: If no encoder matches.
@@ -285,6 +285,7 @@ def _register_builtins() -> None:
         frames,
         keyframes,
         mosaic,
+        native,
         shots,
         summary,
         transcript,

@@ -203,7 +203,7 @@ mm cat photo.png --no-generate                                  # snapshot encod
 # --mode accurate: full LLM pipeline for image/video/audio/PDF (requires a configured profile)
 mm cat bench.jpg -m accurate                                    # LLM caption + tags + objects
 mm cat Timelapse.mp4 -m accurate                                # keyframe mosaic → LLM description
-mm cat mp3_44100Hz_320kbps_stereo.mp3 -m accurate               # Whisper transcript only (use -p base64 or -p gemini for LLM description)
+mm cat mp3_44100Hz_320kbps_stereo.mp3 -m accurate               # Whisper transcript only (use -p native or -p gemini-native for LLM description)
 mm cat wordpress-pdf-invoice-plugin-sample.pdf -m accurate      # LLM-structured invoice
 ```
 
@@ -765,6 +765,10 @@ base_url = "https://gateway.vlm.run/v1/openai"
 api_key = ""
 model = "Qwen/Qwen3.5-0.8B"
 ```
+
+## Contributing
+
+We welcome and value any contributions and collaborations. Please check out [Contributing to mm-ctx](CONTRIBUTING.md) for how to get involved.
 
 ## License
 

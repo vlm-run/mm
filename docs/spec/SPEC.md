@@ -104,7 +104,7 @@ mm
 │   │   ├── [x] head/tail via -n (replaces old head/tail commands)
 │   │   ├── [x] --mode fast|accurate (default 'fast');
 │   │   ├── [x] video accurate: parallel mosaic + whisper → LLM (102x realtime)
-│   │   ├── [x] audio accurate: ffmpeg 2x + whisper → transcript (no LLM; use -p base64/-p gemini for LLM description)
+│   │   ├── [x] audio accurate: ffmpeg 2x + whisper → transcript (no LLM; use -p native/-p gemini-native for LLM description)
 │   │   ├── [x] image accurate: fast (10w+5tags) / accurate (200w+10tags+objects)
 │   │   ├── [x] document accurate: pypdfium2 PDF → text → LLM
 │   │   ├── [x] --encode.*, --generate.* namespaced flags

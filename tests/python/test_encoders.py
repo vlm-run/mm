@@ -1,4 +1,4 @@
-"""Tests for mm.encoders — registry, discovery, video/document/gemini encoders, tile."""
+"""Tests for mm.encoders — registry, discovery, video/document/audio encoders, tile."""
 
 from __future__ import annotations
 
@@ -116,6 +116,21 @@ class TestRegistryExtended:
         assert names1 == names2
         assert str(strat_file.resolve()) in _LOADED_SOURCES
 
+    def test_openai_default_encoders_resolve(self):
+        from mm.encoders import get
+        from mm.refs_messages import OPENAI_DEFAULT_ENCODERS
+
+        resolved = {
+            kind: (name, get(name, kind) is not None)
+            for kind, name in OPENAI_DEFAULT_ENCODERS.items()
+        }
+        assert resolved == {
+            "image": ("resize", True),
+            "video": ("mosaic", True),
+            "document": ("rasterize", True),
+            "audio": ("native", True),
+        }
+
 
 # ---------------------------------------------------------------------------
 # Image encoder — extended coverage
@@ -162,6 +177,30 @@ class TestImageEncoders:
         img = Image.new("L", (10, 10), 128)
         b64, mime = _encode_pil_image(img, tmp_path / "test.jpg")
         assert mime == "image/jpeg"
+
+
+class TestAudioEncoders:
+    def test_audio_strategies_registered(self):
+        from mm.encoders import list_strategies
+
+        assert sorted(list_strategies(kind="audio")) == ["gemini-native", "native", "transcribe"]
+
+    def test_audio_native_and_gemini_native_emit_input_audio(self, tmp_path):
+        from mm.encoders import get
+
+        audio = tmp_path / "sample.mp3"
+        audio.write_bytes(b"ID3" + b"\x00" * 32)
+
+        for name in ("native", "gemini-native"):
+            strat = get(name, "audio")
+            with patch("mm.video.pyav_runnable", return_value=False):
+                messages = list(strat.encode(audio))
+            assert len(messages) == 1
+            content = messages[0]["content"]
+            assert len(content) == 1
+            part = content[0]
+            assert part["type"] == "input_audio"
+            assert part["input_audio"]["format"] == "mp3"
 
 
 # ---------------------------------------------------------------------------
@@ -286,7 +325,7 @@ class TestVideoTimestamps:
 
 # NOTE: ``TestVideoFrameSample`` and ``TestVideoChunk`` were removed when the
 # old ffmpeg-CLI-driven encoders ``frame-sample`` and ``video-chunk`` were
-# replaced by the PyAV-based ``frames`` / ``chunks`` family.
+# replaced by the PyAV-based ``frames`` / ``chunked`` family.
 # Equivalent behaviour is exercised end-to-end in ``test_video_p0.py`` and
 # ``test_video_encoders.py`` against real video fixtures.
 
@@ -426,6 +465,23 @@ class TestGeminiEncoders:
             messages = list(strat.encode(video))
             assert len(messages) == 1
             assert "PyAV not runnable" in messages[0]["content"][0]["text"]
+
+
+class TestVideoNativeEncoder:
+    def test_native_video_passthrough(self, tmp_path):
+        from mm.encoders import get
+
+        video = tmp_path / "test.mp4"
+        video.write_bytes(b"\x00\x00\x00\x18ftypmp4" + b"\x00" * 64)
+        strat = get("native", "video")
+        messages = list(strat.encode(video))
+        assert len(messages) == 1
+        content = messages[0]["content"]
+        assert len(content) == 1
+        part = content[0]
+        assert part["type"] == "video_url"
+        url = part["video_url"]["url"]
+        assert url.startswith("data:video/mp4;base64,")
 
 
 # NOTE: ``TestShotTimestamps``, ``TestShotFrames`` and ``TestShotMosaic`` were

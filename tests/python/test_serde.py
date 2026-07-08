@@ -71,15 +71,16 @@ class TestRegistry:
         names = list_strategies()
         assert "resize" in names
         assert "tile" in names
-        # ``frames`` and ``chunks`` are the current PyAV-based
+        # ``frames`` and ``chunked`` are the current PyAV-based
         # equivalents of the retired ``frame-sample`` / ``video-chunk``.
         assert "frames" in names
-        assert "chunks" in names
+        assert "chunked" in names
         assert "rasterize" in names
         assert "rasterize-text" in names
-        assert "gemini" in names
+        assert "native" in names
+        assert "gemini-native" in names
         assert "gemini-chunked" in names
-        assert "gemini" in names
+        assert "transcribe" in names
         assert len(names) >= 9
 
     def test_list_strategies_by_image(self):
@@ -96,8 +97,9 @@ class TestRegistry:
 
         names = list_strategies(kind="video")
         assert "frames" in names
-        assert "chunks" in names
-        assert "gemini" in names
+        assert "chunked" in names
+        assert "native" in names
+        assert "gemini-native" in names
         assert "resize" not in names
 
     def test_list_strategies_by_document(self):
@@ -106,8 +108,14 @@ class TestRegistry:
         names = list_strategies(kind="document")
         assert "rasterize" in names
         assert "rasterize-text" in names
-        assert "gemini" in names
+        assert "gemini-native" in names
         assert "resize" not in names
+
+    def test_list_strategies_by_audio(self):
+        from mm.encoders import list_strategies
+
+        names = list_strategies(kind="audio")
+        assert sorted(names) == ["gemini-native", "native", "transcribe"]
 
     def test_get_unknown_strategy_raises(self):
         from mm.encoders import get
@@ -290,6 +298,7 @@ class TestRustParity:
         assert "mime" in result
         assert "width" in result
         assert "height" in result
+        assert isinstance(result["width"], int)
         assert result["width"] <= 1024
         assert result["mime"] in ("image/jpeg", "image/png")
 

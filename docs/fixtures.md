@@ -65,7 +65,7 @@ uv run mm cat input.mp3
 # same as fast when using transcribe (default) encoding strategy
 uv run mm cat input.mp3 -m accurate
 # Extract audio accurately (pass audio directly to a Gemini-compatible VLM)
-uv run mm cat input.mp3 --encode.strategy gemini -m accurate
+uv run mm cat input.mp3 --encode.strategy gemini-native -m accurate
 # With verbose output (shows pipeline steps and token usage)
 uv run mm cat input.mp3 -v
 ```

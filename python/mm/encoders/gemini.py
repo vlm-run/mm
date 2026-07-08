@@ -48,7 +48,7 @@ class GeminiVideo(Encoder):
     Yields a single Message containing the entire video.
     """
 
-    name = "gemini"
+    name = "gemini-native"
     kind = "video"
 
     def encode(self, path: Path, **kwargs) -> Iterable[Message]:
@@ -145,7 +145,7 @@ class GeminiDocument(Encoder):
     Uses the Rust fast-path when available. Yields a single Message.
     """
 
-    name = "gemini"
+    name = "gemini-native"
     kind = "document"
 
     def encode(self, path: Path, **kwargs) -> Iterable[Message]:

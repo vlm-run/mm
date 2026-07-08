@@ -1327,7 +1327,7 @@ flowchart TD
   Q5 -->|Accurate| frames_enc("frames\nuniform fps")
 
   Q4 -->|"Lecture / talk"| audio_only("transcript\naudio-only, no frames")
-  Q4 -->|"Long content"| chunks_enc("chunks\ntime-based windows")
+  Q4 -->|"Long content"| chunked_enc("chunked\ntime-based windows")
   Q4 -->|"Scene-heavy"| shots_enc("shots\nper-scene frames")
   Q4 -->|"Compact overview"| summary("summary\nadaptive N frames")
 
@@ -1336,7 +1336,7 @@ flowchart TD
   style frames_enc fill:#dbeafe,stroke:#3b82f6,color:#1e3a8a
   style wt fill:#dcfce7,stroke:#22c55e,color:#14532d
   style audio_only fill:#dcfce7,stroke:#22c55e,color:#14532d
-  style chunks_enc fill:#fef3c7,stroke:#f59e0b,color:#78350f
+  style chunked_enc fill:#fef3c7,stroke:#f59e0b,color:#78350f
   style shots_enc fill:#fef3c7,stroke:#f59e0b,color:#78350f
   style summary fill:#f0fdf4,stroke:#86efac,color:#14532d</pre>
           <div class="diagram-caption">Video encoder decision tree: start top-left and follow the constraints</div>
@@ -1485,10 +1485,10 @@ graph LR
           <div class="diagram-caption">shots: content-aware, each message is one semantically distinct scene</div>
         </div>
 
-        <div class="encoder-card" id="video-chunks">
+        <div class="encoder-card" id="video-chunked">
           <div class="encoder-card-header">
             <div>
-              <div class="encoder-card-name">chunks</div>
+              <div class="encoder-card-name">chunked</div>
               <div class="encoder-card-tags">
                 <span class="pill pill-blue">long-form</span>
                 <span class="pill pill-blue">temporal detail</span>
@@ -1499,7 +1499,7 @@ graph LR
             <p>Divides a video into overlapping time windows (default 60 s, 5 s overlap) and
               extracts 16 frames per window. Each chunk becomes a separate message with a
               time-range header. Unlike a single mosaic that compresses everything into a few
-              grids, chunks preserve temporal granularity: the VLM understands what happened and when.</p>
+              grids, chunked encoding preserves temporal granularity: the VLM understands what happened and when.</p>
             <div class="params-grid">
               <span class="param-name">chunk_duration</span><span class="param-value">60 s, length of each time
                 window</span>
@@ -1532,7 +1532,7 @@ graph LR
   split --> c3 --> m3
   style encode rx:10px,ry:10px
   style message rx:10px,ry:10px</pre>
-          <div class="diagram-caption">chunks: overlapping time windows, each with 16 frames and a timestamp header,
+          <div class="diagram-caption">chunked: overlapping time windows, each with 16 frames and a timestamp header,
             preserving temporal context for long videos</div>
         </div>
 
@@ -1543,16 +1543,31 @@ graph LR
             <span class="code-block-lang">bash</span>
           </div>
           <pre><code><span class="tok-c"># 60 s windows, 5 s overlap, 16 frames per window</span>
-mm cat lecture.mp4 -p chunks
+mm cat lecture.mp4 -p chunked
 
 <span class="tok-c"># Longer windows for slower-paced content</span>
-mm cat lecture.mp4 -p chunks --encode.strategy_opts chunk_duration=90 --encode.strategy_opts overlap=10
+mm cat lecture.mp4 -p chunked --encode.strategy_opts chunk_duration=90 --encode.strategy_opts overlap=10
 
 <span class="tok-c"># Accurate mode: the model describes each window</span>
-mm cat lecture.mp4 -p chunks -m accurate
+mm cat lecture.mp4 -p chunked -m accurate
 
 <span class="tok-c"># Preview the resolved pipeline without running it</span>
-mm cat lecture.mp4 -p chunks -m accurate --dry-run</code></pre>
+mm cat lecture.mp4 -p chunked -m accurate --dry-run</code></pre>
+        </div>
+
+        <div class="encoder-card" id="video-native">
+          <div class="encoder-card-header">
+            <div>
+              <div class="encoder-card-name">native</div>
+              <div class="encoder-card-tags">
+                <span class="pill pill-purple">native input</span>
+              </div>
+            </div>
+          </div>
+          <div class="encoder-card-body">
+            <p>Sends the entire video as a single base64 <code>video_url</code> data URL. No probing, chunking, or
+              frame extraction. Use when the model accepts native video input directly.</p>
+          </div>
         </div>
 
         <h3 id="video-other">Other video strategies</h3>
@@ -1583,6 +1598,12 @@ mm cat lecture.mp4 -p chunks -m accurate --dry-run</code></pre>
             <div class="enc-mini-tags"><span class="pill pill-purple">native input</span></div>
           </div>
           <div class="enc-mini">
+            <div class="enc-mini-name">native</div>
+            <div class="enc-mini-desc">Send the entire video as a base64 video_url data URL. No probing,
+              chunking, or frame extraction.</div>
+            <div class="enc-mini-tags"><span class="pill pill-purple">native input</span></div>
+          </div>
+          <div class="enc-mini">
             <div class="enc-mini-name">transcript</div>
             <div class="enc-mini-desc">Whisper transcript only, no visual frames extracted. For podcasts, lectures, or
               any content where spoken word is all that matters.</div>
@@ -1595,14 +1616,14 @@ mm cat lecture.mp4 -p chunks -m accurate --dry-run</code></pre>
             <div class="enc-mini-tags"><span class="pill pill-green">encode-only</span></div>
           </div>
           <div class="enc-mini">
-            <div class="enc-mini-name">gemini</div>
+            <div class="enc-mini-name">gemini-native</div>
             <div class="enc-mini-desc">Send the entire video as a Gemini native Part. No frame extraction; the model
               receives the raw video bytes directly.</div>
             <div class="enc-mini-tags"><span class="pill pill-purple">Gemini only</span></div>
           </div>
           <div class="enc-mini">
             <div class="enc-mini-name">gemini-chunked</div>
-            <div class="enc-mini-desc">Same as <code>gemini</code> but splits long videos into overlapping segments
+            <div class="enc-mini-desc">Same as <code>gemini-native</code> but splits long videos into overlapping segments
               first. For Gemini models with length constraints.</div>
             <div class="enc-mini-tags"><span class="pill pill-purple">Gemini only</span></div>
           </div>
@@ -1626,12 +1647,12 @@ graph TD
   Q -->|"Timestamped transcript\n(no LLM required)"| transcribe("transcribe\nWhisper → text\nencode-only")
   Q -->|"LLM understanding\n(speech, tone, content)"| Q2{{"Which model?"}}
 
-  Q2 -->|"OpenAI-compatible"| base64("base64\naudio bytes → LLM call")
-  Q2 -->|"Gemini"| gemini("gemini\nnative audio → LLM call")
+  Q2 -->|"OpenAI-compatible"| native("native\naudio bytes → LLM call")
+  Q2 -->|"Gemini"| gemini_native("gemini-native\naudio bytes → LLM call")
 
   style transcribe fill:#dcfce7,stroke:#22c55e,color:#14532d
-  style base64 fill:#dbeafe,stroke:#3b82f6,color:#1e3a8a
-  style gemini fill:#ede9fe,stroke:#7c3aed,color:#4c1d95</pre>
+  style native fill:#dbeafe,stroke:#3b82f6,color:#1e3a8a
+  style gemini_native fill:#ede9fe,stroke:#7c3aed,color:#4c1d95</pre>
           <div class="diagram-caption">Audio encoder decision: encode-only transcript vs audio understanding</div>
         </div>
 
@@ -1642,7 +1663,7 @@ graph TD
             <div class="callout-title">Critical distinction</div>
             <p>
               <code>transcribe</code> is encode-only: it runs Whisper locally and returns a timestamped transcript as
-              plain text, with no model in the loop. <code>base64</code> and <code>gemini</code> generate model-native
+              plain text, with no model in the loop. <code>native</code> and <code>gemini-native</code> generate model-native
               messages.
             </p>
           </div>
@@ -1663,20 +1684,20 @@ graph TD
               <td class="col-best">timestamped transcript</td>
             </tr>
             <tr>
-              <td><code>base64</code></td>
+              <td><code>native</code></td>
               <td class="col-desc">Raw audio bytes to LLM</td>
               <td class="col-best">description</td>
             </tr>
             <tr>
-              <td><code>gemini</code></td>
-              <td class="col-desc">Audio as Gemini native Part</td>
+              <td><code>gemini-native</code></td>
+              <td class="col-desc">Audio as OpenAI input_audio Part. Auto-splits.</td>
               <td class="col-best">description</td>
             </tr>
           </tbody>
         </table>
 
         <p>
-          Both <code>base64</code> and <code>gemini</code> handle long files automatically:
+          Both <code>native</code> and <code>gemini-native</code> handle long files automatically:
           recordings longer than 120 seconds are split into overlapping segments and
           processed in parallel, each yielding a separate message.
         </p>
@@ -1711,7 +1732,7 @@ graph LR
   style encode_short rx:10px,ry:10px
   style encode_long rx:10px,ry:10px
   style message rx:10px,ry:10px</pre>
-          <div class="diagram-caption">base64: short files sent whole; long files split into overlapping segments and
+          <div class="diagram-caption">native: short files sent whole; long files split into overlapping segments and
             processed in parallel</div>
         </div>
 
@@ -1725,13 +1746,13 @@ graph LR
 mm cat meeting.mp3
 
 <span class="tok-c"># Model description, accurate (full content analysis)</span>
-mm cat meeting.mp3 -p base64 -m accurate
+mm cat meeting.mp3 -p native -m accurate
 
 <span class="tok-c"># Faster transcription on Apple Silicon</span>
 mm cat meeting.mp3 -p transcribe --encode.backend mlx
 
-<span class="tok-c"># Gemini native audio understanding</span>
-mm --profile gemini cat meeting.mp3 -p gemini -m accurate
+<span class="tok-c"># Gemini-native audio understanding</span>
+mm --profile gemini cat meeting.mp3 -p gemini-native -m accurate
 
 <span class="tok-c"># Slower playback for Whisper, trades compute for accuracy</span>
 mm cat meeting.mp3 -p transcribe --encode.strategy_opts audio_speed=1.0</code></pre>
@@ -1788,7 +1809,7 @@ flowchart TD
             <div class="enc-mini-tags"><span class="pill pill-blue">hybrid</span></div>
           </div>
           <div class="enc-mini">
-            <div class="enc-mini-name">gemini</div>
+            <div class="enc-mini-name">gemini-native</div>
             <div class="enc-mini-desc">Send the document as a Gemini native Part, no text extraction or rendering. For
               Gemini models that accept PDF files directly.</div>
             <div class="enc-mini-tags"><span class="pill pill-purple">Gemini only</span></div>
@@ -1814,7 +1835,7 @@ mm cat scanned.pdf -p rasterize -m accurate
 mm cat invoice.pdf -p rasterize-text -m accurate
 
 <span class="tok-c"># Gemini native PDF understanding</span>
-mm --profile gemini cat report.pdf -p gemini -m accurate</code></pre>
+mm --profile gemini cat report.pdf -p gemini-native -m accurate</code></pre>
         </div>
 
         <!-- ── Section: Choosing ── -->
@@ -1854,8 +1875,8 @@ mm --profile gemini cat report.pdf -p gemini -m accurate</code></pre>
           <div class="scenario-card">
             <div class="scenario-label">🎬 Video</div>
             <div class="scenario-task">Process a 2-hour lecture section by section</div>
-            <div class="scenario-cmd">mm cat lecture.mp4 -p chunks -m accurate</div>
-            <div class="scenario-why"><code>chunks</code>: 60 s windows preserve temporal context that a single mosaic
+            <div class="scenario-cmd">mm cat lecture.mp4 -p chunked -m accurate</div>
+            <div class="scenario-why"><code>chunked</code>: 60 s windows preserve temporal context that a single mosaic
               loses</div>
           </div>
 
@@ -1878,8 +1899,8 @@ mm --profile gemini cat report.pdf -p gemini -m accurate</code></pre>
           <div class="scenario-card">
             <div class="scenario-label">🎵 Audio</div>
             <div class="scenario-task">Summarize a customer support call</div>
-            <div class="scenario-cmd">mm cat call.mp3 -p base64 -m accurate</div>
-            <div class="scenario-why"><code>base64</code> with accurate: the model describes tone, emphasis, and
+            <div class="scenario-cmd">mm cat call.mp3 -p native -m accurate</div>
+            <div class="scenario-why"><code>native</code> with accurate: the model describes tone, emphasis, and
               content directly</div>
           </div>
 
@@ -2050,7 +2071,7 @@ register(VideoGrayscale())</code></pre>
               <td class="col-best">Scene-indexed archives</td>
             </tr>
             <tr>
-              <td class="col-name">chunks</td>
+              <td class="col-name">chunked</td>
               <td class="col-desc">Overlapping 60 s windows, 16 frames each.</td>
               <td class="col-param">chunk_duration=60, overlap=5</td>
               <td class="col-best">Long-form lectures, webinars</td>
@@ -2092,7 +2113,13 @@ register(VideoGrayscale())</code></pre>
               <td class="col-best">Films, captioned videos</td>
             </tr>
             <tr>
-              <td class="col-name">gemini</td>
+              <td class="col-name">native</td>
+              <td class="col-desc">Entire file as base64 video_url.</td>
+              <td class="col-param">none</td>
+              <td class="col-best">OpenAI-compatible video-native models</td>
+            </tr>
+            <tr>
+              <td class="col-name">gemini-native</td>
               <td class="col-desc">Entire file as Gemini Part.</td>
               <td class="col-param">none</td>
               <td class="col-best">Gemini models, short clips</td>
@@ -2122,13 +2149,13 @@ register(VideoGrayscale())</code></pre>
               <td class="col-best">Transcripts, search indexes, subtitles</td>
             </tr>
             <tr>
-              <td class="col-name">base64</td>
+              <td class="col-name">native</td>
               <td class="col-desc">Raw audio to LLM. Auto-splits files &gt; 120 s.</td>
               <td class="col-best">Summaries, tone analysis, Q&amp;A</td>
             </tr>
             <tr>
-              <td class="col-name">gemini</td>
-              <td class="col-desc">Audio as Gemini native Part. Auto-splits.</td>
+              <td class="col-name">gemini-native</td>
+              <td class="col-desc">Audio as OpenAI input_audio Part. Auto-splits.</td>
               <td class="col-best">Gemini models, audio analysis</td>
             </tr>
           </tbody>
