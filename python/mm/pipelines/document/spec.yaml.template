@@ -38,10 +38,10 @@ encode:
   #   pages_per_message: 4    # pages per Message
   #   max_pages: null         # total page cap (null = unlimited)
 
-  # ── gemini ─────────────────────────────────────────────────────
+  # ── gemini-native ──────────────────────────────────────────────
   # Passes the document directly as a Gemini inline_data Part.
   # No strategy_opts — the raw file is sent as-is.
-  # strategy: gemini
+  # strategy: gemini-native
 
   # Custom post-processing transform (optional).
   # pyfunc: null

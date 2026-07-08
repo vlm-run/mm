@@ -34,7 +34,7 @@ def test_find_scanner_scan_and_json_fast_under_budget(small_tree: Path) -> None:
     """Rust scan + ``to_json_fast`` must stay cheap for small trees."""
     from mm._mm import Scanner
 
-    scanner = Scanner(str(small_tree), None, False)
+    scanner = Scanner(str(small_tree), None)
     t0 = time.perf_counter()
     n = scanner.scan()
     payload = scanner.to_json_fast()
@@ -103,7 +103,7 @@ def test_find_scanner_large_tree_json_fast_under_budget(large_tree: Path) -> Non
     from mm._mm import Scanner
 
     max_s = float(os.environ.get("MM_TEST_FIND_LARGE_SCAN_MAX_S", "4.0"))
-    scanner = Scanner(str(large_tree), None, False)
+    scanner = Scanner(str(large_tree), None)
     t0 = time.perf_counter()
     n = scanner.scan()
     scanner.to_json_fast()
