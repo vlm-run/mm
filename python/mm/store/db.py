@@ -94,6 +94,20 @@ def _load_vec(conn: sqlite3.Connection) -> bool:
     return loaded
 
 
+def _load_fts5(conn: sqlite3.Connection) -> bool:
+    """Probe whether this SQLite build supports FTS5 (trigram tokenizer)"""
+    loaded = getattr(conn, "_fts5_loaded", None)
+    if loaded is None:
+        try:
+            conn.execute("CREATE VIRTUAL TABLE IF NOT EXISTS _fts5_probe USING fts5(x)")
+            conn.execute("DROP TABLE IF EXISTS _fts5_probe")
+            loaded = True
+        except sqlite3.OperationalError:
+            loaded = False
+        setattr(conn, "_fts5_loaded", loaded)
+    return loaded
+
+
 class _VecConnection(sqlite3.Connection):
     """Connection that loads sqlite-vec on first access to a ``vec0`` table.
 
@@ -138,6 +152,10 @@ class MmDatabase:
     @property
     def _vec_available(self) -> bool:
         return _load_vec(self._connect)
+
+    @property
+    def _fts5_available(self) -> bool:
+        return _load_fts5(self._connect)
 
     @property
     def _conn(self) -> sqlite3.Connection | None:
@@ -185,6 +203,25 @@ class MmDatabase:
         self._conn.executescript(FILES_DDL + EXTRACTIONS_DDL + CHUNKS_DDL)
         self._migrate_files()
         self._conn.executescript(FILES_INDEX_DDL)
+        self._ensure_fts()
+
+    def _ensure_fts(self) -> None:
+        """Create the FTS5 index + sync triggers, then backfill legacy rows."""
+        from mm.store.schema import CHUNKS_FTS_DDL
+
+        if not self._fts5_available:
+            return
+        db = self._connect
+        existed = db.execute(
+            "SELECT 1 FROM sqlite_master WHERE type='table' AND name='chunks_fts'"
+        ).fetchone()
+        db.executescript(CHUNKS_FTS_DDL)
+        if existed:
+            return
+        total = db.execute("SELECT COUNT(*) FROM chunks").fetchone()[0]
+        if total:
+            db.execute("INSERT INTO chunks_fts(chunks_fts) VALUES('rebuild')")
+            db.commit()
 
     def _migrate_files(self) -> None:
         """Apply additive ``files`` migrations idempotently.
@@ -403,7 +440,10 @@ class MmDatabase:
                 if chunk_ids:
                     for chunk_batch in batch_array(chunk_ids, 500):
                         cp = ",".join("?" * len(chunk_batch))
-                        db.execute(f"DELETE FROM chunks_vec WHERE chunk_id IN ({cp})", chunk_batch)
+                        db.execute(
+                            f"DELETE FROM chunks_vec WHERE chunk_id IN ({cp})",
+                            chunk_batch,
+                        )
             db.execute(
                 f"DELETE FROM chunks WHERE file_uri IN ({ph}) AND extraction_id IS NULL",
                 batch,
@@ -575,7 +615,13 @@ class MmDatabase:
         # ``get_extraction`` reads the pipeline-output tier; the metadata tier
         # is reusable across fast/accurate extractions of the same file.
         self._put_chunks(
-            extraction_id, uri, content_hash, profile, model, file_content, mode="metadata"
+            extraction_id,
+            uri,
+            content_hash,
+            profile,
+            model,
+            file_content,
+            mode="metadata",
         )
         self._put_chunks(extraction_id, uri, content_hash, profile, model, content, mode=mode)
         return extraction_id
@@ -757,23 +803,18 @@ class MmDatabase:
         )
         db.commit()
 
-    def search_chunks_fts(
+    def _chunk_filter_sql(
         self,
-        query: str,
         *,
-        uri: str | None = None,
-        uri_prefix: str | None = None,
-        kind: str | None = None,
-        ext: str | None = None,
-        limit: int = 10,
-    ) -> list[dict[str, Any]]:
-        """Case-insensitive substring search over ``chunks.chunk_text``"""
-        db = self._connect
-        # Escape LIKE metacharacters in user input so 'user_id' and '100%' don't over-match
-        q_esc = query.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        uri: str | None,
+        uri_prefix: str | None,
+        kind: str | None,
+        ext: str | None,
+    ) -> tuple[list[str], list[str], list[Any]]:
+        """Build the uri/uri_prefix/kind/ext filter shared across search paths."""
         joins: list[str] = []
-        where: list[str] = ["c.chunk_text LIKE ? ESCAPE '\\' COLLATE NOCASE"]
-        params: list[Any] = [f"%{q_esc}%"]
+        where: list[str] = []
+        params: list[Any] = []
 
         if uri:
             where.append("c.file_uri = ?")
@@ -795,6 +836,75 @@ class MmDatabase:
                 where.append("(" + " OR ".join("LOWER(c.file_uri) LIKE ?" for _ in exts) + ")")
                 params.extend(f"%{e}" for e in exts)
 
+        return joins, where, params
+
+    @staticmethod
+    def _fts5_phrase(query: str) -> str:
+        """Wrap *query* as an FTS5 phrase for literal substring matching"""
+        return '"' + query.replace('"', '""') + '"'
+
+    def search_chunks_bm25(
+        self,
+        query: str,
+        *,
+        uri: str | None = None,
+        uri_prefix: str | None = None,
+        kind: str | None = None,
+        ext: str | None = None,
+        limit: int = 10,
+    ) -> list[dict[str, Any]]:
+        """BM25-ranked FTS5 search over ``chunks.chunk_text``.
+
+        Returns rows from ``chunks`` augmented with a ``bm25`` column
+        (SQLite sign convention: lower / more negative = more relevant).
+        Requires FTS5; returns ``[]`` when unavailable.
+        """
+        if not query.strip() or not self._fts5_available:
+            return []
+        db = self._connect
+        joins, where, params = self._chunk_filter_sql(
+            uri=uri, uri_prefix=uri_prefix, kind=kind, ext=ext
+        )
+        where.insert(0, "chunks_fts MATCH ?")
+        params.insert(0, self._fts5_phrase(query))
+        sql = (
+            "SELECT c.*, bm25(chunks_fts) AS bm25 FROM chunks_fts "
+            "JOIN chunks c ON c.id = chunks_fts.rowid "
+            + " ".join(joins)
+            + " WHERE "
+            + " AND ".join(where)
+            + " ORDER BY bm25(chunks_fts) LIMIT ?"
+        )
+        params.append(limit)
+        return [dict(r) for r in db.execute(sql, params).fetchall()]
+
+    def search_chunks_fts(
+        self,
+        query: str,
+        *,
+        uri: str | None = None,
+        uri_prefix: str | None = None,
+        kind: str | None = None,
+        ext: str | None = None,
+        limit: int = 10,
+    ) -> list[dict[str, Any]]:
+        """Case-insensitive substring search over ``chunks.chunk_text``.
+
+        FTS5 (trigram + BM25) when available, falling back to a ``LIKE`` scan
+        on SQLite builds without FTS5. BM25 rows carry a ``bm25`` column;
+        LIKE rows do not.
+        """
+        if self._fts5_available:
+            return self.search_chunks_bm25(
+                query, uri=uri, uri_prefix=uri_prefix, kind=kind, ext=ext, limit=limit
+            )
+        db = self._connect
+        q_esc = query.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        joins, where, params = self._chunk_filter_sql(
+            uri=uri, uri_prefix=uri_prefix, kind=kind, ext=ext
+        )
+        where.insert(0, "c.chunk_text LIKE ? ESCAPE '\\' COLLATE NOCASE")
+        params.insert(0, f"%{q_esc}%")
         sql = (
             "SELECT c.* FROM chunks c "
             + " ".join(joins)
