@@ -30,6 +30,7 @@ Vector search (ANN/KNN):
 from __future__ import annotations
 
 import json
+import logging
 import sqlite3
 import threading
 from pathlib import Path
@@ -41,6 +42,7 @@ from mm.store.utils import fill_metadata, get_extraction_id, now_us
 if TYPE_CHECKING:
     from pyarrow import Table
 
+logger = logging.getLogger(__name__)
 CHUNK_SIZE = 2048
 CHUNK_OVERLAP = 100
 
@@ -95,15 +97,16 @@ def _load_vec(conn: sqlite3.Connection) -> bool:
 
 
 def _load_fts5(conn: sqlite3.Connection) -> bool:
-    """Probe whether this SQLite build supports FTS5 (trigram tokenizer)"""
+    """Probe whether this SQLite build was compiled with FTS5 support.
+
+    Side-effect-free (unlike a create-and-drop probe): reads
+    ``pragma compile_options`` for the ``ENABLE_FTS5`` flag, so it works on
+    read-only databases and never touches the user's schema.
+    """
     loaded = getattr(conn, "_fts5_loaded", None)
     if loaded is None:
-        try:
-            conn.execute("CREATE VIRTUAL TABLE IF NOT EXISTS _fts5_probe USING fts5(x)")
-            conn.execute("DROP TABLE IF EXISTS _fts5_probe")
-            loaded = True
-        except sqlite3.OperationalError:
-            loaded = False
+        opts = conn.execute("pragma compile_options").fetchall()
+        loaded = any("ENABLE_FTS5" in r[0] for r in opts)
         setattr(conn, "_fts5_loaded", loaded)
     return loaded
 
@@ -859,6 +862,8 @@ class MmDatabase:
         (SQLite sign convention: lower / more negative = more relevant).
         Requires FTS5; returns ``[]`` when unavailable.
         """
+        logger.debug("using search_chunks_bm25 %s", [query, uri, uri_prefix, kind, ext, limit])
+
         if not self._fts5_available or len(query.strip()) < 3:
             return []
         db = self._connect
@@ -876,7 +881,9 @@ class MmDatabase:
             + " ORDER BY bm25(chunks_fts) LIMIT ?"
         )
         params.append(limit)
-        return [dict(r) for r in db.execute(sql, params).fetchall()]
+        results = [dict(r) for r in db.execute(sql, params).fetchall()]
+        logger.debug("search_chunks_bm25 results: %s", results)
+        return results
 
     def search_chunks_fts(
         self,
