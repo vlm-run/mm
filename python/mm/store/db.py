@@ -972,9 +972,3 @@ class MmDatabase:
         cursor = self._connect.execute(query)
         columns = [desc[0] for desc in cursor.description] if cursor.description else []
         return columns, cursor.fetchall()
-
-    # -- Indexes --
-
-    def ensure_indexes(self) -> None:
-        # Indexes are created in DDL via CREATE INDEX IF NOT EXISTS
-        pass
