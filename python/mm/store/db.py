@@ -859,7 +859,7 @@ class MmDatabase:
         (SQLite sign convention: lower / more negative = more relevant).
         Requires FTS5; returns ``[]`` when unavailable.
         """
-        if not query.strip() or not self._fts5_available:
+        if not self._fts5_available or len(query.strip()) < 3:
             return []
         db = self._connect
         joins, where, params = self._chunk_filter_sql(
@@ -890,14 +890,16 @@ class MmDatabase:
     ) -> list[dict[str, Any]]:
         """Case-insensitive substring search over ``chunks.chunk_text``.
 
-        FTS5 (trigram + BM25) when available, falling back to a ``LIKE`` scan
-        on SQLite builds without FTS5. BM25 rows carry a ``bm25`` column;
-        LIKE rows do not.
+        FTS5 (trigram + BM25) when available, falling back to a ``LIKE`` scan on
+        SQLite builds without FTS5. BM25 rows carry a ``bm25`` column; LIKE rows do not.
         """
         if self._fts5_available:
-            return self.search_chunks_bm25(
+            result = self.search_chunks_bm25(
                 query, uri=uri, uri_prefix=uri_prefix, kind=kind, ext=ext, limit=limit
             )
+            if len(result):
+                return result
+
         db = self._connect
         q_esc = query.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
         joins, where, params = self._chunk_filter_sql(
