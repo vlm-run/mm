@@ -900,12 +900,10 @@ class MmDatabase:
         FTS5 (trigram + BM25) when available, falling back to a ``LIKE`` scan on
         SQLite builds without FTS5. BM25 rows carry a ``bm25`` column; LIKE rows do not.
         """
-        if self._fts5_available:
-            result = self.search_chunks_bm25(
+        if self._fts5_available and len(query.strip()) >= 3:
+            return self.search_chunks_bm25(
                 query, uri=uri, uri_prefix=uri_prefix, kind=kind, ext=ext, limit=limit
             )
-            if len(result):
-                return result
 
         db = self._connect
         q_esc = query.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
