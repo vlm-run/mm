@@ -144,7 +144,13 @@ def run_encoder(path: Path, kind: BinaryFileKind, spec: PipelineSpec, opts: CatO
 
         result = "\n\n".join(text_parts) if text_parts else ""
         encode_output = _format_encode_verbose(spec.encode.strategy, messages, encode_elapsed)
-        return RunResult(content=result, verbose_suffix=_format_pipeline_tree(encode_output))
+        return RunResult(
+            content=result,
+            verbose_suffix=_format_pipeline_tree(encode_output),
+            encoded_messages=messages if opts.report else None,
+            pipeline_spec=spec if opts.report else None,
+            encode_elapsed_ms=encode_elapsed if opts.report else None,
+        )
 
     from mm.profile import get_active_profile_name
 
@@ -193,4 +199,19 @@ def run_encoder(path: Path, kind: BinaryFileKind, spec: PipelineSpec, opts: CatO
     return RunResult(
         content=result,
         verbose_suffix=_format_pipeline_tree(encode_output, generate_output),
+        encoded_messages=messages if opts.report else None,
+        llm_messages=llm.last_messages if opts.report else None,
+        llm_response=result if opts.report else None,
+        pipeline_spec=spec if opts.report else None,
+        encode_elapsed_ms=encode_elapsed if opts.report else None,
+        generate_elapsed_ms=elapsed if opts.report else None,
+        llm_usage=(
+            {
+                "prompt_tokens": u.prompt_tokens,
+                "completion_tokens": u.completion_tokens,
+                "total_tokens": u.total_tokens,
+            }
+            if opts.report
+            else None
+        ),
     )

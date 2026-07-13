@@ -517,6 +517,14 @@ def display_elapsed_wrapper(start_time: float, prefix: str | None = None):
 
             display_elapsed(start_time, total_bytes, cached, prefix=prefix)
 
+            try:
+                from mm.commands import cat as cat_module
+
+                for msg in getattr(cat_module, "_report_output", []):
+                    console.print(f"[dim]{msg}[/dim]")
+            except (ImportError, AttributeError):
+                pass
+
     return check_exit, display_if_successful
 
 

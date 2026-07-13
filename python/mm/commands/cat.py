@@ -30,6 +30,8 @@ if TYPE_CHECKING:
 _total_bytes_processed = 0
 # Track whether the result was served from cache
 _was_cached: bool = False
+# Collect --report output messages (printed after timing footer by display_if_successful)
+_report_output: list[str] = []
 
 
 def _is_passthrough(kind: str, ext: str, mode: str) -> bool:
@@ -260,6 +262,17 @@ def cat_cmd(
             help="Confirm when path count ≥ threshold (default 9; env MM_CAT_BATCH_CONFIRM_THRESHOLD)",
         ),
     ] = False,
+    report: Annotated[
+        bool,
+        typer.Option(
+            "--report",
+            help=(
+                "Generate a self-contained HTML report of the pipeline internals "
+                "(encoder output, LLM messages, response). "
+                "Written to mm_reports/."
+            ),
+        ),
+    ] = False,
 ) -> None:
     """Extract and describe file content.
 
@@ -430,15 +443,17 @@ def cat_cmd(
         verbose=verbose,
         dry_run=dry_run,
         stream=stream,
+        report=report,
     )
 
     multi_file = len(paths) > 1
     results: list[dict] = []
     _emitted = 0
 
-    global _total_bytes_processed, _was_cached
+    global _total_bytes_processed, _was_cached, _report_output
     _total_bytes_processed = 0
     _was_cached = False
+    _report_output = []
 
     valid_paths: list[Path] = []
     for file_path in paths:
@@ -452,12 +467,12 @@ def cat_cmd(
         valid_paths.append(p)
         _total_bytes_processed += p.stat().st_size
 
-    def _process(p: Path) -> str:
-        content = _extract(p, opts)
+    def _process(p: Path) -> tuple[str, RunResult | None]:
+        content, run_result = _extract(p, opts)
         if n is not None:
             lines = content.splitlines()
             content = "\n".join(lines[:n] if n >= 0 else lines[n:])
-        return content
+        return content, run_result
 
     def _render(p: Path, content: str) -> None:
         nonlocal _emitted
@@ -513,12 +528,14 @@ def cat_cmd(
                 output_console.print("\n".join(rich_lines))
             _emitted += 1
 
+    report_entries: list[tuple[Path, RunResult]] = []
+
     if valid_paths and stream:
         for p in valid_paths:
             if multi_file:
                 typer.echo(f"<{p.name}>", err=True)
             try:
-                content = _process(p)
+                content, run_result = _process(p)
             except Exception as exc:
                 typer.echo(f"Error processing {p}: {exc}", err=True)
                 continue
@@ -536,6 +553,8 @@ def cat_cmd(
                     output_console.print("\n".join(suffix_parts))
             else:
                 _render(p, content)
+            if run_result is not None:
+                report_entries.append((p, run_result))
     elif valid_paths:
         from concurrent.futures import ThreadPoolExecutor
 
@@ -543,16 +562,21 @@ def cat_cmd(
             futures = [pool.submit(_process, p) for p in valid_paths]
             for p, fut in zip(valid_paths, futures, strict=True):
                 try:
-                    content = fut.result()
+                    content, run_result = fut.result()
                 except Exception as exc:
                     typer.echo(f"Error processing {p}: {exc}", err=True)
                     continue
                 _render(p, content)
+                if run_result is not None:
+                    report_entries.append((p, run_result))
 
     if fmt in ("json", "pretty-json", "dataset-jsonl", "dataset-hf") and results:
         from mm.display import emit_rows
 
         emit_rows(fmt, results, output_dir=str(output_dir) if output_dir else "mm_dataset")
+
+    if opts.report and report_entries:
+        _write_report(report_entries)
 
 
 # ---------------------------------------------------------------------------
@@ -560,13 +584,37 @@ def cat_cmd(
 # ---------------------------------------------------------------------------
 
 
-def _extract(path: Path, opts: CatOpts) -> str:
-    """Pipeline-driven extraction dispatch with unified extraction caching."""
+def _write_report(entries: list[tuple[Path, RunResult]]) -> None:
+    """Write a combined HTML report for all collected pipeline runs."""
+    from datetime import datetime
+
+    from mm.cat_utils.report import generate_report
+
+    html_doc = generate_report(entries)
+    out_dir = Path("mm_reports")
+    out_dir.mkdir(exist_ok=True)
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    if len(entries) == 1:
+        filename = f"{entries[0][0].name}_{timestamp}_report.html"
+    else:
+        filename = f"multi_{timestamp}_report.html"
+    out_path = out_dir / filename
+    out_path.write_text(html_doc, encoding="utf-8")
+    _report_output.append(f"Report written to {out_path}")
+
+
+def _extract(path: Path, opts: CatOpts) -> tuple[str, RunResult | None]:
+    """Pipeline-driven extraction dispatch with unified extraction caching.
+
+    Returns ``(content, run_result)`` where ``run_result`` is the
+    :class:`RunResult` from the encode→generate pipeline, or ``None``
+    for passthrough / cache-hit / dry-run paths.
+    """
     global _was_cached
     kind = file_kind(path)
     ext = path.suffix.lower()
     if opts.dry_run:
-        return _dry_run_preview(path, kind, ext, opts)
+        return _dry_run_preview(path, kind, ext, opts), None
 
     if _is_passthrough(kind, ext, opts.mode):
         from mm.cat_utils.extract_meta import extract_text
@@ -575,7 +623,7 @@ def _extract(path: Path, opts: CatOpts) -> str:
         content, cached = extract_text(path, kind)  # type: ignore[arg-type]
         if cached:
             _was_cached = True
-        return content
+        return content, None
 
     kind = cast("BinaryFileKind", kind)
     from mm.constants import OFFICE_EXTS
@@ -620,12 +668,17 @@ def _extract(path: Path, opts: CatOpts) -> str:
             cached = db.get_extraction(extraction_id)
             if cached is not None:
                 _was_cached = True
+                if opts.report:
+                    _report_output.append(
+                        f"Report skipped for {path.name}: result served from cache. "
+                        "Use --no-cache to regenerate."
+                    )
                 if opts.verbose:
                     meta = db.get_extraction_metadata(extraction_id)
                     suffix = meta.get("verbose_suffix") if meta else None
                     if suffix:
-                        return f"{cached}\n\n{suffix}"
-                return cached
+                        return f"{cached}\n\n{suffix}", None
+                return cached, None
         else:
             db.evict_extraction(extraction_id)
 
@@ -658,8 +711,8 @@ def _extract(path: Path, opts: CatOpts) -> str:
                 metadata=meta,
             )
         except RuntimeError:
-            return _format_run(run, opts.verbose)
-    return _format_run(run, opts.verbose)
+            return _format_run(run, opts.verbose), run
+    return _format_run(run, opts.verbose), run
 
 
 def _format_run(run: RunResult, verbose: bool) -> str:

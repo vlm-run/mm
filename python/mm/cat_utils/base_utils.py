@@ -29,6 +29,7 @@ class CatOpts:
         "verbose",
         "dry_run",
         "stream",
+        "report",
     )
 
     n: int | None
@@ -43,6 +44,7 @@ class CatOpts:
     verbose: bool
     dry_run: bool
     stream: bool
+    report: bool
 
     def __init__(self, **kwargs) -> None:
         for k, v in kwargs.items():
@@ -67,10 +69,21 @@ class RunResult:
 
     The verbose tail is computed and returned regardless of ``opts.verbose``
     so the caller can persist it for replay on a future cached + verbose run.
+
+    Report capture fields are populated only when ``opts.report`` is True;
+    they carry the intermediate pipeline artifacts needed to build an HTML
+    report of the run internals.
     """
 
     content: str
     verbose_suffix: str | None = None
+    encoded_messages: list[dict] | None = None
+    llm_messages: list[dict] | None = None
+    llm_response: str | None = None
+    pipeline_spec: PipelineSpec | None = None
+    encode_elapsed_ms: float | None = None
+    generate_elapsed_ms: float | None = None
+    llm_usage: dict[str, int] | None = None
 
 
 def override_extra(

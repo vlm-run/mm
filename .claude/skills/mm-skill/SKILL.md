@@ -151,7 +151,7 @@ mm peek paper.pdf --full                     # author/title/subject/keywords/pag
 
 ```
 mm cat FILE... [-m fast|accurate] [-p PIPELINE]... [-n N] [-o DIR]
-               [--no-cache] [--no-generate] [--stream] [-v] [-y]
+               [--no-cache] [--no-generate] [--stream] [--report] [-v] [-y]
                [--encode.strategy NAME] [--encode.backend mlx|ctranslate2|openai]
                [--encode.model MODEL] [--encode.pyfunc PATH|CODE]
                [--encode.strategy_opts KEY=VALUE]...
@@ -185,6 +185,7 @@ mm cat FILE... [-m fast|accurate] [-p PIPELINE]... [-n N] [-o DIR]
 | `--stream` | Stream LLM tokens to stdout as they arrive. Takes precedence over `--format`. |
 | `--verbose` / `-v` | Show pipeline tree (encode/generate timings). |
 | `--yes` / `-y` | Skip the batch-size confirmation (≥9 paths; env `MM_CAT_BATCH_CONFIRM_THRESHOLD`). |
+| `--report` | Generate a self-contained HTML report of pipeline internals (encoder output, LLM messages, response) to `mm_reports/`. Cache hits skip the report; use `--no-cache` to force. |
 | `--encode.strategy` | Override encoder name. |
 | `--encode.backend mlx\|ctranslate2\|openai` | Transcription backend. `openai` (default) uses any OpenAI-compatible `/audio/transcriptions` endpoint. `mlx` requires `mm-ctx[mlx]`; `ctranslate2` requires `mm-ctx[gpu]`. Ignored by encoders with no backend concept. |
 | `--encode.model MODEL` | Encoder-level model override (e.g. `nvidia/parakeet-tdt-0.6b-v3`, `whisper-1`). Independent of `--model` / `--generate.model`. Ignored by encoders with no model concept. |
@@ -245,6 +246,12 @@ mm cat photo.png -m accurate --stream -v                           # streaming +
 # Dry run (resolve pipeline without executing)
 mm cat photo.png --dry-run
 mm cat video.mp4 -m accurate --dry-run
+
+# Report (HTML report of pipeline internals → mm_reports/)
+mm cat photo.png --report
+mm cat video.mp4 -m accurate --report
+mm cat a.png b.png --report                              # combined multi-file report
+mm cat photo.png --report --no-cache                     # force fresh run + report
 ```
 
 ### Override surfaces (right-most wins)
@@ -541,6 +548,7 @@ mm find <dir> --kind image | mm cat -m accurate --format dataset-jsonl
 - `--mode` is a no-op for `kind=text` and non-PDF documents — they always passthrough.
 - `--no-cache` forces fresh LLM call; no-op for passthrough kinds.
 - `--no-generate` snapshots encoder output without calling the LLM.
+- `--report` writes a self-contained HTML file to `mm_reports/` showing pipeline internals (encoder output, LLM messages, response). Cache hits skip the report; use `--no-cache` to force.
 - For PDFs, `cat` returns empty in fast mode if scanned; use `-m accurate` or `-p rasterize`.
 - Chunks are written on first `cat`. Embedding + vec storage happens on `mm grep -s --pre-index`.
 - `mm sql --list-tables` shows row counts across `files`, `extractions`, `chunks`.

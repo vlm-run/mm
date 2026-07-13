@@ -48,6 +48,7 @@ class LlmBackend:
     """Wraps any OpenAI-compatible chat/completions API for accurate-mode generate calls."""
 
     last_usage: LlmUsage
+    last_messages: list[dict[str, Any]] | None
 
     def __init__(
         self,
@@ -76,6 +77,7 @@ class LlmBackend:
             default_headers=headers,
         )
         self.last_usage = LlmUsage()
+        self.last_messages = None
         self._local = threading.local()
 
     @property
@@ -134,6 +136,8 @@ class LlmBackend:
             message_content = prompt
 
         messages: list[dict[str, Any]] = [{"role": "user", "content": message_content}]
+
+        self.last_messages = messages
 
         merged_extra_body = deep_merge(tpl.generate.extra_body or {}, extra_body or {})
 

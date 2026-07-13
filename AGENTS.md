@@ -128,7 +128,7 @@ mm/
 │   ├── pdf.py                  # PDF page mosaic extraction (pypdfium2 + Pillow)
 │   ├── ffmpeg.py               # ffmpeg wrappers (keyframe mosaics, audio/video segment extraction)
 │   ├── video.py                # Video metadata helpers
-│   ├── cat_utils/              # cat command helpers (accurate-mode encoders, extract_meta, base_utils)
+│   ├── cat_utils/              # cat command helpers (accurate-mode encoders, extract_meta, base_utils, report)
 │   ├── notebook.py             # Notebook rendering (render_context, render_messages)
 │   ├── refs.py                 # Ref type, RefNotFoundError, uuid7
 │   ├── refs_messages.py        # Ref → message rendering
@@ -249,7 +249,7 @@ uv run mm <command> [args]
 |-----------|---------|-----------|
 | `find`    | Find/list files, tree view, schema | `--name`, `-i` (ignore case), `--kind`, `--ext`, `--min-size`, `--max-size`, `--sort`, `--columns`, `--tree`, `--depth`, `--schema`, `--limit`, `--no-ignore`, `--format` |
 | `peek`    | Raw file metadata (dimensions / EXIF / codec / mime / hash). | `--full` (include document author/title/subject/keywords/pages), `--format` (rich / json / pretty-json / tsv / csv) |
-| `cat`     | Content extraction (auto-detected by file type × mode) | `--mode fast/accurate` (default `fast`), `-p` (pipeline), `-n` (head/tail), `--dry-run` (resolve pipeline without executing), `--stream` (stream LLM tokens to stdout), `--encode.*`, `--generate.*`, `--format` |
+| `cat`     | Content extraction (auto-detected by file type × mode) | `--mode fast/accurate` (default `fast`), `-p` (pipeline), `-n` (head/tail), `--dry-run` (resolve pipeline without executing), `--stream` (stream LLM tokens to stdout), `--report` (generate HTML report of pipeline internals), `--encode.*`, `--generate.*`, `--format` |
 | `grep`    | Content search across files | `--kind`, `--ext`, `-C` (context), `--count`, `-i` (ignore case), `--no-ignore`, `--format` |
 | `sql`     | SQL on files, results, and chunks | `--dir`, `--format`, `--list-tables` |
 | `wc`      | Count files, size, lines (est.), tokens (est.) | `--kind`, `--by-kind`, `--format` |

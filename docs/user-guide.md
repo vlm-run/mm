@@ -152,6 +152,11 @@ mm cat report.pdf -m accurate  # text → LLM markdown structuring
 # --stream: stream LLM tokens to stdout as they arrive (takes precedence over --format)
 mm cat image.jpg -m accurate --stream
 mm cat video.mp4 -m accurate --stream --no-cache
+
+# --report: self-contained HTML report of pipeline internals → mm_reports/
+mm cat image.jpg --report
+mm cat video.mp4 -m accurate --report
+mm cat a.png b.png --report                              # combined multi-file report
 ```
 
 `kind=text` and non-PDF documents (`.docx` / `.pptx`) ignore `--mode` entirely: they always return passthrough

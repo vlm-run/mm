@@ -650,6 +650,9 @@ class TestNoGenerateFlag:
             generate_overrides={},
             pipelines={},
             verbose=False,
+            dry_run=False,
+            stream=False,
+            report=False,
         )
         assert opts.no_generate is True
 

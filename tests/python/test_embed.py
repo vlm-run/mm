@@ -187,6 +187,8 @@ class TestCatEmbedIntegration:
             pipelines={},
             verbose=False,
             dry_run=False,
+            stream=False,
+            report=False,
         )
 
         mock_db = MagicMock()
@@ -208,7 +210,7 @@ class TestCatEmbedIntegration:
         ):
             mock_profile.return_value.name = "default"
             mock_profile.return_value.model = "test-model"
-            result = _extract(pdf, opts)
+            result, _ = _extract(pdf, opts)
 
         assert result == "LLM generated text."
         mock_db.put_extraction.assert_called_once()

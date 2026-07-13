@@ -1047,3 +1047,87 @@ class TestPruneIntegration:
         # cat exits 0 but emits "Error: ... not found." on stderr (mixed).
         assert "not found" in r.output
         assert db.get_file(str(p)) is None
+
+
+# ── cat --report ─────────────────────────────────────────────────────
+
+
+class TestCatReport:
+    """``--report`` generates self-contained HTML of pipeline internals."""
+
+    @staticmethod
+    def _make_png(path: Path, size: int = 10, color: str = "red") -> None:
+        """Write a minimal valid PNG."""
+        from PIL import Image
+
+        Image.new("RGB", (size, size), color=color).save(path, "PNG")
+
+    def test_report_text_file_no_html(self, small_tree: Path, tmp_path: Path, monkeypatch):
+        """Passthrough (text) files produce no report HTML."""
+        monkeypatch.chdir(tmp_path)
+        r = runner.invoke(app, ["cat", str(small_tree / "src" / "main.py"), "--report"])
+        assert r.exit_code == 0
+        reports_dir = tmp_path / "mm_reports"
+        assert not reports_dir.exists() or not list(reports_dir.glob("*.html"))
+
+    def test_report_image_writes_html(self, isolated_db: Path, tmp_path: Path, monkeypatch):
+        """``--report --no-generate`` on an image writes an HTML file."""
+        monkeypatch.chdir(tmp_path)
+        img = tmp_path / "test.png"
+        self._make_png(img)
+        r = runner.invoke(
+            app,
+            ["cat", str(img), "--report", "--no-generate", "--no-cache"],
+        )
+        assert r.exit_code == 0
+        reports = list((tmp_path / "mm_reports").glob("*.html"))
+        assert len(reports) == 1
+        html_content = reports[0].read_text()
+        assert "<!DOCTYPE html>" in html_content
+        assert "test.png" in html_content
+
+    def test_report_multi_file_combined(self, isolated_db: Path, tmp_path: Path, monkeypatch):
+        """Multiple files produce a single ``multi_`` report."""
+        monkeypatch.chdir(tmp_path)
+        img1 = tmp_path / "a.png"
+        img2 = tmp_path / "b.png"
+        self._make_png(img1, color="red")
+        self._make_png(img2, color="blue")
+        r = runner.invoke(
+            app,
+            [
+                "cat",
+                str(img1),
+                str(img2),
+                "--report",
+                "--no-generate",
+                "--no-cache",
+            ],
+        )
+        assert r.exit_code == 0
+        reports = list((tmp_path / "mm_reports").glob("*.html"))
+        assert len(reports) == 1
+        assert reports[0].name.startswith("multi_")
+
+    def test_report_cached_skipped(self, isolated_db: Path, tmp_path: Path, monkeypatch):
+        """Cache hit skips report — no HTML file written."""
+        from unittest.mock import patch
+
+        monkeypatch.chdir(tmp_path)
+        img = tmp_path / "cached.png"
+        self._make_png(img)
+        # First run with mocked LLM to populate cache (no report)
+        with patch("mm.llm.LlmBackend._chat", return_value="A red square."):
+            r1 = runner.invoke(
+                app,
+                ["cat", str(img), "--no-cache"],
+            )
+        assert r1.exit_code == 0
+        # Second run with --report (cache hit) — no HTML should be written
+        r2 = runner.invoke(
+            app,
+            ["cat", str(img), "--report"],
+        )
+        assert r2.exit_code == 0
+        reports_dir = tmp_path / "mm_reports"
+        assert not reports_dir.exists() or not list(reports_dir.glob("*.html"))
