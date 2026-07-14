@@ -744,6 +744,31 @@ graph LR
 
 ### Document
 
+#### `document-url`
+
+Send the whole document to the LLM as a single `document_url` content part — a base64 `data:` URI mirroring OpenAI's `image_url` shape. Page rendering and OCR happen server-side (VLM Run gateway, `glm-ocr` model), so it works on scanned/image-only PDFs that `page-text` cannot read. **Default for accurate mode.** No parameters.
+
+```mermaid
+%%{init: {'look': 'neo'} }%%
+graph LR
+  doc("📄 PDF/DOCX/PPTX")
+
+  subgraph encode ["Encode"]
+    read("Read bytes")
+    b64("base64\ndata: URI")
+  end
+
+  subgraph message ["Message"]
+    msgs("1: document_url part")
+  end
+
+  doc --> read --> b64 --> msgs
+  style encode rx:10px,ry:10px
+  style message rx:10px,ry:10px
+```
+
+---
+
 #### `page-text`
 
 Text-per-page extraction from PDF/DOCX/PPTX as structured text messages (no rasterization). Default for fast mode. Much lighter than `rasterize`. **Parameters:** `pages_per_message=128, max_pages=None`

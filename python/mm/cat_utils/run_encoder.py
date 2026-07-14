@@ -42,6 +42,7 @@ def _format_encode_verbose(
     # Count part types
     text_count = 0
     image_count = 0
+    document_count = 0
     total_parts = 0
 
     for msg in messages:
@@ -55,6 +56,8 @@ def _format_encode_verbose(
                         text_count += 1
                     elif part_type == "image_url" or "inline_data" in part:
                         image_count += 1
+                    elif part_type == "document_url":
+                        document_count += 1
 
     # Format part summary
     part_details = []
@@ -62,6 +65,10 @@ def _format_encode_verbose(
         part_details.append(f"{text_count} text" if text_count == 1 else f"{text_count} texts")
     if image_count > 0:
         part_details.append(f"{image_count} image" if image_count == 1 else f"{image_count} images")
+    if document_count > 0:
+        part_details.append(
+            f"{document_count} document" if document_count == 1 else f"{document_count} documents"
+        )
 
     part_summary = ", ".join(part_details)
     encode_text = (

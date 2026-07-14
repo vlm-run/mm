@@ -2,6 +2,23 @@
 
 ## [Unreleased]
 
+### Changed
+- **Document accurate mode now uses gateway `glm-ocr` via `document_url`**:
+  the `document/accurate` pipeline ships a new `document-url` encoder that sends
+  the whole document to the VLM Run gateway as a single OpenAI-style
+  `document_url` content part (base64 `data:` URI), pinned to the `glm-ocr`
+  model for server-side OCR → markdown. This replaces the previous
+  client-side `page-text` → generic-LLM markdown path and adds support for
+  scanned/image-only PDFs that `page-text` cannot read. Office docs
+  (`.docx`/`.pptx`/…) in accurate mode are converted to PDF first and follow
+  the same path. Fast mode is unchanged (local `page-text`, no network).
+  - New encoder `document-url` (`python/mm/encoders/document/document_url.py`),
+    registered for `kind=document` and surfaced in `mm cat --list-encoders`.
+  - `pipelines/document/accurate.yaml` now pins `encode.strategy: document-url`
+    and `generate.model: glm-ocr`.
+  - Covered by `TestDocumentUrlEncoder` in `tests/python/test_encoders.py`
+    (part shape + accurate-default wiring).
+
 ### Performance
 - **Disk-backed cache for `detect_scenes` + `transcript_messages` (260430)**:
   the slow steps in the accurate-mode video pipeline now persist across CLI

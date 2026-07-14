@@ -2,16 +2,13 @@ kind: document
 mode: accurate
 
 encode:
-  strategy: page-text
-  strategy_opts:
-    pages_per_message: 1
+  strategy: document-url
 
 generate:
+  model: glm-ocr
   prompt: >-
-    Structure this document ({filename}) into a clean markdown readable format.
-    The conversion should be lossless and well-organized/formatted with proper headings, lists, etc.
-
-    ```text
-    {content}
-    ```
+    Convert this document ({filename}) into clean, well-structured markdown.
+    Transcribe every page in reading order. Preserve headings, lists, tables,
+    and inline emphasis. The conversion should be lossless — do not summarize,
+    omit, or invent content. Output only the markdown.
   max_tokens: 16384

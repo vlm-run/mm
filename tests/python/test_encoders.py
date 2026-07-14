@@ -387,6 +387,36 @@ class TestDocumentRasterizeText:
             assert "Page one text" in page_text_parts[0]
 
 
+class TestDocumentUrlEncoder:
+    def test_emits_single_document_url_part(self, tmp_path):
+        from mm.encoders import get
+
+        doc = tmp_path / "report.pdf"
+        raw = b"%PDF-1.4 fake pdf bytes"
+        doc.write_bytes(raw)
+
+        strat = get("document-url", "document")
+        messages = list(strat.encode(doc, mode="accurate"))
+
+        assert len(messages) == 1
+        content = messages[0]["content"]
+        assert len(content) == 1
+        part = content[0]
+        assert part["type"] == "document_url"
+        url = part["document_url"]["url"]
+        assert url.startswith("data:application/pdf;base64,")
+        decoded = base64.b64decode(url.split(",", 1)[1])
+        assert decoded == raw
+
+    def test_is_default_accurate_document_encoder(self):
+        from mm.pipelines import load
+
+        spec = load("document", "accurate")
+        assert spec.encode.strategy == "document-url"
+        assert spec.generate is not None
+        assert spec.generate.model == "glm-ocr"
+
+
 # ---------------------------------------------------------------------------
 # Gemini encoders
 # ---------------------------------------------------------------------------

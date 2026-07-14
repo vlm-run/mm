@@ -145,7 +145,8 @@ mm/
 │   │   ├── audio.py            # native, transcribe, gemini-native
 │   │   ├── document/
 │   │   │   ├── __init__.py     # (empty — encoders self-register on import)
-│   │   │   ├── page_text.py    # page-text (text extraction per page)
+│   │   │   ├── document_url.py # document-url (whole doc → document_url part; accurate default → glm-ocr)
+│   │   │   ├── page_text.py    # page-text (text extraction per page; fast default)
 │   │   │   └── rasterize.py    # rasterize, rasterize-text (pypdfium2)
 │   │   ├── gemini.py           # gemini-native, gemini-chunked (Gemini inline_data)
 │   │   ├── image.py            # resize, tile
@@ -344,11 +345,14 @@ Columns (`files` in SQLite / `mm sql`): same but primary key is `uri` (absolute 
   kinds; passthrough handled directly by `cat_utils/extract_meta.py::extract_text`.
 - **cat accurate**: LLM-powered descriptions via OpenAI-compatible
   API. Images → VLM caption. Videos → mosaic → VLM description.
-  Audio → Whisper transcript only (default `transcribe` encoder suppresses LLM; use `-p native` or `-p gemini-native` for LLM description). PDFs → page-text → LLM markdown
-  structuring. Non-PDF documents and `kind=text` ignore mode and
-  follow the same passthrough flow as fast. Requires a configured
-  profile (`mm profile add/update`). Pipeline-driven via
-  `pipelines/{kind}/accurate.yaml` for the binary kinds.
+  Audio → Whisper transcript only (default `transcribe` encoder suppresses LLM; use `-p native` or `-p gemini-native` for LLM description). PDFs → whole doc as a
+  `document_url` part → gateway `glm-ocr` OCR → markdown (via the
+  `document-url` encoder; handles scanned PDFs). Office docs
+  (`.docx`/`.pptx`/…) in accurate mode are converted to PDF and follow
+  the same `document_url` path; `kind=text` and office docs in fast mode
+  ignore mode and passthrough. Requires a configured profile
+  (`mm profile add/update`); the default `gateway` profile is free.
+  Pipeline-driven via `pipelines/{kind}/accurate.yaml` for the binary kinds.
 
 ## Python API
 

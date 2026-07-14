@@ -147,7 +147,7 @@ mm cat video.mp4               # mosaic → short VLM description (fast pipeline
 mm cat image.jpg -m accurate   # LLM-powered caption + tags + objects
 mm cat video.mp4 -m accurate   # keyframe mosaic → LLM description
 mm cat audio.mp3 -m accurate   # Whisper transcript only (use -p native or -p gemini-native for LLM description)
-mm cat report.pdf -m accurate  # text → LLM markdown structuring
+mm cat report.pdf -m accurate  # document_url → glm-ocr gateway OCR → markdown
 
 # --stream: stream LLM tokens to stdout as they arrive (takes precedence over --format)
 mm cat image.jpg -m accurate --stream
