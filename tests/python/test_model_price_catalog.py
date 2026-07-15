@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from mm.model_pricelist import PriceCatalog
+from mm.model_price_catalog import PriceCatalog
 
 
 def test_catalog_loads_bundled_file() -> None:

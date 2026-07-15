@@ -59,7 +59,7 @@ def _render_pipeline_summary(path: Path, run: RunResult) -> str:
             f" · {u['total_tokens']:,} total"
         )
         if raw_model:
-            from mm.model_pricelist import PriceCatalog
+            from mm.model_price_catalog import PriceCatalog
 
             if cost := PriceCatalog().compute_cost(run.llm_usage, raw_model):
                 cost_str = f"${cost.total_cost:.4f}"

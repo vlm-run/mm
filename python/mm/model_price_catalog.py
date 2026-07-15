@@ -1,12 +1,12 @@
 """Model pricing catalog for cost estimation.
 
-Loads a bundled price catalog (``python/mm/data/model-pricelist.json``, sourced
+Loads a bundled price catalog (``python/mm/data/model-price-catalog.json``, sourced
 from https://www.llm-prices.com/current-v1.json) and provides model
 lookup + cost computation from token usage dicts.
 
 Example::
 
-    from mm.model_pricelist import PriceCatalog
+    from mm.model_price_catalog import PriceCatalog
 
     catalog = PriceCatalog()
     cost = catalog.compute_cost(
@@ -24,7 +24,7 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 
-_CATALOG_PATH = Path(__file__).parent / "data" / "model-pricelist.json"
+_CATALOG_PATH = Path(__file__).parent / "data" / "model-price-catalog.json"
 
 
 @dataclass(frozen=True, slots=True)

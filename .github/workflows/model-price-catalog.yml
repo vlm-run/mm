@@ -1,4 +1,4 @@
-name: Update price catalog
+name: Update model price catalog
 
 on:
   schedule:
@@ -19,12 +19,12 @@ jobs:
 
       - name: Fetch latest prices
         run: |
-          curl -fsSL https://www.llm-prices.com/current-v1.json -o /tmp/model-pricelist.json
+          curl -fsSL https://www.llm-prices.com/current-v1.json -o /tmp/model-price-catalog.json
           python3 -c "
           import json
-          with open('/tmp/model-pricelist.json') as f:
+          with open('/tmp/model-price-catalog.json') as f:
               d = json.load(f)
-          with open('python/mm/data/model-pricelist.json', 'w') as f:
+          with open('python/mm/data/model-price-catalog.json', 'w') as f:
               json.dump(d, f, separators=(',', ':'), ensure_ascii=False)
           print(f'updated_at: {d[\"updated_at\"]}, models: {len(d[\"prices\"])}')
           "
@@ -32,7 +32,7 @@ jobs:
       - name: Check for changes
         id: diff
         run: |
-          if git diff --exit-code python/mm/data/model-pricelist.json; then
+          if git diff --exit-code python/mm/data/model-price-catalog.json; then
             echo "changed=false" >> $GITHUB_OUTPUT
           else
             echo "changed=true" >> $GITHUB_OUTPUT
@@ -41,15 +41,15 @@ jobs:
       - name: Create PR if changed
         if: steps.diff.outputs.changed == 'true'
         run: |
-          BRANCH="chore/model-pricelist-$(date +%Y%m%d)"
+          BRANCH="chore/model-price-catalog-$(date +%Y%m%d)"
           git config user.email "sudeep@vlm.run"
           git config user.name "Sudeep Pillai"
           git checkout -b "$BRANCH"
-          git add python/mm/data/model-pricelist.json
-          git commit -m "chore: update model pricelist from llm-prices.com"
+          git add python/mm/data/model-price-catalog.json
+          git commit -m "chore: update model price catalog from llm-prices.com"
           git push origin "$BRANCH"
           gh pr create \
-            --title "chore: update model pricelist" \
+            --title "chore: update model price catalog" \
             --body "Auto-generated from [llm-prices.com](https://www.llm-prices.com/current-v1.json)." \
             --label chore
         env:
