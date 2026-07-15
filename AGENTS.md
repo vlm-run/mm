@@ -152,7 +152,7 @@ mm/
 │   │   └── video/              # Video encoders
 │   │       ├── __init__.py     # uniform_timestamps, uniform_timestamps_range helpers
 │   │       ├── captions.py     # captions
-│   │       ├── chunks.py       # chunked (overlapping time-based chunks)
+│   │       ├── chunked.py     # chunked (overlapping time-based chunks)
 │   │       ├── clips.py        # clips, clips-w-transcript (base64 video clips)
 │   │       ├── native.py       # native (base64 video_url passthrough)
 │   │       ├── frames.py       # frames, frames-w-transcript
