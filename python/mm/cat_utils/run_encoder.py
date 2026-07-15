@@ -209,6 +209,8 @@ def run_encoder(path: Path, kind: BinaryFileKind, spec: PipelineSpec, opts: CatO
             {
                 "prompt_tokens": u.prompt_tokens,
                 "completion_tokens": u.completion_tokens,
+                "cached_tokens": u.cached_tokens,
+                "reasoning_tokens": u.reasoning_tokens,
                 "total_tokens": u.total_tokens,
             }
             if opts.report

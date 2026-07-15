@@ -22,6 +22,7 @@ from pathlib import Path
 from typing import Any
 
 from openai import OpenAI
+from openai.types import CompletionUsage
 from openai.types.chat import ChatCompletion
 
 from mm.constants import BinaryFileKind
@@ -42,6 +43,24 @@ class LlmUsage:
     prompt_tokens: int = 0
     completion_tokens: int = 0
     total_tokens: int = 0
+    cached_tokens: int = 0
+    reasoning_tokens: int = 0
+
+
+def _usage_from_response(usage: CompletionUsage) -> LlmUsage:
+    cached = 0
+    if usage.prompt_tokens_details and usage.prompt_tokens_details.cached_tokens:
+        cached = usage.prompt_tokens_details.cached_tokens
+    reasoning = 0
+    if usage.completion_tokens_details and usage.completion_tokens_details.reasoning_tokens:
+        reasoning = usage.completion_tokens_details.reasoning_tokens
+    return LlmUsage(
+        prompt_tokens=usage.prompt_tokens or 0,
+        completion_tokens=usage.completion_tokens or 0,
+        total_tokens=usage.total_tokens or 0,
+        cached_tokens=cached,
+        reasoning_tokens=reasoning,
+    )
 
 
 class LlmBackend:
@@ -227,6 +246,8 @@ class LlmBackend:
                 cumulative_usage.prompt_tokens += usage.prompt_tokens
                 cumulative_usage.completion_tokens += usage.completion_tokens
                 cumulative_usage.total_tokens += usage.total_tokens
+                cumulative_usage.cached_tokens += usage.cached_tokens
+                cumulative_usage.reasoning_tokens += usage.reasoning_tokens
                 if chunk_msgs:
                     all_messages.extend(chunk_msgs)
             if on_chunk is not None:
@@ -312,12 +333,7 @@ class LlmBackend:
         try:
             response: ChatCompletion = self.client.chat.completions.create(**kwargs)
             if response.usage:
-                usage = LlmUsage(
-                    prompt_tokens=response.usage.prompt_tokens or 0,
-                    completion_tokens=response.usage.completion_tokens or 0,
-                    total_tokens=response.usage.total_tokens or 0,
-                )
-                self.last_usage = usage
+                self.last_usage = _usage_from_response(response.usage)
 
             choice = response.choices[0].message
             content = (choice.content or "").strip()
@@ -357,12 +373,7 @@ class LlmBackend:
             collected: list[str] = []
             for chunk in response_stream:
                 if chunk.usage is not None:
-                    usage = LlmUsage(
-                        prompt_tokens=chunk.usage.prompt_tokens or 0,
-                        completion_tokens=chunk.usage.completion_tokens or 0,
-                        total_tokens=chunk.usage.total_tokens or 0,
-                    )
-                    self.last_usage = usage
+                    self.last_usage = _usage_from_response(chunk.usage)
                 if not chunk.choices:
                     continue
                 delta = chunk.choices[0].delta
@@ -385,12 +396,7 @@ class LlmBackend:
             kwargs.pop("stream_options", None)
             response = self.client.chat.completions.create(**kwargs)
             if response.usage:
-                usage = LlmUsage(
-                    prompt_tokens=response.usage.prompt_tokens or 0,
-                    completion_tokens=response.usage.completion_tokens or 0,
-                    total_tokens=response.usage.total_tokens or 0,
-                )
-                self.last_usage = usage
+                self.last_usage = _usage_from_response(response.usage)
             text = (response.choices[0].message.content or "").strip()
             if text:
                 streamed_to_stdout = True

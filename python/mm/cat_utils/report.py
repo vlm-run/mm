@@ -47,7 +47,18 @@ def _render_pipeline_summary(path: Path, run: RunResult) -> str:
     usage_str = "—"
     if run.llm_usage:
         u = run.llm_usage
-        usage_str = f"{u['prompt_tokens']}→{u['completion_tokens']} tokens"
+        prompt = u["prompt_tokens"]
+        completion = u["completion_tokens"]
+        total = u["total_tokens"]
+        cached = u.get("cached_tokens", 0)
+        reasoning = u.get("reasoning_tokens", 0)
+        prompt_str = f"{prompt:,} prompt"
+        if cached:
+            prompt_str += f" ({cached:,} cached)"
+        completion_str = f"{completion:,} completion"
+        if reasoning:
+            completion_str += f" ({reasoning:,} reasoning)"
+        usage_str = f"{prompt_str} → {completion_str} · {total:,} total"
 
     rows = [
         ("File", str(path)),
@@ -77,11 +88,13 @@ def _render_file_section(path: Path, run: RunResult) -> str:
     parts.append(_render_pipeline_summary(path, run))
 
     if run.llm_messages:
+        prompt_tokens = run.llm_usage.get("prompt_tokens") if run.llm_usage else None
         parts.append(
             render_messages(
                 run.llm_messages,
                 title=f"Chat completions request — {path.name}",
                 max_image_width=480,
+                true_token_count=prompt_tokens,
             )
         )
     elif run.encoded_messages:
@@ -94,12 +107,14 @@ def _render_file_section(path: Path, run: RunResult) -> str:
         )
 
     if run.llm_response:
+        completion_tokens = run.llm_usage.get("completion_tokens") if run.llm_usage else None
         resp_msgs = [{"role": "assistant", "content": run.llm_response}]
         parts.append(
             render_messages(
                 resp_msgs,
                 title=f"LLM response — {path.name}",
                 max_image_width=480,
+                true_token_count=completion_tokens,
             )
         )
 
