@@ -744,9 +744,15 @@ graph LR
 
 ### Document
 
-#### `document-url`
+#### `markdown`
 
-Send the whole document to the LLM as a single `document_url` content part — a base64 `data:` URI mirroring OpenAI's `image_url` shape. Page rendering and OCR happen server-side (VLM Run gateway, `glm-ocr` model), so it works on scanned/image-only PDFs that `page-text` cannot read. **Default for accurate mode.** No parameters.
+Whole document → gateway OCR → markdown. Sends the file as a single `document_url` content part (base64 `data:` URI) and asks a document-OCR model to transcribe it into clean markdown. Because rendering + OCR happen server-side, it works on scanned/image-only PDFs that `page-text` cannot read. **Opt-in** (`mm cat doc.pdf -p markdown`) — the built-in `document/accurate` pipeline still defaults to local `page-text`. The OCR model is parametrized and passed through as the chat-completions `model`: `dots-mocr` (**default**), `glm-ocr`, `deepseek-ocr`. Override per call with `--model` / `--generate.model`. No encode parameters.
+
+```bash
+mm cat doc.pdf -p markdown                     # dots-mocr (default)
+mm cat doc.pdf -p markdown --model glm-ocr
+mm cat doc.pdf -p markdown --model deepseek-ocr
+```
 
 ```mermaid
 %%{init: {'look': 'neo'} }%%
@@ -755,17 +761,23 @@ graph LR
 
   subgraph encode ["Encode"]
     read("Read bytes")
-    b64("base64\ndata: URI")
+    b64("base64\ndocument_url part")
   end
 
-  subgraph message ["Message"]
-    msgs("1: document_url part")
+  subgraph generate ["Generate"]
+    ocr("OCR model\n(dots-mocr / glm-ocr / deepseek-ocr)")
   end
 
-  doc --> read --> b64 --> msgs
+  doc --> read --> b64 --> ocr --> md("markdown")
   style encode rx:10px,ry:10px
-  style message rx:10px,ry:10px
+  style generate rx:10px,ry:10px
 ```
+
+---
+
+#### `document-url`
+
+Low-level primitive: emits the document as a single `document_url` content part (base64 `data:` URI) mirroring OpenAI's `image_url` shape, and nothing else. It declares no prompt or model, so it composes into custom pipeline YAMLs that supply their own `generate` block. For a ready-made OCR-to-markdown flow use `markdown`. No parameters.
 
 ---
 

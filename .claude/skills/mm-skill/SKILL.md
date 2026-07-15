@@ -170,15 +170,9 @@ mm cat FILE... [-m fast|accurate] [-p PIPELINE]... [-n N] [-o DIR]
 | Image | short VLM caption | full VLM caption + tags |
 | Video | mosaic → short VLM | frames + transcript → VLM |
 | Audio | transcript → 10-word description | transcript → detailed LLM description |
-| PDF | page-text via pypdfium2 (no LLM, local) | `document_url` → `glm-ocr` OCR → markdown |
-| `.docx` / `.pptx` | passthrough text | → PDF → `document_url` → `glm-ocr` → markdown |
+| PDF | page-text via pypdfium2 (no LLM) | page-text → LLM markdown |
+| `.docx` / `.pptx` | passthrough text | passthrough text |
 | code / text | passthrough text | passthrough text |
-
-Accurate-mode documents are sent whole to the VLM Run gateway as a single
-`document_url` content part and OCR'd by the `glm-ocr` model (pinned in the
-`document/accurate` pipeline). This handles scanned/image-only PDFs that
-fast-mode `page-text` cannot. Office docs (`.docx`/`.pptx`) are converted to
-PDF first, then follow the same `document_url` path.
 
 | Flag | Purpose |
 |------|---------|
@@ -294,11 +288,25 @@ profile (mm.toml)  →  pipeline YAML (generate.*)  →  encoder generate[mode] 
 | `base64` | audio | **Default (Python API).** Raw `input_audio` part. |
 | `transcribe` | audio | Whisper transcript (`backend`/`base_url`/`api_key` kwargs). |
 | `gemini` | audio | Gemini Part. |
-| `document-url` | document | **Default (accurate).** Whole doc as a `document_url` part → gateway OCR (`glm-ocr`). Handles scanned PDFs. |
-| `page-text` | document | **Default (fast).** Per-page text via pypdfium2 (PDF) / libreoffice (DOCX/PPTX). Local, no LLM. |
+| `page-text` | document | Per-page text (PDF/DOCX/PPTX). Fast-mode default. |
+| `markdown` | document | Gateway OCR → markdown. Whole doc as a `document_url` part; model-parametrized (`dots-mocr` default, `glm-ocr`, `deepseek-ocr`). Handles scanned PDFs. |
+| `document-url` | document | Low-level primitive: whole doc as one `document_url` part, no generate (compose in custom YAMLs). |
 | `rasterize` | document | Render PDF pages as images. |
 | `rasterize-text` | document | Rasterize + extract text, interleaved. |
-| `gemini-native` | document | Gemini `inline_data` Part. |
+| `gemini` | document | Gemini Part. |
+
+Document OCR via the gateway (opt-in — the built-in `document/accurate`
+pipeline still defaults to local `page-text`):
+
+```bash
+mm cat doc.pdf -p markdown                    # dots-mocr (default) → markdown
+mm cat doc.pdf -p markdown --model glm-ocr    # switch OCR model
+mm cat doc.pdf -p markdown --model deepseek-ocr
+```
+
+`markdown` sends the document to the VLM Run gateway as a `document_url` part
+and OCRs it server-side (works on scanned/image-only PDFs). The model default
+lives in the encoder (`dots-mocr`); `--model` / `--generate.model` overrides it.
 
 ### Custom pipeline YAML
 
@@ -501,13 +509,6 @@ mm config doctor --format json                       # machine-readable output
 
 Stored in `~/.config/mm/mm.toml`. Reserved profiles: `ollama`, `gateway`, `openrouter`.
 
-`gateway` is the **default** profile — the VLM Run gateway
-(`https://gateway.vlm.run/v1/openai`) offering free multimodal inference. It is
-managed by mm and cannot be edited (`base_url` / `api_key` / model routing are
-fixed). Its default chat model is `qwen/qwen3.5-0.8b`; the built-in
-`document/accurate` pipeline pins `glm-ocr` for document OCR. Point a different
-provider at mm by adding your own profile and `mm profile use <name>`.
-
 ```bash
 mm profile list [-f FORMAT]                          # ● = active
 mm profile add NAME    --base-url URL --model NAME [--api-key KEY]
@@ -524,7 +525,7 @@ mm --profile openrouter cat photo.png -m accurate    # one-off
 MM_PROFILE=openrouter mm cat photo.png -m accurate   # env
 ```
 
-Resolution: `--profile` flag > `MM_PROFILE` env > `active_profile` in config > `"gateway"` (built-in default).
+Resolution: `--profile` flag > `MM_PROFILE` env > `active_profile` in config > `"ollama"`.
 
 ## Output formats
 
@@ -555,7 +556,7 @@ mm find <dir> --kind image | mm cat -m accurate --format dataset-jsonl
 - `--mode` is a no-op for `kind=text` and non-PDF documents — they always passthrough.
 - `--no-cache` forces fresh LLM call; no-op for passthrough kinds.
 - `--no-generate` snapshots encoder output without calling the LLM.
-- For PDFs, fast mode (`page-text`) returns empty on scanned/image-only pages; use `-m accurate` (gateway `glm-ocr` OCR via `document_url`) or `-p rasterize`.
+- For PDFs, `cat` returns empty in fast mode if scanned; use `-m accurate` or `-p rasterize`.
 - Chunks are written on first `cat`. Embedding + vec storage happens on `mm grep -s --pre-index`.
 - `mm sql --list-tables` shows row counts across `files`, `extractions`, `chunks`.
 

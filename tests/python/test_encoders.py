@@ -408,13 +408,75 @@ class TestDocumentUrlEncoder:
         decoded = base64.b64decode(url.split(",", 1)[1])
         assert decoded == raw
 
-    def test_is_default_accurate_document_encoder(self):
+    def test_is_encode_only_primitive(self):
+        """document-url declares no generate override — it composes into YAMLs."""
+        from mm.encoders import get
+
+        strat = get("document-url", "document")
+        assert getattr(strat, "generate", {}) == {}
+
+
+class TestMarkdownEncoder:
+    def test_emits_document_url_part(self, tmp_path):
+        from mm.encoders import get
+
+        doc = tmp_path / "report.pdf"
+        raw = b"%PDF-1.4 fake pdf bytes"
+        doc.write_bytes(raw)
+
+        strat = get("markdown", "document")
+        messages = list(strat.encode(doc))
+
+        assert len(messages) == 1
+        part = messages[0]["content"][0]
+        assert part["type"] == "document_url"
+        url = part["document_url"]["url"]
+        assert url.startswith("data:application/pdf;base64,")
+        assert base64.b64decode(url.split(",", 1)[1]) == raw
+
+    def test_defaults_to_dots_mocr_in_both_modes(self):
+        from mm.encoders import get
+        from mm.encoders.document.markdown import DEFAULT_OCR_MODEL
+
+        strat = get("markdown", "document")
+        assert DEFAULT_OCR_MODEL == "dots-mocr"
+        assert set(strat.generate) == {"fast", "accurate"}
+        for mode in ("fast", "accurate"):
+            assert strat.generate[mode] is not None
+            assert strat.generate[mode].model == "dots-mocr"
+
+    def test_does_not_change_accurate_default(self):
+        """The accurate document pipeline stays page-text; markdown is opt-in."""
         from mm.pipelines import load
 
         spec = load("document", "accurate")
-        assert spec.encode.strategy == "document-url"
-        assert spec.generate is not None
-        assert spec.generate.model == "glm-ocr"
+        assert spec.encode.strategy == "page-text"
+
+    def test_model_override_selects_ocr_model(self):
+        from mm.cat_utils.base_utils import CatOpts
+        from mm.pipelines.pipelines_utils import resolve_pipeline
+        from mm.pipelines.schema import Encode, PipelineSpec
+
+        enc = PipelineSpec(
+            kind="_encoder", mode="fast", encode=Encode(strategy="markdown"), generate=None
+        )
+        base = dict(
+            mode="accurate",
+            encode_overrides={},
+            pipelines={"_encoder": enc},
+            stream=False,
+            verbose=False,
+            no_generate=False,
+        )
+
+        spec = resolve_pipeline(CatOpts(generate_overrides={}, **base), "document")
+        assert spec.encode.strategy == "markdown"
+        assert spec.generate.model == "dots-mocr"
+
+        spec2 = resolve_pipeline(
+            CatOpts(generate_overrides={"model": "glm-ocr"}, **base), "document"
+        )
+        assert spec2.generate.model == "glm-ocr"
 
 
 # ---------------------------------------------------------------------------

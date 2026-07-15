@@ -2,22 +2,22 @@
 
 ## [Unreleased]
 
-### Changed
-- **Document accurate mode now uses gateway `glm-ocr` via `document_url`**:
-  the `document/accurate` pipeline ships a new `document-url` encoder that sends
-  the whole document to the VLM Run gateway as a single OpenAI-style
-  `document_url` content part (base64 `data:` URI), pinned to the `glm-ocr`
-  model for server-side OCR → markdown. This replaces the previous
-  client-side `page-text` → generic-LLM markdown path and adds support for
-  scanned/image-only PDFs that `page-text` cannot read. Office docs
-  (`.docx`/`.pptx`/…) in accurate mode are converted to PDF first and follow
-  the same path. Fast mode is unchanged (local `page-text`, no network).
-  - New encoder `document-url` (`python/mm/encoders/document/document_url.py`),
-    registered for `kind=document` and surfaced in `mm cat --list-encoders`.
-  - `pipelines/document/accurate.yaml` now pins `encode.strategy: document-url`
-    and `generate.model: glm-ocr`.
-  - Covered by `TestDocumentUrlEncoder` in `tests/python/test_encoders.py`
-    (part shape + accurate-default wiring).
+### Added
+- **`markdown` document encoder — gateway OCR to markdown, model-parametrized**:
+  a new opt-in encoder that sends a whole document to the VLM Run gateway as a
+  single OpenAI-style `document_url` content part (base64 `data:` URI) and OCRs
+  it into clean markdown server-side (works on scanned/image-only PDFs). The
+  OCR model is parametrized and passed through as the chat-completions `model`,
+  defaulting to `dots-mocr` with `glm-ocr` and `deepseek-ocr` also supported;
+  override per call with `--model` / `--generate.model`.
+  - `mm cat doc.pdf -p markdown` → `dots-mocr`; `-p markdown --model glm-ocr`
+    switches models. The built-in `document/accurate` pipeline is unchanged
+    (still local `page-text`) — `markdown` is opt-in.
+  - Also adds `document-url`, the low-level primitive that emits just the
+    `document_url` part (no generate) for composing into custom pipeline YAMLs.
+  - `python/mm/encoders/document/{markdown,document_url}.py`; both registered
+    and listed in `mm cat --list-encoders`. Covered by `TestMarkdownEncoder`
+    and `TestDocumentUrlEncoder` in `tests/python/test_encoders.py`.
 
 ### Performance
 - **Disk-backed cache for `detect_scenes` + `transcript_messages` (260430)**:

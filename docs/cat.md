@@ -41,8 +41,8 @@ Office documents are passthrough in fast mode but go through the LLM pipeline in
 | **Audio** (default: `transcribe`) | Whisper transcript         | Whisper transcript             |
 | **Audio** (`-p native`)   | 10-word description  | Detailed LLM description |
 | **Audio** (`-p gemini-native`)   | 10-word description               | Detailed LLM description        |
-| **PDFs**                  | Page-text extraction (pypdfium2)          | `document_url` → `glm-ocr` gateway OCR → markdown |
-| **Office docs** (.docx/.pptx/.xlsx/.odt/.odp/.ods) | Passthrough text (no LLM) | Office → PDF → `document_url` → `glm-ocr` → markdown |
+| **PDFs**                  | Page-text extraction (pypdfium2)          | Text → LLM markdown structuring         |
+| **Office docs** (.docx/.pptx/.xlsx/.odt/.odp/.ods) | Passthrough text (no LLM) | Office → PDF conversion → LLM markdown  |
 | **Code / text**           | Passthrough text (no LLM)                 | Passthrough text (no LLM)               |
 
 `--mode` is a no-op for code and text — they always return passthrough text regardless of mode. Office documents (`.docx`, `.pptx`, `.xlsx`, `.odt`, `.odp`, `.ods`) are passthrough in fast mode but converted to PDF and processed through the LLM pipeline in accurate mode.
@@ -111,10 +111,10 @@ Multi-file: `mm cat a.mp4 b.mp4 -y` runs each video sequentially; the same **≥
 
 | | fast (default) | accurate |
 |---|---|---|
-| Behavior | Passthrough text via libreoffice-rs | Office → PDF → `document_url` → `glm-ocr` OCR → markdown |
+| Behavior | Passthrough text via libreoffice-rs | Office → PDF conversion → LLM markdown structuring |
 | LLM call | None | Yes (routes through office→PDF before encode) |
 
-In fast mode, raw text is extracted directly. In accurate mode, the file is converted to PDF via `office_to_pdf` and then processed through the document/accurate pipeline (`document-url` encoder → `glm-ocr`).
+In fast mode, raw text is extracted directly. In accurate mode, the file is converted to PDF via `office_to_pdf` and then processed through the document/accurate pipeline.
 
 ### Text / Code / Config
 
