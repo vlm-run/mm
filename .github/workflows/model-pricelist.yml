@@ -1,0 +1,56 @@
+name: Update price catalog
+
+on:
+  schedule:
+    - cron: "0 6 * * 1" # Every Monday 6AM UTC
+  workflow_dispatch: {} # Manual trigger
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          token: ${{ secrets.RELEASE_PAT }}
+
+      - name: Fetch latest prices
+        run: |
+          curl -fsSL https://www.llm-prices.com/current-v1.json -o /tmp/model-pricelist.json
+          python3 -c "
+          import json
+          with open('/tmp/model-pricelist.json') as f:
+              d = json.load(f)
+          with open('python/mm/data/model-pricelist.json', 'w') as f:
+              json.dump(d, f, separators=(',', ':'), ensure_ascii=False)
+          print(f'updated_at: {d[\"updated_at\"]}, models: {len(d[\"prices\"])}')
+          "
+
+      - name: Check for changes
+        id: diff
+        run: |
+          if git diff --exit-code python/mm/data/model-pricelist.json; then
+            echo "changed=false" >> $GITHUB_OUTPUT
+          else
+            echo "changed=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create PR if changed
+        if: steps.diff.outputs.changed == 'true'
+        run: |
+          BRANCH="chore/model-pricelist-$(date +%Y%m%d)"
+          git config user.email "sudeep@vlm.run"
+          git config user.name "Sudeep Pillai"
+          git checkout -b "$BRANCH"
+          git add python/mm/data/model-pricelist.json
+          git commit -m "chore: update model pricelist from llm-prices.com"
+          git push origin "$BRANCH"
+          gh pr create \
+            --title "chore: update model pricelist" \
+            --body "Auto-generated from [llm-prices.com](https://www.llm-prices.com/current-v1.json)." \
+            --label chore
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_PAT }}

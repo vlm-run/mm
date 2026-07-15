@@ -143,6 +143,7 @@ features = ["pyo3/extension-module"]
 # Exclude blocks all other file types from leaking into the wheel.
 include = [
     { path = "python/mm/pipelines/**/*.yaml", format = ["wheel"] },
+    { path = "python/mm/data/model-pricelist.json", format = ["wheel"] },
 ]
 exclude = [
     "**/*.md",

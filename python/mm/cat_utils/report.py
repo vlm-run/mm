@@ -37,14 +37,18 @@ def _render_pipeline_summary(path: Path, run: RunResult) -> str:
         opts_str = ", ".join(f"{k}={v}" for k, v in sorted(spec.encode.strategy_opts.items()))
 
     gen_model = "—"
+    raw_model: str | None = None
     if spec and spec.generate and spec.generate.model:
+        raw_model = spec.generate.model
         gen_model = spec.generate.model
     elif spec and spec.generate:
         from mm.profile import get_profile
 
-        gen_model = f"{get_profile().model} (profile)"
+        raw_model = get_profile().model
+        gen_model = f"{raw_model} (profile)"
 
     usage_str = "—"
+    cost_str = "—"
     if run.llm_usage:
         u = run.llm_usage
         usage_str = (
@@ -54,6 +58,11 @@ def _render_pipeline_summary(path: Path, run: RunResult) -> str:
             f" · {u.get('cached_tokens', 0):,} cached"
             f" · {u['total_tokens']:,} total"
         )
+        if raw_model:
+            from mm.model_pricelist import PriceCatalog
+
+            if cost := PriceCatalog().compute_cost(run.llm_usage, raw_model):
+                cost_str = f"${cost.total_cost:.4f}"
 
     rows = [
         ("File", str(path)),
@@ -65,6 +74,7 @@ def _render_pipeline_summary(path: Path, run: RunResult) -> str:
         ("Encode time", _fmt_ms(run.encode_elapsed_ms)),
         ("Generate time", _fmt_ms(run.generate_elapsed_ms)),
         ("Token usage", usage_str),
+        ("Estimated cost", cost_str),
     ]
     body = "\n".join(
         f'<tr><td class="mm-rpt-key">{html.escape(k)}</td>'
