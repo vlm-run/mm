@@ -47,8 +47,6 @@ class LlmUsage:
 class LlmBackend:
     """Wraps any OpenAI-compatible chat/completions API for accurate-mode generate calls."""
 
-    last_usage: LlmUsage
-
     def __init__(
         self,
         base_url: str | None = None,
@@ -75,12 +73,21 @@ class LlmBackend:
             timeout=120.0,
             default_headers=headers,
         )
-        self.last_usage = LlmUsage()
         self._local = threading.local()
+        self.last_usage = LlmUsage()
 
     @property
     def is_configured(self) -> bool:
         return bool(self.client.base_url)
+
+    @property
+    def last_usage(self) -> LlmUsage:
+        """Thread-local token usage from the most recent ``_chat`` call."""
+        return getattr(self._local, "last_usage", LlmUsage())
+
+    @last_usage.setter
+    def last_usage(self, value: LlmUsage) -> None:
+        self._local.last_usage = value
 
     @property
     def last_messages(self) -> list[dict[str, Any]] | None:
@@ -214,8 +221,8 @@ class LlmBackend:
                 stream=stream,
             )
             results[i] = result
-            usage = getattr(self._local, "last_usage", LlmUsage())
-            chunk_msgs = getattr(self._local, "last_messages", None)
+            usage = self.last_usage
+            chunk_msgs = self.last_messages
             with lock:
                 cumulative_usage.prompt_tokens += usage.prompt_tokens
                 cumulative_usage.completion_tokens += usage.completion_tokens
@@ -311,7 +318,6 @@ class LlmBackend:
                     total_tokens=response.usage.total_tokens or 0,
                 )
                 self.last_usage = usage
-                self._local.last_usage = usage
 
             choice = response.choices[0].message
             content = (choice.content or "").strip()
@@ -357,7 +363,6 @@ class LlmBackend:
                         total_tokens=chunk.usage.total_tokens or 0,
                     )
                     self.last_usage = usage
-                    self._local.last_usage = usage
                 if not chunk.choices:
                     continue
                 delta = chunk.choices[0].delta
@@ -386,7 +391,6 @@ class LlmBackend:
                     total_tokens=response.usage.total_tokens or 0,
                 )
                 self.last_usage = usage
-                self._local.last_usage = usage
             text = (response.choices[0].message.content or "").strip()
             if text:
                 streamed_to_stdout = True
