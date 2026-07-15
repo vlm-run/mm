@@ -28,7 +28,7 @@ def _fmt_ms(ms: float | None) -> str:
 def _render_pipeline_summary(path: Path, run: RunResult) -> str:
     """Render the pipeline metadata header for a single file."""
     spec = run.pipeline_spec
-    strategy = spec.encode.strategy if spec else "—"
+    strategy: str = spec.encode.strategy if spec and spec.encode.strategy else "—"
     mode = spec.mode if spec else "—"
     kind = spec.kind if spec else "—"
 
