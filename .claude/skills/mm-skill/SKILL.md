@@ -185,7 +185,7 @@ mm cat FILE... [-m fast|accurate] [-p PIPELINE]... [-n N] [-o DIR]
 | `--stream` | Stream LLM tokens to stdout as they arrive. Takes precedence over `--format`. |
 | `--verbose` / `-v` | Show pipeline tree (encode/generate timings). |
 | `--yes` / `-y` | Skip the batch-size confirmation (≥9 paths; env `MM_CAT_BATCH_CONFIRM_THRESHOLD`). |
-| `--report` | Generate a self-contained HTML report of pipeline internals (encoder output, LLM messages, response) to `mm_reports/`. Cache hits skip the report; use `--no-cache` to force. |
+| `--report` | Generate a self-contained HTML report of pipeline internals (encoder output, LLM messages, response) to `mm_reports/` (or `--output-dir`). Cache hits skip the report; use `--no-cache` to force. |
 | `--encode.strategy` | Override encoder name. |
 | `--encode.backend mlx\|ctranslate2\|openai` | Transcription backend. `openai` (default) uses any OpenAI-compatible `/audio/transcriptions` endpoint. `mlx` requires `mm-ctx[mlx]`; `ctranslate2` requires `mm-ctx[gpu]`. Ignored by encoders with no backend concept. |
 | `--encode.model MODEL` | Encoder-level model override (e.g. `nvidia/parakeet-tdt-0.6b-v3`, `whisper-1`). Independent of `--model` / `--generate.model`. Ignored by encoders with no model concept. |
@@ -247,11 +247,12 @@ mm cat photo.png -m accurate --stream -v                           # streaming +
 mm cat photo.png --dry-run
 mm cat video.mp4 -m accurate --dry-run
 
-# Report (HTML report of pipeline internals → mm_reports/)
+# Report (HTML report of pipeline internals → mm_reports/ or --output-dir)
 mm cat photo.png --report
 mm cat video.mp4 -m accurate --report
 mm cat a.png b.png --report                              # combined multi-file report
 mm cat photo.png --report --no-cache                     # force fresh run + report
+mm cat photo.png --report -o ./reports                   # custom output dir
 ```
 
 ### Override surfaces (right-most wins)

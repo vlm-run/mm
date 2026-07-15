@@ -312,6 +312,7 @@ mm cat notes.docx --dry-run           # passthrough preview
 
 - **Single file**: `mm cat photo.png --report` → `mm_reports/photo.png_{timestamp}_report.html`
 - **Multi-file**: `mm cat a.png b.png --report` → single `mm_reports/multi_{timestamp}_report.html`
+- **Custom output dir**: `mm cat photo.png --report -o ./reports` → `reports/photo.png_{timestamp}_report.html`
 - **Passthrough files** (text, code): produce no report (no pipeline internals to show).
 - **Cache hits**: the report is skipped with a dimmed message. Use `--no-cache` to force a fresh run and regenerate the report.
 - Report messages are printed dimmed, after the timing footer, so they don't compete with the main output.
@@ -321,6 +322,7 @@ mm cat photo.png --report                              # HTML report of image pi
 mm cat video.mp4 -m accurate --report                  # report with mosaic + transcript
 mm cat a.png b.png c.mp4 --report                      # combined multi-file report
 mm cat photo.png --report --no-cache                   # force fresh run + report
+mm cat photo.png --report -o ./reports                 # write to ./reports/ instead of mm_reports/
 ```
 
 ## Examples

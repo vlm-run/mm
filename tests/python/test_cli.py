@@ -1131,3 +1131,18 @@ class TestCatReport:
         assert r2.exit_code == 0
         reports_dir = tmp_path / "mm_reports"
         assert not reports_dir.exists() or not list(reports_dir.glob("*.html"))
+
+    def test_report_custom_output_dir(self, isolated_db: Path, tmp_path: Path, monkeypatch):
+        """``--report -o`` writes HTML to the custom directory."""
+        monkeypatch.chdir(tmp_path)
+        img = tmp_path / "test.png"
+        self._make_png(img)
+        r = runner.invoke(
+            app,
+            ["cat", str(img), "--report", "--no-generate", "--no-cache", "-o", "custom_reports"],
+        )
+        assert r.exit_code == 0
+        assert not (tmp_path / "mm_reports").exists()
+        assert (tmp_path / "custom_reports").exists()
+        reports = list((tmp_path / "custom_reports").glob("*.html"))
+        assert len(reports) == 1

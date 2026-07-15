@@ -576,7 +576,7 @@ def cat_cmd(
         emit_rows(fmt, results, output_dir=str(output_dir) if output_dir else "mm_dataset")
 
     if opts.report and report_entries:
-        _write_report(report_entries)
+        _write_report(report_entries, opts.output_dir)
 
 
 # ---------------------------------------------------------------------------
@@ -584,15 +584,15 @@ def cat_cmd(
 # ---------------------------------------------------------------------------
 
 
-def _write_report(entries: list[tuple[Path, RunResult]]) -> None:
+def _write_report(entries: list[tuple[Path, RunResult]], output_dir: Path | None) -> None:
     """Write a combined HTML report for all collected pipeline runs."""
     from datetime import datetime
 
     from mm.cat_utils.report import generate_report
 
     html_doc = generate_report(entries)
-    out_dir = Path("mm_reports")
-    out_dir.mkdir(exist_ok=True)
+    out_dir = output_dir or Path("mm_reports")
+    out_dir.mkdir(parents=True, exist_ok=True)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     if len(entries) == 1:
         filename = f"{entries[0][0].name}_{timestamp}_report.html"
