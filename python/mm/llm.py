@@ -48,7 +48,6 @@ class LlmBackend:
     """Wraps any OpenAI-compatible chat/completions API for accurate-mode generate calls."""
 
     last_usage: LlmUsage
-    last_messages: list[dict[str, Any]] | None
 
     def __init__(
         self,
@@ -77,12 +76,20 @@ class LlmBackend:
             default_headers=headers,
         )
         self.last_usage = LlmUsage()
-        self.last_messages = None
         self._local = threading.local()
 
     @property
     def is_configured(self) -> bool:
         return bool(self.client.base_url)
+
+    @property
+    def last_messages(self) -> list[dict[str, Any]] | None:
+        """Thread-local messages from the most recent ``generate`` call."""
+        return getattr(self._local, "last_messages", None)
+
+    @last_messages.setter
+    def last_messages(self, value: list[dict[str, Any]] | None) -> None:
+        self._local.last_messages = value
 
     def generate(
         self,
@@ -136,7 +143,6 @@ class LlmBackend:
             message_content = prompt
 
         messages: list[dict[str, Any]] = [{"role": "user", "content": message_content}]
-
         self.last_messages = messages
 
         merged_extra_body = deep_merge(tpl.generate.extra_body or {}, extra_body or {})
@@ -194,6 +200,7 @@ class LlmBackend:
         total = len(chunks)
         results: list[str] = [""] * total
         cumulative_usage = LlmUsage()
+        all_messages: list[dict[str, Any]] = []
         lock = threading.Lock()
 
         def _call(i: int, parts: list[dict[str, Any]]) -> None:
@@ -208,10 +215,13 @@ class LlmBackend:
             )
             results[i] = result
             usage = getattr(self._local, "last_usage", LlmUsage())
+            chunk_msgs = getattr(self._local, "last_messages", None)
             with lock:
                 cumulative_usage.prompt_tokens += usage.prompt_tokens
                 cumulative_usage.completion_tokens += usage.completion_tokens
                 cumulative_usage.total_tokens += usage.total_tokens
+                if chunk_msgs:
+                    all_messages.extend(chunk_msgs)
             if on_chunk is not None:
                 on_chunk(i, total, result)
 
@@ -221,6 +231,7 @@ class LlmBackend:
                 fut.result()
 
         self.last_usage = cumulative_usage
+        self.last_messages = all_messages if all_messages else None
         good = [r for r in results if r and not r.startswith("[LLM error")]
 
         if errors := [r for r in results if r.startswith("[LLM error")]:
