@@ -47,18 +47,13 @@ def _render_pipeline_summary(path: Path, run: RunResult) -> str:
     usage_str = "—"
     if run.llm_usage:
         u = run.llm_usage
-        prompt = u["prompt_tokens"]
-        completion = u["completion_tokens"]
-        total = u["total_tokens"]
-        cached = u.get("cached_tokens", 0)
-        reasoning = u.get("reasoning_tokens", 0)
-        prompt_str = f"{prompt:,} prompt"
-        if cached:
-            prompt_str += f" ({cached:,} cached)"
-        completion_str = f"{completion:,} completion"
-        if reasoning:
-            completion_str += f" ({reasoning:,} reasoning)"
-        usage_str = f"{prompt_str} → {completion_str} · {total:,} total"
+        usage_str = (
+            f"{u['prompt_tokens']:,} input"
+            f" · {u['completion_tokens']:,} completions"
+            f" · {u.get('reasoning_tokens', 0):,} reasoning"
+            f" · {u.get('cached_tokens', 0):,} cached"
+            f" · {u['total_tokens']:,} total"
+        )
 
     rows = [
         ("File", str(path)),
