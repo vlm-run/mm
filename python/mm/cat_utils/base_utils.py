@@ -84,6 +84,7 @@ class RunResult:
     encode_elapsed_ms: float | None = None
     generate_elapsed_ms: float | None = None
     llm_usage: dict[str, int] | None = None
+    token_cost: float | None = None
 
 
 def override_extra(
@@ -200,7 +201,11 @@ def coerce_opt_value(raw: str) -> Any:
 
 
 def format_generate_verbose(
-    profile_name: str, elapsed_ms: float, prompt_tokens: int, completion_tokens: int
+    profile_name: str,
+    elapsed_ms: float,
+    prompt_tokens: int,
+    completion_tokens: int,
+    token_cost: float | None = None,
 ) -> str:
     """Format verbose output for the generate step."""
     from mm.display import format_time
@@ -211,6 +216,8 @@ def format_generate_verbose(
         else "no tokens"
     )
     generate_text = f"generate: {profile_name} • {format_time(elapsed_ms)} • {token_info} tokens"
+    if token_cost is not None:
+        generate_text += f" • ${token_cost:.4f}"
     return f"[dim]{generate_text}[/dim]"
 
 
