@@ -201,9 +201,9 @@ def run_encoder(path: Path, kind: BinaryFileKind, spec: PipelineSpec, opts: CatO
         "total_tokens": u.total_tokens,
     }
 
-    from mm.model_price_catalog import PriceCatalog
+    from mm.model_price_catalog import get_price_catalog
 
-    breakdown = PriceCatalog().compute_cost(usage, effective_model(spec, profile.model))
+    breakdown = get_price_catalog().compute_cost(usage, effective_model(spec, profile.model))
     token_cost = breakdown.total_cost if breakdown else None
 
     encode_output = _format_encode_verbose(spec.encode.strategy, messages, encode_elapsed)

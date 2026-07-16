@@ -22,6 +22,7 @@ from __future__ import annotations
 import json
 import re
 from dataclasses import dataclass
+from functools import lru_cache
 from pathlib import Path
 
 _CATALOG_PATH = Path(__file__).parent / "data" / "model-price-catalog.json"
@@ -154,3 +155,9 @@ class PriceCatalog:
             total_cost=input_cost + cached_cost + output_cost,
             model_id=price.id,
         )
+
+
+@lru_cache(maxsize=1)
+def get_price_catalog() -> PriceCatalog:
+    """Return the shared price catalog, built once from the bundled JSON."""
+    return PriceCatalog()
