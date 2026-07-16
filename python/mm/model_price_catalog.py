@@ -108,6 +108,9 @@ class PriceCatalog:
             return exact
 
         norm = _normalize(model)
+        if not norm:
+            return None
+
         for p in self._prices:
             if _normalize(p.id) == norm:
                 return p
