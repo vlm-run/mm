@@ -37,6 +37,12 @@ class DocumentUrl(Encoder):
     kind = "document"
 
     def encode(self, path: Path, **kwargs: Any) -> Iterable[Message]:
+        if kwargs.get("mode", "fast") == "fast":
+            from mm.encoders.document.page_text import DocumentPageText
+
+            yield from DocumentPageText().encode(path, **kwargs)
+            return
+
         data = path.read_bytes()
         mime = guess_mime(path.name)
         size_mb = len(data) / (1024 * 1024)
