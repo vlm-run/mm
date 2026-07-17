@@ -426,6 +426,43 @@ class TestDocumentNative:
         assert part["file"]["file_data"].startswith("data:")
 
 
+class TestDocumentUrl:
+    def test_document_url_registered(self):
+        from mm.encoders import get
+
+        strat = get("document_url", "document")
+        assert strat is not None
+        assert strat.kind == "document"
+
+    def test_document_url_passthrough_pdf(self, tmp_path):
+        from mm.encoders import get
+
+        doc = tmp_path / "test.pdf"
+        doc.write_bytes(b"%PDF-1.4 content here")
+        strat = get("document_url", "document")
+        messages = list(strat.encode(doc))
+        assert len(messages) == 1
+        content = messages[0]["content"]
+        assert len(content) == 1
+        part = content[0]
+        assert part["type"] == "document_url"
+        assert part["document_url"]["url"].startswith("data:application/pdf;base64,")
+        decoded = base64.b64decode(part["document_url"]["url"].split(",", 1)[1])
+        assert decoded == b"%PDF-1.4 content here"
+
+    def test_document_url_passthrough_office_doc(self, tmp_path):
+        from mm.encoders import get
+
+        doc = tmp_path / "report.docx"
+        doc.write_bytes(b"PK\x03\x04 fake docx")
+        strat = get("document_url", "document")
+        messages = list(strat.encode(doc))
+        assert len(messages) == 1
+        part = messages[0]["content"][0]
+        assert part["type"] == "document_url"
+        assert part["document_url"]["url"].startswith("data:")
+
+
 # ---------------------------------------------------------------------------
 # Gemini encoders
 # ---------------------------------------------------------------------------
