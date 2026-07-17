@@ -294,3 +294,50 @@ class TestVerboseCacheReplay:
         ):
             warm, _ = _extract(f, _make_opts("fast", verbose=False))
         assert warm == "cached body"
+
+
+class TestTokenCost:
+    """Estimated LLM token cost surfaces in the cat footer and verbose line."""
+
+    def test_run_token_cost_accumulates_into_total(self, tmp_path):
+        import mm.commands.cat as cat_module
+
+        f = tmp_path / "test.jpg"
+        f.write_bytes(b"\xff\xd8\xff" + b"\x00" * 100)
+        cm1, cm2, cm3, cm4 = _mock_cache_miss()
+        cat_module._total_token_cost = 0.0
+        with cm1, cm2, cm3, cm4, patch("mm.commands.cat._run_fast") as mock:
+            mock.return_value = RunResult(content="ok", token_cost=0.0025)
+            _extract(f, _make_opts("fast"))
+            _extract(f, _make_opts("fast"))
+        assert cat_module._total_token_cost == 0.005
+
+    def test_run_without_token_cost_leaves_total_untouched(self, tmp_path):
+        import mm.commands.cat as cat_module
+
+        f = tmp_path / "test.jpg"
+        f.write_bytes(b"\xff\xd8\xff" + b"\x00" * 100)
+        cm1, cm2, cm3, cm4 = _mock_cache_miss()
+        cat_module._total_token_cost = 0.0
+        with cm1, cm2, cm3, cm4, patch("mm.commands.cat._run_fast") as mock:
+            mock.return_value = RunResult(content="ok", token_cost=None)
+            _extract(f, _make_opts("fast"))
+        assert cat_module._total_token_cost == 0.0
+
+    def test_footer_appends_token_cost_after_throughput(self):
+        from time import perf_counter
+
+        import mm.display as display_mod
+
+        with patch.object(display_mod, "console", MagicMock()) as console:
+            display_mod.display_elapsed(
+                perf_counter() - 1.0, total_bytes=1024 * 1024, token_cost=0.0028
+            )
+            display_mod.display_elapsed(
+                perf_counter() - 1.0, total_bytes=1024 * 1024, token_cost=0.0
+            )
+        with_cost = console.print.call_args_list[0].args[0]
+        without_cost = console.print.call_args_list[1].args[0]
+        assert with_cost.endswith("$0.0028")
+        assert "/s • $0.0028" in with_cost
+        assert "$" not in without_cost

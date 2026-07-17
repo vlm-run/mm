@@ -89,7 +89,7 @@ class LlmBackend:
         self.client = OpenAI(
             base_url=resolved_base,
             api_key=resolved_key or "noop",
-            timeout=120.0,
+            timeout=135.0,
             default_headers=headers,
         )
         self._local = threading.local()
