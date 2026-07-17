@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import tempfile
+import threading
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, Any, Optional, cast
 
@@ -34,6 +35,8 @@ _was_cached: bool = False
 _report_output: list[str] = []
 # Track total estimated LLM token cost across processed files (for the footer)
 _total_token_cost: float = 0.0
+# Protects _total_token_cost updates from concurrent _extract calls
+_cost_lock = threading.Lock()
 
 
 def _is_passthrough(kind: str, ext: str, mode: str) -> bool:
@@ -698,7 +701,8 @@ def _extract(path: Path, opts: CatOpts) -> tuple[str, RunResult | None]:
         run = _run_fast(path, kind, spec, opts)
 
     if run.token_cost is not None:
-        _total_token_cost += run.token_cost
+        with _cost_lock:
+            _total_token_cost += run.token_cost
 
     if content_hash and run.content and not run.content.startswith("["):
         extract_meta(path, kind)
