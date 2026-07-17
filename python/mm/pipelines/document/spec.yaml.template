@@ -49,12 +49,12 @@ encode:
   # sent as-is for models with native document input support.
   # strategy: native
 
-  # ── document_url ───────────────────────────────────────────────
+  # ── document-url ──────────────────────────────────────────────
   # Passes the document directly as a base64 ``document_url`` part —
   # the native input shape accepted by the vlm.run gateway (and other
   # OpenAI-compatible backends with native PDF document input support).
   # No strategy_opts — the raw file is sent as-is.
-  # strategy: document_url
+  # strategy: document-url
 
   # Custom post-processing transform (optional).
   # pyfunc: null

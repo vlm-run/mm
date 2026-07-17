@@ -33,7 +33,7 @@ class DocumentUrl(Encoder):
     models with native document input support (e.g. PDF fan-out).
     """
 
-    name = "document_url"
+    name = "document-url"
     kind = "document"
 
     def encode(self, path: Path, **kwargs: Any) -> Iterable[Message]:

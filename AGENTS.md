@@ -148,7 +148,7 @@ mm/
 │   │   │   ├── page_text.py    # page-text (text extraction per page)
 │   │   │   ├── rasterize.py    # rasterize, rasterize-text (pypdfium2)
 │   │   │   ├── native.py       # native (base64 file)
-│   │   │   └── document_url.py # document_url (base64 document_url)
+│   │   │   └── document_url.py # document-url (base64 document_url)
 │   │   ├── gemini.py           # gemini-native, gemini-chunked (Gemini inline_data)
 │   │   ├── image.py            # resize, tile
 │   │   └── video/              # Video encoders

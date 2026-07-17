@@ -293,7 +293,7 @@ profile (mm.toml)  →  pipeline YAML (generate.*)  →  encoder generate[mode] 
 | `rasterize` | document | Render PDF pages as images. |
 | `rasterize-text` | document | Rasterize + extract text, interleaved. |
 | `native` | document | Raw base64 `file` part (OpenAI-compatible passthrough). |
-| `document_url` | document | Raw base64 `document_url` part (vlm.run gateway native input). |
+| `document-url` | document | Raw base64 `document_url` part (vlm.run gateway native input). |
 | `gemini-native` | document | Gemini `inline_data` Part. |
 
 ### Custom pipeline YAML

@@ -124,7 +124,7 @@ In fast mode, raw text is extracted directly. In accurate mode, the file is conv
 | `rasterize` | Render PDF pages as JPEG images via pypdfium2 |
 | `rasterize-text` | Rasterize + interleave extracted page text |
 | `native` | Raw base64 `file` part (OpenAI-compatible) — for models with native document input |
-| `document_url` | Raw base64 `document_url` part — native input shape for the vlm.run gateway |
+| `document-url` | Raw base64 `document_url` part — native input shape for the vlm.run gateway |
 | `gemini-native` | Raw base64 Gemini `inline_data` Part — for Gemini |
 
 ### Text / Code / Config

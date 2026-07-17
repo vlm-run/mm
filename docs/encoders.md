@@ -852,7 +852,7 @@ graph LR
 
 ---
 
-#### `document_url`
+#### `document-url`
 
 Send the entire document file as a base64 `document_url` part — the native input shape accepted by the vlm.run gateway (and other OpenAI-compatible backends with native PDF document input support). No page extraction, rasterization, or text parsing: the raw file is sent as-is. The gateway-focused counterpart to `native` (OpenAI `file` part) and `gemini-native` (Gemini `inline_data`).
 
