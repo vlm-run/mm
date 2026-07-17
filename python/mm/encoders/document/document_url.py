@@ -1,4 +1,4 @@
-"""Document encoding strategies: ``document_url``.
+"""``document-url``: encoding strategy optimized for vlmrun gateway.
 
 Sends the entire document file as a base64-encoded ``document_url`` part —
 the native input shape accepted by the vlm.run gateway (and other
@@ -20,6 +20,7 @@ from typing import Any, Iterable
 from mm.constants import guess_mime
 from mm.encoders import register
 from mm.encoders.base import Encoder, Message, to_message
+from mm.pipelines.schema import Generate
 from mm.utils import get_b64
 
 logger = logging.getLogger(__name__)
@@ -35,14 +36,12 @@ class DocumentUrl(Encoder):
 
     name = "document-url"
     kind = "document"
+    generate = {
+        "accurate": Generate(prompt="", max_tokens=16384),
+        "fast": Generate(prompt="", max_tokens=16384),
+    }
 
     def encode(self, path: Path, **kwargs: Any) -> Iterable[Message]:
-        if kwargs.get("mode", "fast") == "fast":
-            from mm.encoders.document.page_text import DocumentPageText
-
-            yield from DocumentPageText().encode(path, **kwargs)
-            return
-
         data = path.read_bytes()
         mime = guess_mime(path.name)
         size_mb = len(data) / (1024 * 1024)
