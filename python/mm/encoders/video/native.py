@@ -1,9 +1,9 @@
-"""Native base64 video passthrough encoder.
+"""Native base64 video encoder.
 
 Sends the entire video file as a base64-encoded ``video_url`` part — the
-OpenAI-compatible counterpart to the Gemini ``inline_data`` passthrough
-(``gemini-native``). No frame extraction, probing, or chunking: the raw
-file is sent as-is for models with native video input support.
+OpenAI-compatible counterpart to the Gemini ``inline_data`` (``gemini-native``).
+No frame extraction, probing, or chunking: the raw file is sent as-is for models
+with native video input support.
 """
 
 from __future__ import annotations

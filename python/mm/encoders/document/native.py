@@ -1,9 +1,9 @@
-"""Native base64 document passthrough encoder.
+"""Document encoding strategies: ``native``.
 
 Sends the entire document file as a base64-encoded ``file`` part — the
-OpenAI-compatible counterpart to the Gemini ``inline_data`` passthrough
-(``gemini-native``). No page extraction, rasterization, or text parsing:
-the raw file is sent as-is for models with native document input support.
+OpenAI-compatible counterpart to the Gemini ``inline_data`` (``gemini-native``).
+No page extraction, rasterization, or text parsing: the raw file is sent as-is
+for models with native document input support.
 """
 
 from __future__ import annotations

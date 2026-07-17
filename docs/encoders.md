@@ -586,7 +586,7 @@ graph LR
 
 #### `gemini-native`
 
-Gemini native `inline_data` passthrough. Sends the entire video file. Rust fast-path with Python fallback.
+Gemini native `inline_data` encoder. Sends the entire video file. Rust fast-path with Python fallback.
 
 ```mermaid
 %%{init: {'look': 'neo'} }%%
@@ -611,7 +611,7 @@ graph LR
 
 #### `gemini-chunked`
 
-Gemini passthrough with duration-based chunking via ffmpeg. Each chunk as a separate Gemini Part. **Parameters:** `max_seconds=120, overlap=10`
+Gemini encoder with duration-based chunking via ffmpeg. Each chunk as a separate Gemini Part. **Parameters:** `max_seconds=120, overlap=10`
 
 ```mermaid
 %%{init: {'look': 'neo'} }%%
@@ -879,7 +879,7 @@ graph LR
 
 #### `gemini-native`
 
-Gemini native `inline_data` passthrough. Sends the entire document file. Rust fast-path with Python fallback.
+Gemini native `inline_data` encoder. Sends the entire document file. Rust fast-path with Python fallback.
 
 ```mermaid
 %%{init: {'look': 'neo'} }%%

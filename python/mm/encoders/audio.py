@@ -1,4 +1,4 @@
-"""Audio encoding strategies: native passthrough, transcription, and Gemini.
+"""Audio encoding strategies: native, transcription, and Gemini.
 
 ``AudioNative`` base64-encodes the raw audio file as an OpenAI ``input_audio``
 part — the native way to send audio to multimodal LLMs. Generate prompts come

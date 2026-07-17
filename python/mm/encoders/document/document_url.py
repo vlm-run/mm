@@ -1,4 +1,4 @@
-"""Gateway ``document_url`` passthrough encoder.
+"""Document encoding strategies: ``document_url``.
 
 Sends the entire document file as a base64-encoded ``document_url`` part —
 the native input shape accepted by the vlm.run gateway (and other
