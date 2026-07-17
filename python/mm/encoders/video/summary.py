@@ -15,8 +15,8 @@ from pathlib import Path
 from typing import Any, Iterable
 
 from mm.encoders import register, resolve_provider
-from mm.encoders.base import Encoder, Message
-from mm.encoders.image import _image_part, _to_message
+from mm.encoders.base import Encoder, Message, to_message
+from mm.encoders.image import _image_part
 from mm.encoders.video._transcript import encode_with_transcript
 
 logger = logging.getLogger(__name__)
@@ -68,7 +68,7 @@ class VideoSummary(Encoder):
         from mm.video import VideoReader, pyav_runnable
 
         if not pyav_runnable():
-            yield _to_message([{"type": "text", "text": f"[PyAV not runnable for {path.name}]"}])
+            yield to_message([{"type": "text", "text": f"[PyAV not runnable for {path.name}]"}])
             return
 
         num_frames: int = kwargs.get("num_frames", 12)
@@ -81,7 +81,7 @@ class VideoSummary(Encoder):
         with VideoReader(path) as reader:
             video_duration = reader.duration
             if video_duration <= 0:
-                yield _to_message(
+                yield to_message(
                     [{"type": "text", "text": f"[Cannot determine duration for {path.name}]"}]
                 )
                 return
@@ -101,7 +101,7 @@ class VideoSummary(Encoder):
             frames = reader.frames(timestamps, width=max_width).collect()
 
             if not frames:
-                yield _to_message(
+                yield to_message(
                     [{"type": "text", "text": f"[No frames extracted from {path.name}]"}]
                 )
                 return
@@ -122,7 +122,7 @@ class VideoSummary(Encoder):
                 b64, mime = frame.encode_jpeg()
                 parts.append(_image_part(b64, mime, provider))
 
-            yield _to_message(parts)
+            yield to_message(parts)
 
 
 class VideoSummaryWithTranscript(Encoder):

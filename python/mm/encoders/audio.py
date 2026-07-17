@@ -19,7 +19,7 @@ from pathlib import Path
 from typing import Any, Iterable
 
 from mm.encoders import register
-from mm.encoders.base import Encoder, Message
+from mm.encoders.base import Encoder, Message, to_message
 from mm.utils import get_b64
 
 logger = logging.getLogger(__name__)
@@ -34,10 +34,6 @@ _EXT_TO_FORMAT: dict[str, str] = {
     ".opus": "opus",
     ".webm": "webm",
 }
-
-
-def _to_message(parts: list[dict[str, Any]]) -> Message:
-    return {"role": "user", "content": parts}
 
 
 class AudioNative(Encoder):
@@ -70,7 +66,7 @@ class AudioNative(Encoder):
         )
 
         if not pyav_runnable():
-            yield _to_message(
+            yield to_message(
                 [
                     {
                         "type": "input_audio",
@@ -85,7 +81,7 @@ class AudioNative(Encoder):
         duration = probe_duration(path)
         if duration <= max_seconds:
             logger.debug("native [path=%s, duration=%.1fs, single]", path.name, duration)
-            yield _to_message(
+            yield to_message(
                 [
                     {
                         "type": "input_audio",
@@ -123,7 +119,7 @@ class AudioNative(Encoder):
             finally:
                 seg_path.unlink(missing_ok=True)
 
-            return _to_message(
+            return to_message(
                 [
                     {
                         "type": "input_audio",
@@ -178,7 +174,7 @@ class AudioTranscribe(Encoder):
         from mm.ffmpeg import ffmpeg_available
 
         if not ffmpeg_available() and backend != "openai":
-            yield _to_message(
+            yield to_message(
                 [
                     {
                         "type": "text",
@@ -189,7 +185,7 @@ class AudioTranscribe(Encoder):
             return
 
         if not transcribe_available():
-            yield _to_message(
+            yield to_message(
                 [
                     {
                         "type": "text",
@@ -213,7 +209,7 @@ class AudioTranscribe(Encoder):
 
         transcript = whisper_result.text
         if not transcript or transcript.startswith("["):
-            yield _to_message(
+            yield to_message(
                 [
                     {
                         "type": "text",
@@ -255,7 +251,7 @@ class AudioTranscribe(Encoder):
             whisper_result.model_size,
             whisper_result.elapsed_ms,
         )
-        yield _to_message(parts)
+        yield to_message(parts)
 
 
 class GeminiAudio(Encoder):
@@ -284,7 +280,7 @@ class GeminiAudio(Encoder):
 
         if not pyav_runnable():
             data = path.read_bytes()
-            yield _to_message(
+            yield to_message(
                 [
                     {
                         "type": "input_audio",
@@ -303,7 +299,7 @@ class GeminiAudio(Encoder):
             logger.debug(
                 "audio_gemini_native [path=%s, duration=%.1fs, single]", path.name, duration
             )
-            yield _to_message(
+            yield to_message(
                 [
                     {
                         "type": "input_audio",
@@ -340,7 +336,7 @@ class GeminiAudio(Encoder):
                 seg_data = seg_path.read_bytes()
             finally:
                 seg_path.unlink(missing_ok=True)
-            return _to_message(
+            return to_message(
                 [
                     {
                         "type": "input_audio",

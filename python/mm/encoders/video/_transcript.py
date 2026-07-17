@@ -23,7 +23,7 @@ from pathlib import Path
 from typing import Any, Iterable
 
 from mm.encoders import Message
-from mm.encoders.image import _to_message
+from mm.encoders.base import to_message
 
 logger = logging.getLogger(__name__)
 
@@ -81,7 +81,7 @@ def transcript_messages(
     else:
         text = f"Audio transcript of {path.name}:\n\n{transcript}"
 
-    return [_to_message([{"type": "text", "text": text}])]
+    return [to_message([{"type": "text", "text": text}])]
 
 
 def encode_with_transcript(

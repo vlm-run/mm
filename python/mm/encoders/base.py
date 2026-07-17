@@ -33,6 +33,19 @@ from mm.pipelines.schema import Generate
 Message = dict[str, Any]  # OpenAI-compatible message dict: ``{"role": "user", "content": [...]}``.
 
 
+def to_message(parts: list[dict[str, Any]]) -> Message:
+    """Wrap content parts in a complete OpenAI-compatible Message dict.
+
+    Args:
+        parts: List of content-part dicts (e.g. ``{"type": "text", ...}``,
+            ``{"type": "image_url", ...}``).
+
+    Returns:
+        ``{"role": "user", "content": parts}``.
+    """
+    return {"role": "user", "content": parts}
+
+
 class Encoder(ABC):
     """Abstract base for media encoders.
 

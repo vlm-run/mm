@@ -14,8 +14,7 @@ from typing import Any, Iterable
 
 from mm.constants import guess_mime
 from mm.encoders import register
-from mm.encoders.base import Encoder, Message
-from mm.encoders.image import _to_message
+from mm.encoders.base import Encoder, Message, to_message
 from mm.utils import get_b64
 
 logger = logging.getLogger(__name__)
@@ -37,7 +36,7 @@ class VideoNative(Encoder):
         mime = guess_mime(path.name)
         size_mb = len(data) / (1024 * 1024)
         logger.debug("native_video [path=%s, size=%.1fMB]", path.name, size_mb)
-        yield _to_message(
+        yield to_message(
             [
                 {
                     "type": "video_url",

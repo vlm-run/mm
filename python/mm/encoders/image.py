@@ -21,7 +21,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, Iterable, Union
 
 from mm.encoders import resolve_provider, register
-from mm.encoders.base import Encoder, Message
+from mm.encoders.base import Encoder, Message, to_message
 from mm.utils import get_b64
 
 if TYPE_CHECKING:
@@ -79,11 +79,6 @@ def _image_part(b64: str, mime: str, provider: str) -> dict[str, Any]:
     if provider == "gemini":
         return _gemini_image_part(b64, mime)
     return _openai_image_part(b64, mime)
-
-
-def _to_message(parts: list[dict[str, Any]]) -> Message:
-    """Wrap content parts in a complete Message dict."""
-    return {"role": "user", "content": parts}
 
 
 def _encode_pil_image(
@@ -191,7 +186,7 @@ class ImageResize(Encoder):
             result = _pillow_resize(path, max_width)
 
         part = _image_part(str(result["base64"]), str(result["mime"]), provider)
-        yield _to_message([part])
+        yield to_message([part])
 
 
 class ImageTile(Encoder):
@@ -249,7 +244,7 @@ class ImageTile(Encoder):
                 w,
                 h,
             )
-            yield _to_message(parts)
+            yield to_message(parts)
             return
 
         parts = [
@@ -282,7 +277,7 @@ class ImageTile(Encoder):
             rows,
             len(parts),
         )
-        yield _to_message(parts)
+        yield to_message(parts)
 
 
 register(ImageResize())

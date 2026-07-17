@@ -18,8 +18,7 @@ from pathlib import Path
 from typing import Any, Iterable
 
 from mm.encoders import register
-from mm.encoders.base import Encoder, Message
-from mm.encoders.image import _to_message
+from mm.encoders.base import Encoder, Message, to_message
 
 logger = logging.getLogger(__name__)
 
@@ -114,7 +113,7 @@ class VideoCaptions(Encoder):
                         f"Embedded captions from {path.name} "
                         f"({len(entries)} entries):\n\n" + "\n".join(lines)
                     )
-                    yield _to_message([{"type": "text", "text": text}])
+                    yield to_message([{"type": "text", "text": text}])
                     return
 
         if fallback_to_whisper:
@@ -143,7 +142,7 @@ class VideoCaptions(Encoder):
                 yield from msgs
                 return
 
-        yield _to_message(
+        yield to_message(
             [{"type": "text", "text": f"[No captions or transcript available for {path.name}]"}]
         )
 

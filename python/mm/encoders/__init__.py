@@ -27,9 +27,17 @@ import threading
 from pathlib import Path
 from typing import Any, Iterable, Protocol, runtime_checkable
 
-from mm.encoders.base import Encoder, Message
+from mm.encoders.base import Encoder, Message, to_message
 
-__all__ = ["Encoder", "Message", "MessageStrategy", "register", "register_encoder", "get"]
+__all__ = [
+    "Encoder",
+    "Message",
+    "MessageStrategy",
+    "register",
+    "register_encoder",
+    "get",
+    "to_message",
+]
 
 
 @runtime_checkable
