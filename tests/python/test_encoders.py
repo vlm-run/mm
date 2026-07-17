@@ -387,6 +387,45 @@ class TestDocumentRasterizeText:
             assert "Page one text" in page_text_parts[0]
 
 
+class TestDocumentNative:
+    def test_native_registered(self):
+        from mm.encoders import get
+
+        strat = get("native", "document")
+        assert strat is not None
+        assert strat.kind == "document"
+
+    def test_native_passthrough_pdf(self, tmp_path):
+        from mm.encoders import get
+
+        doc = tmp_path / "test.pdf"
+        doc.write_bytes(b"%PDF-1.4 content here")
+        strat = get("native", "document")
+        messages = list(strat.encode(doc))
+        assert len(messages) == 1
+        content = messages[0]["content"]
+        assert len(content) == 1
+        part = content[0]
+        assert part["type"] == "file"
+        assert part["file"]["filename"] == "test.pdf"
+        assert part["file"]["file_data"].startswith("data:application/pdf;base64,")
+        decoded = base64.b64decode(part["file"]["file_data"].split(",", 1)[1])
+        assert decoded == b"%PDF-1.4 content here"
+
+    def test_native_passthrough_office_doc(self, tmp_path):
+        from mm.encoders import get
+
+        doc = tmp_path / "report.docx"
+        doc.write_bytes(b"PK\x03\x04 fake docx")
+        strat = get("native", "document")
+        messages = list(strat.encode(doc))
+        assert len(messages) == 1
+        part = messages[0]["content"][0]
+        assert part["type"] == "file"
+        assert part["file"]["filename"] == "report.docx"
+        assert part["file"]["file_data"].startswith("data:")
+
+
 # ---------------------------------------------------------------------------
 # Gemini encoders
 # ---------------------------------------------------------------------------
