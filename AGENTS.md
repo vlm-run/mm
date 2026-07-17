@@ -146,7 +146,9 @@ mm/
 │   │   ├── document/
 │   │   │   ├── __init__.py     # (empty — encoders self-register on import)
 │   │   │   ├── page_text.py    # page-text (text extraction per page)
-│   │   │   └── rasterize.py    # rasterize, rasterize-text (pypdfium2)
+│   │   │   ├── rasterize.py    # rasterize, rasterize-text (pypdfium2)
+│   │   │   ├── native.py       # native (base64 file passthrough)
+│   │   │   └── document_url.py # document_url (base64 document_url passthrough)
 │   │   ├── gemini.py           # gemini-native, gemini-chunked (Gemini inline_data)
 │   │   ├── image.py            # resize, tile
 │   │   └── video/              # Video encoders

@@ -827,6 +827,56 @@ graph LR
 
 ---
 
+#### `native`
+
+Send the entire document file as a base64 `file` part (OpenAI-compatible). No page extraction, rasterization, or text parsing — the raw file is sent as-is for models with native document input support. The OpenAI-compatible counterpart to `gemini-native`.
+
+```mermaid
+%%{init: {'look': 'neo'} }%%
+graph LR
+  doc("📄 document")
+
+  subgraph encode ["Encode"]
+    read("Read file bytes")
+    b64("Base64 encode\nfile data URL")
+  end
+
+  subgraph message ["Message"]
+    msg("file part")
+  end
+
+  doc --> read --> b64 --> msg
+  style encode rx:10px,ry:10px
+  style message rx:10px,ry:10px
+```
+
+---
+
+#### `document_url`
+
+Send the entire document file as a base64 `document_url` part — the native input shape accepted by the vlm.run gateway (and other OpenAI-compatible backends with native PDF document input support). No page extraction, rasterization, or text parsing: the raw file is sent as-is. The gateway-focused counterpart to `native` (OpenAI `file` part) and `gemini-native` (Gemini `inline_data`).
+
+```mermaid
+%%{init: {'look': 'neo'} }%%
+graph LR
+  doc("📄 document")
+
+  subgraph encode ["Encode"]
+    read("Read file bytes")
+    b64("Base64 encode\ndocument_url data URL")
+  end
+
+  subgraph message ["Message"]
+    msg("document_url part")
+  end
+
+  doc --> read --> b64 --> msg
+  style encode rx:10px,ry:10px
+  style message rx:10px,ry:10px
+```
+
+---
+
 #### `gemini-native`
 
 Gemini native `inline_data` passthrough. Sends the entire document file. Rust fast-path with Python fallback.
