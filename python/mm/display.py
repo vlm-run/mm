@@ -452,7 +452,12 @@ def format_time(elapsed_ms: float) -> str:
 
 
 def display_elapsed(
-    start_time: float, total_bytes: int = 0, cached: bool = False, *, prefix: str | None = None
+    start_time: float,
+    total_bytes: int = 0,
+    cached: bool = False,
+    *,
+    prefix: str | None = None,
+    token_cost: float | None = None,
 ) -> None:
     """display elapsed time since start_time with throughput metrics.
 
@@ -463,6 +468,7 @@ def display_elapsed(
         total_bytes: total bytes processed (for throughput calculation)
         cached: whether the result was served from cache
         prefix: optional leading text (e.g. ``"took "`` for grep)
+        token_cost: total estimated LLM token cost in USD (appended when non-zero)
     """
     assert start_time > 0
     elapsed_ms = (perf_counter() - start_time) * 1000
@@ -489,6 +495,9 @@ def display_elapsed(
 
         output_parts.append(throughput_str)
 
+    if token_cost:
+        output_parts.append(f"${token_cost:.4f}")
+
     output_text = " \u2022 ".join(output_parts)
     output_text = f"{prefix} {output_text}" if prefix else output_text
     console.print(output_text)
@@ -507,15 +516,17 @@ def display_elapsed_wrapper(start_time: float, prefix: str | None = None):
         if successful[0]:
             total_bytes = 0
             cached = False
+            token_cost = 0.0
             try:
                 from mm.commands import cat as cat_module
 
                 total_bytes = getattr(cat_module, "_total_bytes_processed", 0)
                 cached = getattr(cat_module, "_was_cached", False)
+                token_cost = getattr(cat_module, "_total_token_cost", 0.0)
             except (ImportError, AttributeError):
                 pass
 
-            display_elapsed(start_time, total_bytes, cached, prefix=prefix)
+            display_elapsed(start_time, total_bytes, cached, prefix=prefix, token_cost=token_cost)
 
             try:
                 from mm.commands import cat as cat_module

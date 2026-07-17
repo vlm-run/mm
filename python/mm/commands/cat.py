@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import tempfile
+import threading
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, Any, Optional, cast
 
@@ -32,6 +33,10 @@ _total_bytes_processed = 0
 _was_cached: bool = False
 # Collect --report output messages (printed after timing footer by display_if_successful)
 _report_output: list[str] = []
+# Track total estimated LLM token cost across processed files (for the footer)
+_total_token_cost: float = 0.0
+# Protects _total_token_cost updates from concurrent _extract calls
+_cost_lock = threading.Lock()
 
 
 def _is_passthrough(kind: str, ext: str, mode: str) -> bool:
@@ -450,10 +455,11 @@ def cat_cmd(
     results: list[dict] = []
     _emitted = 0
 
-    global _total_bytes_processed, _was_cached, _report_output
+    global _total_bytes_processed, _was_cached, _report_output, _total_token_cost
     _total_bytes_processed = 0
     _was_cached = False
     _report_output = []
+    _total_token_cost = 0.0
 
     valid_paths: list[Path] = []
     for file_path in paths:
@@ -610,7 +616,7 @@ def _extract(path: Path, opts: CatOpts) -> tuple[str, RunResult | None]:
     :class:`RunResult` from the encode→generate pipeline, or ``None``
     for passthrough / cache-hit / dry-run paths.
     """
-    global _was_cached
+    global _was_cached, _total_token_cost
     kind = file_kind(path)
     ext = path.suffix.lower()
     if opts.dry_run:
@@ -693,6 +699,10 @@ def _extract(path: Path, opts: CatOpts) -> tuple[str, RunResult | None]:
         run = _run_accurate(path, kind, spec, opts)
     else:
         run = _run_fast(path, kind, spec, opts)
+
+    if run.token_cost is not None:
+        with _cost_lock:
+            _total_token_cost += run.token_cost
 
     if content_hash and run.content and not run.content.startswith("["):
         extract_meta(path, kind)
