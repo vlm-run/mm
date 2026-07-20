@@ -2,10 +2,8 @@
 
 from __future__ import annotations
 
-import tempfile
-from dataclasses import dataclass, field
 from pathlib import Path
-from typing import TYPE_CHECKING, Annotated, Any, Optional, cast
+from typing import TYPE_CHECKING, Annotated, Any, Optional
 
 import typer
 
@@ -14,50 +12,23 @@ from mm.cat_utils.base_utils import (
     RunResult,
     coerce_opt_value,
     collect_overrides,
-    effective_model,
     maybe_confirm_large_cat_batch,
-    override_extra,
 )
-from mm.cat_utils.extract_meta import extract_meta
+from mm.commands.cat_extract import CatRunState, write_report
+from mm.commands.cat_extract import extract as _extract
+from mm.commands.cat_render import RenderContext
 from mm.common.audio._base import BackendLabel
 from mm.pipe import read_paths_from_stdin
-from mm.utils import Format, file_kind
+from mm.utils import Format
 
 if TYPE_CHECKING:
-    from mm.constants import BinaryFileKind
     from mm.pipelines.schema import PipelineSpec
 
-
-@dataclass
-class CatRunState:
-    """Per-invocation accumulator for ``mm cat`` timing/cost/report state.
-
-    Replaces the former module-level globals. ``token_cost`` and ``total_bytes``
-    are accumulated in the main thread after concurrent work completes;
-    ``was_cached`` and ``report_output`` are set/appended from ``_extract``
-    (idempotent bool set, GIL-safe list append).
-    """
-
-    total_bytes: int = 0
-    was_cached: bool = False
-    report_output: list[str] = field(default_factory=list)
-    total_token_cost: float = 0.0
-
+__all__ = [
+    "_extract",
+]
 
 _run_state: CatRunState | None = None
-
-
-def _is_passthrough(kind: str, ext: str, mode: str) -> bool:
-    """Return True when the file should bypass the encode→generate pipeline."""
-    from mm.constants import OFFICE_EXTS
-
-    return kind == "text" or (
-        kind == "document"
-        and (
-            (ext != ".pdf" and ext not in OFFICE_EXTS)
-            or (ext in OFFICE_EXTS and mode != "accurate")
-        )
-    )
 
 
 def _validate_extra_body_json(raw: str | None) -> str | None:
@@ -460,9 +431,6 @@ def cat_cmd(
     )
 
     multi_file = len(paths) > 1
-    results: list[dict] = []
-    _emitted = 0
-
     state = CatRunState()
     global _run_state
     _run_state = state
@@ -486,59 +454,7 @@ def cat_cmd(
             content = "\n".join(lines[:n] if n >= 0 else lines[n:])
         return content, run_result
 
-    def _render(p: Path, content: str) -> None:
-        nonlocal _emitted
-        if fmt in ("json", "pretty-json", "dataset-jsonl", "dataset-hf"):
-            if fmt in ("json", "pretty-json"):
-                # ``pretty-json`` shares the wire shape with ``json`` --
-                # only the serializer indentation differs (always
-                # indented vs TTY-conditional). Same {path, mode,
-                # content} envelope so downstream parsers don't have
-                # to special-case the format flag.
-                entry: dict = {"path": str(p), "mode": mode, "content": content}
-            else:
-                entry = {
-                    "path": str(p),
-                    "mode": mode,
-                    "content": content,
-                    "name": p.name,
-                    "type": file_kind(p),
-                    "size": p.stat().st_size,
-                }
-            results.append(entry)
-        elif fmt == "rich":
-            if multi_file:
-                from mm.display import output_console
-
-                if _emitted > 0:
-                    output_console.print("\n====")
-                output_console.print(f"<{p.name}>")
-            _display_rich(p, content, mode, n, skip_formatting=dry_run)
-            _emitted += 1
-        else:
-            if multi_file:
-                if _emitted > 0:
-                    print("\n====")
-                print(f"<{p.name}>")
-
-            _dim_prefix = "[dim]"
-            lines = content.split("\n")
-            plain_lines: list[str] = []
-            rich_lines: list[str] = []
-
-            for ln in lines:
-                if _dim_prefix in ln:
-                    rich_lines.append(ln)
-                else:
-                    plain_lines.append(ln)
-
-            if plain_lines:
-                print("\n".join(plain_lines))
-            if rich_lines:
-                from mm.display import output_console
-
-                output_console.print("\n".join(rich_lines))
-            _emitted += 1
+    renderer = RenderContext(fmt=fmt, mode=mode, n=n, multi_file=multi_file, dry_run=dry_run)
 
     report_entries: list[tuple[Path, RunResult]] = []
 
@@ -555,8 +471,6 @@ def cat_cmd(
             import mm.llm as _llm_mod
 
             if _llm_mod.streamed_to_stdout:
-                # Content already written to stdout;
-                # emit the verbose suffix (pipeline tree + timing) if present.
                 parts = content.split("\n\n")
                 suffix_parts = [p for p in parts if "[dim]" in p]
                 if suffix_parts:
@@ -564,7 +478,7 @@ def cat_cmd(
 
                     output_console.print("\n".join(suffix_parts))
             else:
-                _render(p, content)
+                renderer.render(p, content)
             if run_result is not None:
                 if run_result.token_cost is not None:
                     state.total_token_cost += run_result.token_cost
@@ -580,362 +494,13 @@ def cat_cmd(
                 except Exception as exc:
                     typer.echo(f"Error processing {p}: {exc}", err=True)
                     continue
-                _render(p, content)
+                renderer.render(p, content)
                 if run_result is not None:
                     if run_result.token_cost is not None:
                         state.total_token_cost += run_result.token_cost
                     report_entries.append((p, run_result))
 
-    if fmt in ("json", "pretty-json", "dataset-jsonl", "dataset-hf") and results:
-        from mm.display import emit_rows
-
-        emit_rows(fmt, results, output_dir=str(output_dir) if output_dir else "mm_dataset")
+    renderer.emit_results(output_dir)
 
     if opts.report and report_entries:
-        _write_report(report_entries, opts.output_dir, state)
-
-
-# ---------------------------------------------------------------------------
-# Dispatch
-# ---------------------------------------------------------------------------
-
-
-def _write_report(
-    entries: list[tuple[Path, RunResult]], output_dir: Path | None, state: CatRunState
-) -> None:
-    """Write a combined HTML report for all collected pipeline runs."""
-    from datetime import datetime
-
-    from mm.cat_utils.report import generate_report
-
-    html_doc = generate_report(entries)
-    out_dir = output_dir or Path("mm_reports")
-    out_dir.mkdir(parents=True, exist_ok=True)
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    if len(entries) == 1:
-        filename = f"{entries[0][0].name}_{timestamp}_report.html"
-    else:
-        filename = f"multi_{timestamp}_report.html"
-    out_path = out_dir / filename
-    out_path.write_text(html_doc, encoding="utf-8")
-    state.report_output.append(f"Report written to {out_path}")
-
-
-def _extract(
-    path: Path, opts: CatOpts, state: CatRunState | None = None
-) -> tuple[str, RunResult | None]:
-    """Pipeline-driven extraction dispatch with unified extraction caching.
-
-    Returns ``(content, run_result)`` where ``run_result`` is the
-    :class:`RunResult` from the encode→generate pipeline, or ``None``
-    for passthrough / cache-hit / dry-run paths.
-    """
-    if state is None:
-        state = CatRunState()
-    kind = file_kind(path)
-    ext = path.suffix.lower()
-    if opts.dry_run:
-        return _dry_run_preview(path, kind, ext, opts), None
-
-    if _is_passthrough(kind, ext, opts.mode):
-        from mm.cat_utils.extract_meta import extract_text
-
-        assert kind in ("document", "text")
-        content, cached = extract_text(path, kind)  # type: ignore[arg-type]
-        if cached:
-            state.was_cached = True
-        return content, None
-
-    kind = cast("BinaryFileKind", kind)
-    from mm.constants import OFFICE_EXTS
-    from mm.encoders.auto_strategy import resolve_auto_strategy
-    from mm.pipelines import apply_overrides
-    from mm.pipelines.pipelines_utils import resolve_pipeline
-    from mm.profile import get_profile
-    from mm.store.utils import get_content_hash, shared_db
-
-    db = shared_db()
-    profile = get_profile()
-
-    # Resolve & merge the pipeline spec exactly once so the cache key reflects
-    # the effective model and the merged extra_body — required for correct
-    # invalidation on `--model` / `--generate.extra-body` changes.
-    spec = resolve_pipeline(opts, kind)
-    spec = apply_overrides(spec, opts.encode_overrides or None, opts.generate_overrides or None)
-    spec = resolve_auto_strategy(path, spec, opts)
-
-    eff_model = effective_model(spec, profile.model)
-    extra = override_extra(
-        opts.encode_overrides,
-        opts.generate_overrides,
-        opts.pipelines,
-    )
-
-    extraction_id: str | None = None
-    content_hash = get_content_hash(path)
-    if content_hash:
-        from mm.store.utils import get_extraction_id
-
-        extraction_id = get_extraction_id(
-            content_hash,
-            profile.name,
-            eff_model,
-            opts.mode,
-            False,
-            extra=extra,
-        )
-
-        if not opts.no_cache:
-            cached = db.get_extraction(extraction_id)
-            if cached is not None:
-                state.was_cached = True
-                if opts.report:
-                    state.report_output.append(
-                        f"Report skipped for {path.name}: result served from cache. "
-                        "Use --no-cache to regenerate."
-                    )
-                if opts.verbose:
-                    meta = db.get_extraction_metadata(extraction_id)
-                    suffix = meta.get("verbose_suffix") if meta else None
-                    if suffix:
-                        return f"{cached}\n\n{suffix}", None
-                return cached, None
-        else:
-            db.evict_extraction(extraction_id)
-
-    if ext in OFFICE_EXTS and opts.mode == "accurate":
-        with tempfile.TemporaryDirectory(prefix="mm-office-") as tmpdir:
-            from mm._mm import office_to_pdf
-
-            tmp_pdf = Path(tmpdir) / f"{path.stem}.pdf"
-            office_to_pdf(str(path), str(tmp_pdf))
-            run = _run_accurate(tmp_pdf, kind, spec, opts, meta_path=path)
-    elif opts.mode == "accurate":
-        run = _run_accurate(path, kind, spec, opts)
-    else:
-        run = _run_fast(path, kind, spec, opts)
-
-    if content_hash and run.content and not run.content.startswith("["):
-        extract_meta(path, kind)
-        uri = str(path.resolve())
-        meta = {"verbose_suffix": run.verbose_suffix} if run.verbose_suffix else None
-        try:
-            db.put_extraction(
-                uri=uri,
-                content_hash=content_hash,
-                profile=profile.name,
-                model=eff_model,
-                content=run.content,
-                mode=opts.mode,
-                detail=False,
-                extra=extra,
-                metadata=meta,
-            )
-        except RuntimeError:
-            return _format_run(run, opts.verbose), run
-    return _format_run(run, opts.verbose), run
-
-
-def _format_run(run: RunResult, verbose: bool) -> str:
-    """Render a :class:`RunResult` for display, conditionally including the suffix."""
-    if verbose and run.verbose_suffix:
-        return f"{run.content}\n\n{run.verbose_suffix}"
-    return run.content
-
-
-def _run_fast(path: Path, kind: BinaryFileKind, spec: PipelineSpec, opts: CatOpts) -> RunResult:
-    """Fast mode: run the kind's fast pipeline."""
-    from mm.cat_utils.run_encoder import run_encoder
-
-    if getattr(opts, "no_generate", False):
-        import dataclasses
-
-        spec = dataclasses.replace(spec, generate=None)
-    if spec.encode.strategy:
-        return run_encoder(path, kind, spec, opts)
-
-    return RunResult(content=extract_meta(path, kind, no_cache=opts.no_cache))
-
-
-def _run_accurate(
-    path: Path,
-    kind: BinaryFileKind,
-    spec: PipelineSpec,
-    opts: CatOpts,
-    *,
-    meta_path: Path | None = None,
-) -> RunResult:
-    """Accurate mode: LLM-powered semantic extraction.
-
-    ``spec`` is the merged (YAML + CLI) pipeline spec resolved by
-    ``_extract``; this function does no further override application
-    ``meta_path`` reference to the original office file
-    """
-    if getattr(opts, "no_generate", False):
-        import dataclasses
-
-        spec = dataclasses.replace(spec, generate=None)
-
-    extract_meta(meta_path or path, kind, no_cache=opts.no_cache)
-
-    return _accurate_dispatch(path, kind, spec, opts)
-
-
-def _accurate_dispatch(
-    path: Path, kind: BinaryFileKind, spec: PipelineSpec, opts: CatOpts
-) -> RunResult:
-    """Dispatch accurate-mode extraction based on file kind."""
-    from mm.cat_utils.accurate_audio import accurate_audio
-    from mm.cat_utils.accurate_image import accurate_image
-    from mm.cat_utils.accurate_video import accurate_video
-
-    if kind == "image":
-        return accurate_image(path, spec, opts)
-    if kind == "video":
-        return accurate_video(path, spec, opts)
-    if kind == "audio":
-        return accurate_audio(path, spec, opts)
-
-    from mm.cat_utils.run_encoder import run_encoder
-
-    if spec.encode.strategy:
-        return run_encoder(path, kind, spec, opts)
-
-    return RunResult(content=extract_meta(path, kind))
-
-
-def _display_rich(
-    path: Path, content: str, mode: str, n: int | None, *, skip_formatting: bool = False
-) -> None:
-    from mm.display import output_console
-
-    ext = path.suffix.lstrip(".")
-    kind = file_kind(path)
-    is_binary = kind in ("image", "document", "video", "audio") or "\x00" in content[:512]
-
-    if (
-        not skip_formatting
-        and not is_binary
-        and ext
-        in (
-            "py",
-            "rs",
-            "js",
-            "ts",
-            "tsx",
-            "jsx",
-            "go",
-            "java",
-            "c",
-            "cpp",
-            "h",
-            "hpp",
-            "rb",
-            "sh",
-            "bash",
-            "zsh",
-            "yaml",
-            "yml",
-            "toml",
-            "json",
-            "md",
-            "html",
-            "css",
-            "sql",
-            "xml",
-        )
-    ):
-        from rich.syntax import Syntax
-
-        syntax = Syntax(
-            content,
-            ext
-            if ext
-            in (
-                "py",
-                "rs",
-                "js",
-                "ts",
-                "go",
-                "java",
-                "c",
-                "cpp",
-                "rb",
-                "bash",
-                "yaml",
-                "json",
-                "md",
-                "html",
-                "css",
-                "sql",
-                "xml",
-            )
-            else "text",
-            theme="monokai",
-            line_numbers=True,
-        )
-        output_console.print(syntax)
-    else:
-        output_console.print(content)
-
-
-def _dry_run_preview(path: Path, kind: str, ext: str, opts: CatOpts) -> str:
-    """Render the resolved pipeline for ``path × opts.mode`` without invoking it.
-    For passthrough kinds (``kind=text``, or non-PDF/non-office documents), emit a short header/info block.
-    """
-    from mm.constants import OFFICE_EXTS
-    from mm.display import format_size
-    from mm.encoders.auto_strategy import resolve_auto_strategy
-    from mm.pipelines import apply_overrides
-    from mm.pipelines.pipelines_utils import resolve_pipeline
-    from mm.profile import get_profile
-
-    if _is_passthrough(kind, ext, opts.mode):
-        size_str = format_size(path.stat().st_size)
-        header = f"\n# {path} (kind={kind}, mode={opts.mode}) — passthrough preview (--dry-run)"
-        info_lines = [
-            f"  ├─ size: {size_str}",
-            "  └─ passthrough: content emitted as-is \\[skipped via --dry-run]",
-        ]
-        return "\n".join(["[dim]", header, "passthrough", *info_lines, "[/dim]"])
-
-    spec = resolve_pipeline(opts, kind)
-    spec = apply_overrides(spec, opts.encode_overrides or None, opts.generate_overrides or None)
-    autoencode = spec.encode.strategy == "auto" or (
-        spec.encode.strategy is None and spec.generate is not None
-    )
-    spec = resolve_auto_strategy(path, spec, opts)
-    header = f"\n# {path} (kind={kind}, mode={opts.mode}) — pipeline preview (--dry-run)"
-
-    encode = spec.encode
-    strategy = encode.strategy or "<unspecified>"
-    strategy = f"auto → {strategy}" if autoencode else strategy
-    enc_opts = encode.strategy_opts or {}
-    enc_opts_str = (
-        ", ".join(f"{k}={v}" for k, v in sorted(enc_opts.items())) if enc_opts else "<defaults>"
-    )
-
-    if spec.generate is not None:
-        gen = spec.generate
-        lines = (gen.prompt or "").strip().splitlines()
-        first_line = lines[0] if lines else ""
-        if len(first_line) > 60:
-            first_line = first_line[:60] + "..."
-
-        prompt_part = f' · prompt="{first_line}"' if first_line else ""
-        profile = get_profile()
-        eff = gen.model or profile.model
-        gen_line = (
-            f"generate: profile={profile.name} · model={eff}{prompt_part}  [skipped via --dry-run]"
-        )
-    else:
-        gen_line = "generate: <none>  [encode-only pipeline]"
-
-    if ext in OFFICE_EXTS and opts.mode == "accurate":
-        header += " [routes through office→PDF before encode]"
-
-    middle: list[str] = [f"  ├─ encode: {strategy} · {enc_opts_str}"]
-    if encode.pyfunc:
-        middle.append(f"  ├─ pyfunc: {encode.pyfunc}")
-
-    return "\n".join(["[dim]", header, "pipeline", *middle, f"  └─ {gen_line}", "[/dim]"])
+        write_report(report_entries, opts.output_dir, state)

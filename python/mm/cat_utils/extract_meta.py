@@ -2,11 +2,14 @@ from pathlib import Path
 from typing import Literal
 
 
-def extract_meta(path: Path, kind: str, *, no_cache: bool = False) -> str:
+def extract_meta(
+    path: Path, kind: str, *, no_cache: bool = False, content_hash: str | None = None
+) -> str:
     """Produce the metadata-tier content for a file (no LLM call) with caching."""
     from mm.store.utils import get_content_hash, shared_db
 
-    content_hash = get_content_hash(path)
+    if content_hash is None:
+        content_hash = get_content_hash(path)
     if not no_cache and content_hash:
         cached = shared_db().get_file_content(content_hash)
         if cached is not None:
@@ -164,11 +167,11 @@ def extract_text(path: Path, kind: Literal["document", "text"]) -> tuple[str, bo
     """``mm cat`` passthrough path — mode-agnostic."""
     from mm.store.utils import get_content_hash, shared_db
 
-    content = extract_meta(path, kind)
+    content_hash = get_content_hash(path)
+    content = extract_meta(path, kind, content_hash=content_hash)
     if not content or content.startswith("["):
         return content, None
 
-    content_hash = get_content_hash(path)
     if not content_hash:
         return content, None
 
