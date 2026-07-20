@@ -448,9 +448,9 @@ class TestEffectiveModel:
         spec = PipelineSpec(
             kind="image",
             mode="accurate",
-            generate=Generate(prompt="x", model="paddleocr-v5"),
+            generate=Generate(prompt="x", model="paddleocr-v6"),
         )
-        assert effective_model(spec, "profile-default") == "paddleocr-v5"
+        assert effective_model(spec, "profile-default") == "paddleocr-v6"
 
     def test_profile_default_when_unpinned(self):
         from mm.cat_utils.base_utils import effective_model
