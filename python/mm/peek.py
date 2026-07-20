@@ -144,7 +144,7 @@ class FileMetadata:
         from mm.constants import guess_mime
 
         p = Path(path)
-        r = extract_metadata_one(str(p))
+        r = extract_metadata_one(p)
         size = p.stat().st_size
 
         try:

@@ -139,7 +139,7 @@ def _get_media_info(directory: Path, rel_path: str) -> MediaInfo:
     try:
         from mm._mm import extract_metadata_one
 
-        r = extract_metadata_one(str((directory / rel_path).resolve()))
+        r = extract_metadata_one((directory / rel_path).resolve())
         w, h = 0, 0
         if r.dimensions:
             parts = r.dimensions.split("x")

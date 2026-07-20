@@ -527,6 +527,7 @@ def display_elapsed_wrapper(start_time: float, prefix: str | None = None):
                     cached = state.was_cached
                     token_cost = state.total_token_cost
                     report_msgs = state.report_output
+                    cat_module._run_state = None
             except (ImportError, AttributeError):
                 pass
 

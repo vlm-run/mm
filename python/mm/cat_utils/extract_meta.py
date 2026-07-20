@@ -42,7 +42,7 @@ def _local_image(path: Path) -> str:
         from mm._mm import extract_metadata_one
         from mm.display import format_size
 
-        r = extract_metadata_one(str(path))
+        r = extract_metadata_one(path)
         parts: list[str] = []
         if r.dimensions:
             parts.append(f"Dimensions: {r.dimensions}")
@@ -73,7 +73,7 @@ def _local_video(path: Path) -> str:
         from mm._mm import extract_metadata_one
         from mm.display import format_size
 
-        r = extract_metadata_one(str(path))
+        r = extract_metadata_one(path)
         parts: list[str] = []
         if r.dimensions:
             parts.append(f"Resolution: {r.dimensions}")
@@ -103,7 +103,7 @@ def _local_audio(path: Path) -> str:
         from mm._mm import extract_metadata_one
         from mm.display import format_size
 
-        r = extract_metadata_one(str(path))
+        r = extract_metadata_one(path)
         parts: list[str] = []
         if r.duration_s is not None:
             mins, secs = divmod(r.duration_s, 60)

@@ -332,10 +332,9 @@ fn content_hash(path: String) -> PyResult<Option<String>> {
 
 /// Extract metadata for a single file by path, without scanning its parent directory.
 #[pyfunction]
-fn extract_metadata_one(path: String) -> PyResult<MetadataResult> {
-    let p = std::path::Path::new(&path);
-    let kind = mm_core::kind_from_path(p);
-    extract_kind(p, kind)
+fn extract_metadata_one(path: PathBuf) -> PyResult<MetadataResult> {
+    let kind = mm_core::kind_from_path(&path);
+    extract_kind(&path, kind)
 }
 
 /// Hash a directory listing (sorted name:mtime:size). Returns 16-char hex string.

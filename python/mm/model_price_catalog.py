@@ -22,6 +22,7 @@ from __future__ import annotations
 import json
 import re
 from dataclasses import dataclass
+from functools import lru_cache
 from pathlib import Path
 
 _CATALOG_PATH = Path(__file__).parent / "data" / "model-price-catalog.json"
@@ -156,12 +157,7 @@ class PriceCatalog:
         )
 
 
-_catalog: PriceCatalog | None = None
-
-
+@lru_cache(maxsize=1)
 def get_price_catalog() -> PriceCatalog:
     """Return the shared price catalog, built once from the bundled JSON."""
-    global _catalog
-    if _catalog is None:
-        _catalog = PriceCatalog()
-    return _catalog
+    return PriceCatalog()

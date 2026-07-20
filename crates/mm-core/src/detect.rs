@@ -4,7 +4,8 @@ use crate::meta::FileKind;
 
 pub fn kind_from_path(path: &Path) -> FileKind {
     path.extension()
-        .map(|e| kind_from_extension(&e.to_string_lossy()))
+        .and_then(|e| e.to_str())
+        .map(kind_from_extension)
         .unwrap_or(FileKind::Other)
 }
 

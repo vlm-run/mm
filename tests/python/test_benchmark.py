@@ -193,7 +193,7 @@ def test_bench_extract_metadata_one_image(benchmark):
 
     from mm._mm import extract_metadata_one
 
-    result = benchmark(extract_metadata_one, str(img))
+    result = benchmark(extract_metadata_one, img)
     assert result.dimensions is not None
 
 
@@ -228,7 +228,7 @@ class TestBenchmarkMetadataRetrieval:
             (tmp_path / f"img_{i}.png").write_bytes(b"\x89PNG\r\n\x1a\n" + b"\x00" * 100)
         target = tmp_path / "img_100.png"
 
-        result = benchmark(extract_metadata_one, str(target))
+        result = benchmark(extract_metadata_one, target)
         assert result is not None
 
 
