@@ -197,28 +197,39 @@ def test_bench_extract_metadata_one_image(benchmark):
     assert result.dimensions is not None
 
 
-def test_bench_extract_metadata_one_vs_scanner(benchmark, tmp_path):
-    """Benchmark extract_metadata_one vs the old Scanner(parent).scan() pattern.
-
-    Creates a directory with many siblings to show the cost of scanning
-    the parent dir just to extract one file.
+class TestBenchmarkMetadataRetrieval:
     """
-    from mm._mm import Scanner, extract_metadata_one
+    Creates a directory with 200 siblings to show the cost of scanning
+    the parent dir just to extract one file. Both patterns are benchmarked
+    so the comparison is direct.
+    """
 
-    for i in range(200):
-        (tmp_path / f"img_{i}.png").write_bytes(b"\x89PNG\r\n\x1a\n" + b"\x00" * 100)
-    target = tmp_path / "img_100.png"
+    def test_bench_extract_metadata_scanner(self, benchmark, tmp_path):
+        """Benchmark the old Scanner(parent).scan() pattern."""
+        from mm._mm import Scanner
 
-    def old_pattern():
-        scanner = Scanner(str(target.parent))
-        scanner.scan()
-        return scanner.extract_metadata(target.name)
+        for i in range(200):
+            (tmp_path / f"img_{i}.png").write_bytes(b"\x89PNG\r\n\x1a\n" + b"\x00" * 100)
+        target = tmp_path / "img_100.png"
 
-    result = benchmark(old_pattern)
-    assert result is not None
+        def old_pattern():
+            scanner = Scanner(str(target.parent))
+            scanner.scan()
+            return scanner.extract_metadata(target.name)
 
-    direct = extract_metadata_one(str(target))
-    assert direct is not None
+        result = benchmark(old_pattern)
+        assert result is not None
+
+    def test_bench_extract_metadata_one(self, benchmark, tmp_path):
+        """Benchmark extract_metadata_one alone with 200 siblings (no dir scan)."""
+        from mm._mm import extract_metadata_one
+
+        for i in range(200):
+            (tmp_path / f"img_{i}.png").write_bytes(b"\x89PNG\r\n\x1a\n" + b"\x00" * 100)
+        target = tmp_path / "img_100.png"
+
+        result = benchmark(extract_metadata_one, str(target))
+        assert result is not None
 
 
 # ---------------------------------------------------------------------------
