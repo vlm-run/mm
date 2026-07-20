@@ -120,12 +120,24 @@ mod tests {
     fn test_kind_from_path() {
         use std::path::PathBuf;
         assert_eq!(kind_from_path(&PathBuf::from("foo.py")), FileKind::Code);
-        assert_eq!(kind_from_path(&PathBuf::from("/abs/path/to/img.png")), FileKind::Image);
-        assert_eq!(kind_from_path(&PathBuf::from("rel/dir/clip.mp4")), FileKind::Video);
+        assert_eq!(
+            kind_from_path(&PathBuf::from("/abs/path/to/img.png")),
+            FileKind::Image
+        );
+        assert_eq!(
+            kind_from_path(&PathBuf::from("rel/dir/clip.mp4")),
+            FileKind::Video
+        );
         assert_eq!(kind_from_path(&PathBuf::from("audio.mp3")), FileKind::Audio);
-        assert_eq!(kind_from_path(&PathBuf::from("doc.pdf")), FileKind::Document);
+        assert_eq!(
+            kind_from_path(&PathBuf::from("doc.pdf")),
+            FileKind::Document
+        );
         assert_eq!(kind_from_path(&PathBuf::from("data.csv")), FileKind::Data);
-        assert_eq!(kind_from_path(&PathBuf::from("conf.toml")), FileKind::Config);
+        assert_eq!(
+            kind_from_path(&PathBuf::from("conf.toml")),
+            FileKind::Config
+        );
         assert_eq!(kind_from_path(&PathBuf::from("notes.md")), FileKind::Text);
         assert_eq!(kind_from_path(&PathBuf::from("noext")), FileKind::Other);
         assert_eq!(kind_from_path(&PathBuf::from(".hidden")), FileKind::Other);
