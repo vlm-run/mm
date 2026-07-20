@@ -496,11 +496,7 @@ SPECS: list[BenchSpec] = [
         extra_body={"method": "grounding_ocr", "method_params": {"box": [120, 200, 900, 400]}},
         disabled=True,
     ),
-    # PP-OCRv6 -- scene text recognition. Both disabled (Internal
-    # Server Error from the gateway). ``paddleocr/detect`` is text-
-    # bounding-box detection within the OCR pipeline; tagged ``ocr``
-    # rather than ``det`` so ``--task ocr`` returns the full OCR
-    # family in one go.
+    # PP-OCRv6
     BenchSpec(
         PADDLEOCR,
         "paddleocr/ocr",
