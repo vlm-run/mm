@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import tempfile
-import threading
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, Any, Optional, cast
 
@@ -27,16 +27,24 @@ if TYPE_CHECKING:
     from mm.constants import BinaryFileKind
     from mm.pipelines.schema import PipelineSpec
 
-# Track total bytes processed for throughput calculation
-_total_bytes_processed = 0
-# Track whether the result was served from cache
-_was_cached: bool = False
-# Collect --report output messages (printed after timing footer by display_if_successful)
-_report_output: list[str] = []
-# Track total estimated LLM token cost across processed files (for the footer)
-_total_token_cost: float = 0.0
-# Protects _total_token_cost updates from concurrent _extract calls
-_cost_lock = threading.Lock()
+
+@dataclass
+class CatRunState:
+    """Per-invocation accumulator for ``mm cat`` timing/cost/report state.
+
+    Replaces the former module-level globals. ``token_cost`` and ``total_bytes``
+    are accumulated in the main thread after concurrent work completes;
+    ``was_cached`` and ``report_output`` are set/appended from ``_extract``
+    (idempotent bool set, GIL-safe list append).
+    """
+
+    total_bytes: int = 0
+    was_cached: bool = False
+    report_output: list[str] = field(default_factory=list)
+    total_token_cost: float = 0.0
+
+
+_run_state: CatRunState | None = None
 
 
 def _is_passthrough(kind: str, ext: str, mode: str) -> bool:
@@ -455,11 +463,9 @@ def cat_cmd(
     results: list[dict] = []
     _emitted = 0
 
-    global _total_bytes_processed, _was_cached, _report_output, _total_token_cost
-    _total_bytes_processed = 0
-    _was_cached = False
-    _report_output = []
-    _total_token_cost = 0.0
+    state = CatRunState()
+    global _run_state
+    _run_state = state
 
     valid_paths: list[Path] = []
     for file_path in paths:
@@ -471,10 +477,10 @@ def cat_cmd(
             prune_missing(uris=[str(p.resolve())])
             continue
         valid_paths.append(p)
-        _total_bytes_processed += p.stat().st_size
+        state.total_bytes += p.stat().st_size
 
     def _process(p: Path) -> tuple[str, RunResult | None]:
-        content, run_result = _extract(p, opts)
+        content, run_result = _extract(p, opts, state)
         if n is not None:
             lines = content.splitlines()
             content = "\n".join(lines[:n] if n >= 0 else lines[n:])
@@ -560,6 +566,8 @@ def cat_cmd(
             else:
                 _render(p, content)
             if run_result is not None:
+                if run_result.token_cost is not None:
+                    state.total_token_cost += run_result.token_cost
                 report_entries.append((p, run_result))
     elif valid_paths:
         from concurrent.futures import ThreadPoolExecutor
@@ -574,6 +582,8 @@ def cat_cmd(
                     continue
                 _render(p, content)
                 if run_result is not None:
+                    if run_result.token_cost is not None:
+                        state.total_token_cost += run_result.token_cost
                     report_entries.append((p, run_result))
 
     if fmt in ("json", "pretty-json", "dataset-jsonl", "dataset-hf") and results:
@@ -582,7 +592,7 @@ def cat_cmd(
         emit_rows(fmt, results, output_dir=str(output_dir) if output_dir else "mm_dataset")
 
     if opts.report and report_entries:
-        _write_report(report_entries, opts.output_dir)
+        _write_report(report_entries, opts.output_dir, state)
 
 
 # ---------------------------------------------------------------------------
@@ -590,7 +600,9 @@ def cat_cmd(
 # ---------------------------------------------------------------------------
 
 
-def _write_report(entries: list[tuple[Path, RunResult]], output_dir: Path | None) -> None:
+def _write_report(
+    entries: list[tuple[Path, RunResult]], output_dir: Path | None, state: CatRunState
+) -> None:
     """Write a combined HTML report for all collected pipeline runs."""
     from datetime import datetime
 
@@ -606,17 +618,20 @@ def _write_report(entries: list[tuple[Path, RunResult]], output_dir: Path | None
         filename = f"multi_{timestamp}_report.html"
     out_path = out_dir / filename
     out_path.write_text(html_doc, encoding="utf-8")
-    _report_output.append(f"Report written to {out_path}")
+    state.report_output.append(f"Report written to {out_path}")
 
 
-def _extract(path: Path, opts: CatOpts) -> tuple[str, RunResult | None]:
+def _extract(
+    path: Path, opts: CatOpts, state: CatRunState | None = None
+) -> tuple[str, RunResult | None]:
     """Pipeline-driven extraction dispatch with unified extraction caching.
 
     Returns ``(content, run_result)`` where ``run_result`` is the
     :class:`RunResult` from the encode→generate pipeline, or ``None``
     for passthrough / cache-hit / dry-run paths.
     """
-    global _was_cached, _total_token_cost
+    if state is None:
+        state = CatRunState()
     kind = file_kind(path)
     ext = path.suffix.lower()
     if opts.dry_run:
@@ -628,7 +643,7 @@ def _extract(path: Path, opts: CatOpts) -> tuple[str, RunResult | None]:
         assert kind in ("document", "text")
         content, cached = extract_text(path, kind)  # type: ignore[arg-type]
         if cached:
-            _was_cached = True
+            state.was_cached = True
         return content, None
 
     kind = cast("BinaryFileKind", kind)
@@ -673,9 +688,9 @@ def _extract(path: Path, opts: CatOpts) -> tuple[str, RunResult | None]:
         if not opts.no_cache:
             cached = db.get_extraction(extraction_id)
             if cached is not None:
-                _was_cached = True
+                state.was_cached = True
                 if opts.report:
-                    _report_output.append(
+                    state.report_output.append(
                         f"Report skipped for {path.name}: result served from cache. "
                         "Use --no-cache to regenerate."
                     )
@@ -699,10 +714,6 @@ def _extract(path: Path, opts: CatOpts) -> tuple[str, RunResult | None]:
         run = _run_accurate(path, kind, spec, opts)
     else:
         run = _run_fast(path, kind, spec, opts)
-
-    if run.token_cost is not None:
-        with _cost_lock:
-            _total_token_cost += run.token_cost
 
     if content_hash and run.content and not run.content.startswith("["):
         extract_meta(path, kind)

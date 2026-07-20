@@ -140,13 +140,11 @@ class FileMetadata:
 
         Pure read used by ``mm peek`` as the metadata-tier provider.
         """
-        from mm._mm import Scanner
+        from mm._mm import extract_metadata_one
         from mm.constants import guess_mime
 
         p = Path(path)
-        scanner = Scanner(str(p.parent))
-        scanner.scan()
-        r = scanner.extract_metadata(p.name)
+        r = extract_metadata_one(p)
         size = p.stat().st_size
 
         try:

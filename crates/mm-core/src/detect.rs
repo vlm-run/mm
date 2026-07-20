@@ -1,4 +1,13 @@
+use std::path::Path;
+
 use crate::meta::FileKind;
+
+pub fn kind_from_path(path: &Path) -> FileKind {
+    path.extension()
+        .and_then(|e| e.to_str())
+        .map(kind_from_extension)
+        .unwrap_or(FileKind::Other)
+}
 
 pub fn kind_from_extension(ext: &str) -> FileKind {
     let ext = ext.strip_prefix('.').unwrap_or(ext).to_ascii_lowercase();
@@ -105,6 +114,33 @@ mod tests {
         assert_eq!(kind_from_extension(".toml"), FileKind::Config);
         assert_eq!(kind_from_extension(".md"), FileKind::Text);
         assert_eq!(kind_from_extension(".xyz_unknown"), FileKind::Other);
+    }
+
+    #[test]
+    fn test_kind_from_path() {
+        use std::path::PathBuf;
+        assert_eq!(kind_from_path(&PathBuf::from("foo.py")), FileKind::Code);
+        assert_eq!(
+            kind_from_path(&PathBuf::from("/abs/path/to/img.png")),
+            FileKind::Image
+        );
+        assert_eq!(
+            kind_from_path(&PathBuf::from("rel/dir/clip.mp4")),
+            FileKind::Video
+        );
+        assert_eq!(kind_from_path(&PathBuf::from("audio.mp3")), FileKind::Audio);
+        assert_eq!(
+            kind_from_path(&PathBuf::from("doc.pdf")),
+            FileKind::Document
+        );
+        assert_eq!(kind_from_path(&PathBuf::from("data.csv")), FileKind::Data);
+        assert_eq!(
+            kind_from_path(&PathBuf::from("conf.toml")),
+            FileKind::Config
+        );
+        assert_eq!(kind_from_path(&PathBuf::from("notes.md")), FileKind::Text);
+        assert_eq!(kind_from_path(&PathBuf::from("noext")), FileKind::Other);
+        assert_eq!(kind_from_path(&PathBuf::from(".hidden")), FileKind::Other);
     }
 
     #[test]

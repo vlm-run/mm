@@ -5,6 +5,8 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
+    from pathlib import Path
+
     from pyarrow import Table
 
 class Scanner:
@@ -79,6 +81,10 @@ def hamming_distance(a: int, b: int) -> int:
 
 def content_hash(path: str) -> str | None:
     """Fast xxh3 content hash of a file via mmap. Returns 16-char hex string."""
+    ...
+
+def extract_metadata_one(path: str | Path) -> MetadataResult:
+    """Extract metadata for a single file by absolute path, without scanning its parent directory."""
     ...
 
 def directory_hash(path: str) -> str | None:
