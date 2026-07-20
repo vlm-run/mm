@@ -172,3 +172,101 @@ def test_bench_e2e_demo_dir(benchmark, demo_dir):
 
     result = benchmark(Context, demo_dir)
     assert result.num_files > 200
+
+
+# ---------------------------------------------------------------------------
+# Single-file extract benchmarks (extract_metadata_one vs Scanner.scan + extract_metadata)
+# ---------------------------------------------------------------------------
+
+_SAMPLE_DIR = Path(__file__).resolve().parent.parent.parent / "sample_files"
+
+
+def test_bench_extract_metadata_one_image(benchmark):
+    """Benchmark single-file image metadata extraction via extract_metadata_one.
+
+    This is the hot path in ``mm cat`` and ``mm peek`` — previously required
+    scanning the entire parent directory via ``Scanner(parent).scan()``.
+    """
+    img = _SAMPLE_DIR / "image.png"
+    if not img.exists():
+        pytest.skip("sample_files/image.png not available")
+
+    from mm._mm import extract_metadata_one
+
+    result = benchmark(extract_metadata_one, str(img))
+    assert result.dimensions is not None
+
+
+def test_bench_extract_metadata_one_vs_scanner(benchmark, tmp_path):
+    """Benchmark extract_metadata_one vs the old Scanner(parent).scan() pattern.
+
+    Creates a directory with many siblings to show the cost of scanning
+    the parent dir just to extract one file.
+    """
+    from mm._mm import Scanner, extract_metadata_one
+
+    for i in range(200):
+        (tmp_path / f"img_{i}.png").write_bytes(b"\x89PNG\r\n\x1a\n" + b"\x00" * 100)
+    target = tmp_path / "img_100.png"
+
+    def old_pattern():
+        scanner = Scanner(str(target.parent))
+        scanner.scan()
+        return scanner.extract_metadata(target.name)
+
+    result = benchmark(old_pattern)
+    assert result is not None
+
+    direct = extract_metadata_one(str(target))
+    assert direct is not None
+
+
+# ---------------------------------------------------------------------------
+# Token cost computation benchmarks
+# ---------------------------------------------------------------------------
+
+
+def test_bench_price_catalog_lookup(benchmark):
+    """Benchmark model price catalog lookup (normalized key match)."""
+    from mm.model_price_catalog import get_price_catalog
+
+    catalog = get_price_catalog()
+    models = ["google/gemini-2.5-flash", "gpt-4o", "anthropic/claude-3.5-sonnet"]
+
+    def lookup_batch():
+        return [catalog.lookup(m) for m in models]
+
+    results = benchmark(lookup_batch)
+    assert all(r is not None for r in results)
+
+
+def test_bench_compute_cost(benchmark):
+    """Benchmark cost computation from token usage dict."""
+    from mm.model_price_catalog import get_price_catalog
+
+    catalog = get_price_catalog()
+    usage = {
+        "prompt_tokens": 15000,
+        "completion_tokens": 3000,
+        "cached_tokens": 5000,
+        "reasoning_tokens": 800,
+        "total_tokens": 18000,
+    }
+
+    result = benchmark(catalog.compute_cost, usage, "google/gemini-2.5-flash")
+    assert result is not None
+    assert result.total_cost > 0
+
+
+def test_bench_display_elapsed_with_cost(benchmark):
+    """Benchmark the timing footer rendering with token cost."""
+    from time import perf_counter
+
+    from mm.display import display_elapsed
+
+    start = perf_counter() - 1.5
+
+    def render():
+        display_elapsed(start, total_bytes=10 * 1024 * 1024, cached=True, token_cost=0.0142)
+
+    benchmark(render)

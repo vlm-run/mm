@@ -1,5 +1,6 @@
 pub mod cache;
 pub mod detect;
+pub use detect::kind_from_path;
 pub mod extract;
 pub mod extractors;
 pub mod format;

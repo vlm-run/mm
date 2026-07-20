@@ -137,11 +137,9 @@ class MediaInfo:
 def _get_media_info(directory: Path, rel_path: str) -> MediaInfo:
     """Get media properties via Rust fast extraction."""
     try:
-        from mm._mm import Scanner
+        from mm._mm import extract_metadata_one
 
-        scanner = Scanner(str(directory.resolve()))
-        scanner.scan()
-        r = scanner.extract_metadata(rel_path)
+        r = extract_metadata_one(str((directory / rel_path).resolve()))
         w, h = 0, 0
         if r.dimensions:
             parts = r.dimensions.split("x")

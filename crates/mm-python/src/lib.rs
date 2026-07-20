@@ -14,6 +14,39 @@ use mm_core::extractors::{
 };
 use mm_core::meta::FileKind;
 
+fn extract_kind(path: &std::path::Path, kind: FileKind) -> PyResult<MetadataResult> {
+    let record = match kind {
+        FileKind::Code | FileKind::Text | FileKind::Config => CodeExtractor.extract(path),
+        FileKind::Image => ImageExtractor.extract(path),
+        FileKind::Video => VideoExtractor.extract(path),
+        FileKind::Audio => AudioExtractor.extract(path),
+        FileKind::Document => DocumentExtractor.extract(path),
+        _ => Ok(MetadataRecord::default()),
+    }
+    .map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(e.to_string()))?;
+
+    Ok(MetadataResult {
+        content_hash: record.content_hash,
+        text_preview: record.text_preview,
+        line_count: record.line_count,
+        word_count: record.word_count,
+        language: record.language,
+        dimensions: record.dimensions,
+        pages: record.pages,
+        duration_s: record.duration_s,
+        magic_mime: record.magic_mime,
+        exif_camera: record.exif_camera,
+        exif_date: record.exif_date,
+        exif_gps: record.exif_gps,
+        exif_orientation: record.exif_orientation,
+        video_codec: record.video_codec,
+        audio_codec: record.audio_codec,
+        fps: record.fps,
+        has_audio: record.has_audio,
+        phash: record.phash,
+    })
+}
+
 #[pyclass]
 #[derive(Clone)]
 struct Scanner {
@@ -181,38 +214,7 @@ impl Scanner {
         let entry = self.entries.iter().find(|e| e.path.as_str() == path);
         let kind = entry.map(|e| e.kind).unwrap_or(FileKind::Other);
 
-        let record = match kind {
-            FileKind::Code | FileKind::Text | FileKind::Config => {
-                CodeExtractor.extract(&self.root.join(&p))
-            }
-            FileKind::Image => ImageExtractor.extract(&self.root.join(&p)),
-            FileKind::Video => VideoExtractor.extract(&self.root.join(&p)),
-            FileKind::Audio => AudioExtractor.extract(&self.root.join(&p)),
-            FileKind::Document => DocumentExtractor.extract(&self.root.join(&p)),
-            _ => Ok(MetadataRecord::default()),
-        }
-        .map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(e.to_string()))?;
-
-        Ok(MetadataResult {
-            content_hash: record.content_hash,
-            text_preview: record.text_preview,
-            line_count: record.line_count,
-            word_count: record.word_count,
-            language: record.language,
-            dimensions: record.dimensions,
-            pages: record.pages,
-            duration_s: record.duration_s,
-            magic_mime: record.magic_mime,
-            exif_camera: record.exif_camera,
-            exif_date: record.exif_date,
-            exif_gps: record.exif_gps,
-            exif_orientation: record.exif_orientation,
-            video_codec: record.video_codec,
-            audio_codec: record.audio_codec,
-            fps: record.fps,
-            has_audio: record.has_audio,
-            phash: record.phash,
-        })
+        extract_kind(&self.root.join(&p), kind)
     }
 
     /// Count files, bytes, lines, tokens. Returns JSON.
@@ -326,6 +328,14 @@ fn hamming_distance(a: u64, b: u64) -> u32 {
 fn content_hash(path: String) -> PyResult<Option<String>> {
     let p = std::path::Path::new(&path);
     Ok(mm_core::hash::full_hash_mmap(p).map(|h| format!("{:016x}", h)))
+}
+
+/// Extract metadata for a single file by path, without scanning its parent directory.
+#[pyfunction]
+fn extract_metadata_one(path: String) -> PyResult<MetadataResult> {
+    let p = std::path::Path::new(&path);
+    let kind = mm_core::kind_from_path(p);
+    extract_kind(p, kind)
 }
 
 /// Hash a directory listing (sorted name:mtime:size). Returns 16-char hex string.
@@ -541,6 +551,7 @@ fn mm_module(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(office_to_pdf, m)?)?;
     m.add_function(wrap_pyfunction!(hamming_distance, m)?)?;
     m.add_function(wrap_pyfunction!(content_hash, m)?)?;
+    m.add_function(wrap_pyfunction!(extract_metadata_one, m)?)?;
     m.add_function(wrap_pyfunction!(directory_hash, m)?)?;
     m.add_function(wrap_pyfunction!(perceptual_hash, m)?)?;
     // Serde functions

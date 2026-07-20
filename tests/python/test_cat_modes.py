@@ -299,30 +299,36 @@ class TestVerboseCacheReplay:
 class TestTokenCost:
     """Estimated LLM token cost surfaces in the cat footer and verbose line."""
 
-    def test_run_token_cost_accumulates_into_total(self, tmp_path):
-        import mm.commands.cat as cat_module
+    def test_run_token_cost_returned_on_run_result(self, tmp_path):
+        from mm.commands.cat import CatRunState
 
         f = tmp_path / "test.jpg"
         f.write_bytes(b"\xff\xd8\xff" + b"\x00" * 100)
         cm1, cm2, cm3, cm4 = _mock_cache_miss()
-        cat_module._total_token_cost = 0.0
+        state = CatRunState()
         with cm1, cm2, cm3, cm4, patch("mm.commands.cat._run_fast") as mock:
             mock.return_value = RunResult(content="ok", token_cost=0.0025)
-            _extract(f, _make_opts("fast"))
-            _extract(f, _make_opts("fast"))
-        assert cat_module._total_token_cost == 0.005
+            _, run = _extract(f, _make_opts("fast"), state)
+            _, run2 = _extract(f, _make_opts("fast"), state)
+        assert run is not None and run.token_cost is not None
+        assert run.token_cost == 0.0025
+        assert run2 is not None and run2.token_cost is not None
+        assert run2.token_cost == 0.0025
+        state.total_token_cost += run.token_cost + run2.token_cost
+        assert state.total_token_cost == 0.005
 
     def test_run_without_token_cost_leaves_total_untouched(self, tmp_path):
-        import mm.commands.cat as cat_module
+        from mm.commands.cat import CatRunState
 
         f = tmp_path / "test.jpg"
         f.write_bytes(b"\xff\xd8\xff" + b"\x00" * 100)
         cm1, cm2, cm3, cm4 = _mock_cache_miss()
-        cat_module._total_token_cost = 0.0
+        state = CatRunState()
         with cm1, cm2, cm3, cm4, patch("mm.commands.cat._run_fast") as mock:
             mock.return_value = RunResult(content="ok", token_cost=None)
-            _extract(f, _make_opts("fast"))
-        assert cat_module._total_token_cost == 0.0
+            _, run = _extract(f, _make_opts("fast"), state)
+        assert run is not None and run.token_cost is None
+        assert state.total_token_cost == 0.0
 
     def test_footer_appends_token_cost_after_throughput(self):
         from time import perf_counter

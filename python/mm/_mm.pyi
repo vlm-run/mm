@@ -81,6 +81,10 @@ def content_hash(path: str) -> str | None:
     """Fast xxh3 content hash of a file via mmap. Returns 16-char hex string."""
     ...
 
+def extract_metadata_one(path: str) -> MetadataResult:
+    """Extract metadata for a single file by absolute path, without scanning its parent directory."""
+    ...
+
 def directory_hash(path: str) -> str | None:
     """Hash a directory listing (sorted name:mtime:size). Returns 16-char hex string."""
     ...
