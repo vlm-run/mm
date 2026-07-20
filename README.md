@@ -461,14 +461,14 @@ mm --profile vlmrt cat clip.mp4 -m accurate \
   --model qwen3.5-0.8b \
   --generate.extra-body '{"video_fps":1.0,"video_max_frames":8,"video_resolution":"448x336"}'
 
-# PaddleOCR-v5 — full detect + recognise (English, default threshold)
+# PaddleOCR-v6 — full detect + recognise (English, default threshold)
 mm --profile vlmrt cat storefront.jpg -m accurate \
-  --model paddleocr-v5 \
+  --model paddleocr-v6 \
   --generate.extra-body '{"method":"ocr"}'
 
-# PaddleOCR-v5 — Chinese OCR with a tighter score threshold
+# PaddleOCR-v6 — Chinese OCR with a tighter score threshold
 mm --profile vlmrt cat storefront.jpg -m accurate \
-  --model paddleocr-v5 \
+  --model paddleocr-v6 \
   --generate.extra-body '{"method":"ocr","method_params":{"lang":"ch","score_threshold":0.6}}'
 
 # Moondream2 — multi-object detection

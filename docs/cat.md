@@ -474,7 +474,7 @@ mm --profile vlmrt cat photo.jpg -m accurate \
 
 # PaddleOCR scene-text recognition (Chinese)
 mm --profile vlmrt cat storefront.jpg -m accurate \
-  --model paddleocr-v5 \
+  --model paddleocr-v6 \
   --generate.extra-body '{"method":"ocr","method_params":{"lang":"ch","score_threshold":0.6}}'
 
 # Qwen3.5 video summarization with frame sampling controls

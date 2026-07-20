@@ -207,7 +207,7 @@ def cat_cmd(
             help=(
                 "Override the model for this call, taking precedence over the "
                 "pipeline's `generate.model` and the active profile's default "
-                "(e.g. 'moondream2', 'qwen3.5-0.8b', 'paddleocr-v5'). "
+                "(e.g. 'moondream2', 'qwen3.5-0.8b', 'paddleocr-v6'). "
                 "Alias: --generate.model"
             ),
         ),
@@ -327,7 +327,7 @@ def cat_cmd(
 
       # PaddleOCR scene-text recognition (Chinese, custom score threshold)
       mm --profile vlmrt cat storefront.jpg -m accurate \\
-        --model paddleocr-v5 \\
+        --model paddleocr-v6 \\
         --generate.extra-body '{"method":"ocr","method_params":{"lang":"ch","score_threshold":0.6}}'
 
       # Qwen3.5 video summarization with frame sampling knobs
