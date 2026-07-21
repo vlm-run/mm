@@ -151,22 +151,21 @@ def extract(
     if content_hash and run.content and not run.content.startswith("["):
         uri = str(path.resolve())
         meta = {"verbose_suffix": run.verbose_suffix} if run.verbose_suffix else None
-        with db.batch():
-            extract_meta(path, kind)
-            try:
-                db.put_extraction(
-                    uri=uri,
-                    content_hash=content_hash,
-                    profile=profile.name,
-                    model=eff_model,
-                    content=run.content,
-                    mode=opts.mode,
-                    detail=False,
-                    extra=extra,
-                    metadata=meta,
-                )
-            except RuntimeError:
-                return format_run(run, opts.verbose), run
+        extract_meta(path, kind)
+        try:
+            db.put_extraction(
+                uri=uri,
+                content_hash=content_hash,
+                profile=profile.name,
+                model=eff_model,
+                content=run.content,
+                mode=opts.mode,
+                detail=False,
+                extra=extra,
+                metadata=meta,
+            )
+        except RuntimeError:
+            return format_run(run, opts.verbose), run
     return format_run(run, opts.verbose), run
 
 
