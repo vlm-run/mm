@@ -345,89 +345,58 @@ class TestTokenCost:
 
 
 class TestToksPerSec:
-    """Token-weighted toks/s: cat sums each call's completion tokens + gen_duration_ms,
-    the footer renders Σtokens / Σwindow."""
+    """End-to-end toks/s: cat sums completion tokens and generate wall-clock,
+    the footer renders Σtokens / Σgenerate_s."""
 
-    def _run(self, tmp_path, usage):
+    def _run(self, tmp_path, usage, generate_ms):
         f = tmp_path / "test.jpg"
         f.write_bytes(b"\xff\xd8\xff" + b"\x00" * 100)
         cm1, cm2, cm3, cm4 = _mock_cache_miss()
         with cm1, cm2, cm3, cm4, patch("mm.commands.cat._run_fast") as mock:
-            mock.return_value = RunResult(content="ok", llm_usage=usage)
+            mock.return_value = RunResult(
+                content="ok", llm_usage=usage, generate_elapsed_ms=generate_ms
+            )
             _extract(f, _make_opts("fast"))
 
-    def test_accumulates_and_renders_token_weighted_rate(self, tmp_path):
+    def test_accumulates_and_renders_rate(self, tmp_path):
         import mm.commands.cat as cat_module
         import mm.display as display_mod
 
         cat_module._total_completion_tokens = 0.0
-        cat_module._total_gen_duration_ms = 0.0
-        self._run(tmp_path, {"completion_tokens": 100.0, "gen_duration_ms": 100.0})
-        self._run(tmp_path, {"completion_tokens": 100.0, "gen_duration_ms": 1000.0})
+        cat_module._total_generate_ms = 0.0
+        self._run(tmp_path, {"completion_tokens": 100.0}, 1000.0)
+        self._run(tmp_path, {"completion_tokens": 100.0}, 1000.0)
         assert cat_module._total_completion_tokens == 200.0
-        assert cat_module._total_gen_duration_ms == 1100.0
+        assert cat_module._total_generate_ms == 2000.0
 
         with patch.object(display_mod, "console", MagicMock()) as console:
             display_mod.display_elapsed(
                 perf_counter() - 5.0,
                 total_bytes=1024 * 1024,
                 completion_tokens=cat_module._total_completion_tokens,
-                gen_duration_ms=cat_module._total_gen_duration_ms,
+                generate_ms=cat_module._total_generate_ms,
                 token_cost=0.002,
             )
         out = console.print.call_args_list[0].args[0]
-        # Σtokens/Σwindow = 200/1.1s ≈ 181.8 (weighted; independent of elapsed),
-        # not the 550 tok/s mean of the two per-file rates.
+        # 200 tokens / 2.0s generate = 100 toks/s (over generate wall-clock, not `elapsed`).
         toks_s = float(
             [p for p in out.split(" • ") if "toks/s" in p][0].split()[0].replace(",", "")
         )
-        assert 180.0 <= toks_s <= 184.0
+        assert 99.0 <= toks_s <= 101.0
         assert "/s • " in out.split("toks/s")[0] and "toks/s • $" in out  # after size, before cost
 
-    def test_skips_when_no_decode_window(self, tmp_path):
+    def test_skips_without_generate_time(self, tmp_path):
         import mm.commands.cat as cat_module
         import mm.display as display_mod
 
         cat_module._total_completion_tokens = 0.0
-        cat_module._total_gen_duration_ms = 0.0
-        self._run(tmp_path, None)  # no usage
-        self._run(tmp_path, {"completion_tokens": 50.0, "gen_duration_ms": 0.0})  # zero window
+        cat_module._total_generate_ms = 0.0
+        self._run(tmp_path, None, None)  # passthrough: no usage, no generate time
         assert cat_module._total_completion_tokens == 0.0
-        assert cat_module._total_gen_duration_ms == 0.0
+        assert cat_module._total_generate_ms == 0.0
 
         with patch.object(display_mod, "console", MagicMock()) as console:
             display_mod.display_elapsed(
-                perf_counter() - 1.0, completion_tokens=100, gen_duration_ms=0.0
+                perf_counter() - 1.0, completion_tokens=100, generate_ms=0.0
             )
         assert "toks/s" not in console.print.call_args_list[0].args[0]
-
-
-class TestChunkedDecodeWindow:
-    """generate_chunked sums each chunk's gen_duration_ms — not min-TTFT over wall-clock."""
-
-    def test_gen_duration_sums_across_chunks(self):
-        import threading
-
-        from mm.llm import LlmBackend, LlmUsage
-        from mm.pipelines.schema import Generate, PipelineSpec
-
-        llm = object.__new__(LlmBackend)
-        llm._local = threading.local()
-        llm.last_usage = LlmUsage()
-        windows = iter([300.0, 500.0, 700.0])
-        lock = threading.Lock()
-
-        def fake_generate(kind, mode="fast", **_kwargs):
-            with lock:
-                w = next(windows)
-            llm.last_usage = LlmUsage(completion_tokens=10, gen_duration_ms=w)
-            llm.last_messages = None
-            return "chunk"
-
-        llm.generate = fake_generate
-        spec = PipelineSpec(kind="image", mode="accurate", generate=Generate(prompt="x"))
-        chunks = [[{"type": "text", "text": str(i)}] for i in range(3)]
-        llm.generate_chunked("image", "accurate", chunks=chunks, pipeline_spec=spec)
-
-        assert llm.last_usage.gen_duration_ms == 1500.0  # sum, not min or wall-clock
-        assert llm.last_usage.completion_tokens == 30

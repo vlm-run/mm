@@ -45,7 +45,6 @@ class LlmUsage:
     total_tokens: int = 0
     cached_tokens: int = 0
     reasoning_tokens: int = 0
-    gen_duration_ms: float = 0.0
 
 
 def _usage_from_response(usage: CompletionUsage) -> LlmUsage:
@@ -249,7 +248,6 @@ class LlmBackend:
                 cumulative_usage.total_tokens += usage.total_tokens
                 cumulative_usage.cached_tokens += usage.cached_tokens
                 cumulative_usage.reasoning_tokens += usage.reasoning_tokens
-                cumulative_usage.gen_duration_ms += usage.gen_duration_ms
                 if chunk_msgs:
                     all_messages.extend(chunk_msgs)
             if on_chunk is not None:
@@ -332,15 +330,10 @@ class LlmBackend:
         if stream:
             return self._chat_stream(kwargs)
 
-        import time as _time
-
         try:
-            t_request = _time.monotonic()
             response: ChatCompletion = self.client.chat.completions.create(**kwargs)
-            call_ms = (_time.monotonic() - t_request) * 1000
             if response.usage:
                 self.last_usage = _usage_from_response(response.usage)
-                self.last_usage.gen_duration_ms = call_ms
 
             choice = response.choices[0].message
             content = (choice.content or "").strip()
@@ -372,14 +365,12 @@ class LlmBackend:
             The concatenated response text (same contract as ``_chat``).
         """
         import sys
-        import time as _time
 
         kwargs["stream"] = True
         kwargs["stream_options"] = {"include_usage": True}
         try:
             response_stream = self.client.chat.completions.create(**kwargs)
             collected: list[str] = []
-            t_first: float = 0.0
             for chunk in response_stream:
                 if chunk.usage is not None:
                     self.last_usage = _usage_from_response(chunk.usage)
@@ -388,8 +379,6 @@ class LlmBackend:
                 delta = chunk.choices[0].delta
                 token = delta.content or ""
                 if token:
-                    if t_first == 0.0:
-                        t_first = _time.monotonic()
                     sys.stdout.write(token)
                     sys.stdout.flush()
                     collected.append(token)
@@ -399,19 +388,15 @@ class LlmBackend:
                 streamed_to_stdout = True
                 sys.stdout.write("\n")
                 sys.stdout.flush()
-                self.last_usage.gen_duration_ms = (_time.monotonic() - t_first) * 1000
                 return "".join(collected).strip()
 
             # Backend returned no content chunks — fall back to non-streaming.
             logger.debug("Streaming yielded no tokens; falling back to non-streaming call")
             kwargs.pop("stream", None)
             kwargs.pop("stream_options", None)
-            t_fallback = _time.monotonic()
             response = self.client.chat.completions.create(**kwargs)
-            fallback_ms = (_time.monotonic() - t_fallback) * 1000
             if response.usage:
                 self.last_usage = _usage_from_response(response.usage)
-                self.last_usage.gen_duration_ms = fallback_ms
             text = (response.choices[0].message.content or "").strip()
             if text:
                 streamed_to_stdout = True
