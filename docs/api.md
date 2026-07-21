@@ -37,8 +37,7 @@ from google.genai import types as genai_types
 messages_openai: list[ChatCompletionMessageParam] = ctx.to_messages(format="openai")
 messages_gemini: list[genai_types.ContentDict]    = ctx.to_messages(format="gemini")
 
-obj = ctx.get(img)                               # str | Path | PIL.Image.Image
-row = mm.Context.get(f"{ctx.session_id}/{img}")  # cross-session DB lookup
+obj = ctx.get(img)                               # str | Path | PIL.Image.Image (in-memory)
 
 ctx.print_tree()                                 # T4 tree with metadata
 print(ctx.to_md(mode="metadata"))                # markdown table w/ cat content
@@ -173,15 +172,19 @@ ref = ctx.add(Path("photo.jpg"))
 ctx.remove(ref)
 ```
 
-### `Context.get(global_ref, *, session_id=None, db=None)` (classmethod)
+### Cross-session resolution is caller-owned
 
-Cross-session resolver. Parses a `"<session>/<ref>"` global ref (or
-accepts a bare ref + `session_id=...`) and returns the `files` row dict
-from the global `~/.local/share/mm/mm.db`, or `None` on miss.
+`ctx.get(ref)` resolves **in-memory** role-aware refs only; the library
+never reads a database. To resolve a ref from a persisted context when you
+have no live `Context`, query whatever store you exported records to. The
+mm CLI's own store offers a resolver:
 
-Use this when you have a ref from a persisted context and no live
-`Context` instance. Replaces the (still-supported) legacy
-`Context.resolve()`.
+```python
+from mm.store.db import MmDatabase
+row = MmDatabase().resolve(f"{session_id}/{ref_id}")  # files row dict, or None
+```
+
+See ["Persistence is caller-owned"](#persistence-is-caller-owned-no-ctxsave) below.
 
 ### `ctx.to_messages(format="openai", *, encoders=None, encoder_kwargs=None) -> list[dict]`
 
@@ -227,8 +230,9 @@ Markdown table with one row per ref: `ref | role | kind | source | content`.
 non-text kinds, and raw text for code/text files. (Mirrors what the CLI's
 `mm peek` surfaces locally for binary kinds — same source data.)
 
-`mode="fast"` and `mode="accurate"` are reserved for the LLM-backed
-pipelines and currently raise `NotImplementedError`.
+`mode="fast"` and `mode="accurate"` route through
+`mm.cat_utils.extract.extract` to run the light and LLM-backed pipeline
+extraction respectively (both require a configured profile).
 
 ```python
 print(ctx.to_md())
@@ -259,14 +263,13 @@ Context(session=019da4…, items=5)
 └── [5] txt_111222  system  text  You are concise.
 ```
 
-Other layouts are declared in the docstring so they're discoverable,
-but raise `NotImplementedError` for now:
+Four additional layouts are supported (an unknown layout raises
+`ValueError`):
 
-- `"paths"` — directory hierarchy with refs on the right. [TODO]
-- `"kind"` — grouped by kind (images, documents, videos, …). [TODO]
-- `"flat"` — ref-first flat list. [TODO; likely ships as
-  `print_table()` instead of a tree]
-- `"hybrid"` — paths + per-item dim metadata line. [TODO]
+- `"paths"` — directory hierarchy with refs on the right.
+- `"kind"` — grouped by kind (images, documents, videos, …).
+- `"flat"` — ref-first flat list.
+- `"hybrid"` — paths + per-item dim metadata line.
 
 ### `__repr__` → markdown
 
@@ -274,20 +277,24 @@ but raise `NotImplementedError` for now:
 the `ref | role | kind | source` table. Works well in Jupyter / doc snippets
 and doubles as the body of `RefNotFoundError`.
 
-### `ctx.save()` (deferred)
+### Persistence is caller-owned (no `ctx.save()`)
 
-Not implemented for role-aware contexts. Planned behaviour:
+`Context` has no `save()` method and no database awareness. The library
+exports plain dict records via `ctx.to_records()` and the caller writes
+them to whatever backend it chooses:
 
-- Write `(session_id, ref_id, role, kind, uri, content_hash, metadata)` to
-  the `files` table in `~/.local/share/mm/mm.db`.
-- For in-memory objects, spool to a content-addressed cache directory
-  `~/.local/share/mm/blobs/<xxh3>.<ext>` and record the blob URI.
-- Make `Context.get("<session>/<ref>")` resolve via the DB across
-  processes.
-- Idempotent on repeat calls for the same `(session_id, ref_id)`.
+```python
+from mm.store.db import MmDatabase  # the *caller* picks this backend
 
-Directory-scan `Context(root)` retains its existing `save()` (writes
-the Arrow table to the global DB).
+ctx = Context("~/data", session_id="my-session")
+MmDatabase().upsert_records(ctx.to_records(refs=True), root=ctx.root)
+```
+
+`ctx.to_records(refs=True)` yields one dict per file (directory-scan) or
+per item (incremental), including `session_id` and `ref_id` when refs are
+requested. `Context.get(ref_id)` resolves in-memory role-aware refs only;
+cross-session/persistent lookup is the caller's responsibility via its own
+store (e.g. `MmDatabase().resolve("<session>/<ref>")`).
 
 ### `ctx.render_html(...) -> str`
 
@@ -441,8 +448,10 @@ JSON metadata roundtrip.
 - **`TypeError`** — `add()` received something other than `str`, `Path`,
   or `PIL.Image.Image`.
 - **`FileNotFoundError`** — `add()` received a `Path` that doesn't exist.
-- **`NotImplementedError`** — `print_tree(layout="paths"|"kind"|…)`,
-  `to_md(mode="accurate")`, or `save()` on an incremental context.
+- **`ValueError`** — `print_tree(layout=...)` with an unknown layout.
+- **`RuntimeError`** — a role-aware method (`add`, `items`, `to_md`,
+  `print_tree`, `to_messages`, …) called on a directory-scan context, or a
+  directory-scan method called on an incremental one.
 
 ## Recipe: OpenAI chat completion
 

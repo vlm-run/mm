@@ -69,41 +69,34 @@ def grep_cmd(
       mm grep "secret" ~/docs --no-ignore               # ignore .gitignore
     """
 
-    from mm.context import FileEntry
+    from mm.context import Context, FileEntry
     from mm.display import resolve_format
     from mm.pipe import read_paths_from_stdin, resolve_piped_paths
+    from mm.search import compile_pattern, search_content
     from mm.utils import is_binary_content
 
     fmt = resolve_format(format.value if format else None)
     stdin_paths = read_paths_from_stdin()
     _directory = directory or Path("./")
 
-    # Smart-case: default to case-insensitive matching when -i is not passed and the pattern has no uppercase
-    # letters. Any uppercase letter in the pattern preserves case-sensitivity
-    pattern_literals = re.sub(r"\\.", "", pattern, flags=re.DOTALL)
-    smart_case = not ignore_case and not any(c.isupper() for c in pattern_literals)
-    re_flags = re.IGNORECASE if (ignore_case or smart_case) else 0
     try:
-        regex = re.compile(pattern, re_flags)
+        regex = compile_pattern(pattern, ignore_case=ignore_case)
     except re.error as e:
         typer.echo(f"Invalid regex: {e}", err=True)
         raise typer.Exit(1)
 
-    all_matches: list[dict] = []
-    file_counts: dict[str, int] = {}
     files_to_search: list[FileEntry] = []
     seen_paths: set[str] = set()
 
-    # Directory scan (when provided)
+    # Directory scan (when provided). Reuse the Context's scanner-backed
+    # filter so the library does the row selection.
     if directory:
-        from mm.context import Context
-
-        ctx = Context(_directory, no_ignore=no_ignore)
+        scoped = Context(_directory, no_ignore=no_ignore)
         if kind:
-            ctx = ctx.filter(kind=kind)
+            scoped = scoped.filter(kind=kind)
         if ext:
-            ctx = ctx.filter(ext=ext)
-        for f in ctx.files:
+            scoped = scoped.filter(ext=ext)
+        for f in scoped.files:
             if f.path.startswith("."):
                 continue
             resolved = str((_directory.resolve() / f.path).resolve())
@@ -134,116 +127,26 @@ def grep_cmd(
                 )
             )
 
-    for f in files_to_search:
-        try:
-            fp = Path(f.path)
-            full_path = fp if fp.is_absolute() else (_directory.resolve() / fp)
-            if f.is_binary and f.kind not in ("document",):
-                continue
+    result = search_content(
+        pattern,
+        files=files_to_search,
+        root=_directory,
+        regex=regex,
+        ignore_case=ignore_case,
+        context_lines=context_lines,
+        count=count,
+        kind=kind,
+        ext=ext,
+        semantic=do_semantic,
+        pre_index=pre_index,
+        no_ignore=no_ignore,
+        stdin_paths=stdin_paths,
+        quiet=fmt not in ("rich",),
+    )
 
-            if f.kind == "document":
-                from mm.cat_utils.extract_meta import _local_document
-
-                content = _local_document(full_path)
-            elif f.is_binary:
-                continue
-            else:
-                content = full_path.read_text(errors="replace")
-            lines = content.splitlines()
-
-            file_match_count = 0
-            for i, line in enumerate(lines):
-                if regex.search(line):
-                    file_match_count += 1
-                    if not count:
-                        match_entry: dict = {
-                            "path": f.path,
-                            "line_number": i + 1,
-                            "line": line,
-                        }
-                        if context_lines > 0:
-                            start = max(0, i - context_lines)
-                            end = min(len(lines), i + context_lines + 1)
-                            match_entry["context"] = lines[start:end]
-                        all_matches.append(match_entry)
-
-            if file_match_count > 0:
-                file_counts[f.path] = file_match_count
-        except Exception:
-            continue
-
-    # FTS + semantic both query indexed chunks.
-    has_indexable = bool(files_to_search)
-    scan_root = _directory.resolve()
-    seen_chunk_keys: set[tuple[str, int]] = set()
-
-    def _merge_chunk_hits(hits: list[dict]) -> None:
-        for r in hits:
-            rel_path = r["path"]
-            try:
-                rel_path = str(Path(rel_path).relative_to(scan_root))
-            except ValueError:
-                pass
-            key = (rel_path, r["index"])
-            if key in seen_chunk_keys:
-                continue
-            seen_chunk_keys.add(key)
-            snippet = r.get("snippet")
-            if snippet:
-                line_text = snippet.replace("\n", " ")
-            else:
-                raw = r["match"].replace("\n", " ")
-                match = regex.search(raw)
-                if match:
-                    start = match.start()
-                    context = 40
-                    snippet_start = max(0, start - context)
-                    snippet_end = min(len(raw), start + len(match.group(0)) + context)
-                    line_text = raw[snippet_start:snippet_end]
-                    if snippet_start > 0:
-                        line_text = "..." + line_text
-                    if snippet_end < len(raw):
-                        line_text += "..."
-                else:
-                    line_text = f"{raw[:90]}...{raw[-50:]}" if len(raw) > 140 else raw[:140]
-            all_matches.append({"path": rel_path, "line_number": r["index"], "line": line_text})
-            file_counts[rel_path] = file_counts.get(rel_path, 0) + 1
-
-    # FTS5 token search over indexed chunks — Silent on missing FTS5 / empty index.
-    if has_indexable:
-        from mm.fts import fts_search
-
-        try:
-            scope = (
-                {"uri": str(scan_root)} if _directory.is_file() else {"uri_prefix": str(scan_root)}
-            )
-            _merge_chunk_hits(fts_search(pattern, limit=5, kind=kind, ext=ext, **scope))
-        except Exception:
-            pass
-
-    if do_semantic and has_indexable:
-        from mm.semantic import build_hint_cmd, grep_semantic
-
-        try:
-            _merge_chunk_hits(
-                grep_semantic(
-                    pattern,
-                    _directory,
-                    kind,
-                    ext,
-                    limit=5,
-                    stdin_paths=stdin_paths,
-                    no_ignore=no_ignore,
-                    do_index=pre_index,
-                    quiet=fmt not in ("rich",),
-                    cmd_hint=build_hint_cmd(pattern, _directory, kind, ext, ignore_case),
-                )
-            )
-        except (SystemExit, Exception):
-            pass
-
-    # Exit 1 on no matches (standard grep/rg behaviour for composability).
-    has_matches = bool(file_counts)
+    all_matches = [m.to_dict() for m in result.matches]
+    file_counts = result.file_counts
+    has_matches = result.has_matches
 
     if fmt in ("json", "dataset-jsonl", "dataset-hf"):
         from mm.display import emit_rows
@@ -287,8 +190,8 @@ def grep_cmd(
                 print(f"{path}:{cnt}")
         return
 
-    total_matches = len(all_matches)
-    total_files = len(file_counts)
+    total_matches = result.total_matches
+    total_files = result.total_files
 
     if fmt == "rich":
         from rich.text import Text

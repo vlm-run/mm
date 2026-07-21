@@ -107,8 +107,13 @@ class TestIndexOneUsesFastMode:
         png = tmp_path / "x.png"
         png.write_bytes(b"\x89PNG\r\n\x1a\n" + b"\x00" * 16)
 
+        from mm.results import CatResult
+
         with (
-            patch("mm.commands.cat._extract", return_value="caption") as mock_extract,
+            patch(
+                "mm.cat_utils.extract.extract",
+                return_value=CatResult(path=str(png), content="caption", mode="fast", kind="image"),
+            ) as mock_extract,
             patch.object(
                 semantic,
                 "check_index_status",

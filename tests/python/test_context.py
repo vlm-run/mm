@@ -116,19 +116,19 @@ def test_grep_pattern(small_tree: Path):
     from mm.context import Context
 
     ctx = Context(small_tree)
-    matches = ctx.grep("hello", kind="code")
-    assert len(matches) > 0
-    assert all("hello" in m["line"] for m in matches)
+    result = ctx.grep("hello", kind="code")
+    assert result.total_matches > 0
+    assert all("hello" in m.line for m in result.matches)
 
 
-def test_save_db(small_tree: Path, isolated_db: Path):
+def test_save_db(small_tree: Path, isolated_db: Path, persist_ctx):
     from mm.context import Context
 
     ctx = Context(small_tree)
-    ctx.save()
+    db = persist_ctx(ctx)
     # Verify data is in SQLite (filter to this test's root)
     root_str = str(small_tree.resolve()).replace("'", "''")
-    f = ctx.db.get_files(where=f"uri LIKE '{root_str}%'")
+    f = db.get_files(where=f"uri LIKE '{root_str}%'")
     assert len(f) == ctx.num_files
 
 
@@ -148,7 +148,7 @@ def test_context_repr_includes_session(small_tree: Path):
     assert "ctx-repr-sess" in repr(ctx)
 
 
-def test_save_db_with_session(small_tree: Path, tmp_path_factory, monkeypatch):
+def test_save_db_with_session(small_tree: Path, tmp_path_factory, monkeypatch, persist_ctx):
     from mm.context import Context
     from mm.store.db import MmDatabase
 
@@ -158,7 +158,7 @@ def test_save_db_with_session(small_tree: Path, tmp_path_factory, monkeypatch):
     monkeypatch.setattr(MmDatabase, "DB_DIR", db_dir)
 
     ctx = Context(small_tree, session_id="save-with-sess")
-    ctx.save()
+    persist_ctx(ctx)
     rows = MmDatabase().list_session_files("save-with-sess")
     assert len(rows) == ctx.num_files
     assert all(r["ref_id"] for r in rows)

@@ -171,7 +171,7 @@ class TestCatEmbedIntegration:
     def test_run_accurate_does_not_embed(self, tmp_path: Path, mock_server: MagicMock):
         """``cat`` writes chunks (via put_extraction)"""
         from mm.cat_utils.base_utils import CatOpts, RunResult
-        from mm.commands.cat import _extract
+        from mm.cat_utils.extract import extract
 
         pdf = tmp_path / "test.pdf"
         pdf.write_bytes(b"%PDF-1.4 fake")
@@ -195,7 +195,7 @@ class TestCatEmbedIntegration:
 
         with (
             patch(
-                "mm.commands.cat._run_accurate",
+                "mm.cat_utils.extract.run_accurate",
                 return_value=RunResult(content="LLM generated text."),
             ),
             patch("mm.store.utils.get_content_hash", return_value="fakehash"),
@@ -208,7 +208,7 @@ class TestCatEmbedIntegration:
         ):
             mock_profile.return_value.name = "default"
             mock_profile.return_value.model = "test-model"
-            result = _extract(pdf, opts)
+            result = extract(pdf, opts).content
 
         assert result == "LLM generated text."
         mock_db.put_extraction.assert_called_once()

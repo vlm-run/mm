@@ -9,9 +9,9 @@ Covers:
 - ``RefNotFoundError`` message + "did you mean" suggestions
 - ``to_messages(format=...)`` for both formats
 - ``to_md(mode="metadata")`` table
-- ``print_tree(layout="insertion")`` rendering
-- ``NotImplementedError`` for non-``insertion`` layouts + for
-  :meth:`Context.save` on role-aware contexts
+- ``print_tree`` rendering across all layouts; unknown layout raises
+  ``ValueError``
+- persistence is caller-owned: ``Context`` exposes no ``save`` method
 - ``__repr__`` markdown smoke test
 - :func:`mm.uuid7` shape
 - ``mm.Ref`` typing alias is a ``str`` at runtime
@@ -398,15 +398,23 @@ class TestToMd:
         assert "inline note" in md
 
     @pytest.mark.parametrize("mode", ["fast", "accurate"])
-    def test_unimplemented_modes_raise(self, tiny_png: Path, mode: str):
+    def test_pipeline_modes_route_through_library(self, tiny_png: Path, mode: str):
+        """fast/accurate to_md routes each item through the shared extractor."""
+        from unittest.mock import patch
+
+        from mm.results import CatResult
+
         ctx = mm.Context()
-        ctx.add(tiny_png)
-        with pytest.raises(NotImplementedError) as excinfo:
-            ctx.to_md(mode=mode)
-        # Error message must echo the actual mode passed (regression guard
-        # against the previous hard-coded "mode='accurate'" string).
-        assert f"mode={mode!r}" in str(excinfo.value)
-        assert "mode='metadata'" in str(excinfo.value)
+        ref = ctx.add(tiny_png)
+
+        def _fake_extract(path, opts):
+            assert opts.mode == mode
+            return CatResult(path=str(path), content="pipeline output", mode=mode, kind="image")
+
+        with patch("mm.cat_utils.extract.extract", side_effect=_fake_extract):
+            md = ctx.to_md(mode=mode)
+        assert ref in md
+        assert "pipeline output" in md
 
 
 # ── print_tree ────────────────────────────────────────────────────────
@@ -430,10 +438,20 @@ class TestPrintTree:
         assert "summary" in out and "two" in out
 
     @pytest.mark.parametrize("layout", ["paths", "kind", "flat", "hybrid"])
-    def test_other_layouts_not_implemented(self, layout: str):
+    def test_other_layouts_render(self, capsys, tiny_png: Path, layout: str):
+        import re
+
         ctx = mm.Context()
-        with pytest.raises(NotImplementedError):
-            ctx.print_tree(layout=layout)  # type: ignore[arg-type]
+        ctx.add(tiny_png, metadata={"note": "one"})
+        ctx.add("inline text", role="user")
+        ctx.print_tree(layout=layout)  # type: ignore[arg-type]
+        out = re.sub(r"\x1b\[[0-9;]*m", "", capsys.readouterr().out)
+        assert "img_" in out
+
+    def test_invalid_layout_raises(self):
+        ctx = mm.Context()
+        with pytest.raises(ValueError):
+            ctx.print_tree(layout="nope")  # type: ignore[arg-type]
 
 
 # ── __repr__ / str ────────────────────────────────────────────────────
@@ -477,15 +495,24 @@ class TestTypingHelpers:
         assert isinstance(ref, str)
 
 
-# ── save() stub ───────────────────────────────────────────────────────
+# ── persistence (decoupled) ────────────────────────────────────────────
 
 
-class TestSaveStub:
-    def test_save_role_aware_raises(self, tiny_png: Path):
+class TestPersistence:
+    def test_context_has_no_save_method(self):
+        """Persistence is decoupled: the library never writes to a DB.
+
+        ``Context`` exports storage-agnostic records via ``to_records`` and
+        the caller owns the storage backend, so there is no ``save``.
+        """
+        assert not hasattr(mm.Context, "save")
+
+    def test_to_records_exports_role_aware_items(self, tiny_png: Path):
         ctx = mm.Context()
-        ctx.add(tiny_png)
-        with pytest.raises(NotImplementedError, match="not implemented"):
-            ctx.save()
+        ref = ctx.add(tiny_png, role="user")
+        records = ctx.to_records()
+        assert [r["ref_id"] for r in records] == [ref]
+        assert records[0]["role"] == "user"
 
 
 # ── remove() ───────────────────────────────────────────────────────────

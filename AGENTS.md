@@ -123,6 +123,10 @@ mm/
 │   ├── llm.py                  # LLM backend (OpenAI SDK, accurate mode)
 │   ├── df.py                   # arrow_to_polars / arrow_to_pandas
 │   ├── query.py                # SQLite-based SQL queries against Arrow tables
+│   ├── results.py              # Typed library result types (WcStats, GrepMatch, GrepResult, CatResult)
+│   ├── peek.py                 # FileMetadata dataclass (mm peek core)
+│   ├── stats.py                # compute_wc → WcStats (mm wc core)
+│   ├── search.py               # search_content → GrepResult (mm grep core)
 │   ├── display.py              # Rich formatting (tables, panels, format_size, format_number)
 │   ├── pipe.py                 # stdin/stdout pipe detection + multi-format path reading
 │   ├── pdf.py                  # PDF page mosaic extraction (pypdfium2 + Pillow)

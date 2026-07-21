@@ -37,50 +37,20 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, Literal, cast
 
 from mm.refs import Ref, new_session_id, uuid7
-from mm.store.db import MmDatabase
 
 if TYPE_CHECKING:
+    import re
+
     from PIL import Image as PILImage
+
+    from mm.cat_utils.base_utils import CatOpts
+    from mm.peek import FileMetadata
+    from mm.results import GrepResult, WcStats
 
 
 _FormatLiteral = Literal["openai", "gemini"]
 _RoleLiteral = Literal["system", "developer", "user"]
 _TreeLayout = Literal["insertion", "paths", "kind", "flat", "hybrid"]
-
-
-class _HybridGet:
-    """Descriptor that makes ``Context.get`` work as both instance and classmethod.
-
-    * ``ctx.get(ref)`` → calls :meth:`Context._get_instance` (returns the
-      stored object / Path for role-aware contexts, or the DB row
-      for directory-scan contexts).
-    * ``Context.get(global_ref, session_id=..., db=...)`` → calls
-      :meth:`Context._classmethod_get` (cross-session DB resolver;
-      replaces the old ``Context.resolve``).
-    """
-
-    def __get__(self, obj: Any, cls: type) -> Any:
-        if obj is None:
-            resolver = cast(Any, cls)._classmethod_get
-
-            def class_get(
-                ref: str,
-                *,
-                session_id: str | None = None,
-                db: Any = None,
-            ) -> Any:
-                return resolver(ref, default_session=session_id, db=db)
-
-            class_get.__name__ = "get"
-            class_get.__doc__ = (
-                "Cross-session DB resolver. Parses ``<session_id>/<ref_id>`` "
-                "(or accepts a bare ref + ``session_id=...``) and returns "
-                "the ``files`` row dict from the mm DB, or ``None`` on miss. "
-                "Use the instance form ``ctx.get(ref)`` when you already "
-                "have a Context."
-            )
-            return class_get
-        return obj._get_instance
 
 
 class FileEntry:
@@ -183,8 +153,11 @@ class Context:
         Directory-scan (legacy)::
 
             ctx = Context("~/data", session_id="my-session")
-            ctx.save()
-            row = Context.get("my-session/" + ctx.ref_for("photo.jpg"))
+            # The library exports records; the caller owns persistence.
+            from mm.store.db import MmDatabase
+            db = MmDatabase()
+            db.upsert_records(ctx.to_records(refs=True), root=ctx.root)
+            row = db.resolve("my-session/" + ctx.ref_for("photo.jpg"))
     """
 
     def __init__(
@@ -199,7 +172,6 @@ class Context:
     ):
         self._llm_base_url = llm_base_url
         self._llm_api_key = llm_api_key
-        self._db: MmDatabase | None = None
 
         if root is None:
             # Incremental role-aware mode.
@@ -248,13 +220,6 @@ class Context:
     def session_id(self) -> str | None:
         """External session id attached to this context, if any."""
         return self._session_id
-
-    @property
-    def db(self) -> MmDatabase:
-        """Lazy-initialized global database connection."""
-        if self._db is None:
-            self._db = MmDatabase()
-        return self._db
 
     @property
     def num_files(self) -> int:
@@ -396,23 +361,19 @@ class Context:
         Args:
             mode: ``"metadata"`` populates each row with the metadata-tier content
                 (``files.text_preview`` produced by ``extract_meta``; no LLM call).
-                ``"fast"`` runs light LLM extraction (requires a
-                configured profile; not wired yet — currently raises
-                ``NotImplementedError``).
-                ``"accurate"`` runs the LLM-backed path (requires a
-                configured profile; not wired yet — currently raises
-                ``NotImplementedError``).
+                ``"fast"`` runs the light pipeline extraction and ``"accurate"``
+                runs the LLM-backed pipeline (both require a configured
+                profile). Both route through
+                :func:`mm.cat_utils.extract.extract`.
 
         Returns:
             Markdown table (headers: ref | kind | source | content).
         """
         self._require_pyctx("to_md")
-        if mode in ("fast", "accurate"):
-            raise NotImplementedError(
-                f"to_md(mode={mode!r}) is not implemented yet. "
-                "Use mode='metadata' for the metadata-tier content."
-            )
-        contents = self._collect_metadata_contents()
+        if mode == "metadata":
+            contents = self._collect_metadata_contents()
+        else:
+            contents = self._collect_pipeline_contents(mode)
         return self._pyctx.to_md_table(contents)
 
     def print_tree(self, layout: _TreeLayout = "insertion") -> None:
@@ -433,118 +394,169 @@ class Context:
                   [TODO]
 
         Raises:
-            NotImplementedError: For any non-``"insertion"`` layout.
+            ValueError: If ``layout`` is not one of the supported layouts.
         """
         self._require_pyctx("print_tree")
-        if layout != "insertion":
-            raise NotImplementedError(
-                f"print_tree(layout={layout!r}) is not implemented yet. "
-                "Only layout='insertion' is available in this release."
-            )
         from mm.display import output_console
 
-        output_console.print(self._pyctx.render_tree_insertion())
-
-    # ── Unified get (instance + classmethod hybrid) ───────────────────
-
-    get = _HybridGet()  # type: ignore[assignment]  # descriptor assigned below
-
-    def _get_instance(self, ref_id: str) -> Any:
-        """Instance ``ctx.get(ref)`` — local lookup.
-
-        - Incremental mode: returns the ``str``, ``Path``, or
-          ``PIL.Image.Image`` stored at ``ref_id``.
-        - Directory-scan mode: returns the DB row for the global ref.
-
-        Raises:
-            RefNotFoundError: Bare ref id not found in the context.
-            ValueError: Malformed global ref or mismatched session id.
-        """
-        bare = _strip_session_prefix(ref_id, self._session_id)
-        if self._pyctx is not None:
-            return self._pyctx.get(bare)
-        return Context._classmethod_get(
-            f"{self._session_id}/{bare}" if self._session_id else bare,
-            default_session=self._session_id,
-            db=self._db,
-        )
-
-    @classmethod
-    def _classmethod_get(
-        cls,
-        ref: str,
-        *,
-        default_session: str | None = None,
-        db: MmDatabase | None = None,
-    ) -> dict[str, Any] | None:
-        """Cross-session DB resolver for persisted contexts."""
-        from mm.refs import GlobalRef
-
-        if "/" in ref:
-            parsed = GlobalRef.parse(ref)
-            sid, rid = parsed.session_id, parsed.ref_id
-        elif default_session is not None:
-            sid, rid = default_session, ref
-        else:
+        if layout == "insertion":
+            output_console.print(self._pyctx.render_tree_insertion())
+            return
+        if layout not in ("paths", "kind", "flat", "hybrid"):
             raise ValueError(
-                f"ambiguous ref {ref!r}: pass a global '<session_id>/<ref_id>' "
-                "or supply session_id=..."
+                f"print_tree(layout={layout!r}) is invalid. Choose from "
+                "'insertion', 'paths', 'kind', 'flat', 'hybrid'."
             )
-        if db is None:
-            db = MmDatabase()
-        return db.get_file_by_ref(sid, rid)
+        output_console.print(self._build_tree_view(layout))
 
-    @staticmethod
-    def resolve(
-        global_ref: str,
-        *,
-        db: MmDatabase | None = None,
-    ) -> dict[str, Any] | None:
-        """Legacy DB resolver kept for backward compatibility.
+    def _build_tree_view(self, layout: _TreeLayout) -> Any:
+        """Build a ``rich.Tree`` for the given non-insertion layout."""
+        from rich.text import Text
+        from rich.tree import Tree
 
-        New code should prefer :meth:`get` (instance for local lookup,
-        classmethod for cross-session DB lookup).
-        """
-        return Context._classmethod_get(global_ref, db=db)
+        items = list(self._pyctx.items())
+        root_label = Text()
+        root_label.append("Context", style="bold")
+        root_label.append(f"  {len(items)} items", style="dim")
+        tree = Tree(root_label)
 
-    # ── Persistence (deferred for role-aware) ─────────────────────────
+        def _leaf(item: dict[str, Any], *, with_meta: bool) -> Text:
+            label = Text()
+            src_kind = item["source_kind"]
+            if src_kind == "path":
+                label.append(Path(item["source_value"]).name)
+            elif item["kind"] == "text":
+                preview = (item.get("desc") or item.get("source_value") or "").strip()
+                label.append((preview[:60] + "…") if len(preview) > 60 else preview or "(text)")
+            else:
+                label.append(str(item.get("source_value") or item["kind"]))
+            label.append(f"  {item['ref_id']}", style="dim")
+            if with_meta and item.get("metadata"):
+                label.append(f"  {item['metadata']}", style="dim italic")
+            return label
 
-    def save(self) -> None:
-        """Persist the context.
+        if layout == "flat":
+            for item in items:
+                line = Text()
+                line.append(f"{item['ref_id']}", style="bold")
+                line.append(f"  [{item['kind']}] ", style="dim")
+                src = (
+                    Path(item["source_value"]).name
+                    if item["source_kind"] == "path"
+                    else str(item.get("desc") or item.get("source_value") or "")
+                )
+                line.append(src[:80])
+                tree.add(line)
+            return tree
 
-        For directory-scan contexts, writes the Arrow table to the
-        global mm DB (existing behaviour).
+        if layout == "kind":
+            by_kind: dict[str, list[dict[str, Any]]] = {}
+            for item in items:
+                by_kind.setdefault(item["kind"], []).append(item)
+            for kind in sorted(by_kind):
+                branch = tree.add(Text(f"{kind} ({len(by_kind[kind])})", style="bold"))
+                for item in by_kind[kind]:
+                    branch.add(_leaf(item, with_meta=False))
+            return tree
 
-        For incremental role-aware contexts, this is **not implemented
-        yet**. Planned behaviour:
+        # "paths" and "hybrid": directory hierarchy for path items.
+        with_meta = layout == "hybrid"
+        path_items = [it for it in items if it["source_kind"] == "path"]
+        inline_items = [it for it in items if it["source_kind"] != "path"]
 
-            - Write ``(session_id, ref_id, kind, uri, content_hash, metadata)``
-              to the ``files`` table in the mm DB (``MmSettings.db_path``).
-            - For in-memory objects, spool to the content-addressed blob
-              store (``MmSettings.blobs_dir``, ``<blobs_dir>/<xxh3>.<ext>``)
-              and record the blob URI.
-            - Make ``Context.get("<session>/<ref>")`` resolve via the DB
-              across processes.
-            - Idempotent on repeat calls for the same
-              ``(session_id, ref_id)``.
+        import os.path as _osp
+
+        try:
+            common = (
+                Path(_osp.commonpath([it["source_value"] for it in path_items]))
+                if len(path_items) > 1
+                else (Path(path_items[0]["source_value"]).parent if path_items else None)
+            )
+        except ValueError:
+            # Paths share no common root (e.g. different Windows drives).
+            common = None
+        if common is not None and common.is_file():
+            common = common.parent
+
+        dir_nodes: dict[str, Any] = {}
+
+        def _dir_branch(directory: Path) -> Any:
+            key = str(directory)
+            if key in dir_nodes:
+                return dir_nodes[key]
+            at_root = directory.parent == directory
+            if at_root or (
+                common is not None and (directory == common or common not in directory.parents)
+            ):
+                node = tree.add(Text(f"{directory}/", style="bold"))
+            else:
+                node = _dir_branch(directory.parent).add(Text(f"{directory.name}/", style="bold"))
+            dir_nodes[key] = node
+            return node
+
+        for item in path_items:
+            p = Path(item["source_value"])
+            _dir_branch(p.parent).add(_leaf(item, with_meta=with_meta))
+        if inline_items:
+            inline = tree.add(Text("(inline)", style="dim"))
+            for item in inline_items:
+                inline.add(_leaf(item, with_meta=with_meta))
+        return tree
+
+    # ── Unified get (in-memory, role-aware) ───────────────────────────
+
+    def get(self, ref_id: str) -> Any:
+        """Look up an item by ref id (incremental role-aware mode).
+
+        Returns the ``str``, ``Path``, or ``PIL.Image.Image`` stored at
+        ``ref_id``. Accepts either a bare ref id or a
+        ``<session_id>/<ref_id>`` global ref matching this context's
+        session.
+
+        Persistence and cross-session lookups are the caller's
+        responsibility — the library never reads a database. Export with
+        :meth:`to_records` and resolve through your own store (e.g.
+        ``mm.store.db.MmDatabase().resolve(ref)``).
 
         Raises:
-            NotImplementedError: For incremental role-aware contexts.
+            RefNotFoundError: Ref id not found in the context.
+            ValueError: Malformed global ref or mismatched session id.
+            RuntimeError: Called on a directory-scan context.
+        """
+        if self._pyctx is None:
+            raise RuntimeError(
+                "Context.get() resolves in-memory role-aware refs only. "
+                "Directory-scan persistence and cross-session lookups are the "
+                "caller's responsibility: export with Context.to_records() and "
+                "resolve via your own store (e.g. MmDatabase().resolve(ref))."
+            )
+        bare = _strip_session_prefix(ref_id, self._session_id)
+        return self._pyctx.get(bare)
+
+    # ── Persistence export (storage-agnostic) ─────────────────────────
+
+    def to_records(self, *, refs: bool = False) -> list[dict[str, Any]]:
+        """Export the context as plain dict records (storage-agnostic).
+
+        This is the persistence-decoupling entry point: the library never
+        writes to a database. ``to_records`` hands you the data so *you*
+        decide the storage backend (SQLite, Postgres, object storage, a
+        JSONL file, ...). Pair it with :meth:`items` blob access for any
+        in-memory objects you need to spool out.
+
+        Args:
+            refs: Directory-scan only — append ``session_id``/``ref_id``
+                columns to each record.
+
+        Returns:
+            One dict per file (directory-scan) or per ref (incremental,
+            same fields as :meth:`items`).
         """
         if self._pyctx is not None:
-            raise NotImplementedError(
-                "Context.save() is not implemented for incremental role-aware contexts yet. "
-                "See Context.save docstring for the planned behaviour."
-            )
-        refs = self._materialize_refs() if self._session_id else None
-        assert self.root is not None
-        self.db.upsert_files(
-            self._table,
-            self.root,
-            session_id=self._session_id,
-            refs=refs,
-            scanner=self._scanner,
-        )
+            return [dict(item) for item in self._pyctx.items()]
+        self._require_table("to_records")
+        table = self._table_with_refs() if refs else self._table
+        return table.to_pylist()
 
     # ── Directory-scan API (preserved) ────────────────────────────────
 
@@ -613,8 +625,35 @@ class Context:
         min_size: str | int | None = None,
         max_size: str | int | None = None,
         modified_after: str | None = None,
+        name: str | None = None,
+        ignore_case: bool = False,
+        depth: int | None = None,
+        sort: str | None = None,
+        reverse: bool = False,
+        limit: int | None = None,
     ) -> Context:
-        """Return a new directory-scan Context with filtered rows."""
+        """Return a new directory-scan Context with filtered/sorted rows.
+
+        Source of truth for ``mm find``'s row selection. All predicates
+        compose; an unfiltered call returns ``self`` unchanged.
+
+        Args:
+            kind: Kind filter (single or comma-separated, e.g. ``"image,document"``).
+            ext: Extension filter — a comma-separated string or list (``".pdf"``).
+            min_size: Minimum size; ``int`` bytes or human string (``"1mb"``).
+            max_size: Maximum size; ``int`` bytes or human string.
+            modified_after: Reserved for future mtime filtering.
+            name: Filter by file name. Tried as a regex first, falling back
+                to a case-(in)sensitive substring match.
+            ignore_case: Case-insensitive ``name`` matching.
+            depth: Maximum directory depth (0 = top-level).
+            sort: Column to sort by (e.g. ``"size"``, ``"name"``).
+            reverse: Sort descending when ``True``.
+            limit: Keep at most this many rows (applied last).
+
+        Returns:
+            A new directory-scan :class:`Context` over the filtered table.
+        """
         self._require_table("filter")
         conditions: list[str] = []
 
@@ -635,14 +674,28 @@ class Context:
         if max_size is not None:
             size_bytes = _parse_size(max_size) if isinstance(max_size, str) else max_size
             conditions.append(f"size <= {size_bytes}")
+        if depth is not None:
+            conditions.append(f"depth <= {depth}")
 
-        if not conditions:
+        if not conditions and name is None and not sort and limit is None:
             return self
 
         from mm.query import query_arrow_table
 
-        where_clause = " AND ".join(conditions)
-        filtered = query_arrow_table(self._table, f"SELECT * FROM files WHERE {where_clause}")
+        filtered = self._table
+        if conditions:
+            where_clause = " AND ".join(conditions)
+            filtered = query_arrow_table(filtered, f"SELECT * FROM files WHERE {where_clause}")
+
+        if name is not None:
+            filtered = self._filter_by_name(filtered, name, ignore_case)
+
+        if sort:
+            order = "DESC" if reverse else "ASC"
+            filtered = query_arrow_table(filtered, f"SELECT * FROM files ORDER BY {sort} {order}")
+
+        if limit is not None and limit < filtered.num_rows:
+            filtered = filtered.slice(0, limit)
 
         new_ctx = object.__new__(Context)
         new_ctx.root = self.root
@@ -650,7 +703,6 @@ class Context:
         new_ctx._llm_api_key = self._llm_api_key
         new_ctx._scanner = self._scanner
         new_ctx._table = filtered
-        new_ctx._db = self._db
         new_ctx._no_ignore = self._no_ignore
         new_ctx._session_id = self._session_id
         new_ctx._refs_cache = None
@@ -658,18 +710,94 @@ class Context:
         new_ctx._pyctx = None
         return new_ctx
 
-    def cat(self, path: str, *, no_cache: bool = False) -> str:
-        """Read locally-extracted (metadata-tier) content of a file (directory-scan mode)."""
-        self._require_table("cat")
-        assert self.root is not None
-        full_path = self.root / path
-        from mm.cat_utils.extract_meta import extract_meta
-        from mm.utils import file_kind
+    def cat(
+        self,
+        path: str,
+        *,
+        mode: Literal["metadata", "fast", "accurate"] = "metadata",
+        no_cache: bool = False,
+        no_generate: bool = False,
+        opts: "CatOpts | None" = None,
+    ) -> str:
+        """Extract a file's content (directory-scan mode).
 
-        kind = file_kind(full_path)
-        if kind == "text":
-            return full_path.read_text(errors="replace")
-        return extract_meta(full_path, kind, no_cache=no_cache)
+        Source of truth for ``mm cat``. The ``metadata`` mode returns the
+        locally-extracted (no-LLM) content; ``fast`` and ``accurate`` run
+        the full pipeline-driven extraction via
+        :func:`mm.cat_utils.extract.extract`.
+
+        Args:
+            path: Relative path within the context root (or absolute).
+            mode: ``"metadata"`` (default, no LLM), ``"fast"``, or
+                ``"accurate"``.
+            no_cache: Bypass the extraction cache and recompute.
+            no_generate: Skip the LLM ``generate`` step (encode-only).
+            opts: Pre-built :class:`~mm.cat_utils.base_utils.CatOpts` to use
+                verbatim (dependency injection from the CLI fast path). When
+                ``None``, a default is constructed from the other arguments.
+
+        Returns:
+            The extracted content as a string.
+        """
+        self._require_table("cat")
+        full_path = Path(path)
+        if not full_path.is_absolute() and self.root is not None:
+            full_path = self.root / path
+
+        if mode == "metadata" and opts is None:
+            from mm.cat_utils.extract_meta import extract_meta
+            from mm.utils import file_kind
+
+            kind = file_kind(full_path)
+            if kind == "text":
+                return full_path.read_text(errors="replace")
+            return extract_meta(full_path, kind, no_cache=no_cache)
+
+        from mm.cat_utils.extract import extract as _extract
+
+        if opts is None:
+            opts = self._default_cat_opts(mode=mode, no_cache=no_cache, no_generate=no_generate)
+        return _extract(full_path, opts).content
+
+    @staticmethod
+    def _default_cat_opts(
+        *,
+        mode: str = "fast",
+        no_cache: bool = False,
+        no_generate: bool = False,
+    ) -> "CatOpts":
+        """Build a default :class:`CatOpts` for library-driven extraction."""
+        from mm.cat_utils.base_utils import CatOpts
+
+        return CatOpts(
+            n=None,
+            output_dir=None,
+            mode=mode,
+            no_cache=no_cache,
+            no_generate=no_generate,
+            format="rich",
+            encode_overrides={},
+            generate_overrides={},
+            pipelines={},
+            verbose=False,
+            dry_run=False,
+            stream=False,
+        )
+
+    @staticmethod
+    def _filter_by_name(table: Any, name: str, ignore_case: bool) -> Any:
+        """Filter an Arrow table by file name (regex first, substring fallback)."""
+        import re as re_mod
+
+        flags = re_mod.IGNORECASE if ignore_case else 0
+        names = table.column("name").to_pylist()
+        try:
+            pattern = re_mod.compile(name, flags)
+            mask = [bool(pattern.search(str(n))) for n in names]
+        except re_mod.error:
+            needle = name.lower()
+            mask = [needle in str(n).lower() for n in names]
+        return table.filter(mask)
 
     def head(self, path: str, *, n: int = 10) -> str:
         content = self.cat(path)
@@ -716,23 +844,75 @@ class Context:
         strat = get_encoder(strategy, kind)
         return list(strat.encode(full_path, **kwargs))
 
-    def grep(self, pattern: str, *, kind: str | None = None) -> list[dict[str, Any]]:
-        """Search for a pattern across scanned files."""
+    def grep(
+        self,
+        pattern: str,
+        *,
+        kind: str | None = None,
+        ext: str | None = None,
+        ignore_case: bool = False,
+        context_lines: int = 0,
+        count: bool = False,
+        semantic: bool = False,
+        pre_index: bool = False,
+        files: "list[FileEntry] | None" = None,
+        regex: "re.Pattern[str] | None" = None,
+        stdin_paths: list[str] | None = None,
+        quiet: bool = True,
+    ) -> "GrepResult":
+        """Search file contents (text, document, FTS, and semantic).
+
+        Source of truth for ``mm grep``. Scans text/document files line by
+        line and merges full-text and (optionally) semantic chunk hits.
+
+        Args:
+            pattern: Regular expression source.
+            kind: Optional kind filter (single or comma-separated).
+            ext: Optional extension filter.
+            ignore_case: Force case-insensitive matching (otherwise
+                smart-case applies).
+            context_lines: Lines of context around each match (``grep -C``).
+            count: Produce per-file counts only (no line matches).
+            semantic: Also run a semantic (vector) search over chunks.
+            pre_index: Index unindexed files before semantic search.
+            files: Pre-collected files to scan (dependency injection from the
+                CLI, which dedupes directory + piped paths). When ``None``,
+                this context's files are used, filtered by ``kind``/``ext``.
+            regex: Pre-compiled pattern (DI from the CLI fast path).
+            stdin_paths: Raw piped paths forwarded to semantic search.
+            quiet: Suppress semantic-search progress messages.
+
+        Returns:
+            A :class:`~mm.results.GrepResult`.
+        """
         self._require_table("grep")
-        import re
+        assert self.root is not None
+        from mm.search import search_content
 
-        matches: list[dict[str, Any]] = []
-        target = self.filter(kind=kind) if kind else self
+        if files is None:
+            target = self
+            if kind:
+                target = target.filter(kind=kind)
+            if ext:
+                target = target.filter(ext=ext)
+            files = [f for f in target.files if not f.path.startswith(".")]
 
-        for f in target.files:
-            try:
-                content = self.cat(f.path)
-                for i, line in enumerate(content.splitlines(), 1):
-                    if re.search(pattern, line):
-                        matches.append({"path": f.path, "line_number": i, "line": line})
-            except Exception:
-                continue
-        return matches
+        return search_content(
+            pattern,
+            files=files,
+            root=self.root,
+            regex=regex,
+            ignore_case=ignore_case,
+            context_lines=context_lines,
+            count=count,
+            kind=kind,
+            ext=ext,
+            semantic=semantic,
+            pre_index=pre_index,
+            no_ignore=self._no_ignore,
+            stdin_paths=stdin_paths,
+            quiet=quiet,
+        )
 
     def show(
         self,
@@ -750,6 +930,54 @@ class Context:
             columns = [c for c in table.column_names if c != "session_id"]
         rich_table = arrow_table_to_rich(table, columns=columns, limit=limit)
         output_console.print(rich_table)
+
+    def wc(self, *, kind: str | None = None) -> "WcStats":
+        """Compute file/line/token/size aggregates (directory-scan mode).
+
+        Source of truth for ``mm wc``. Reuses this context's already-built
+        Rust scanner so no extra scan is performed.
+
+        Args:
+            kind: Optional kind filter (single or comma-separated, e.g.
+                ``"image,document"``).
+
+        Returns:
+            A :class:`~mm.results.WcStats` with totals and a ``by_kind``
+            breakdown.
+        """
+        self._require_table("wc")
+        from mm.stats import compute_wc
+
+        assert self.root is not None
+        return compute_wc(self.root, kind=kind, scanner=self._scanner)
+
+    def peek(self, path: str | Path) -> "FileMetadata":
+        """Return locally-extracted file metadata for a single file.
+
+        Source of truth for ``mm peek``. Reads dimensions / EXIF / codec /
+        duration / mime / hash directly from the file without touching the
+        SQLite store. In directory-scan mode a relative ``path`` is resolved
+        against the context root; absolute paths are used as-is.
+
+        Args:
+            path: File to inspect. Relative paths resolve against
+                ``self.root`` when this is a directory-scan context.
+
+        Returns:
+            A :class:`~mm.peek.FileMetadata` dataclass with all
+            kind-specific fields (unset fields are ``None``).
+
+        Raises:
+            FileNotFoundError: If the resolved file does not exist.
+        """
+        from mm.peek import FileMetadata
+
+        p = Path(path)
+        if not p.is_absolute() and self.root is not None:
+            p = self.root / p
+        if not p.exists():
+            raise FileNotFoundError(f"{path} not found")
+        return FileMetadata.from_path(p)
 
     def info(self) -> None:
         """Display summary statistics as a Rich panel (directory-scan mode)."""
@@ -793,32 +1021,21 @@ class Context:
         return self._session_id
 
     def _materialize_refs(self) -> dict[str, str]:
-        """Build-or-return cached ``{path: ref_id}`` (directory-scan mode)."""
+        """Build-or-return cached ``{path: ref_id}`` (directory-scan mode).
+
+        Ref ids are minted in-memory and cached for the lifetime of this
+        context; the library never reads a database. Cross-run/cross-process
+        ref stability is the persistence layer's concern — mm's SQLite store,
+        for example, preserves a row's ``ref_id`` on re-upsert.
+        """
         if self._refs_cache is not None:
             return self._refs_cache
-        session_id = self._require_session()
+        self._require_session()
         from mm.refs import make_ref_id
 
         paths = self._table.column("path").to_pylist()
         kinds = self._table.column("kind").to_pylist()
-
-        existing: dict[str, str] = {}
-        if self._db is not None or MmDatabase.DB_PATH.exists():
-            try:
-                rows = self.db.list_session_files(session_id)
-                assert self.root is not None
-                root_s = f"{self.root}/"
-                for r in rows:
-                    uri = str(r.get("uri") or "")
-                    ref = r.get("ref_id")
-                    if ref and uri.startswith(root_s):
-                        existing[uri[len(root_s) :]] = str(ref)
-            except Exception:
-                existing = {}
-
-        out: dict[str, str] = {}
-        for p, k in zip(paths, kinds):
-            out[p] = existing.get(p) or make_ref_id(k or "other")
+        out: dict[str, str] = {p: make_ref_id(k or "other") for p, k in zip(paths, kinds)}
         self._refs_cache = out
         return out
 
@@ -875,6 +1092,27 @@ class Context:
                     out[ref_id] = f"[extract failed: {exc}]"
             # in-memory / url items fall through to the metadata fallback
             # handled by the Rust-side to_md_with_contents.
+        return out
+
+    def _collect_pipeline_contents(self, mode: str) -> dict[str, str]:
+        """Extract pipeline-driven (fast/accurate) content for every item."""
+        from mm.cat_utils.extract import extract
+
+        opts = self._default_cat_opts(mode=mode)
+        out: dict[str, str] = {}
+        for item in self._pyctx.items():
+            ref_id = item["ref_id"]
+            if item["source_kind"] == "in_memory" and item["kind"] == "text":
+                out[ref_id] = item.get("desc") or ""
+                continue
+            if item["source_kind"] == "path":
+                p = Path(item["source_value"])
+                if not p.exists():
+                    continue
+                try:
+                    out[ref_id] = extract(p, opts).content
+                except Exception as exc:  # noqa: BLE001
+                    out[ref_id] = f"[extract failed: {exc}]"
         return out
 
     def _require_pyctx(self, method: str) -> None:

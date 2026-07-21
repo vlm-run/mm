@@ -124,7 +124,7 @@ def _index_one(uri: str) -> str | None:
     Run the full pipeline for an unprocessed *uri* in fast mode.
     """
     from mm.cat_utils.base_utils import CatOpts
-    from mm.commands.cat import _extract
+    from mm.cat_utils.extract import extract
 
     path = Path(uri)
     if not path.exists():
@@ -146,7 +146,7 @@ def _index_one(uri: str) -> str | None:
     )
 
     try:
-        result = _extract(path, opts)
+        result = extract(path, opts).content
         if not result or result.startswith("["):
             raise ValueError(f"Fast extraction failed for {uri}: {result}")
     except Exception as e:
