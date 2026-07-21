@@ -125,7 +125,7 @@ def render_messages(
     max_image_width: int = 320,
     show_role: bool = True,
     title: str | None = None,
-    true_token_count: int | None = None,
+    true_token_count: float | None = None,
 ) -> str:
     """Render an OpenAI-format message list as self-contained HTML.
 
@@ -910,7 +910,7 @@ def _render_audio_part(part: dict[str, Any], scope: str) -> str:
     )
 
 
-def _render_stats(stats: _Stats, scope: str, *, true_token_count: int | None = None) -> str:
+def _render_stats(stats: _Stats, scope: str, *, true_token_count: float | None = None) -> str:
     """Render the stats footer bar.
 
     When ``true_token_count`` is provided it is shown as the real token
@@ -934,7 +934,7 @@ def _render_stats(stats: _Stats, scope: str, *, true_token_count: int | None = N
     if stats.total_bytes:
         parts.append(f"encoded: ~{_fmt_bytes(stats.total_bytes)}")
     if true_token_count is not None:
-        parts.append(f"{true_token_count:,} tokens")
+        parts.append(f"{true_token_count:,.0f} tokens")
     elif stats.est_tokens:
         parts.append(f"~{stats.est_tokens:,} est. tokens")
 

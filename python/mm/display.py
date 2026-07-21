@@ -458,6 +458,8 @@ def display_elapsed(
     *,
     prefix: str | None = None,
     token_cost: float | None = None,
+    completion_tokens: float = 0,
+    gen_duration_ms: float = 0.0,
 ) -> None:
     """display elapsed time since start_time with throughput metrics.
 
@@ -469,6 +471,10 @@ def display_elapsed(
         cached: whether the result was served from cache
         prefix: optional leading text (e.g. ``"took "`` for grep)
         token_cost: total estimated LLM token cost in USD (appended when non-zero)
+        completion_tokens: total LLM completion tokens across files (toks/s numerator)
+        gen_duration_ms: total decode window across files, i.e. the sum of each
+            LLM call's ``gen_duration_ms`` (time spent generating tokens). Time-weighted
+            denominator for toks/s: ``completion_tokens / (gen_duration_ms / 1000)``.
     """
     assert start_time > 0
     elapsed_ms = (perf_counter() - start_time) * 1000
@@ -495,6 +501,10 @@ def display_elapsed(
 
         output_parts.append(throughput_str)
 
+    if completion_tokens > 0 and gen_duration_ms > 0:
+        toks_s = completion_tokens / (gen_duration_ms / 1000.0)
+        output_parts.append(f"{toks_s:,.1f} toks/s")
+
     if token_cost:
         output_parts.append(f"${token_cost:.4f}")
 
@@ -517,16 +527,28 @@ def display_elapsed_wrapper(start_time: float, prefix: str | None = None):
             total_bytes = 0
             cached = False
             token_cost = 0.0
+            completion_tokens = 0.0
+            gen_duration_ms = 0.0
             try:
                 from mm.commands import cat as cat_module
 
                 total_bytes = getattr(cat_module, "_total_bytes_processed", 0)
                 cached = getattr(cat_module, "_was_cached", False)
                 token_cost = getattr(cat_module, "_total_token_cost", 0.0)
+                completion_tokens = getattr(cat_module, "_total_completion_tokens", 0.0)
+                gen_duration_ms = getattr(cat_module, "_total_gen_duration_ms", 0.0)
             except (ImportError, AttributeError):
                 pass
 
-            display_elapsed(start_time, total_bytes, cached, prefix=prefix, token_cost=token_cost)
+            display_elapsed(
+                start_time,
+                total_bytes,
+                cached,
+                prefix=prefix,
+                token_cost=token_cost,
+                completion_tokens=completion_tokens,
+                gen_duration_ms=gen_duration_ms,
+            )
 
             try:
                 from mm.commands import cat as cat_module

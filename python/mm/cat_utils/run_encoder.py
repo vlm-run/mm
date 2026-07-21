@@ -199,6 +199,7 @@ def run_encoder(path: Path, kind: BinaryFileKind, spec: PipelineSpec, opts: CatO
         "cached_tokens": u.cached_tokens,
         "reasoning_tokens": u.reasoning_tokens,
         "total_tokens": u.total_tokens,
+        "gen_duration_ms": u.gen_duration_ms,
     }
 
     from mm.model_price_catalog import get_price_catalog
@@ -209,7 +210,7 @@ def run_encoder(path: Path, kind: BinaryFileKind, spec: PipelineSpec, opts: CatO
     encode_output = _format_encode_verbose(spec.encode.strategy, messages, encode_elapsed)
     profile_name = get_active_profile_name()
     generate_output = format_generate_verbose(
-        profile_name, elapsed, u.prompt_tokens, u.completion_tokens, token_cost
+        profile_name, elapsed, u.prompt_tokens, u.completion_tokens, token_cost, u.gen_duration_ms
     )
     return RunResult(
         content=result,
@@ -219,7 +220,7 @@ def run_encoder(path: Path, kind: BinaryFileKind, spec: PipelineSpec, opts: CatO
         llm_response=result if opts.report else None,
         pipeline_spec=spec if opts.report else None,
         encode_elapsed_ms=encode_elapsed if opts.report else None,
-        generate_elapsed_ms=elapsed if opts.report else None,
-        llm_usage=usage if opts.report else None,
+        generate_elapsed_ms=elapsed,
+        llm_usage=usage,
         token_cost=token_cost,
     )
