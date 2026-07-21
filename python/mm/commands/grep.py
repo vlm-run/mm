@@ -77,7 +77,7 @@ def grep_cmd(
     fmt = resolve_format(format.value if format else None)
     stdin_paths = read_paths_from_stdin()
     _directory = directory or Path("./")
-    _dir_str = str(_directory) if str(_directory) not in (".", "./") else ""
+    _dir_str = str(_directory) if _directory != Path(".") else ""
 
     # Smart-case: default to case-insensitive matching when -i is not passed and the pattern has no uppercase
     # letters. Any uppercase letter in the pattern preserves case-sensitivity

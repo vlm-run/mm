@@ -151,7 +151,7 @@ def extract(
     if content_hash and run.content and not run.content.startswith("["):
         uri = str(path.resolve())
         meta = {"verbose_suffix": run.verbose_suffix} if run.verbose_suffix else None
-        extract_meta(path, kind)
+        extract_meta(path, kind, content_hash=content_hash)
         try:
             db.put_extraction(
                 uri=uri,

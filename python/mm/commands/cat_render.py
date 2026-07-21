@@ -13,7 +13,7 @@ from mm.utils import file_kind
 
 
 def display_rich(
-    path: Path, content: str, mode: str, n: int | None, *, skip_formatting: bool = False
+    path: Path, content: str, mode: str, *, n: int | None, skip_formatting: bool = False
 ) -> None:
     """Render file content with rich syntax highlighting when applicable."""
     from mm.display import output_console
@@ -142,7 +142,7 @@ class RenderContext:
                 if self._emitted > 0:
                     output_console.print("\n====")
                 output_console.print(f"<{p.name}>")
-            display_rich(p, content, self.mode, self.n, skip_formatting=self.dry_run)
+            display_rich(p, content, self.mode, n=self.n, skip_formatting=self.dry_run)
             self._emitted += 1
         else:
             if self.multi_file:

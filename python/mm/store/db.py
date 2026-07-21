@@ -448,7 +448,8 @@ class MmDatabase:
             data = {**data, FileCol.CONTENT_INDEXED_AT: now_us()}
         sets = ", ".join(f"{k} = ?" for k in data)
         self._connect.execute(f"UPDATE files SET {sets} WHERE uri = ?", (*data.values(), uri))
-        self._connect.commit()
+        if not self._connect.in_transaction:
+            self._connect.commit()
 
     # -- Extractions --
 
