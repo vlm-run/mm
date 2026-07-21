@@ -1,4 +1,4 @@
-use criterion::{criterion_group, criterion_main, Criterion};
+use criterion::{Criterion, criterion_group, criterion_main};
 use std::path::Path;
 
 use mm_core::detect::kind_from_extension;
@@ -51,16 +51,6 @@ fn bench_kind_from_path(c: &mut Criterion) {
             let mut last = FileKind::Other;
             for p in &paths {
                 last = kind_from_path_to_str(p);
-            }
-            last
-        })
-    });
-
-    group.bench_function("current (kind_from_path)", |b| {
-        b.iter(|| {
-            let mut last = FileKind::Other;
-            for p in &paths {
-                last = kind_from_path_lossy(p);
             }
             last
         })
