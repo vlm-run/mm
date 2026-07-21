@@ -12,8 +12,8 @@ from pathlib import Path
 from typing import Any, Iterable
 
 from mm.encoders import register, resolve_provider
-from mm.encoders.base import Encoder, Message
-from mm.encoders.image import _image_part, _to_message
+from mm.encoders.base import Encoder, Message, to_message
+from mm.encoders.image import _image_part
 
 logger = logging.getLogger(__name__)
 
@@ -42,7 +42,7 @@ class VideoChunk(Encoder):
         from mm.video import VideoReader, pyav_runnable
 
         if not pyav_runnable():
-            yield _to_message([{"type": "text", "text": f"[PyAV not runnable for {path.name}]"}])
+            yield to_message([{"type": "text", "text": f"[PyAV not runnable for {path.name}]"}])
             return
 
         chunk_duration: int = kwargs.get("chunk_duration", DEFAULT_CHUNKS_DURATION)
@@ -56,7 +56,7 @@ class VideoChunk(Encoder):
         with VideoReader(path) as reader:
             video_duration = reader.duration
             if video_duration <= 0:
-                yield _to_message(
+                yield to_message(
                     [{"type": "text", "text": f"[Cannot determine duration for {path.name}]"}]
                 )
                 return
@@ -94,7 +94,7 @@ class VideoChunk(Encoder):
                     for frame in frames:
                         b64, mime = frame.encode_jpeg()
                         parts.append(_image_part(b64, mime, provider))
-                    return _to_message(parts)
+                    return to_message(parts)
 
             with ThreadPoolExecutor(max_workers=min(4, len(segments))) as pool:
                 yield from filter(None, pool.map(_submit_fn, enumerate(segments)))

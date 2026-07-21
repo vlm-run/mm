@@ -157,8 +157,9 @@ mm cat FILE... [-m fast|accurate] [-p PIPELINE]... [-n N] [-o DIR]
                [--encode.strategy_opts KEY=VALUE]...
                [--prompt TEXT | --generate.prompt TEXT]
                [--model NAME  | --generate.model NAME]
+               [--extra-body JSON | --generate.extra-body JSON]
                [--generate.max-tokens N] [--generate.temperature F]
-               [--generate.json-mode BOOL] [--generate.extra-body JSON]
+               [--generate.json-mode BOOL]
                [--list-pipelines | --list-encoders | --print-pipeline KIND/MODE]
                [-f FORMAT]
 ```
@@ -195,7 +196,7 @@ mm cat FILE... [-m fast|accurate] [-p PIPELINE]... [-n N] [-o DIR]
 | `--generate.max-tokens` | Max completion tokens. |
 | `--generate.temperature` | Sampling temperature. |
 | `--generate.json-mode` | Request JSON response (`true`/`false`). |
-| `--generate.extra-body` | JSON object deep-merged into OpenAI `extra_body` (CLI keys win). |
+| `--extra-body` (= `--generate.extra-body`) | JSON object deep-merged into OpenAI `extra_body` (CLI keys win). |
 | `--dry-run` | Resolve and display the pipeline without executing it. |
 | `--list-pipelines` | List built-in pipelines and exit. |
 | `--list-encoders` | List registered encoders and exit. |
@@ -256,7 +257,7 @@ profile (mm.toml)  →  pipeline YAML (generate.*)  →  encoder generate[mode] 
   model (default)      max_tokens                      (None = suppress LLM)        --generate.max-tokens
                        temperature                                                  --generate.temperature
                        json_mode                                                    --generate.json-mode
-                       extra_body (deep-merged)                                     --generate.extra-body
+                       extra_body (deep-merged)                                     --extra-body / --generate.extra-body
 ```
 
 `base_url` and `api_key` are profile-only. The merged `model` + `extra_body` participate in the L2 cache key.
@@ -291,7 +292,9 @@ profile (mm.toml)  →  pipeline YAML (generate.*)  →  encoder generate[mode] 
 | `page-text` | document | Per-page text (PDF/DOCX/PPTX). |
 | `rasterize` | document | Render PDF pages as images. |
 | `rasterize-text` | document | Rasterize + extract text, interleaved. |
-| `gemini` | document | Gemini Part. |
+| `native` | document | Raw base64 `file` part (OpenAI-compatible passthrough). |
+| `document-url` | document | Raw base64 `document_url` part (vlm.run gateway native input). |
+| `gemini-native` | document | Gemini `inline_data` Part. |
 
 ### Custom pipeline YAML
 

@@ -146,7 +146,9 @@ mm/
 │   │   ├── document/
 │   │   │   ├── __init__.py     # (empty — encoders self-register on import)
 │   │   │   ├── page_text.py    # page-text (text extraction per page)
-│   │   │   └── rasterize.py    # rasterize, rasterize-text (pypdfium2)
+│   │   │   ├── rasterize.py    # rasterize, rasterize-text (pypdfium2)
+│   │   │   ├── native.py       # native (base64 file)
+│   │   │   └── document_url.py # document-url (base64 document_url)
 │   │   ├── gemini.py           # gemini-native, gemini-chunked (Gemini inline_data)
 │   │   ├── image.py            # resize, tile
 │   │   └── video/              # Video encoders
@@ -154,7 +156,7 @@ mm/
 │   │       ├── captions.py     # captions
 │   │       ├── chunks.py       # chunked (overlapping time-based chunks)
 │   │       ├── clips.py        # clips, clips-w-transcript (base64 video clips)
-│   │       ├── native.py       # native (base64 video_url passthrough)
+│   │       ├── native.py       # native (base64 video_url)
 │   │       ├── frames.py       # frames, frames-w-transcript
 │   │       ├── keyframes.py    # keyframes, keyframes-w-transcript
 │   │       ├── mosaic.py       # mosaic, mosaic-w-transcript
@@ -296,7 +298,7 @@ The following commands were merged into the core commands:
 - `mm cat file -n 20` — first 20 lines (head)
 - `mm cat file -n -20` — last 20 lines (tail)
 - `mm cat file -m fast` — kind's fast pipeline (image/video: short LLM caption; PDF: page-text via pypdfium2; audio: Whisper transcript (no LLM); code/text/docx/pptx: passthrough)
-- `mm cat file -m accurate` — LLM-generated caption/description (image/video/PDF); audio: Whisper transcript only unless using `-p native` or `-p gemini-native`; passthrough for code/text/docx/pptx
+- `mm cat file -m accurate` — LLM-generated caption/description (image/video/PDF); audio: Whisper transcript only unless using `-p native` or `-p gemini-native`; for code/text/docx/pptx
 - `mm cat video.mp4 -m accurate` — auto-generates keyframe mosaic → LLM description
 - `mm cat photo.png -p resize` — encode with named encoder
 - `mm cat photo.png -m accurate -p my-pipeline.yaml` — custom pipeline YAML

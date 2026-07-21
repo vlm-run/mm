@@ -14,8 +14,8 @@ from pathlib import Path
 from typing import Any, Iterable, Iterator, Optional
 
 from mm.encoders import register, resolve_provider
-from mm.encoders.base import Encoder, Message
-from mm.encoders.image import _image_part, _to_message
+from mm.encoders.base import Encoder, Message, to_message
+from mm.encoders.image import _image_part
 from mm.utils import get_b64
 
 logger = logging.getLogger(__name__)
@@ -70,11 +70,11 @@ class DocumentRasterize(Encoder):
             ]
             for b64, mime in batch:
                 parts.append(_image_part(b64, mime, provider))
-            yield _to_message(parts)
+            yield to_message(parts)
             page_idx += len(batch)
 
         if not any_pages:
-            yield _to_message(
+            yield to_message(
                 [
                     {
                         "type": "text",
@@ -140,11 +140,11 @@ class DocumentRasterizeText(Encoder):
                             "text": f"[Page {page_idx + j + 1} text]: {batch_texts[j].strip()}",
                         }
                     )
-            yield _to_message(parts)
+            yield to_message(parts)
             page_idx += len(batch_imgs)
 
         if not any_pages:
-            yield _to_message(
+            yield to_message(
                 [
                     {
                         "type": "text",

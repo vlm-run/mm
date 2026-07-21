@@ -312,7 +312,6 @@ class TestCatDroppedFlags:
     @pytest.mark.parametrize(
         "flag,value",
         [
-            ("--extra-body", '{"method":"ocr"}'),
             ("-e", '{"method":"ocr"}'),
             ("--method", "ocr"),
             ("--method-params", '{"lang":"ch"}'),
@@ -359,6 +358,24 @@ class TestCatPromptAlias:
         r = runner.invoke(
             app,
             ["cat", str(mixed_dir / "readme.md"), "--generate.prompt", "Summarize:"],
+        )
+        assert r.exit_code == 0, (r.output, getattr(r, "stderr", ""))
+
+
+class TestCatExtraBodyAlias:
+    """`--extra-body` and `--generate.extra-body` are accepted as aliases for the same option."""
+
+    def test_short_form_accepted(self, mixed_dir: Path):
+        r = runner.invoke(
+            app,
+            ["cat", str(mixed_dir / "readme.md"), "--extra-body", '{"method":"ocr"}'],
+        )
+        assert r.exit_code == 0, (r.output, getattr(r, "stderr", ""))
+
+    def test_dotted_form_accepted(self, mixed_dir: Path):
+        r = runner.invoke(
+            app,
+            ["cat", str(mixed_dir / "readme.md"), "--generate.extra-body", '{"method":"ocr"}'],
         )
         assert r.exit_code == 0, (r.output, getattr(r, "stderr", ""))
 

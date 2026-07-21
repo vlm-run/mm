@@ -15,8 +15,8 @@ from pathlib import Path
 from typing import Any, Iterable
 
 from mm.encoders import register, resolve_provider
-from mm.encoders.base import Encoder, Message
-from mm.encoders.image import _image_part, _to_message
+from mm.encoders.base import Encoder, Message, to_message
+from mm.encoders.image import _image_part
 from mm.encoders.video._transcript import encode_with_transcript
 
 logger = logging.getLogger(__name__)
@@ -49,16 +49,14 @@ class VideoKeyframes(Encoder):
         from mm.video import VideoReader, pyav_runnable
 
         if not pyav_runnable():
-            yield _to_message([{"type": "text", "text": f"[PyAV not runnable for {path.name}]"}])
+            yield to_message([{"type": "text", "text": f"[PyAV not runnable for {path.name}]"}])
             return
 
         with VideoReader(path) as reader:
             kf_stream = reader.keyframes(width=max_width, max_frames=max_keyframes)
 
             if len(kf_stream) == 0:
-                yield _to_message(
-                    [{"type": "text", "text": f"[No keyframes found in {path.name}]"}]
-                )
+                yield to_message([{"type": "text", "text": f"[No keyframes found in {path.name}]"}])
                 return
 
             logger.debug(
@@ -83,7 +81,7 @@ class VideoKeyframes(Encoder):
                 for frame in batch:
                     b64, mime = frame.encode_jpeg()
                     parts.append(_image_part(b64, mime, provider))
-                yield _to_message(parts)
+                yield to_message(parts)
 
 
 class VideoKeyframesWithTranscript(Encoder):

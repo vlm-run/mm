@@ -343,7 +343,7 @@ The skill exposes mm's capabilities to any tool that supports the skills protoco
 |---------|---------|-----------|
 | `find`  | Find/list files; tabular, tree, or schema view | `-n` / `--name`, `-i` / `--ignore-case`, `-k` / `--kind`, `-e` / `--ext`, `--min-size`, `--max-size`, `-s` / `--sort`, `-r` / `--reverse`, `-c` / `--columns`, `--tree`, `-d` / `--depth`, `--schema`, `--limit`, `--no-ignore`, `-f` / `--format` |
 | `peek`  | Local file metadata (dimensions / EXIF / codec / duration / mime / hash) | `--full` (adds `doc_author/title/subject/keywords/creator/producer/pages`), `-f` / `--format` (rich / json / pretty-json / tsv / csv / stdout) |
-| `cat`   | Content extraction (auto-detected by kind × mode); pipeline-driven | `-m` / `--mode fast`/`accurate`, `-p` / `--pipeline` (encoder name or YAML), `-n` (head/tail), `-o` / `--output-dir`, `--no-cache`, `--no-generate`, `-v` / `--verbose`, `--stream` (stream LLM tokens to stdout), `-y` / `--yes`, `--encode.strategy`, `--encode.backend` (mlx/ctranslate2/openai), `--encode.model`, `--encode.pyfunc`, `--encode.strategy_opts KEY=VALUE`, `--prompt` (= `--generate.prompt`), `--model` (= `--generate.model`), `--generate.max-tokens`, `--generate.temperature`, `--generate.json-mode`, `--generate.extra-body`, `--list-pipelines`, `--list-encoders`, `--print-pipeline <kind>/<mode>`, `-f` / `--format` |
+| `cat`   | Content extraction (auto-detected by kind × mode); pipeline-driven | `-m` / `--mode fast`/`accurate`, `-p` / `--pipeline` (encoder name or YAML), `-n` (head/tail), `-o` / `--output-dir`, `--no-cache`, `--no-generate`, `-v` / `--verbose`, `--stream` (stream LLM tokens to stdout), `-y` / `--yes`, `--encode.strategy`, `--encode.backend` (mlx/ctranslate2/openai), `--encode.model`, `--encode.pyfunc`, `--encode.strategy_opts KEY=VALUE`, `--prompt` (= `--generate.prompt`), `--model` (= `--generate.model`), `--extra-body` (= `--generate.extra-body`), `--generate.max-tokens`, `--generate.temperature`, `--generate.json-mode`, `--list-pipelines`, `--list-encoders`, `--print-pipeline <kind>/<mode>`, `-f` / `--format` |
 | `grep`  | Text + semantic content search | `-k` / `--kind`, `-e` / `--ext`, `-C` (context lines), `-c` / `--count`, `-i` / `--ignore-case`, `-s` / `--semantic`, `--pre-index`, `--no-ignore`, `-f` / `--format` |
 | `sql`   | SQL on `files` / `extractions` / `chunks` (auto-routed) | `-d` / `--dir`, `--pre-index`, `--list-tables`, `-f` / `--format` |
 | `wc`    | Count files, bytes, lines (est.), tokens (est.) | `-k` / `--kind`, `--by-kind`, `-f` / `--format` |
@@ -431,12 +431,12 @@ CLI override flags (each takes precedence over both pipeline YAML and profile):
 |------|-------|----------------|
 | `--model NAME` | `--generate.model NAME` | `generate.model` |
 | `--prompt TEXT` | `--generate.prompt TEXT` | `generate.prompt` |
+| `--extra-body '<json>'` | `--generate.extra-body '<json>'` | `generate.extra_body` (deep-merged onto YAML; CLI keys win) |
 | `--generate.max-tokens N` | — | `generate.max_tokens` |
 | `--generate.temperature F` | — | `generate.temperature` |
 | `--generate.json-mode BOOL` | — | `generate.json_mode` |
-| `--generate.extra-body '<json>'` | — | `generate.extra_body` (deep-merged onto YAML; CLI keys win) |
 
-Use `--generate.extra-body` for any provider-specific knobs (vlmrt's `method`, `method_params`, `video_fps`, `image_resolution`, `vlmrun.metadata`, etc.). The merged `model` + `extra_body` participate in the L2 cache key, so changing a knob correctly invalidates cached results. `base_url` and `api_key` are profile-only — there is no CLI override for them.
+Use `--extra-body` (or its `--generate.extra-body` alias) for any provider-specific knobs (vlmrt's `method`, `method_params`, `video_fps`, `image_resolution`, `vlmrun.metadata`, etc.). The merged `model` + `extra_body` participate in the L2 cache key, so changing a knob correctly invalidates cached results. `base_url` and `api_key` are profile-only — there is no CLI override for them.
 
 Examples against a vlmrt deployment (`mm profile add vlmrt --base-url http://gpu-box:8001/v1 --model qwen3.5-0.8b`):
 

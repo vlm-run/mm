@@ -1,9 +1,9 @@
-"""Native base64 video passthrough encoder.
+"""Native base64 video encoder.
 
 Sends the entire video file as a base64-encoded ``video_url`` part — the
-OpenAI-compatible counterpart to the Gemini ``inline_data`` passthrough
-(``gemini-native``). No frame extraction, probing, or chunking: the raw
-file is sent as-is for models with native video input support.
+OpenAI-compatible counterpart to the Gemini ``inline_data`` (``gemini-native``).
+No frame extraction, probing, or chunking: the raw file is sent as-is for models
+with native video input support.
 """
 
 from __future__ import annotations
@@ -14,8 +14,7 @@ from typing import Any, Iterable
 
 from mm.constants import guess_mime
 from mm.encoders import register
-from mm.encoders.base import Encoder, Message
-from mm.encoders.image import _to_message
+from mm.encoders.base import Encoder, Message, to_message
 from mm.utils import get_b64
 
 logger = logging.getLogger(__name__)
@@ -37,7 +36,7 @@ class VideoNative(Encoder):
         mime = guess_mime(path.name)
         size_mb = len(data) / (1024 * 1024)
         logger.debug("native_video [path=%s, size=%.1fMB]", path.name, size_mb)
-        yield _to_message(
+        yield to_message(
             [
                 {
                     "type": "video_url",

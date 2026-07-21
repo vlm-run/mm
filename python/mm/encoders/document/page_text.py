@@ -16,13 +16,9 @@ from typing import Any, Iterable, Optional
 
 from mm.constants import OFFICE_EXTS
 from mm.encoders import register
-from mm.encoders.base import Encoder, Message
+from mm.encoders.base import Encoder, Message, to_message
 
 logger = logging.getLogger(__name__)
-
-
-def _to_message(parts: list[dict[str, Any]]) -> Message:
-    return {"role": "user", "content": parts}
 
 
 class DocumentPageText(Encoder):
@@ -55,7 +51,7 @@ class DocumentPageText(Encoder):
         else:
             try:
                 text = path.read_text(errors="replace")
-                yield _to_message(
+                yield to_message(
                     [
                         {
                             "type": "text",
@@ -64,7 +60,7 @@ class DocumentPageText(Encoder):
                     ]
                 )
             except Exception as e:
-                yield _to_message(
+                yield to_message(
                     [
                         {
                             "type": "text",
@@ -88,7 +84,7 @@ class DocumentPageText(Encoder):
                 total = min(total, max_pages)
 
             if total == 0:
-                yield _to_message([{"type": "text", "text": f"[No pages in {path.name}]"}])
+                yield to_message([{"type": "text", "text": f"[No pages in {path.name}]"}])
                 return
 
             logger.debug("page_text [path=%s, pages=%d]", path.name, total)
@@ -113,7 +109,7 @@ class DocumentPageText(Encoder):
                     finally:
                         page.close()
 
-                yield _to_message(
+                yield to_message(
                     [
                         {
                             "type": "text",
@@ -133,7 +129,7 @@ class DocumentPageText(Encoder):
 
             text = office_content(str(path))
         except Exception as e:
-            yield _to_message(
+            yield to_message(
                 [
                     {
                         "type": "text",
@@ -143,7 +139,7 @@ class DocumentPageText(Encoder):
             )
             return
 
-        yield _to_message([{"type": "text", "text": f"Document {path.name}:\n\n{text}"}])
+        yield to_message([{"type": "text", "text": f"Document {path.name}:\n\n{text}"}])
 
 
 register(DocumentPageText())

@@ -20,8 +20,8 @@ from pathlib import Path
 from typing import Any, Iterable
 
 from mm.encoders import register, resolve_provider
-from mm.encoders.base import Encoder, Message
-from mm.encoders.image import _image_part, _to_message
+from mm.encoders.base import Encoder, Message, to_message
+from mm.encoders.image import _image_part
 from mm.encoders.video._transcript import encode_with_transcript
 from mm.utils import get_b64
 
@@ -84,7 +84,7 @@ class VideoShots(Encoder):
         from mm.video import VideoReader, pyav_runnable
 
         if not pyav_runnable():
-            yield _to_message([{"type": "text", "text": f"[PyAV not runnable for {path.name}]"}])
+            yield to_message([{"type": "text", "text": f"[PyAV not runnable for {path.name}]"}])
             return
 
         threshold: float = kwargs.get("threshold", 27.0)
@@ -96,7 +96,7 @@ class VideoShots(Encoder):
 
         shots = _detect_shots(path, threshold)
         if not shots:
-            yield _to_message([{"type": "text", "text": f"[No shots detected in {path.name}]"}])
+            yield to_message([{"type": "text", "text": f"[No shots detected in {path.name}]"}])
             return
 
         logger.debug(
@@ -136,7 +136,7 @@ class VideoShots(Encoder):
                 b64, mime = frame.encode_jpeg()
                 parts.append(_image_part(b64, mime, provider))
 
-            yield _to_message(parts)
+            yield to_message(parts)
 
 
 class VideoShotsWithTranscript(Encoder):
@@ -175,7 +175,7 @@ class VideoShotMosaic(Encoder):
         from mm.video import VideoReader, pyav_runnable, tile_to_mosaic
 
         if not pyav_runnable():
-            yield _to_message(
+            yield to_message(
                 [
                     {
                         "type": "text",
@@ -195,7 +195,7 @@ class VideoShotMosaic(Encoder):
 
         shots = _detect_shots(path, threshold)
         if not shots:
-            yield _to_message([{"type": "text", "text": f"[No shots detected in {path.name}]"}])
+            yield to_message([{"type": "text", "text": f"[No shots detected in {path.name}]"}])
             return
 
         frames_per_mosaic = tile_cols * tile_rows
@@ -245,7 +245,7 @@ class VideoShotMosaic(Encoder):
                 },
                 _image_part(b64, "image/jpeg", provider),
             ]
-            yield _to_message(parts)
+            yield to_message(parts)
 
 
 class VideoShotMosaicWithTranscript(Encoder):

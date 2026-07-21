@@ -116,6 +116,17 @@ Multi-file: `mm cat a.mp4 b.mp4 -y` runs each video sequentially; the same **≥
 
 In fast mode, raw text is extracted directly. In accurate mode, the file is converted to PDF via `office_to_pdf` and then processed through the document/accurate pipeline.
 
+**Python API** encoders for documents:
+
+| Name | Description |
+|---|---|
+| `page-text` | (default in fast/accurate pipelines) Per-page text extraction via pypdfium2 (PDF) or libreoffice-rs (office docs) |
+| `rasterize` | Render PDF pages as JPEG images via pypdfium2 |
+| `rasterize-text` | Rasterize + interleave extracted page text |
+| `native` | Raw base64 `file` part (OpenAI-compatible) — for models with native document input |
+| `document-url` | Raw base64 `document_url` part — native input shape for the vlm.run gateway |
+| `gemini-native` | Raw base64 Gemini `inline_data` Part — for Gemini |
+
 ### Text / Code / Config
 
 Passthrough in all modes — raw file content via `read_text`. No pipeline, no LLM; mode is a no-op.
@@ -161,10 +172,10 @@ Override the pipeline's LLM generation behavior. Right-most layer wins over pipe
 |------|-------|-------------|
 | `--prompt TEXT` | `--generate.prompt` | Override the LLM prompt template |
 | `--model MODEL` | `--generate.model` | Override the model for this call |
+| `--extra-body JSON` | `--generate.extra-body` | JSON object deep-merged onto the pipeline's `extra_body` |
 | `--generate.max-tokens N` | | Override max completion tokens |
 | `--generate.temperature T` | | Override sampling temperature |
 | `--generate.json-mode BOOL` | | Override JSON mode (true/false) |
-| `--generate.extra-body JSON` | | JSON object deep-merged onto the pipeline's `extra_body` |
 
 ## Override hierarchy
 
@@ -177,7 +188,7 @@ profile (mm.toml)  →  pipeline YAML (generate.*)  →  CLI flags
   model (default)        max_tokens                     --generate.max-tokens
                          temperature                    --generate.temperature
                          json_mode                      --generate.json-mode
-                         extra_body (deep-merged)       --generate.extra-body
+                         extra_body (deep-merged)       --extra-body / --generate.extra-body
 ```
 
 ## Pipeline customization

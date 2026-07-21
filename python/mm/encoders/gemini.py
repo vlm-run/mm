@@ -1,8 +1,8 @@
-"""Gemini passthrough strategies for native multimodal input.
+"""Gemini encoding strategies for native multimodal input.
 
 Encodes video and document files as Gemini ``inline_data`` Part dicts,
-suitable for Gemini API. Supports both single-shot passthrough and
-duration-based chunking for long videos.
+suitable for Gemini API. Supports both single-shot and duration-based
+chunking for long videos.
 """
 
 from __future__ import annotations
