@@ -125,6 +125,7 @@ def render_messages(
     max_image_width: int = 320,
     show_role: bool = True,
     title: str | None = None,
+    true_token_count: int | None = None,
 ) -> str:
     """Render an OpenAI-format message list as self-contained HTML.
 
@@ -137,6 +138,9 @@ def render_messages(
         max_image_width: Maximum rendered width for inline images.
         show_role: Whether to display role badges.
         title: Optional title bar text.
+        true_token_count: When provided, show this real token count in
+            the stats footer instead of the heuristic estimate.  When
+            ``None``, the estimate is shown.
 
     Returns:
         Self-contained HTML string for ``IPython.display.HTML()``.
@@ -168,7 +172,7 @@ def render_messages(
     title_html = ""
     if title:
         title_html = f'<div class="{scope}-title">{html.escape(title)}</div>'
-    stats_html = _render_stats(stats, scope)
+    stats_html = _render_stats(stats, scope, true_token_count=true_token_count)
 
     return (
         f'<div class="{scope}-root">\n'
@@ -604,7 +608,7 @@ def _render_encoded_section(
         summary.append(f"{encoded_text_chars:,} chars")
     est_tokens = int(encoded_text_chars * _TOKENS_PER_CHAR) + n_images * _TOKENS_PER_IMAGE
     if est_tokens:
-        summary.append(f"~{est_tokens:,} tokens")
+        summary.append(f"~{est_tokens:,} est. tokens")
     if total_b64_bytes:
         summary.append(_fmt_bytes(total_b64_bytes))
 
@@ -803,7 +807,7 @@ def _format_image_label(mime: str, byte_size: int, dims: tuple[int, int] | None)
     parts = [mime, _fmt_bytes(byte_size)]
     if dims:
         parts.append(f"{dims[0]}x{dims[1]}")
-    parts.append(f"~{_TOKENS_PER_IMAGE} tokens")
+    parts.append(f"~{_TOKENS_PER_IMAGE} est. tokens")
     return " · ".join(parts)
 
 
@@ -906,8 +910,12 @@ def _render_audio_part(part: dict[str, Any], scope: str) -> str:
     )
 
 
-def _render_stats(stats: _Stats, scope: str) -> str:
-    """Render the stats footer bar."""
+def _render_stats(stats: _Stats, scope: str, *, true_token_count: int | None = None) -> str:
+    """Render the stats footer bar.
+
+    When ``true_token_count`` is provided it is shown as the real token
+    count (no tilde, no "est.").
+    """
     parts: list[str] = []
     items: list[str] = []
     if stats.n_images:
@@ -925,7 +933,9 @@ def _render_stats(stats: _Stats, scope: str) -> str:
 
     if stats.total_bytes:
         parts.append(f"encoded: ~{_fmt_bytes(stats.total_bytes)}")
-    if stats.est_tokens:
+    if true_token_count is not None:
+        parts.append(f"{true_token_count:,} tokens")
+    elif stats.est_tokens:
         parts.append(f"~{stats.est_tokens:,} est. tokens")
 
     if not parts:

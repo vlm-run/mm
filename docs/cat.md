@@ -140,6 +140,7 @@ Passthrough in all modes — raw file content via `read_text`. No pipeline, no L
 | `--stream` | | flag | Stream LLM output tokens to stdout as they arrive. Takes precedence over `--format`. |
 | `--verbose` | `-v` | flag | Show progress bars and LLM call details |
 | `--yes` | `-y` | flag | Skip the confirmation prompt when batching many files |
+| `--report` | | flag | Generate a self-contained HTML report of pipeline internals (encoder output, LLM messages, response). Written to `mm_reports/`. |
 
 ### Encode overrides
 
@@ -305,6 +306,25 @@ mm cat video.mp4 -m accurate --dry-run  # show accurate video pipeline
 mm cat notes.docx --dry-run           # passthrough preview
 ```
 
+## Report (`--report`)
+
+`--report` generates a self-contained HTML file visualizing the pipeline internals — the encoder output (e.g. mosaic grids), the chat completions messages sent to the LLM, and the LLM response. Useful for debugging pipelines, inspecting what the model actually sees, and sharing extraction details.
+
+- **Single file**: `mm cat photo.png --report` → `mm_reports/photo.png_{timestamp}_report.html`
+- **Multi-file**: `mm cat a.png b.png --report` → single `mm_reports/multi_{timestamp}_report.html`
+- **Custom output dir**: `mm cat photo.png --report -o ./reports` → `reports/photo.png_{timestamp}_report.html`
+- **Passthrough files** (text, code): produce no report (no pipeline internals to show).
+- **Cache hits**: the report is skipped with a dimmed message. Use `--no-cache` to force a fresh run and regenerate the report.
+- Report messages are printed dimmed, after the timing footer, so they don't compete with the main output.
+
+```bash
+mm cat photo.png --report                              # HTML report of image pipeline
+mm cat video.mp4 -m accurate --report                  # report with mosaic + transcript
+mm cat a.png b.png c.mp4 --report                      # combined multi-file report
+mm cat photo.png --report --no-cache                   # force fresh run + report
+mm cat photo.png --report -o ./reports                 # write to ./reports/ instead of mm_reports/
+```
+
 ## Examples
 
 ### Basic usage
@@ -457,6 +477,22 @@ mm cat video.mp4 -m accurate --dry-run
 mm cat audio.mp3 -m accurate --encode.backend mlx --dry-run
 ```
 
+### Report
+
+```bash
+# HTML report of the pipeline internals (encoder output, LLM messages, response)
+mm cat photo.png --report
+
+# report for accurate mode (mosaic + transcript)
+mm cat video.mp4 -m accurate --report
+
+# combined report for multiple files
+mm cat a.png b.png c.mp4 --report
+
+# force fresh run + report (bypass cache)
+mm cat photo.png --report --no-cache
+```
+
 ## Per-provider / per-model overrides with `--generate.extra-body`
 
 The `--generate.extra-body` flag accepts a JSON object forwarded to the OpenAI SDK's `extra_body` parameter. This enables provider-specific capabilities:
@@ -492,6 +528,7 @@ mm --profile vlmrt cat clip.mp4 -m accurate \
 - Files that do not exist are skipped with a warning; missing files are also pruned from the cache index.
 - Batch confirmation is triggered when the path count reaches a threshold (default 9). Override with `--yes` or the `MM_CAT_BATCH_CONFIRM_THRESHOLD` environment variable.
 - `--no-generate` is useful for snapshotting encoder behavior offline and for testing pipeline encoders without an LLM server.
+- `--report` writes a self-contained HTML file to `mm_reports/` showing pipeline internals (encoder output, LLM messages, response). Cache hits skip the report; use `--no-cache` to force regeneration.
 - For `dataset-jsonl` and `dataset-hf` output formats, each record includes `path`, `mode`, `content`, `name`, `type`, and `size` fields.
 - `--list-pipelines`: show all built-in and user-override pipeline YAML files.
 - `--list-encoders`: show all registered encoder strategies with parameters.

@@ -5,6 +5,7 @@ from typing import Any
 from mm.cat_utils.base_utils import (
     CatOpts,
     RunResult,
+    effective_model,
     format_generate_verbose,
     make_llm_from_spec,
     spec_extra_body,
@@ -144,10 +145,17 @@ def run_encoder(path: Path, kind: BinaryFileKind, spec: PipelineSpec, opts: CatO
 
         result = "\n\n".join(text_parts) if text_parts else ""
         encode_output = _format_encode_verbose(spec.encode.strategy, messages, encode_elapsed)
-        return RunResult(content=result, verbose_suffix=_format_pipeline_tree(encode_output))
+        return RunResult(
+            content=result,
+            verbose_suffix=_format_pipeline_tree(encode_output),
+            encoded_messages=messages if opts.report else None,
+            pipeline_spec=spec if opts.report else None,
+            encode_elapsed_ms=encode_elapsed if opts.report else None,
+        )
 
-    from mm.profile import get_active_profile_name
+    from mm.profile import get_active_profile_name, get_profile
 
+    profile = get_profile()
     t0 = time.monotonic()
     llm = make_llm_from_spec(spec)
     chunks: list[list[dict]] = []
@@ -185,12 +193,33 @@ def run_encoder(path: Path, kind: BinaryFileKind, spec: PipelineSpec, opts: CatO
     elapsed = (time.monotonic() - t0) * 1000
     u = llm.last_usage
 
+    usage = {
+        "prompt_tokens": u.prompt_tokens,
+        "completion_tokens": u.completion_tokens,
+        "cached_tokens": u.cached_tokens,
+        "reasoning_tokens": u.reasoning_tokens,
+        "total_tokens": u.total_tokens,
+    }
+
+    from mm.model_price_catalog import get_price_catalog
+
+    breakdown = get_price_catalog().compute_cost(usage, effective_model(spec, profile.model))
+    token_cost = breakdown.total_cost if breakdown else None
+
     encode_output = _format_encode_verbose(spec.encode.strategy, messages, encode_elapsed)
     profile_name = get_active_profile_name()
     generate_output = format_generate_verbose(
-        profile_name, elapsed, u.prompt_tokens, u.completion_tokens
+        profile_name, elapsed, u.prompt_tokens, u.completion_tokens, token_cost
     )
     return RunResult(
         content=result,
         verbose_suffix=_format_pipeline_tree(encode_output, generate_output),
+        encoded_messages=messages if opts.report else None,
+        llm_messages=llm.last_messages if opts.report else None,
+        llm_response=result if opts.report else None,
+        pipeline_spec=spec if opts.report else None,
+        encode_elapsed_ms=encode_elapsed if opts.report else None,
+        generate_elapsed_ms=elapsed if opts.report else None,
+        llm_usage=usage if opts.report else None,
+        token_cost=token_cost,
     )

@@ -155,7 +155,7 @@ class TestFormatImageLabel:
         assert label.startswith("image/jpeg · ")
         assert " · 96.9 KB" in label or " · 97.0 KB" in label
         assert " · 640x480" in label
-        assert " · ~170 tokens" in label
+        assert " · ~170 est. tokens" in label
 
     def test_no_dims(self):
         label = _format_image_label("image/png", 1024, None)
