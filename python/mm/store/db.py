@@ -143,6 +143,18 @@ class MmDatabase:
     def _conn(self) -> sqlite3.Connection | None:
         return getattr(self._tls, "conn", None)
 
+    def _new_connection(self) -> sqlite3.Connection:
+        conn = sqlite3.connect(
+            str(self._db_path),
+            check_same_thread=False,
+            factory=_VecConnection,
+        )
+        conn.row_factory = sqlite3.Row
+        conn.execute("PRAGMA journal_mode=WAL")
+        conn.execute("PRAGMA synchronous=NORMAL")
+        conn.execute("PRAGMA foreign_keys=ON")
+        return conn
+
     @property
     def _connect(self) -> sqlite3.Connection:
         conn = getattr(self._tls, "conn", None)
@@ -151,37 +163,22 @@ class MmDatabase:
 
         self._db_path.parent.mkdir(parents=True, exist_ok=True)
 
-        # Setting journal_mode=WAL writes to the database file, so concurrent
-        # first-time connections to a new database can hit ``database is locked``.
-        # Serialize the initial setup (WAL + schema) and reuse the resulting
-        # connection; later threads only need per-connection pragmas.
-        if not self._schema_ready:
-            with self._lock:
-                if not self._schema_ready:
-                    conn = sqlite3.connect(
-                        str(self._db_path),
-                        check_same_thread=False,
-                        factory=_VecConnection,
-                    )
-                    conn.row_factory = sqlite3.Row
-                    conn.execute("PRAGMA journal_mode=WAL")
-                    conn.execute("PRAGMA synchronous = NORMAL")
-                    conn.execute("PRAGMA foreign_keys=ON")
-                    self._tls.conn = conn
-                    self._ensure_tables()
-                    self._schema_ready = True
-                    return conn
+        if self._schema_ready:
+            conn = self._new_connection()
+            self._tls.conn = conn
+            return conn
 
-        conn = sqlite3.connect(
-            str(self._db_path),
-            check_same_thread=False,
-            factory=_VecConnection,
-        )
-        conn.row_factory = sqlite3.Row
-        conn.execute("PRAGMA synchronous = NORMAL")
-        conn.execute("PRAGMA foreign_keys=ON")
-        self._tls.conn = conn
-        return conn
+        with self._lock:
+            if not self._schema_ready:
+                conn = self._new_connection()
+                self._tls.conn = conn
+                self._ensure_tables()
+                self._schema_ready = True
+                return conn
+            # Another thread finished setup while we waited on the lock.
+            conn = self._new_connection()
+            self._tls.conn = conn
+            return conn
 
     def _ensure_tables(self) -> None:
         """Create tables, apply additive migrations, then create indexes.
