@@ -693,7 +693,7 @@ class Context:
             strategy: Registered encoder name (e.g. ``"resize"``).
                 If ``None``, defaults to ``resize`` for images,
                 ``mosaic`` for video, ``rasterize`` for documents,
-                and ``base64`` for audio.
+                and ``native`` for audio.
             **kwargs: Forwarded to ``encoder.encode()``.
 
         Returns:

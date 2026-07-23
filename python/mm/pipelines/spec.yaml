@@ -26,11 +26,11 @@ encode:
   # (`resize`). Examples:
   #   image:    resize, tile
   #   video:    frames, frames-w-transcript, mosaic,
-  #             chunks, clips, keyframes, shots,
+  #             chunked, clips, keyframes, shots,
   #             shot-mosaic, summary, captions,
-  #             transcript, gemini, gemini-chunked
-  #   audio:    transcribe, gemini
-  #   document: page-text, rasterize, rasterize-text, gemini
+  #             transcript, native, gemini-native, gemini-chunked
+  #   audio:    transcribe, native, gemini-native
+  #   document: page-text, rasterize, rasterize-text, gemini-native
   # null = use the kind-specific default.
   strategy: resize
 

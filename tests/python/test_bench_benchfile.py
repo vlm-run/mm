@@ -28,6 +28,14 @@ def _write_benchfile(path: Path, body: str) -> Path:
     return path
 
 
+def wrap_extract_cat_content(k: str):
+    from mm.commands.bench import _extract_cat_content
+
+    v = _extract_cat_content(k)
+    assert v is not None
+    return v
+
+
 # ── _load_benchfile loader ────────────────────────────────────────────
 
 
@@ -1761,13 +1769,11 @@ class TestExtractCatContent:
 
     def test_single_entry_json_content_pretty_prints(self):
         """Florence2-style ``"content": "{\\\"<CAPTION>\\\": ...}"``."""
-        from mm.commands.bench import _extract_cat_content
-
         envelope = (
             '[{"path":"/abs/img.jpg","mode":"fast",'
             '"content":"{\\"<CAPTION>\\": \\"a green car\\"}"}]'
         )
-        body, lang = _extract_cat_content(envelope)
+        body, lang = wrap_extract_cat_content(envelope)
         assert lang == "json"
         # Multi-line output, indented -- not the original escaped soup.
         assert "\n" in body
@@ -1779,13 +1785,11 @@ class TestExtractCatContent:
 
     def test_single_entry_plain_text_content_passes_through(self):
         """Moondream-style caption -- ``content`` is a plain string."""
-        from mm.commands.bench import _extract_cat_content
-
         envelope = (
             '[{"path":"/abs/img.jpg","mode":"fast",'
             '"content":"A vintage car parked beside a yellow building."}]'
         )
-        body, lang = _extract_cat_content(envelope)
+        body, lang = wrap_extract_cat_content(envelope)
         assert lang == "text"
         assert body == "A vintage car parked beside a yellow building."
 
@@ -1797,13 +1801,11 @@ class TestExtractCatContent:
         ignores everything after, so the footer never reaches the
         rendered fence.
         """
-        from mm.commands.bench import _extract_cat_content
-
         envelope = (
             '[{"path":"/abs/img.jpg","mode":"fast","content":"caption"}]\n'
             "1.7s \u2022 38.2 KB \u2022 22.9 KB/s\n"
         )
-        body, lang = _extract_cat_content(envelope)
+        body, lang = wrap_extract_cat_content(envelope)
         assert lang == "text"
         assert body == "caption"
         # The footer separator and units must not survive into the body.
@@ -1814,13 +1816,11 @@ class TestExtractCatContent:
         """``mm cat <f1> <f2>`` -> two-entry list -> JSON array of contents."""
         import json
 
-        from mm.commands.bench import _extract_cat_content
-
         envelope = (
             '[{"path":"/a/img1.jpg","mode":"fast","content":"first"},'
             ' {"path":"/a/img2.jpg","mode":"fast","content":"second"}]'
         )
-        body, lang = _extract_cat_content(envelope)
+        body, lang = wrap_extract_cat_content(envelope)
         assert lang == "json"
         parsed = json.loads(body)
         assert parsed == ["first", "second"]
@@ -1831,14 +1831,12 @@ class TestExtractCatContent:
         """One entry has JSON content, the other plain text -- both flow through."""
         import json
 
-        from mm.commands.bench import _extract_cat_content
-
         envelope = (
             '[{"path":"/a/img1.jpg","mode":"fast",'
             '"content":"{\\"caption\\": \\"first\\"}"},'
             ' {"path":"/a/img2.jpg","mode":"fast","content":"second"}]'
         )
-        body, lang = _extract_cat_content(envelope)
+        body, lang = wrap_extract_cat_content(envelope)
         assert lang == "json"
         parsed = json.loads(body)
         # First entry's content was a parseable JSON string -> dict.

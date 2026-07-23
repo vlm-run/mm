@@ -1,6 +1,6 @@
-"""Audio encoding strategies: base64 passthrough, transcription, and Gemini.
+"""Audio encoding strategies: native passthrough, transcription, and Gemini.
 
-``AudioBase64`` base64-encodes the raw audio file as an OpenAI ``input_audio``
+``AudioNative`` base64-encodes the raw audio file as an OpenAI ``input_audio``
 part — the native way to send audio to multimodal LLMs. Generate prompts come
 from the pipeline YAML.
 
@@ -40,7 +40,7 @@ def _to_message(parts: list[dict[str, Any]]) -> Message:
     return {"role": "user", "content": parts}
 
 
-class AudioBase64(Encoder):
+class AudioNative(Encoder):
     """Send the raw audio file as a base64-encoded ``input_audio`` part.
 
     This is the native way to pass audio to OpenAI-compatible models —
@@ -57,7 +57,7 @@ class AudioBase64(Encoder):
         generate_model: --generate.model CLI flag.
     """
 
-    name = "base64"
+    name = "native"
     kind = "audio"
 
     def encode(self, path: Path, **kwargs: Any) -> Iterable[Message]:
@@ -84,7 +84,7 @@ class AudioBase64(Encoder):
         overlap: int = int(kwargs.get("overlap", 10))
         duration = probe_duration(path)
         if duration <= max_seconds:
-            logger.debug("base64 [path=%s, duration=%.1fs, single]", path.name, duration)
+            logger.debug("native [path=%s, duration=%.1fs, single]", path.name, duration)
             yield _to_message(
                 [
                     {
@@ -106,7 +106,7 @@ class AudioBase64(Encoder):
             start += step
 
         logger.debug(
-            "audio_base64_chunked [path=%s, duration=%.1fs, chunk=%ds, n_segments=%d]",
+            "audio_native_chunked [path=%s, duration=%.1fs, chunk=%ds, n_segments=%d]",
             path.name,
             duration,
             max_seconds,
@@ -270,7 +270,7 @@ class GeminiAudio(Encoder):
         mode: fast | accurate.
     """
 
-    name = "gemini"
+    name = "gemini-native"
     kind = "audio"
 
     def encode(self, path: Path, **kwargs: Any) -> Iterable[Message]:
@@ -300,7 +300,9 @@ class GeminiAudio(Encoder):
 
         if duration <= max_seconds:
             data = path.read_bytes()
-            logger.debug("gemini_audio [path=%s, duration=%.1fs, single]", path.name, duration)
+            logger.debug(
+                "audio_gemini_native [path=%s, duration=%.1fs, single]", path.name, duration
+            )
             yield _to_message(
                 [
                     {
@@ -322,7 +324,7 @@ class GeminiAudio(Encoder):
             start += step
 
         logger.debug(
-            "gemini_audio_chunked [path=%s, duration=%.1fs, chunk=%ds, n_segments=%d]",
+            "audio_gemini_native_chunked [path=%s, duration=%.1fs, chunk=%ds, n_segments=%d]",
             path.name,
             duration,
             max_seconds,
@@ -351,6 +353,6 @@ class GeminiAudio(Encoder):
             yield from pool.map(_submit_fn, segments)
 
 
-register(AudioBase64())
+register(AudioNative())
 register(AudioTranscribe())
 register(GeminiAudio())

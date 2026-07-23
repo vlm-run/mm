@@ -53,22 +53,23 @@ SAMPLE_FILES: dict[str, Path] = {
 }
 
 ENCODERS: dict[str, list[str]] = {
-    "audio": ["base64", "gemini", "transcribe"],
-    "document": ["gemini", "page-text", "rasterize", "rasterize-text"],
+    "audio": ["native", "gemini-native", "transcribe"],
+    "document": ["gemini-native", "page-text", "rasterize", "rasterize-text"],
     "image": ["resize", "tile"],
     "video": [
         "captions",
-        "chunks",
+        "chunked",
         "clips",
         "clips-w-transcript",
         "frames",
         "frames-w-transcript",
-        "gemini",
+        "gemini-native",
         "gemini-chunked",
         "keyframes",
         "keyframes-w-transcript",
         "mosaic",
         "mosaic-w-transcript",
+        "native",
         "shot-mosaic",
         "shot-mosaic-w-transcript",
         "shots",
@@ -98,7 +99,7 @@ class Result:
     elapsed: float
     stdout: str
     stderr: str
-    cmd: list[str] = None  # type: ignore[assignment]
+    cmd: list[str] | None = None
 
     @property
     def ok(self) -> bool:

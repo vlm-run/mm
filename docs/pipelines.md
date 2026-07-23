@@ -73,7 +73,7 @@ The `generate` block accepts an optional `model:` string that overrides
 the active profile's default model whenever this pipeline is used.
 Leaving it unset (or `null`) means "use the profile model". Useful for
 shipping a pipeline that always targets a specific deployment-side model
-(e.g. an OCR pipeline that always wants `paddleocr-v5`).
+(e.g. an OCR pipeline that always wants `paddleocr-v6`).
 
 ```yaml
 # ~/.config/mm/pipelines/image/accurate.yaml
@@ -81,7 +81,7 @@ kind: image
 mode: accurate
 generate:
   prompt: Read every line of text on this image.
-  model: paddleocr-v5
+  model: paddleocr-v6
   extra_body:
     method: ocr
 ```

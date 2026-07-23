@@ -203,7 +203,7 @@ mm cat photo.png --no-generate                                  # snapshot encod
 # --mode accurate: full LLM pipeline for image/video/audio/PDF (requires a configured profile)
 mm cat bench.jpg -m accurate                                    # LLM caption + tags + objects
 mm cat Timelapse.mp4 -m accurate                                # keyframe mosaic → LLM description
-mm cat mp3_44100Hz_320kbps_stereo.mp3 -m accurate               # Whisper transcript only (use -p base64 or -p gemini for LLM description)
+mm cat mp3_44100Hz_320kbps_stereo.mp3 -m accurate               # Whisper transcript only (use -p native or -p gemini-native for LLM description)
 mm cat wordpress-pdf-invoice-plugin-sample.pdf -m accurate      # LLM-structured invoice
 ```
 
@@ -461,14 +461,14 @@ mm --profile vlmrt cat clip.mp4 -m accurate \
   --model qwen3.5-0.8b \
   --generate.extra-body '{"video_fps":1.0,"video_max_frames":8,"video_resolution":"448x336"}'
 
-# PaddleOCR-v5 — full detect + recognise (English, default threshold)
+# PaddleOCR-v6 — full detect + recognise (English, default threshold)
 mm --profile vlmrt cat storefront.jpg -m accurate \
-  --model paddleocr-v5 \
+  --model paddleocr-v6 \
   --generate.extra-body '{"method":"ocr"}'
 
-# PaddleOCR-v5 — Chinese OCR with a tighter score threshold
+# PaddleOCR-v6 — Chinese OCR with a tighter score threshold
 mm --profile vlmrt cat storefront.jpg -m accurate \
-  --model paddleocr-v5 \
+  --model paddleocr-v6 \
   --generate.extra-body '{"method":"ocr","method_params":{"lang":"ch","score_threshold":0.6}}'
 
 # Moondream2 — multi-object detection
@@ -701,7 +701,7 @@ Each profile stores `base_url`, `api_key`, and `model`. You can have as many as 
 mm profile add openai --base-url https://api.openai.com/v1 --api-key sk-... --model gpt-4o
 mm profile add openrouter --base-url https://openrouter.ai/api/v1 --model qwen/qwen3.5-27b
 
-# Update reserved profiles (ollama, gemini, vlmrun)
+# Update reserved profiles (ollama, gateway, openrouter)
 mm profile update ollama --base-url http://localhost:11434 --model qwen3.5:9B
 
 # List all profiles (● = active)
@@ -756,11 +756,15 @@ base_url = "https://openrouter.ai/api/v1"
 api_key = "<OPENROUTER_API_KEY>"
 model = "google/gemini-2.5-flash-lite"
 
-[profile.vlmrun]
-base_url = "https://api.vlm.run/v1/openai"
-api_key = "<VLMRUN_API_KEY>"
+[profile.gateway]
+base_url = "https://gateway.vlm.run/v1/openai"
+api_key = ""
 model = "Qwen/Qwen3.5-0.8B"
 ```
+
+## Contributing
+
+We welcome and value any contributions and collaborations. Please check out [Contributing to mm-ctx](CONTRIBUTING.md) for how to get involved.
 
 ## License
 

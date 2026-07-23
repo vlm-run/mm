@@ -1552,7 +1552,6 @@ requires-dist = [
     { name = "fastapi", marker = "extra == 'dev'", specifier = ">=0.110" },
     { name = "faster-whisper", marker = "extra == 'gpu'", specifier = ">=1.0" },
     { name = "httpx", specifier = ">=0.24" },
-    { name = "huggingface-hub", marker = "extra == 'dev'", specifier = ">=0.25" },
     { name = "lightning-whisper-mlx", marker = "extra == 'mlx'", specifier = ">=0.0.10" },
     { name = "logfire", marker = "extra == 'dev'", specifier = ">=3.0" },
     { name = "magika", specifier = ">=1.0.3" },

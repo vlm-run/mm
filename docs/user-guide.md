@@ -42,7 +42,7 @@ mm requires access to a VLM on a live server for accurate-mode (LLM-powered) ope
 
 ### Profile setup
 
-mm uses profiles to store provider credentials. There are 3 reserved profiles: `ollama`, `gemini`, and `vlmrun`.
+mm uses profiles to store provider credentials. There are 3 reserved profiles: `ollama`, `gateway`, and `openrouter`.
 
 You can populate a reserved profile or create a new one:
 
@@ -146,7 +146,7 @@ mm cat video.mp4               # mosaic → short VLM description (fast pipeline
 # --mode accurate: LLM-heavy pipeline for image/video/PDF (requires a configured profile).
 mm cat image.jpg -m accurate   # LLM-powered caption + tags + objects
 mm cat video.mp4 -m accurate   # keyframe mosaic → LLM description
-mm cat audio.mp3 -m accurate   # Whisper transcript only (use -p base64 or -p gemini for LLM description)
+mm cat audio.mp3 -m accurate   # Whisper transcript only (use -p native or -p gemini-native for LLM description)
 mm cat report.pdf -m accurate  # text → LLM markdown structuring
 
 # --stream: stream LLM tokens to stdout as they arrive (takes precedence over --format)
@@ -215,9 +215,9 @@ mm --profile vlmrt cat clip.mp4 -m accurate \
   --model qwen3.5-0.8b \
   --generate.extra-body '{"video_fps":1.0,"video_max_frames":8}'
 
-# PaddleOCR-v5 — Chinese scene-text OCR with tighter score threshold
+# PaddleOCR-v6 — Chinese scene-text OCR with tighter score threshold
 mm --profile vlmrt cat storefront.jpg -m accurate \
-  --model paddleocr-v5 \
+  --model paddleocr-v6 \
   --generate.extra-body '{"method":"ocr","method_params":{"lang":"ch","score_threshold":0.6}}'
 
 # Moondream2 — multi-object detection with a custom prompt

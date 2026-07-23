@@ -65,7 +65,7 @@ uv run mm cat input.mp3
 # same as fast when using transcribe (default) encoding strategy
 uv run mm cat input.mp3 -m accurate
 # Extract audio accurately (pass audio directly to a Gemini-compatible VLM)
-uv run mm cat input.mp3 --encode.strategy gemini -m accurate
+uv run mm cat input.mp3 --encode.strategy gemini-native -m accurate
 # With verbose output (shows pipeline steps and token usage)
 uv run mm cat input.mp3 -v
 ```
@@ -155,7 +155,7 @@ $ mm find ~/data/domains --tree --depth 1
 ```
 
 ```
-/Users/sudeep/data/domains  (702 files, 7.2 GB)
+/Users/user/data/domains  (702 files, 7.2 GB)
 ├── audio/  (2 files, 479.3 MB)
 ├── construction/  (532 files, 5.0 GB)
 ├── document-markdown/  (8 files, 10.6 MB)
@@ -428,13 +428,13 @@ $ mm profile add openai     --base-url https://api.openai.com/v1   --api-key sk-
 
 $ mm profile list
               Profiles
-╭────┬────────────┬──────────────────────────────┬───────────────────────────────╮
-│    │ profile    │ base_url                     │ model                         │
-├────┼────────────┼──────────────────────────────┼───────────────────────────────┤
-│    │ gemini     │ https://openrouter.ai/api/v1 │ google/gemini-2.5-flash-lite  │
-│ ●  │ ollama     │ http://localhost:11434        │ qwen3.5:0.8                   │
-│    │ vlmrun     │ https://mm-ctx.ngrok.io/v1   │ Qwen/Qwen3.5-0.8B            │
-╰────┴────────────┴──────────────────────────────┴───────────────────────────────╯
+╭────┬─────────┬───────────────────────────────────┬──────────────────────────────╮
+│    │ profile │ base_url                          │ model                        │
+├────┼─────────┼───────────────────────────────────┼──────────────────────────────┤
+│    │ gemini  │ https://openrouter.ai/api/v1      │ google/gemini-2.5-flash-lite │
+│ ●  │ ollama  │ http://localhost:11434            │ qwen3.5:0.8                  │
+│    │ gateway │ https://gateway.vlm.run/v1/openai │ Qwen/Qwen3.5-0.8B            │
+╰────┴─────────┴───────────────────────────────────┴──────────────────────────────╯
 
 $ mm profile use openrouter
 $ mm --profile openrouter cat photo.png -m accurate

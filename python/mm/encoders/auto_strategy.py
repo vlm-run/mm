@@ -147,7 +147,7 @@ def auto_strategy(path: Path) -> str:
         duration = meta.duration_s or 0.0
         if duration <= 300 and meta.size <= 10 * _MB:
             return "transcribe"
-        return "base64"
+        return "native"
 
     if kind == "image":
         size = meta.size
