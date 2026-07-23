@@ -25,7 +25,7 @@ middle; padding-right: 5px;"><br>
 
 ---
 
-Familiar UNIX CLI tools like `find`, `grep`, `cat` — with multimodal powers.
+Familiar UNIX CLI tools like `find`, `grep`, `cat`, with multimodal capabilities.
 
 `mm` offers both a CLI and a Python API that enable agents to work with file types that LLMs can't natively read, including images, video, audio, PDFs, and other binary formats. Rust core for speed, Python for dev-ex, UNIX philosophy for composability.
 
@@ -79,7 +79,7 @@ mm cat audio.mp3 --encode.backend openai       # force OpenAI-compatible endpoin
 ## CLI
 
 Commands that mirror familiar Unix tools but operate on multimodal semantics.
-Indexing is implicit — every command auto-builds a metadata index on first use, and
+Indexing is implicit: every command auto-builds a metadata index on first use, and
 metadata commands (`find`, `wc` with `--format json`) run in **~60ms** on 700 files via the Rust fast path.
 
 <details>
@@ -123,7 +123,7 @@ total     4      3.5 MB    29            771            218
 ```
 
 <details>
-<summary>More walkthrough examples — <code>find</code>, <code>cat</code>, <code>grep</code></summary>
+<summary>More walkthrough examples: <code>find</code>, <code>cat</code>, <code>grep</code></summary>
 
 ```bash
 $ mm find mm-samples/ --columns name,kind,size,ext
@@ -231,7 +231,7 @@ Top-level: `mm [-p / --profile NAME] [--color auto/always/never] [--debug] [-v /
 See the [CLI overview](https://vlm-run.github.io/mm/cli/) for the complete flag matrix.
 
 <details>
-<summary><code>find</code> — locate/list, tree, and schema</summary>
+<summary><code>find:</code> locate/list, tree, and schema</summary>
 
 ```bash
 mm find ~/data --kind image                               # all images
@@ -255,7 +255,7 @@ Full reference: [find docs →](https://vlm-run.github.io/mm/find/)
 </details>
 
 <details>
-<summary><code>peek</code> — raw file metadata</summary>
+<summary><code>peek:</code> raw file metadata</summary>
 
 `mm peek` returns locally-extracted metadata (dimensions / EXIF / codec / duration / mime / hash …).
 
@@ -272,7 +272,7 @@ Full reference: [peek docs →](https://vlm-run.github.io/mm/peek/)
 </details>
 
 <details>
-<summary><code>cat</code> — content extraction</summary>
+<summary><code>cat:</code> content extraction</summary>
 
 `--mode` is one of `fast` (default) or `accurate`. Mode is a no-op for `kind=text` and non-PDF documents (`.docx` / `.pptx`): they always return passthrough text.
 
@@ -299,17 +299,17 @@ mm cat mp3_44100Hz_320kbps_stereo.mp3 -m accurate --encode.backend openai       
 mm cat mp3_44100Hz_320kbps_stereo.mp3 -m accurate --encode.model whisper-1      # override transcription model
 ```
 
-**Override surfaces** — `mm cat` resolves each LLM call from three layers, with **right-most wins** on conflict: **Profile** (`mm.toml`: `base_url`, `api_key`, default `model`) → **Pipeline YAML** (`generate:` block) → **CLI flags on `cat`** (per-field overrides such as `--model`, `--prompt`, `--generate.max-tokens`, `--generate.extra-body`).
+**Override surfaces**: `mm cat` resolves each LLM call from three layers, with **right-most wins** on conflict: **Profile** (`mm.toml`: `base_url`, `api_key`, default `model`) → **Pipeline YAML** (`generate:` block) → **CLI flags on `cat`** (per-field overrides such as `--model`, `--prompt`, `--generate.max-tokens`, `--generate.extra-body`).
 
 Use `--generate.extra-body` for provider-specific knobs (vlmrt's `method`, `method_params`, `video_fps`, `image_resolution`, etc.):
 
 ```bash
-# Florence-2 — document OCR (skip server-side LLM refinement)
+# Florence-2: document OCR (skip server-side LLM refinement)
 mm --profile vlmrt cat page.png -m accurate \
   --model florence-2-base-ft \
   --generate.extra-body '{"method":"ocr","refine_with_llm":false}'
 
-# PaddleOCR-v6 — Chinese OCR with a tighter score threshold
+# PaddleOCR-v6: Chinese OCR with a tighter score threshold
 mm --profile vlmrt cat storefront.jpg -m accurate \
   --model paddleocr-v6 \
   --generate.extra-body '{"method":"ocr","method_params":{"lang":"ch","score_threshold":0.6}}'
@@ -319,7 +319,7 @@ Full reference (all override flags + more model examples): [cat docs →](https:
 </details>
 
 <details>
-<summary><code>grep</code> — content + semantic search</summary>
+<summary><code>grep:</code> content + semantic search</summary>
 
 ```bash
 mm grep "attention" ~/data --kind document
@@ -341,7 +341,7 @@ Full reference: [grep docs →](https://vlm-run.github.io/mm/grep/)
 </details>
 
 <details>
-<summary><code>sql</code> — query the index</summary>
+<summary><code>sql:</code> query the index</summary>
 
 Queries file metadata via scan + SQLite, or results and chunks from the persistent SQLite store.
 
@@ -361,7 +361,7 @@ Full reference: [sql docs →](https://vlm-run.github.io/mm/sql/)
 </details>
 
 <details>
-<summary><code>wc</code> — count files, size, tokens</summary>
+<summary><code>wc:</code> count files, size, tokens</summary>
 
 ```bash
 mm wc ~/data --by-kind
@@ -372,7 +372,7 @@ Full reference: [wc docs →](https://vlm-run.github.io/mm/wc/)
 </details>
 
 <details>
-<summary><code>bench</code> — benchmarks with statistical analysis</summary>
+<summary><code>bench:</code> benchmarks with statistical analysis</summary>
 
 <p align="center">
   <img src="https://vlm-run.github.io/mm/assets/mm-benchmarks-14052026.png" alt="mm bench output" width="880" style="border-radius: 12px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);">
@@ -473,7 +473,7 @@ obj = ctx.get(img)                                            # instance: return
 row = mm.Context.get(f"{ctx.session_id}/{img}")               # classmethod: cross-session DB lookup
 ```
 
-Instance `ctx.get(ref)` returns the exact Python object you added — identity is preserved for in-memory items (no copy, no rehydrate). Classmethod `mm.Context.get("<session>/<ref>")` resolves against the global `~/.local/share/mm/mm.db` when you only have a ref string and no live `Context`. A miss raises `mm.RefNotFoundError` (a `KeyError` subclass) with a Levenshtein-based "did you mean" and the full context table inline.
+Instance `ctx.get(ref)` returns the exact Python object you added: identity is preserved for in-memory items (no copy, no rehydrate). Classmethod `mm.Context.get("<session>/<ref>")` resolves against the global `~/.local/share/mm/mm.db` when you only have a ref string and no live `Context`. A miss raises `mm.RefNotFoundError` (a `KeyError` subclass) with a Levenshtein-based "did you mean" and the full context table inline.
 
 ```python
 ctx.print_tree()                  # insertion-order tree with metadata
@@ -496,14 +496,14 @@ Context(session=019da4…, items=4)
 </details>
 
 `Context("~/data")` also supports the directory-scan surface (`to_polars`, `to_pandas`, `to_arrow`, `sql`, `show`, `info`).
-Full spec — `print_tree` layouts, cross-session resolution, the deferred `save()` API — in the [Python API docs →](https://vlm-run.github.io/mm/api/).
+Full spec: `print_tree` layouts, cross-session resolution, and the deferred `save()` API are all in the [Python API docs →](https://vlm-run.github.io/mm/api/).
 
 ## Integrations
 
 <details>
 <summary>Claude Code, npx skills, and universal assistants</summary>
 
-**Claude Code** — install the `mm-cli-skill` via the skill marketplace:
+**Claude Code**: install the `mm-cli-skill` via the skill marketplace:
 
 ```bash
 claude
@@ -512,19 +512,19 @@ claude
 > Organize my ~/Downloads folder using mm
 ```
 
-**npx skills** — install mm-cli-skill globally so any CLI assistant or agentic tool can discover it:
+**npx skills**: install mm-cli-skill globally so any CLI assistant or agentic tool can discover it:
 
 ```bash
 npx skills add vlm-run/skills@mm-cli-skill
 ```
 
-**Universal assistants** (OpenClaw, NemoClaw, OpenCode, Codex, Gemini CLI) — install the skill globally, then start your preferred tool:
+**Universal assistants** (OpenClaw, NemoClaw, OpenCode, Codex, Gemini CLI): install the skill globally, then start your preferred tool.
 
 ```bash
 # One-time setup
 npx skills add vlm-run/skills@mm-cli-skill
 
-# Then use any CLI assistant — it will discover mm automatically
+# Then use any CLI assistant: it will discover mm automatically
 openclaw "Organize my ~/Downloads folder using mm"
 codex "Find all PDFs in ~/docs and summarize them with mm"
 ```
@@ -575,7 +575,7 @@ mm cat photo.jpg -p my-image-pipeline.yaml        # load an explicit pipeline YA
 See the [pipelines →](https://vlm-run.github.io/mm/pipelines/) and [encoders →](https://vlm-run.github.io/mm/encoders/) docs for the full reference.
 
 <details>
-<summary>Storage — global SQLite + sqlite-vec</summary>
+<summary>Storage: global SQLite + sqlite-vec</summary>
 
 mm uses a global SQLite database at `~/.local/share/mm/mm.db` with sqlite-vec for vector search:
 
@@ -592,7 +592,7 @@ The `files` table includes metadata columns (path, size, kind, etc.) and content
 
 ## LLM configuration (profiles)
 
-For accurate mode, `mm` uses the `openai` Python SDK to call any OpenAI-compatible API. Provider settings are managed through **profiles** — named configurations (`base_url`, `api_key`, `model`) stored in `~/.config/mm/mm.toml`.
+For accurate mode, `mm` uses the `openai` Python SDK to call any OpenAI-compatible API. Provider settings are managed through **profiles**, named configurations (`base_url`, `api_key`, `model`) stored in `~/.config/mm/mm.toml`.
 
 ```bash
 mm config init                                                       # create config with default profile (local Ollama)
