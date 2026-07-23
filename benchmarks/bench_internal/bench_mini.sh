@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 # mm CLI benchmarks (mini dataset) — ~249 files, ~1.4GB multimodal
-# Usage: ./benchmarks/bench_cli_mini.sh
+# Usage: ./benchmarks/bench_internal/bench_mini.sh
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-DATA_DIR="${SCRIPT_DIR}/data"
+DATA_DIR="$(cd "${SCRIPT_DIR}/../data" && pwd 2>/dev/null || echo "${SCRIPT_DIR}/../data")"
 MINI_URL="https://storage.googleapis.com/vlm-data-public-prod/mmbench/mmbench-mini.tar.gz"
 
 # ---------------------------------------------------------------------------

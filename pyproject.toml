@@ -103,6 +103,9 @@ dev = [
     "pre-commit>=4.0",
     "maturin>=1.7",
     "logfire>=3.0",
+    "fastapi>=0.110",
+    "uvicorn>=0.29",
+    "huggingface-hub>=0.25",
 ]
 docs = [
     "mkdocs>=1.6",
@@ -171,3 +174,12 @@ python-version = "3.11"
 # Start with warnings for gradual adoption
 possibly-missing-attribute = "warn"
 unresolved-import = "warn"
+
+[tool.ty.analysis]
+allowed-unresolved-imports = [
+    "mlx.**",
+    "faster_whisper",
+    "lightning_whisper_mlx",
+    "ctranslate2",
+    "datasets",
+]
