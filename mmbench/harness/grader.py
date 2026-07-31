@@ -9,9 +9,10 @@ Correctness is a 50/50 blend of:
     grounded in its ``ground_truth``.
 
     Correctness is checks-only **only** when the judge is explicitly
-    disabled (``--no-judge``) or the task produced no answer to judge. A judge
-    call that errors mid-run is retried up to ``JUDGE_RETRIES`` times; if it still
-    fails it raises :class:`JudgeError` and the caller voids the run.
+    disabled (``--no-judge``). A timed-out or empty-answer run gets
+    ``judge_score=0``, so timeouts are penalized symmetrically.
+    A judge call that errors mid-run is retried up to ``JUDGE_RETRIES`` times;
+    if it still fails it raises :class:`JudgeError` and the caller voids the run.
 
 Override the judge model/endpoint/key with ``--judge.model`` / ``--judge.base-url``
 / ``--judge.api-key`` (or ``MMBENCH_JUDGE_MODEL`` / ``MMBENCH_JUDGE_BASE_URL`` /
@@ -146,8 +147,8 @@ class Grader:
         failure_mode = self._failure_mode(result)
 
         judge_score = None
-        if self.use_judge and task_completion:
-            judge_score = self._judge(case, result.final_output)
+        if self.use_judge:
+            judge_score = self._judge(case, result.final_output) if task_completion else 0
 
         if judge_score is not None:
             correctness = 0.5 * (checkpoint_score * 100) + 0.5 * (judge_score / 5 * 100)
