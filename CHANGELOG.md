@@ -2,6 +2,45 @@
 
 ## [Unreleased]
 
+## [0.14.0] - 2026-07-15
+
+### Breaking changes
+- **Encoder renames (no backward-compat aliases):** the following encoder names
+  were renamed for cross-modality consistency. Custom pipelines referencing the
+  old names by `strategy:` will now raise `KeyError` — update to the new names.
+  - `base64` → `native` (audio)
+  - `gemini` → `gemini-native` (audio, video, document)
+  The shipped default pipelines (`fast.yaml` / `accurate.yaml`) are unaffected.
+- **New `native` video encoder:** base64 `video_url` passthrough — the
+  OpenAI-compatible counterpart to `gemini-native`.
+
+### Added
+- `--stream` flag on `cat` for token-by-token LLM output to stdout (#158)
+- Global `--debug` flag enabling Python `mm` logger (DEBUG) + Rust `RUST_LOG=debug` tracing (#168)
+- `mm config doctor` environment health check (ffmpeg, config, db, profile endpoint, Whisper, Python) (#169)
+- Disk-backed cache for `detect_scenes` + `transcript_messages` via
+  `mm.cache.memoize_file(path=...)` (`FSLRUCache` under `$MM_CACHE_DIR`).
+  `detect_scenes`: 3,080 ms cold → 0.2 ms warm cross-process (~12,000×);
+  `transcript_messages`: ~76 s cold → ~5 ms warm. mtime/size fingerprint
+  invalidation; 9 new `TestDiskBackedCache` tests.
+- `memoize_file` added to auto-strategy (#160)
+- Centralized cache/storage/db paths via pydantic-settings for test/benchmark isolation (#163)
+
+### Changed
+- Video encoder P0 speedups across all 17 video encoders (#177):
+  `Frame.reformat()` (libswscale) replaces `PIL.Image.resize` (2.9× per-frame);
+  JPEG default subsampling 4:4:4 → 4:2:0 (1.7× encode, ~30% smaller);
+  `mosaic` streams via `.batched()`; `shots*` bundle per-shot timestamps into
+  one parallel decode pass; Whisper runs concurrently with visual extraction.
+  Cold-cache median win: visual-only −18%, with-transcript −10%.
+  Warm-cache chained `-w-transcript` calls drop >95%.
+- Auto-strategy workflow cleanup: dedup, type coercion, dry-run label (#166)
+- `httpx` declared as explicit dependency (#167)
+- Documentation consolidated and grounded with code (#170, #161)
+- OSS-readiness cleanup: scrubbed dev tunnel URL, local paths, stale bench data (#175)
+- Removed stale `web/` and `benchmarks/results/` artefacts (#178)
+- Added `CONTRIBUTING.md` for public contributors (#176)
+
 ### Performance
 - **Disk-backed cache for `detect_scenes` + `transcript_messages` (260430)**:
   the slow steps in the accurate-mode video pipeline now persist across CLI
