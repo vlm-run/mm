@@ -390,7 +390,7 @@ class TestToksPerSec:
         out = console.print.call_args_list[0].args[0]
         # 200 tokens / 2.0s generate = 100 toks/s (over generate wall-clock, not `elapsed`).
         toks_s = float(
-            [p for p in out.split(" • ") if "toks/s" in p][0].split()[0].replace(",", "")
+            next(p for p in out.split(" • ") if "toks/s" in p).split()[0].replace(",", "")
         )
         assert 99.0 <= toks_s <= 101.0
         assert "/s • " in out.split("toks/s")[0] and "toks/s • $" in out  # after size, before cost
