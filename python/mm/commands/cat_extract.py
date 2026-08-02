@@ -30,10 +30,9 @@ if TYPE_CHECKING:
 class CatRunState:
     """Per-invocation accumulator for ``mm cat`` timing/cost/report state.
 
-    Replaces the former module-level globals. ``token_cost`` and ``total_bytes``
-    are accumulated in the main thread after concurrent work completes;
-    ``was_cached`` and ``report_output`` are set/appended from ``extract``
-    (idempotent bool set, GIL-safe list append).
+    Replaces the former module-level globals. Extraction metrics accumulate
+    in ``extract`` under ``_cost_lock``. ``was_cached`` and ``report_output``
+    are set or appended from ``extract``.
     """
 
     total_bytes: int = 0

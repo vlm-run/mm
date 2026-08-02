@@ -434,7 +434,6 @@ def cat_cmd(
     state = CatRunState()
     global _run_state
     _run_state = state
-    _emitted = 0
 
     valid_paths: list[Path] = []
     for file_path in paths:
@@ -495,8 +494,6 @@ def cat_cmd(
                     continue
                 renderer.render(p, content)
                 if run_result is not None:
-                    if run_result.token_cost is not None:
-                        state.total_token_cost += run_result.token_cost
                     report_entries.append((p, run_result))
 
     renderer.emit_results(output_dir)
