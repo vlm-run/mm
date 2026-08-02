@@ -219,7 +219,7 @@ def run_encoder(path: Path, kind: BinaryFileKind, spec: PipelineSpec, opts: CatO
         llm_response=result if opts.report else None,
         pipeline_spec=spec if opts.report else None,
         encode_elapsed_ms=encode_elapsed if opts.report else None,
-        generate_elapsed_ms=elapsed if opts.report else None,
-        llm_usage=usage if opts.report else None,
+        generate_elapsed_ms=elapsed,
+        llm_usage=usage,
         token_cost=token_cost,
     )

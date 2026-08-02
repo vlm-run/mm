@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from time import perf_counter
 from unittest.mock import MagicMock, patch
 
 from mm.cat_utils.base_utils import CatMode, CatOpts, RunResult
@@ -341,3 +342,61 @@ class TestTokenCost:
         assert with_cost.endswith("$0.0028")
         assert "/s • $0.0028" in with_cost
         assert "$" not in without_cost
+
+
+class TestToksPerSec:
+    """End-to-end toks/s: cat sums completion tokens and generate wall-clock,
+    the footer renders Σtokens / Σgenerate_s."""
+
+    def _run(self, tmp_path, usage, generate_ms):
+        f = tmp_path / "test.jpg"
+        f.write_bytes(b"\xff\xd8\xff" + b"\x00" * 100)
+        cm1, cm2, cm3, cm4 = _mock_cache_miss()
+        with cm1, cm2, cm3, cm4, patch("mm.commands.cat._run_fast") as mock:
+            mock.return_value = RunResult(
+                content="ok", llm_usage=usage, generate_elapsed_ms=generate_ms
+            )
+            _extract(f, _make_opts("fast"))
+
+    def test_accumulates_and_renders_rate(self, tmp_path):
+        import mm.commands.cat as cat_module
+        import mm.display as display_mod
+
+        cat_module._total_completion_tokens = 0.0
+        cat_module._total_generate_ms = 0.0
+        self._run(tmp_path, {"completion_tokens": 100.0}, 1000.0)
+        self._run(tmp_path, {"completion_tokens": 100.0}, 1000.0)
+        assert cat_module._total_completion_tokens == 200.0
+        assert cat_module._total_generate_ms == 2000.0
+
+        with patch.object(display_mod, "console", MagicMock()) as console:
+            display_mod.display_elapsed(
+                perf_counter() - 5.0,
+                total_bytes=1024 * 1024,
+                completion_tokens=cat_module._total_completion_tokens,
+                generate_ms=cat_module._total_generate_ms,
+                token_cost=0.002,
+            )
+        out = console.print.call_args_list[0].args[0]
+        # 200 tokens / 2.0s generate = 100 toks/s (over generate wall-clock, not `elapsed`).
+        toks_s = float(
+            [p for p in out.split(" • ") if "toks/s" in p][0].split()[0].replace(",", "")
+        )
+        assert 99.0 <= toks_s <= 101.0
+        assert "/s • " in out.split("toks/s")[0] and "toks/s • $" in out  # after size, before cost
+
+    def test_skips_without_generate_time(self, tmp_path):
+        import mm.commands.cat as cat_module
+        import mm.display as display_mod
+
+        cat_module._total_completion_tokens = 0.0
+        cat_module._total_generate_ms = 0.0
+        self._run(tmp_path, None, None)  # passthrough: no usage, no generate time
+        assert cat_module._total_completion_tokens == 0.0
+        assert cat_module._total_generate_ms == 0.0
+
+        with patch.object(display_mod, "console", MagicMock()) as console:
+            display_mod.display_elapsed(
+                perf_counter() - 1.0, completion_tokens=100, generate_ms=0.0
+            )
+        assert "toks/s" not in console.print.call_args_list[0].args[0]

@@ -123,7 +123,7 @@ class PriceCatalog:
 
         return None
 
-    def compute_cost(self, usage: dict[str, int], model: str) -> CostBreakdown | None:
+    def compute_cost(self, usage: dict[str, float], model: str) -> CostBreakdown | None:
         """Compute cost from a token-usage dict and model name.
 
         Returns ``None`` when the model is not in the catalog.

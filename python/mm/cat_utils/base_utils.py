@@ -83,7 +83,7 @@ class RunResult:
     pipeline_spec: PipelineSpec | None = None
     encode_elapsed_ms: float | None = None
     generate_elapsed_ms: float | None = None
-    llm_usage: dict[str, int] | None = None
+    llm_usage: dict[str, float] | None = None
     token_cost: float | None = None
 
 
@@ -216,6 +216,9 @@ def format_generate_verbose(
         else "no tokens"
     )
     generate_text = f"generate: {profile_name} • {format_time(elapsed_ms)} • {token_info} tokens"
+    if completion_tokens > 0 and elapsed_ms > 0:
+        toks_s = completion_tokens / (elapsed_ms / 1000.0)
+        generate_text += f" • {toks_s:,.1f} toks/s"
     if token_cost is not None:
         generate_text += f" • ${token_cost:.4f}"
     return f"[dim]{generate_text}[/dim]"

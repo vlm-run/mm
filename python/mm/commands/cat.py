@@ -35,7 +35,11 @@ _was_cached: bool = False
 _report_output: list[str] = []
 # Track total estimated LLM token cost across processed files (for the footer)
 _total_token_cost: float = 0.0
-# Protects _total_token_cost updates from concurrent _extract calls
+# Track total completion tokens across processed files (numerator for toks/s)
+_total_completion_tokens: float = 0.0
+# Track total generate wall-clock (ms) across files (denominator for end-to-end toks/s)
+_total_generate_ms: float = 0.0
+# Protects the footer accumulators above from concurrent _extract calls
 _cost_lock = threading.Lock()
 
 
@@ -455,11 +459,19 @@ def cat_cmd(
     results: list[dict] = []
     _emitted = 0
 
-    global _total_bytes_processed, _was_cached, _report_output, _total_token_cost
+    global \
+        _total_bytes_processed, \
+        _was_cached, \
+        _report_output, \
+        _total_token_cost, \
+        _total_completion_tokens, \
+        _total_generate_ms
     _total_bytes_processed = 0
     _was_cached = False
     _report_output = []
     _total_token_cost = 0.0
+    _total_completion_tokens = 0.0
+    _total_generate_ms = 0.0
 
     valid_paths: list[Path] = []
     for file_path in paths:
@@ -616,7 +628,7 @@ def _extract(path: Path, opts: CatOpts) -> tuple[str, RunResult | None]:
     :class:`RunResult` from the encode→generate pipeline, or ``None``
     for passthrough / cache-hit / dry-run paths.
     """
-    global _was_cached, _total_token_cost
+    global _was_cached, _total_token_cost, _total_completion_tokens, _total_generate_ms
     kind = file_kind(path)
     ext = path.suffix.lower()
     if opts.dry_run:
@@ -703,6 +715,12 @@ def _extract(path: Path, opts: CatOpts) -> tuple[str, RunResult | None]:
     if run.token_cost is not None:
         with _cost_lock:
             _total_token_cost += run.token_cost
+    if run.llm_usage is not None and run.generate_elapsed_ms:
+        completion = run.llm_usage.get("completion_tokens", 0.0)
+        if completion > 0:
+            with _cost_lock:
+                _total_completion_tokens += completion
+                _total_generate_ms += run.generate_elapsed_ms
 
     if content_hash and run.content and not run.content.startswith("["):
         extract_meta(path, kind)
