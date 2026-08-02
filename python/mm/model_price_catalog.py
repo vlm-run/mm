@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import json
 import re
+from collections.abc import Mapping
 from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
@@ -123,7 +124,7 @@ class PriceCatalog:
 
         return None
 
-    def compute_cost(self, usage: dict[str, int], model: str) -> CostBreakdown | None:
+    def compute_cost(self, usage: Mapping[str, int | float], model: str) -> CostBreakdown | None:
         """Compute cost from a token-usage dict and model name.
 
         Returns ``None`` when the model is not in the catalog.

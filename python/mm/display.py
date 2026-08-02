@@ -458,6 +458,8 @@ def display_elapsed(
     *,
     prefix: str | None = None,
     token_cost: float | None = None,
+    completion_tokens: float = 0,
+    generate_ms: float = 0.0,
 ) -> None:
     """display elapsed time since start_time with throughput metrics.
 
@@ -469,6 +471,9 @@ def display_elapsed(
         cached: whether the result was served from cache
         prefix: optional leading text (e.g. ``"took "`` for grep)
         token_cost: total estimated LLM token cost in USD (appended when non-zero)
+        completion_tokens: total LLM completion tokens across files (toks/s numerator)
+        generate_ms: total generate wall-clock across files (denominator for
+            end-to-end toks/s: ``completion_tokens / (generate_ms / 1000)``).
     """
     assert start_time > 0
     elapsed_ms = (perf_counter() - start_time) * 1000
@@ -495,6 +500,10 @@ def display_elapsed(
 
         output_parts.append(throughput_str)
 
+    if completion_tokens > 0 and generate_ms > 0:
+        toks_s = completion_tokens / (generate_ms / 1000.0)
+        output_parts.append(f"{toks_s:,.1f} toks/s")
+
     if token_cost:
         output_parts.append(f"${token_cost:.4f}")
 
@@ -518,6 +527,8 @@ def display_elapsed_wrapper(start_time: float, prefix: str | None = None):
             cached = False
             token_cost = 0.0
             report_msgs: list[str] = []
+            completion_tokens = 0.0
+            generate_ms = 0.0
             try:
                 from mm.commands import cat as cat_module
 
@@ -526,12 +537,22 @@ def display_elapsed_wrapper(start_time: float, prefix: str | None = None):
                     total_bytes = state.total_bytes
                     cached = state.was_cached
                     token_cost = state.total_token_cost
+                    completion_tokens = state.total_completion_tokens
+                    generate_ms = state.total_generate_ms
                     report_msgs = state.report_output
                     cat_module._run_state = None
             except (ImportError, AttributeError):
                 pass
 
-            display_elapsed(start_time, total_bytes, cached, prefix=prefix, token_cost=token_cost)
+            display_elapsed(
+                start_time,
+                total_bytes,
+                cached,
+                prefix=prefix,
+                token_cost=token_cost,
+                completion_tokens=completion_tokens,
+                generate_ms=generate_ms,
+            )
 
             for msg in report_msgs:
                 console.print(f"[dim]{msg}[/dim]")

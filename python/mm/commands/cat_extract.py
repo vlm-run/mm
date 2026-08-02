@@ -7,6 +7,7 @@ path from the CLI command and rendering logic.
 from __future__ import annotations
 
 import tempfile
+import threading
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING, cast
@@ -39,6 +40,11 @@ class CatRunState:
     was_cached: bool = False
     report_output: list[str] = field(default_factory=list)
     total_token_cost: float = 0.0
+    total_completion_tokens: float = 0.0
+    total_generate_ms: float = 0.0
+
+
+_cost_lock = threading.Lock()
 
 
 def is_passthrough(kind: str, ext: str, mode: str) -> bool:
@@ -66,7 +72,7 @@ def extract(
     Args:
         path: File to extract.
         opts: Resolved cat options.
-        state: Per-invocation accumulator for bytes/cached/cost.
+        state: Per-invocation accumulator for bytes, cached status, and metrics.
     """
     if state is None:
         state = CatRunState()
@@ -147,6 +153,15 @@ def extract(
         run = run_accurate(path, kind, spec, opts)
     else:
         run = run_fast(path, kind, spec, opts)
+
+    with _cost_lock:
+        if run.token_cost is not None:
+            state.total_token_cost += run.token_cost
+        if run.llm_usage is not None and run.generate_elapsed_ms:
+            completion = run.llm_usage.get("completion_tokens", 0.0)
+            if completion > 0:
+                state.total_completion_tokens += completion
+                state.total_generate_ms += run.generate_elapsed_ms
 
     if content_hash and run.content and not run.content.startswith("["):
         uri = str(path.resolve())
