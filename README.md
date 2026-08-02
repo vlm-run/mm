@@ -76,6 +76,40 @@ mm cat audio.mp3 --encode.backend openai       # force OpenAI-compatible endpoin
 ```
 </details>
 
+## Integrations
+
+<details>
+<summary>Claude Code, npx skills, and universal assistants</summary>
+
+**Claude Code**: install the `mm-cli-skill` via the skill marketplace:
+
+```bash
+claude
+> /plugin marketplace add vlm-run/skills
+> /plugin install mm-cli-skill@vlm-run/skills
+> Organize my ~/Downloads folder using mm
+```
+
+**npx skills**: install mm-cli-skill globally so any CLI assistant or agentic tool can discover it:
+
+```bash
+npx skills add vlm-run/skills@mm-cli-skill
+```
+
+**Universal assistants** (OpenClaw, NemoClaw, OpenCode, Codex, Gemini CLI): install the skill globally, then start your preferred tool.
+
+```bash
+# One-time setup
+npx skills add vlm-run/skills@mm-cli-skill
+
+# Then use any CLI assistant: it will discover mm automatically
+openclaw "Organize my ~/Downloads folder using mm"
+codex "Find all PDFs in ~/docs and summarize them with mm"
+```
+
+The skill exposes mm's capabilities to any tool that supports the skills protocol.
+</details>
+
 ## CLI
 
 Commands that mirror familiar Unix tools but operate on multimodal semantics.
@@ -213,19 +247,19 @@ mm cat wordpress-pdf-invoice-plugin-sample.pdf -m accurate      # LLM-structured
 
 ### Command reference
 
-Every command mirrors a familiar Unix tool. Follow the links for the full flag reference on the docs site.
+Every command mirrors a familiar Unix tool. Each command name links to its full flag reference on the docs site.
 
-| Command | Purpose | Docs |
-|---------|---------|------|
-| [`find`](https://vlm-run.github.io/mm/find/)  | Find/list files; tabular, tree, or schema view | [find →](https://vlm-run.github.io/mm/find/) |
-| [`peek`](https://vlm-run.github.io/mm/peek/)  | Local file metadata (dimensions / EXIF / codec / duration / mime / hash) | [peek →](https://vlm-run.github.io/mm/peek/) |
-| [`cat`](https://vlm-run.github.io/mm/cat/)   | Content extraction (auto-detected by kind × mode); pipeline-driven | [cat →](https://vlm-run.github.io/mm/cat/) |
-| [`grep`](https://vlm-run.github.io/mm/grep/)  | Text + semantic content search | [grep →](https://vlm-run.github.io/mm/grep/) |
-| [`sql`](https://vlm-run.github.io/mm/sql/)   | SQL on `files` / `extractions` / `chunks` (auto-routed) | [sql →](https://vlm-run.github.io/mm/sql/) |
-| [`wc`](https://vlm-run.github.io/mm/wc/)    | Count files, bytes, lines (est.), tokens (est.) | [wc →](https://vlm-run.github.io/mm/wc/) |
-| [`bench`](https://vlm-run.github.io/mm/bench/) | Benchmark suite with statistical analysis | [bench →](https://vlm-run.github.io/mm/bench/) |
-| [`config`](https://vlm-run.github.io/mm/config/) | Configuration & diagnostics | [config →](https://vlm-run.github.io/mm/config/) |
-| [`profile`](https://vlm-run.github.io/mm/profile/) | LLM provider profiles | [profile →](https://vlm-run.github.io/mm/profile/) |
+| Command | Purpose |
+|---------|---------|
+| [`find`](https://vlm-run.github.io/mm/find/)  | Find/list files; tabular, tree, or schema view |
+| [`peek`](https://vlm-run.github.io/mm/peek/)  | Local file metadata (dimensions / EXIF / codec / duration / mime / hash) |
+| [`cat`](https://vlm-run.github.io/mm/cat/)   | Content extraction (auto-detected by kind × mode); pipeline-driven |
+| [`grep`](https://vlm-run.github.io/mm/grep/)  | Text + semantic content search |
+| [`sql`](https://vlm-run.github.io/mm/sql/)   | SQL on `files` / `extractions` / `chunks` (auto-routed) |
+| [`wc`](https://vlm-run.github.io/mm/wc/)    | Count files, bytes, lines (est.), tokens (est.) |
+| [`bench`](https://vlm-run.github.io/mm/bench/) | Benchmark suite with statistical analysis |
+| [`config`](https://vlm-run.github.io/mm/config/) | Configuration & diagnostics |
+| [`profile`](https://vlm-run.github.io/mm/profile/) | LLM provider profiles |
 
 Top-level: `mm [-p / --profile NAME] [--color auto/always/never] [--debug] [-v / --version] <command>`.
 See the [CLI overview](https://vlm-run.github.io/mm/cli/) for the complete flag matrix.
@@ -299,7 +333,7 @@ mm cat mp3_44100Hz_320kbps_stereo.mp3 -m accurate --encode.backend openai       
 mm cat mp3_44100Hz_320kbps_stereo.mp3 -m accurate --encode.model whisper-1      # override transcription model
 ```
 
-**Override surfaces**: `mm cat` resolves each LLM call from three layers, with **right-most wins** on conflict: **Profile** (`mm.toml`: `base_url`, `api_key`, default `model`) → **Pipeline YAML** (`generate:` block) → **CLI flags on `cat`** (per-field overrides such as `--model`, `--prompt`, `--generate.max-tokens`, `--generate.extra-body`).
+**Override surfaces**: `mm cat` resolves each LLM call from three layers, with **right-most wins** on conflict: **Profile** (`mm.toml`: `base_url`, `api_key`, default `model`) → **Pipeline YAML** (`generate:` block) → **CLI flags on `cat`** (per-field overrides such as `--model`, `--prompt`, `--generate.max-tokens`, `--generate.extra-body`). `base_url` and `api_key` are profile-only (no CLI override for them). The merged `model` + `extra_body` participate in the L2 cache key, so changing a knob correctly invalidates cached results.
 
 Use `--generate.extra-body` for provider-specific knobs (vlmrt's `method`, `method_params`, `video_fps`, `image_resolution`, etc.):
 
@@ -386,7 +420,9 @@ mm bench mm-samples/ --mode fast                      # + fast-mode extractions
 mm bench mm-samples/ --mode accurate                  # + accurate-mode extractions
 mm bench mm-samples/ --mode all                       # full suite (fast + accurate)
 mm bench mm-samples/ --rounds 5                       # more rounds for stability
+mm bench mm-samples/ --warmup 2                       # extra warmup rounds
 mm bench mm-samples/ --format json                    # JSON output for archival
+mm bench mm-samples/ --dry-run                        # resolve plan, no execution
 mm bench --host-info                                  # print host spec and exit
 ```
 
@@ -446,9 +482,13 @@ ctx = mm.Context(session_id=mm.uuid7())      # or omit; auto-mints a UUIDv7
 sys:  mm.Ref = ctx.add("You are a terse visual analyst.", role="system")
 txt:  mm.Ref = ctx.add("Summarize these assets.", role="user")
 img:  mm.Ref = ctx.add(Path("photo.jpg"), role="user")
+img2: mm.Ref = ctx.add(Image.open("x.png"), role="user",
+                       metadata={"note": "product hero shot"})
 doc:  mm.Ref = ctx.add(Path("paper.pdf"), role="user",
                        metadata={"summary": "Attention is all you need",
                                  "tags": ["nlp", "transformer"]})
+vid:  mm.Ref = ctx.add(Path("clip.mp4"), role="user",
+                       metadata={"scene": 3, "actor": "A"})
 ```
 
 `ctx.add(obj, *, role="user", metadata=...)` accepts free-form `str` text, a `pathlib.Path`, or a `PIL.Image.Image`. Strings can use `system`, `developer`, or `user`; media must use `user`. Every `add` returns a short kind-prefixed ref id like `img_a1b2c3`, typed as `mm.Ref`, and can be removed with `ctx.remove(ref)`.
@@ -495,42 +535,8 @@ Context(session=019da4…, items=4)
 ```
 </details>
 
-`Context("~/data")` also supports the directory-scan surface (`to_polars`, `to_pandas`, `to_arrow`, `sql`, `show`, `info`).
+`Context("~/data")` also supports the [directory-scan surface](https://vlm-run.github.io/mm/user-guide/) (`to_polars`, `to_pandas`, `to_arrow`, `sql`, `show`, `info`).
 Full spec: `print_tree` layouts, cross-session resolution, and the deferred `save()` API are all in the [Python API docs →](https://vlm-run.github.io/mm/api/).
-
-## Integrations
-
-<details>
-<summary>Claude Code, npx skills, and universal assistants</summary>
-
-**Claude Code**: install the `mm-cli-skill` via the skill marketplace:
-
-```bash
-claude
-> /plugin marketplace add vlm-run/skills
-> /plugin install mm-cli-skill@vlm-run/skills
-> Organize my ~/Downloads folder using mm
-```
-
-**npx skills**: install mm-cli-skill globally so any CLI assistant or agentic tool can discover it:
-
-```bash
-npx skills add vlm-run/skills@mm-cli-skill
-```
-
-**Universal assistants** (OpenClaw, NemoClaw, OpenCode, Codex, Gemini CLI): install the skill globally, then start your preferred tool.
-
-```bash
-# One-time setup
-npx skills add vlm-run/skills@mm-cli-skill
-
-# Then use any CLI assistant: it will discover mm automatically
-openclaw "Organize my ~/Downloads folder using mm"
-codex "Find all PDFs in ~/docs and summarize them with mm"
-```
-
-The skill exposes mm's capabilities to any tool that supports the skills protocol.
-</details>
 
 ## Processing tiers
 
@@ -570,6 +576,14 @@ Pipelines are YAML configs under `pipelines/{kind}/{mode}.yaml` that pair an **e
 mm cat photo.jpg -m accurate --encode.strategy tile --generate.max-tokens 1024
 mm cat --print-pipeline image/accurate            # print a built-in pipeline as a starting point
 mm cat photo.jpg -p my-image-pipeline.yaml        # load an explicit pipeline YAML
+```
+
+Custom pipeline paths can also be pinned in `~/.config/mm/mm.toml`:
+
+```toml
+[pipelines]
+image.fast = "/path/to/my-image-fast.yaml"
+video.accurate = "/path/to/my-video-accurate.yaml"
 ```
 
 See the [pipelines →](https://vlm-run.github.io/mm/pipelines/) and [encoders →](https://vlm-run.github.io/mm/encoders/) docs for the full reference.
