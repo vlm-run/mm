@@ -3,9 +3,10 @@
 Used by ``mm grep`` as an additive search layer alongside regex; independent
 of the semantic (vector) layer in :mod:`mm.semantic` and not gated by ``-s``.
 
-Backed by :meth:`mm.store.db.MmDatabase.search_chunks_fts`, which runs a
-single ``LIKE %q% COLLATE NOCASE`` query with ``kind``/``ext``/``uri`` filters
-pushed into SQL. Returns at most ``limit`` rows.
+Backed by :meth:`mm.store.db.MmDatabase.search_chunks_fts`, which dispatches
+to a BM25-ranked FTS5 (trigram tokenizer) query when available and falls back
+to a ``LIKE %q%`` scan otherwise. BM25 rows carry a ``bm25`` column (lower =
+more relevant).
 """
 
 from __future__ import annotations
@@ -36,7 +37,7 @@ def fts_search(
         {
             "path": r["file_uri"],
             "index": r["chunk_idx"],
-            "rank": 0.0,
+            "rank": float(r["bm25"]) if "bm25" in r else 0.0,
             "match": r["chunk_text"],
             "snippet": None,
         }

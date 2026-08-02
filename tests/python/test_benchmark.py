@@ -172,3 +172,75 @@ def test_bench_e2e_demo_dir(benchmark, demo_dir):
 
     result = benchmark(Context, demo_dir)
     assert result.num_files > 200
+
+
+# ---------------------------------------------------------------------------
+# FTS5 BM25 benchmarks
+# ---------------------------------------------------------------------------
+
+
+def _seed_fts_corpus(db_path: Path, n: int) -> None:
+    """Seed *n* chunks across *n* files for retrieval benchmarks."""
+    from mm.store.db import MmDatabase
+    from mm.store.utils import now_us
+
+    db = MmDatabase(db_path=db_path)
+    _ = db._connect
+    now = now_us()
+    for i in range(n):
+        uri = str(db_path.parent / f"f{i}.txt")
+        Path(uri).write_text("x")
+        db._connect.execute(
+            "INSERT INTO files (uri, name, stem, ext, size, modified, created, mime, "
+            "kind, is_binary, depth, parent, indexed_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (
+                uri,
+                f"f{i}.txt",
+                f"f{i}",
+                ".txt",
+                1,
+                now,
+                now,
+                "text/plain",
+                "text",
+                0,
+                0,
+                str(db_path.parent),
+                now,
+            ),
+        )
+        db._connect.execute(
+            "INSERT INTO extractions (id, file_uri, content_hash, profile, model, mode, "
+            "detail, extra, summary, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (f"e{i}", uri, "h", "p", "m", "accurate", 0, "", "s", now),
+        )
+        db._connect.execute(
+            "INSERT INTO chunks (extraction_id, file_uri, content_hash, profile, model, "
+            "mode, chunk_idx, chunk_text, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (
+                f"e{i}",
+                uri,
+                "h",
+                "p",
+                "m",
+                "accurate",
+                0,
+                f"chunk number {i} quantum entanglement notes",
+                now,
+            ),
+        )
+    db._connect.commit()
+
+
+def test_bench_bm25_search(benchmark, tmp_path_factory: pytest.TempPathFactory):
+    """Benchmark FTS5 BM25 phrase search over a 1k-chunk corpus."""
+    db_dir = tmp_path_factory.mktemp("bm25")
+    db_path = db_dir / "mm.db"
+    _seed_fts_corpus(db_path, 1000)
+
+    from mm.store.db import MmDatabase
+
+    db = MmDatabase(db_path=db_path)
+    rows = benchmark(db.search_chunks_bm25, "quantum entanglement", limit=10)
+    assert len(rows) > 0
