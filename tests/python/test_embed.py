@@ -197,7 +197,7 @@ class TestCatEmbedIntegration:
 
         with (
             patch(
-                "mm.commands.cat._run_accurate",
+                "mm.commands.cat_extract.run_accurate",
                 return_value=RunResult(content="LLM generated text."),
             ),
             patch("mm.store.utils.get_content_hash", return_value="fakehash"),
