@@ -197,8 +197,8 @@ Every `mm cat` invocation resolves its LLM call from three layers, with
 | `--generate.extra-body '<json>'` | — | `generate.extra_body` (deep-merged) |
 
 `base_url` and `api_key` are profile-only — there is no CLI override for them.
-The merged `model` + `extra_body` participate in the L2 cache key, so changing
-a knob correctly invalidates cached results.
+The merged `model` + `extra_body` participate in the extraction cache key, so
+changing a knob correctly invalidates cached results.
 
 Using these flags to drive an arbitrary OpenAI-compatible deployment
 (e.g. [vlmrt](https://github.com/vlm-run/vlm-playground/blob/main/projects/vlmrt/docs/openai-chat-completions-compat.md),

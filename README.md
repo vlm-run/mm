@@ -333,7 +333,7 @@ mm cat mp3_44100Hz_320kbps_stereo.mp3 -m accurate --encode.backend openai       
 mm cat mp3_44100Hz_320kbps_stereo.mp3 -m accurate --encode.model whisper-1      # override transcription model
 ```
 
-**Override surfaces**: `mm cat` resolves each LLM call from three layers, with **right-most wins** on conflict: **Profile** (`mm.toml`: `base_url`, `api_key`, default `model`) → **Pipeline YAML** (`generate:` block) → **CLI flags on `cat`** (per-field overrides such as `--model`, `--prompt`, `--generate.max-tokens`, `--generate.extra-body`). `base_url` and `api_key` are profile-only (no CLI override for them). The merged `model` + `extra_body` participate in the L2 cache key, so changing a knob correctly invalidates cached results.
+**Override surfaces**: `mm cat` resolves each LLM call from three layers, with **right-most wins** on conflict: **Profile** (`mm.toml`: `base_url`, `api_key`, default `model`) → **Pipeline YAML** (`generate:` block) → **CLI flags on `cat`** (per-field overrides such as `--model`, `--prompt`, `--generate.max-tokens`, `--generate.extra-body`). `base_url` and `api_key` are profile-only (no CLI override for them). The merged `model` + `extra_body` participate in the extraction cache key, so changing a knob correctly invalidates cached results.
 
 Use `--generate.extra-body` for provider-specific knobs (vlmrt's `method`, `method_params`, `video_fps`, `image_resolution`, etc.):
 

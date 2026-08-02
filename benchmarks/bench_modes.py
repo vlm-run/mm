@@ -107,7 +107,7 @@ def _run_bench(cmd: list[str], runs: int = 3) -> float:
 
 
 def _probe_image(path: Path) -> tuple[str, int]:
-    """Get image dimensions via mm L1."""
+    """Get image dimensions via ``mm cat`` (fast mode)."""
     try:
         r = subprocess.run(
             ["mm", "cat", str(path)],
@@ -127,7 +127,7 @@ def _probe_image(path: Path) -> tuple[str, int]:
 
 
 def _probe_video(path: Path) -> tuple[str, float, float]:
-    """Get video resolution, duration, fps via mm L1."""
+    """Get video resolution, duration, fps via ``mm cat`` (fast mode)."""
     try:
         r = subprocess.run(
             ["mm", "cat", str(path)],

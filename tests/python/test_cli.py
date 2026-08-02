@@ -517,12 +517,12 @@ class TestGrep:
         db._connect.execute(
             "INSERT INTO extractions (id, file_uri, content_hash, profile, model, mode, "
             "detail, extra, summary, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            ("l2-snip", str(img), "h", "p", "m", "accurate", 0, "", "summary", now),
+            ("acc-snip", str(img), "h", "p", "m", "accurate", 0, "", "summary", now),
         )
         db._connect.execute(
             "INSERT INTO chunks (extraction_id, file_uri, content_hash, profile, model, "
             "mode, chunk_idx, chunk_text, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            ("l2-snip", str(img), "h", "p", "m", "accurate", 0, chunk, now),
+            ("acc-snip", str(img), "h", "p", "m", "accurate", 0, chunk, now),
         )
         db._connect.commit()
 
@@ -548,13 +548,13 @@ class TestGrep:
         db._connect.execute(
             "INSERT INTO extractions (id, file_uri, content_hash, profile, model, mode, "
             "detail, extra, summary, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            ("l2-1", str(img), "h", "p", "m", "accurate", 0, "", "summary", now),
+            ("acc-1", str(img), "h", "p", "m", "accurate", 0, "", "summary", now),
         )
         db._connect.execute(
             "INSERT INTO chunks (extraction_id, file_uri, content_hash, profile, model, "
             "mode, chunk_idx, chunk_text, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (
-                "l2-1",
+                "acc-1",
                 str(img),
                 "h",
                 "p",
@@ -587,12 +587,12 @@ class TestGrep:
         db._connect.execute(
             "INSERT INTO extractions (id, file_uri, content_hash, profile, model, mode, "
             "detail, extra, summary, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            ("l2-sub", str(img), "h", "p", "m", "accurate", 0, "", "summary", now),
+            ("acc-sub", str(img), "h", "p", "m", "accurate", 0, "", "summary", now),
         )
         db._connect.execute(
             "INSERT INTO chunks (extraction_id, file_uri, content_hash, profile, model, "
             "mode, chunk_idx, chunk_text, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            ("l2-sub", str(img), "h", "p", "m", "accurate", 0, "Breaking the Quantum Loop", now),
+            ("acc-sub", str(img), "h", "p", "m", "accurate", 0, "Breaking the Quantum Loop", now),
         )
         db._connect.commit()
 
@@ -625,7 +625,7 @@ class TestGrep:
         db.ensure_metadata(str(txt))
         now = now_us()
         # Seed identical chunk text under both files so kind alone determines the hit.
-        for idx, (uri, extraction_id) in enumerate([(str(img), "l2-img"), (str(txt), "l2-txt")]):
+        for idx, (uri, extraction_id) in enumerate([(str(img), "acc-img"), (str(txt), "acc-txt")]):
             db._connect.execute(
                 "INSERT INTO extractions (id, file_uri, content_hash, profile, model, mode, "
                 "detail, extra, summary, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
@@ -663,13 +663,13 @@ class TestGrep:
         db._connect.execute(
             "INSERT INTO extractions (id, file_uri, content_hash, profile, model, mode, "
             "detail, extra, summary, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            ("l2-p", str(img), "h", "p", "m", "accurate", 0, "", "summary", now),
+            ("acc-p", str(img), "h", "p", "m", "accurate", 0, "", "summary", now),
         )
         db._connect.execute(
             "INSERT INTO chunks (extraction_id, file_uri, content_hash, profile, model, "
             "mode, chunk_idx, chunk_text, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (
-                "l2-p",
+                "acc-p",
                 str(img),
                 "h",
                 "p",
@@ -706,7 +706,7 @@ class TestGrep:
         db._connect.execute(
             "INSERT INTO extractions (id, file_uri, content_hash, profile, model, mode, "
             "detail, extra, summary, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            ("l2-w", str(img), "h", "p", "m", "accurate", 0, "", "summary", now),
+            ("acc-w", str(img), "h", "p", "m", "accurate", 0, "", "summary", now),
         )
         # Three chunks: only chunk 0 contains the literal query strings; the
         # others would slip past an unescaped LIKE.
@@ -719,7 +719,7 @@ class TestGrep:
             db._connect.execute(
                 "INSERT INTO chunks (extraction_id, file_uri, content_hash, profile, model, "
                 "mode, chunk_idx, chunk_text, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                ("l2-w", str(img), "h", "p", "m", "accurate", idx, text, now),
+                ("acc-w", str(img), "h", "p", "m", "accurate", idx, text, now),
             )
         db._connect.commit()
 
