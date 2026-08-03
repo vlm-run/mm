@@ -161,7 +161,7 @@ RFDETR_SEG = "roboflow/rfdetr-seg-nano"
 VITPOSE = "usyd-community/vitpose-plus-small"
 SAM3 = "facebook/sam3"
 DOTS_OCR = "rednote-hilab/dots.ocr"
-PADDLEOCR = "paddleocr/pp-ocrv5"
+PADDLEOCR = "paddleocr/pp-ocrv6"
 GLINER = "fastino/gliner2-multi-v1"
 SMOLVLM_256M = "ggml-org/smolvlm-256m-instruct-gguf"
 SMOLVLM2_256M_VIDEO = "ggml-org/smolvlm2-256m-video-instruct-gguf"
@@ -496,11 +496,7 @@ SPECS: list[BenchSpec] = [
         extra_body={"method": "grounding_ocr", "method_params": {"box": [120, 200, 900, 400]}},
         disabled=True,
     ),
-    # PP-OCRv5 -- scene text recognition. Both disabled (Internal
-    # Server Error from the gateway). ``paddleocr/detect`` is text-
-    # bounding-box detection within the OCR pipeline; tagged ``ocr``
-    # rather than ``det`` so ``--task ocr`` returns the full OCR
-    # family in one go.
+    # PP-OCRv6
     BenchSpec(
         PADDLEOCR,
         "paddleocr/ocr",
