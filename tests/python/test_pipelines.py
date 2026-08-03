@@ -948,8 +948,8 @@ class TestGenerateModel:
         assert spec.generate.model is None
 
     def test_to_dict_round_trip(self):
-        gen = Generate(prompt="p", model="paddleocr-v5")
-        assert gen.to_dict()["model"] == "paddleocr-v5"
+        gen = Generate(prompt="p", model="paddleocr-v6")
+        assert gen.to_dict()["model"] == "paddleocr-v6"
 
     def test_apply_overrides_sets_model(self):
         spec = PipelineSpec.from_dict(
