@@ -13,8 +13,8 @@ from pathlib import Path
 from typing import Any, Iterable
 
 from mm.encoders import resolve_provider, register
-from mm.encoders.base import Encoder, Message
-from mm.encoders.image import _image_part, _to_message
+from mm.encoders.base import Encoder, Message, to_message
+from mm.encoders.image import _image_part
 from mm.encoders.video import uniform_timestamps
 from mm.encoders.video._transcript import encode_with_transcript
 
@@ -41,7 +41,7 @@ class VideoFrames(Encoder):
         from mm.video import VideoReader, pyav_runnable
 
         if not pyav_runnable():
-            yield _to_message([{"type": "text", "text": f"[PyAV not runnable for {path.name}]"}])
+            yield to_message([{"type": "text", "text": f"[PyAV not runnable for {path.name}]"}])
             return
 
         fps: float = kwargs.get("fps", 1.0)
@@ -53,7 +53,7 @@ class VideoFrames(Encoder):
         with VideoReader(path) as reader:
             duration = reader.duration
             if duration <= 0:
-                yield _to_message(
+                yield to_message(
                     [{"type": "text", "text": f"[Cannot determine duration for {path.name}]"}]
                 )
                 return
@@ -86,7 +86,7 @@ class VideoFrames(Encoder):
                 for frame in batch:
                     b64, mime = frame.encode_jpeg()
                     parts.append(_image_part(b64, mime, provider))
-                yield _to_message(parts)
+                yield to_message(parts)
 
 
 class VideoFramesWithTranscript(Encoder):

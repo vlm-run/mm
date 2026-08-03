@@ -131,7 +131,7 @@ profile (mm.toml)  ->  pipeline YAML (generate.*)  ->  encoder generate[mode]  -
   model (default)       max_tokens                      max_tokens (if set)          --generate.max-tokens
                         temperature                                                  --generate.temperature
                         json_mode                                                    --generate.json-mode
-                        extra_body                                                   --generate.extra-body
+                        extra_body                                                   --extra-body / --generate.extra-body
                                                                                      (deep-merged onto YAML)
 ```
 

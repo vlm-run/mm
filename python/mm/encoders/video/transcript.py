@@ -12,8 +12,7 @@ from pathlib import Path
 from typing import Any, Iterable
 
 from mm.encoders import register
-from mm.encoders.base import Encoder, Message
-from mm.encoders.image import _to_message
+from mm.encoders.base import Encoder, Message, to_message
 from mm.encoders.video._transcript import transcript_messages
 
 
@@ -50,7 +49,7 @@ class VideoTranscript(Encoder):
         if msgs:
             yield from msgs
         else:
-            yield _to_message(
+            yield to_message(
                 [{"type": "text", "text": f"[No transcript available for {path.name}]"}]
             )
 

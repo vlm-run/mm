@@ -27,9 +27,17 @@ import threading
 from pathlib import Path
 from typing import Any, Iterable, Protocol, runtime_checkable
 
-from mm.encoders.base import Encoder, Message
+from mm.encoders.base import Encoder, Message, to_message
 
-__all__ = ["Encoder", "Message", "MessageStrategy", "register", "register_encoder", "get"]
+__all__ = [
+    "Encoder",
+    "Message",
+    "MessageStrategy",
+    "register",
+    "register_encoder",
+    "get",
+    "to_message",
+]
 
 
 @runtime_checkable
@@ -277,7 +285,12 @@ def _ensure_discovered() -> None:
 def _register_builtins() -> None:
     """Import built-in encoder modules so their classes self-register."""
     from mm.encoders import audio, document, gemini, image, video  # noqa: F401
-    from mm.encoders.document import page_text, rasterize  # noqa: F401
+    from mm.encoders.document import (  # noqa: F401
+        document_url,
+        native as _doc_native,
+        page_text,
+        rasterize,
+    )
     from mm.encoders.video import (  # noqa: F401
         captions,
         chunks,

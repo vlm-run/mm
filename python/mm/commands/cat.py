@@ -227,6 +227,7 @@ def cat_cmd(
     generate_extra_body: Annotated[
         Optional[str],
         typer.Option(
+            "--extra-body",
             "--generate.extra-body",
             help=(
                 "JSON object forwarded to the OpenAI SDK's `extra_body` arg, "

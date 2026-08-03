@@ -21,8 +21,7 @@ from typing import Any, Iterable
 
 from mm.constants import guess_mime
 from mm.encoders import register
-from mm.encoders.base import Encoder, Message
-from mm.encoders.image import _to_message
+from mm.encoders.base import Encoder, Message, to_message
 from mm.encoders.video._transcript import encode_with_transcript
 from mm.utils import get_b64
 
@@ -54,7 +53,7 @@ class VideoClips(Encoder):
         from mm.video import probe, pyav_runnable
 
         if not pyav_runnable():
-            yield _to_message(
+            yield to_message(
                 [
                     {"type": "text", "text": f"[PyAV not runnable for {path.name}]"},
                 ]
@@ -67,7 +66,7 @@ class VideoClips(Encoder):
         video_duration = probe(path).duration
 
         if video_duration <= 0:
-            yield _to_message(
+            yield to_message(
                 [{"type": "text", "text": f"[Cannot determine duration for {path.name}]"}]
             )
             return
@@ -90,7 +89,7 @@ class VideoClips(Encoder):
         data = path.read_bytes()
         size_mb = len(data) / (1024 * 1024)
         if max_size_mb and size_mb > max_size_mb:
-            yield _to_message(
+            yield to_message(
                 [
                     {
                         "type": "text",
@@ -107,7 +106,7 @@ class VideoClips(Encoder):
             size_mb,
         )
 
-        yield _to_message(
+        yield to_message(
             [
                 {
                     "type": "text",
@@ -161,7 +160,7 @@ class VideoClips(Encoder):
             if max_size_mb and size_mb > max_size_mb:
                 return None
 
-            return _to_message(
+            return to_message(
                 [
                     {
                         "type": "text",

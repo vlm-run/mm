@@ -15,8 +15,8 @@ from pathlib import Path
 from typing import Any, Iterable
 
 from mm.encoders import register, resolve_provider
-from mm.encoders.base import Encoder, Message
-from mm.encoders.image import _image_part, _to_message
+from mm.encoders.base import Encoder, Message, to_message
+from mm.encoders.image import _image_part
 from mm.utils import get_b64
 
 logger = logging.getLogger(__name__)
@@ -46,7 +46,7 @@ class VideoMosaic(Encoder):
         from mm.video import VideoReader, pyav_runnable, tile_to_mosaic
 
         if not pyav_runnable():
-            yield _to_message(
+            yield to_message(
                 [
                     {"type": "text", "text": f"[PyAV not runnable for {path.name}]"},
                 ]
@@ -64,7 +64,7 @@ class VideoMosaic(Encoder):
         with VideoReader(path) as reader:
             duration = reader.duration
             if duration <= 0:
-                yield _to_message(
+                yield to_message(
                     [{"type": "text", "text": f"[Cannot determine duration for {path.name}]"}]
                 )
                 return
@@ -89,7 +89,7 @@ class VideoMosaic(Encoder):
                 frames_used += len(batch)
 
             if not mosaic_b64s:
-                yield _to_message(
+                yield to_message(
                     [{"type": "text", "text": f"[No frames extracted from {path.name}]"}]
                 )
                 return
@@ -121,7 +121,7 @@ class VideoMosaic(Encoder):
             for b64 in mosaic_b64s:
                 parts.append(_image_part(b64, "image/jpeg", provider))
 
-            yield _to_message(parts)
+            yield to_message(parts)
 
 
 def _get_timestamps(

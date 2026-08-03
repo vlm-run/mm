@@ -333,20 +333,20 @@ mm cat mp3_44100Hz_320kbps_stereo.mp3 -m accurate --encode.backend openai       
 mm cat mp3_44100Hz_320kbps_stereo.mp3 -m accurate --encode.model whisper-1      # override transcription model
 ```
 
-**Override surfaces**: `mm cat` resolves each LLM call from three layers, with **right-most wins** on conflict: **Profile** (`mm.toml`: `base_url`, `api_key`, default `model`) → **Pipeline YAML** (`generate:` block) → **CLI flags on `cat`** (per-field overrides such as `--model`, `--prompt`, `--generate.max-tokens`, `--generate.extra-body`). `base_url` and `api_key` are profile-only (no CLI override for them). The merged `model` + `extra_body` participate in the L2 cache key, so changing a knob correctly invalidates cached results.
+**Override surfaces**: `mm cat` resolves each LLM call from three layers, with **right-most wins** on conflict: **Profile** (`mm.toml`: `base_url`, `api_key`, default `model`) → **Pipeline YAML** (`generate:` block) → **CLI flags on `cat`** (per-field overrides such as `--model`, `--prompt`, `--generate.max-tokens`, `--extra-body`). `base_url` and `api_key` are profile-only (no CLI override for them). The merged `model` + `extra_body` participate in the L2 cache key, so changing a knob correctly invalidates cached results.
 
-Use `--generate.extra-body` for provider-specific knobs (vlmrt's `method`, `method_params`, `video_fps`, `image_resolution`, etc.):
+Use `--extra-body` (or its `--generate.extra-body` alias) for provider-specific knobs (vlmrt's `method`, `method_params`, `video_fps`, `image_resolution`, etc.):
 
 ```bash
 # Florence-2: document OCR (skip server-side LLM refinement)
 mm --profile vlmrt cat page.png -m accurate \
   --model florence-2-base-ft \
-  --generate.extra-body '{"method":"ocr","refine_with_llm":false}'
+  --extra-body '{"method":"ocr","refine_with_llm":false}'
 
 # PaddleOCR-v6: Chinese OCR with a tighter score threshold
 mm --profile vlmrt cat storefront.jpg -m accurate \
   --model paddleocr-v6 \
-  --generate.extra-body '{"method":"ocr","method_params":{"lang":"ch","score_threshold":0.6}}'
+  --extra-body '{"method":"ocr","method_params":{"lang":"ch","score_threshold":0.6}}'
 ```
 
 Full reference (all override flags + more model examples): [cat docs →](https://vlm-run.github.io/mm/cat/)
