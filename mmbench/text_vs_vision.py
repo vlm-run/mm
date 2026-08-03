@@ -350,79 +350,81 @@ def report(
 ) -> None:
     """Print the per-case + aggregate comparison table from the scratch DB.
 
-    When ``session_ids`` is given, only show results from those sessions (the
-    sessions created in this invocation). When None, show all results in the DB.
+    Every value is cumulated over all runs in scope: per-case cells show the
+    mean correctness and mean speed across that setup's runs of the case, and
+    the summary rows (MEAN correctness, MEAN speed, completed) are computed
+    over all case-runs. Each setup column is flagged ``@k=<runs>``.
+
+    When ``session_ids`` is given, only aggregate results from those sessions
+    (the sessions created in this invocation). When None, aggregate all
+    results in the DB.
     """
+    select = (
+        "SELECT profile_name, case_id, run_id, correctness, speed_s, "
+        "task_completion, failure_mode FROM case_results"
+    )
     if session_ids is not None:
         placeholders = ",".join("?" for _ in session_ids)
         rows = store.conn.execute(
-            f"SELECT profile_name, case_id, archetype, modality_json, correctness, "
-            f"checkpoint_score, judge_score, speed_s, task_completion, failure_mode, "
-            f"mm_used, token_total, mm_token_total "
-            f"FROM case_results WHERE session_id IN ({placeholders}) "
-            f"ORDER BY case_id, profile_name",
+            f"{select} WHERE session_id IN ({placeholders}) ORDER BY case_id, profile_name",
             session_ids,
         ).fetchall()
     else:
-        rows = store.conn.execute(
-            "SELECT profile_name, case_id, archetype, modality_json, correctness, "
-            "checkpoint_score, judge_score, speed_s, task_completion, failure_mode, "
-            "mm_used, token_total, mm_token_total FROM ("
-            "SELECT case_results.*, ROW_NUMBER() OVER ("
-            "PARTITION BY profile_name, case_id ORDER BY created_at DESC, rowid DESC"
-            ") AS result_rank FROM case_results"
-            ") WHERE result_rank = 1 ORDER BY case_id, profile_name"
-        ).fetchall()
+        rows = store.conn.execute(f"{select} ORDER BY case_id, profile_name").fetchall()
     if not rows:
         print("no results in scratch DB yet")
         return
-    by_case: dict[str, dict[str, dict]] = {}
+    by_case: dict[str, dict[str, list[dict]]] = {}
+    run_ids: dict[str, set[str]] = {}
     for r in rows:
-        by_case.setdefault(r["case_id"], {})[r["profile_name"]] = dict(r)
+        by_case.setdefault(r["case_id"], {}).setdefault(r["profile_name"], []).append(dict(r))
+        run_ids.setdefault(r["profile_name"], set()).add(r["run_id"])
 
-    labels = sorted({row["profile_name"] for row in rows})
-    print(f"\n{'case':34}  " + "  ".join(f"{label:>18}" for label in labels))
-    print("-" * (34 + 2 + 20 * len(labels)))
+    labels = sorted(run_ids)
+    headers = {label: f"{label} @k={len(run_ids[label])}" for label in labels}
+    width = max(18, *(len(h) for h in headers.values()))
+    print(f"\n{'case':34}  " + "  ".join(f"{headers[label]:>{width}}" for label in labels))
+    print("-" * (34 + (width + 2) * len(labels)))
     sums = {label: {"correctness": 0.0, "speed": 0.0, "n": 0, "completed": 0} for label in labels}
     for case_id, cells in sorted(by_case.items()):
         parts = [f"{case_id:34}"]
         for label in labels:
-            cell = cells.get(label)
-            if cell is None:
-                parts.append(f"{'—':>18}")
+            cell_runs = cells.get(label)
+            if not cell_runs:
+                parts.append(f"{'—':>{width}}")
                 continue
-            correctness = cell["correctness"]
-            speed = cell["speed_s"]
-            completed = cell["task_completion"]
-            failure_mode = cell["failure_mode"]
-            if failure_mode:
-                tag = f" [{failure_mode}]"
-            elif completed:
-                tag = ""
-            else:
-                tag = " [incomplete]"
-            parts.append(f"{correctness:5.1f}@{speed:4.0f}s{tag:>6}")
-            sums[label]["correctness"] += correctness or 0.0
-            sums[label]["speed"] += speed or 0.0
-            sums[label]["n"] += 1
-            if completed:
-                sums[label]["completed"] += 1
+            k = len(cell_runs)
+            correctness = sum(c["correctness"] or 0.0 for c in cell_runs) / k
+            speed = sum(c["speed_s"] or 0.0 for c in cell_runs) / k
+            completed = sum(1 for c in cell_runs if c["task_completion"])
+            fail_counts: dict[str, int] = {}
+            for c in cell_runs:
+                mode = c["failure_mode"] or ("" if c["task_completion"] else "incomplete")
+                if mode:
+                    fail_counts[mode] = fail_counts.get(mode, 0) + 1
+            marks = [f"{mode} {count}/{k}" for mode, count in sorted(fail_counts.items())]
+            tag = f" [{', '.join(marks)}]" if marks else ""
+            parts.append(f"{correctness:5.1f}@{speed:4.0f}s{tag}".rjust(width))
+            sums[label]["correctness"] += sum(c["correctness"] or 0.0 for c in cell_runs)
+            sums[label]["speed"] += sum(c["speed_s"] or 0.0 for c in cell_runs)
+            sums[label]["n"] += k
+            sums[label]["completed"] += completed
         print("  ".join(parts))
 
-    print("-" * (34 + 2 + 20 * len(labels)))
+    print("-" * (34 + (width + 2) * len(labels)))
     parts = [f"{'MEAN correctness':34}"]
     for label in labels:
         count = sums[label]["n"] or 1
-        parts.append(f"{(sums[label]['correctness'] / count):>18.1f}")
+        parts.append(f"{(sums[label]['correctness'] / count):>{width}.1f}")
     print("  ".join(parts))
     parts = [f"{'MEAN speed (s)':34}"]
     for label in labels:
         count = sums[label]["n"] or 1
-        parts.append(f"{(sums[label]['speed'] / count):>18.0f}")
+        parts.append(f"{(sums[label]['speed'] / count):>{width}.0f}")
     print("  ".join(parts))
-    parts = [f"{'completed (n)':34}"]
+    parts = [f"{'completed (case-runs)':34}"]
     for label in labels:
-        parts.append(f"{sums[label]['completed']}/{sums[label]['n']}".rjust(18))
+        parts.append(f"{sums[label]['completed']}/{sums[label]['n']}".rjust(width))
     print("  ".join(parts))
 
 
