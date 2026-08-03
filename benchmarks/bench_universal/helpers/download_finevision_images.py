@@ -3,14 +3,14 @@
 
 Fetches the single parquet shard from the public HF dataset
 ``vlm-run/FineVision-vlmbench-mini``, decodes each row's embedded image bytes,
-and writes individual image files to ``benchmarks/data/universal-bench/images/``.
+and writes individual image files to ``benchmarks/data/mmbench-universal/images/``.
 
 That directory is gitignored, so each teammate runs this once. A ``.ready``
 sentinel + image count check makes the script idempotent — re-runs return
 immediately.
 
 Usage:
-    uv run python benchmarks/universal_cli/download_finevision_images.py
+    uv run python benchmarks/bench_universal/helpers/download_finevision_images.py
 
 No new dependencies: uses stdlib ``urllib`` + ``pyarrow`` + ``Pillow``
 (already core deps).
@@ -27,8 +27,10 @@ PARQUET_URL = (
     "https://huggingface.co/datasets/vlm-run/FineVision-vlmbench-mini/"
     "resolve/main/data/train-00000-of-00001.parquet"
 )
-BENCH_ROOT = Path(__file__).resolve().parent.parent
-OUT_DIR = BENCH_ROOT / "data" / "universal-bench" / "images"
+# This file lives at benchmarks/bench_universal/helpers/<this>.py — three
+# parents up reaches the benchmarks/ root, where the shared data/ dir lives.
+BENCHMARKS_ROOT = Path(__file__).resolve().parents[2]
+OUT_DIR = BENCHMARKS_ROOT / "data" / "mmbench-universal" / "images"
 SENTINEL = OUT_DIR / ".ready"
 PARQUET_CACHE = OUT_DIR / ".source.parquet"
 

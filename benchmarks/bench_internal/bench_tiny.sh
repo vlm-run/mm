@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 # mm CLI benchmarks (tiny dataset) — 4 files, ~42MB
-# Usage: ./benchmarks/bench_cli_tiny.sh
+# Usage: ./benchmarks/bench_internal/bench_tiny.sh
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-DATA_DIR="${SCRIPT_DIR}/data"
+DATA_DIR="$(cd "${SCRIPT_DIR}/../data" && pwd 2>/dev/null || echo "${SCRIPT_DIR}/../data")"
 TINY_URL="https://storage.googleapis.com/vlm-data-public-prod/mmbench/mmbench-tiny.tar.gz"
 
 # ---------------------------------------------------------------------------

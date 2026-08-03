@@ -5,13 +5,13 @@
 # --semantic) and sql. The point is to show how mm matches (or beats) its
 # native Unix counterparts on speed across a larger directory.
 #
-# For multimodal extraction (cat, grep --semantic), see bench_cli_mini.sh.
+# For multimodal extraction (cat, grep --semantic), see bench_mini.sh.
 #
-# Usage: ./benchmarks/bench_cli_mini_metadata.sh
+# Usage: ./benchmarks/bench_internal/bench_metadata_mini.sh
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-DATA_DIR="${SCRIPT_DIR}/data"
+DATA_DIR="$(cd "${SCRIPT_DIR}/../data" && pwd 2>/dev/null || echo "${SCRIPT_DIR}/../data")"
 MINI_URL="https://storage.googleapis.com/vlm-data-public-prod/mmbench/mmbench-mini.tar.gz"
 
 if ! command -v hyperfine &>/dev/null; then

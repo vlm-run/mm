@@ -19,8 +19,12 @@ venv/
 .benchmarks/
 benchmarks/data/
 benchmarks/criterion/
+benchmarks/**/*/run_results
 htmlcov/
 .coverage
+
+# mmbench dashboard frontend (source tracked; deps + built bundle are generated)
+mmbench/frontend/node_modules/
 
 # mm cache
 .mm/
@@ -43,7 +47,7 @@ web/
 run_results/
 
 # Secrets
-*.env.*
+*.env*
 
 # Local exploration logs
 mm-*-output.txt
@@ -51,7 +55,6 @@ mm-*-output.txt
 .agents
 
 benchmarks/results/
-mmbench/
 
 # mkdocs
 /site/
@@ -59,3 +62,7 @@ mmbench/
 /docs/notebooks/
 /docs/spec-templates/
 .cache
+
+# mmbench: producer is local-only; consumer data (downloaded dataset + db + sandboxes)
+mmbench-producer/
+mmbench/data/
