@@ -324,6 +324,7 @@ mm cat Timelapse.mp4 -m accurate --no-cache                     # force fresh LL
 mm cat bench.jpg -m accurate --no-generate                      # snapshot encoder output (no LLM)
 mm cat bench.jpg -m accurate -v                                 # verbose (shows pipeline tree)
 mm cat bench.jpg -m accurate --stream                            # stream LLM tokens to stdout
+mm cat bench.jpg -m accurate --report                            # HTML report of pipeline internals
 mm cat --list-pipelines                                         # list registered pipelines
 mm cat --list-encoders                                          # list registered encoders
 mm cat --print-pipeline image/accurate                          # print a built-in pipeline's YAML source

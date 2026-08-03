@@ -22,6 +22,7 @@ from pathlib import Path
 from typing import Any
 
 from openai import OpenAI
+from openai.types import CompletionUsage
 from openai.types.chat import ChatCompletion
 
 from mm.constants import BinaryFileKind
@@ -42,12 +43,28 @@ class LlmUsage:
     prompt_tokens: int = 0
     completion_tokens: int = 0
     total_tokens: int = 0
+    cached_tokens: int = 0
+    reasoning_tokens: int = 0
+
+
+def _usage_from_response(usage: CompletionUsage) -> LlmUsage:
+    cached = 0
+    if usage.prompt_tokens_details and usage.prompt_tokens_details.cached_tokens:
+        cached = usage.prompt_tokens_details.cached_tokens
+    reasoning = 0
+    if usage.completion_tokens_details and usage.completion_tokens_details.reasoning_tokens:
+        reasoning = usage.completion_tokens_details.reasoning_tokens
+    return LlmUsage(
+        prompt_tokens=usage.prompt_tokens or 0,
+        completion_tokens=usage.completion_tokens or 0,
+        total_tokens=usage.total_tokens or 0,
+        cached_tokens=cached,
+        reasoning_tokens=reasoning,
+    )
 
 
 class LlmBackend:
     """Wraps any OpenAI-compatible chat/completions API for accurate-mode generate calls."""
-
-    last_usage: LlmUsage
 
     def __init__(
         self,
@@ -72,15 +89,33 @@ class LlmBackend:
         self.client = OpenAI(
             base_url=resolved_base,
             api_key=resolved_key or "noop",
-            timeout=120.0,
+            timeout=135.0,
             default_headers=headers,
         )
-        self.last_usage = LlmUsage()
         self._local = threading.local()
+        self.last_usage = LlmUsage()
 
     @property
     def is_configured(self) -> bool:
         return bool(self.client.base_url)
+
+    @property
+    def last_usage(self) -> LlmUsage:
+        """Thread-local token usage from the most recent ``_chat`` call."""
+        return getattr(self._local, "last_usage", LlmUsage())
+
+    @last_usage.setter
+    def last_usage(self, value: LlmUsage) -> None:
+        self._local.last_usage = value
+
+    @property
+    def last_messages(self) -> list[dict[str, Any]] | None:
+        """Thread-local messages from the most recent ``generate`` call."""
+        return getattr(self._local, "last_messages", None)
+
+    @last_messages.setter
+    def last_messages(self, value: list[dict[str, Any]] | None) -> None:
+        self._local.last_messages = value
 
     def generate(
         self,
@@ -134,6 +169,7 @@ class LlmBackend:
             message_content = prompt
 
         messages: list[dict[str, Any]] = [{"role": "user", "content": message_content}]
+        self.last_messages = messages
 
         merged_extra_body = deep_merge(tpl.generate.extra_body or {}, extra_body or {})
 
@@ -190,6 +226,7 @@ class LlmBackend:
         total = len(chunks)
         results: list[str] = [""] * total
         cumulative_usage = LlmUsage()
+        all_messages: list[dict[str, Any]] = []
         lock = threading.Lock()
 
         def _call(i: int, parts: list[dict[str, Any]]) -> None:
@@ -203,11 +240,16 @@ class LlmBackend:
                 stream=stream,
             )
             results[i] = result
-            usage = getattr(self._local, "last_usage", LlmUsage())
+            usage = self.last_usage
+            chunk_msgs = self.last_messages
             with lock:
                 cumulative_usage.prompt_tokens += usage.prompt_tokens
                 cumulative_usage.completion_tokens += usage.completion_tokens
                 cumulative_usage.total_tokens += usage.total_tokens
+                cumulative_usage.cached_tokens += usage.cached_tokens
+                cumulative_usage.reasoning_tokens += usage.reasoning_tokens
+                if chunk_msgs:
+                    all_messages.extend(chunk_msgs)
             if on_chunk is not None:
                 on_chunk(i, total, result)
 
@@ -217,6 +259,7 @@ class LlmBackend:
                 fut.result()
 
         self.last_usage = cumulative_usage
+        self.last_messages = all_messages if all_messages else None
         good = [r for r in results if r and not r.startswith("[LLM error")]
 
         if errors := [r for r in results if r.startswith("[LLM error")]:
@@ -290,13 +333,7 @@ class LlmBackend:
         try:
             response: ChatCompletion = self.client.chat.completions.create(**kwargs)
             if response.usage:
-                usage = LlmUsage(
-                    prompt_tokens=response.usage.prompt_tokens or 0,
-                    completion_tokens=response.usage.completion_tokens or 0,
-                    total_tokens=response.usage.total_tokens or 0,
-                )
-                self.last_usage = usage
-                self._local.last_usage = usage
+                self.last_usage = _usage_from_response(response.usage)
 
             choice = response.choices[0].message
             content = (choice.content or "").strip()
@@ -336,13 +373,7 @@ class LlmBackend:
             collected: list[str] = []
             for chunk in response_stream:
                 if chunk.usage is not None:
-                    usage = LlmUsage(
-                        prompt_tokens=chunk.usage.prompt_tokens or 0,
-                        completion_tokens=chunk.usage.completion_tokens or 0,
-                        total_tokens=chunk.usage.total_tokens or 0,
-                    )
-                    self.last_usage = usage
-                    self._local.last_usage = usage
+                    self.last_usage = _usage_from_response(chunk.usage)
                 if not chunk.choices:
                     continue
                 delta = chunk.choices[0].delta
@@ -365,13 +396,7 @@ class LlmBackend:
             kwargs.pop("stream_options", None)
             response = self.client.chat.completions.create(**kwargs)
             if response.usage:
-                usage = LlmUsage(
-                    prompt_tokens=response.usage.prompt_tokens or 0,
-                    completion_tokens=response.usage.completion_tokens or 0,
-                    total_tokens=response.usage.total_tokens or 0,
-                )
-                self.last_usage = usage
-                self._local.last_usage = usage
+                self.last_usage = _usage_from_response(response.usage)
             text = (response.choices[0].message.content or "").strip()
             if text:
                 streamed_to_stdout = True

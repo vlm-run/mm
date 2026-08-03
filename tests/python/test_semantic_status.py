@@ -108,7 +108,7 @@ class TestIndexOneUsesFastMode:
         png.write_bytes(b"\x89PNG\r\n\x1a\n" + b"\x00" * 16)
 
         with (
-            patch("mm.commands.cat._extract", return_value="caption") as mock_extract,
+            patch("mm.commands.cat._extract", return_value=("caption", None)) as mock_extract,
             patch.object(
                 semantic,
                 "check_index_status",

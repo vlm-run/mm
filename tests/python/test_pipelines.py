@@ -464,6 +464,8 @@ class TestResolvePipelineStrategyParity:
             pipelines={},
             verbose=False,
             dry_run=False,
+            stream=False,
+            report=False,
         )
         defaults.update(kw)
         return CatOpts(**defaults)

@@ -2,12 +2,16 @@ import json
 import os
 import sys
 from dataclasses import dataclass
+from functools import lru_cache
 from pathlib import Path
-from typing import Any, Iterator, Literal
+from typing import TYPE_CHECKING, Any, Iterator, Literal
 
 import typer
 
 from mm.pipelines.schema import PipelineSpec
+
+if TYPE_CHECKING:
+    from mm.llm import LlmBackend
 
 KIND_ORDER = ("image", "video", "audio", "document")
 CatMode = Literal["fast", "accurate"]
@@ -29,6 +33,7 @@ class CatOpts:
         "verbose",
         "dry_run",
         "stream",
+        "report",
     )
 
     n: int | None
@@ -43,6 +48,7 @@ class CatOpts:
     verbose: bool
     dry_run: bool
     stream: bool
+    report: bool
 
     def __init__(self, **kwargs) -> None:
         for k, v in kwargs.items():
@@ -67,10 +73,22 @@ class RunResult:
 
     The verbose tail is computed and returned regardless of ``opts.verbose``
     so the caller can persist it for replay on a future cached + verbose run.
+
+    Report capture fields are populated only when ``opts.report`` is True;
+    they carry the intermediate pipeline artifacts needed to build an HTML
+    report of the run internals.
     """
 
     content: str
     verbose_suffix: str | None = None
+    encoded_messages: list[dict] | None = None
+    llm_messages: list[dict] | None = None
+    llm_response: str | None = None
+    pipeline_spec: PipelineSpec | None = None
+    encode_elapsed_ms: float | None = None
+    generate_elapsed_ms: float | None = None
+    llm_usage: dict[str, float] | None = None
+    token_cost: float | None = None
 
 
 def override_extra(
@@ -129,12 +147,17 @@ def spec_extra_body(spec: PipelineSpec) -> dict[str, Any] | None:
     return spec.generate.extra_body or None
 
 
-def make_llm_from_spec(spec: PipelineSpec) -> Any:
-    """Build an ``LlmBackend`` honouring any pipeline/CLI-merged model override."""
+@lru_cache(maxsize=8)
+def _cached_llm(model: str | None) -> "LlmBackend":
     from mm.llm import LlmBackend
 
-    model = spec.generate.model if spec.generate is not None else None
     return LlmBackend(model=model)
+
+
+def make_llm_from_spec(spec: PipelineSpec) -> "LlmBackend":
+    """Build an ``LlmBackend`` honouring any pipeline/CLI-merged model override."""
+    model = spec.generate.model if spec.generate is not None else None
+    return _cached_llm(model)
 
 
 def cat_batch_confirm_threshold() -> int:
@@ -187,7 +210,11 @@ def coerce_opt_value(raw: str) -> Any:
 
 
 def format_generate_verbose(
-    profile_name: str, elapsed_ms: float, prompt_tokens: int, completion_tokens: int
+    profile_name: str,
+    elapsed_ms: float,
+    prompt_tokens: int,
+    completion_tokens: int,
+    token_cost: float | None = None,
 ) -> str:
     """Format verbose output for the generate step."""
     from mm.display import format_time
@@ -198,6 +225,11 @@ def format_generate_verbose(
         else "no tokens"
     )
     generate_text = f"generate: {profile_name} • {format_time(elapsed_ms)} • {token_info} tokens"
+    if completion_tokens > 0 and elapsed_ms > 0:
+        toks_s = completion_tokens / (elapsed_ms / 1000.0)
+        generate_text += f" • {toks_s:,.1f} toks/s"
+    if token_cost is not None:
+        generate_text += f" • ${token_cost:.4f}"
     return f"[dim]{generate_text}[/dim]"
 
 

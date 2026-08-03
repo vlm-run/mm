@@ -264,6 +264,8 @@ class TestResolveAutoStrategy:
             pipelines={},
             verbose=False,
             dry_run=False,
+            stream=False,
+            report=False,
         )
 
     def test_auto_strategy_resolves_when_strategy_is_auto(self):
