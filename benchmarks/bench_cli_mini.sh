@@ -51,9 +51,9 @@ AUD="$(find "${DIR}/audio" -type f 2>/dev/null | head -1 || true)"
 IMG="$(find "${DIR}/images" -type f 2>/dev/null | head -1 || true)"
 
 # ===========================================================================
-# L0: find
+# metadata: find
 # ===========================================================================
-echo "--- L0: mm find vs find ---"
+echo "--- metadata: mm find vs find ---"
 hyperfine --warmup 2 --min-runs 10 \
   --command-name "mm find" \
     "mm find ${DIR}" \
@@ -67,7 +67,7 @@ hyperfine --warmup 2 --min-runs 10 \
     "find ${DIR} -type f -exec file --brief --mime-type {} +"
 
 echo ""
-echo "--- L0: mm find with filters ---"
+echo "--- metadata: mm find with filters ---"
 hyperfine --warmup 2 --min-runs 10 \
   "mm find ${DIR} --tree --depth 2" \
   "mm find ${DIR} --kind document" \
@@ -76,7 +76,7 @@ hyperfine --warmup 2 --min-runs 10 \
   "mm find ${DIR} --ext .pdf"
 
 echo ""
-echo "--- L0: mm find vs find (filtered) ---"
+echo "--- metadata: mm find vs find (filtered) ---"
 hyperfine --warmup 2 --min-runs 10 \
   --command-name "mm find --kind document" \
     "mm find ${DIR} --kind document --format tsv" \
@@ -88,10 +88,10 @@ hyperfine --warmup 2 --min-runs 10 \
     "find ${DIR} -type f \\( -name '*.pdf' -o -name '*.docx' -o -name '*.html' \\)"
 
 # ===========================================================================
-# L0: wc
+# metadata: wc
 # ===========================================================================
 echo ""
-echo "--- L0: mm wc vs wc/du ---"
+echo "--- metadata: mm wc vs wc/du ---"
 hyperfine --warmup 2 --min-runs 10 \
   --command-name "mm wc" \
     "mm wc ${DIR}" \
@@ -105,10 +105,10 @@ hyperfine --warmup 2 --min-runs 10 \
     "echo \$(find ${DIR} -type f | wc -l) files, \$(du -sh ${DIR} | awk '{print \$1}')"
 
 # ===========================================================================
-# L0: SQL
+# metadata: SQL
 # ===========================================================================
 echo ""
-echo "--- L0: SQL ---"
+echo "--- metadata: SQL ---"
 hyperfine --warmup 2 --min-runs 10 \
   "mm sql 'SELECT kind, COUNT(*) as n FROM files GROUP BY kind ORDER BY n DESC' --dir ${DIR}" \
   "mm sql 'SELECT ext, SUM(size) as total FROM files GROUP BY ext ORDER BY total DESC LIMIT 10' --dir ${DIR}" \
@@ -183,7 +183,7 @@ fi
 echo ""
 echo "--- mode=fast: mm cat PDF vs cat/strings ---"
 hyperfine --warmup 1 --min-runs 5 \
-  --command-name "mm cat pdf (L1 text)" \
+  --command-name "mm cat pdf (fast text)" \
     "mm cat '${PDF}' --mode fast" \
   --command-name "cat pdf > /dev/null" \
     "cat '${PDF}' > /dev/null" \

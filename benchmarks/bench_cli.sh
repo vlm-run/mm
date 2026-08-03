@@ -11,8 +11,8 @@ LARGE_VIDEO="${YOUTUBE_DIR}/CnxzrX9tNoc.mp4"
 echo "=== mm CLI Benchmarks ==="
 echo ""
 
-# L0 commands on real multimodal data (249 files)
-echo "--- L0: find on ${DEMO_DIR} ---"
+# metadata-tier commands on real multimodal data (249 files)
+echo "--- metadata: find on ${DEMO_DIR} ---"
 hyperfine --warmup 2 --min-runs 10 \
   "mm find ${DEMO_DIR}" \
   "mm find ${DEMO_DIR} --tree --depth 1" \
@@ -21,7 +21,7 @@ hyperfine --warmup 2 --min-runs 10 \
   "mm find ${DEMO_DIR} --format json"
 
 echo ""
-echo "--- L0: SQL on ${DEMO_DIR} ---"
+echo "--- metadata: SQL on ${DEMO_DIR} ---"
 hyperfine --warmup 2 --min-runs 10 \
   "mm sql 'SELECT kind, COUNT(*) as n FROM files GROUP BY kind' --dir ${DEMO_DIR}" \
   "mm sql 'SELECT ext, SUM(size) as total FROM files GROUP BY ext ORDER BY total DESC LIMIT 10' --dir ${DEMO_DIR}"
