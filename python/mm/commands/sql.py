@@ -165,30 +165,29 @@ def _trim_columns(columns: list[str], rows: list[tuple]) -> tuple[list[str], lis
 def _show_unindexed_diff(unindexed: list[str], prefix: str, query: str, directory: Path) -> None:
     """Print the diff of unindexed files as a Rich table to stderr."""
     from rich import box
-    from rich.console import Console
     from rich.table import Table
 
-    from mm.display import output_console
-
-    err = Console(stderr=True, force_terminal=False)
+    from mm.display import console
 
     diff_table = Table(
-        title=f"[bold]{len(unindexed)} unindexed file{'s' if len(unindexed) != 1 else ''}[/bold]",
+        title=f"{len(unindexed)} unindexed file{'s' if len(unindexed) != 1 else ''}",
         box=box.ROUNDED,
-        header_style="bold",
+        header_style="dim",
+        title_style="dim",
         title_justify="left",
+        style="dim",
     )
-    diff_table.add_column("path", overflow="fold")
+    diff_table.add_column("path", overflow="fold", style="dim")
     for uri in unindexed[:5]:
         rel = uri[len(prefix) + 1 :] if uri.startswith(prefix) else uri
         diff_table.add_row(rel)
     if len(unindexed) > 5:
         diff_table.add_row(f"... and {len(unindexed) - 5} more")
-    err.print()
-    err.print(diff_table)
+    console.print()
+    console.print(diff_table)
 
     cmd = f'mm sql "{query}" --dir {directory} --pre-index'
-    output_console.print(f"\nTo include these files, run:\n  [bold]{cmd}[/bold]")
+    console.print(f"[dim]To include these files, run:  {cmd}[/dim]")
 
 
 def _query_dicts_as_files(rows: list[dict[str, Any]], query: str) -> tuple[list[str], list[tuple]]:

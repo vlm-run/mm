@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import json
 import re
+from collections.abc import Mapping
 from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
@@ -86,6 +87,7 @@ class PriceCatalog:
             for p in raw.get("prices", [])
         ]
         self._by_id: dict[str, ModelPrice] = {p.id: p for p in self._prices}
+        self._by_norm: dict[str, ModelPrice] = {_normalize(p.id): p for p in self._prices}
 
     @property
     def updated_at(self) -> str:
@@ -112,18 +114,17 @@ class PriceCatalog:
         if not norm:
             return None
 
-        for p in self._prices:
-            if _normalize(p.id) == norm:
-                return p
+        normalized = self._by_norm.get(norm)
+        if normalized:
+            return normalized
 
-        for p in self._prices:
-            pid = _normalize(p.id)
+        for pid, p in self._by_norm.items():
             if pid and (pid in norm or norm in pid):
                 return p
 
         return None
 
-    def compute_cost(self, usage: dict[str, float], model: str) -> CostBreakdown | None:
+    def compute_cost(self, usage: Mapping[str, int | float], model: str) -> CostBreakdown | None:
         """Compute cost from a token-usage dict and model name.
 
         Returns ``None`` when the model is not in the catalog.

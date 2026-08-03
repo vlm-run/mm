@@ -526,16 +526,21 @@ def display_elapsed_wrapper(start_time: float, prefix: str | None = None):
             total_bytes = 0
             cached = False
             token_cost = 0.0
+            report_msgs: list[str] = []
             completion_tokens = 0.0
             generate_ms = 0.0
             try:
                 from mm.commands import cat as cat_module
 
-                total_bytes = getattr(cat_module, "_total_bytes_processed", 0)
-                cached = getattr(cat_module, "_was_cached", False)
-                token_cost = getattr(cat_module, "_total_token_cost", 0.0)
-                completion_tokens = getattr(cat_module, "_total_completion_tokens", 0.0)
-                generate_ms = getattr(cat_module, "_total_generate_ms", 0.0)
+                state = getattr(cat_module, "_run_state", None)
+                if state is not None:
+                    total_bytes = state.total_bytes
+                    cached = state.was_cached
+                    token_cost = state.total_token_cost
+                    completion_tokens = state.total_completion_tokens
+                    generate_ms = state.total_generate_ms
+                    report_msgs = state.report_output
+                    cat_module._run_state = None
             except (ImportError, AttributeError):
                 pass
 
@@ -549,13 +554,8 @@ def display_elapsed_wrapper(start_time: float, prefix: str | None = None):
                 generate_ms=generate_ms,
             )
 
-            try:
-                from mm.commands import cat as cat_module
-
-                for msg in getattr(cat_module, "_report_output", []):
-                    console.print(f"[dim]{msg}[/dim]")
-            except (ImportError, AttributeError):
-                pass
+            for msg in report_msgs:
+                console.print(f"[dim]{msg}[/dim]")
 
     return check_exit, display_if_successful
 

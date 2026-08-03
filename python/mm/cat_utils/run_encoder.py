@@ -193,12 +193,12 @@ def run_encoder(path: Path, kind: BinaryFileKind, spec: PipelineSpec, opts: CatO
     elapsed = (time.monotonic() - t0) * 1000
     u = llm.last_usage
 
-    usage = {
-        "prompt_tokens": u.prompt_tokens,
-        "completion_tokens": u.completion_tokens,
-        "cached_tokens": u.cached_tokens,
-        "reasoning_tokens": u.reasoning_tokens,
-        "total_tokens": u.total_tokens,
+    usage: dict[str, float] = {
+        "prompt_tokens": float(u.prompt_tokens),
+        "completion_tokens": float(u.completion_tokens),
+        "cached_tokens": float(u.cached_tokens),
+        "reasoning_tokens": float(u.reasoning_tokens),
+        "total_tokens": float(u.total_tokens),
     }
 
     from mm.model_price_catalog import get_price_catalog

@@ -1,4 +1,4 @@
-use std::io::{BufReader, Cursor};
+use std::io::Cursor;
 use std::path::Path;
 
 use crate::extract::{ContentExtractor, ExtractError, MetadataRecord};
@@ -25,7 +25,7 @@ impl ContentExtractor for ImageExtractor {
 
         let phash = crate::hash::phash(&mmap);
 
-        let exif_data = extract_exif(path);
+        let exif_data = extract_exif(&mmap);
 
         Ok(MetadataRecord {
             content_hash: Some(content_hash),
@@ -48,20 +48,9 @@ struct ExifData {
     orientation: Option<String>,
 }
 
-fn extract_exif(path: &Path) -> ExifData {
-    let file = match std::fs::File::open(path) {
-        Ok(f) => f,
-        Err(_) => {
-            return ExifData {
-                camera: None,
-                date: None,
-                gps: None,
-                orientation: None,
-            };
-        }
-    };
-    let mut reader = BufReader::new(file);
-    let exif = match exif::Reader::new().read_from_container(&mut reader) {
+fn extract_exif(data: &[u8]) -> ExifData {
+    let mut cursor = Cursor::new(data);
+    let exif = match exif::Reader::new().read_from_container(&mut cursor) {
         Ok(e) => e,
         Err(_) => {
             return ExifData {

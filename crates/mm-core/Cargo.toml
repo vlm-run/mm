@@ -68,3 +68,7 @@ harness = false
 [[bench]]
 name = "refs"
 harness = false
+
+[[bench]]
+name = "detect"
+harness = false

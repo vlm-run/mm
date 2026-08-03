@@ -2,12 +2,16 @@ import json
 import os
 import sys
 from dataclasses import dataclass
+from functools import lru_cache
 from pathlib import Path
-from typing import Any, Iterator, Literal
+from typing import TYPE_CHECKING, Any, Iterator, Literal
 
 import typer
 
 from mm.pipelines.schema import PipelineSpec
+
+if TYPE_CHECKING:
+    from mm.llm import LlmBackend
 
 KIND_ORDER = ("image", "video", "audio", "document")
 CatMode = Literal["fast", "accurate"]
@@ -143,12 +147,17 @@ def spec_extra_body(spec: PipelineSpec) -> dict[str, Any] | None:
     return spec.generate.extra_body or None
 
 
-def make_llm_from_spec(spec: PipelineSpec) -> Any:
-    """Build an ``LlmBackend`` honouring any pipeline/CLI-merged model override."""
+@lru_cache(maxsize=8)
+def _cached_llm(model: str | None) -> "LlmBackend":
     from mm.llm import LlmBackend
 
-    model = spec.generate.model if spec.generate is not None else None
     return LlmBackend(model=model)
+
+
+def make_llm_from_spec(spec: PipelineSpec) -> "LlmBackend":
+    """Build an ``LlmBackend`` honouring any pipeline/CLI-merged model override."""
+    model = spec.generate.model if spec.generate is not None else None
+    return _cached_llm(model)
 
 
 def cat_batch_confirm_threshold() -> int:
