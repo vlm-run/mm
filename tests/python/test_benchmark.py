@@ -281,3 +281,90 @@ def test_bench_display_elapsed_with_cost(benchmark):
         display_elapsed(start, total_bytes=10 * 1024 * 1024, cached=True, token_cost=0.0142)
 
     benchmark(render)
+
+
+# ---------------------------------------------------------------------------
+# Storage write-path benchmarks
+# ---------------------------------------------------------------------------
+
+
+def test_bench_save_warm(benchmark, large_tree: Path, isolated_db: Path):
+    """Warm re-save: the staleness gate must skip re-extraction."""
+    from mm.context import Context
+
+    ctx = Context(large_tree, session_id="bench-save")
+    ctx.save()
+
+    benchmark(ctx.save)
+
+
+def test_bench_save_cold(benchmark, large_tree: Path, isolated_db: Path):
+    """Cold save: parallel batch extraction of every file."""
+    from mm.context import Context
+    from mm.store.utils import shared_db
+
+    ctx = Context(large_tree, session_id="bench-save-cold")
+
+    def save_fresh():
+        db = shared_db()
+        db._connect.execute("DELETE FROM files")
+        db._connect.commit()
+        ctx.save()
+
+    benchmark(save_fresh)
+
+
+def test_bench_ensure_metadata_existing(benchmark, large_tree: Path, isolated_db: Path):
+    """ensure_metadata on an indexed row: one SELECT, never a directory scan."""
+    from mm.context import Context
+    from mm.store.utils import shared_db
+
+    ctx = Context(large_tree)
+    ctx.save()
+    db = shared_db()
+    uri = str((large_tree / ctx.files[0].path).resolve())
+
+    benchmark(db.ensure_metadata, uri)
+
+
+# ---------------------------------------------------------------------------
+# A/B benchmarks: new path vs the code path it replaced (same build)
+# ---------------------------------------------------------------------------
+
+
+def _realistic_code_tree(root: Path, count: int = 200) -> list[str]:
+    """Write ``count`` ~8KB source files (near-empty files overstate rayon's
+    ~3-4ms fixed dispatch cost); returns relative paths."""
+    body = "\n".join(f"def fn_{j}(): return {j}" for j in range(300))
+    paths = []
+    for i in range(count):
+        name = f"mod_{i:03d}.py"
+        (root / name).write_text(f"# file {i}\n{body}\n")
+        paths.append(name)
+    return paths
+
+
+def test_bench_ab_extract_batch_vs_serial(benchmark, tmp_path: Path):
+    """extract_metadata_batch vs the serial loop it replaced."""
+    from mm._mm import Scanner
+
+    paths = _realistic_code_tree(tmp_path)
+    scanner = Scanner(str(tmp_path))
+    scanner.scan()
+
+    serial_results = [scanner.extract_metadata(p) for p in paths]
+    batch_results = benchmark(scanner.extract_metadata_batch, paths)
+    assert len(batch_results) == len(serial_results)
+    assert [r.content_hash for r in batch_results] == [r.content_hash for r in serial_results]
+
+
+def test_bench_ab_serial_extract_reference(benchmark, tmp_path: Path):
+    """Serial-loop reference for the batch bench above."""
+    from mm._mm import Scanner
+
+    paths = _realistic_code_tree(tmp_path)
+    scanner = Scanner(str(tmp_path))
+    scanner.scan()
+
+    results = benchmark(lambda: [scanner.extract_metadata(p) for p in paths])
+    assert len(results) == len(paths)

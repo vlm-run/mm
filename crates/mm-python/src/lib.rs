@@ -55,6 +55,17 @@ struct Scanner {
     no_ignore: bool,
     entries: Vec<mm_core::FileEntry>,
     batch: Option<RecordBatch>,
+    // path → entries index for O(1) lookups.
+    path_index: std::collections::HashMap<compact_str::CompactString, usize>,
+}
+
+impl Scanner {
+    fn kind_for(&self, rel_path: &str) -> FileKind {
+        self.path_index
+            .get(rel_path)
+            .map(|&i| self.entries[i].kind)
+            .unwrap_or(FileKind::Other)
+    }
 }
 
 #[pymethods]
@@ -68,12 +79,19 @@ impl Scanner {
             no_ignore,
             entries: Vec::new(),
             batch: None,
+            path_index: std::collections::HashMap::new(),
         }
     }
 
     fn scan(&mut self) -> PyResult<usize> {
         self.entries = mm_core::scan_directory(&self.root, self.n_threads, self.no_ignore);
         mm_core::enrich_image_dimensions(&mut self.entries, &self.root);
+        self.path_index = self
+            .entries
+            .iter()
+            .enumerate()
+            .map(|(i, e)| (e.path.clone(), i))
+            .collect();
         let count = self.entries.len();
         let batch = mm_core::build_metadata_batch(&self.entries)
             .map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(e.to_string()))?;
@@ -208,13 +226,31 @@ impl Scanner {
         ))
     }
 
-    fn extract_metadata(&self, path: String) -> PyResult<MetadataResult> {
-        let p = PathBuf::from(&path);
+    fn extract_metadata(&self, py: Python<'_>, path: String) -> PyResult<MetadataResult> {
+        let kind = self.kind_for(&path);
+        let full = self.root.join(&path);
+        py.detach(|| extract_kind(&full, kind))
+    }
 
-        let entry = self.entries.iter().find(|e| e.path.as_str() == path);
-        let kind = entry.map(|e| e.kind).unwrap_or(FileKind::Other);
+    /// Extract metadata for many relative paths in parallel with the GIL
+    /// released. One result per input path; failures come back as None.
+    fn extract_metadata_batch(
+        &self,
+        py: Python<'_>,
+        paths: Vec<String>,
+    ) -> PyResult<Vec<Option<MetadataResult>>> {
+        use rayon::prelude::*;
 
-        extract_kind(&self.root.join(&p), kind)
+        let jobs: Vec<(PathBuf, FileKind)> = paths
+            .iter()
+            .map(|p| (self.root.join(p), self.kind_for(p)))
+            .collect();
+
+        Ok(py.detach(|| {
+            jobs.par_iter()
+                .map(|(full, kind)| extract_kind(full, *kind).ok())
+                .collect()
+        }))
     }
 
     /// Count files, bytes, lines, tokens. Returns JSON.
@@ -332,9 +368,32 @@ fn content_hash(path: String) -> PyResult<Option<String>> {
 
 /// Extract metadata for a single file by path, without scanning its parent directory.
 #[pyfunction]
-fn extract_metadata_one(path: PathBuf) -> PyResult<MetadataResult> {
+fn extract_metadata_one(py: Python<'_>, path: PathBuf) -> PyResult<MetadataResult> {
     let kind = mm_core::kind_from_path(&path);
-    extract_kind(&path, kind)
+    py.detach(|| extract_kind(&path, kind))
+}
+
+/// Scan-level metadata row for a single file (kind, mime, sizes,
+/// timestamps, image dims) without walking the parent directory.
+/// None if the path cannot be stat'd or is not a regular file.
+#[pyfunction]
+fn scan_one(py: Python<'_>, path: PathBuf) -> PyResult<Option<Py<PyAny>>> {
+    let entry = py.detach(|| mm_core::meta::scan_single(&path));
+
+    let Some(entry) = entry else { return Ok(None) };
+    let dict = pyo3::types::PyDict::new(py);
+    dict.set_item("name", entry.name.as_str())?;
+    dict.set_item("stem", entry.stem.as_str())?;
+    dict.set_item("ext", entry.ext.as_str())?;
+    dict.set_item("size", entry.size)?;
+    dict.set_item("modified_us", entry.modified_epoch_us)?;
+    dict.set_item("created_us", entry.created_epoch_us)?;
+    dict.set_item("mime", entry.mime.as_str())?;
+    dict.set_item("kind", entry.kind.to_string())?;
+    dict.set_item("is_binary", entry.is_binary)?;
+    dict.set_item("width", entry.width)?;
+    dict.set_item("height", entry.height)?;
+    Ok(Some(dict.into_pyobject(py)?.into_any().unbind()))
 }
 
 /// Hash a directory listing (sorted name:mtime:size). Returns 16-char hex string.
@@ -551,6 +610,7 @@ fn mm_module(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(hamming_distance, m)?)?;
     m.add_function(wrap_pyfunction!(content_hash, m)?)?;
     m.add_function(wrap_pyfunction!(extract_metadata_one, m)?)?;
+    m.add_function(wrap_pyfunction!(scan_one, m)?)?;
     m.add_function(wrap_pyfunction!(directory_hash, m)?)?;
     m.add_function(wrap_pyfunction!(perceptual_hash, m)?)?;
     // Serde functions

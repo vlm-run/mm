@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -51,6 +51,10 @@ class Scanner:
         descending: bool = False,
     ) -> str: ...
     def extract_metadata(self, path: str) -> MetadataResult: ...
+    def extract_metadata_batch(self, paths: list[str]) -> list[MetadataResult | None]:
+        """Extract metadata for many relative paths in parallel (GIL released)."""
+        ...
+
     def wc(self, kind: str | None = None) -> str: ...
 
 class MetadataResult:
@@ -85,6 +89,13 @@ def content_hash(path: str) -> str | None:
 
 def extract_metadata_one(path: str | Path) -> MetadataResult:
     """Extract metadata for a single file by absolute path, without scanning its parent directory."""
+    ...
+
+def scan_one(path: str | Path) -> dict[str, Any] | None:
+    """Scan-level metadata row (kind/mime/sizes/timestamps/image dims) for one file.
+
+    No directory walk. Returns None if the path cannot be stat'd or is not a file.
+    """
     ...
 
 def directory_hash(path: str) -> str | None:

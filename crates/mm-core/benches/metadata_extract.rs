@@ -70,5 +70,39 @@ fn bench_metadata_image(c: &mut Criterion) {
     group.finish();
 }
 
-criterion_group!(benches, bench_metadata_code, bench_metadata_image);
+/// Single-file scan row vs the full directory walk it replaced.
+fn bench_scan_single(c: &mut Criterion) {
+    let mut group = c.benchmark_group("scan_single_vs_dir_walk");
+
+    for count in [50, 500] {
+        let dir = TempDir::new().unwrap();
+        create_code_tree(dir.path(), count);
+        let target = dir.path().join("file_0.rs");
+
+        group.bench_with_input(
+            BenchmarkId::new("scan_single", count),
+            &target,
+            |b, target| {
+                b.iter(|| mm_core::meta::scan_single(target));
+            },
+        );
+
+        group.bench_with_input(
+            BenchmarkId::new("full_dir_walk", count),
+            dir.path(),
+            |b, root| {
+                b.iter(|| mm_core::scan_directory(root, None, false));
+            },
+        );
+    }
+
+    group.finish();
+}
+
+criterion_group!(
+    benches,
+    bench_metadata_code,
+    bench_metadata_image,
+    bench_scan_single
+);
 criterion_main!(benches);

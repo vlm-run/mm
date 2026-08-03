@@ -112,6 +112,26 @@ impl FileEntry {
     }
 }
 
+/// Scan-level entry for a single file: stat + classify + image dims, no
+/// directory walk. `path`/`parent`/`depth` are relative to the file's own
+/// directory, matching a scan rooted at the parent.
+pub fn scan_single(path: &Path) -> Option<FileEntry> {
+    let metadata = std::fs::metadata(path).ok()?;
+    if !metadata.is_file() {
+        return None;
+    }
+    let root = path.parent().unwrap_or(Path::new(""));
+    let mut entry = FileEntry::from_path(path, root, &metadata);
+    if entry.kind == FileKind::Image
+        && let Ok(reader) = image::ImageReader::open(path)
+        && let Ok((w, h)) = reader.into_dimensions()
+    {
+        entry.width = Some(w);
+        entry.height = Some(h);
+    }
+    Some(entry)
+}
+
 /// Parallel enrichment pass: reads image file headers to populate width/height.
 /// Only touches Image entries; other kinds are skipped. Operates in-place.
 pub fn enrich_image_dimensions(entries: &mut [FileEntry], root: &Path) {

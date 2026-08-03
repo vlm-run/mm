@@ -36,7 +36,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from mm.settings import get_settings
-from mm.store.utils import fill_metadata, get_extraction_id, now_us
+from mm.store.utils import get_extraction_id, now_us
 
 if TYPE_CHECKING:
     from pyarrow import Table
@@ -325,20 +325,42 @@ class MmDatabase:
                 )
             )
 
+        # Snapshot (modified, size, content_hash) pre-upsert so unchanged,
+        # already-filled rows skip re-extraction.
+        prior: dict[str, tuple[Any, Any, Any]] = {}
+        from mm.utils import batch_array
+
+        uris = [row[0] for row in rows]
+        for batch in batch_array(uris, 500):
+            ph = ",".join("?" * len(batch))
+            for r in db.execute(
+                f"SELECT uri, modified, size, content_hash FROM files WHERE uri IN ({ph})",
+                batch,
+            ).fetchall():
+                prior[r[0]] = (r[1], r[2], r[3])
+
         db.executemany(sql, rows)
         db.commit()
 
-        if n > 0:
+        stale: list[tuple[str, str]] = []
+        for i, row in enumerate(rows):
+            uri, modified, size = row[0], row[5], row[4]
+            old = prior.get(uri)
+            if old is None or old[2] is None or old[0] != modified or old[1] != size:
+                stale.append((uri, paths[i]))
+
+        if stale:
             from mm._mm import Scanner
+            from mm.store.utils import apply_metadata_columns, metadata_columns
 
             if not scanner or not isinstance(scanner, Scanner):
                 scanner = Scanner(str(root))
                 scanner.scan()
-            uris = [row[0] for row in rows]
-            rel_paths = [paths[i] for i in range(n)]
+            results = scanner.extract_metadata_batch([rel for _, rel in stale])
             with self._connect:
-                for uri, rel_path in zip(uris, rel_paths):
-                    fill_metadata(self, uri, Path(uri), scanner, rel_path=rel_path)
+                for (uri, _rel), r in zip(stale, results):
+                    if r is not None:
+                        apply_metadata_columns(self, uri, metadata_columns(r, Path(uri)))
 
         return int(db.execute("SELECT COUNT(*) FROM files").fetchone()[0])
 
@@ -369,24 +391,53 @@ class MmDatabase:
         return [dict(r) for r in self._connect.execute(q).fetchall()]
 
     def ensure_metadata(self, uri: str) -> None:
-        """Ensure the ``files`` row for *uri*, scanning via Rust if needed."""
-        if self.get_file(uri) is not None:
+        """Ensure the ``files`` row for *uri* via a single-file Rust scan — O(1),
+        no parent-directory walk."""
+        db = self._connect
+        if db.execute("SELECT 1 FROM files WHERE uri = ?", (uri,)).fetchone():
             return
 
         p = Path(uri)
-        if not p.exists():
+        from mm._mm import extract_metadata_one, scan_one
+
+        row = scan_one(str(p))
+        if row is None:
             return
 
-        from mm._mm import Scanner
+        now = now_us()
+        db.execute(
+            "INSERT INTO files (uri, name, stem, ext, size, modified, created, mime, kind, "
+            "is_binary, depth, parent, width, height, indexed_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) "
+            "ON CONFLICT(uri) DO NOTHING",
+            (
+                uri,
+                row["name"],
+                row["stem"],
+                row["ext"],
+                row["size"],
+                row["modified_us"],
+                row["created_us"],
+                row["mime"],
+                row["kind"],
+                int(bool(row["is_binary"])),
+                0,
+                str(p.parent),
+                row["width"],
+                row["height"],
+                now,
+            ),
+        )
 
-        scanner = Scanner(str(p.parent))
-        scanner.scan()
-        tbl = scanner.to_arrow()
+        from mm.store.utils import apply_metadata_columns, metadata_columns
+
         try:
-            idx = tbl["path"].to_pylist().index(p.name)
-        except ValueError:
+            r = extract_metadata_one(str(p))
+        except Exception:
+            db.commit()
             return
-        self.upsert_files(tbl.slice(idx, 1), p.parent, scanner=scanner)
+        apply_metadata_columns(self, uri, metadata_columns(r, p))
+        db.commit()
 
     def delete_files(self, uris: list[str]) -> int:
         """Delete ``files`` rows by URI, cascading through chunks_vec manually.
@@ -453,7 +504,7 @@ class MmDatabase:
         from mm.store.schema import FileCol
 
         self.ensure_metadata(uri)
-        if self.get_file(uri) is None:
+        if not self._connect.execute("SELECT 1 FROM files WHERE uri = ?", (uri,)).fetchone():
             return
 
         if FileCol.TEXT_PREVIEW in data:

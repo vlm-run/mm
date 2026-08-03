@@ -3,6 +3,13 @@
 ## [Unreleased]
 
 ### Performance
+- **Storage write path (260803)**: `ensure_metadata` is O(1) via single-file
+  `scan_one` + `extract_metadata_one` (was a full parent-directory scan per
+  file); `upsert_files` re-extracts only rows whose `(modified, size)`
+  changed; `Scanner.extract_metadata_batch` runs extraction rayon-parallel
+  with the GIL released. Warm `Context.save()` 212→8 ms, cold 1,220→175 ms,
+  per-file cat cost no longer scales with sibling count. See
+  `benchmarks/mm-bench-260803.md`.
 - **Disk-backed cache for `detect_scenes` + `transcript_messages` (260430)**:
   the slow steps in the accurate-mode video pipeline now persist across CLI
   invocations via `cachetools_ext.fs.FSLRUCache`. Implemented as an opt-in

@@ -1388,6 +1388,7 @@ dependencies = [
  "compact_str",
  "mm-core",
  "pyo3",
+ "rayon",
  "serde_json",
 ]
 

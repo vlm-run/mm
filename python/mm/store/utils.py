@@ -108,23 +108,9 @@ def prune_missing(
     return db.delete_files(missing)
 
 
-def fill_metadata(
-    db: MmDatabase,
-    uri: str,
-    p: Path,
-    scanner: Scanner,
-    *,
-    rel_path: str | None = None,
-    commit: bool = False,
-) -> None:
-    """Run the Rust per-kind extractor and write every populated column."""
+def metadata_columns(r: Any, p: Path) -> dict[str, Any]:
+    """Map a Rust ``MetadataResult`` to populated ``files`` column values."""
     from mm.store.schema import FileCol
-
-    lookup = rel_path if rel_path is not None else p.name
-    try:
-        r = scanner.extract_metadata(lookup)
-    except Exception:
-        return
 
     data: dict[str, Any] = {}
     metadata_map = {
@@ -160,8 +146,32 @@ def fill_metadata(
         if props.get("pages") is not None:
             data[FileCol.PAGES] = props["pages"]
 
+    return data
+
+
+def apply_metadata_columns(db: MmDatabase, uri: str, data: dict[str, Any]) -> None:
+    """Write populated column values for *uri* (no commit)."""
     if data:
         sets = ", ".join(f"{k} = ?" for k in data)
         db._connect.execute(f"UPDATE files SET {sets} WHERE uri = ?", (*data.values(), uri))
-        if commit:
-            db._connect.commit()
+
+
+def fill_metadata(
+    db: MmDatabase,
+    uri: str,
+    p: Path,
+    scanner: Scanner,
+    *,
+    rel_path: str | None = None,
+    commit: bool = False,
+) -> None:
+    """Run the Rust per-kind extractor and write every populated column."""
+    lookup = rel_path if rel_path is not None else p.name
+    try:
+        r = scanner.extract_metadata(lookup)
+    except Exception:
+        return
+
+    apply_metadata_columns(db, uri, metadata_columns(r, p))
+    if commit:
+        db._connect.commit()
