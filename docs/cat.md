@@ -42,10 +42,10 @@ Office documents are passthrough in fast mode but go through the LLM pipeline in
 | **Audio** (`-p native`)   | 10-word description  | Detailed LLM description |
 | **Audio** (`-p gemini-native`)   | 10-word description               | Detailed LLM description        |
 | **PDFs**                  | Page-text extraction (pypdfium2)          | Text → LLM markdown structuring         |
-| **Office docs** (.docx/.pptx/.xlsx/.odt/.odp/.ods) | Passthrough text (no LLM) | Office → PDF conversion → LLM markdown  |
+| **Office docs** (.docx/.pptx/.xlsx/.odt/.odp/.ods) | Markdown via anydoc (no LLM) | Office → PDF conversion → LLM markdown  |
 | **Code / text**           | Passthrough text (no LLM)                 | Passthrough text (no LLM)               |
 
-`--mode` is a no-op for code and text — they always return passthrough text regardless of mode. Office documents (`.docx`, `.pptx`, `.xlsx`, `.odt`, `.odp`, `.ods`) are passthrough in fast mode but converted to PDF and processed through the LLM pipeline in accurate mode.
+`--mode` is a no-op for code and text — they always return passthrough text regardless of mode. Office documents (`.docx`, `.pptx`, `.xlsx`, `.odt`, `.odp`, `.ods`) convert to GitHub-Flavored Markdown via [anydoc](https://github.com/firecrawl/anydoc) in fast mode, and are converted to PDF and processed through the LLM pipeline in accurate mode.
 
 ### Image
 
@@ -111,10 +111,10 @@ Multi-file: `mm cat a.mp4 b.mp4 -y` runs each video sequentially; the same **≥
 
 | | fast (default) | accurate |
 |---|---|---|
-| Behavior | Passthrough text via libreoffice-rs | Office → PDF conversion → LLM markdown structuring |
+| Behavior | GitHub-Flavored Markdown via anydoc | Office → PDF conversion → LLM markdown structuring |
 | LLM call | None | Yes (routes through office→PDF before encode) |
 
-In fast mode, raw text is extracted directly. In accurate mode, the file is converted to PDF via `office_to_pdf` and then processed through the document/accurate pipeline.
+In fast mode, the document is converted directly to GitHub-Flavored Markdown via [anydoc](https://github.com/firecrawl/anydoc). In accurate mode, the file is converted to PDF via `office_to_pdf` (libreoffice-rs) and then processed through the document/accurate pipeline.
 
 ### Text / Code / Config
 

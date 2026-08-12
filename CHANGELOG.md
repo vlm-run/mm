@@ -2,6 +2,19 @@
 
 ## [Unreleased]
 
+### Changed
+- **Fast-mode office extraction: libreoffice-pure → anydoc [VLM-749]**:
+  fast-mode office extraction (`mm cat`, `page-text` encoder) now converts
+  docx/pptx/xlsx/odt/odp/ods to GitHub-Flavored Markdown via the
+  [anydoc](https://github.com/firecrawl/anydoc) Python binding
+  (`firecrawl-anydoc`) instead of plain text via libreoffice-pure. In
+  firecrawl's 100-document benchmark anydoc scores 81 vs libreoffice's 40
+  overall (median 4.4 ms vs 1129.5 ms per document) and wins every shared
+  format head-to-head. Each backend keeps the job it is strongest at:
+  anydoc for file → markdown, libreoffice-pure for accurate mode's
+  office → PDF → page-text → LLM flow and for `mm peek --full` document
+  metadata (both unchanged). The Rust surface is untouched.
+
 ### Performance
 - **Disk-backed cache for `detect_scenes` + `transcript_messages` (260430)**:
   the slow steps in the accurate-mode video pipeline now persist across CLI

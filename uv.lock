@@ -600,6 +600,21 @@ wheels = [
 ]
 
 [[package]]
+name = "firecrawl-anydoc"
+version = "0.1.8"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/e9/58/94bdc78509da5d2bec4761cfc6e79061d35562d4397b504aec59e29b548b/firecrawl_anydoc-0.1.8.tar.gz", hash = "sha256:342289a9e7fcc46a312919547b475827f202f6824c2acf05e334fc1ed386e77e", size = 197922 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/97/61/abd70c4215e2804c8dad88c2abe8685fa84f4d2496ce7fc17d7f7a1cc21d/firecrawl_anydoc-0.1.8-cp310-abi3-macosx_10_12_x86_64.whl", hash = "sha256:8a7218553f691f112a2d71f2c08c3ef87de3ce4d15fa82ffa782f493a307a284", size = 3447457 },
+    { url = "https://files.pythonhosted.org/packages/cd/c1/ab54eb4ca0a131017941964219fbf80873059b4261b046f8dda1bdeb858c/firecrawl_anydoc-0.1.8-cp310-abi3-macosx_11_0_arm64.whl", hash = "sha256:8920b0d303ae5ad34bc5e580b25043eaf107df73e4f8f2f02282bfad7f19845a", size = 3273654 },
+    { url = "https://files.pythonhosted.org/packages/af/10/9216bb6e65d027aac7c4c856ad921684337c105f69db77703059afd1ec1e/firecrawl_anydoc-0.1.8-cp310-abi3-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:cfe87061151cb42dd52960eb84f4ec6249a220131e61b498bba1248b86ef51cc", size = 3313860 },
+    { url = "https://files.pythonhosted.org/packages/b8/23/0d4fb73798b6554a63f38468e62ce13f1d411ef3dd879efc4c89f535ee44/firecrawl_anydoc-0.1.8-cp310-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:d3ba80a81f1831b5cdfcc14678e3ed13078587710fb3f5556f193dbcaa901070", size = 3540091 },
+    { url = "https://files.pythonhosted.org/packages/17/f6/438c158410c0f696dbb29e4f0b83cbb6cd89511792fd97917aaa4f2cc76e/firecrawl_anydoc-0.1.8-cp310-abi3-musllinux_1_2_aarch64.whl", hash = "sha256:07e4b9444cc979f2eb35289c8d28d738474209824a29d07081af25cd6a65bf9b", size = 3492643 },
+    { url = "https://files.pythonhosted.org/packages/85/ba/bd6b8502093ddcc8fe170fdc20a37009dc5e7a6ae55551ede69a9639ecf8/firecrawl_anydoc-0.1.8-cp310-abi3-musllinux_1_2_x86_64.whl", hash = "sha256:4b7d79b8f7c158a67232982dc1883c07114d95f69d7aedc902d0b113a5546b16", size = 3780576 },
+    { url = "https://files.pythonhosted.org/packages/df/91/743986265ae347f0380a21d60378155575f4d724465c77c7e4781923df57/firecrawl_anydoc-0.1.8-cp310-abi3-win_amd64.whl", hash = "sha256:bf755eb80439f0a1540b298648919f19751c16f942a7376ee68dea5318e3f2a3", size = 3632712 },
+]
+
+[[package]]
 name = "flatbuffers"
 version = "25.12.19"
 source = { registry = "https://pypi.org/simple" }
@@ -1472,6 +1487,7 @@ dependencies = [
     { name = "av" },
     { name = "cachetools" },
     { name = "cachetools-ext" },
+    { name = "firecrawl-anydoc" },
     { name = "httpx" },
     { name = "magika" },
     { name = "onnxruntime", marker = "platform_machine == 'x86_64' and sys_platform == 'darwin'" },
@@ -1531,6 +1547,7 @@ requires-dist = [
     { name = "ctranslate2", marker = "extra == 'gpu'", specifier = ">=2.0" },
     { name = "datasets", marker = "extra == 'experimental'", specifier = ">=2.0" },
     { name = "faster-whisper", marker = "extra == 'gpu'", specifier = ">=1.0" },
+    { name = "firecrawl-anydoc", specifier = ">=0.1.8" },
     { name = "httpx", specifier = ">=0.24" },
     { name = "lightning-whisper-mlx", marker = "extra == 'mlx'", specifier = ">=0.0.10" },
     { name = "logfire", marker = "extra == 'dev'", specifier = ">=3.0" },

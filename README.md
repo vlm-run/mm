@@ -231,7 +231,7 @@ mm peek paper.pdf --full                                        # include docume
 # mm cat: content extraction. Default --mode fast.
 mm cat wordpress-pdf-invoice-plugin-sample.pdf                  # PDF page-text via pypdfium2 (fast pipeline)
 mm cat src/main.py                                              # passthrough text + chunk + embed (kind=text)
-mm cat notes.docx                                               # libreoffice-rs text
+mm cat notes.docx                                               # anydoc markdown
 mm cat bench.jpg                                                # short VLM caption (fast pipeline)
 mm cat wordpress-pdf-invoice-plugin-sample.pdf -n 20            # first 20 lines
 mm cat -y *.jpg *.png                                           # batch (skip ≥9-path confirmation)
@@ -308,13 +308,13 @@ Full reference: [peek docs →](https://vlm-run.github.io/mm/peek/)
 <details>
 <summary><code>cat:</code> content extraction</summary>
 
-`--mode` is one of `fast` (default) or `accurate`. Mode is a no-op for `kind=text` and non-PDF documents (`.docx` / `.pptx`): they always return passthrough text.
+`--mode` is one of `fast` (default) or `accurate`. Mode is a no-op for `kind=text` only. Office documents (`.docx` / `.pptx` / …) return anydoc markdown in fast mode and run the LLM pipeline (office → PDF → page-text → LLM markdown structuring) in accurate mode.
 
 ```bash
 mm cat wordpress-pdf-invoice-plugin-sample.pdf                  # PDF page-text via pypdfium2 (fast pipeline)
 mm cat wordpress-pdf-invoice-plugin-sample.pdf -n 20            # first 20 lines (head)
 mm cat src/main.py                                              # passthrough text
-mm cat notes.docx                                               # libreoffice-rs text
+mm cat notes.docx                                               # anydoc markdown
 mm cat bench.jpg                                                # short VLM caption (fast pipeline)
 mm cat bench.jpg -m accurate                                    # full LLM caption + tags + objects
 mm cat Timelapse.mp4 -m accurate                                # mosaic → LLM description

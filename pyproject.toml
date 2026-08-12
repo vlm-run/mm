@@ -71,6 +71,7 @@ dependencies = [
     "pyarrow>=15.0",
     "sqlite-vec>=0.1.9",
     "pypdfium2>=4.0",
+    "firecrawl-anydoc>=0.1.8",
     "Pillow>=10.0",
     "openai>=1.0",
     "httpx>=0.24",

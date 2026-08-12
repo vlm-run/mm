@@ -292,3 +292,64 @@ class TestVerboseCacheReplay:
         ):
             warm = _extract(f, _make_opts("fast", verbose=False))
         assert warm == "cached body"
+
+
+def _build_minimal_docx(path: Path) -> None:
+    """Write a minimal but valid docx (one heading + one paragraph)."""
+    import zipfile
+
+    content_types = (
+        '<?xml version="1.0"?>'
+        '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">'
+        '<Default Extension="rels" ContentType='
+        '"application/vnd.openxmlformats-package.relationships+xml"/>'
+        '<Default Extension="xml" ContentType="application/xml"/>'
+        '<Override PartName="/word/document.xml" ContentType='
+        '"application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>'
+        "</Types>"
+    )
+    rels = (
+        '<?xml version="1.0"?>'
+        '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+        '<Relationship Id="rId1" Type='
+        '"http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" '
+        'Target="word/document.xml"/>'
+        "</Relationships>"
+    )
+    document = (
+        '<?xml version="1.0"?>'
+        '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">'
+        "<w:body>"
+        '<w:p><w:pPr><w:pStyle w:val="Heading1"/></w:pPr>'
+        "<w:r><w:t>Quarterly Report</w:t></w:r></w:p>"
+        "<w:p><w:r><w:t>Revenue grew 12% quarter over quarter.</w:t></w:r></w:p>"
+        "</w:body></w:document>"
+    )
+    with zipfile.ZipFile(path, "w") as z:
+        z.writestr("[Content_Types].xml", content_types)
+        z.writestr("_rels/.rels", rels)
+        z.writestr("word/document.xml", document)
+
+
+class TestOfficeFastAnydoc:
+    """Fast-mode office extraction is backed by the anydoc binding."""
+
+    def test_page_text_encoder_yields_anydoc_markdown(self, tmp_path):
+        from mm.encoders import get as get_encoder
+
+        f = tmp_path / "report.docx"
+        _build_minimal_docx(f)
+
+        messages = list(get_encoder("page-text", "document").encode(f))
+        assert len(messages) == 1
+        text = messages[0]["content"][0]["text"]
+        assert "Quarterly Report" in text
+        assert "Revenue grew 12% quarter over quarter." in text
+
+    def test_docx_fast_passthrough_returns_markdown(self, tmp_path, isolated_db):
+        f = tmp_path / "report.docx"
+        _build_minimal_docx(f)
+
+        result = _extract(f, _make_opts("fast"))
+        assert "Quarterly Report" in result
+        assert "Revenue grew 12% quarter over quarter." in result

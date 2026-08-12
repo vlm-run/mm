@@ -209,7 +209,7 @@ mm cat video.mp4                                  # mosaic → short VLM
 mm cat audio.mp3                                  # Whisper transcript → 10-word description
 mm cat paper.pdf                                  # page-text (pypdfium2)
 mm cat src/main.py                                # passthrough text
-mm cat notes.docx                                 # libreoffice-rs passthrough
+mm cat notes.docx                                 # anydoc markdown passthrough
 
 # Accurate mode (LLM-powered; requires profile)
 mm cat photo.png   -m accurate                    # caption + tags + objects
