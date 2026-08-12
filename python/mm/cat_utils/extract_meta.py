@@ -3,9 +3,18 @@ from typing import Literal
 
 
 def extract_meta(
-    path: Path, kind: str, *, no_cache: bool = False, content_hash: str | None = None
+    path: Path,
+    kind: str,
+    *,
+    no_cache: bool = False,
+    content_hash: str | None = None,
+    result=None,
 ) -> str:
-    """Produce the metadata-tier content for a file (no LLM call) with caching."""
+    """Produce the metadata-tier content for a file (no LLM call) with caching.
+
+    ``result`` is an optional precomputed ``MetadataResult`` so callers that
+    already ran the extractor (for the cache key) avoid a second full pass.
+    """
     from mm.store.utils import get_content_hash, shared_db
 
     if content_hash is None:
@@ -17,11 +26,11 @@ def extract_meta(
 
     def _handler() -> str:
         if kind == "image":
-            return _local_image(path)
+            return _local_image(path, r=result)
         if kind == "video":
-            return _local_video(path)
+            return _local_video(path, r=result)
         if kind == "audio":
-            return _local_audio(path)
+            return _local_audio(path, r=result)
         if kind == "document":
             return _local_document(path)
         return path.read_text(errors="replace")
@@ -40,12 +49,13 @@ def extract_meta(
     return result
 
 
-def _local_image(path: Path) -> str:
+def _local_image(path: Path, r=None) -> str:
     try:
         from mm._mm import extract_metadata_one
         from mm.display import format_size
 
-        r = extract_metadata_one(path)
+        if r is None:
+            r = extract_metadata_one(path)
         parts: list[str] = []
         if r.dimensions:
             parts.append(f"Dimensions: {r.dimensions}")
@@ -70,13 +80,14 @@ def _local_image(path: Path) -> str:
         return f"[Image extraction failed: {e}]"
 
 
-def _local_video(path: Path) -> str:
+def _local_video(path: Path, r=None) -> str:
     """Metadata only — no ffmpeg, <100ms."""
     try:
         from mm._mm import extract_metadata_one
         from mm.display import format_size
 
-        r = extract_metadata_one(path)
+        if r is None:
+            r = extract_metadata_one(path)
         parts: list[str] = []
         if r.dimensions:
             parts.append(f"Resolution: {r.dimensions}")
@@ -100,13 +111,14 @@ def _local_video(path: Path) -> str:
         return f"[Video extraction failed: {e}]"
 
 
-def _local_audio(path: Path) -> str:
+def _local_audio(path: Path, r=None) -> str:
     """Metadata only — no ffmpeg, <100ms."""
     try:
         from mm._mm import extract_metadata_one
         from mm.display import format_size
 
-        r = extract_metadata_one(path)
+        if r is None:
+            r = extract_metadata_one(path)
         parts: list[str] = []
         if r.duration_s is not None:
             mins, secs = divmod(r.duration_s, 60)

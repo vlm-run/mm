@@ -272,14 +272,22 @@ def wc_cmd(
         output_console.print(tbl)
 
 
+def _image_tokens(width: int | None, height: int | None) -> int:
+    """Tile-based image token estimate; mirrors Rust ``estimate_image_tokens``."""
+    if not width or not height:
+        return 85
+    tiles = -(-width // 512) * -(-height // 512)
+    return 85 + tiles * 170
+
+
 def _wc_from_paths(
     root: Path,
     paths: list[str],
     kind_filter: str | None,
 ) -> tuple[dict[str, dict[str, int | float]], int, int, int, int]:
     """Compute wc stats for a specific set of piped file paths."""
+    from mm._mm import scan_one
     from mm.pipe import resolve_piped_paths
-    from mm.utils import file_kind_with_code
 
     kind_stats: dict[str, dict[str, int | float]] = {}
     total_files = 0
@@ -289,10 +297,11 @@ def _wc_from_paths(
 
     for p_str in resolve_piped_paths(paths):
         p = Path(p_str)
-        if not p.is_file():
+        row = scan_one(p_str)
+        if row is None:
             continue
 
-        fkind = file_kind_with_code(p)
+        fkind = row["kind"]
         if kind_filter:
             if "," in kind_filter:
                 if fkind not in {k.strip() for k in kind_filter.split(",")}:
@@ -300,8 +309,7 @@ def _wc_from_paths(
             elif kind_filter != fkind:
                 continue
 
-        stat = p.stat()
-        fsize = stat.st_size
+        fsize = row["size"]
         if fkind in ("text", "code"):
             content = p.read_text(errors="replace")
             flines = content.count("\n") or 1
@@ -312,8 +320,10 @@ def _wc_from_paths(
             content = extract_meta(p, "document")
             flines = max(1, content.count("\n"))
             ftokens = len(content) // TOKEN_CHARS_RATIO
+        elif fkind == "image":
+            flines = 0
+            ftokens = _image_tokens(row["width"], row["height"])
         else:
-            # binary: image, video, audio — no text lines/tokens
             flines = 0
             ftokens = 0
 

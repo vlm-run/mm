@@ -91,6 +91,10 @@ def extract_metadata_one(path: str | Path) -> MetadataResult:
     """Extract metadata for a single file by absolute path, without scanning its parent directory."""
     ...
 
+def extract_metadata_many(paths: list[str | Path]) -> list[MetadataResult | None]:
+    """Extract metadata for many absolute paths in parallel (GIL released)."""
+    ...
+
 def scan_one(path: str | Path) -> dict[str, Any] | None:
     """Scan-level metadata row (kind/mime/sizes/timestamps/image dims) for one file.
 

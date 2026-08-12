@@ -373,6 +373,23 @@ fn extract_metadata_one(py: Python<'_>, path: PathBuf) -> PyResult<MetadataResul
     py.detach(|| extract_kind(&path, kind))
 }
 
+/// Extract metadata for many absolute paths in parallel with the GIL
+/// released. One result per input path; failures come back as None.
+#[pyfunction]
+fn extract_metadata_many(
+    py: Python<'_>,
+    paths: Vec<PathBuf>,
+) -> PyResult<Vec<Option<MetadataResult>>> {
+    use rayon::prelude::*;
+
+    Ok(py.detach(|| {
+        paths
+            .par_iter()
+            .map(|p| extract_kind(p, mm_core::kind_from_path(p)).ok())
+            .collect()
+    }))
+}
+
 /// Scan-level metadata row for a single file (kind, mime, sizes,
 /// timestamps, image dims) without walking the parent directory.
 /// None if the path cannot be stat'd or is not a regular file.
@@ -610,6 +627,7 @@ fn mm_module(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(hamming_distance, m)?)?;
     m.add_function(wrap_pyfunction!(content_hash, m)?)?;
     m.add_function(wrap_pyfunction!(extract_metadata_one, m)?)?;
+    m.add_function(wrap_pyfunction!(extract_metadata_many, m)?)?;
     m.add_function(wrap_pyfunction!(scan_one, m)?)?;
     m.add_function(wrap_pyfunction!(directory_hash, m)?)?;
     m.add_function(wrap_pyfunction!(perceptual_hash, m)?)?;

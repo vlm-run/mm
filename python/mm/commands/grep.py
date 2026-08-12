@@ -72,7 +72,6 @@ def grep_cmd(
     from mm.context import FileEntry
     from mm.display import resolve_format
     from mm.pipe import read_paths_from_stdin, resolve_piped_paths
-    from mm.utils import is_binary_content
 
     fmt = resolve_format(format.value if format else None)
     stdin_paths = read_paths_from_stdin()
@@ -130,13 +129,15 @@ def grep_cmd(
 
     # Piped paths (deduped against directory scan)
     if stdin_paths:
-        from mm.utils import file_kind_with_code
+        from mm._mm import scan_one
 
         for item in resolve_piped_paths(stdin_paths):
             if item in seen_paths:
                 continue
-            fkind = file_kind_with_code(Path(item))
-            if kind and kind != fkind:
+            row = scan_one(item)
+            if row is None:
+                continue
+            if kind and kind != row["kind"]:
                 continue
             if ext and not item.endswith(ext):
                 continue
@@ -145,8 +146,8 @@ def grep_cmd(
                 FileEntry(
                     row=dict(
                         path=item,
-                        kind=fkind,
-                        is_binary=is_binary_content(kind=fkind),
+                        kind=row["kind"],
+                        is_binary=row["is_binary"],
                     )
                 )
             )

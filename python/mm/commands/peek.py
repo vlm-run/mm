@@ -72,7 +72,7 @@ def peek_cmd(
 
     fmt = resolve_format(format.value if format else None)
 
-    rows: list[FileMetadata] = []
+    valid: list[Path] = []
     for p in paths:
         if not p.exists():
             typer.echo(f"Error: {p} not found.", err=True)
@@ -80,7 +80,19 @@ def peek_cmd(
         if not p.is_file():
             typer.echo(f"Error: {p} is not a regular file.", err=True)
             continue
-        rows.append(FileMetadata.from_path(p, full=full))
+        valid.append(p)
+
+    # One parallel Rust pass for the whole batch; single file keeps the
+    # direct path.
+    results: list = [None] * len(valid)
+    if len(valid) > 1:
+        from mm._mm import extract_metadata_many
+
+        results = extract_metadata_many([str(p) for p in valid])
+
+    rows: list[FileMetadata] = [
+        FileMetadata.from_path(p, full=full, result=r) for p, r in zip(valid, results)
+    ]
 
     if not rows:
         raise typer.Exit(1)

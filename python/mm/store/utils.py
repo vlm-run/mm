@@ -45,6 +45,19 @@ def get_content_hash(path: Path) -> str | None:
         return None
 
 
+def content_hash_from_result(path: Path, r: Any) -> str | None:
+    """Cache key from an already-extracted ``MetadataResult``.
+
+    Produces the same key as :func:`get_content_hash` (``phash:`` prefix for
+    images, plain xxh3 otherwise) without re-reading or re-decoding the file.
+    """
+    if r is None:
+        return get_content_hash(path)
+    if path.suffix.lower() in IMAGE_EXTS and r.phash:
+        return f"phash:{r.phash:016x}"
+    return r.content_hash or get_content_hash(path)
+
+
 def now_us() -> int:
     return int(time.time() * 1_000_000)
 

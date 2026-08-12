@@ -93,7 +93,7 @@ def extract(
     from mm.pipelines import apply_overrides
     from mm.pipelines.pipelines_utils import resolve_pipeline
     from mm.profile import get_profile
-    from mm.store.utils import get_content_hash, shared_db
+    from mm.store.utils import shared_db
 
     db = shared_db()
     profile = get_profile()
@@ -110,7 +110,16 @@ def extract(
     )
 
     extraction_id: str | None = None
-    content_hash = get_content_hash(path)
+    # One extractor pass serves both the cache key and the metadata-tier
+    # fill — get_content_hash + extract_meta each ran it before.
+    from mm._mm import extract_metadata_one
+    from mm.store.utils import content_hash_from_result
+
+    try:
+        meta_result = extract_metadata_one(str(path))
+    except Exception:
+        meta_result = None
+    content_hash = content_hash_from_result(path, meta_result)
     if content_hash:
         from mm.store.utils import get_extraction_id
 
@@ -147,11 +156,21 @@ def extract(
 
             tmp_pdf = Path(tmpdir) / f"{path.stem}.pdf"
             office_to_pdf(str(path), str(tmp_pdf))
-            run = run_accurate(tmp_pdf, kind, spec, opts, meta_path=path, content_hash=content_hash)
+            run = run_accurate(
+                tmp_pdf,
+                kind,
+                spec,
+                opts,
+                meta_path=path,
+                content_hash=content_hash,
+                meta_result=meta_result,
+            )
     elif opts.mode == "accurate":
-        run = run_accurate(path, kind, spec, opts, content_hash=content_hash)
+        run = run_accurate(
+            path, kind, spec, opts, content_hash=content_hash, meta_result=meta_result
+        )
     else:
-        run = run_fast(path, kind, spec, opts, content_hash=content_hash)
+        run = run_fast(path, kind, spec, opts, content_hash=content_hash, meta_result=meta_result)
 
     with _cost_lock:
         if run.token_cost is not None:
@@ -165,7 +184,7 @@ def extract(
     if content_hash and run.content and not run.content.startswith("["):
         uri = str(path.resolve())
         meta = {"verbose_suffix": run.verbose_suffix} if run.verbose_suffix else None
-        extract_meta(path, kind, content_hash=content_hash)
+        extract_meta(path, kind, content_hash=content_hash, result=meta_result)
         try:
             db.put_extraction(
                 uri=uri,
@@ -197,6 +216,7 @@ def run_fast(
     opts: CatOpts,
     *,
     content_hash: str | None = None,
+    meta_result=None,
 ) -> RunResult:
     """Fast mode: run the kind's fast pipeline."""
     from mm.cat_utils.run_encoder import run_encoder
@@ -209,7 +229,9 @@ def run_fast(
         return run_encoder(path, kind, spec, opts)
 
     return RunResult(
-        content=extract_meta(path, kind, no_cache=opts.no_cache, content_hash=content_hash)
+        content=extract_meta(
+            path, kind, no_cache=opts.no_cache, content_hash=content_hash, result=meta_result
+        )
     )
 
 
@@ -221,6 +243,7 @@ def run_accurate(
     *,
     meta_path: Path | None = None,
     content_hash: str | None = None,
+    meta_result=None,
 ) -> RunResult:
     """Accurate mode: LLM-powered semantic extraction.
 
@@ -234,7 +257,13 @@ def run_accurate(
 
         spec = dataclasses.replace(spec, generate=None)
 
-    extract_meta(meta_path or path, kind, no_cache=opts.no_cache, content_hash=content_hash)
+    extract_meta(
+        meta_path or path,
+        kind,
+        no_cache=opts.no_cache,
+        content_hash=content_hash,
+        result=meta_result,
+    )
 
     return accurate_dispatch(path, kind, spec, opts)
 

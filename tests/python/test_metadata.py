@@ -419,3 +419,52 @@ class TestFileCount:
         ctx = Context(media_tree)
         code = ctx.filter(kind="code")
         assert code.num_files == 4  # app.py, lib.rs, index.js, helper.py
+
+
+class TestExtractOnce:
+    """One extractor pass must yield the same cache key as get_content_hash."""
+
+    def test_hash_from_result_matches_image_key(self, tmp_path):
+        from PIL import Image
+
+        from mm._mm import extract_metadata_one
+        from mm.store.utils import content_hash_from_result, get_content_hash
+
+        p = tmp_path / "img.png"
+        Image.new("RGB", (64, 48), (10, 200, 30)).save(p)
+
+        r = extract_metadata_one(str(p))
+        assert content_hash_from_result(p, r) == get_content_hash(p)
+        assert content_hash_from_result(p, r).startswith("phash:")
+
+    def test_hash_from_result_matches_binary_key(self, tmp_path):
+        from mm._mm import extract_metadata_one
+        from mm.store.utils import content_hash_from_result, get_content_hash
+
+        p = tmp_path / "doc.pdf"
+        p.write_bytes(b"%PDF-1.4 stub content\n%%EOF\n")
+
+        r = extract_metadata_one(str(p))
+        assert content_hash_from_result(p, r) == get_content_hash(p)
+
+    def test_hash_from_result_none_falls_back(self, tmp_path):
+        from mm.store.utils import content_hash_from_result, get_content_hash
+
+        p = tmp_path / "a.mp3"
+        p.write_bytes(b"\x00" * 64)
+        assert content_hash_from_result(p, None) == get_content_hash(p)
+
+    def test_extract_metadata_many_matches_one(self, tmp_path):
+        from mm._mm import extract_metadata_many, extract_metadata_one
+
+        paths = []
+        for i in range(4):
+            p = tmp_path / f"f{i}.py"
+            p.write_text(f"x = {i}\n")
+            paths.append(str(p))
+        paths.append(str(tmp_path / "missing.py"))
+
+        many = extract_metadata_many(paths)
+        assert many[-1] is None or many[-1].content_hash is None
+        for p, r in zip(paths[:4], many[:4]):
+            assert r.content_hash == extract_metadata_one(p).content_hash

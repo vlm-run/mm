@@ -137,18 +137,19 @@ class FileMetadata:
 
     @classmethod
     def from_path(
-        cls, path: Path | str, *, full: bool = False, aimeta: bool = True
+        cls, path: Path | str, *, full: bool = False, aimeta: bool = True, result: Any = None
     ) -> FileMetadata:
         """Build a :class:`FileMetadata` for *path* via the Rust scanner.
 
         Pure read used by ``mm peek`` as the metadata-tier provider.
         ``aimeta=False`` skips the Magika model load + per-file inference.
+        ``result`` is an optional precomputed ``MetadataResult`` (batch callers).
         """
         from mm._mm import extract_metadata_one
         from mm.constants import guess_mime
 
         p = Path(path)
-        r = extract_metadata_one(p)
+        r = result if result is not None else extract_metadata_one(p)
         size = p.stat().st_size
 
         ai_result: dict[str, Any] | None = None

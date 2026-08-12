@@ -3,6 +3,13 @@
 ## [Unreleased]
 
 ### Performance
+- **Extract-once (260803)**: `mm cat` on binary files runs the Rust
+  extractor once — the result serves both the cache key (was
+  `get_content_hash`'s separate full read/decode) and the metadata-tier
+  fill (2.0x per image, key format unchanged). `mm peek` with multiple
+  files extracts in one parallel pass via `extract_metadata_many`
+  (40 PNGs: 293→79 ms). Piped paths in `mm grep`/`mm wc` classify via
+  `scan_one`; piped images now get real tile-based token estimates.
 - **Storage write path (260803)**: `ensure_metadata` is O(1) via single-file
   `scan_one` + `extract_metadata_one` (was a full parent-directory scan per
   file); `upsert_files` re-extracts only rows whose `(modified, size)`

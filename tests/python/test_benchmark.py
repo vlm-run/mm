@@ -368,3 +368,55 @@ def test_bench_ab_serial_extract_reference(benchmark, tmp_path: Path):
 
     results = benchmark(lambda: [scanner.extract_metadata(p) for p in paths])
     assert len(results) == len(paths)
+
+
+def test_bench_ab_extract_once(benchmark, tmp_path: Path):
+    """Single extractor pass for cache key + metadata vs the double pass it replaced."""
+    from PIL import Image
+
+    from mm._mm import extract_metadata_one
+    from mm.store.utils import content_hash_from_result, get_content_hash
+
+    p = tmp_path / "img.png"
+    Image.new("RGB", (1024, 768), (10, 200, 30)).save(p)
+
+    def once():
+        r = extract_metadata_one(str(p))
+        return content_hash_from_result(p, r), r
+
+    key, _ = once()
+    assert key == get_content_hash(p)
+    benchmark(once)
+
+
+def test_bench_ab_extract_double_reference(benchmark, tmp_path: Path):
+    """Old double-pass reference for the extract-once bench above."""
+    from PIL import Image
+
+    from mm._mm import extract_metadata_one
+    from mm.store.utils import get_content_hash
+
+    p = tmp_path / "img.png"
+    Image.new("RGB", (1024, 768), (10, 200, 30)).save(p)
+
+    def double():
+        key = get_content_hash(p)
+        return key, extract_metadata_one(str(p))
+
+    benchmark(double)
+
+
+def test_bench_ab_peek_batch_vs_serial(benchmark, tmp_path: Path):
+    """extract_metadata_many vs a serial extract_metadata_one loop (mm peek)."""
+    from mm._mm import extract_metadata_many, extract_metadata_one
+
+    body = "\n".join(f"def fn_{j}(): return {j}" for j in range(300))
+    paths = []
+    for i in range(50):
+        p = tmp_path / f"mod_{i}.py"
+        p.write_text(body)
+        paths.append(str(p))
+
+    serial = [extract_metadata_one(p) for p in paths]
+    batch = benchmark(extract_metadata_many, paths)
+    assert [r.content_hash for r in batch] == [r.content_hash for r in serial]

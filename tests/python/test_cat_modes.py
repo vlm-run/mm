@@ -148,7 +148,7 @@ class TestExtractDispatch:
             Path(dst).write_bytes(b"%PDF-1.4 stub\n%%EOF\n")
             return dst
 
-        def _capture_run(path, kind, spec, opts, *, meta_path=None, content_hash=None):
+        def _capture_run(path, kind, spec, opts, *, meta_path=None, content_hash=None, meta_result=None):
             seen_paths.append(path)
             assert path != f, "accurate must receive the temp PDF, not the docx"
             assert path.suffix == ".pdf"
@@ -257,7 +257,7 @@ class TestVerboseCacheReplay:
         suffix = "[dim]generate: ollama • 1.2s • 100→50 tokens[/dim]"
         run_call_count = {"n": 0}
 
-        def fake_run_fast(_path, _kind, _spec, _opts, *, content_hash=None):
+        def fake_run_fast(_path, _kind, _spec, _opts, *, content_hash=None, meta_result=None):
             run_call_count["n"] += 1
             return RunResult(content="cached body", verbose_suffix=suffix)
 
@@ -284,7 +284,7 @@ class TestVerboseCacheReplay:
 
         suffix = "[dim]generate: ollama • 0.5s • 10→5 tokens[/dim]"
 
-        def fake_run_fast(_path, _kind, _spec, _opts, *, content_hash=None):
+        def fake_run_fast(_path, _kind, _spec, _opts, *, content_hash=None, meta_result=None):
             return RunResult(content="cached body", verbose_suffix=suffix)
 
         with patch("mm.commands.cat_extract.run_fast", side_effect=fake_run_fast):
