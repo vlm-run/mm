@@ -7,6 +7,17 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 
+@pytest.fixture(autouse=True)
+def _clear_openai_client_cache():
+    """The OpenAI transcription client is lru_cached per (base_url, api_key);
+    clear it so each test observes its own constructor call."""
+    from mm.common.audio import _openai
+
+    _openai._cached_client.cache_clear()
+    yield
+    _openai._cached_client.cache_clear()
+
+
 class TestTranscriptionResult:
     def test_defaults(self):
         from mm.common.audio import TranscriptionResult

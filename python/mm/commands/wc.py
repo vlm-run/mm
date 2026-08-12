@@ -92,10 +92,14 @@ def wc_cmd(
     if not stdin_paths and "document" in kind_stats and kind_stats["document"].get(F_FILES, 0) > 0:
         doc_entries = json_mod.loads(scanner.to_json_fast(kind="document"))
     if doc_entries:
-        from mm.cat_utils.extract_meta import _local_document
+        from concurrent.futures import ThreadPoolExecutor
 
-        for entry in doc_entries:
-            content = _local_document(root / entry["path"])
+        from mm.cat_utils.extract_meta import extract_meta
+
+        doc_paths = [root / entry["path"] for entry in doc_entries]
+        with ThreadPoolExecutor(max_workers=min(8, len(doc_paths))) as pool:
+            contents = list(pool.map(lambda p: extract_meta(p, "document"), doc_paths))
+        for entry, content in zip(doc_entries, contents):
             char_len = len(content)
             lines = content.count("\n")
             if content and not content.endswith("\n"):
@@ -303,9 +307,9 @@ def _wc_from_paths(
             flines = content.count("\n") or 1
             ftokens = len(content) // TOKEN_CHARS_RATIO
         elif fkind == "document":
-            from mm.cat_utils.extract_meta import _local_document
+            from mm.cat_utils.extract_meta import extract_meta
 
-            content = _local_document(p)
+            content = extract_meta(p, "document")
             flines = max(1, content.count("\n"))
             ftokens = len(content) // TOKEN_CHARS_RATIO
         else:

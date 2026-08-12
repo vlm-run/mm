@@ -95,22 +95,38 @@ def grep_cmd(
     files_to_search: list[FileEntry] = []
     seen_paths: set[str] = set()
 
-    # Directory scan (when provided)
-    if directory:
-        from mm.context import Context
+    scan_root = _directory.resolve()
 
-        ctx = Context(_directory, no_ignore=no_ignore)
-        if kind:
-            ctx = ctx.filter(kind=kind)
-        if ext:
-            ctx = ctx.filter(ext=ext)
-        for f in ctx.files:
-            if f.path.startswith("."):
+    # Rust JSON fast path: grep only needs (path, kind, is_binary), so it
+    # skips the Arrow build and the pyarrow import entirely.
+    if directory:
+        import json as json_mod
+
+        from mm._mm import Scanner
+
+        scanner = Scanner(str(scan_root), None, no_ignore=no_ignore)
+        scanner.scan()
+        exts = [e.strip() for e in ext.split(",")] if ext else []
+        rows = json_mod.loads(
+            scanner.to_json_fast(kind=kind, ext=exts[0] if len(exts) == 1 else None)
+        )
+        for row in rows:
+            if row["path"].startswith("."):
                 continue
-            resolved = str((_directory.resolve() / f.path).resolve())
+            if len(exts) > 1 and row["ext"] not in exts:
+                continue
+            resolved = str(scan_root / row["path"])
             if resolved not in seen_paths:
                 seen_paths.add(resolved)
-                files_to_search.append(f)
+                files_to_search.append(
+                    FileEntry(
+                        row=dict(
+                            path=row["path"],
+                            kind=row["kind"],
+                            is_binary=row["is_binary"],
+                        )
+                    )
+                )
 
     # Piped paths (deduped against directory scan)
     if stdin_paths:
@@ -135,48 +151,69 @@ def grep_cmd(
                 )
             )
 
+    # MULTILINE keeps ^/$ anchored at line boundaries (per-line semantics).
+    ml_regex = re.compile(pattern, regex.flags | re.MULTILINE)
+
+    def _matching_lines(content: str) -> list[int]:
+        """Sorted unique 0-based indices of lines containing a match —
+        one finditer pass, so zero-match files skip splitlines entirely."""
+        import bisect
+
+        hits: list[int] = []
+        starts: list[int] | None = None
+        for m in ml_regex.finditer(content):
+            if starts is None:
+                starts = [0]
+                pos = content.find("\n")
+                while pos != -1:
+                    starts.append(pos + 1)
+                    pos = content.find("\n", pos + 1)
+            idx = bisect.bisect_right(starts, m.start()) - 1
+            if not hits or hits[-1] != idx:
+                hits.append(idx)
+        return hits
+
     for f in files_to_search:
         try:
             fp = Path(f.path)
-            full_path = fp if fp.is_absolute() else (_directory.resolve() / fp)
+            full_path = fp if fp.is_absolute() else (scan_root / fp)
             if f.is_binary and f.kind not in ("document",):
                 continue
 
             if f.kind == "document":
-                from mm.cat_utils.extract_meta import _local_document
+                from mm.cat_utils.extract_meta import extract_meta
 
-                content = _local_document(full_path)
+                content = extract_meta(full_path, "document")
             elif f.is_binary:
                 continue
             else:
                 content = full_path.read_text(errors="replace")
-            lines = content.splitlines()
 
-            file_match_count = 0
-            for i, line in enumerate(lines):
-                if regex.search(line):
-                    file_match_count += 1
-                    if not count:
-                        match_entry: dict = {
-                            "path": f"{_dir_str}/{f.path}" if _dir_str else f.path,
-                            "line_number": i + 1,
-                            "line": line,
-                        }
-                        if context_lines > 0:
-                            start = max(0, i - context_lines)
-                            end = min(len(lines), i + context_lines + 1)
-                            match_entry["context"] = lines[start:end]
-                        all_matches.append(match_entry)
+            hit_idxs = _matching_lines(content)
+            if not hit_idxs:
+                continue
 
-            if file_match_count > 0:
-                display_path = f"{_dir_str}/{f.path}" if _dir_str else f.path
-                file_counts[display_path] = file_match_count
+            if not count:
+                lines = content.splitlines()
+                for i in hit_idxs:
+                    match_entry: dict = {
+                        "path": f"{_dir_str}/{f.path}" if _dir_str else f.path,
+                        "line_number": i + 1,
+                        "line": lines[i],
+                    }
+                    if context_lines > 0:
+                        start = max(0, i - context_lines)
+                        end = min(len(lines), i + context_lines + 1)
+                        match_entry["context"] = lines[start:end]
+                    all_matches.append(match_entry)
+
+            display_path = f"{_dir_str}/{f.path}" if _dir_str else f.path
+            file_counts[display_path] = len(hit_idxs)
         except Exception:
             continue
 
     # FTS + semantic both query indexed chunks.
     has_indexable = bool(files_to_search)
-    scan_root = _directory.resolve()
     seen_chunk_keys: set[tuple[str, int]] = set()
 
     def _merge_chunk_hits(hits: list[dict]) -> None:
@@ -309,12 +346,14 @@ def grep_cmd(
             line_text.append(f" {m['line_number']:>4} ")
 
             line = m["line"]
-            parts = regex.split(line)
-            found = regex.findall(line)
-            for j, part in enumerate(parts):
-                line_text.append(part)
-                if j < len(found):
-                    line_text.append(found[j], style="bold")
+            pos = 0
+            for hit in regex.finditer(line):
+                line_text.append(line[pos : hit.start()])
+                line_text.append(hit.group(0), style="bold")
+                pos = hit.end()
+                if hit.start() == hit.end():
+                    break
+            line_text.append(line[pos:])
             output_console.print(line_text)
 
         output_console.print()

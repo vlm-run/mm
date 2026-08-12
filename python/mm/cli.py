@@ -25,7 +25,6 @@ else:
 
     sys.excepthook = _quiet_broken_pipe
 
-from mm import __version__
 from mm.commands import bench, cat, find, grep, peek, sql, wc
 from mm.commands.config import config_app
 from mm.commands.profile import profile_app
@@ -44,6 +43,7 @@ _STEEL_BLUE = "#4682B4"
 
 def _print_banner() -> None:
     """Print the mm banner with a silver-to-steel-blue gradient."""
+    from mm import __version__
     from rich.console import Console
     from rich.text import Text
 
@@ -97,7 +97,7 @@ _SPINNER_COMMANDS = {"cat", "sql", "grep"}
 @app.callback(
     invoke_without_command=True,
     help="Fast, multimodal context for agents.",
-    epilog=f"mm v{__version__}",
+    epilog="mm — fast, multimodal context for agents (mm --version)",
 )
 def _main(
     ctx: typer.Context,
@@ -115,6 +115,7 @@ def _main(
     ] = False,
 ) -> None:
     if version:
+        from mm import __version__
         from mm.version import version_imprint
 
         typer.echo(f"mm {version_imprint(__version__)}")

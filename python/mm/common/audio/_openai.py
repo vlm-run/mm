@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import logging
 import time
+from functools import lru_cache
 from pathlib import Path
 
 from mm.common.audio._base import (
@@ -53,6 +54,14 @@ def _resolve_profile_url() -> tuple[str, str]:
         return p.base_url.rstrip("/"), p.api_key or ""
     except Exception:
         return "", ""
+
+
+@lru_cache(maxsize=8)
+def _cached_client(base_url: str, api_key: str):
+    """Reuse the OpenAI client (and its TCP/TLS pool) across transcriptions."""
+    from openai import OpenAI
+
+    return OpenAI(base_url=base_url, api_key=api_key, timeout=120.0)
 
 
 class OpenAIBackend(TranscriptionBackend):
@@ -122,8 +131,6 @@ class OpenAIBackend(TranscriptionBackend):
         beam_size: int = 1,
         audio_speed: float = 1.0,
     ) -> TranscriptionResult:
-        from openai import OpenAI
-
         base_url, api_key = self._resolve_url_and_key()
 
         if not api_key:
@@ -137,11 +144,7 @@ class OpenAIBackend(TranscriptionBackend):
         if model is None:
             model = self._default_model(base_url)
 
-        client = OpenAI(
-            base_url=base_url,
-            api_key=api_key,
-            timeout=120.0,
-        )
+        client = _cached_client(base_url, api_key)
 
         t0 = time.monotonic()
         with open(audio_path, "rb") as f:

@@ -147,11 +147,11 @@ def extract(
 
             tmp_pdf = Path(tmpdir) / f"{path.stem}.pdf"
             office_to_pdf(str(path), str(tmp_pdf))
-            run = run_accurate(tmp_pdf, kind, spec, opts, meta_path=path)
+            run = run_accurate(tmp_pdf, kind, spec, opts, meta_path=path, content_hash=content_hash)
     elif opts.mode == "accurate":
-        run = run_accurate(path, kind, spec, opts)
+        run = run_accurate(path, kind, spec, opts, content_hash=content_hash)
     else:
-        run = run_fast(path, kind, spec, opts)
+        run = run_fast(path, kind, spec, opts, content_hash=content_hash)
 
     with _cost_lock:
         if run.token_cost is not None:
@@ -190,7 +190,14 @@ def format_run(run: RunResult, verbose: bool) -> str:
     return run.content
 
 
-def run_fast(path: Path, kind: BinaryFileKind, spec: PipelineSpec, opts: CatOpts) -> RunResult:
+def run_fast(
+    path: Path,
+    kind: BinaryFileKind,
+    spec: PipelineSpec,
+    opts: CatOpts,
+    *,
+    content_hash: str | None = None,
+) -> RunResult:
     """Fast mode: run the kind's fast pipeline."""
     from mm.cat_utils.run_encoder import run_encoder
 
@@ -201,7 +208,9 @@ def run_fast(path: Path, kind: BinaryFileKind, spec: PipelineSpec, opts: CatOpts
     if spec.encode.strategy:
         return run_encoder(path, kind, spec, opts)
 
-    return RunResult(content=extract_meta(path, kind, no_cache=opts.no_cache))
+    return RunResult(
+        content=extract_meta(path, kind, no_cache=opts.no_cache, content_hash=content_hash)
+    )
 
 
 def run_accurate(
@@ -211,19 +220,21 @@ def run_accurate(
     opts: CatOpts,
     *,
     meta_path: Path | None = None,
+    content_hash: str | None = None,
 ) -> RunResult:
     """Accurate mode: LLM-powered semantic extraction.
 
     ``spec`` is the merged (YAML + CLI) pipeline spec resolved by
-    ``extract``; this function does no further override application
-    ``meta_path`` reference to the original office file
+    ``extract``; this function does no further override application.
+    ``meta_path`` references the original office file; ``content_hash``
+    is threaded through to avoid re-hashing.
     """
     if getattr(opts, "no_generate", False):
         import dataclasses
 
         spec = dataclasses.replace(spec, generate=None)
 
-    extract_meta(meta_path or path, kind, no_cache=opts.no_cache)
+    extract_meta(meta_path or path, kind, no_cache=opts.no_cache, content_hash=content_hash)
 
     return accurate_dispatch(path, kind, spec, opts)
 

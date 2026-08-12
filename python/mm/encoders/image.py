@@ -94,19 +94,20 @@ def _encode_pil_image(
 ) -> tuple[str, str]:
     """Encode a PIL Image to base64.
 
-    Chooses PNG for images with alpha or ``.png`` sources; JPEG otherwise.
-    For JPEG, uses ``subsampling=0`` (4:4:4 chroma) for maximum fidelity.
+    PNG only when the image carries alpha; everything else goes to JPEG
+    with 4:2:0 chroma (PNG deflate is 5-10x slower and 3-5x larger for
+    VLM payloads; 4:2:0 matches the video thumbnail path).
 
     Args:
         img: PIL Image to encode.
-        source_path: Original file path (used for format heuristics).
+        source_path: Original file path (kept for signature stability).
         quality: JPEG quality 1–100.
 
     Returns:
         ``(base64_str, mime_str)`` tuple.
     """
     has_alpha = img.mode in ("RGBA", "LA", "PA")
-    fmt = "PNG" if has_alpha or source_path.suffix.lower() == ".png" else "JPEG"
+    fmt = "PNG" if has_alpha else "JPEG"
     mime = "image/png" if fmt == "PNG" else "image/jpeg"
 
     if fmt == "JPEG" and img.mode != "RGB":
@@ -116,7 +117,7 @@ def _encode_pil_image(
     save_kwargs: dict[str, Any] = {"format": fmt}
     if fmt == "JPEG":
         save_kwargs["quality"] = quality
-        save_kwargs["subsampling"] = 0  # 4:4:4 — no chroma subsampling
+        save_kwargs["subsampling"] = 2  # 4:2:0 chroma
     img.save(buf, **save_kwargs)
 
     b64 = get_b64(buf.getvalue())

@@ -3,6 +3,15 @@
 ## [Unreleased]
 
 ### Performance
+- **grep/cat overhead + CLI cold start (260803)**: `mm grep` lists via the
+  Rust JSON fast path (no pyarrow import), matches in one `finditer` pass,
+  and serves documents from the content-hash cache; Magika no longer
+  loads/runs for auto-strategy (its output was never read there); mm.toml
+  parsed once per mtime; content hash computed once per file; ffmpeg probe
+  and transcription client process-cached; keyframe count demuxes packet
+  flags instead of double-decoding; JPEG 4:2:0 for non-alpha payloads;
+  `importlib.metadata` and pipeline/yaml imports off the CLI startup path
+  (`import mm.cli` 97→77 ms).
 - **Disk-backed cache for `detect_scenes` + `transcript_messages` (260430)**:
   the slow steps in the accurate-mode video pipeline now persist across CLI
   invocations via `cachetools_ext.fs.FSLRUCache`. Implemented as an opt-in

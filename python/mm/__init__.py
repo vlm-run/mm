@@ -5,8 +5,6 @@ import os as _os
 if not _os.environ.get("LOGFIRE_TOKEN"):
     _os.environ.setdefault("PYDANTIC_DISABLE_PLUGINS", "logfire-plugin")
 
-from importlib.metadata import version
-
 __all__ = [
     "Context",
     "Ref",
@@ -15,7 +13,6 @@ __all__ = [
     "render_messages",
     "uuid7",
 ]
-__version__ = version("mm-ctx")
 
 _LAZY_IMPORTS = {
     "Context": ("mm.context", "Context"),
@@ -28,6 +25,13 @@ _LAZY_IMPORTS = {
 
 
 def __getattr__(name: str):
+    if name == "__version__":
+        # importlib.metadata costs ~45ms; defer until something reads it.
+        from importlib.metadata import version
+
+        v = version("mm-ctx")
+        globals()["__version__"] = v
+        return v
     if name in _LAZY_IMPORTS:
         module_path, attr_name = _LAZY_IMPORTS[name]
         import importlib
