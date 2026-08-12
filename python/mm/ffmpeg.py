@@ -15,12 +15,15 @@ import subprocess
 import tempfile
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
+from functools import lru_cache
 from pathlib import Path
 
 from mm.cache import memoize_file
 
 
+@lru_cache(maxsize=1)
 def ffmpeg_available() -> bool:
+    """Whether ffmpeg is on PATH — probed once per process."""
     try:
         subprocess.run(["ffmpeg", "-version"], capture_output=True, timeout=5)
         return True

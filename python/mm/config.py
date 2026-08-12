@@ -144,10 +144,24 @@ def set_cli_overrides(
 # ── File reading ────────────────────────────────────────────────────
 
 
+_config_cache: tuple[Path, int, ConfigData] | None = None
+
+
 def _read_config_file() -> ConfigData:
+    """Read + parse mm.toml, cached by (path, mtime). Returns a deep copy —
+    callers may mutate the result."""
+    global _config_cache
+    import copy
+
     try:
         if (path := _find_config_path()) and path.exists():
-            return cast(ConfigData, dict(tomllib.loads(path.read_text())))
+            mtime = path.stat().st_mtime_ns
+            cached = _config_cache
+            if cached and cached[0] == path and cached[1] == mtime:
+                return copy.deepcopy(cached[2])
+            data = cast(ConfigData, dict(tomllib.loads(path.read_text())))
+            _config_cache = (path, mtime, data)
+            return copy.deepcopy(data)
     except Exception:
         pass
     return cast(ConfigData, {})

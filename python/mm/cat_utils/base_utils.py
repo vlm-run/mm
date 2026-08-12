@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import json
 import os
 import sys
@@ -8,10 +10,9 @@ from typing import TYPE_CHECKING, Any, Iterator, Literal
 
 import typer
 
-from mm.pipelines.schema import PipelineSpec
-
 if TYPE_CHECKING:
     from mm.llm import LlmBackend
+    from mm.pipelines.schema import PipelineSpec
 
 KIND_ORDER = ("image", "video", "audio", "document")
 CatMode = Literal["fast", "accurate"]

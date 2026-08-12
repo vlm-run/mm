@@ -178,6 +178,16 @@ def run_pyfunc(
     return result
 
 
+@lru_cache(maxsize=1)
+def _generate_hints() -> dict[str, Any]:
+    """Resolved ``Generate`` type hints, evaluated once (uncached
+    ``get_type_hints`` re-``eval``s stringified annotations per call)."""
+    try:
+        return typing.get_type_hints(Generate)
+    except Exception:
+        return {}
+
+
 def _coerce_generate(key: str, value: Any) -> Any:
     """Cast a CLI string override value to the ``Generate`` field type.
 
@@ -206,11 +216,7 @@ def _coerce_generate(key: str, value: Any) -> Any:
     if not isinstance(value, str):
         return value
 
-    try:
-        hints = typing.get_type_hints(Generate)
-    except Exception:
-        hints = {}
-    annotation = hints.get(key)
+    annotation = _generate_hints().get(key)
     if annotation is None:
         return value
 

@@ -64,6 +64,28 @@ _REGISTRY: dict[str, MessageStrategy] = {}
 _DISCOVERED = False
 _DISCOVERY_LOCK = threading.Lock()
 _LOADED_SOURCES: dict[str, list[str]] = {}
+_MODULE_FILES_CACHE: tuple[int, frozenset[str]] | None = None
+
+
+def _loaded_module_files() -> frozenset[str]:
+    """Resolved ``__file__`` of every imported module, cached by module count
+    (one sweep instead of O(modules x files) realpath calls)."""
+    global _MODULE_FILES_CACHE
+    import os
+
+    n = len(sys.modules)
+    cached = _MODULE_FILES_CACHE
+    if cached is not None and cached[0] == n:
+        return cached[1]
+    files = frozenset(
+        os.path.realpath(f)
+        for f in (getattr(m, "__file__", None) for m in list(sys.modules.values()))
+        if f
+    )
+    _MODULE_FILES_CACHE = (n, files)
+    return files
+
+
 """Maps a source key (file path or code hash) to the encoder names it registered."""
 
 
@@ -236,16 +258,14 @@ def load_strategy_file(path: Path) -> list[str]:
     Raises:
         ImportError: If the file cannot be loaded.
     """
-    source_key: str = str(path.resolve())
+    resolved = path.resolve()
+    source_key: str = str(resolved)
     if source_key in _LOADED_SOURCES:
         return _LOADED_SOURCES[source_key]
 
-    resolved = path.resolve()
-    for mod in sys.modules.values():
-        mod_file = getattr(mod, "__file__", None)
-        if mod_file and Path(mod_file).resolve() == resolved:
-            _LOADED_SOURCES[source_key] = []
-            return []
+    if source_key in _loaded_module_files():
+        _LOADED_SOURCES[source_key] = []
+        return []
 
     before = set(_REGISTRY)
     module_name = f"mm_encoder_{path.stem}"

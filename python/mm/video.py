@@ -414,16 +414,15 @@ class VideoReader:
         return FrameStream(factory, count=count)
 
     def _count_keyframes(self) -> int:
-        """Quick I-frame count via demux-level skip."""
+        """I-frame count from packet flags only — demux, no decode."""
         import av
 
         container = av.open(str(self._path))
         try:
             stream = container.streams.video[0]
-            stream.codec_context.skip_frame = "NONKEY"
             count = 0
             for packet in container.demux(stream):
-                for _ in packet.decode():
+                if packet.is_keyframe and packet.pts is not None:
                     count += 1
             return count
         finally:

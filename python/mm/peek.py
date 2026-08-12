@@ -25,7 +25,10 @@ from mm.utils import file_kind
 PeekKind = Literal["image", "video", "audio", "document", "text"]
 
 
+@cache
 def _preload_magika():
+    """Kick off the Magika model load on a worker thread — deferred because
+    importing ``mm.peek`` is on the ``mm cat`` hot path."""
     try:
         from magika import Magika
 
@@ -34,14 +37,12 @@ def _preload_magika():
         return None
 
 
-_magika_future = _preload_magika()
-
-
 @cache
 def _magika():
-    if _magika_future is None:
+    future = _preload_magika()
+    if future is None:
         raise RuntimeError("magika is not installed")
-    return _magika_future.result()
+    return future.result()
 
 
 def _doc_props(path: Path) -> dict[str, Any]:
@@ -135,10 +136,13 @@ class FileMetadata:
         return asdict(self)
 
     @classmethod
-    def from_path(cls, path: Path | str, *, full: bool = False) -> FileMetadata:
+    def from_path(
+        cls, path: Path | str, *, full: bool = False, aimeta: bool = True
+    ) -> FileMetadata:
         """Build a :class:`FileMetadata` for *path* via the Rust scanner.
 
         Pure read used by ``mm peek`` as the metadata-tier provider.
+        ``aimeta=False`` skips the Magika model load + per-file inference.
         """
         from mm._mm import extract_metadata_one
         from mm.constants import guess_mime
@@ -147,11 +151,13 @@ class FileMetadata:
         r = extract_metadata_one(p)
         size = p.stat().st_size
 
-        try:
-            result = _magika().identify_path(p)
-            aimeta = {**result.output.__dict__, "confidence": result.score}
-        except Exception:
-            aimeta = None
+        ai_result: dict[str, Any] | None = None
+        if aimeta:
+            try:
+                result = _magika().identify_path(p)
+                ai_result = {**result.output.__dict__, "confidence": result.score}
+            except Exception:
+                ai_result = None
 
         kind = file_kind(p)
         if full:
@@ -185,5 +191,5 @@ class FileMetadata:
             doc_producer=doc.get("doc_producer"),
             content_hash=r.content_hash,
             magic_mime=r.magic_mime,
-            aimeta=aimeta,
+            aimeta=ai_result,
         )

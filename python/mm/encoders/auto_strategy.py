@@ -125,7 +125,7 @@ def auto_strategy(path: Path) -> str:
 
     from mm.peek import FileMetadata
 
-    meta = FileMetadata.from_path(path, full=(kind == "document"))
+    meta = FileMetadata.from_path(path, full=(kind == "document"), aimeta=False)
     ext = path.suffix.lower()
 
     if kind == "video":
