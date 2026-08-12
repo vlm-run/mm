@@ -1,11 +1,8 @@
 //! Office document conversion and parsing via [`libreoffice-pure`].
 //!
 //! Surfaces:
-//! - [`convert_to_pdf`] — any supported document → PDF on disk (accurate-mode `mm cat`).
-//! - [`metadata`]       — document properties (`mm peek --full`).
-//!
-//! Content extraction (office → markdown) lives on the Python side via the
-//! `anydoc` binding; this module deliberately exposes no content surface.
+//! - [`convert_to_pdf`] — any supported document → PDF on disk.
+//! - [`metadata`]       — core document properties.
 
 use std::fs;
 use std::path::{Path, PathBuf};
