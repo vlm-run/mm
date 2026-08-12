@@ -160,6 +160,22 @@ class MmDatabase:
     def _fts5_available(self) -> bool:
         return _load_fts5(self._connect)
 
+    def _has_vec_table(self) -> bool:
+        """Probe for ``chunks_vec``; positives are cached per connection
+        (the table is never dropped in-process), negatives re-probe."""
+        conn = self._connect
+        if getattr(conn, "_chunks_vec_exists", False):
+            return True
+        exists = (
+            conn.execute(
+                "SELECT 1 FROM sqlite_master WHERE type='table' AND name='chunks_vec'"
+            ).fetchone()
+            is not None
+        )
+        if exists:
+            setattr(conn, "_chunks_vec_exists", True)
+        return exists
+
     @property
     def _conn(self) -> sqlite3.Connection | None:
         return getattr(self._tls, "conn", None)
@@ -179,6 +195,12 @@ class MmDatabase:
         conn.row_factory = sqlite3.Row
         conn.execute("PRAGMA journal_mode=WAL")
         conn.execute("PRAGMA foreign_keys=ON")
+        # Writers wait instead of failing with SQLITE_BUSY.
+        conn.execute("PRAGMA busy_timeout=5000")
+        # 64 MB page cache + mmap for the read-heavy chunk/vec/fts scans.
+        conn.execute("PRAGMA cache_size=-64000")
+        conn.execute("PRAGMA mmap_size=268435456")
+        conn.execute("PRAGMA temp_store=MEMORY")
         self._tls.conn = conn
 
         if not self._schema_ready:
@@ -389,11 +411,20 @@ class MmDatabase:
         row = self._connect.execute("SELECT * FROM files WHERE uri = ?", (uri,)).fetchone()
         return dict(row) if row else None
 
-    def get_files(self, where: str | None = None) -> list[dict[str, Any]]:
+    def get_files(
+        self, where: str | None = None, params: tuple | list = ()
+    ) -> list[dict[str, Any]]:
         q = "SELECT * FROM files"
         if where:
             q += f" WHERE {where}"
-        return [dict(r) for r in self._connect.execute(q).fetchall()]
+        return [dict(r) for r in self._connect.execute(q, params).fetchall()]
+
+    def get_files_under(self, prefix: str) -> list[dict[str, Any]]:
+        """All ``files`` rows whose uri lives under ``prefix/`` (index-backed)."""
+        from mm.store.utils import prefix_range
+
+        lo, hi = prefix_range(f"{prefix}/")
+        return self.get_files("uri >= ? AND uri < ?", (lo, hi))
 
     def ensure_metadata(self, uri: str) -> None:
         """Ensure the ``files`` row for *uri*, scanning via Rust if needed."""
@@ -426,9 +457,7 @@ class MmDatabase:
             return 0
 
         db = self._connect
-        has_vec = db.execute(
-            "SELECT 1 FROM sqlite_master WHERE type='table' AND name='chunks_vec'"
-        ).fetchone()
+        has_vec = self._has_vec_table()
 
         deleted = 0
         for batch in batch_array(uris, 500):
@@ -549,10 +578,7 @@ class MmDatabase:
         ]
         if chunk_ids:
             cp = ",".join("?" * len(chunk_ids))
-            has_vec = db.execute(
-                "SELECT 1 FROM sqlite_master WHERE type='table' AND name='chunks_vec'"
-            ).fetchone()
-            if has_vec:
+            if self._has_vec_table():
                 db.execute(f"DELETE FROM chunks_vec WHERE chunk_id IN ({cp})", chunk_ids)
 
         cursor = db.execute("DELETE FROM extractions WHERE id = ?", (extraction_id,))
@@ -717,10 +743,7 @@ class MmDatabase:
         ]
 
         if old_ids:
-            has_vec = db.execute(
-                "SELECT 1 FROM sqlite_master WHERE type='table' AND name='chunks_vec'"
-            ).fetchone()
-            if has_vec:
+            if self._has_vec_table():
                 cp = ",".join("?" * len(old_ids))
                 db.execute(f"DELETE FROM chunks_vec WHERE chunk_id IN ({cp})", old_ids)
             cp = ",".join("?" * len(old_ids))
@@ -763,10 +786,7 @@ class MmDatabase:
         if not self._vec_available:
             return
         db = self._connect
-        exists = db.execute(
-            "SELECT 1 FROM sqlite_master WHERE type='table' AND name='chunks_vec'"
-        ).fetchone()
-        if not exists:
+        if not self._has_vec_table():
             db.execute(
                 f"CREATE VIRTUAL TABLE chunks_vec USING vec0(chunk_id INTEGER PRIMARY KEY, embedding float[{dim}])"
             )
@@ -823,9 +843,11 @@ class MmDatabase:
             where.append("c.file_uri = ?")
             params.append(uri)
         elif uri_prefix:
-            prefix_esc = uri_prefix.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
-            where.append("c.file_uri LIKE ? ESCAPE '\\'")
-            params.append(prefix_esc + "%")
+            from mm.store.utils import prefix_range
+
+            lo, hi = prefix_range(uri_prefix)
+            where.append("c.file_uri >= ? AND c.file_uri < ?")
+            params.extend([lo, hi])
 
         if kind:
             joins.append("JOIN files f ON f.uri = c.file_uri")
@@ -931,10 +953,7 @@ class MmDatabase:
         if not self._vec_available:
             return []
         db = self._connect
-        exists = db.execute(
-            "SELECT 1 FROM sqlite_master WHERE type='table' AND name='chunks_vec'"
-        ).fetchone()
-        if not exists:
+        if not self._has_vec_table():
             return []
 
         import struct

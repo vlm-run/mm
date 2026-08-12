@@ -3,6 +3,13 @@
 ## [Unreleased]
 
 ### Performance
+- **Query plans (260803)**: `Context.filter` and `mm find --sort/--depth`
+  use vectorized `pyarrow.compute` instead of an in-memory SQLite round-trip
+  (62 µs vs 6.8 ms per filter at 500 files; schema preserved); every
+  `uri LIKE 'prefix%'` predicate replaced with an index-backed range
+  (SCAN → SEARCH) including the FTS/bm25 filter path; new
+  `chunks(content_hash, …)` and `extractions(content_hash)` indexes;
+  `shared_db()` everywhere plus busy_timeout / page-cache / mmap pragmas.
 - **Disk-backed cache for `detect_scenes` + `transcript_messages` (260430)**:
   the slow steps in the accurate-mode video pipeline now persist across CLI
   invocations via `cachetools_ext.fs.FSLRUCache`. Implemented as an opt-in

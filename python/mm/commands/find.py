@@ -277,24 +277,25 @@ def _find_table(
         table = table.filter(mask)
 
     if depth is not None:
-        from mm.query import query_arrow_table
+        import pyarrow.compute as pc
 
-        table = query_arrow_table(table, f"SELECT * FROM files WHERE depth <= {depth}")
+        table = table.filter(pc.less_equal(table.column("depth"), depth))  # ty: ignore[unresolved-attribute]
 
     if sort:
-        from mm.query import query_arrow_table
-
-        order = "DESC" if reverse else "ASC"
-        table = query_arrow_table(table, f"SELECT * FROM files ORDER BY {sort} {order}")
+        table = table.sort_by([(sort, "descending" if reverse else "ascending")])
 
     cols = columns.split(",") if columns else None
+
+    def _column_lists(display_cols: list[str], n: int) -> dict[str, list]:
+        return {c: table.column(c).slice(0, n).to_pylist() for c in display_cols}
 
     if fmt in ("json", "dataset-jsonl", "dataset-hf"):
         from mm.display import emit_rows
 
         display_cols = cols or table.column_names
         n = table.num_rows if limit is None else min(limit, table.num_rows)
-        rows = [{c: table.column(c)[i].as_py() for c in display_cols} for i in range(n)]
+        data = _column_lists(display_cols, n)
+        rows = [{c: data[c][i] for c in display_cols} for i in range(n)]
         emit_rows(fmt, rows)
         return
 
@@ -307,15 +308,17 @@ def _find_table(
         writer = csv.writer(buf)
         writer.writerow(display_cols)
         n = table.num_rows if limit is None else min(limit, table.num_rows)
+        data = _column_lists(display_cols, n)
         for i in range(n):
-            writer.writerow(str(table.column(c)[i].as_py()) for c in display_cols)
+            writer.writerow(str(data[c][i]) for c in display_cols)
         print(buf.getvalue(), end="")
     elif fmt == "tsv":
         display_cols = cols or table.column_names
         n = table.num_rows if limit is None else min(limit, table.num_rows)
         print("\t".join(display_cols))
+        data = _column_lists(display_cols, n)
         for i in range(n):
-            print("\t".join(str(table.column(c)[i].as_py()) for c in display_cols))
+            print("\t".join(str(data[c][i]) for c in display_cols))
     else:
         from mm.display import arrow_table_to_rich, output_console
 

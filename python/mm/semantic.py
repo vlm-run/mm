@@ -55,9 +55,9 @@ def check_index_status(uris: list[str]) -> IndexStatus:
     if not uris:
         return status
 
-    from mm.store.db import MmDatabase
+    from mm.store.utils import shared_db
 
-    db = MmDatabase()
+    db = shared_db()
     vec_exists = db._connect.execute(
         "SELECT 1 FROM sqlite_master WHERE type='table' AND name='chunks_vec'"
     ).fetchone()
@@ -260,8 +260,8 @@ def search(
     """
     Embed query string and run KNN search, scoped by URI or prefix.
     """
-    from mm.store.db import MmDatabase
     from mm.store.embed import embed_texts
+    from mm.store.utils import shared_db
 
     vectors = embed_texts([query])
     if not vectors or not vectors[0]:
@@ -271,10 +271,14 @@ def search(
     if uri:
         where = f"c.file_uri = '{uri.replace(chr(39), chr(39) * 2)}'"
     elif uri_prefix:
-        where = f"c.file_uri LIKE '{uri_prefix.replace(chr(39), chr(39) * 2)}%'"
+        from mm.store.utils import prefix_range
+
+        lo, hi = prefix_range(uri_prefix)
+        lo, hi = lo.replace(chr(39), chr(39) * 2), hi.replace(chr(39), chr(39) * 2)
+        where = f"c.file_uri >= '{lo}' AND c.file_uri < '{hi}'"
 
     fetch_limit = max(limit * 10, 100) if (kind or ext) else limit * 2
-    raw = MmDatabase().search_similar(vectors[0], limit=fetch_limit, where=where)
+    raw = shared_db().search_similar(vectors[0], limit=fetch_limit, where=where)
     results = [
         {
             "path": r["file_uri"],

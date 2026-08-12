@@ -253,7 +253,9 @@ class Context:
     def db(self) -> MmDatabase:
         """Lazy-initialized global database connection."""
         if self._db is None:
-            self._db = MmDatabase()
+            from mm.store.utils import shared_db
+
+            self._db = shared_db()
         return self._db
 
     @property
@@ -491,7 +493,9 @@ class Context:
                 "or supply session_id=..."
             )
         if db is None:
-            db = MmDatabase()
+            from mm.store.utils import shared_db
+
+            db = shared_db()
         return db.get_file_by_ref(sid, rid)
 
     @staticmethod
@@ -616,33 +620,40 @@ class Context:
     ) -> Context:
         """Return a new directory-scan Context with filtered rows."""
         self._require_table("filter")
-        conditions: list[str] = []
+        import pyarrow as pa
+        import pyarrow.compute as pc
+
+        conditions = []
 
         if kind:
-            if "," in kind:
-                kinds = ", ".join(f"'{k.strip()}'" for k in kind.split(","))
-                conditions.append(f"kind IN ({kinds})")
-            else:
-                conditions.append(f"kind = '{kind}'")
+            kinds = [k.strip() for k in kind.split(",")]
+            col = self._table.column("kind")
+            conditions.append(
+                pc.is_in(col, value_set=pa.array(kinds))  # ty: ignore[unresolved-attribute]
+                if len(kinds) > 1
+                else pc.equal(col, kinds[0])  # ty: ignore[unresolved-attribute]
+            )
         if ext:
             if isinstance(ext, str):
                 ext = [e.strip() for e in ext.split(",")]
-            ext_list = ", ".join(f"'{e}'" for e in ext)
-            conditions.append(f"ext IN ({ext_list})")
+            col = self._table.column("ext")
+            conditions.append(
+                pc.is_in(col, value_set=pa.array(ext)) if len(ext) > 1 else pc.equal(col, ext[0])  # ty: ignore[unresolved-attribute]
+            )
         if min_size is not None:
             size_bytes = _parse_size(min_size) if isinstance(min_size, str) else min_size
-            conditions.append(f"size >= {size_bytes}")
+            conditions.append(pc.greater_equal(self._table.column("size"), size_bytes))  # ty: ignore[unresolved-attribute]
         if max_size is not None:
             size_bytes = _parse_size(max_size) if isinstance(max_size, str) else max_size
-            conditions.append(f"size <= {size_bytes}")
+            conditions.append(pc.less_equal(self._table.column("size"), size_bytes))  # ty: ignore[unresolved-attribute]
 
         if not conditions:
             return self
 
-        from mm.query import query_arrow_table
-
-        where_clause = " AND ".join(conditions)
-        filtered = query_arrow_table(self._table, f"SELECT * FROM files WHERE {where_clause}")
+        mask = conditions[0]
+        for cond in conditions[1:]:
+            mask = pc.and_(mask, cond)  # ty: ignore[unresolved-attribute]
+        filtered = self._table.filter(mask)
 
         new_ctx = object.__new__(Context)
         new_ctx.root = self.root

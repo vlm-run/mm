@@ -49,6 +49,14 @@ def now_us() -> int:
     return int(time.time() * 1_000_000)
 
 
+def prefix_range(prefix: str) -> tuple[str, str]:
+    """Half-open ``[lo, hi)`` bounds equivalent to ``LIKE prefix || '%'``,
+    but index-backed (SEARCH instead of full-table SCAN)."""
+    if not prefix:
+        return "", "\U0010ffff"
+    return prefix, prefix[:-1] + chr(ord(prefix[-1]) + 1)
+
+
 def get_extraction_id(
     content_hash: str,
     profile: str,
@@ -87,17 +95,16 @@ def prune_missing(
     if prefix is None and uris is None:
         raise ValueError("prune_missing requires either prefix or uris")
 
-    from mm.store.db import MmDatabase
-
     if db is None:
-        db = MmDatabase()
+        db = shared_db()
 
     if uris is not None:
         candidates = list(uris)
     else:
         assert prefix is not None
+        lo, hi = prefix_range(f"{prefix}/")
         rows = db._connect.execute(
-            "SELECT uri FROM files WHERE uri LIKE ?", (f"{prefix}/%",)
+            "SELECT uri FROM files WHERE uri >= ? AND uri < ?", (lo, hi)
         ).fetchall()
         candidates = [r[0] for r in rows]
 

@@ -248,6 +248,10 @@ CREATE INDEX IF NOT EXISTS idx_chunks_reassembly
 ON chunks (extraction_id, mode, chunk_idx);
 CREATE INDEX IF NOT EXISTS idx_chunks_file_lookup
 ON chunks (file_uri, content_hash, profile, model, mode, chunk_idx);
+CREATE INDEX IF NOT EXISTS idx_chunks_content_tier
+ON chunks (content_hash, mode, extraction_id, chunk_idx);
+CREATE INDEX IF NOT EXISTS idx_extractions_content_hash
+ON extractions (content_hash);
 """
 
 CHUNKS_FTS_DDL = """\

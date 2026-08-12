@@ -813,3 +813,37 @@ class TestPruneMissing:
         uri = str(tmp_path / "a.txt")
         assert db.delete_files([uri]) == 1
         assert db.delete_files([uri]) == 0
+
+
+class TestQueryPlans:
+    """uri predicates must use the PK index, not scan the global table."""
+
+    def test_uri_range_uses_index_search(self, db: MmDatabase):
+        from mm.store.utils import prefix_range
+
+        lo, hi = prefix_range("/test/data/")
+        plan = db._connect.execute(
+            "EXPLAIN QUERY PLAN SELECT uri FROM files WHERE uri >= ? AND uri < ?",
+            (lo, hi),
+        ).fetchone()[3]
+        assert "SEARCH" in plan and "SCAN" not in plan
+
+    def test_prefix_range_matches_like_semantics(self, db: MmDatabase):
+        from mm.store.utils import prefix_range
+
+        uris = ["/a/b/x.py", "/a/b/y.py", "/a/bc/z.py", "/a/c/w.py"]
+        for u in uris:
+            db._connect.execute(
+                "INSERT INTO files (uri, name, stem, ext, size, modified, created, mime, "
+                "kind, is_binary, depth, parent, indexed_at) "
+                "VALUES (?, '', '', '', 0, 0, 0, '', 'code', 0, 0, '', 0)",
+                (u,),
+            )
+        lo, hi = prefix_range("/a/b/")
+        got = {
+            r[0]
+            for r in db._connect.execute(
+                "SELECT uri FROM files WHERE uri >= ? AND uri < ?", (lo, hi)
+            ).fetchall()
+        }
+        assert got == {"/a/b/x.py", "/a/b/y.py"}

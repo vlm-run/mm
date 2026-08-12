@@ -13,7 +13,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from mm.store.db import MmDatabase
+from mm.store.utils import shared_db
 
 
 def fts_search(
@@ -30,7 +30,7 @@ def fts_search(
     if not q:
         return []
 
-    rows = MmDatabase().search_chunks_fts(
+    rows = shared_db().search_chunks_fts(
         q, uri=uri, uri_prefix=uri_prefix, kind=kind, ext=ext, limit=limit
     )
     return [

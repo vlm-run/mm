@@ -244,3 +244,30 @@ def test_bench_bm25_search(benchmark, tmp_path_factory: pytest.TempPathFactory):
     db = MmDatabase(db_path=db_path)
     rows = benchmark(db.search_chunks_bm25, "quantum entanglement", limit=10)
     assert len(rows) > 0
+
+
+def test_bench_ab_filter_pc_vs_sqlite(benchmark, large_tree: Path):
+    """pyarrow.compute Context.filter vs the SQLite round-trip it replaced."""
+    from mm.context import Context
+    from mm.query import query_arrow_table
+
+    ctx = Context(large_tree)
+    ctx.filter(kind="code")
+
+    sqlite_rows = query_arrow_table(
+        ctx.to_arrow(), "SELECT * FROM files WHERE kind = 'code'"
+    ).num_rows
+    result = benchmark(ctx.filter, kind="code")
+    assert result.num_files == sqlite_rows
+
+
+def test_bench_ab_filter_sqlite_reference(benchmark, large_tree: Path):
+    """SQLite round-trip reference for the filter bench above."""
+    from mm.context import Context
+    from mm.query import query_arrow_table
+
+    ctx = Context(large_tree)
+    table = ctx.to_arrow()
+
+    result = benchmark(query_arrow_table, table, "SELECT * FROM files WHERE kind = 'code'")
+    assert result.num_rows > 0

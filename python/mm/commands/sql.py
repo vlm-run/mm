@@ -102,16 +102,16 @@ def _detect_table(query: str) -> str:
 
 def _query_stored(query: str, fmt: str) -> None:
     """Query persistent SQLite tables (extractions, chunks)."""
-    from mm.store.db import MmDatabase
+    from mm.store.utils import shared_db
 
-    columns, rows = MmDatabase().sql(query)
+    columns, rows = shared_db().sql(query)
     _emit(columns, rows, fmt)
 
 
 def _query_files(query: str, directory: Path, fmt: str, *, pre_index: bool = False) -> None:
     """Query the files table from the persistent DB. Show diff of unindexed files."""
     from mm.context import Context
-    from mm.store.db import MmDatabase
+    from mm.store.utils import shared_db
 
     resolved = directory.resolve()
     prefix = str(resolved)
@@ -119,7 +119,7 @@ def _query_files(query: str, directory: Path, fmt: str, *, pre_index: bool = Fal
     if pre_index:
         ctx.save()
 
-    db = MmDatabase()
+    db = shared_db()
 
     # Reconcile: drop rows under *prefix* whose files no longer exist on disk.
     # Uses the directory walk as a hint so only stale candidates get stat'd.
@@ -129,8 +129,7 @@ def _query_files(query: str, directory: Path, fmt: str, *, pre_index: bool = Fal
     prune_missing(prefix=prefix, disk_uris=disk_uris, db=db)
 
     # Query indexed files scoped to this directory from the persistent store
-    safe_prefix = prefix.replace("'", "''")
-    indexed_rows = db.get_files(where=f"uri LIKE '{safe_prefix}/%'")
+    indexed_rows = db.get_files_under(prefix)
 
     if indexed_rows:
         # Load indexed rows into an in-memory SQLite table and run the user's query
@@ -144,13 +143,10 @@ def _query_files(query: str, directory: Path, fmt: str, *, pre_index: bool = Fal
         _emit([], [], fmt)
         console.print("\n[bold]No indexed files[/bold]\n---")
 
-    # Compute diff: files on disk but not in DB (when NOT pre-indexing)
+    # Compute diff: files on disk but not in DB (when NOT pre-indexing).
+    # Reuses the rows already fetched above — no third table scan.
     if not pre_index:
-        db_uris_rows = db._connect.execute(
-            "SELECT uri FROM files WHERE uri LIKE ?", (f"{prefix}/%",)
-        ).fetchall()
-
-        db_uris = {r[0] for r in db_uris_rows}
+        db_uris = {r["uri"] for r in indexed_rows}
         if unindexed := sorted(disk_uris - db_uris):
             _show_unindexed_diff(unindexed, prefix, query, directory)
 
@@ -243,9 +239,9 @@ def _query_dicts_as_files(rows: list[dict[str, Any]], query: str) -> tuple[list[
 
 
 def _list_tables(fmt: str) -> None:
-    from mm.store.db import MmDatabase
+    from mm.store.utils import shared_db
 
-    db = MmDatabase()
+    db = shared_db()
     counts = {}
     for name in ("extractions", "chunks"):
         row = db._connect.execute(f"SELECT COUNT(*) FROM {name}").fetchone()
