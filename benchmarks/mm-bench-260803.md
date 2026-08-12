@@ -1,7 +1,7 @@
 # mm-bench-260803 — storage write path
 
 4-core VM, Python 3.12, release build. Fixture: 300 x 200-line `.py` +
-40 x 640x480 PNG. Baseline = PR #181 head (`a43edfb`).
+40 x 640x480 PNG.
 
 | Operation | Baseline | Now | Speedup |
 | :--- | ---: | ---: | ---: |

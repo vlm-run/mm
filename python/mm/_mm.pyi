@@ -92,10 +92,7 @@ def extract_metadata_one(path: str | Path) -> MetadataResult:
     ...
 
 def scan_one(path: str | Path) -> dict[str, Any] | None:
-    """Scan-level metadata row (kind/mime/sizes/timestamps/image dims) for one file.
-
-    No directory walk. Returns None if the path cannot be stat'd or is not a file.
-    """
+    """Scan-level metadata row (kind/mime/sizes/timestamps/image dims) for one file. No directory walk."""
     ...
 
 def directory_hash(path: str) -> str | None:
