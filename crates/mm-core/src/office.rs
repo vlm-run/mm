@@ -1,10 +1,11 @@
 //! Office document conversion and parsing via [`libreoffice-pure`].
 //!
 //! Surfaces:
-//! - [`convert_to_pdf`] — any supported document → PDF on disk.
-//! - [`content`]        — content only (skips metadata work).
-//! - [`metadata`]       — metadata only (skips content rendering).
-//! - [`parse_full`]     — content + metadata.
+//! - [`convert_to_pdf`] — any supported document → PDF on disk (accurate-mode `mm cat`).
+//! - [`metadata`]       — document properties (`mm peek --full`).
+//!
+//! Content extraction (office → markdown) lives on the Python side via the
+//! `anydoc` binding; this module deliberately exposes no content surface.
 
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -39,12 +40,6 @@ pub struct OfficeMetadata {
     pub pages: Option<usize>,
 }
 
-#[derive(Clone, Debug, Default)]
-pub struct OfficeDoc {
-    pub content: String,
-    pub metadata: OfficeMetadata,
-}
-
 /// Convert any `libreoffice-pure`–supported document to PDF and write it to `output`.
 ///
 /// Returns the path the PDF was written to.
@@ -59,29 +54,13 @@ pub fn convert_to_pdf(input: &Path, output: &Path) -> Result<PathBuf, OfficeErro
     Ok(output.to_path_buf())
 }
 
-/// Extract just the textual content of a supported document.
-pub fn content(input: &Path) -> Result<String, OfficeError> {
-    Ok(load(input)?.content())
-}
-
 /// Extract just the core metadata of a supported document.
+///
+/// Supported formats: `docx`, `doc`, `odt`, `xlsx`, `ods`, `pptx`, `odp`.
 pub fn metadata(input: &Path) -> Result<OfficeMetadata, OfficeError> {
     let doc = load(input)?;
     let pages = doc.pages();
     Ok(meta_from(doc.meta_ref(), pages))
-}
-
-/// Extract content + metadata in one pass.
-///
-/// Supported formats: `docx`, `doc`, `odt`, `xlsx`, `ods`, `pptx`, `odp`.
-pub fn parse_full(input: &Path) -> Result<OfficeDoc, OfficeError> {
-    let doc = load(input)?;
-    let pages = doc.pages();
-    let metadata = meta_from(doc.meta_ref(), pages);
-    Ok(OfficeDoc {
-        content: doc.content(),
-        metadata,
-    })
 }
 
 enum Family {
@@ -91,14 +70,6 @@ enum Family {
 }
 
 impl Family {
-    fn content(&self) -> String {
-        match self {
-            Family::Writer(d) => lo_writer::to_plain_text(d),
-            Family::Calc(w) => lo_calc::to_markdown(w),
-            Family::Impress(p) => lo_impress::to_markdown(p),
-        }
-    }
-
     fn meta_ref(&self) -> &Metadata {
         match self {
             Family::Writer(d) => &d.meta,
@@ -177,22 +148,20 @@ mod tests {
     fn unsupported_format_rejected() {
         let path = Path::new("/tmp/mm-office-test.bogus");
         std::fs::write(path, b"hello").unwrap();
-        let err = parse_full(path).unwrap_err();
+        let err = metadata(path).unwrap_err();
         assert!(matches!(err, OfficeError::UnsupportedFormat(_)));
         let _ = std::fs::remove_file(path);
     }
 
     #[test]
     fn missing_file_io_error() {
-        let err = parse_full(Path::new("/nonexistent/doc.docx")).unwrap_err();
-        assert!(matches!(err, OfficeError::Io(_)));
-    }
-
-    #[test]
-    fn content_and_metadata_are_independent() {
-        let err = content(Path::new("/nonexistent/doc.docx")).unwrap_err();
-        assert!(matches!(err, OfficeError::Io(_)));
         let err = metadata(Path::new("/nonexistent/doc.docx")).unwrap_err();
+        assert!(matches!(err, OfficeError::Io(_)));
+        let err = convert_to_pdf(
+            Path::new("/nonexistent/doc.docx"),
+            Path::new("/tmp/mm-office-test-out.pdf"),
+        )
+        .unwrap_err();
         assert!(matches!(err, OfficeError::Io(_)));
     }
 }

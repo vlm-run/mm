@@ -1,7 +1,7 @@
 """page-text encoder: structured text extraction per page.
 
 Extracts text from PDF pages via pypdfium2, and converts office documents
-(docx/odt/pptx/odp/xlsx/ods) to GitHub-Flavored Markdown via the
+(docx/odt/pptx/odp/xlsx/ods) to markdown via the
 ``anydoc`` binding. Yields structured text messages. No rasterization —
 much lighter than ``rasterize`` or ``rasterize-text``.
 

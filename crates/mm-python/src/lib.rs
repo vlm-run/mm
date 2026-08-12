@@ -446,33 +446,6 @@ impl OfficeMetadata {
     }
 }
 
-#[pyclass]
-#[derive(Clone)]
-struct OfficeDoc {
-    #[pyo3(get)]
-    content: String,
-    #[pyo3(get)]
-    meta: OfficeMetadata,
-}
-
-#[pymethods]
-impl OfficeDoc {
-    fn __repr__(&self) -> String {
-        let pages = self
-            .meta
-            .pages
-            .map(|p| p.to_string())
-            .unwrap_or_else(|| "None".to_string());
-        format!(
-            "OfficeDoc(title={:?}, author={:?}, pages={}, content_len={})",
-            self.meta.title,
-            self.meta.author,
-            pages,
-            self.content.len()
-        )
-    }
-}
-
 fn meta_to_py(m: mm_core::office::OfficeMetadata) -> OfficeMetadata {
     OfficeMetadata {
         author: m.author,
@@ -486,33 +459,13 @@ fn meta_to_py(m: mm_core::office::OfficeMetadata) -> OfficeMetadata {
     }
 }
 
-/// Extract just the content of a docx/pptx/xlsx/odt/ods/odp/doc/pdf.
-#[pyfunction]
-fn office_content(path: String) -> PyResult<String> {
-    let p = std::path::Path::new(&path);
-    mm_core::office::content(p)
-        .map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(e.to_string()))
-}
-
-/// Extract just the metadata of a docx/pptx/xlsx/odt/ods/odp/doc/pdf.
+/// Extract just the metadata of a docx/pptx/xlsx/odt/ods/odp/doc file.
 #[pyfunction]
 fn office_metadata(path: String) -> PyResult<OfficeMetadata> {
     let p = std::path::Path::new(&path);
     let m = mm_core::office::metadata(p)
         .map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(e.to_string()))?;
     Ok(meta_to_py(m))
-}
-
-/// Parse a docx/pptx/xlsx/odt/ods/odp/doc/pdf and return content + metadata.
-#[pyfunction]
-fn office_parse_full(path: String) -> PyResult<OfficeDoc> {
-    let p = std::path::Path::new(&path);
-    let doc = mm_core::office::parse_full(p)
-        .map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(e.to_string()))?;
-    Ok(OfficeDoc {
-        content: doc.content,
-        meta: meta_to_py(doc.metadata),
-    })
 }
 
 /// Convert a supported office document to PDF and write it to `output`.
@@ -533,11 +486,8 @@ fn office_to_pdf(input: String, output: String) -> PyResult<String> {
 fn mm_module(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<Scanner>()?;
     m.add_class::<MetadataResult>()?;
-    m.add_class::<OfficeDoc>()?;
     m.add_class::<OfficeMetadata>()?;
-    m.add_function(wrap_pyfunction!(office_content, m)?)?;
     m.add_function(wrap_pyfunction!(office_metadata, m)?)?;
-    m.add_function(wrap_pyfunction!(office_parse_full, m)?)?;
     m.add_function(wrap_pyfunction!(office_to_pdf, m)?)?;
     m.add_function(wrap_pyfunction!(hamming_distance, m)?)?;
     m.add_function(wrap_pyfunction!(content_hash, m)?)?;

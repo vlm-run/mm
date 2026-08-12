@@ -61,7 +61,7 @@ Rust core for speed, Python for developer experience, Unix philosophy for compos
 - faster-whisper — Whisper transcription (CTranslate2 backend)
 - scenedetect — shot/scene boundary detection (opencv-python bundled since 0.7)
 - ctranslate2 — CTranslate2 inference runtime (for faster-whisper)
-- firecrawl-anydoc — Office Docs → GitHub-Flavored Markdown (fast mode)
+- firecrawl-anydoc — Office Docs → markdown (fast mode)
 - libreoffice-rs — Office → PDF conversion (accurate mode) + document metadata
 
 **Python (mm[mlx]):**
@@ -340,7 +340,7 @@ Columns (`files` in SQLite / `mm sql`): same but primary key is `uri` (absolute 
   short description). Audio fast = Whisper transcript only. PDFs
   (`kind=document` with `.pdf` ext) = pypdfium2 page-text via the
   `page-text` encoder. Office documents (`.docx` / `.pptx` / `.xlsx` /
-  `.odt` / `.odp` / `.ods`) = GitHub-Flavored Markdown via anydoc
+  `.odt` / `.odp` / `.ods`) = markdown via anydoc
   (no LLM). `kind=text` = passthrough text.
   Pipeline-driven via `pipelines/{kind}/fast.yaml` for the binary
   kinds; passthrough handled directly by `cat_utils/extract_meta.py::extract_text`.
