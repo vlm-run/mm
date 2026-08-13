@@ -135,22 +135,8 @@ class OfficeMetadata:
     modified: str
     pages: int | None
 
-class OfficeDoc:
-    """Office document content + metadata extracted via libreoffice-pure."""
-
-    content: str
-    meta: OfficeMetadata
-
-def office_content(path: str) -> str:
-    """Extract just the content of a docx/doc/odt/pdf/xlsx/ods/pptx/odp file."""
-    ...
-
 def office_metadata(path: str) -> OfficeMetadata:
-    """Extract just the metadata of a docx/doc/odt/pdf/xlsx/ods/pptx/odp file."""
-    ...
-
-def office_parse_full(path: str) -> OfficeDoc:
-    """Parse a docx/doc/odt/pdf/xlsx/ods/pptx/odp file and return content + metadata."""
+    """Extract just the metadata of a docx/doc/odt/xlsx/ods/pptx/odp file."""
     ...
 
 def office_to_pdf(input: str, output: str) -> str:

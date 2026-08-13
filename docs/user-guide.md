@@ -139,7 +139,7 @@ mm peek report.pdf --full      # opt in to document author / title / subject / k
 # mm cat: content extraction. Default --mode fast.
 mm cat report.pdf              # PDF page-text via pypdfium2 (fast pipeline)
 mm cat src/main.py             # passthrough text
-mm cat notes.docx              # libreoffice-rs text
+mm cat notes.docx              # anydoc markdown
 mm cat image.jpg               # short VLM caption (fast pipeline)
 mm cat video.mp4               # mosaic → short VLM description (fast pipeline)
 

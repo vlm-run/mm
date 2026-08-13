@@ -135,9 +135,9 @@ def _local_document(path: Path) -> str:
         from mm.constants import OFFICE_EXTS
 
         if ext in OFFICE_EXTS:
-            from mm._mm import office_content
+            import anydoc
 
-            return office_content(str(path))
+            return anydoc.to_markdown(str(path))
         else:
             return path.read_text(errors="replace")
     except Exception as e:

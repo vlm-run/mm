@@ -1,9 +1,9 @@
 """page-text encoder: structured text extraction per page.
 
-Extracts text from PDF pages via pypdfium2, and from office documents
-(docx/odt/pptx/odp/xlsx/ods) via the libreoffice-pure-backed
-``mm._mm.office_content`` surface. Yields structured text messages.
-No rasterization — much lighter than ``rasterize`` or ``rasterize-text``.
+Extracts text from PDF pages via pypdfium2, and converts office documents
+(docx/odt/pptx/odp/xlsx/ods) to markdown via the
+``anydoc`` binding. Yields structured text messages. No rasterization —
+much lighter than ``rasterize`` or ``rasterize-text``.
 
 This is the default document encoder for fast mode.
 """
@@ -30,8 +30,8 @@ class DocumentPageText(Encoder):
 
     For PDFs, uses pypdfium2 to extract text page by page, batching
     ``pages_per_message`` pages into each Message. For office docs
-    (docx/odt/pptx/odp/xlsx/ods), uses the libreoffice-pure–backed
-    ``office_content`` and yields the full text in one Message.
+    (docx/odt/pptx/odp/xlsx/ods), uses ``anydoc.to_markdown`` and yields
+    the full document as Markdown in one Message.
 
     Kwargs:
         pages_per_message: Pages per Message for PDFs (default 128).
@@ -129,9 +129,9 @@ class DocumentPageText(Encoder):
 
     def _encode_office(self, path: Path) -> Iterable[Message]:
         try:
-            from mm._mm import office_content
+            import anydoc
 
-            text = office_content(str(path))
+            text = anydoc.to_markdown(str(path))
         except Exception as e:
             yield _to_message(
                 [

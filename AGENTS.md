@@ -61,7 +61,8 @@ Rust core for speed, Python for developer experience, Unix philosophy for compos
 - faster-whisper — Whisper transcription (CTranslate2 backend)
 - scenedetect — shot/scene boundary detection (opencv-python bundled since 0.7)
 - ctranslate2 — CTranslate2 inference runtime (for faster-whisper)
-- libreoffice-rs — Office Docs text extraction
+- firecrawl-anydoc — Office Docs → markdown (fast mode)
+- libreoffice-rs — Office → PDF conversion (accurate mode) + document metadata
 
 **Python (mm[mlx]):**
 - mlx — Apple Metal GPU acceleration
@@ -290,13 +291,13 @@ The following commands were merged into the core commands:
 
 ### cat modes (auto-detected from file type × mode)
 
-`--mode` is one of `fast` (default) or `accurate`. For raw file metadata (dimensions / EXIF / codec / mime / hash), use `mm peek`. Mode is a no-op for `kind=text` and non-PDF documents (`.docx` / `.pptx`): they always return passthrough text.
+`--mode` is one of `fast` (default) or `accurate`. For raw file metadata (dimensions / EXIF / codec / mime / hash), use `mm peek`. Mode is a no-op for `kind=text` only: code/text always return passthrough text. Office documents (`.docx` / `.pptx` / `.xlsx` / `.odt` / `.odp` / `.ods`) are anydoc markdown passthrough in fast mode but run the LLM pipeline in accurate mode (office → PDF → page-text → LLM markdown structuring).
 
-- `mm cat file` — fast pipeline (default; passthrough text for code / non-PDF docs)
+- `mm cat file` — fast pipeline (default; passthrough for code/text, anydoc markdown for office docs)
 - `mm cat file -n 20` — first 20 lines (head)
 - `mm cat file -n -20` — last 20 lines (tail)
-- `mm cat file -m fast` — kind's fast pipeline (image/video: short LLM caption; PDF: page-text via pypdfium2; audio: Whisper transcript (no LLM); code/text/docx/pptx: passthrough)
-- `mm cat file -m accurate` — LLM-generated caption/description (image/video/PDF); audio: Whisper transcript only unless using `-p native` or `-p gemini-native`; passthrough for code/text/docx/pptx
+- `mm cat file -m fast` — kind's fast pipeline (image/video: short LLM caption; PDF: page-text via pypdfium2; audio: Whisper transcript (no LLM); code/text: passthrough; docx/pptx/xlsx/odt/odp/ods: anydoc markdown, no LLM)
+- `mm cat file -m accurate` — LLM-generated caption/description (image/video/PDF); audio: Whisper transcript only unless using `-p native` or `-p gemini-native`; office docs: office → PDF → page-text → LLM markdown structuring; passthrough for code/text
 - `mm cat video.mp4 -m accurate` — auto-generates keyframe mosaic → LLM description
 - `mm cat photo.png -p resize` — encode with named encoder
 - `mm cat photo.png -m accurate -p my-pipeline.yaml` — custom pipeline YAML
@@ -338,16 +339,18 @@ Columns (`files` in SQLite / `mm sql`): same but primary key is `uri` (absolute 
   an LLM with a short prompt — images and videos do (short caption /
   short description). Audio fast = Whisper transcript only. PDFs
   (`kind=document` with `.pdf` ext) = pypdfium2 page-text via the
-  `page-text` encoder. Non-PDF documents (`.docx` / `.pptx`) and
-  `kind=text` = passthrough text.
+  `page-text` encoder. Office documents (`.docx` / `.pptx` / `.xlsx` /
+  `.odt` / `.odp` / `.ods`) = markdown via anydoc
+  (no LLM). `kind=text` = passthrough text.
   Pipeline-driven via `pipelines/{kind}/fast.yaml` for the binary
   kinds; passthrough handled directly by `cat_utils/extract_meta.py::extract_text`.
 - **cat accurate**: LLM-powered descriptions via OpenAI-compatible
   API. Images → VLM caption. Videos → mosaic → VLM description.
   Audio → Whisper transcript only (default `transcribe` encoder suppresses LLM; use `-p native` or `-p gemini-native` for LLM description). PDFs → page-text → LLM markdown
-  structuring. Non-PDF documents and `kind=text` ignore mode and
-  follow the same passthrough flow as fast. Requires a configured
-  profile (`mm profile add/update`). Pipeline-driven via
+  structuring. Office documents → PDF (via `office_to_pdf`,
+  libreoffice-rs) → page-text → LLM markdown structuring. `kind=text`
+  ignores mode and follows the same passthrough flow as fast. Requires
+  a configured profile (`mm profile add/update`). Pipeline-driven via
   `pipelines/{kind}/accurate.yaml` for the binary kinds.
 
 ## Python API
