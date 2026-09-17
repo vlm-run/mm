@@ -117,7 +117,7 @@ Anything passed via `mm cat --generate.extra-body '<json>'` **deep-merges
 on top** of the pipeline-level `extra_body`, so per-call CLI flags can
 override individual keys without discarding the YAML defaults. The
 combined `extra_body` (along with the resolved `model`) is included in
-the L2 cache key so cached results are invalidated when knobs change.
+the extraction cache key so cached results are invalidated when knobs change.
 
 ## Override surfaces — full precedence rules
 

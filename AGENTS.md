@@ -134,7 +134,7 @@ mm/
 │   ├── refs_messages.py        # Ref → message rendering
 │   ├── fts.py                  # FTS search (backed by SQLite FTS5)
 │   ├── semantic.py             # Semantic (vector) search
-│   ├── cache.py                # L2 result cache
+│   ├── cache.py                # File-fingerprint memoization (in-memory + disk)
 │   ├── sysinfo.py              # Host system info collection
 │   ├── common/                 # Shared utilities
 │   │   └── video/

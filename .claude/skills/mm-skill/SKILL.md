@@ -180,7 +180,7 @@ mm cat FILE... [-m fast|accurate] [-p PIPELINE]... [-n N] [-o DIR]
 | `--pipeline` / `-p` | Encoder name OR pipeline YAML path. Repeatable (dispatched by `kind`). |
 | `-n N` | Head/tail: `+N` = first N lines, `-N` = last N lines. |
 | `--output-dir` / `-o` | Write generated artifacts to dir. |
-| `--no-cache` | Bypass L2 cache; force fresh run. |
+| `--no-cache` | Bypass the extraction cache; force fresh run. |
 | `--no-generate` | Skip the generate (LLM) step; emit encoder text parts only. |
 | `--stream` | Stream LLM tokens to stdout as they arrive. Takes precedence over `--format`. |
 | `--verbose` / `-v` | Show pipeline tree (encode/generate timings). |
@@ -259,7 +259,7 @@ profile (mm.toml)  →  pipeline YAML (generate.*)  →  encoder generate[mode] 
                        extra_body (deep-merged)                                     --generate.extra-body
 ```
 
-`base_url` and `api_key` are profile-only. The merged `model` + `extra_body` participate in the L2 cache key.
+`base_url` and `api_key` are profile-only. The merged `model` + `extra_body` participate in the extraction cache key.
 
 ### Built-in encoders
 

@@ -44,16 +44,16 @@ echo "Data: ${DIR} (${FILE_COUNT} files, $(du -sh "${DIR}" | awk '{print $1}'))"
 echo ""
 
 # ===========================================================================
-# L0: find
+# metadata: find
 # ===========================================================================
-echo "--- L0: mm find ---"
+echo "--- metadata: mm find ---"
 hyperfine --warmup 2 --min-runs 10 \
   "mm find ${DIR}" \
   "mm find ${DIR} --tree --depth 1" \
   "mm find ${DIR} --format json"
 
 echo ""
-echo "--- L0: mm find vs find ---"
+echo "--- metadata: mm find vs find ---"
 hyperfine --warmup 2 --min-runs 10 \
   --command-name "mm find (tsv)" \
     "mm find ${DIR} --format tsv" \
@@ -67,10 +67,10 @@ hyperfine --warmup 2 --min-runs 10 \
     "find ${DIR} -type f -exec file --brief --mime-type {} +"
 
 # ===========================================================================
-# L0: wc
+# metadata: wc
 # ===========================================================================
 echo ""
-echo "--- L0: mm wc vs wc/du ---"
+echo "--- metadata: mm wc vs wc/du ---"
 hyperfine --warmup 2 --min-runs 10 \
   --command-name "mm wc" \
     "mm wc ${DIR}" \
@@ -82,10 +82,10 @@ hyperfine --warmup 2 --min-runs 10 \
     "du -sh ${DIR}"
 
 # ===========================================================================
-# L0: SQL
+# metadata: SQL
 # ===========================================================================
 echo ""
-echo "--- L0: SQL ---"
+echo "--- metadata: SQL ---"
 hyperfine --warmup 2 --min-runs 10 \
   "mm sql 'SELECT kind, COUNT(*) as n FROM files GROUP BY kind' --dir ${DIR}" \
   "mm sql 'SELECT ext, SUM(size) as total FROM files GROUP BY ext ORDER BY total DESC' --dir ${DIR}"
