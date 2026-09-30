@@ -250,6 +250,25 @@ CREATE INDEX IF NOT EXISTS idx_chunks_file_lookup
 ON chunks (file_uri, content_hash, profile, model, mode, chunk_idx);
 """
 
+CHUNKS_FTS_DDL = """\
+CREATE VIRTUAL TABLE IF NOT EXISTS chunks_fts USING fts5(
+    chunk_text,
+    content='chunks',
+    content_rowid='id',
+    tokenize='trigram'
+);
+CREATE TRIGGER IF NOT EXISTS chunks_fts_ai AFTER INSERT ON chunks BEGIN
+    INSERT INTO chunks_fts(rowid, chunk_text) VALUES (new.id, new.chunk_text);
+END;
+CREATE TRIGGER IF NOT EXISTS chunks_fts_ad AFTER DELETE ON chunks BEGIN
+    INSERT INTO chunks_fts(chunks_fts, rowid, chunk_text) VALUES('delete', old.id, old.chunk_text);
+END;
+CREATE TRIGGER IF NOT EXISTS chunks_fts_au AFTER UPDATE ON chunks BEGIN
+    INSERT INTO chunks_fts(chunks_fts, rowid, chunk_text) VALUES('delete', old.id, old.chunk_text);
+    INSERT INTO chunks_fts(rowid, chunk_text) VALUES (new.id, new.chunk_text);
+END;
+"""
+
 FILES_TABLE = "files"
 EXTRACTIONS_TABLE = "extractions"
 CHUNKS_TABLE = "chunks"
