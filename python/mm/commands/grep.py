@@ -77,6 +77,7 @@ def grep_cmd(
     fmt = resolve_format(format.value if format else None)
     stdin_paths = read_paths_from_stdin()
     _directory = directory or Path("./")
+    _dir_str = str(_directory) if _directory != Path(".") else ""
 
     # Smart-case: default to case-insensitive matching when -i is not passed and the pattern has no uppercase
     # letters. Any uppercase letter in the pattern preserves case-sensitivity
@@ -157,7 +158,7 @@ def grep_cmd(
                     file_match_count += 1
                     if not count:
                         match_entry: dict = {
-                            "path": f.path,
+                            "path": f"{_dir_str}/{f.path}" if _dir_str else f.path,
                             "line_number": i + 1,
                             "line": line,
                         }
@@ -168,7 +169,8 @@ def grep_cmd(
                         all_matches.append(match_entry)
 
             if file_match_count > 0:
-                file_counts[f.path] = file_match_count
+                display_path = f"{_dir_str}/{f.path}" if _dir_str else f.path
+                file_counts[display_path] = file_match_count
         except Exception:
             continue
 
@@ -184,6 +186,7 @@ def grep_cmd(
                 rel_path = str(Path(rel_path).relative_to(scan_root))
             except ValueError:
                 pass
+            display_path = f"{_dir_str}/{rel_path}" if _dir_str else rel_path
             key = (rel_path, r["index"])
             if key in seen_chunk_keys:
                 continue
@@ -206,8 +209,8 @@ def grep_cmd(
                         line_text += "..."
                 else:
                     line_text = f"{raw[:90]}...{raw[-50:]}" if len(raw) > 140 else raw[:140]
-            all_matches.append({"path": rel_path, "line_number": r["index"], "line": line_text})
-            file_counts[rel_path] = file_counts.get(rel_path, 0) + 1
+            all_matches.append({"path": display_path, "line_number": r["index"], "line": line_text})
+            file_counts[display_path] = file_counts.get(display_path, 0) + 1
 
     # FTS5 token search over indexed chunks — Silent on missing FTS5 / empty index.
     if has_indexable:

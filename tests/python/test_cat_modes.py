@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from time import perf_counter
 from unittest.mock import MagicMock, patch
 
 from mm.cat_utils.base_utils import CatMode, CatOpts, RunResult
@@ -22,6 +23,8 @@ def _make_opts(mode: CatMode, **overrides: object) -> CatOpts:
         pipelines={},
         verbose=False,
         dry_run=False,
+        stream=False,
+        report=False,
     )
     defaults.update(overrides)
     return CatOpts(**defaults)
@@ -97,7 +100,7 @@ class TestExtractDispatch:
     def test_fast_text(self, tmp_path):
         f = tmp_path / "test.txt"
         f.write_text("hello world")
-        result = _extract(f, _make_opts("fast"))
+        result, _ = _extract(f, _make_opts("fast"))
         assert "hello world" in result
 
     def test_text_short_circuits_pipeline(self, tmp_path, isolated_db):
@@ -105,11 +108,11 @@ class TestExtractDispatch:
         f = tmp_path / "test.txt"
         f.write_text("hello world")
         with (
-            patch("mm.commands.cat._run_fast") as fast_mock,
-            patch("mm.commands.cat._run_accurate") as accurate_mock,
+            patch("mm.commands.cat_extract.run_fast") as fast_mock,
+            patch("mm.commands.cat_extract.run_accurate") as accurate_mock,
         ):
             for mode in ("fast", "accurate"):
-                result = _extract(f, _make_opts(mode))
+                result, _ = _extract(f, _make_opts(mode))
                 assert "hello world" in result
         fast_mock.assert_not_called()
         accurate_mock.assert_not_called()
@@ -125,10 +128,10 @@ class TestExtractDispatch:
                 "mm.cat_utils.extract_meta.extract_meta",
                 return_value="docx body text",
             ),
-            patch("mm.commands.cat._run_fast") as fast_mock,
-            patch("mm.commands.cat._run_accurate") as accurate_mock,
+            patch("mm.commands.cat_extract.run_fast") as fast_mock,
+            patch("mm.commands.cat_extract.run_accurate") as accurate_mock,
         ):
-            result = _extract(f, _make_opts("fast"))
+            result, _ = _extract(f, _make_opts("fast"))
             assert result == "docx body text"
         fast_mock.assert_not_called()
         accurate_mock.assert_not_called()
@@ -160,10 +163,12 @@ class TestExtractDispatch:
             cm3,
             cm4,
             patch("mm._mm.office_to_pdf", side_effect=_fake_to_pdf),
-            patch("mm.commands.cat._run_accurate", side_effect=_capture_run) as accurate_mock,
-            patch("mm.commands.cat._run_fast") as fast_mock,
+            patch(
+                "mm.commands.cat_extract.run_accurate", side_effect=_capture_run
+            ) as accurate_mock,
+            patch("mm.commands.cat_extract.run_fast") as fast_mock,
         ):
-            result = _extract(f, _make_opts("accurate"))
+            result, _ = _extract(f, _make_opts("accurate"))
             assert result == "structured markdown"
         fast_mock.assert_not_called()
         accurate_mock.assert_called_once()
@@ -177,10 +182,10 @@ class TestExtractDispatch:
         f = tmp_path / "test.jpg"
         f.write_bytes(b"\xff\xd8\xff" + b"\x00" * 100)
         cm1, cm2, cm3, cm4 = _mock_cache_miss()
-        with cm1, cm2, cm3, cm4, patch("mm.commands.cat._run_fast") as mock:
+        with cm1, cm2, cm3, cm4, patch("mm.commands.cat_extract.run_fast") as mock:
             mock.return_value = RunResult(content="mocked fast result")
             opts = _make_opts("fast")
-            result = _extract(f, opts)
+            result, _ = _extract(f, opts)
             # _extract now resolves+merges the pipeline once and forwards it.
             assert mock.call_count == 1
             args, kwargs = mock.call_args
@@ -196,10 +201,10 @@ class TestExtractDispatch:
         f = tmp_path / "test.jpg"
         f.write_bytes(b"\xff\xd8\xff" + b"\x00" * 100)
         cm1, cm2, cm3, cm4 = _mock_cache_miss()
-        with cm1, cm2, cm3, cm4, patch("mm.commands.cat._run_accurate") as mock:
+        with cm1, cm2, cm3, cm4, patch("mm.commands.cat_extract.run_accurate") as mock:
             mock.return_value = RunResult(content="mocked accurate result")
             opts = _make_opts("accurate")
-            result = _extract(f, opts)
+            result, _ = _extract(f, opts)
             assert mock.call_count == 1
             args, _ = mock.call_args
             assert args[0] == f
@@ -214,10 +219,10 @@ class TestExtractDispatch:
         f = tmp_path / "test.pdf"
         f.write_bytes(b"%PDF-1.4 fake")
         cm1, cm2, cm3, cm4 = _mock_cache_miss()
-        with cm1, cm2, cm3, cm4, patch("mm.commands.cat._run_accurate") as mock:
+        with cm1, cm2, cm3, cm4, patch("mm.commands.cat_extract.run_accurate") as mock:
             mock.return_value = RunResult(content="summary of document")
             opts = _make_opts("accurate")
-            result = _extract(f, opts)
+            result, _ = _extract(f, opts)
             assert mock.call_count == 1
             args, _ = mock.call_args
             assert args[0] == f
@@ -257,17 +262,17 @@ class TestVerboseCacheReplay:
             return RunResult(content="cached body", verbose_suffix=suffix)
 
         # Cold run with verbose=False → populates cache + metadata.
-        with patch("mm.commands.cat._run_fast", side_effect=fake_run_fast):
-            cold = _extract(f, _make_opts("fast", verbose=False))
+        with patch("mm.commands.cat_extract.run_fast", side_effect=fake_run_fast):
+            cold, _ = _extract(f, _make_opts("fast", verbose=False))
         assert cold == "cached body"
         assert run_call_count["n"] == 1
 
         # Warm run with verbose=True → cache hit, suffix replayed, no re-run.
         with patch(
-            "mm.commands.cat._run_fast",
+            "mm.commands.cat_extract.run_fast",
             side_effect=AssertionError("should not be called on cache hit"),
         ):
-            warm = _extract(f, _make_opts("fast", verbose=True))
+            warm, _ = _extract(f, _make_opts("fast", verbose=True))
         assert warm == f"cached body\n\n{suffix}"
         assert run_call_count["n"] == 1
 
@@ -282,13 +287,123 @@ class TestVerboseCacheReplay:
         def fake_run_fast(_path, _kind, _spec, _opts):
             return RunResult(content="cached body", verbose_suffix=suffix)
 
-        with patch("mm.commands.cat._run_fast", side_effect=fake_run_fast):
+        with patch("mm.commands.cat_extract.run_fast", side_effect=fake_run_fast):
             _extract(f, _make_opts("fast", verbose=True))
 
         # Even though metadata was stored, a verbose=False reader gets only content.
         with patch(
-            "mm.commands.cat._run_fast",
+            "mm.commands.cat_extract.run_fast",
             side_effect=AssertionError("should not be called on cache hit"),
         ):
-            warm = _extract(f, _make_opts("fast", verbose=False))
+            warm, _ = _extract(f, _make_opts("fast", verbose=False))
         assert warm == "cached body"
+
+
+class TestTokenCost:
+    """Estimated LLM token cost surfaces in the cat footer and verbose line."""
+
+    def test_run_token_cost_returned_on_run_result(self, tmp_path):
+        from mm.commands.cat_extract import CatRunState
+
+        f = tmp_path / "test.jpg"
+        f.write_bytes(b"\xff\xd8\xff" + b"\x00" * 100)
+        cm1, cm2, cm3, cm4 = _mock_cache_miss()
+        state = CatRunState()
+        with cm1, cm2, cm3, cm4, patch("mm.commands.cat_extract.run_fast") as mock:
+            mock.return_value = RunResult(content="ok", token_cost=0.0025)
+            _, run = _extract(f, _make_opts("fast"), state)
+            _, run2 = _extract(f, _make_opts("fast"), state)
+        assert run is not None and run.token_cost is not None
+        assert run.token_cost == 0.0025
+        assert run2 is not None and run2.token_cost is not None
+        assert run2.token_cost == 0.0025
+        assert state.total_token_cost == 0.005
+
+    def test_run_without_token_cost_leaves_total_untouched(self, tmp_path):
+        from mm.commands.cat import CatRunState
+
+        f = tmp_path / "test.jpg"
+        f.write_bytes(b"\xff\xd8\xff" + b"\x00" * 100)
+        cm1, cm2, cm3, cm4 = _mock_cache_miss()
+        state = CatRunState()
+        with cm1, cm2, cm3, cm4, patch("mm.commands.cat_extract.run_fast") as mock:
+            mock.return_value = RunResult(content="ok", token_cost=None)
+            _, run = _extract(f, _make_opts("fast"), state)
+        assert run is not None and run.token_cost is None
+        assert state.total_token_cost == 0.0
+
+    def test_footer_appends_token_cost_after_throughput(self):
+        from time import perf_counter
+
+        import mm.display as display_mod
+
+        with patch.object(display_mod, "console", MagicMock()) as console:
+            display_mod.display_elapsed(
+                perf_counter() - 1.0, total_bytes=1024 * 1024, token_cost=0.0028
+            )
+            display_mod.display_elapsed(
+                perf_counter() - 1.0, total_bytes=1024 * 1024, token_cost=0.0
+            )
+        with_cost = console.print.call_args_list[0].args[0]
+        without_cost = console.print.call_args_list[1].args[0]
+        assert with_cost.endswith("$0.0028")
+        assert "/s • $0.0028" in with_cost
+        assert "$" not in without_cost
+
+
+class TestToksPerSec:
+    """End-to-end toks/s: cat sums completion tokens and generate wall-clock,
+    the footer renders Σtokens / Σgenerate_s."""
+
+    def _run(self, tmp_path, usage, generate_ms):
+        from mm.commands.cat_extract import CatRunState
+
+        f = tmp_path / "test.jpg"
+        f.write_bytes(b"\xff\xd8\xff" + b"\x00" * 100)
+        cm1, cm2, cm3, cm4 = _mock_cache_miss()
+        state = CatRunState()
+        with cm1, cm2, cm3, cm4, patch("mm.commands.cat_extract.run_fast") as mock:
+            mock.return_value = RunResult(
+                content="ok", llm_usage=usage, generate_elapsed_ms=generate_ms
+            )
+            _extract(f, _make_opts("fast"), state)
+        return state
+
+    def test_accumulates_and_renders_rate(self, tmp_path):
+        import mm.display as display_mod
+
+        state = self._run(tmp_path, {"completion_tokens": 100.0}, 1000.0)
+        state2 = self._run(tmp_path, {"completion_tokens": 100.0}, 1000.0)
+        state.total_completion_tokens += state2.total_completion_tokens
+        state.total_generate_ms += state2.total_generate_ms
+        assert state.total_completion_tokens == 200.0
+        assert state.total_generate_ms == 2000.0
+
+        with patch.object(display_mod, "console", MagicMock()) as console:
+            display_mod.display_elapsed(
+                perf_counter() - 5.0,
+                total_bytes=1024 * 1024,
+                completion_tokens=state.total_completion_tokens,
+                generate_ms=state.total_generate_ms,
+                token_cost=0.002,
+            )
+        out = console.print.call_args_list[0].args[0]
+        # 200 tokens / 2.0s generate = 100 toks/s (over generate wall-clock, not `elapsed`).
+        toks_s = float(
+            next(p for p in out.split(" • ") if "toks/s" in p).split()[0].replace(",", "")
+        )
+        assert 99.0 <= toks_s <= 101.0
+        assert "/s • " in out.split("toks/s")[0] and "toks/s • $" in out  # after size, before cost
+
+    def test_skips_without_generate_time(self, tmp_path):
+        import mm.display as display_mod
+
+        state = self._run(tmp_path, None, None)
+        assert state.total_completion_tokens == 0.0
+        assert state.total_generate_ms == 0.0
+
+        with patch.object(display_mod, "console", MagicMock()) as console:
+            display_mod.display_elapsed(
+                perf_counter() - 1.0, completion_tokens=100, generate_ms=0.0
+            )
+        assert "toks/s" not in console.print.call_args_list[0].args[0]

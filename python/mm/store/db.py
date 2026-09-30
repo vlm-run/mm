@@ -143,13 +143,7 @@ class MmDatabase:
     def _conn(self) -> sqlite3.Connection | None:
         return getattr(self._tls, "conn", None)
 
-    @property
-    def _connect(self) -> sqlite3.Connection:
-        conn = getattr(self._tls, "conn", None)
-        if conn is not None:
-            return conn
-
-        self._db_path.parent.mkdir(parents=True, exist_ok=True)
+    def _new_connection(self) -> sqlite3.Connection:
         conn = sqlite3.connect(
             str(self._db_path),
             check_same_thread=False,
@@ -157,15 +151,34 @@ class MmDatabase:
         )
         conn.row_factory = sqlite3.Row
         conn.execute("PRAGMA journal_mode=WAL")
+        conn.execute("PRAGMA synchronous=NORMAL")
         conn.execute("PRAGMA foreign_keys=ON")
-        self._tls.conn = conn
-
-        if not self._schema_ready:
-            with self._lock:
-                if not self._schema_ready:
-                    self._ensure_tables()
-                    self._schema_ready = True
         return conn
+
+    @property
+    def _connect(self) -> sqlite3.Connection:
+        conn = getattr(self._tls, "conn", None)
+        if conn is not None:
+            return conn
+
+        self._db_path.parent.mkdir(parents=True, exist_ok=True)
+
+        if self._schema_ready:
+            conn = self._new_connection()
+            self._tls.conn = conn
+            return conn
+
+        with self._lock:
+            if not self._schema_ready:
+                conn = self._new_connection()
+                self._tls.conn = conn
+                self._ensure_tables()
+                self._schema_ready = True
+                return conn
+            # Another thread finished setup while we waited on the lock.
+            conn = self._new_connection()
+            self._tls.conn = conn
+            return conn
 
     def _ensure_tables(self) -> None:
         """Create tables, apply additive migrations, then create indexes.
@@ -323,9 +336,9 @@ class MmDatabase:
                 scanner.scan()
             uris = [row[0] for row in rows]
             rel_paths = [paths[i] for i in range(n)]
-            for uri, rel_path in zip(uris, rel_paths):
-                fill_metadata(self, uri, Path(uri), scanner, rel_path=rel_path)
-            self._connect.commit()
+            with self._connect:
+                for uri, rel_path in zip(uris, rel_paths):
+                    fill_metadata(self, uri, Path(uri), scanner, rel_path=rel_path)
 
         return int(db.execute("SELECT COUNT(*) FROM files").fetchone()[0])
 
@@ -447,7 +460,8 @@ class MmDatabase:
             data = {**data, FileCol.CONTENT_INDEXED_AT: now_us()}
         sets = ", ".join(f"{k} = ?" for k in data)
         self._connect.execute(f"UPDATE files SET {sets} WHERE uri = ?", (*data.values(), uri))
-        self._connect.commit()
+        if not self._connect.in_transaction:
+            self._connect.commit()
 
     # -- Extractions --
 
@@ -547,37 +561,37 @@ class MmDatabase:
         now = now_us()
         summary = content[:500] if len(content) > 500 else content
         metadata_json = json.dumps(metadata, separators=(",", ":")) if metadata else None
-        self._connect.execute(
-            "INSERT OR REPLACE INTO extractions "
-            "(id, file_uri, content_hash, profile, model, mode, detail, extra, summary, metadata, created_at) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            (
-                extraction_id,
-                uri,
-                content_hash,
-                profile,
-                model,
-                mode,
-                int(detail),
-                extra,
-                summary,
-                metadata_json,
-                now,
-            ),
-        )
-        self._connect.commit()
+        with self._connect:
+            self._connect.execute(
+                "INSERT OR REPLACE INTO extractions "
+                "(id, file_uri, content_hash, profile, model, mode, detail, extra, summary, metadata, created_at) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                (
+                    extraction_id,
+                    uri,
+                    content_hash,
+                    profile,
+                    model,
+                    mode,
+                    int(detail),
+                    extra,
+                    summary,
+                    metadata_json,
+                    now,
+                ),
+            )
 
-        # ``chunks.mode`` tags the *content tier* the chunk belongs to:
-        #   'metadata' → the file's locally-extracted text (files.text_preview)
-        #                — the input pipelines read from
-        #   <mode>     → the extraction's own pipeline output, tagged with the
-        #                pipeline that produced it (matches extractions.mode)
-        # ``get_extraction`` reads the pipeline-output tier; the metadata tier
-        # is reusable across fast/accurate extractions of the same file.
-        self._put_chunks(
-            extraction_id, uri, content_hash, profile, model, file_content, mode="metadata"
-        )
-        self._put_chunks(extraction_id, uri, content_hash, profile, model, content, mode=mode)
+            # ``chunks.mode`` tags the *content tier* the chunk belongs to:
+            #   'metadata' → the file's locally-extracted text (files.text_preview)
+            #                — the input pipelines read from
+            #   <mode>     → the extraction's own pipeline output, tagged with the
+            #                pipeline that produced it (matches extractions.mode)
+            # ``get_extraction`` reads the pipeline-output tier; the metadata tier
+            # is reusable across fast/accurate extractions of the same file.
+            self._put_chunks(
+                extraction_id, uri, content_hash, profile, model, file_content, mode="metadata"
+            )
+            self._put_chunks(extraction_id, uri, content_hash, profile, model, content, mode=mode)
         return extraction_id
 
     def _put_chunks(
@@ -613,7 +627,6 @@ class MmDatabase:
                 for idx, text in enumerate(texts)
             ],
         )
-        db.commit()
 
     def get_chunks(self, extraction_id: str, *, mode: str | None = None) -> list[dict[str, Any]]:
         q = "SELECT * FROM chunks WHERE extraction_id = ?"
@@ -658,26 +671,27 @@ class MmDatabase:
         self.ensure_metadata(uri)
         db = self._connect
 
-        old_ids = [
-            r[0]
-            for r in db.execute(
-                "SELECT id FROM chunks WHERE content_hash = ? AND extraction_id IS NULL "
-                "AND mode = 'metadata'",
-                (content_hash,),
-            ).fetchall()
-        ]
+        with db:
+            old_ids = [
+                r[0]
+                for r in db.execute(
+                    "SELECT id FROM chunks WHERE content_hash = ? AND extraction_id IS NULL "
+                    "AND mode = 'metadata'",
+                    (content_hash,),
+                ).fetchall()
+            ]
 
-        if old_ids:
-            has_vec = db.execute(
-                "SELECT 1 FROM sqlite_master WHERE type='table' AND name='chunks_vec'"
-            ).fetchone()
-            if has_vec:
+            if old_ids:
+                has_vec = db.execute(
+                    "SELECT 1 FROM sqlite_master WHERE type='table' AND name='chunks_vec'"
+                ).fetchone()
+                if has_vec:
+                    cp = ",".join("?" * len(old_ids))
+                    db.execute(f"DELETE FROM chunks_vec WHERE chunk_id IN ({cp})", old_ids)
                 cp = ",".join("?" * len(old_ids))
-                db.execute(f"DELETE FROM chunks_vec WHERE chunk_id IN ({cp})", old_ids)
-            cp = ",".join("?" * len(old_ids))
-            db.execute(f"DELETE FROM chunks WHERE id IN ({cp})", old_ids)
+                db.execute(f"DELETE FROM chunks WHERE id IN ({cp})", old_ids)
 
-        self._put_chunks(None, uri, content_hash, "", "", content, mode="metadata")
+            self._put_chunks(None, uri, content_hash, "", "", content, mode="metadata")
         return int(
             db.execute(
                 "SELECT COUNT(*) FROM chunks WHERE content_hash = ? AND extraction_id IS NULL "

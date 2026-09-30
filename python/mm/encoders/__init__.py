@@ -280,7 +280,7 @@ def _register_builtins() -> None:
     from mm.encoders.document import page_text, rasterize  # noqa: F401
     from mm.encoders.video import (  # noqa: F401
         captions,
-        chunks,
+        chunked,
         clips,
         frames,
         keyframes,

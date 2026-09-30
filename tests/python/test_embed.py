@@ -187,6 +187,8 @@ class TestCatEmbedIntegration:
             pipelines={},
             verbose=False,
             dry_run=False,
+            stream=False,
+            report=False,
         )
 
         mock_db = MagicMock()
@@ -195,7 +197,7 @@ class TestCatEmbedIntegration:
 
         with (
             patch(
-                "mm.commands.cat._run_accurate",
+                "mm.commands.cat_extract.run_accurate",
                 return_value=RunResult(content="LLM generated text."),
             ),
             patch("mm.store.utils.get_content_hash", return_value="fakehash"),
@@ -208,7 +210,7 @@ class TestCatEmbedIntegration:
         ):
             mock_profile.return_value.name = "default"
             mock_profile.return_value.model = "test-model"
-            result = _extract(pdf, opts)
+            result, _ = _extract(pdf, opts)
 
         assert result == "LLM generated text."
         mock_db.put_extraction.assert_called_once()

@@ -143,10 +143,11 @@ def _index_one(uri: str) -> str | None:
         verbose=False,
         dry_run=False,
         stream=False,
+        report=False,
     )
 
     try:
-        result = _extract(path, opts)
+        result, _ = _extract(path, opts)
         if not result or result.startswith("["):
             raise ValueError(f"Fast extraction failed for {uri}: {result}")
     except Exception as e:

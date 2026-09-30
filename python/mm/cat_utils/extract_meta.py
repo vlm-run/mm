@@ -2,11 +2,14 @@ from pathlib import Path
 from typing import Literal
 
 
-def extract_meta(path: Path, kind: str, *, no_cache: bool = False) -> str:
+def extract_meta(
+    path: Path, kind: str, *, no_cache: bool = False, content_hash: str | None = None
+) -> str:
     """Produce the metadata-tier content for a file (no LLM call) with caching."""
     from mm.store.utils import get_content_hash, shared_db
 
-    content_hash = get_content_hash(path)
+    if content_hash is None:
+        content_hash = get_content_hash(path)
     if not no_cache and content_hash:
         cached = shared_db().get_file_content(content_hash)
         if cached is not None:
@@ -39,12 +42,10 @@ def extract_meta(path: Path, kind: str, *, no_cache: bool = False) -> str:
 
 def _local_image(path: Path) -> str:
     try:
-        from mm._mm import Scanner
+        from mm._mm import extract_metadata_one
         from mm.display import format_size
 
-        scanner = Scanner(str(path.parent))
-        scanner.scan()
-        r = scanner.extract_metadata(path.name)
+        r = extract_metadata_one(path)
         parts: list[str] = []
         if r.dimensions:
             parts.append(f"Dimensions: {r.dimensions}")
@@ -72,12 +73,10 @@ def _local_image(path: Path) -> str:
 def _local_video(path: Path) -> str:
     """Metadata only — no ffmpeg, <100ms."""
     try:
-        from mm._mm import Scanner
+        from mm._mm import extract_metadata_one
         from mm.display import format_size
 
-        scanner = Scanner(str(path.parent))
-        scanner.scan()
-        r = scanner.extract_metadata(path.name)
+        r = extract_metadata_one(path)
         parts: list[str] = []
         if r.dimensions:
             parts.append(f"Resolution: {r.dimensions}")
@@ -104,12 +103,10 @@ def _local_video(path: Path) -> str:
 def _local_audio(path: Path) -> str:
     """Metadata only — no ffmpeg, <100ms."""
     try:
-        from mm._mm import Scanner
+        from mm._mm import extract_metadata_one
         from mm.display import format_size
 
-        scanner = Scanner(str(path.parent))
-        scanner.scan()
-        r = scanner.extract_metadata(path.name)
+        r = extract_metadata_one(path)
         parts: list[str] = []
         if r.duration_s is not None:
             mins, secs = divmod(r.duration_s, 60)
@@ -170,11 +167,11 @@ def extract_text(path: Path, kind: Literal["document", "text"]) -> tuple[str, bo
     """``mm cat`` passthrough path — mode-agnostic."""
     from mm.store.utils import get_content_hash, shared_db
 
-    content = extract_meta(path, kind)
+    content_hash = get_content_hash(path)
+    content = extract_meta(path, kind, content_hash=content_hash)
     if not content or content.startswith("["):
         return content, None
 
-    content_hash = get_content_hash(path)
     if not content_hash:
         return content, None
 
